@@ -81,6 +81,7 @@ describe('ParserTestPanel', () => {
         shipping: null,
         discount: null,
         payee: null,
+        reference: null,
         requireLine: null,
         skipIfLine: null,
         waitIfLine: null,
@@ -103,6 +104,7 @@ describe('ParserTestPanel', () => {
     ['not_applicable', /would not read this email/],
     ['skip_line', /would set this email aside/],
     ['wait_line', /would hold this email/],
+    ['no_html', /reads the HTML part of the email, and this email has none/],
   ])('says when a guard (%s) would stop the pipeline reading the email', async (outcome, text) => {
     api.test.mockResolvedValue({
       parsed: PARSED_RECEIPT,

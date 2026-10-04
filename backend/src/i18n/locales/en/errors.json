@@ -143,7 +143,10 @@
     "transferNotSupported": "A transfer cannot be reviewed by proposal. Reject the request instead.",
     "splitDifference": "The split lines add up to {{ sum }} but the transaction is {{ amount }}: {{ difference }} is not assigned. Make the lines add up to the transaction; a leftover such as a delivery cost needs its own line, or is named to the user instead of being assigned.",
     "noTransaction": "This AI review request is not about a transaction.",
-    "parserDraftNotSubmittable": "A parser draft request is answered with the email_receipt_parsers tool (test, then save_draft with this requestId), not with a transaction proposal."
+    "parserDraftNotSubmittable": "A parser draft request is answered with the email_receipt_parsers tool (test, then save_draft with this requestId), not with a transaction proposal.",
+    "tagNamesInvalid": "A proposal may add up to {{ max }} tags of 1 to {{ length }} characters each, with no control characters.",
+    "noApprovableProposal": "This request has no proposal to approve here.",
+    "approveFailed": "This proposal could not be approved. Try it on its own."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Too many verification attempts. Please log in again.",

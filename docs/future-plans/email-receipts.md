@@ -141,12 +141,16 @@ section 10.5).
    and the HTML part up to 1,000,000 characters) until the user deletes it or
    deletes the mailbox. The raw MIME source is not stored. `body_text` is what
    every parser and prompt reads (converted from the HTML when the message has no
-   text part); `body_html` is **display only**: the detail dialog shows it in an
+   text part); `body_html` is shown by the detail dialog in an
    `<iframe sandbox="" srcDoc>` whose document starts with a Content-Security-Policy
    meta (`default-src 'none'; img-src data: cid:; style-src 'unsafe-inline';
    font-src data:`) so remote images and trackers never load, with a toggle to the
-   text. It is never parsed, searched, sent to a model, or put in the page's DOM,
-   and the list never returns it.
+   text. The server also reads it, in one streaming pass of `htmlparser2`
+   (`imap/html-lines.util.ts`, the only file that imports it), for exactly two
+   things: the lines of a parser whose `source` is `html` (section 5.1) and the
+   email's schema.org order (decision 13). It is never searched, never sent to a
+   model, and never put in the page's DOM, and the list never returns it. The
+   text a prompt or an agent reads is still `body_text`.
 10. **Two ways to log in**: a password (an app password for most providers) or
     OAuth2 (XOAUTH2) for Google and Microsoft 365, section 3a.
 11. **Owner only.** A delegate sees neither the settings nor the receipts page,
@@ -168,6 +172,26 @@ section 10.5).
     dropped as garbled. The text is untrusted, so the block can only choose which
     approved parser reads the email and which days to look at: it never reaches
     the ledger except through the same card and approval.
+
+13. **Who reads an email, in order.** (1) An approved parser selected for the
+    shop's domain wins whenever it finds a `total` or a `paid`. (2) Otherwise,
+    when no parser applies or the parser found neither, the schema.org `Order`
+    or `Invoice` the HTML part carries as JSON-LD or microdata (the markup a
+    mail client reads for its own order card) is read when it states a total
+    and at least one line item (`ParsedReceipt.source` `"schema_org"`,
+    `status_reason` `schema_org`; spec "Structured data"). (3) Otherwise
+    `no_parser` or `parse_failed` as before. The markup is the sender's own
+    claim, so it goes through the same completeness table, the same matching
+    and the same review card as a parser's reading; its categories come only
+    from the default category of the payee the seller's name resolves to
+    (looked up, never created), and **it never auto-applies**: only an
+    approved parser's complete reading can (decision 7). The AI is not part of
+    this order (decision 6). A mail client that forwards a message inline
+    builds a new message and usually drops the original's `<script>` and
+    microdata, so the markup is found mostly in mail that reaches the mailbox as
+    the shop sent it, for example through a filter that auto-forwards the
+    original (Gmail then keeps the original body); the parser path, which reads
+    the visible text, has no such limit.
 
 ## 3a. OAuth2 login (Google, Microsoft 365)
 
@@ -279,7 +303,7 @@ email_receipts
   from_address varchar(320), from_domain varchar(255), subject varchar(500)
     -- the ORIGINAL sender and subject when the email was a forward (decision 12)
   received_at timestamptz, body_text text (<= 100,000 chars)
-  body_html text null (<= 1,000,000 chars)       -- display only, never parsed
+  body_html text null (<= 1,000,000 chars)       -- shown, and read for the html lines source and the schema.org order; never sent to a model
   forwarded_by varchar(320) null                 -- the mailbox From of a forward
   original_sent_at timestamptz null              -- the day the shop sent the order
   status varchar(20)  -- section 6
@@ -364,9 +388,12 @@ again, never read by another rule.
 }
 ```
 
-An email that prints a caption on one line and its value on a later one, and a
-product over several lines (the Allegro "Kupiłeś i zapłaciłeś" mail), reads
-with labelled entries and block items:
+An optional top-level `"source": "text" | "html"` (default `"text"`) says
+which lines every pattern, guard and trace line number refers to: the email's
+text (`body_text`, one line per line break) or the lines of its HTML part (see
+"Lines source" below). An email that prints a caption on one line and its value
+on a later one, and a product over several lines (the Allegro "Kupiłeś i
+zapłaciłeś" mail), reads with labelled entries and block items:
 
 ```json
 {
@@ -442,8 +469,35 @@ gives its one item the order total:
 }
 ```
 
+- **Lines source.** `source` is `text` (the default) or `html`; the validator
+  refuses anything else with `invalid_value` at path `source`. The `html` lines
+  come from one streaming pass over `body_html` (`htmlToReceiptLines`, no
+  document tree is kept): every block element (`p`, `div`, `br`, `tr`, `li`,
+  `h1`-`h6`, `table`, `section`, `article`, `header`, `footer`, `blockquote`,
+  `hr`, and the list, definition and table-section elements) and EVERY table
+  cell (`td`, `th`) ends the line, so a cell is a line and a product name that
+  the text conversion wraps over several lines is one line; inline text is joined
+  with single spaces; `head`, `title`, `script`, `style`, `noscript` and
+  `template` show nothing; an `<img alt="X">` with a non-empty alt is its own
+  line `[image: X]`; an `<a href>` adds its text inline and, for an `http` or
+  `https` href only, its own line `<href>` (what Gmail's text part shows; a long
+  href is cut inside the brackets so the line still ends in `>`); entities are
+  decoded; then the lines get the normalisation a text line gets (invisible
+  characters dropped, whitespace folded, 500 characters a line, empty lines
+  dropped, 2,000 lines, the input capped at the stored 1,000,000 characters).
+  The two sources are numbered separately: a trace's line numbers are the
+  chosen source's, and the email's detail dialog has a "Lines" view that shows
+  both. A forwarded email's header block is detected on the TEXT
+  (`detectForwardedOriginal`) and is not removed from either source's lines; the
+  Gmail forward banner and the From/Date/Subject/To lines are ordinary lines at
+  the top of the HTML lines, which no item pattern reads and `startAfter` skips.
+  A parser with `source: "html"` on an email with no `body_html` reads nothing:
+  the pipeline stores `parse_failed` with `status_reason` `no_html` (and the
+  parser id), or, when another parser for the sender applies, that one reads the
+  email; the test operation answers `outcome` `no_html`.
 - Every pattern is a rule glob (`*` wildcard, `{name}` capture), matched
-  case-insensitively against one whole line (the email's non-empty lines,
+  case-insensitively against one whole line (the lines of the chosen source: for
+  `text`, the email's non-empty lines,
   whitespace folded, invisible characters such as zero-width spaces, bidi
   marks and soft hyphens removed). A line pattern of `orderId` is tried on the
   subject first, then on each line.
@@ -570,26 +624,106 @@ The validator's codes, each at the path of the problem: `not_object`,
 `capture_conflict`, `invalid_uuid`, `out_of_range` (`within`),
 `items_patterns_and_record`, `items_single_conflict`, `items_shape_missing`,
 `skip_lines_need_record`, `join_wrapped_needs_patterns`, `record_name_missing`,
-`invalid_value` (a category rule `field`).
+`invalid_value` (a category rule `field`, or the top-level `source`).
 
 ### 5.3 Output (`ParsedReceipt`)
 
 `{ orderId, total, shipping, discount, items: [{ name, qty, amount,
 categoryId }], complete, reason, source? }` (`source` is `"ai"` when the AI read
-the email, absent for a parser), every amount a non-negative integer in
+the email, `"schema_org"` when its own structured data did, absent for a
+parser), every amount a non-negative integer in
 1/10000 units. `complete` is true only when `total` or `paid` was found, the items plus
 shipping (gross) and minus the discount (net) agree with them as section 5.1
 says, and every item and the shipping line (when present) has a category. The
 object also carries `paid` and `payee` (`null` when the email states none). `reason` names the first missing
 thing otherwise. The spec has the amount grammar and the truth table.
 
+### 5.4 Reference and tag
+
+`reference` is a pattern field read exactly like `orderId` (capture `{reference}`,
+the subject first, then the lines, the first token kept): the identifier a shop or a
+payment gateway puts into the bank operation, a statement text or a transfer title.
+It is a matching signal and nothing else; it is not shown as an order number. `tag`
+is a string of 1 to 50 characters: the proposal for a transaction the profile
+categorizes also adds that tag, found by name (case-insensitive, the user's own) or
+created. The tag is additive: the card lists it ("Tags: X (new)"), `confirm` finds
+or creates it and adds a `transaction_tags` row in the same transaction as the edit,
+and no existing tag is removed. A proposal that only changes the description carries
+no tag, because nothing was categorized.
+
+### 5.5 Matching, configured by the profile
+
+Which bank transaction an email paid for is the profile's decision, in its optional
+`match` section (all keys optional; spec 3a has the truth table):
+
+```json
+"match": { "by": ["reference", "orderId", "amount_payee"], "referenceIn": ["description"],
+           "daysBefore": 3, "daysAfter": 14, "amountTolerance": "0.50" }
+```
+
+- `by`: the strategies, in the order tried, each at most once, any of `reference`,
+  `orderId`, `amount_payee`, `amount_date`. The default (`orderId`, `amount_payee`,
+  `amount_date`) reproduces the matching a profile without the section always had.
+  `reference` in `by` needs a `reference` field (`reference_field_missing`).
+- `referenceIn`: the transaction fields a reference or an order id is looked for in:
+  `description`, `payee`, `referenceNumber` (default all three).
+- `daysBefore` 0 to 60 (default 3) and `daysAfter` 0 to 90 (default 14): the
+  candidate window around the purchase date. The candidate loader reads the window
+  of the profile that read the email, so a wider window is a wider query (still at
+  most 200 rows, newest first).
+- `amountTolerance`: a decimal string `"0.00"` to `"5.00"` (default `"0"`). The amount
+  signal holds when the bank amount is within it of what was paid, compared as integers
+  in 1/10000 units. A tolerance never lets an email auto-apply: the gate still demands
+  `abs(T) = paid ?? total` exactly.
+
+`match_kind` gains `reference` and `amount_date` (a migration widens the CHECK; the
+legacy `amount_only` stays readable and is never written again). The matcher reports
+what it tried (`attempts`: strategy, how many candidates it kept, the closest ten),
+how many candidates the window held and which strategy decided. The test panel and the
+`email_receipt_parsers` tool's `test` return that trace per email, so a person or an
+agent that tunes a profile sees why an email matched, was ambiguous or found nothing.
+The validator reports `match` problems at their own paths (`match.by[1]`,
+`match.daysBefore`, ...), and the tool's guide describes the section in a few lines (the
+MCP tools list must not grow, `tools-list-budget.spec.ts`).
+
+### 5.6 Categories chosen by the AI
+
+`aiCategories: true` lets the AI choose the category of an item no `categoryRules`
+entry matched and no `defaultCategoryId` covers. Without it nothing changes: such an
+email stays description-only, and the AI is never called for it (a source-scanning
+unit test holds that). With it, in the order below:
+
+1. The reading is complete and the profile is approved, and at least one item has no
+   category.
+2. When the user's AI provider can answer now (`AiService.canAnswerNow`), one bounded
+   call (`AiService.complete`, `responseFormat: "json"`, feature `email_receipt_categories`)
+   gets the uncategorized item names, the user's category list (ids and names) and the
+   merchant, framed as untrusted data. The output is validated (zod): an index outside
+   the items, an id that is not the user's category, or a second answer for an item is
+   dropped. A chosen category marks the item `categorySource: "ai"`; the card and the
+   test panel show it as the AI's, and it is display-only (never signed, never a reason to
+   auto-apply).
+3. Otherwise a request with the instruction `RECEIPT_CATEGORIZE_INSTRUCTION` is queued in
+   the inbox for an agent, like "Recognize with AI". There is one open rule-less request
+   per transaction, so it replaces the description-only proposal that would otherwise be
+   stored (a deliberate deviation from "a proposal is never replaced by a question": a
+   description-only proposal would have hidden the fact that categories were asked for).
+4. The poll's automatic step never takes this path (INV-RECEIPT-003 holds either way,
+   because the result is a proposal), and a poll asks at most 10 such questions, a bulk
+   call at most 25; the rest are queued. The AI call sits between two transactions of the
+   pipeline, never inside a database transaction (`docs/external-side-effects.md`).
+
 ## 6. Pipeline and receipt states
 
 ```
 poll -> store (status pending); a forwarded email is stored as the shop's
         (decision 12)
-     -> choose parser (by the shop's domain): none -> no_parser
-     -> parse: no total -> parse_failed
+     -> choose parser (by the shop's domain): none -> the email's schema.org
+               order when it states a total and a line (decision 13), else
+               no_parser; a parser that reads html on an email with no html
+               -> parse_failed (no_html)
+     -> parse (the lines of the parser's source): no total and no paid -> the
+               schema.org order when usable; else no total -> parse_failed
      -> match, window centred on original_sent_at ?? received_at:
                none -> unmatched (retried 30 days) | several -> ambiguous
      -> propose: an open request exists -> review_conflict
@@ -611,6 +745,18 @@ user -> draft parser with AI (1 to 5 emails, any AI mode)
         -> the user approves the parser -> applied (same transaction)
            the user deletes the parser -> dismissed
 ```
+
+**The schema.org reading** is computed at process time from `body_html` (nothing
+is stored at ingestion): `orderFromStructuredData` over the JSON-LD scripts and
+microdata that the same single pass collected (`ReceiptSourceLines`), then
+`schemaOrgToParsedReceipt` (spec "Structured data"). It is judged by the same
+`completeness` and goes through the same matching, `buildReceiptProposal` and
+`AiReviewWorkService.submit` as a parser's reading, inside the same transaction.
+`status_reason` is `schema_org` when the outcome has no more specific reason of
+its own (`amount_differs`, `items_uncategorized`, `proposal_fallback`, ... keep
+theirs; `parsed.source` records the reader either way). It never auto-applies,
+and in `automatic` AI mode an incomplete reading asks the AI like an incomplete
+parser's.
 
 The pipeline's first step under the receipt's row lock is the forwarded-identity
 heal (`healForwardedIdentity`): the stored text is read again and, when it holds a
@@ -686,6 +832,18 @@ What a proposal contains:
 
 `docs/system-invariants.md` carries each with an honest status.
 
+### 7.1 The daily limit of AI-proposed writes
+
+Every confirmed AI proposal is counted by `AiWriteLimiter`. A mailbox has the switch
+`profile_proposals_count_toward_ai_limit` (default true): when it is off, a proposal that
+a profile built (`claimed_by = 'email-receipts'`) is neither counted nor refused by the
+limit, so a first run over hundreds of stored emails does not use the day's allowance up
+for the user's other AI edits. The exemption is decided on the server, from the stored
+request's claimant and the stored switch, at confirm; the client sends nothing that could
+claim it, and a proposal an AI or an agent built always counts. Nothing else about the
+card changes: it is still signed, still single-use, still approved by a person (or by the
+auto-apply gate).
+
 ## 8. Backend
 
 Module `backend/src/email-receipts/`:
@@ -695,12 +853,22 @@ Module `backend/src/email-receipts/`:
 - `imap/`: `ImapMailboxClient` (the only file importing `imapflow`),
   `mail-text.util.ts` (the only file importing `mailparser`; HTML to text,
   line normalisation, caps, and the HTML part kept for display),
+  `html-lines.util.ts` (the only file importing `htmlparser2`; one streaming
+  pass over the HTML part: `htmlToReceiptLines`, and the JSON-LD scripts and
+  microdata items for `schema-org-order.ts`; bounded in depth, nodes, scripts and
+  lengths),
   `forwarded-message.ts` (pure: `detectForwardedOriginal`, the header block of a
   forward in the text, bounded to the first 200 lines, no regular expression
   built from input) and `forwarded-receipt.ts` (pure: the identity columns a
   forward changes, idempotent; `effectiveReceiptDate`).
-- `parsing/`: definition types, validator, `parseReceipt(definition, subject,
-  text)`, amount grammar. Pure.
+- `parsing/`: definition types, validator, `parseReceiptLines(definition, subject,
+  lines, fallback)` (and the text wrapper `parseReceipt`), amount grammar,
+  `schema-org-order.ts` (`extractSchemaOrgOrder`, `orderFromStructuredData`,
+  `schemaOrgToParsedReceipt`). Pure.
+- `pipeline/receipt-source-lines.ts`: `ReceiptSourceLines`, the lines of one
+  stored email by source and its structured data, each computed once; the one
+  place a definition's `source` chooses lines (the pipeline, the REST `test`
+  and the tool's `test`).
 - `matching/`: `matchReceipt(parsed, candidates, parserPayeeId)`. Pure.
 - `proposal/`: `buildReceiptProposal(parsed, transaction, context)`. Pure.
 - `EmailReceiptsService`: list, get, link, ignore, delete, reprocess, ask AI.
@@ -752,15 +920,61 @@ Environment (operator, all optional): `EMAIL_RECEIPTS_MAX_MESSAGES_PER_POLL`
 `EMAIL_RECEIPTS_PRIVATE_HOST_ALLOWLIST` (empty), and the OAuth clients of
 section 3a.
 
+### 8.1 Bulk work, the overview and approving in bulk
+
+- `POST /email-receipts/process-batch` `{ domain?, statuses?, limit?, since? }` runs the
+  pipeline over up to `limit` (default 100, at most 200) stored emails, oldest first, one
+  after the other, each in its own transaction, and answers `{ processed, byOutcome,
+  failed, remaining, since }`. The default statuses are the ones the pipeline can run
+  again (`pending`, `no_parser`, `parse_failed`, `unmatched`, `ambiguous`,
+  `review_conflict`); a `review` email stands behind a proposal and is never taken. The
+  run ends because of `since`: the first call stamps the database clock, and every call
+  selects only emails whose `updated_at` is before it. The pipeline touches the row it
+  processes, and a failure touches it too, so every email is taken at most once per run
+  and `remaining` (the matching emails still before `since`) reaches 0. The client
+  loops until `remaining` is 0, a call touches nothing, the person cancels or a call
+  fails. There is no new lock: each email is processed under its own row lock, as a
+  reprocess is, and a concurrent poll that reaches the same email serializes on it.
+- `GET /email-receipts/overview` answers the Overview cards in one statement (the
+  mailbox's state, the emails by status, how many "Process all" would run, the proposals
+  waiting, the approved and draft profiles, and up to ten sender domains of `no_parser`
+  emails no profile covers). It carries counts and names only, never email text.
+  `GET /email-receipts/domains` gains `processable` per domain, so the post-approve dialog
+  can name how many emails of the new profile's senders it would process.
+- `POST /ai-review-requests/approve-batch` `{ ids }` (1 to 100 distinct ids) approves
+  proposals the way a single approval does: for each id the card is rebuilt from the
+  stored proposal against the transaction as it is now (`AiReviewWorkService.buildApprovalCard`),
+  then `AiActionsService.confirm` is called, one transaction per request, so a refusal
+  (a changed row, a reconciled lock, the write limit) leaves that request proposed and the
+  others unaffected. The answer lists, per id, `ok` or the reason. Nothing is approved
+  that the same person could not approve one by one, and the daily limit counts each one.
+  The service and controller live in the AI module (the receipts module imports it, not
+  the reverse).
+
 ## 9. Frontend
 
-- `/settings/email-receipts`: "Connect with Google" / "Connect with Microsoft"
+- `/email-receipts` is a hub with the tabs Overview, Emails, Profiles and Mailbox
+  (`?tab=`; a link with `?domain=` and no tab opens Emails; a tab is mounted when first
+  opened). `/settings/email-receipts` redirects to `?tab=mailbox`, the settings page keeps
+  a card that links to the hub, and the OAuth callback (its path is the redirect URI
+  registered with the providers and is unchanged) returns to `?tab=mailbox`. The Overview
+  shows the cards of `GET /email-receipts/overview` and, until a mailbox is connected, an
+  email is stored and a profile is approved, a four-step wizard (connect a mailbox, fetch
+  emails, create a profile, review proposals). Emails has "Process all (N)" (the filtered
+  sender's emails, or all), a confirmation, progress with Cancel and a summary of where the
+  emails ended; approving a profile offers "Process the N stored emails from <domains>
+  now?" when any are waiting. Profiles and Mailbox are the sections that were on
+  `/settings/email-receipts`; the profile editor gains the Matching and Proposal fieldsets
+  (5.4 to 5.6) and the mailbox settings the AI-limit switch (7.1). The demo account gets
+  the explanation on Profiles and Mailbox.
+- The mailbox section of the hub: "Connect with Google" / "Connect with Microsoft"
   (only for a provider the operator configured) or the manual mailbox form
   (write-only password, test
   connection, poll now, AI mode, auto-apply, last poll and last error), and the
   parsers list with an editor (name, domains, subject words, payee, patterns
   one per line, section markers, category rules, default and shipping
-  category), a test panel against a stored receipt, approve and delete.
+  category, a "Lines source" select: Text or HTML), a test panel against a stored
+  receipt, approve and delete.
   The editor has a "Form | JSON" switch at the top. The form shows only what it
   can hold without loss (plain line patterns, `startAfter` / `stopAt`, item
   patterns, category rules with a default and shipping category); a definition
@@ -774,14 +988,27 @@ section 3a.
   The test panel works in both modes and lists under "Matched by" which entry
   and line read each value (design 5.1, the test trace), and says when a guard
   would stop the pipeline reading the email.
-- `/email-receipts` (Tools menu, owner only): the receipts table with state
+- `/email-receipts` (Tools menu, owner only): a state filter and a sender-domain
+  filter (a select of "All senders" and each domain with its count, kept in
+  `?domain=`; `GET /email-receipts?domain=` matches the receipt's own, post
+  forward-detection `from_domain` exactly or as a sub-domain, with `%`, `_` and
+  `\` taken literally, combined with `status`; `GET /email-receipts/domains`
+  lists the user's domains with counts, at most 200, declared before `:id`; a
+  list belongs to the pair of filters that asked for it, and the counts are read
+  again after every command), the receipts table with state
   badges and actions (a checkbox column selects up to five emails; the selection
   bar offers "Draft parser with AI (N)" and warns, without blocking, when the
   selected emails have different sender domains; the row's own "Draft parser with
   AI" is the inline action of an email no parser read and "Create parser" is in
   the menu); a detail dialog with the email (HTML in the sandboxed frame by
-  default, an HTML / Text toggle, the note "Remote images are not loaded.", who
-  forwarded it and the shop's date), the parsed result and the candidates. The
+  default, an HTML / Text / Lines toggle, the note "Remote images are not
+  loaded.", who forwarded it and the shop's date), the parsed result, a
+  "Structured data (schema.org)" section (found, with the order and its lines, or
+  not found), a "Read from structured data" badge on a reading that came from it,
+  and the candidates. The Lines view lists the numbered lines of the Text or the
+  HTML source (`GET /email-receipts/:id` returns `lines: { text, html }`, `html`
+  null without an HTML part, and `structuredOrder`; the list never does), which
+  are exactly what a pattern is matched against. The
   transaction picker's From and To dates are editable (they start as the window
   around the purchase date; the server accepts any linkable transaction of the
   user whatever its date) and its empty message says the dates can be widened.
@@ -789,8 +1016,12 @@ section 3a.
   the rule name, and a `pending` one says it waits for an AI agent (with a link
   to the AI settings). An `email_parser_draft` row reads "Parser draft from N
   emails (domain)", says the same while `pending`, and once `proposed` says "Draft
-  parser ready" with a link to `/settings/email-receipts` where it is tested and
-  approved; it has no card and no transaction, and can be dismissed.
+  parser ready" with a link to `/email-receipts?tab=profiles` where it is tested and
+  approved; it has no card and no transaction, and can be dismissed. A column of
+  checkboxes selects the proposals that can be approved (`proposed`, with a card);
+  "Approve selected (N)" and "Approve all shown (M)" ask once and call
+  `approve-batch` in chunks of 100, then show how many were applied and, for each that
+  was not, why. A kind filter (All, Email receipts, Rules; `?kind=`) narrows the list.
 - `/ai`: "Recognize with AI" opens the chat with the order email attached as
   `order-email-YYYY-MM-DD.txt` and the message typed in the composer
   (`/ai?handoff=<id>`, `lib/ai-chat-handoff.ts`: in memory, one entry per id,
@@ -807,6 +1038,10 @@ section 3a.
 | Unit | services | Lease, cursor, rematch window, auto-apply gate, AI modes, owner-only |
 | Integration | `email-receipts.integration.spec.ts` | Ingestion idempotency on the unique key; RLS isolation of the three tables; the widened kind CHECK |
 | Frontend | components | Settings form never shows the password; states and actions; inbox row for the new kinds; the sandboxed HTML frame (empty `sandbox`, the policy meta first, never the page's DOM); the picker's editable range; the selection bar and both outcomes of drafting (chat opened, queued) |
+| Unit | `imap/html-lines.util.spec.ts` | Block elements and every table cell end a line, nested tables, a wrapped product name stays one line, the Gmail forward wrapper, links and images, entities, NBSP, hidden elements, malformed and hostile HTML (depth, size, line cap), JSON-LD and microdata collection and their caps |
+| Unit | `parsing/schema-org-order.spec.ts` | Google's Gmail Order shape, Invoice, `@graph`, type arrays and prefixes, number vs string prices, microdata with nested OrderItems, malformed JSON, depth and node caps, other types ignored, the receipt built from the order |
+| Unit | `pipeline/receipt-source-lines.spec.ts`, `pipeline/email-receipt-pipeline.service.spec.ts` | The source a definition chooses, `no_html`, precedence (a parser that read a total wins; schema.org with no parser or no total; unusable markup falls through), the reason slot, no auto-apply |
+| Integration | `email-receipts-pipeline.integration.spec.ts` | A real JSON-LD order with no parser ends in review with source `schema_org`; an html parser reads the stored HTML; `no_html` |
 | Unit | `imap/forwarded-message.spec.ts` | Every client's header block, every date format and label language, bounds and linearity on hostile text |
 | Unit | `parsers/email-receipt-parser-tools.service.spec.ts` | `test` writes nothing, `save_draft` writes a draft only, claim and ownership checks before the write |
 | Integration | `email-receipts-pipeline.integration.spec.ts` | A forwarded email read by the shop's parser and matched on the purchase day; draft request, claim by id, tests, draft, proposed, approve, applied; another user sees none of it |

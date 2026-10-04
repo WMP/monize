@@ -21,6 +21,7 @@ import {
   AskAiEmailReceiptDto,
   LinkEmailReceiptDto,
   ListEmailReceiptsDto,
+  ProcessBatchEmailReceiptsDto,
 } from "./dto/email-receipts.dto";
 import { EmailReceiptsService } from "./email-receipts.service";
 
@@ -54,7 +55,47 @@ export class EmailReceiptsController {
   ) {
     return this.receipts.list(req.user.id, {
       status: query.status,
+      domain: query.domain,
       limit: query.limit,
+    });
+  }
+
+  // Declared before `:id`, so the literal segment is matched first.
+  @Get("domains")
+  @ApiOperation({
+    summary:
+      "The sender domains of my stored emails with their counts, most first (at most 200)",
+  })
+  domains(@Request() req: { user: { id: string } }) {
+    return this.receipts.listDomains(req.user.id);
+  }
+
+  // Declared before `:id`, so the literal segment is matched first.
+  @Get("overview")
+  @ApiOperation({
+    summary:
+      "What the Email receipts hub's Overview shows: the mailbox, the emails by status, the profiles, the proposals to approve (one query)",
+  })
+  overview(@Request() req: { user: { id: string } }) {
+    return this.receipts.overview(req.user.id);
+  }
+
+  @Post("process-batch")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60000, limit: 30 } })
+  @ApiOperation({
+    summary:
+      "Run the pipeline over up to `limit` emails in the given statuses, oldest first, one after the other; answers where they ended and how many are left",
+  })
+  processBatch(
+    @Request() req: { user: { id: string } },
+    @Body() dto: ProcessBatchEmailReceiptsDto,
+  ) {
+    return this.receipts.processBatch(req.user.id, {
+      domain: dto.domain,
+      statuses: dto.statuses,
+      limit: dto.limit,
+      since: dto.since,
     });
   }
 

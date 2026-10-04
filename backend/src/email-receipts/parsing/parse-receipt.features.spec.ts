@@ -676,6 +676,7 @@ describe("the trace", () => {
     const { trace } = parseReceiptTraced(base({}), "", "nothing", null);
     expect(trace).toEqual({
       orderId: null,
+      reference: null,
       total: null,
       paid: null,
       shipping: null,

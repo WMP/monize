@@ -36,7 +36,20 @@ export const EMAIL_RECEIPT_STATUSES = [
 ] as const;
 export type EmailReceiptStatus = (typeof EMAIL_RECEIPT_STATUSES)[number];
 
-export const EMAIL_RECEIPT_MATCH_KINDS = ['order_id', 'amount_payee', 'amount_only', 'manual'] as const;
+/**
+ * How an email was tied to its transaction: the profile strategy that found it
+ * (`reference`, `order_id`, `amount_payee`, `amount_date`) or `manual`.
+ * `amount_only` is what an email matched before the strategies were configurable
+ * carries: it is shown, never produced.
+ */
+export const EMAIL_RECEIPT_MATCH_KINDS = [
+  'order_id',
+  'reference',
+  'amount_payee',
+  'amount_date',
+  'amount_only',
+  'manual',
+] as const;
 export type EmailReceiptMatchKind = (typeof EMAIL_RECEIPT_MATCH_KINDS)[number];
 
 /** What a `review` receipt's request says about it; null for every other status. */
@@ -80,6 +93,11 @@ export interface EmailReceiptMailbox {
   enabled: boolean;
   aiMode: EmailReceiptAiMode;
   autoApply: boolean;
+  /**
+   * Whether a proposal a saved profile built counts toward the daily AI write
+   * limit when it is confirmed. The user's own switch; an AI-built proposal always counts.
+   */
+  profileProposalsCountTowardAiLimit: boolean;
   passwordSet: boolean;
   encryptionConfigured: boolean;
   authMethod: EmailReceiptAuthMethod;
@@ -104,6 +122,8 @@ export interface UpsertEmailReceiptMailboxPayload {
   enabled: boolean;
   aiMode: EmailReceiptAiMode;
   autoApply: boolean;
+  /** Omit to keep the stored value. */
+  profileProposalsCountTowardAiLimit?: boolean;
 }
 
 /** `PATCH /email-receipts/mailbox/settings`: the settings an OAuth mailbox has. */
@@ -112,6 +132,7 @@ export interface UpdateEmailReceiptMailboxSettingsPayload {
   enabled?: boolean;
   aiMode?: EmailReceiptAiMode;
   autoApply?: boolean;
+  profileProposalsCountTowardAiLimit?: boolean;
 }
 
 /** `POST /email-receipts/mailbox/test`: a draft; a field left out is read from the stored mailbox. */
@@ -194,6 +215,102 @@ export interface EmailReceiptListItem {
   createdAt: string;
 }
 
+/** One line of a schema.org order: the line total is the unit price times the quantity; either is `null` when the markup states none. */
+export interface SchemaOrgOrderItem {
+  name: string;
+  qty: number;
+  /** In 1/10000 units. */
+  amount: number | null;
+  /** In 1/10000 units. */
+  unitPrice: number | null;
+}
+
+/** The schema.org `Order` or `Invoice` the email carries as markup (JSON-LD or microdata). Amounts are in 1/10000 units. */
+export interface SchemaOrgOrder {
+  orderNumber: string | null;
+  seller: string | null;
+  currency: string | null;
+  orderDate: string | null;
+  total: number | null;
+  discount: number | null;
+  items: SchemaOrgOrderItem[];
+}
+
+/** The lines a parser's patterns are matched against, per `source`; `html` is `null` when the email has no HTML part. */
+export interface EmailReceiptLines {
+  text: string[];
+  html: string[] | null;
+}
+
+/** One sender domain of the user's stored emails with how many there are (`GET /email-receipts/domains`). */
+export interface EmailReceiptDomainCount {
+  domain: string;
+  count: number;
+  /**
+   * How many of them "Process all" would run again (not yet read, or in a state
+   * a new profile or transaction can change). Absent from a server that predates it.
+   */
+  processable?: number;
+}
+
+/** The statuses "Process all" acts on: the pipeline can run them again; `review` stands behind a proposal a person decides. */
+export const EMAIL_RECEIPT_PROCESSABLE_STATUSES = [
+  'pending',
+  'no_parser',
+  'parse_failed',
+  'unmatched',
+  'ambiguous',
+  'review_conflict',
+] as const;
+export type EmailReceiptProcessableStatus = (typeof EMAIL_RECEIPT_PROCESSABLE_STATUSES)[number];
+
+/** `POST /email-receipts/process-batch`. */
+export interface ProcessEmailReceiptsPayload {
+  domain?: string;
+  statuses?: readonly EmailReceiptProcessableStatus[];
+  limit?: number;
+  /** The `since` the previous call of the same run answered; omit on the first call. */
+  since?: string;
+}
+
+/** What one call of "process in bulk" did and what is left of the run. */
+export interface ProcessEmailReceiptsResult {
+  processed: number;
+  /** Where the processed emails ended, by their new status (a status with none is absent). */
+  byOutcome: Partial<Record<EmailReceiptStatus, number>>;
+  /** Emails that raised an error and were passed over. */
+  failed: number;
+  /** Matching emails this run has not touched yet; 0 ends the run. */
+  remaining: number;
+  /** Send back as `since` in the next call of the same run. */
+  since: string;
+}
+
+/** `GET /email-receipts/overview`: what the hub's Overview cards show. */
+export interface EmailReceiptsOverview {
+  /** Null when the user has no mailbox yet. */
+  mailbox: {
+    enabled: boolean;
+    authMethod: EmailReceiptAuthMethod;
+    aiMode: EmailReceiptAiMode;
+    /** False for an OAuth mailbox that was disconnected or revoked. */
+    connected: boolean;
+    lastPolledAt: string | null;
+    lastSuccessAt: string | null;
+    lastError: string | null;
+    lastErrorAt: string | null;
+  } | null;
+  /** Stored emails by status; a status with none is absent. */
+  emailsByStatus: Partial<Record<EmailReceiptStatus, number>>;
+  /** Emails "Process all" would run. */
+  processable: number;
+  /** Proposals of the email-receipt kind waiting for approval. */
+  proposalsToApprove: number;
+  parsers: { approved: number; draft: number };
+  /** Sender domains of emails no profile covers, most emails first (at most ten). */
+  domainsWithoutProfile: Array<{ domain: string; count: number }>;
+}
+
 export interface EmailReceiptDetail extends EmailReceiptListItem {
   bodyText: string;
   /**
@@ -201,6 +318,13 @@ export interface EmailReceiptDetail extends EmailReceiptListItem {
    * loads nothing (`EmailHtmlFrame`); `null` when the email has none. Never in the list.
    */
   bodyHtml: string | null;
+  /**
+   * The numbered lines each source gives (at most 2,000 each): exactly what a
+   * parser's patterns match against. Only the detail carries them.
+   */
+  lines: EmailReceiptLines;
+  /** The schema.org order found in the HTML part, or `null` when there is none. */
+  structuredOrder: SchemaOrgOrder | null;
   /** The stored `ParsedReceipt`; read it through `readParsedReceipt`. */
   parsed: Record<string, unknown> | null;
   candidates: EmailReceiptCandidateSummary[];
@@ -247,7 +371,17 @@ export const RECEIPT_PARSER_LIMITS = {
   maxFromDomains: 10,
   maxSubjectWords: 10,
   maxSubjectWordLength: 100,
+  maxTagLength: 50,
+  maxMatchStrategies: 4,
+  maxDaysBefore: 60,
+  maxDaysAfter: 90,
+  /** The largest amount tolerance, in whole currency units (`"5.00"`). */
+  maxAmountTolerance: 5,
 } as const;
+
+/** The days of the window and the amount tolerance a profile that says nothing uses. */
+export const DEFAULT_MATCH_DAYS_BEFORE = 3;
+export const DEFAULT_MATCH_DAYS_AFTER = 14;
 
 /** Items read one per line. */
 export interface ReceiptItemsDefinition {
@@ -296,15 +430,48 @@ export interface ReceiptSingleItemsDefinition {
   single: { name: string };
 }
 
+/** How a profile identifies the bank transaction an email paid for, tried in the profile's order. */
+export const RECEIPT_MATCH_STRATEGIES = ['reference', 'orderId', 'amount_payee', 'amount_date'] as const;
+export type ReceiptMatchStrategy = (typeof RECEIPT_MATCH_STRATEGIES)[number];
+
+/** The strategies tried when a profile names none: the matching a profile without a `match` section always had. */
+export const DEFAULT_MATCH_BY: readonly ReceiptMatchStrategy[] = ['orderId', 'amount_payee', 'amount_date'];
+
+/** The transaction fields `reference` and `orderId` are looked for in. */
+export const RECEIPT_MATCH_TEXT_FIELDS = ['description', 'payee', 'referenceNumber'] as const;
+export type ReceiptMatchTextField = (typeof RECEIPT_MATCH_TEXT_FIELDS)[number];
+
+/** The `match` section of a profile; every key is optional. `amountTolerance` is a decimal string ("0.00" to "5.00"). */
+export interface ReceiptMatchDefinition {
+  by?: ReceiptMatchStrategy[];
+  referenceIn?: ReceiptMatchTextField[];
+  daysBefore?: number;
+  daysAfter?: number;
+  amountTolerance?: string;
+}
+
+/** Which lines a parser reads: the email's text (the default) or the lines of its HTML part. */
+export const RECEIPT_LINES_SOURCES = ['text', 'html'] as const;
+export type ReceiptLinesSource = (typeof RECEIPT_LINES_SOURCES)[number];
+
 /** A parser definition, version 2 (`definition` of an `email_receipt_parsers` row). */
 export interface ReceiptParserDefinition {
   version: 2;
+  /** The lines the patterns read: the email's text (default) or its HTML part. */
+  source?: ReceiptLinesSource;
   orderId?: ReceiptFieldEntry[];
   total?: ReceiptFieldEntry[];
   paid?: ReceiptFieldEntry[];
   shipping?: ReceiptFieldEntry[];
   discount?: ReceiptFieldEntry[];
   payee?: ReceiptFieldEntry[];
+  /** An identifier the shop or the payment gateway puts into the bank operation. Capture `{reference}`. */
+  reference?: ReceiptFieldEntry[];
+  match?: ReceiptMatchDefinition;
+  /** A tag the proposal adds to every transaction the profile categorises. */
+  tag?: string;
+  /** Ask the user's AI for the category of an item no rule matched. */
+  aiCategories?: boolean;
   items?: ReceiptItemsDefinition | ReceiptBlockItemsDefinition | ReceiptSingleItemsDefinition;
   categoryRules?: ReceiptCategoryRule[];
   defaultCategoryId?: string;
@@ -361,6 +528,8 @@ export interface ParsedReceiptItem {
   /** The line total, in 1/10000 units. */
   amount: number;
   categoryId: string | null;
+  /** `"ai"` when the AI chose this item's category. */
+  categorySource?: 'ai';
 }
 
 /** What a parser read from one email. Every amount is in 1/10000 units; null means the email did not state it. */
@@ -371,6 +540,8 @@ export interface ParsedReceipt {
   paid?: number | null;
   /** The merchant the email names (a payment gateway's notice). Absent on a receipt stored before the field existed. */
   payee?: string | null;
+  /** The identifier the profile's `reference` field read. Absent on a receipt stored before the field existed. */
+  reference?: string | null;
   shipping: number | null;
   discount: number | null;
   items: ParsedReceiptItem[];
@@ -378,14 +549,47 @@ export interface ParsedReceipt {
   discountCategoryId: string | null;
   complete: boolean;
   reason: ParsedReceiptReason | null;
-  /** Who read the email: a saved parser, or the AI. Absent on a receipt stored before the field existed. */
-  source?: 'parser' | 'ai';
+  /** Who read the email: a saved parser, the AI, or the email's own schema.org markup. Absent on a receipt stored before the field existed. */
+  source?: 'parser' | 'ai' | 'schema_org';
 }
 
 export type ReceiptMatchResult =
-  | { kind: 'matched'; transactionId: string; matchKind: Exclude<EmailReceiptMatchKind, 'manual'> }
+  | { kind: 'matched'; transactionId: string; matchKind: Exclude<EmailReceiptMatchKind, 'manual' | 'amount_only'> }
   | { kind: 'ambiguous'; candidateIds: string[] }
   | { kind: 'unmatched' };
+
+/** A transaction a matching strategy kept. */
+export interface ReceiptMatchTraceTransaction {
+  id: string;
+  /** YYYY-MM-DD. */
+  date: string;
+  amount: number;
+  payeeName: string | null;
+}
+
+/** What one strategy kept: how many candidates, and the first ten. */
+export interface ReceiptMatchTraceAttempt {
+  strategy: ReceiptMatchStrategy;
+  count: number;
+  transactions: ReceiptMatchTraceTransaction[];
+}
+
+/** What the matcher looked at: the window, the strategies in order, and what each kept. */
+export interface ReceiptMatchTrace {
+  window: { from: string; to: string };
+  daysBefore: number;
+  daysAfter: number;
+  /** In 1/10000 units. */
+  toleranceUnits: number;
+  referenceIn: ReceiptMatchTextField[];
+  by: ReceiptMatchStrategy[];
+  /** Candidates inside the window. */
+  considered: number;
+  /** The strategies tried, up to and including the one that decided. */
+  attempts: ReceiptMatchTraceAttempt[];
+  /** The strategy that matched or found several candidates; null when none did. */
+  decidedBy: ReceiptMatchStrategy | null;
+}
 
 /** A line a trace points at: its 1-based number (0 is the subject) and its text. */
 export interface ReceiptTraceLine {
@@ -413,6 +617,7 @@ export interface ReceiptTraceItem {
 /** The fields a trace names, in the order the panel lists them. */
 export const RECEIPT_TRACE_FIELDS = [
   'orderId',
+  'reference',
   'total',
   'paid',
   'shipping',
@@ -426,8 +631,8 @@ export type ReceiptTraceField = (typeof RECEIPT_TRACE_FIELDS)[number];
 
 export type ReceiptTrace = Record<ReceiptTraceField, ReceiptTraceHit | null> & { items: ReceiptTraceItem[] };
 
-/** What the pipeline would do with the email under this parser. */
-export type ReceiptOutcome = 'read' | 'not_applicable' | 'skip_line' | 'wait_line';
+/** What the pipeline would do with the email under this parser (`no_html`: it reads the HTML part and the email has none). */
+export type ReceiptOutcome = 'read' | 'not_applicable' | 'skip_line' | 'wait_line' | 'no_html';
 
 export interface EmailReceiptParserTestResult {
   parsed: ParsedReceipt;
@@ -435,6 +640,8 @@ export interface EmailReceiptParserTestResult {
   trace?: ReceiptTrace;
   outcome?: ReceiptOutcome;
   match: ReceiptMatchResult;
+  /** What the matcher looked at, by strategy. Absent from a server that predates it. */
+  matchTrace?: ReceiptMatchTrace;
   /** Candidate transactions the matcher was given. */
   candidateCount: number;
   /** The matched transaction, when there is one (an ordinary amount, no currency). */

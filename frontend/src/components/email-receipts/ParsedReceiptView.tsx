@@ -58,6 +58,8 @@ export function ParsedReceiptView({ parsed, currencyCode, categoryLabels }: Pars
     { key: 'shipping', label: t('shipping'), value: money(parsed.shipping) },
     { key: 'discount', label: t('discount'), value: money(parsed.discount) },
     ...(parsed.payee ? [{ key: 'payee', label: t('payee'), value: parsed.payee }] : []),
+    // What the profile's `reference` field read: the identifier the bank operation should carry.
+    ...(parsed.reference ? [{ key: 'reference', label: t('reference'), value: parsed.reference }] : []),
   ];
 
   return (
@@ -98,7 +100,15 @@ export function ParsedReceiptView({ parsed, currencyCode, categoryLabels }: Pars
                   <Td align="right" className="px-2 sm:px-4 whitespace-nowrap">
                     {money(item.amount)}
                   </Td>
-                  <Td className="px-2 sm:px-4">{category(item.categoryId)}</Td>
+                  <Td className="px-2 sm:px-4">
+                    {category(item.categoryId)}
+                    {/* The AI chose it: said beside the category, so a person reviews it as a suggestion. */}
+                    {item.categoryId !== null && item.categorySource === 'ai' && (
+                      <Badge variant="purple" className="ml-2">
+                        {t('categoryByAi')}
+                      </Badge>
+                    )}
+                  </Td>
                 </tr>
               ))}
             </tbody>
@@ -114,6 +124,7 @@ export function ParsedReceiptView({ parsed, currencyCode, categoryLabels }: Pars
           <span className="text-gray-700 dark:text-gray-300">{t(`reasons.${parsed.reason}`)}</span>
         )}
         {parsed.source === 'ai' && <Badge variant="blue">{t('readByAi')}</Badge>}
+        {parsed.source === 'schema_org' && <Badge variant="blue">{t('readFromStructuredData')}</Badge>}
       </div>
     </div>
   );

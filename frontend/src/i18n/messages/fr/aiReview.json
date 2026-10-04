@@ -13,6 +13,12 @@
     "rejected": "Rejetée",
     "expired": "Expirée"
   },
+  "kindFilter": {
+    "label": "Filtrer par type",
+    "all": "Tous",
+    "email_receipt": "Reçus par e-mail",
+    "transaction_review": "Règles"
+  },
   "status": {
     "pending": "En attente",
     "claimed": "En cours de révision",
@@ -47,6 +53,23 @@
   },
   "proposal": {
     "errorTitle": "Cette proposition ne peut plus être appliquée"
+  },
+  "bulk": {
+    "selectRow": "Sélectionner {name}",
+    "selectAll": "Sélectionner toutes les demandes approuvables affichées",
+    "approveSelected": "Approuver la sélection ({count})",
+    "approveAllShown": "Approuver toutes celles affichées ({count})",
+    "summary": "{approved, plural, one {# proposition appliquée} other {# propositions appliquées}}, {failed, plural, one {# non appliquée} other {# non appliquées}}.",
+    "closeSummary": "Fermer",
+    "failure": "{name} : {reason}",
+    "noReason": "Aucun motif n'a été indiqué",
+    "unknownRequest": "Une demande",
+    "failed": "Impossible d'appliquer les propositions",
+    "dialog": {
+      "title": "{count, plural, one {Appliquer # proposition ?} other {Appliquer # propositions ?}}",
+      "message": "Chaque proposition est vérifiée par rapport à sa transaction dans son état actuel et appliquée séparément. Une proposition qui ne convient plus est ignorée et signalée, et les autres sont tout de même appliquées. Relisez les propositions avant de les approuver.",
+      "confirm": "{count, plural, one {Appliquer # proposition} other {Appliquer # propositions}}"
+    }
   },
   "dismissDialog": {
     "title": "Ignorer cette demande ?",

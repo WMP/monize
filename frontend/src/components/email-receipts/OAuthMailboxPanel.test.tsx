@@ -152,6 +152,14 @@ describe('OAuthMailboxPanel', () => {
       expect(api.updateSettings).toHaveBeenCalledWith({ folder: 'Receipts', aiMode: 'automatic', autoApply: true });
     });
 
+    it('sends only the limit switch when only it changes', async () => {
+      api.updateSettings.mockResolvedValue(makeOAuthMailbox({ profileProposalsCountTowardAiLimit: false }));
+      await renderPanel();
+      await click(screen.getByRole('switch', { name: 'Count profile proposals toward the daily AI limit' }));
+      await click(screen.getByRole('button', { name: 'Save settings' }));
+      expect(api.updateSettings).toHaveBeenCalledWith({ profileProposalsCountTowardAiLimit: false });
+    });
+
     it('shows the server refusal beside the settings', async () => {
       api.updateSettings.mockRejectedValue({ response: { data: { message: 'Folder not found' } } });
       await renderPanel();

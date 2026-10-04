@@ -231,7 +231,10 @@ export class EmailReceiptAiService {
         ),
       );
     }
-    const definition = validation.definition;
+    // The model saw the TEXT lines only, so its patterns fit the text source
+    // whatever `source` it wrote (the tool-driven draft tests its own source).
+    const definition = { ...validation.definition };
+    delete definition.source;
     const categoryIds = collectParserCategoryIds(definition);
     if (categoryIds.some((id) => !categories.has(id))) {
       throw new UnprocessableEntityException(

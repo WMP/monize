@@ -1,17 +1,11 @@
 {
   "settingsPage": {
-    "backLink": "[XX-Back to Settings-XX]",
-    "title": "[XX-Email Receipts-XX]",
-    "subtitle": "[XX-Read order confirmations from a mailbox and turn them into itemized transactions-XX]",
-    "receiptsLink": "[XX-Open the stored emails-XX]",
-    "demoRestricted": {
-      "heading": "[XX-Restricted in Demo Mode-XX]",
-      "body": "[XX-Connecting a mailbox is disabled in demo mode.-XX]"
-    }
+    "redirecting": "[XX-Opening the Email Receipts page...-XX]",
+    "redirectLink": "[XX-Go to the mailbox settings-XX]"
   },
   "page": {
     "title": "[XX-Email Receipts-XX]",
-    "subtitle": "[XX-The order-confirmation emails read from your mailbox, and what became of each one-XX]"
+    "subtitle": "[XX-Read order confirmations from a mailbox and turn them into itemized transactions: what is connected, what became of each email, and what waits for you-XX]"
   },
   "mailbox": {
     "heading": "[XX-Mailbox-XX]",
@@ -99,7 +93,9 @@
         "automatic": "[XX-The poll asks the AI about a matched receipt that no approved parser could read completely, and drafts a parser for a sender that has none.-XX]"
       },
       "autoApplyLabel": "[XX-Apply proposals automatically-XX]",
-      "autoApplyHelp": "[XX-Off by default. A proposal is applied without asking only when all of these hold: an approved parser read the whole email, the transaction was found by order number or by exact amount and payee with a single candidate, and the proposal adds up to the cent. Everything else waits for your approval.-XX]"
+      "autoApplyHelp": "[XX-Off by default. A proposal is applied without asking only when all of these hold: an approved profile read the whole email, the transaction was found by an order number or a reference, or by exact amount and payee, with a single candidate, and the proposal adds up to the cent. Everything else waits for your approval.-XX]",
+      "profileLimitLabel": "[XX-Count profile proposals toward the daily AI limit-XX]",
+      "profileLimitHelp": "[XX-On by default: an edit a profile proposes from an email is counted in the daily limit of AI-proposed changes, like any other AI proposal. Turn it off when a large batch of stored emails would otherwise use the limit up. Only proposals from profiles are exempt; every proposal still waits for your approval.-XX]"
     },
     "status": {
       "lastPolled": "[XX-Last poll-XX]",
@@ -121,8 +117,8 @@
     }
   },
   "parsers": {
-    "heading": "[XX-Parsers-XX]",
-    "description": "[XX-A parser reads the order confirmations of one sender with patterns you write or review. Once approved it runs without the AI.-XX]",
+    "heading": "[XX-Profiles-XX]",
+    "description": "[XX-A profile reads the order confirmations of one sender with patterns you write or review, and says how the bank transaction is found. Once approved it runs without the AI.-XX]",
     "newButton": "[XX-New parser-XX]",
     "loading": "[XX-Loading parsers-XX]",
     "error": {
@@ -174,6 +170,12 @@
       "copy": "[XX-Copy-XX]",
       "copied": "[XX-JSON copied-XX]",
       "copyFailed": "[XX-Could not copy the JSON-XX]"
+    },
+    "processOffer": {
+      "title": "[XX-Process the stored emails now?-XX]",
+      "message": "[XX-{count, plural, one {Process the # stored email} other {Process the # stored emails}} from {domains} now? Each one is read with this profile again; what it proposes waits in the review inbox unless auto-apply is on.-XX]",
+      "confirm": "[XX-Process now-XX]",
+      "later": "[XX-Not now-XX]"
     }
   },
   "editor": {
@@ -202,6 +204,12 @@
     "conflict": "[XX-This parser was changed elsewhere since you opened it. Reload it to see the current version. Your edits here are not saved.-XX]",
     "conflictReload": "[XX-Reload the parser-XX]",
     "patterns": {
+      "sourceLabel": "[XX-Lines source-XX]",
+      "sourceHint": "[XX-Which rendering of the email the patterns below are matched against. Text is the text part of the email, one line per line break. HTML reads the HTML part: every block and every table cell becomes its own line, so a product name that the text splits over several lines stays whole. The email's Lines view shows exactly what each source gives.-XX]",
+      "sourceOptions": {
+        "text": "[XX-Text-XX]",
+        "html": "[XX-HTML-XX]"
+      },
       "globHelp": "[XX-Each pattern is matched against one whole line of the email, ignoring case. Use {star} for any text and a name in braces, such as {capture}, to capture a value. Each field takes up to {max} patterns, one per line.-XX]",
       "orderIdLabel": "[XX-Order number patterns-XX]",
       "orderIdHint": "[XX-Must capture {capture}. Example: Order number: {capture}-XX]",
@@ -243,6 +251,44 @@
       "label": "[XX-Parser definition (JSON)-XX]",
       "help": "[XX-The same definition the form builds. The server checks it when you save, and the test below reads it as it is now.-XX]",
       "parseError": "[XX-This is not valid JSON, or it is not a JSON object. Fix it to save or test the parser.-XX]"
+    },
+    "matching": {
+      "heading": "[XX-Matching-XX]",
+      "help": "[XX-How the bank transaction an email paid for is found. The strategies are tried in order; the first that leaves exactly one transaction decides, several are ambiguous, and none passes to the next.-XX]",
+      "referenceLabel": "[XX-Reference patterns-XX]",
+      "referenceHint": "[XX-The identifier the shop or payment gateway puts into the bank operation, such as a statement text or a transfer title. Must capture {capture}.-XX]",
+      "strategiesLabel": "[XX-Strategies, in the order tried-XX]",
+      "strategiesHelp": "[XX-Order number and reference look for the value in the transaction's description, payee or reference number. Amount and payee needs the amount plus a payee signal. Amount and date needs the amount alone, within the window. At least one must stay on.-XX]",
+      "strategyPosition": "[XX-{position}. {name}-XX]",
+      "moveUp": "[XX-Move {name} earlier-XX]",
+      "moveDown": "[XX-Move {name} later-XX]",
+      "strategies": {
+        "reference": "[XX-Reference-XX]",
+        "orderId": "[XX-Order number-XX]",
+        "amount_payee": "[XX-Amount and payee-XX]",
+        "amount_date": "[XX-Amount and date-XX]"
+      },
+      "referenceNeeded": "[XX-The reference strategy is on but there are no reference patterns, so it will find nothing.-XX]",
+      "referenceInLabel": "[XX-Look for the reference and the order number in-XX]",
+      "referenceInHint": "[XX-Values shorter than 4 characters are never looked for.-XX]",
+      "referenceIn": {
+        "description": "[XX-Description-XX]",
+        "payee": "[XX-Payee name-XX]",
+        "referenceNumber": "[XX-Reference number-XX]"
+      },
+      "daysBeforeLabel": "[XX-Days before the purchase-XX]",
+      "daysAfterLabel": "[XX-Days after the purchase-XX]",
+      "daysHint": "[XX-The window around the purchase date. Default {default}, at most {max}.-XX]",
+      "toleranceLabel": "[XX-Amount tolerance-XX]",
+      "toleranceHint": "[XX-How far the bank amount may differ from the email's total. Default 0, at most {max}.-XX]"
+    },
+    "proposal": {
+      "heading": "[XX-Proposal-XX]",
+      "tagLabel": "[XX-Add a tag to the transactions this profile categorizes-XX]",
+      "tagHelp": "[XX-The tag is created when you have none by that name. It is shown on the proposal, and nothing is written until you approve it.-XX]",
+      "tagNameLabel": "[XX-Tag name-XX]",
+      "aiCategoriesLabel": "[XX-Let the AI choose the category of items no rule matches-XX]",
+      "aiCategoriesHelp": "[XX-When an item matches no category rule and there is no default category, the AI is asked for its category from your category list. The choice is marked as the AI's on the proposal. With this off the AI is never asked.-XX]"
     }
   },
   "problems": {
@@ -284,10 +330,20 @@
       "requireLine": "[XX-Required lines-XX]",
       "skipIfLine": "[XX-Lines that skip the email-XX]",
       "waitIfLine": "[XX-Lines that hold the email-XX]",
+      "source": "[XX-Lines source-XX]",
       "single": "[XX-Single item-XX]",
       "singleName": "[XX-Single item name-XX]",
       "joinWrapped": "[XX-Join wrapped lines-XX]",
-      "ruleField": "[XX-field-XX]"
+      "ruleField": "[XX-field-XX]",
+      "reference": "[XX-Reference patterns-XX]",
+      "match": "[XX-The matching section-XX]",
+      "matchBy": "[XX-Matching strategies-XX]",
+      "matchReferenceIn": "[XX-Fields the reference is looked for in-XX]",
+      "matchDaysBefore": "[XX-Days before the purchase-XX]",
+      "matchDaysAfter": "[XX-Days after the purchase-XX]",
+      "matchTolerance": "[XX-Amount tolerance-XX]",
+      "tag": "[XX-Tag-XX]",
+      "aiCategories": "[XX-AI categories-XX]"
     },
     "codes": {
       "not_object": "[XX-is not a valid definition-XX]",
@@ -312,7 +368,11 @@
       "record_name_missing": "[XX-must capture {capture} in one of its steps-XX]",
       "items_single_conflict": "[XX-has a single item beside patterns or a record. Use one of them.-XX]",
       "join_wrapped_needs_patterns": "[XX-only works with item patterns-XX]",
-      "invalid_value": "[XX-has a value this field does not accept-XX]"
+      "invalid_value": "[XX-has a value this field does not accept-XX]",
+      "duplicate_entry": "[XX-lists the same entry twice-XX]",
+      "reference_field_missing": "[XX-needs reference patterns (the reference strategy is on)-XX]",
+      "out_of_range_days": "[XX-must be a whole number from 0 to {max}-XX]",
+      "out_of_range_tolerance": "[XX-must be an amount from 0.00 to {max}-XX]"
     }
   },
   "test": {
@@ -331,7 +391,9 @@
       "order_id": "[XX-order number-XX]",
       "amount_payee": "[XX-amount and payee-XX]",
       "amount_only": "[XX-amount-XX]",
-      "manual": "[XX-your choice-XX]"
+      "manual": "[XX-your choice-XX]",
+      "reference": "[XX-reference-XX]",
+      "amount_date": "[XX-amount and date-XX]"
     },
     "noPayee": "[XX-no payee-XX]",
     "ambiguous": "[XX-{count, plural, one {# transaction fits} other {# transactions fit}} equally well, so none would be linked until you choose.-XX]",
@@ -340,7 +402,8 @@
     "outcome": {
       "not_applicable": "[XX-This parser would not read this email: none of its required lines is in it, so the next parser for the sender would be tried.-XX]",
       "skip_line": "[XX-This parser would set this email aside: a line it skips on is in it.-XX]",
-      "wait_line": "[XX-This parser would hold this email: a line says the order is not final, so it is read again later.-XX]"
+      "wait_line": "[XX-This parser would hold this email: a line says the order is not final, so it is read again later.-XX]",
+      "no_html": "[XX-This parser reads the HTML part of the email, and this email has none, so it would be marked as unreadable (no HTML).-XX]"
     },
     "matchedBy": {
       "heading": "[XX-Matched by-XX]",
@@ -354,13 +417,30 @@
         "payee": "[XX-Merchant-XX]",
         "requireLine": "[XX-Required line-XX]",
         "skipIfLine": "[XX-Skip line-XX]",
-        "waitIfLine": "[XX-Wait line-XX]"
+        "waitIfLine": "[XX-Wait line-XX]",
+        "reference": "[XX-Reference-XX]"
       },
       "entryLine": "[XX-entry {entry} ({pattern}), line {line}: {text}-XX]",
       "entrySubject": "[XX-entry {entry} ({pattern}), the subject: {text}-XX]",
       "labelled": "[XX-entry {entry}, label {label} on line {labelLine} ({labelText}), value {pattern} on line {line}: {text}-XX]",
       "item": "[XX-Item {number}-XX]",
       "itemLine": "[XX-{pattern}, line {line}: {text}-XX]"
+    },
+    "trace": {
+      "heading": "[XX-What the matcher looked at-XX]",
+      "window": "[XX-Transactions from {from} to {to} ({before} days before, {after} days after the purchase): {considered, plural, one {# considered} other {# considered}}.-XX]",
+      "tolerance": "[XX-The amount may differ by {amount}.-XX]",
+      "attempt": "[XX-{position}. {name}-XX]",
+      "kept": "[XX-{count, plural, =0 {kept none} one {kept # transaction} other {kept # transactions}}-XX]",
+      "decided": "[XX-Decided-XX]",
+      "transaction": "[XX-{date}, {amount}, {payee}-XX]",
+      "noPayee": "[XX-no payee-XX]",
+      "strategies": {
+        "reference": "[XX-Reference-XX]",
+        "orderId": "[XX-Order number-XX]",
+        "amount_payee": "[XX-Amount and payee-XX]",
+        "amount_date": "[XX-Amount and date-XX]"
+      }
     }
   },
   "parsed": {
@@ -390,8 +470,11 @@
       "item_amount_missing": "[XX-An item has no amount, and the email has no single total to give it.-XX]"
     },
     "readByAi": "[XX-Read by the AI-XX]",
+    "readFromStructuredData": "[XX-Read from structured data-XX]",
     "paid": "[XX-Paid-XX]",
-    "payee": "[XX-Merchant-XX]"
+    "payee": "[XX-Merchant-XX]",
+    "reference": "[XX-Reference-XX]",
+    "categoryByAi": "[XX-AI-XX]"
   },
   "state": {
     "pending": "[XX-Waiting to be read-XX]",
@@ -413,7 +496,7 @@
     "loading": "[XX-Loading emails-XX]",
     "links": {
       "reviewInbox": "[XX-Open the AI review inbox-XX]",
-      "settings": "[XX-Mailbox and parser settings-XX]"
+      "settings": "[XX-Mailbox settings-XX]"
     },
     "filter": {
       "label": "[XX-Filter by state-XX]",
@@ -427,6 +510,12 @@
       "review_conflict": "[XX-Another request is open-XX]",
       "review": "[XX-In review-XX]",
       "ignored": "[XX-Ignored-XX]"
+    },
+    "domainFilter": {
+      "label": "[XX-Sender domain-XX]",
+      "all": "[XX-All senders-XX]",
+      "option": "[XX-{domain} ({count})-XX]",
+      "help": "[XX-Showing emails from {domain} and its sub-domains. Select several of them to draft one parser for the sender.-XX]"
     },
     "columns": {
       "select": "[XX-Select-XX]",
@@ -511,12 +600,15 @@
     "state": "[XX-State-XX]",
     "parser": "[XX-Parser-XX]",
     "noParser": "[XX-None-XX]",
+    "structuredSource": "[XX-Structured data-XX]",
     "matchedBy": "[XX-Matched by-XX]",
     "matchKinds": {
       "order_id": "[XX-Order number-XX]",
       "amount_payee": "[XX-Amount and payee-XX]",
       "amount_only": "[XX-Amount-XX]",
-      "manual": "[XX-Your choice-XX]"
+      "manual": "[XX-Your choice-XX]",
+      "reference": "[XX-Reference-XX]",
+      "amount_date": "[XX-Amount and date-XX]"
     },
     "transaction": "[XX-Transaction-XX]",
     "transactionSummary": "[XX-{date}, {amount}, {payee}-XX]",
@@ -539,6 +631,8 @@
       "proposal_refused": "[XX-The proposal was refused, so nothing was proposed.-XX]",
       "skip_line": "[XX-A line this parser skips on was found, so the email was ignored.-XX]",
       "wait_line": "[XX-A line says the order is not final yet, so the email will be read again later.-XX]",
+      "no_html": "[XX-This parser reads the HTML part of the email, and this email has none.-XX]",
+      "schema_org": "[XX-No parser was needed: the order was read from the structured data (schema.org) in the email.-XX]",
       "item_amount_missing": "[XX-An item has no amount, and the email has no single total to give it.-XX]"
     },
     "reasonUnknown": "[XX-Reason: {reason}-XX]",
@@ -556,10 +650,34 @@
     "bodyView": {
       "label": "[XX-Show the email as-XX]",
       "html": "[XX-HTML-XX]",
-      "text": "[XX-Text-XX]"
+      "text": "[XX-Text-XX]",
+      "lines": "[XX-Lines-XX]"
     },
     "remoteImagesNote": "[XX-Remote images are not loaded.-XX]",
-    "htmlFrameTitle": "[XX-The email as its sender formatted it-XX]"
+    "htmlFrameTitle": "[XX-The email as its sender formatted it-XX]",
+    "structured": {
+      "heading": "[XX-Structured data (schema.org)-XX]",
+      "help": "[XX-An order or invoice that the email carries as markup for mail clients. It is read only when no parser applies or the parser finds no total.-XX]",
+      "found": "[XX-Found-XX]",
+      "notFound": "[XX-Not found-XX]",
+      "notFoundHelp": "[XX-The email carries no order markup, or it states no total and no line items.-XX]",
+      "seller": "[XX-Seller-XX]",
+      "currency": "[XX-Currency-XX]",
+      "orderDate": "[XX-Order date-XX]",
+      "unitPrice": "[XX-Unit price-XX]"
+    },
+    "lines": {
+      "help": "[XX-The lines a parser's patterns are matched against, numbered as a test's \"Matched by\" list numbers them.-XX]",
+      "sourceLabel": "[XX-Lines source-XX]",
+      "sources": {
+        "text": "[XX-Text-XX]",
+        "html": "[XX-HTML-XX]"
+      },
+      "noHtml": "[XX-This email has no HTML part, so a parser that reads HTML cannot read it.-XX]",
+      "capped": "[XX-Only the first {max} lines are read.-XX]",
+      "empty": "[XX-No lines.-XX]",
+      "listLabel": "[XX-Numbered lines of the email-XX]"
+    }
   },
   "picker": {
     "heading": "[XX-Choose the transaction-XX]",
@@ -632,5 +750,119 @@
     "inboxLink": "[XX-Open the AI review inbox-XX]",
     "opened": "[XX-Opened the chat with the email attached. Read the message and press Send.-XX]",
     "chatPrompt": "[XX-Recognize the products, quantities and prices in the attached order email and split my transaction of {date} ({payee}, {amount}) by product with a category for each. Claim AI review request {requestId} and submit your proposal for it.-XX]"
+  },
+  "hub": {
+    "tabs": {
+      "ariaLabel": "[XX-Email receipts sections-XX]",
+      "overview": "[XX-Overview-XX]",
+      "emails": "[XX-Emails-XX]",
+      "profiles": "[XX-Profiles-XX]",
+      "mailbox": "[XX-Mailbox-XX]"
+    },
+    "demoRestricted": {
+      "heading": "[XX-Restricted in Demo Mode-XX]",
+      "body": "[XX-Connecting a mailbox and writing profiles are disabled in demo mode.-XX]"
+    }
+  },
+  "process": {
+    "button": "[XX-Process all-XX]",
+    "buttonCount": "[XX-Process all ({count})-XX]",
+    "dialog": {
+      "title": "[XX-{count, plural, one {Process # stored email?} other {Process # stored emails?}}-XX]",
+      "message": "[XX-Every stored email that has not been read yet, or that a new profile or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.-XX]",
+      "messageDomain": "[XX-Every stored email from {domain} that has not been read yet, or that a new profile or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.-XX]",
+      "confirm": "[XX-Process-XX]"
+    },
+    "starting": "[XX-Starting...-XX]",
+    "progress": "[XX-{processed, plural, one {# email processed} other {# emails processed}}, {remaining} left.-XX]",
+    "cancel": "[XX-Cancel-XX]",
+    "cancelling": "[XX-Cancelling...-XX]",
+    "summary": "[XX-{count, plural, one {# email processed.} other {# emails processed.}}-XX]",
+    "cancelledSummary": "[XX-Cancelled after {count, plural, one {# email.} other {# emails.}}-XX]",
+    "outcomes": "[XX-They ended as: {outcomes}.-XX]",
+    "passedOver": "[XX-{count, plural, one {# email raised an error and was passed over.} other {# emails raised an error and were passed over.}}-XX]",
+    "failed": "[XX-Processing stopped because a request failed.-XX]",
+    "failedWithReason": "[XX-Processing stopped: {reason}-XX]",
+    "outcome": "[XX-{count} {state}-XX]",
+    "close": "[XX-Close-XX]"
+  },
+  "overview": {
+    "loading": "[XX-Loading the overview...-XX]",
+    "error": {
+      "title": "[XX-The overview could not be loaded-XX]",
+      "body": "[XX-The request failed, so nothing here may be taken as empty. Try again.-XX]",
+      "retry": "[XX-Try again-XX]"
+    },
+    "mailbox": {
+      "title": "[XX-Mailbox-XX]",
+      "none": "[XX-No mailbox is connected yet.-XX]",
+      "connect": "[XX-Connect a mailbox-XX]",
+      "manage": "[XX-Open the mailbox settings-XX]",
+      "state": {
+        "notConnected": "[XX-Not connected-XX]",
+        "failing": "[XX-Last poll failed-XX]",
+        "off": "[XX-Polling is off-XX]",
+        "polling": "[XX-Polling-XX]"
+      },
+      "auth": {
+        "password": "[XX-Password login-XX]",
+        "oauth2": "[XX-Sign-in with a provider-XX]"
+      },
+      "lastSuccess": "[XX-Last successful poll {when}-XX]",
+      "neverPolled": "[XX-Not polled successfully yet.-XX]",
+      "lastError": "[XX-Last error: {error}-XX]"
+    },
+    "emails": {
+      "title": "[XX-Emails-XX]",
+      "stored": "[XX-stored-XX]",
+      "processable": "[XX-{count, plural, one {# email can be processed again} other {# emails can be processed again}}.-XX]",
+      "open": "[XX-Open the emails-XX]"
+    },
+    "proposals": {
+      "title": "[XX-Proposals-XX]",
+      "waiting": "[XX-waiting for your approval-XX]",
+      "review": "[XX-Review the proposals-XX]",
+      "open": "[XX-Open the review inbox-XX]"
+    },
+    "profiles": {
+      "title": "[XX-Profiles-XX]",
+      "approved": "[XX-approved-XX]",
+      "drafts": "[XX-{count, plural, one {# draft waits for your approval} other {# drafts wait for your approval}}.-XX]",
+      "manage": "[XX-Open the profiles-XX]"
+    },
+    "uncovered": {
+      "title": "[XX-Senders without a profile-XX]",
+      "help": "[XX-These senders sent emails no profile reads. Create a profile for one, or ask the assistant to draft it.-XX]",
+      "none": "[XX-Every sender of the stored emails is covered by a profile.-XX]",
+      "row": "[XX-{domain} ({count, plural, one {# email} other {# emails}})-XX]",
+      "show": "[XX-Show the emails-XX]"
+    }
+  },
+  "wizard": {
+    "heading": "[XX-Get started with email receipts-XX]",
+    "intro": "[XX-Four steps from nothing to your first proposal.-XX]",
+    "done": "[XX-(done)-XX]",
+    "steps": {
+      "mailbox": {
+        "title": "[XX-Connect a mailbox-XX]",
+        "body": "[XX-Use a dedicated mailbox that receives your order confirmations. Monize only reads it.-XX]",
+        "action": "[XX-Connect a mailbox-XX]"
+      },
+      "emails": {
+        "title": "[XX-Fetch the emails-XX]",
+        "body": "[XX-Emails are read when the mailbox is polled. Poll it from the mailbox settings to see the first ones.-XX]",
+        "action": "[XX-Open the emails-XX]"
+      },
+      "profile": {
+        "title": "[XX-Create a profile for a sender-XX]",
+        "body": "[XX-A profile tells Monize how to read one sender's order confirmations. Write one, or draft it from a stored email.-XX]",
+        "action": "[XX-Open the profiles-XX]"
+      },
+      "review": {
+        "title": "[XX-Review the proposals-XX]",
+        "body": "[XX-Each email becomes a proposal on a transaction. Nothing is changed until you approve it.-XX]",
+        "action": "[XX-Open the review inbox-XX]"
+      }
+    }
   }
 }

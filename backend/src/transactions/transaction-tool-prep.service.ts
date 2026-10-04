@@ -44,6 +44,8 @@ export interface SplitLineInput {
   categoryName: string;
   amount: number;
   memo?: string;
+  /** `"ai"` marks a category the AI chose, on the confirmation card only. */
+  categorySource?: "ai";
 }
 
 /** Standard create-row input (names; resolved internally). */
@@ -84,6 +86,14 @@ export interface UpdateRowInput {
   createPayeeIfMissing?: boolean;
   /** Category splits; when present the transaction's split set is replaced. */
   splits?: SplitLineInput[];
+  /**
+   * Tag names to ADD (created at confirm when missing). Set by the review queue
+   * from an email-receipt profile's `tag`; the chat and MCP tools do not send it.
+   * Standard edits only: a transfer ignores it.
+   */
+  tagNames?: string[];
+  /** `"ai"` marks `categoryName` as chosen by the AI, on the confirmation card only. */
+  categorySource?: "ai";
 }
 
 export interface PrepareCreateResult {
@@ -183,6 +193,9 @@ export class TransactionToolPrepService {
         categoryName: line.categoryName,
         amount: line.amount,
         memo: line.memo ?? null,
+        ...(line.categorySource === "ai"
+          ? { categorySource: "ai" as const }
+          : {}),
       });
     }
     // Reuse the domain sum/sign validation so the preview rejects bad splits
@@ -549,6 +562,7 @@ export class TransactionToolPrepService {
         // existing split transaction this is what permits a category or
         // amount change (Truth table B).
         splitsAccompany: item.splits !== undefined,
+        tagNames: item.tagNames,
       },
     );
     // Validate splits against the effective amount the edit will leave on the
@@ -556,7 +570,15 @@ export class TransactionToolPrepService {
     const splits = item.splits
       ? await this.resolveSplits(userId, item.splits, preview.amount)
       : undefined;
-    return { kind: "standard", preview, createPayee, splits };
+    return {
+      kind: "standard",
+      preview:
+        item.categorySource === "ai" && categoryId !== undefined
+          ? { ...preview, categorySource: "ai" }
+          : preview,
+      createPayee,
+      splits,
+    };
   }
 
   /** Preview a single delete (works for standard, split, and transfer). */

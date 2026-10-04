@@ -1,17 +1,11 @@
 {
   "settingsPage": {
-    "backLink": "Quay lại Cài đặt",
-    "title": "Hóa đơn qua email",
-    "subtitle": "Đọc email xác nhận đơn hàng từ một hộp thư và chuyển thành các giao dịch có chi tiết từng mục",
-    "receiptsLink": "Mở các email đã lưu",
-    "demoRestricted": {
-      "heading": "Bị hạn chế trong chế độ demo",
-      "body": "Việc kết nối hộp thư bị tắt trong chế độ demo."
-    }
+    "redirecting": "Đang mở trang Hóa đơn qua email...",
+    "redirectLink": "Đi tới cài đặt hộp thư"
   },
   "page": {
     "title": "Hóa đơn qua email",
-    "subtitle": "Các email xác nhận đơn hàng được đọc từ hộp thư của bạn, và kết quả xử lý của từng email"
+    "subtitle": "Đọc email xác nhận đơn hàng từ một hộp thư và biến chúng thành các giao dịch có từng mục hàng: những gì đã kết nối, kết quả xử lý của từng email và những gì đang chờ bạn"
   },
   "mailbox": {
     "heading": "Hộp thư",
@@ -99,7 +93,9 @@
         "automatic": "Mỗi lần kiểm tra sẽ hỏi AI về hóa đơn đã khớp mà không trình phân tích nào đã duyệt đọc được đầy đủ, và soạn trình phân tích cho người gửi chưa có."
       },
       "autoApplyLabel": "Tự động áp dụng đề xuất",
-      "autoApplyHelp": "Mặc định là tắt. Một đề xuất chỉ được áp dụng mà không hỏi khi thỏa mãn tất cả điều sau: một trình phân tích đã duyệt đọc được toàn bộ email, giao dịch được tìm thấy theo mã đơn hàng hoặc theo đúng số tiền và người nhận với duy nhất một ứng viên, và đề xuất khớp tổng đến đơn vị tiền tệ nhỏ nhất. Mọi trường hợp khác đều chờ bạn phê duyệt."
+      "autoApplyHelp": "Mặc định là tắt. Một đề xuất chỉ được áp dụng mà không hỏi khi thỏa mãn tất cả điều sau: một hồ sơ đã duyệt đọc được toàn bộ email, giao dịch được tìm thấy theo mã đơn hàng hoặc mã tham chiếu, hoặc theo đúng số tiền và người nhận, với duy nhất một ứng viên, và đề xuất khớp tổng đến đơn vị tiền tệ nhỏ nhất. Mọi trường hợp khác đều chờ bạn phê duyệt.",
+      "profileLimitLabel": "Tính đề xuất của hồ sơ vào giới hạn AI hằng ngày",
+      "profileLimitHelp": "Mặc định là bật: một chỉnh sửa do hồ sơ đề xuất từ email được tính vào giới hạn hằng ngày của các thay đổi do AI đề xuất, giống mọi đề xuất AI khác. Hãy tắt khi một loạt lớn email đã lưu sẽ dùng hết giới hạn. Chỉ các đề xuất từ hồ sơ được miễn; mọi đề xuất vẫn chờ bạn phê duyệt."
     },
     "status": {
       "lastPolled": "Lần kiểm tra gần nhất",
@@ -121,8 +117,8 @@
     }
   },
   "parsers": {
-    "heading": "Trình phân tích",
-    "description": "Một trình phân tích đọc email xác nhận đơn hàng của một người gửi bằng các mẫu do bạn viết hoặc xem xét. Sau khi được duyệt, nó chạy mà không cần AI.",
+    "heading": "Hồ sơ",
+    "description": "Một hồ sơ đọc email xác nhận đơn hàng của một người gửi bằng các mẫu do bạn viết hoặc xem xét, và cho biết cách tìm giao dịch ngân hàng. Sau khi được duyệt, nó chạy mà không cần AI.",
     "newButton": "Trình phân tích mới",
     "loading": "Đang tải các trình phân tích",
     "error": {
@@ -174,6 +170,12 @@
       "copy": "Sao chép",
       "copied": "Đã sao chép JSON",
       "copyFailed": "Không thể sao chép JSON"
+    },
+    "processOffer": {
+      "title": "Xử lý các email đã lưu ngay bây giờ?",
+      "message": "Xử lý {count, plural, one {# email đã lưu} other {# email đã lưu}} từ {domains} ngay bây giờ? Mỗi email sẽ được đọc lại bằng hồ sơ này; những gì nó đề xuất sẽ chờ trong hộp thư xem xét, trừ khi tự động áp dụng đang bật.",
+      "confirm": "Xử lý ngay",
+      "later": "Để sau"
     }
   },
   "editor": {
@@ -202,6 +204,12 @@
     "conflict": "Trình phân tích này đã được thay đổi ở nơi khác kể từ khi bạn mở. Hãy tải lại để xem phiên bản hiện tại. Các chỉnh sửa của bạn ở đây chưa được lưu.",
     "conflictReload": "Tải lại trình phân tích",
     "patterns": {
+      "sourceLabel": "Nguồn dòng",
+      "sourceHint": "Các mẫu bên dưới được so khớp với dạng hiển thị nào của email. Văn bản là phần văn bản của email, mỗi lần xuống dòng là một dòng. HTML đọc phần HTML: mỗi khối và mỗi ô trong bảng trở thành một dòng riêng, nên tên sản phẩm mà phần văn bản tách thành nhiều dòng vẫn được giữ nguyên. Chế độ xem Dòng của email cho thấy chính xác mỗi nguồn trả về gì.",
+      "sourceOptions": {
+        "text": "Văn bản",
+        "html": "HTML"
+      },
       "globHelp": "Mỗi mẫu được so khớp với toàn bộ một dòng của email, không phân biệt hoa thường. Dùng {star} cho văn bản bất kỳ và một tên đặt trong dấu ngoặc nhọn, chẳng hạn {capture}, để lấy một giá trị. Mỗi trường nhận tối đa {max} mẫu, mỗi dòng một mẫu.",
       "orderIdLabel": "Mẫu mã đơn hàng",
       "orderIdHint": "Phải lấy {capture}. Ví dụ: Mã đơn hàng: {capture}",
@@ -243,6 +251,44 @@
       "label": "Định nghĩa trình phân tích (JSON)",
       "help": "Cùng định nghĩa mà biểu mẫu tạo ra. Máy chủ kiểm tra nó khi bạn lưu, còn phần kiểm thử bên dưới đọc nó đúng như hiện tại.",
       "parseError": "Đây không phải JSON hợp lệ hoặc không phải một đối tượng JSON. Hãy sửa để lưu hoặc kiểm thử trình phân tích."
+    },
+    "matching": {
+      "heading": "Đối chiếu",
+      "help": "Cách tìm giao dịch ngân hàng mà một email đã thanh toán. Các chiến lược được thử theo thứ tự; chiến lược đầu tiên chỉ còn lại đúng một giao dịch sẽ quyết định, còn nhiều giao dịch thì không rõ ràng, và nếu không còn giao dịch nào thì chuyển sang chiến lược tiếp theo.",
+      "referenceLabel": "Mẫu tham chiếu",
+      "referenceHint": "Mã định danh mà cửa hàng hoặc cổng thanh toán đưa vào giao dịch ngân hàng, chẳng hạn nội dung sao kê hoặc tiêu đề chuyển khoản. Phải lấy được {capture}.",
+      "strategiesLabel": "Các chiến lược, theo thứ tự thử",
+      "strategiesHelp": "Mã đơn hàng và tham chiếu tìm giá trị trong mô tả, người nhận hoặc số tham chiếu của giao dịch. Số tiền và người nhận cần số tiền cùng một dấu hiệu về người nhận. Số tiền và ngày chỉ cần số tiền, trong khoảng thời gian cho phép. Phải giữ bật ít nhất một chiến lược.",
+      "strategyPosition": "{position}. {name}",
+      "moveUp": "Chuyển {name} lên trước",
+      "moveDown": "Chuyển {name} xuống sau",
+      "strategies": {
+        "reference": "Tham chiếu",
+        "orderId": "Mã đơn hàng",
+        "amount_payee": "Số tiền và người nhận",
+        "amount_date": "Số tiền và ngày"
+      },
+      "referenceNeeded": "Chiến lược tham chiếu đang bật nhưng không có mẫu tham chiếu nào, nên sẽ không tìm thấy gì.",
+      "referenceInLabel": "Tìm tham chiếu và mã đơn hàng trong",
+      "referenceInHint": "Các giá trị ngắn hơn 4 ký tự sẽ không bao giờ được tìm.",
+      "referenceIn": {
+        "description": "Mô tả",
+        "payee": "Tên người nhận",
+        "referenceNumber": "Số tham chiếu"
+      },
+      "daysBeforeLabel": "Số ngày trước ngày mua",
+      "daysAfterLabel": "Số ngày sau ngày mua",
+      "daysHint": "Khoảng thời gian quanh ngày mua. Mặc định {default}, tối đa {max}.",
+      "toleranceLabel": "Dung sai số tiền",
+      "toleranceHint": "Số tiền ngân hàng được phép chênh lệch bao nhiêu so với tổng của email. Mặc định 0, tối đa {max}."
+    },
+    "proposal": {
+      "heading": "Đề xuất",
+      "tagLabel": "Thêm thẻ vào các giao dịch mà hồ sơ này phân loại",
+      "tagHelp": "Thẻ sẽ được tạo nếu bạn chưa có thẻ nào cùng tên. Thẻ hiển thị trên đề xuất, và sẽ không có gì được ghi cho đến khi bạn phê duyệt.",
+      "tagNameLabel": "Tên thẻ",
+      "aiCategoriesLabel": "Để AI chọn danh mục cho các mục hàng không khớp quy tắc nào",
+      "aiCategoriesHelp": "Khi một mục hàng không khớp quy tắc danh mục nào và không có danh mục mặc định, AI sẽ được hỏi để chọn danh mục từ danh sách danh mục của bạn. Lựa chọn này được đánh dấu là của AI trên đề xuất. Khi tắt, AI sẽ không bao giờ được hỏi."
     }
   },
   "problems": {
@@ -284,10 +330,20 @@
       "requireLine": "Các dòng bắt buộc",
       "skipIfLine": "Các dòng khiến email bị bỏ qua",
       "waitIfLine": "Các dòng khiến email bị giữ lại",
+      "source": "Nguồn dòng",
       "single": "Một mục hàng duy nhất",
       "singleName": "Tên mục hàng duy nhất",
       "joinWrapped": "Nối các dòng bị ngắt",
-      "ruleField": "field"
+      "ruleField": "field",
+      "reference": "Mẫu tham chiếu",
+      "match": "Phần đối chiếu",
+      "matchBy": "Các chiến lược đối chiếu",
+      "matchReferenceIn": "Các trường để tìm tham chiếu",
+      "matchDaysBefore": "Số ngày trước ngày mua",
+      "matchDaysAfter": "Số ngày sau ngày mua",
+      "matchTolerance": "Dung sai số tiền",
+      "tag": "Thẻ",
+      "aiCategories": "Danh mục do AI chọn"
     },
     "codes": {
       "not_object": "không phải là một định nghĩa hợp lệ",
@@ -312,7 +368,11 @@
       "record_name_missing": "phải lấy {capture} ở một trong các bước của nó",
       "items_single_conflict": "có một mục hàng duy nhất bên cạnh patterns hoặc record. Hãy chỉ dùng một trong hai.",
       "join_wrapped_needs_patterns": "chỉ hoạt động với các mẫu mục hàng",
-      "invalid_value": "có giá trị mà trường này không chấp nhận"
+      "invalid_value": "có giá trị mà trường này không chấp nhận",
+      "duplicate_entry": "liệt kê cùng một mục hai lần",
+      "reference_field_missing": "cần các mẫu tham chiếu (chiến lược tham chiếu đang bật)",
+      "out_of_range_days": "phải là số nguyên từ 0 đến {max}",
+      "out_of_range_tolerance": "phải là số tiền từ 0.00 đến {max}"
     }
   },
   "test": {
@@ -331,7 +391,9 @@
       "order_id": "mã đơn hàng",
       "amount_payee": "số tiền và người nhận",
       "amount_only": "số tiền",
-      "manual": "lựa chọn của bạn"
+      "manual": "lựa chọn của bạn",
+      "reference": "tham chiếu",
+      "amount_date": "số tiền và ngày"
     },
     "noPayee": "không có người nhận",
     "ambiguous": "{count, plural, one {# giao dịch} other {# giao dịch}} đều khớp như nhau, nên sẽ không liên kết giao dịch nào cho đến khi bạn chọn.",
@@ -340,7 +402,8 @@
     "outcome": {
       "not_applicable": "Trình phân tích này sẽ không đọc email này: không có dòng bắt buộc nào của nó nằm trong email, nên trình phân tích tiếp theo của người gửi sẽ được thử.",
       "skip_line": "Trình phân tích này sẽ gác email này sang một bên: trong email có một dòng mà nó bỏ qua.",
-      "wait_line": "Trình phân tích này sẽ giữ lại email này: có một dòng cho biết đơn hàng chưa chốt, nên email sẽ được đọc lại sau."
+      "wait_line": "Trình phân tích này sẽ giữ lại email này: có một dòng cho biết đơn hàng chưa chốt, nên email sẽ được đọc lại sau.",
+      "no_html": "Trình phân tích này đọc phần HTML của email, mà email này không có HTML, nên sẽ bị đánh dấu là không đọc được (không có HTML)."
     },
     "matchedBy": {
       "heading": "Khớp theo",
@@ -354,13 +417,30 @@
         "payee": "Người bán",
         "requireLine": "Dòng bắt buộc",
         "skipIfLine": "Dòng bỏ qua",
-        "waitIfLine": "Dòng chờ"
+        "waitIfLine": "Dòng chờ",
+        "reference": "Tham chiếu"
       },
       "entryLine": "mục {entry} ({pattern}), dòng {line}: {text}",
       "entrySubject": "mục {entry} ({pattern}), tiêu đề: {text}",
       "labelled": "mục {entry}, nhãn {label} ở dòng {labelLine} ({labelText}), giá trị {pattern} ở dòng {line}: {text}",
       "item": "Mục hàng {number}",
       "itemLine": "{pattern}, dòng {line}: {text}"
+    },
+    "trace": {
+      "heading": "Những gì bộ đối chiếu đã xem xét",
+      "window": "Các giao dịch từ {from} đến {to} ({before} ngày trước và {after} ngày sau ngày mua): đã xem xét {considered, plural, one {# giao dịch} other {# giao dịch}}.",
+      "tolerance": "Số tiền có thể chênh lệch tối đa {amount}.",
+      "attempt": "{position}. {name}",
+      "kept": "{count, plural, =0 {không giữ lại giao dịch nào} one {giữ lại # giao dịch} other {giữ lại # giao dịch}}",
+      "decided": "Đã quyết định",
+      "transaction": "{date}, {amount}, {payee}",
+      "noPayee": "không có người nhận",
+      "strategies": {
+        "reference": "Tham chiếu",
+        "orderId": "Mã đơn hàng",
+        "amount_payee": "Số tiền và người nhận",
+        "amount_date": "Số tiền và ngày"
+      }
     }
   },
   "parsed": {
@@ -390,8 +470,11 @@
       "item_amount_missing": "Một mục hàng không có số tiền, và email không có tổng duy nhất nào để gán cho nó."
     },
     "readByAi": "AI đã đọc",
+    "readFromStructuredData": "Đọc từ dữ liệu có cấu trúc",
     "paid": "Đã trả",
-    "payee": "Người bán"
+    "payee": "Người bán",
+    "reference": "Tham chiếu",
+    "categoryByAi": "AI"
   },
   "state": {
     "pending": "Đang chờ đọc",
@@ -413,7 +496,7 @@
     "loading": "Đang tải các email",
     "links": {
       "reviewInbox": "Mở hộp thư xem xét của AI",
-      "settings": "Cài đặt hộp thư và trình phân tích"
+      "settings": "Cài đặt hộp thư"
     },
     "filter": {
       "label": "Lọc theo trạng thái",
@@ -427,6 +510,12 @@
       "review_conflict": "Đang có yêu cầu khác mở",
       "review": "Đang xem xét",
       "ignored": "Đã phớt lờ"
+    },
+    "domainFilter": {
+      "label": "Tên miền người gửi",
+      "all": "Tất cả người gửi",
+      "option": "{domain} ({count})",
+      "help": "Đang hiển thị email từ {domain} và các tên miền phụ của nó. Chọn nhiều email trong số đó để soạn một trình phân tích cho người gửi."
     },
     "columns": {
       "select": "Chọn",
@@ -511,12 +600,15 @@
     "state": "Trạng thái",
     "parser": "Trình phân tích",
     "noParser": "Không có",
+    "structuredSource": "Dữ liệu có cấu trúc",
     "matchedBy": "Khớp theo",
     "matchKinds": {
       "order_id": "Mã đơn hàng",
       "amount_payee": "Số tiền và người nhận",
       "amount_only": "Số tiền",
-      "manual": "Lựa chọn của bạn"
+      "manual": "Lựa chọn của bạn",
+      "reference": "Tham chiếu",
+      "amount_date": "Số tiền và ngày"
     },
     "transaction": "Giao dịch",
     "transactionSummary": "{date}, {amount}, {payee}",
@@ -539,6 +631,8 @@
       "proposal_refused": "Đề xuất bị từ chối, nên không có gì được đề xuất.",
       "skip_line": "Đã tìm thấy một dòng mà trình phân tích này dùng để loại email, nên email đã bị bỏ qua.",
       "wait_line": "Một dòng cho biết đơn hàng chưa chốt, nên email sẽ được đọc lại sau.",
+      "no_html": "Trình phân tích này đọc phần HTML của email, mà email này không có HTML.",
+      "schema_org": "Không cần trình phân tích: đơn hàng được đọc từ dữ liệu có cấu trúc (schema.org) trong email.",
       "item_amount_missing": "Một mục hàng không có số tiền, và email không có tổng duy nhất nào để gán cho nó."
     },
     "reasonUnknown": "Lý do: {reason}",
@@ -556,10 +650,34 @@
     "bodyView": {
       "label": "Hiển thị email dưới dạng",
       "html": "HTML",
-      "text": "Văn bản"
+      "text": "Văn bản",
+      "lines": "Dòng"
     },
     "remoteImagesNote": "Hình ảnh từ xa không được tải.",
-    "htmlFrameTitle": "Email theo định dạng của người gửi"
+    "htmlFrameTitle": "Email theo định dạng của người gửi",
+    "structured": {
+      "heading": "Dữ liệu có cấu trúc (schema.org)",
+      "help": "Đơn hàng hoặc hóa đơn mà email mang theo dưới dạng đánh dấu dành cho ứng dụng email. Chỉ được đọc khi không có trình phân tích nào áp dụng hoặc trình phân tích không tìm thấy tổng.",
+      "found": "Đã tìm thấy",
+      "notFound": "Không tìm thấy",
+      "notFoundHelp": "Email không có đánh dấu đơn hàng, hoặc không nêu tổng cũng như mục hàng nào.",
+      "seller": "Người bán",
+      "currency": "Tiền tệ",
+      "orderDate": "Ngày đặt hàng",
+      "unitPrice": "Đơn giá"
+    },
+    "lines": {
+      "help": "Các dòng mà mẫu của trình phân tích được so khớp, được đánh số giống như danh sách \"Khớp theo\" của một lần kiểm thử.",
+      "sourceLabel": "Nguồn dòng",
+      "sources": {
+        "text": "Văn bản",
+        "html": "HTML"
+      },
+      "noHtml": "Email này không có phần HTML, nên trình phân tích đọc HTML không thể đọc nó.",
+      "capped": "Chỉ đọc {max} dòng đầu tiên.",
+      "empty": "Không có dòng nào.",
+      "listLabel": "Các dòng được đánh số của email"
+    }
   },
   "picker": {
     "heading": "Chọn giao dịch",
@@ -632,5 +750,119 @@
     "inboxLink": "Mở hộp thư xem xét của AI",
     "opened": "Đã mở cuộc trò chuyện kèm email. Hãy đọc tin nhắn và nhấn Gửi.",
     "chatPrompt": "Hãy nhận dạng các sản phẩm, số lượng và giá trong email đơn hàng đính kèm, rồi chia giao dịch ngày {date} của tôi ({payee}, {amount}) theo sản phẩm, mỗi sản phẩm có một danh mục. Hãy nhận yêu cầu xem xét AI {requestId} và gửi đề xuất của bạn cho yêu cầu đó."
+  },
+  "hub": {
+    "tabs": {
+      "ariaLabel": "Các phần của hóa đơn qua email",
+      "overview": "Tổng quan",
+      "emails": "Email",
+      "profiles": "Hồ sơ",
+      "mailbox": "Hộp thư"
+    },
+    "demoRestricted": {
+      "heading": "Bị hạn chế trong chế độ demo",
+      "body": "Việc kết nối hộp thư và viết hồ sơ bị tắt trong chế độ demo."
+    }
+  },
+  "process": {
+    "button": "Xử lý tất cả",
+    "buttonCount": "Xử lý tất cả ({count})",
+    "dialog": {
+      "title": "{count, plural, one {Xử lý # email đã lưu?} other {Xử lý # email đã lưu?}}",
+      "message": "Mọi email đã lưu chưa được đọc, hoặc có thể thay đổi do một hồ sơ hay giao dịch mới, sẽ được đọc lại. Những gì nó đề xuất sẽ chờ trong hộp thư xem xét, trừ khi tự động áp dụng đang bật.",
+      "messageDomain": "Mọi email đã lưu từ {domain} chưa được đọc, hoặc có thể thay đổi do một hồ sơ hay giao dịch mới, sẽ được đọc lại. Những gì nó đề xuất sẽ chờ trong hộp thư xem xét, trừ khi tự động áp dụng đang bật.",
+      "confirm": "Xử lý"
+    },
+    "starting": "Đang bắt đầu...",
+    "progress": "{processed, plural, one {Đã xử lý # email} other {Đã xử lý # email}}, còn {remaining}.",
+    "cancel": "Hủy",
+    "cancelling": "Đang hủy...",
+    "summary": "{count, plural, one {Đã xử lý # email.} other {Đã xử lý # email.}}",
+    "cancelledSummary": "{count, plural, one {Đã hủy sau khi xử lý # email.} other {Đã hủy sau khi xử lý # email.}}",
+    "outcomes": "Kết quả: {outcomes}.",
+    "passedOver": "{count, plural, one {# email gặp lỗi và đã bị bỏ qua.} other {# email gặp lỗi và đã bị bỏ qua.}}",
+    "failed": "Quá trình xử lý đã dừng vì một yêu cầu thất bại.",
+    "failedWithReason": "Quá trình xử lý đã dừng: {reason}",
+    "outcome": "{count} {state}",
+    "close": "Đóng"
+  },
+  "overview": {
+    "loading": "Đang tải phần tổng quan...",
+    "error": {
+      "title": "Không thể tải phần tổng quan",
+      "body": "Yêu cầu thất bại, nên không được coi bất cứ thứ gì ở đây là trống. Hãy thử lại.",
+      "retry": "Thử lại"
+    },
+    "mailbox": {
+      "title": "Hộp thư",
+      "none": "Chưa kết nối hộp thư nào.",
+      "connect": "Kết nối hộp thư",
+      "manage": "Mở cài đặt hộp thư",
+      "state": {
+        "notConnected": "Chưa kết nối",
+        "failing": "Lần kiểm tra gần nhất thất bại",
+        "off": "Kiểm tra đang tắt",
+        "polling": "Đang kiểm tra"
+      },
+      "auth": {
+        "password": "Đăng nhập bằng mật khẩu",
+        "oauth2": "Đăng nhập bằng nhà cung cấp"
+      },
+      "lastSuccess": "Lần kiểm tra thành công gần nhất: {when}",
+      "neverPolled": "Chưa kiểm tra thành công lần nào.",
+      "lastError": "Lỗi gần nhất: {error}"
+    },
+    "emails": {
+      "title": "Email",
+      "stored": "đã lưu",
+      "processable": "{count, plural, one {# email có thể được xử lý lại} other {# email có thể được xử lý lại}}.",
+      "open": "Mở danh sách email"
+    },
+    "proposals": {
+      "title": "Đề xuất",
+      "waiting": "đang chờ bạn phê duyệt",
+      "review": "Xem xét các đề xuất",
+      "open": "Mở hộp thư xem xét"
+    },
+    "profiles": {
+      "title": "Hồ sơ",
+      "approved": "đã duyệt",
+      "drafts": "{count, plural, one {# bản nháp đang chờ bạn phê duyệt} other {# bản nháp đang chờ bạn phê duyệt}}.",
+      "manage": "Mở các hồ sơ"
+    },
+    "uncovered": {
+      "title": "Người gửi chưa có hồ sơ",
+      "help": "Không hồ sơ nào đọc email của những người gửi này. Hãy tạo hồ sơ cho một người gửi, hoặc nhờ trợ lý soạn bản nháp.",
+      "none": "Mọi người gửi của các email đã lưu đều đã có hồ sơ.",
+      "row": "{domain} ({count, plural, one {# email} other {# email}})",
+      "show": "Hiển thị email"
+    }
+  },
+  "wizard": {
+    "heading": "Bắt đầu với hóa đơn qua email",
+    "intro": "Bốn bước từ con số không đến đề xuất đầu tiên.",
+    "done": "(xong)",
+    "steps": {
+      "mailbox": {
+        "title": "Kết nối hộp thư",
+        "body": "Hãy dùng một hộp thư riêng nhận các email xác nhận đơn hàng của bạn. Monize chỉ đọc hộp thư này.",
+        "action": "Kết nối hộp thư"
+      },
+      "emails": {
+        "title": "Lấy email",
+        "body": "Email được đọc khi hộp thư được kiểm tra. Hãy kiểm tra hộp thư từ cài đặt hộp thư để thấy những email đầu tiên.",
+        "action": "Mở danh sách email"
+      },
+      "profile": {
+        "title": "Tạo hồ sơ cho một người gửi",
+        "body": "Hồ sơ cho Monize biết cách đọc email xác nhận đơn hàng của một người gửi. Hãy tự viết một hồ sơ, hoặc soạn bản nháp từ một email đã lưu.",
+        "action": "Mở các hồ sơ"
+      },
+      "review": {
+        "title": "Xem xét các đề xuất",
+        "body": "Mỗi email trở thành một đề xuất cho một giao dịch. Sẽ không có gì thay đổi cho đến khi bạn phê duyệt.",
+        "action": "Mở hộp thư xem xét"
+      }
+    }
   }
 }

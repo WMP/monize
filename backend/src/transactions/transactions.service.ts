@@ -26,6 +26,7 @@ import { CreateTransactionSplitDto } from "./dto/create-transaction-split.dto";
 import { CreateTransferDto } from "./dto/create-transfer.dto";
 import { UpdateTransferDto } from "./dto/update-transfer.dto";
 import { TagsService } from "../tags/tags.service";
+import { TransactionTag } from "../tags/entities/transaction-tag.entity";
 import {
   RuleEffectsPreview,
   TransactionRulesApplierService,
@@ -294,6 +295,17 @@ export interface UpdateTransactionPreview {
    * completed reconciliation, so the confirmation surfaces flag this.
    */
   isReconciled: boolean;
+  /**
+   * Tag names the edit ADDS (the transaction keeps its own tags): the ones the
+   * caller asked for that it does not carry yet, spelled as the user's existing
+   * tag when there is one. Absent when none were asked for or all are already
+   * on the transaction.
+   */
+  tagNames?: string[];
+  /** The subset of `tagNames` the user has no tag for yet: confirm creates them. */
+  newTagNames?: string[];
+  /** `"ai"` when the AI chose `categoryName` (display only; set by the review queue, never by this service). */
+  categorySource?: "ai";
 }
 
 /** Resolved preview of a proposed transaction deletion (display-only). */
@@ -821,6 +833,12 @@ export class TransactionsService {
        * an existing split and counts as a change on its own.
        */
       splitsAccompany?: boolean;
+      /**
+       * Tag names to add to the transaction (created at confirm when the user
+       * has none by that name). A name the transaction already carries is not a
+       * change.
+       */
+      tagNames?: readonly string[];
     },
   ): Promise<UpdateTransactionPreview> {
     const existing = await this.findOne(userId, transactionId);
@@ -852,12 +870,18 @@ export class TransactionsService {
       }
     }
 
+    const tagChange = await this.previewAddedTags(
+      userId,
+      transactionId,
+      input.tagNames ?? [],
+    );
     const hasChange =
       input.amount !== undefined ||
       input.transactionDate !== undefined ||
       input.payeeName !== undefined ||
       input.categoryId !== undefined ||
       input.description !== undefined ||
+      tagChange.tagNames.length > 0 ||
       // A splits-only replacement changes the transaction even though no
       // scalar field does.
       input.splitsAccompany === true;
@@ -939,7 +963,56 @@ export class TransactionsService {
       description,
       currencyCode: existing.currencyCode,
       isReconciled: existing.isReconciled,
+      ...(tagChange.tagNames.length > 0
+        ? {
+            tagNames: tagChange.tagNames,
+            ...(tagChange.newTagNames.length > 0
+              ? { newTagNames: tagChange.newTagNames }
+              : {}),
+          }
+        : {}),
     };
+  }
+
+  /**
+   * Which of the requested tag names an edit would add: the ones the
+   * transaction does not carry yet. A name the user has a tag for is spelled as
+   * that tag; one it has none for is new (confirm creates it). Reads only.
+   */
+  private async previewAddedTags(
+    userId: string,
+    transactionId: string,
+    names: readonly string[],
+  ): Promise<{ tagNames: string[]; newTagNames: string[] }> {
+    const wanted = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
+    if (wanted.length === 0) return { tagNames: [], newTagNames: [] };
+    return withScopedDb(this.dataSource, async (m) => {
+      const known = await this.tagsService.findByNames(m, userId, wanted);
+      const byKey = new Map(known.map((t) => [t.name.toLowerCase(), t]));
+      const carried = new Set(
+        (
+          await m.getRepository(TransactionTag).find({
+            where: { transactionId },
+          })
+        ).map((link) => link.tagId),
+      );
+      const tagNames: string[] = [];
+      const newTagNames: string[] = [];
+      const seen = new Set<string>();
+      for (const name of wanted) {
+        const key = name.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const tag = byKey.get(key);
+        if (!tag) {
+          tagNames.push(name);
+          newTagNames.push(name);
+        } else if (!carried.has(tag.id)) {
+          tagNames.push(tag.name);
+        }
+      }
+      return { tagNames, newTagNames };
+    });
   }
 
   /**
@@ -2316,6 +2389,13 @@ export class TransactionsService {
        * (an AI review request marked applied) commits or rolls back with it.
        */
       beforeWrite?: (m: EntityManager) => Promise<void>;
+      /**
+       * Tag names to ADD to the transaction, inside the write's transaction:
+       * the user's tag of that name (case-insensitively) or a new one, linked
+       * without touching the tags the transaction already carries. Independent of
+       * `tagIds`, which replaces the whole set.
+       */
+      addTagNames?: readonly string[];
     },
   ): Promise<Transaction> {
     const transaction = await this.findOne(userId, id);
@@ -2608,6 +2688,21 @@ export class TransactionsService {
       // Update transaction-level tags
       if (tagIds !== undefined) {
         await this.tagsService.setTransactionTags(id, tagIds, userId);
+      }
+      // Tags a proposal adds (an email-receipt profile's `tag`): created when
+      // missing, linked additively, in this same transaction.
+      if (options?.addTagNames && options.addTagNames.length > 0) {
+        const tags = await this.tagsService.findOrCreateByNames(
+          m,
+          userId,
+          options.addTagNames,
+        );
+        await this.tagsService.addTransactionTags(
+          m,
+          userId,
+          [id],
+          tags.map((tag) => tag.id),
+        );
       }
 
       const savedTransaction = await m.findOne(Transaction, {

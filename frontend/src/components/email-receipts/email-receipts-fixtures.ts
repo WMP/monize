@@ -3,6 +3,7 @@ import type {
   EmailReceiptListItem,
   EmailReceiptMailbox,
   EmailReceiptParser,
+  EmailReceiptsOverview,
 } from '@/types/email-receipts';
 
 /** A password mailbox as `GET /email-receipts/mailbox` answers it; `overrides` win. */
@@ -17,6 +18,7 @@ export function makeMailbox(overrides: Partial<EmailReceiptMailbox> = {}): Email
     enabled: true,
     aiMode: 'off',
     autoApply: false,
+    profileProposalsCountTowardAiLimit: true,
     passwordSet: true,
     encryptionConfigured: true,
     authMethod: 'password',
@@ -94,6 +96,8 @@ export function makeDetail(overrides: Partial<EmailReceiptDetail> = {}): EmailRe
     ...makeReceipt(),
     bodyText: 'Thank you for your order.\nTotal 25.00',
     bodyHtml: null,
+    lines: { text: ['Thank you for your order.', 'Total 25.00'], html: null },
+    structuredOrder: null,
     parsed: null,
     candidates: [],
     ...overrides,
@@ -115,3 +119,25 @@ export const PARSED_RECEIPT = {
   complete: false,
   reason: 'items_unbalanced',
 };
+
+/** What `GET /email-receipts/overview` answers for a connected mailbox with no emails and no profile; `overrides` win. */
+export function makeOverview(overrides: Partial<EmailReceiptsOverview> = {}): EmailReceiptsOverview {
+  return {
+    mailbox: {
+      enabled: true,
+      authMethod: 'password',
+      aiMode: 'off',
+      connected: true,
+      lastPolledAt: '2026-10-04T09:00:00.000Z',
+      lastSuccessAt: '2026-10-04T09:00:00.000Z',
+      lastError: null,
+      lastErrorAt: null,
+    },
+    emailsByStatus: {},
+    processable: 0,
+    proposalsToApprove: 0,
+    parsers: { approved: 0, draft: 0 },
+    domainsWithoutProfile: [],
+    ...overrides,
+  };
+}

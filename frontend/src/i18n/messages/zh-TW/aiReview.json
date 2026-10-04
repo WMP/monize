@@ -13,6 +13,12 @@
     "rejected": "已拒絕",
     "expired": "已過期"
   },
+  "kindFilter": {
+    "label": "依類型篩選",
+    "all": "全部",
+    "email_receipt": "郵件收據",
+    "transaction_review": "規則"
+  },
   "status": {
     "pending": "待處理",
     "claimed": "審核中",
@@ -47,6 +53,23 @@
   },
   "proposal": {
     "errorTitle": "此提議已無法套用"
+  },
+  "bulk": {
+    "selectRow": "選取 {name}",
+    "selectAll": "選取顯示的所有可核准請求",
+    "approveSelected": "核准所選（{count}）",
+    "approveAllShown": "核准顯示的全部（{count}）",
+    "summary": "已套用 {approved, plural, one {# 則提議} other {# 則提議}}，{failed, plural, one {# 則未套用} other {# 則未套用}}。",
+    "closeSummary": "關閉",
+    "failure": "{name}：{reason}",
+    "noReason": "未提供原因",
+    "unknownRequest": "一個請求",
+    "failed": "無法套用這些提議",
+    "dialog": {
+      "title": "{count, plural, one {套用 # 則提議？} other {套用 # 則提議？}}",
+      "message": "每則提議都會對照交易目前的狀態進行檢查，並單獨套用。不再適用的提議會被略過並回報，其餘的仍會套用。核准之前請先審核這些提議。",
+      "confirm": "{count, plural, one {套用 # 則提議} other {套用 # 則提議}}"
+    }
   },
   "dismissDialog": {
     "title": "忽略此請求？",

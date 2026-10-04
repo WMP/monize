@@ -147,6 +147,32 @@ describe('ParserEditorDialog', () => {
       expect(onSaved).toHaveBeenCalledWith(makeParser());
     });
 
+    it('offers a Lines source select, on Text by default, and leaves the source out of the definition', async () => {
+      api.create.mockResolvedValue(makeParser());
+      await renderEditor();
+      const select = screen.getByLabelText('Lines source') as HTMLSelectElement;
+      expect(select.value).toBe('text');
+      expect(within(select).getAllByRole('option').map((option) => option.textContent)).toEqual(['Text', 'HTML']);
+      await type('Name', 'Shop');
+      await type('Sender domains', 'shop.example.com');
+      await type('Total patterns', 'Total {amount}');
+      await save();
+      expect(api.create.mock.calls[0][0].definition).toEqual({ version: 2, total: ['Total {amount}'] });
+    });
+
+    it('writes source html into the definition when HTML is chosen', async () => {
+      api.create.mockResolvedValue(makeParser());
+      await renderEditor();
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Lines source'), { target: { value: 'html' } });
+      });
+      await type('Name', 'Shop');
+      await type('Sender domains', 'shop.example.com');
+      await type('Total patterns', 'Total {amount}');
+      await save();
+      expect(api.create.mock.calls[0][0].definition).toEqual({ version: 2, source: 'html', total: ['Total {amount}'] });
+    });
+
     it('starts from the prefill it was given, such as the sender domain of an email', async () => {
       await renderEditor({ prefill: { name: 'shop.example', fromDomains: 'shop.example' }, initialReceiptId: 'r-1' });
       expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('shop.example');
@@ -201,6 +227,15 @@ describe('ParserEditorDialog', () => {
         total: ['Total {amount}'],
         categoryRules: [{ match: '*cable*', categoryId: CAT_CABLES }],
       },
+    });
+
+    it('shows the stored source on the form, and carries an html parser through a save', async () => {
+      const htmlParser = makeParser({ definition: { version: 2, source: 'html', total: ['Total {amount}'] } });
+      api.update.mockResolvedValue(htmlParser);
+      await renderEditor({ parser: htmlParser });
+      expect((screen.getByLabelText('Lines source') as HTMLSelectElement).value).toBe('html');
+      await save();
+      expect(api.update.mock.calls[0][1].definition).toEqual({ version: 2, source: 'html', total: ['Total {amount}'] });
     });
 
     it('is titled as an edit and filled from the stored parser', async () => {

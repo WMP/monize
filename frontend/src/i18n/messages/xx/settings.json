@@ -996,7 +996,7 @@
     },
     "emailReceiptsCard": {
       "title": "[XX-Email Receipts-XX]",
-      "description": "[XX-Connect a mailbox for order confirmations and manage the parsers that read them.-XX]"
+      "description": "[XX-Connect a mailbox for order confirmations and manage the profiles that read them.-XX]"
     },
     "bankSyncCard": {
       "title": "[XX-Bank Sync-XX]",

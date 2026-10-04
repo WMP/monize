@@ -170,14 +170,22 @@ const hasStrictAmount = (captures: GlobCaptures): boolean =>
   captures.amount !== undefined && isStrictReceiptAmount(captures.amount);
 
 const hasOrderId = (captures: GlobCaptures): boolean =>
-  orderIdToken(captures) !== "";
+  identifierToken(captures, "orderid") !== "";
+
+const hasReference = (captures: GlobCaptures): boolean =>
+  identifierToken(captures, "reference") !== "";
 
 const hasPayee = (captures: GlobCaptures): boolean =>
   (captures.payee ?? "") !== "";
 
-/** An order number has no spaces: only the first whitespace-delimited token of the capture is kept. */
-const orderIdToken = (captures: GlobCaptures): string =>
-  captures.orderid?.trim().split(/\s+/)[0] ?? "";
+/**
+ * An order number or a bank reference has no spaces: only the first
+ * whitespace-delimited token of the capture is kept.
+ */
+const identifierToken = (
+  captures: GlobCaptures,
+  name: "orderid" | "reference",
+): string => captures[name]?.trim().split(/\s+/)[0] ?? "";
 
 interface Read<T> {
   value: T;
@@ -205,31 +213,34 @@ function readPayee(
 }
 
 /**
- * The first entry, in array order, that finds an order id. A line pattern
- * reads the subject first, then each line; a labelled entry reads lines only
- * (a subject is one line, with nothing near it to be a label for).
+ * The first entry, in array order, that finds an identifier (an order id or a
+ * bank reference: the same rules for both). A line pattern reads the subject
+ * first, then each line; a labelled entry reads lines only (a subject is one
+ * line, with nothing near it to be a label for).
  */
-function readOrderId(
+function readIdentifier(
   entries: readonly ReceiptFieldEntry[] | undefined,
   subject: string,
   lines: readonly string[],
+  capture: "orderid" | "reference",
 ): Read<string> | null {
   if (!Array.isArray(entries)) return null;
+  const accept = capture === "orderid" ? hasOrderId : hasReference;
   for (let index = 0; index < entries.length; index++) {
     const entry = entries[index];
     if (typeof entry === "string") {
-      const fromSubject = matchReceiptPattern(entry, subject, hasOrderId);
+      const fromSubject = matchReceiptPattern(entry, subject, accept);
       if (fromSubject !== null) {
         return {
-          value: orderIdToken(fromSubject),
+          value: identifierToken(fromSubject, capture),
           hit: { entry: index, pattern: entry, line: traceSubject(subject) },
         };
       }
     }
-    const found = findEntry(entry, lines, hasOrderId);
+    const found = findEntry(entry, lines, accept);
     if (found !== null) {
       return {
-        value: orderIdToken(found.captures),
+        value: identifierToken(found.captures, capture),
         hit: hitOf(entry, index, found, lines),
       };
     }
@@ -282,12 +293,17 @@ export function readLineGuards(
   };
 }
 
-/** What the pipeline would do with an email under a parser's guards. */
+/**
+ * What the pipeline would do with an email under a parser: `read` it, or pass
+ * over / set aside / hold it by a guard, or fail it because the parser reads the
+ * HTML part (`source: "html"`) and the email has none (`no_html`).
+ */
 export type ReceiptOutcome =
   | "read"
   | "not_applicable"
   | "skip_line"
-  | "wait_line";
+  | "wait_line"
+  | "no_html";
 
 /** `requireLine` unmet: another parser would be tried; else `skipIfLine`, then `waitIfLine`, else the email is read. */
 export function receiptOutcome(guards: ReceiptLineGuards): ReceiptOutcome {
@@ -638,7 +654,11 @@ export interface TracedReceipt {
 }
 
 /**
- * Read one email with a parser definition and say what read each value.
+ * Read one email, given as the lines of the source the definition names
+ * (`def.source`: the text, or the HTML part; `pipeline/receipt-source-lines.ts`
+ * chooses them), with a parser definition and say what read each value.
+ * `lines` is null when the definition reads the HTML part and the email has
+ * none: nothing is read and the outcome is `no_html`.
  * `fallbackCategoryId` is the parser payee's default category, used for an
  * item no rule categorises and no `defaultCategoryId` covers.
  *
@@ -646,15 +666,21 @@ export interface TracedReceipt {
  * line by `defaultCategoryId` (else the fallback): a parser must say where
  * shipping goes before the receipt counts as complete.
  */
-export function parseReceiptTraced(
+export function parseReceiptLinesTraced(
   def: ReceiptParserDefinition,
   subject: string,
-  bodyText: string,
+  sourceLines: readonly string[] | null,
   fallbackCategoryId: string | null,
 ): TracedReceipt {
-  const lines = normalizeReceiptLines(bodyText);
+  const lines = sourceLines ?? [];
   const subjectLine = typeof subject === "string" ? normalizeLine(subject) : "";
-  const orderId = readOrderId(def.orderId, subjectLine, lines);
+  const orderId = readIdentifier(def.orderId, subjectLine, lines, "orderid");
+  const reference = readIdentifier(
+    def.reference,
+    subjectLine,
+    lines,
+    "reference",
+  );
   const total = readAmount(def.total, lines);
   const paid = readAmount(def.paid, lines);
   const shipping = readAmount(def.shipping, lines);
@@ -689,6 +715,7 @@ export function parseReceiptTraced(
   }));
   const parsed = {
     orderId: orderId?.value ?? null,
+    reference: reference?.value ?? null,
     total: total?.value ?? null,
     paid: paid?.value ?? null,
     payee: payee?.value ?? null,
@@ -701,6 +728,7 @@ export function parseReceiptTraced(
   const reason = completeness(parsed, itemsUnresolved);
   const trace: ReceiptTrace = {
     orderId: orderId?.hit ?? null,
+    reference: reference?.hit ?? null,
     total: total?.hit ?? null,
     paid: paid?.hit ?? null,
     shipping: shipping?.hit ?? null,
@@ -714,11 +742,31 @@ export function parseReceiptTraced(
   return {
     parsed: { ...parsed, complete: reason === null, reason },
     trace,
-    outcome: receiptOutcome(guards),
+    outcome: sourceLines === null ? "no_html" : receiptOutcome(guards),
   };
 }
 
-/** Read one email with a parser definition (see `parseReceiptTraced`). */
+/**
+ * Read an email's TEXT with a definition, whatever `def.source` says: the
+ * text-source reading, kept for the callers (and specs) that hold only a text.
+ * The pipeline, the `test` operation and the AI tool choose the lines by the
+ * definition's source and call `parseReceiptLinesTraced`.
+ */
+export function parseReceiptTraced(
+  def: ReceiptParserDefinition,
+  subject: string,
+  bodyText: string,
+  fallbackCategoryId: string | null,
+): TracedReceipt {
+  return parseReceiptLinesTraced(
+    def,
+    subject,
+    normalizeReceiptLines(bodyText),
+    fallbackCategoryId,
+  );
+}
+
+/** Read one email's text with a parser definition (see `parseReceiptTraced`). */
 export function parseReceipt(
   def: ReceiptParserDefinition,
   subject: string,
@@ -726,4 +774,15 @@ export function parseReceipt(
   fallbackCategoryId: string | null,
 ): ParsedReceipt {
   return parseReceiptTraced(def, subject, bodyText, fallbackCategoryId).parsed;
+}
+
+/** Read one email, given as the lines of the definition's source, without the trace (see `parseReceiptLinesTraced`). */
+export function parseReceiptLines(
+  def: ReceiptParserDefinition,
+  subject: string,
+  sourceLines: readonly string[] | null,
+  fallbackCategoryId: string | null,
+): ParsedReceipt {
+  return parseReceiptLinesTraced(def, subject, sourceLines, fallbackCategoryId)
+    .parsed;
 }

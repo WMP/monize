@@ -683,6 +683,40 @@ export class AiReviewRequestsService {
   }
 
   /**
+   * Whether confirming this request's proposal is left out of the daily AI write
+   * count (email-receipts design 7.1): the user's own switch on their mailbox,
+   * `profile_proposals_count_toward_ai_limit`, is false AND the request is an
+   * `email_receipt` one still `proposed` whose proposal was submitted under
+   * `profileClaimKey` (the deterministic profile's key, never an AI's or an
+   * agent's). ONE read of the server's own rows keyed on the user: a client
+   * cannot claim the exemption, only the stored claim and the stored switch grant
+   * it. A request that is not found, is someone else's, or any other kind or key
+   * is not exempt, and so is a user with no mailbox: the default is to count.
+   */
+  async isExemptFromWriteLimit(
+    userId: string,
+    requestId: string,
+    profileClaimKey: string,
+  ): Promise<boolean> {
+    const rows = await withScopedDb(this.dataSource, async (m) =>
+      returnedRows<{ counts: boolean }>(
+        await m.query(
+          `SELECT mb.profile_proposals_count_toward_ai_limit AS counts
+             FROM ai_review_requests r
+             JOIN email_receipt_mailboxes mb ON mb.user_id = r.user_id
+            WHERE r.id = $1
+              AND r.user_id = $2
+              AND r.kind = 'email_receipt'
+              AND r.status = 'proposed'
+              AND r.claimed_by = $3`,
+          [requestId, userId, profileClaimKey],
+        ),
+      ),
+    );
+    return rows.length > 0 && rows[0].counts === false;
+  }
+
+  /**
    * Mark every open request whose life has run out as `expired` (a request is
    * reported as expired, never deleted). Returns how many changed. NOT
    * scheduled: a cron is a reviewed `WITH_CONTEXT_ALLOWLIST` decision. Under a

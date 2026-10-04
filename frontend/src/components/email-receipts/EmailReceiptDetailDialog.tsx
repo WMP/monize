@@ -9,6 +9,7 @@ import { EmailBodyView } from '@/components/email-receipts/EmailBodyView';
 import { ParsedReceiptView } from '@/components/email-receipts/ParsedReceiptView';
 import { ReceiptTransactionPicker } from '@/components/email-receipts/ReceiptTransactionPicker';
 import { ReceiptStateBadge } from '@/components/email-receipts/ReceiptStateBadge';
+import { StructuredOrderView } from '@/components/email-receipts/StructuredOrderView';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LinkifiedText } from '@/components/ui/LinkifiedText';
@@ -157,7 +158,9 @@ export function EmailReceiptDetailDialog({ receiptId, categoryLabels, onClose, o
           </div>
           <div>
             <dt className="text-gray-500 dark:text-gray-400">{t('parser')}</dt>
-            <dd className="text-gray-900 dark:text-gray-100">{detail.parserName ?? t('noParser')}</dd>
+            <dd className="text-gray-900 dark:text-gray-100">
+              {detail.parserName ?? (parsed?.source === 'schema_org' ? t('structuredSource') : t('noParser'))}
+            </dd>
           </div>
           {detail.matchKind && (
             <div>
@@ -215,6 +218,14 @@ export function EmailReceiptDetailDialog({ receiptId, categoryLabels, onClose, o
           )}
         </section>
 
+        <section aria-labelledby="receipt-structured-heading" className="space-y-2">
+          <h3 id="receipt-structured-heading" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            {t('structured.heading')}
+          </h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{t('structured.help')}</p>
+          <StructuredOrderView order={detail.structuredOrder ?? null} />
+        </section>
+
         {detail.candidates.length > 0 && (
           <section aria-labelledby="receipt-candidates-heading" className="space-y-2">
             <h3 id="receipt-candidates-heading" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -269,7 +280,7 @@ export function EmailReceiptDetailDialog({ receiptId, categoryLabels, onClose, o
           <h3 id="receipt-text-heading" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
             {t('bodyHeading')}
           </h3>
-          <EmailBodyView bodyText={detail.bodyText} bodyHtml={detail.bodyHtml ?? null} />
+          <EmailBodyView bodyText={detail.bodyText} bodyHtml={detail.bodyHtml ?? null} lines={detail.lines} />
         </section>
 
         <div className="flex justify-end border-t border-gray-200 pt-4 dark:border-gray-700">

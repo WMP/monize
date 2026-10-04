@@ -13,6 +13,12 @@
     "rejected": "Afgewezen",
     "expired": "Verlopen"
   },
+  "kindFilter": {
+    "label": "Filteren op soort",
+    "all": "Alle",
+    "email_receipt": "E-mailbonnen",
+    "transaction_review": "Regels"
+  },
   "status": {
     "pending": "In afwachting",
     "claimed": "In controle",
@@ -47,6 +53,23 @@
   },
   "proposal": {
     "errorTitle": "Dit voorstel kan niet meer worden toegepast"
+  },
+  "bulk": {
+    "selectRow": "{name} selecteren",
+    "selectAll": "Alle getoonde goed te keuren verzoeken selecteren",
+    "approveSelected": "Geselecteerde goedkeuren ({count})",
+    "approveAllShown": "Alle getoonde goedkeuren ({count})",
+    "summary": "{approved, plural, one {# voorstel} other {# voorstellen}} toegepast, {failed, plural, one {# niet toegepast} other {# niet toegepast}}.",
+    "closeSummary": "Sluiten",
+    "failure": "{name}: {reason}",
+    "noReason": "Er is geen reden opgegeven",
+    "unknownRequest": "Een verzoek",
+    "failed": "De voorstellen konden niet worden toegepast",
+    "dialog": {
+      "title": "{count, plural, one {# voorstel toepassen?} other {# voorstellen toepassen?}}",
+      "message": "Elk voorstel wordt gecontroleerd tegen zijn transactie zoals die nu is en apart toegepast. Een voorstel dat niet meer past, wordt overgeslagen en gemeld, en de rest wordt gewoon toegepast. Bekijk de voorstellen voordat je ze goedkeurt.",
+      "confirm": "{count, plural, one {# voorstel toepassen} other {# voorstellen toepassen}}"
+    }
   },
   "dismissDialog": {
     "title": "Dit verzoek negeren?",

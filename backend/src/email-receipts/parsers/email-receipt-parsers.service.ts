@@ -15,10 +15,16 @@ import {
   matchReceipt,
   type ReceiptMatchResult,
 } from "../matching/match-receipt";
+import {
+  buildMatchTrace,
+  type ReceiptMatchTrace,
+} from "../matching/match-trace";
+import { resolveMatchConfig } from "../parsing/receipt-match-config";
 import { effectiveReceiptDate } from "../imap/forwarded-receipt";
 import { loadReceiptCandidates } from "../pipeline/receipt-candidates";
+import { ReceiptSourceLines } from "../pipeline/receipt-source-lines";
 import {
-  parseReceiptTraced,
+  parseReceiptLinesTraced,
   type ReceiptOutcome,
 } from "../parsing/parse-receipt";
 import type {
@@ -85,6 +91,11 @@ export interface EmailReceiptParserTestResult {
   /** `read`, or the guard (`requireLine`, `skipIfLine`, `waitIfLine`) that stops the pipeline reading it. */
   outcome: ReceiptOutcome;
   match: ReceiptMatchResult;
+  /**
+   * What the matcher looked at: the profile's window, strategies and tolerance,
+   * and the transactions each strategy kept (design 5.5).
+   */
+  matchTrace: ReceiptMatchTrace;
   /** Candidate transactions the matcher was given (at most 200). */
   candidateCount: number;
   /** The matched transaction, when there is one. */
@@ -376,27 +387,32 @@ export class EmailReceiptParsersService {
           ),
         );
       }
-      const { parsed, trace, outcome } = parseReceiptTraced(
+      // The lines of the source the definition chose (`text` or `html`); the
+      // trace's line numbers refer to them. `no_html`: it reads HTML, the email has none.
+      const { parsed, trace, outcome } = parseReceiptLinesTraced(
         definition,
         receipt.subject,
-        receipt.bodyText,
+        new ReceiptSourceLines(receipt).forSource(definition.source),
         payee?.defaultCategoryId ?? null,
       );
       // Centred on the day the shop sent the order when a forward carried it.
       const purchaseDate = effectiveReceiptDate(receipt)
         .toISOString()
         .slice(0, 10);
+      const matchConfig = resolveMatchConfig(definition.match);
       const candidates = await loadReceiptCandidates(
         m,
         userId,
         purchaseDate,
         receipt.id,
+        matchConfig,
       );
       const match = matchReceipt(
         parsed,
         purchaseDate,
         candidates,
         payee?.id ?? null,
+        matchConfig,
       );
       const hit =
         match.kind === "matched"
@@ -407,6 +423,12 @@ export class EmailReceiptParsersService {
         trace,
         outcome,
         match,
+        matchTrace: buildMatchTrace(
+          purchaseDate,
+          matchConfig,
+          candidates,
+          match,
+        ),
         candidateCount: candidates.length,
         transaction: hit
           ? {

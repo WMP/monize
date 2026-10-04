@@ -89,4 +89,31 @@ describe('ParsedReceiptView', () => {
     rerender(<ParsedReceiptView parsed={parsed} currencyCode="USD" categoryLabels={labels} />);
     expect(screen.queryByText('Read by the AI')).not.toBeInTheDocument();
   });
+
+  it('says when the email\'s own structured data was read, and not "Read by the AI"', () => {
+    const { rerender } = render(
+      <ParsedReceiptView parsed={{ ...parsed, source: 'schema_org' }} currencyCode="USD" categoryLabels={labels} />,
+    );
+    expect(screen.getByText('Read from structured data')).toBeInTheDocument();
+    expect(screen.queryByText('Read by the AI')).not.toBeInTheDocument();
+
+    rerender(<ParsedReceiptView parsed={{ ...parsed, source: 'parser' }} currencyCode="USD" categoryLabels={labels} />);
+    expect(screen.queryByText('Read from structured data')).not.toBeInTheDocument();
+  });
+  it('shows the reference the profile read, only when there is one', () => {
+    const { rerender } = render(<ParsedReceiptView parsed={parsed} currencyCode="USD" categoryLabels={labels} />);
+    expect(screen.queryByText('Reference')).not.toBeInTheDocument();
+    rerender(<ParsedReceiptView parsed={{ ...parsed, reference: 'ZX81-4477' }} currencyCode="USD" categoryLabels={labels} />);
+    expect(screen.getByText('Reference').nextElementSibling).toHaveTextContent('ZX81-4477');
+  });
+
+  it('marks a category the AI chose, and no other', () => {
+    const first = parsed.items[0];
+    const chosen = { ...parsed, items: [{ ...first, categoryId: 'cat-1', categorySource: 'ai' as const }, ...parsed.items.slice(1)] };
+    const { rerender } = render(<ParsedReceiptView parsed={chosen} currencyCode="USD" categoryLabels={labels} />);
+    expect(screen.getAllByText('AI')).toHaveLength(1);
+    const byRule = { ...parsed, items: [{ ...first, categoryId: 'cat-1' }, ...parsed.items.slice(1)] };
+    rerender(<ParsedReceiptView parsed={byRule} currencyCode="USD" categoryLabels={labels} />);
+    expect(screen.queryByText('AI')).not.toBeInTheDocument();
+  });
 });

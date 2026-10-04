@@ -4,7 +4,16 @@ import {
   parseGlob,
 } from "../../transaction-rules/rule-glob-capture";
 import {
+  MAX_DAYS_AFTER,
+  MAX_DAYS_BEFORE,
+  MAX_MATCH_STRATEGIES,
+  MAX_TOLERANCE_UNITS,
+  MIN_MATCH_DAYS,
+  parseToleranceUnits,
+} from "./receipt-match-config";
+import {
   MAX_CATEGORY_RULES,
+  MAX_PROFILE_TAG_LENGTH,
   MAX_LABEL_WITHIN,
   MAX_LINE_GUARDS,
   MAX_PATTERN_LENGTH,
@@ -14,6 +23,9 @@ import {
   MAX_SKIP_LINES,
   MAX_STEP_ALTERNATIVES,
   MIN_LABEL_WITHIN,
+  RECEIPT_LINES_SOURCES,
+  RECEIPT_MATCH_STRATEGIES,
+  RECEIPT_MATCH_TEXT_FIELDS,
   RECEIPT_PARSER_VERSION,
   ReceiptBlockItemsDefinition,
   ReceiptCategoryRule,
@@ -21,6 +33,10 @@ import {
   ReceiptFieldEntry,
   ReceiptItemsDefinition,
   ReceiptLabelledPattern,
+  ReceiptLinesSource,
+  ReceiptMatchDefinition,
+  ReceiptMatchStrategy,
+  ReceiptMatchTextField,
   ReceiptParserDefinition,
   ReceiptRecordStep,
   ReceiptSingleItemsDefinition,
@@ -48,7 +64,11 @@ export interface ReceiptParserValidationError {
    * `capture_missing`, `capture_conflict`, `invalid_uuid`, `out_of_range`
    * (`within`), `items_patterns_and_record`, `items_shape_missing`,
    * `items_single_conflict`, `skip_lines_need_record`,
-   * `join_wrapped_needs_patterns`, `record_name_missing`, `invalid_value`.
+   * `join_wrapped_needs_patterns`, `record_name_missing`, `invalid_value` (a
+   * category rule `field`, the top-level `source`, a `match` strategy, field or
+   * tolerance), `duplicate_entry` (a repeated `match` strategy or field),
+   * `reference_field_missing` (`match.by` names `reference` and the profile reads
+   * none).
    */
   code: string;
 }
@@ -71,6 +91,10 @@ const PAYEE_CAPTURES: FieldCaptures = {
   allowed: ["payee"],
   required: ["payee"],
 };
+const REFERENCE_CAPTURES: FieldCaptures = {
+  allowed: ["reference"],
+  required: ["reference"],
+};
 const SINGLE_NAME_CAPTURES: FieldCaptures = {
   allowed: ["name"],
   required: ["name"],
@@ -92,12 +116,17 @@ const RECORD_STEP_CAPTURES: FieldCaptures = {
 
 const TOP_LEVEL_KEYS: readonly string[] = [
   "version",
+  "source",
   "orderId",
   "total",
   "paid",
   "shipping",
   "discount",
   "payee",
+  "reference",
+  "match",
+  "tag",
+  "aiCategories",
   "items",
   "categoryRules",
   "defaultCategoryId",
@@ -118,6 +147,13 @@ const RULE_FIELDS: readonly ReceiptCategoryRuleField[] = [
   "item",
   "payee",
   "line",
+];
+const MATCH_KEYS: readonly string[] = [
+  "by",
+  "referenceIn",
+  "daysBefore",
+  "daysAfter",
+  "amountTolerance",
 ];
 const LABELLED_KEYS: readonly string[] = ["label", "value", "within"];
 const RECORD_STEP_KEYS: readonly string[] = ["line", "optional"];
@@ -629,6 +665,163 @@ function checkCategoryRules(
   return errors.list.length === before ? out : null;
 }
 
+/** A whole number of days in `[MIN_MATCH_DAYS, max]`, or null with the error recorded. */
+function checkDays(
+  value: unknown,
+  path: string,
+  max: number,
+  errors: Errors,
+): number | null {
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    errors.add(path, "invalid_type");
+    return null;
+  }
+  if (value < MIN_MATCH_DAYS || value > max) {
+    errors.add(path, "out_of_range");
+    return null;
+  }
+  return value;
+}
+
+/** A list of distinct values from a closed set (`match.by`, `match.referenceIn`). */
+function checkChoiceList<T extends string>(
+  value: unknown,
+  path: string,
+  allowed: readonly T[],
+  max: number,
+  errors: Errors,
+): T[] | null {
+  if (!Array.isArray(value)) {
+    errors.add(path, "invalid_type");
+    return null;
+  }
+  if (value.length === 0) {
+    errors.add(path, "empty");
+    return null;
+  }
+  if (value.length > max) {
+    errors.add(path, "too_many");
+    return null;
+  }
+  const before = errors.list.length;
+  const seen = new Set<string>();
+  const out: T[] = [];
+  value.forEach((entry, index) => {
+    const at = `${path}[${index}]`;
+    if (typeof entry !== "string") {
+      errors.add(at, "invalid_type");
+    } else if (!allowed.includes(entry as T)) {
+      errors.add(at, "invalid_value");
+    } else if (seen.has(entry)) {
+      errors.add(at, "duplicate_entry");
+    } else {
+      seen.add(entry);
+      out.push(entry as T);
+    }
+  });
+  return errors.list.length === before ? out : null;
+}
+
+/**
+ * The `match` section (design 5.5): which strategies identify the transaction,
+ * in order; which transaction fields `reference` and `orderId` look in; the
+ * window in days either side of the purchase date; the amount tolerance as a
+ * decimal string up to 5.00. `reference` in `by` needs the profile to read one.
+ */
+function checkMatch(
+  value: unknown,
+  hasReferenceField: boolean,
+  errors: Errors,
+): ReceiptMatchDefinition | null {
+  if (!isPlainObject(value)) {
+    errors.add("match", "invalid_type");
+    return null;
+  }
+  const before = errors.list.length;
+  checkKeys(value, MATCH_KEYS, "match.", errors);
+  const out: ReceiptMatchDefinition = {};
+  if (value.by !== undefined) {
+    const by = checkChoiceList<ReceiptMatchStrategy>(
+      value.by,
+      "match.by",
+      RECEIPT_MATCH_STRATEGIES,
+      MAX_MATCH_STRATEGIES,
+      errors,
+    );
+    if (by !== null) {
+      out.by = by;
+      if (by.includes("reference") && !hasReferenceField) {
+        errors.add("match.by", "reference_field_missing");
+      }
+    }
+  }
+  if (value.referenceIn !== undefined) {
+    const fields = checkChoiceList<ReceiptMatchTextField>(
+      value.referenceIn,
+      "match.referenceIn",
+      RECEIPT_MATCH_TEXT_FIELDS,
+      RECEIPT_MATCH_TEXT_FIELDS.length,
+      errors,
+    );
+    if (fields !== null) out.referenceIn = fields;
+  }
+  if (value.daysBefore !== undefined) {
+    const days = checkDays(
+      value.daysBefore,
+      "match.daysBefore",
+      MAX_DAYS_BEFORE,
+      errors,
+    );
+    if (days !== null) out.daysBefore = days;
+  }
+  if (value.daysAfter !== undefined) {
+    const days = checkDays(
+      value.daysAfter,
+      "match.daysAfter",
+      MAX_DAYS_AFTER,
+      errors,
+    );
+    if (days !== null) out.daysAfter = days;
+  }
+  if (value.amountTolerance !== undefined) {
+    if (typeof value.amountTolerance !== "string") {
+      errors.add("match.amountTolerance", "invalid_type");
+    } else {
+      const units = parseToleranceUnits(value.amountTolerance);
+      if (units === null) {
+        errors.add("match.amountTolerance", "invalid_value");
+      } else if (units > MAX_TOLERANCE_UNITS) {
+        errors.add("match.amountTolerance", "out_of_range");
+      } else {
+        out.amountTolerance = value.amountTolerance;
+      }
+    }
+  }
+  return errors.list.length === before ? out : null;
+}
+
+/** The tag a profile adds: 1 to 50 characters once trimmed, no control character. */
+function checkTag(value: unknown, errors: Errors): string | null {
+  if (typeof value !== "string") {
+    errors.add("tag", "invalid_type");
+    return null;
+  }
+  const tag = value.trim();
+  if (tag === "") {
+    errors.add("tag", "empty");
+    return null;
+  }
+  if (tag.length > MAX_PROFILE_TAG_LENGTH) {
+    errors.add("tag", "too_long");
+    return null;
+  }
+  if (hasControlCharacter(tag)) {
+    errors.add("tag", "control_character");
+    return null;
+  }
+  return tag;
+}
+
 /**
  * Validate an untrusted value as a receipt parser definition (version 2, the
  * only one). Refuses unknown keys at every level, wrong types, another
@@ -651,8 +844,24 @@ export function validateReceiptParserDefinition(
   }
 
   const out: Record<string, unknown> = { version: RECEIPT_PARSER_VERSION };
+  if (input.source !== undefined) {
+    // Anything that is not one of the two sources is the same refusal, whatever its type.
+    if (RECEIPT_LINES_SOURCES.includes(input.source as ReceiptLinesSource)) {
+      out.source = input.source;
+    } else {
+      errors.add("source", "invalid_value");
+    }
+  }
   const fields: [
-    "orderId" | "total" | "paid" | "shipping" | "discount" | "payee",
+    (
+      | "orderId"
+      | "total"
+      | "paid"
+      | "shipping"
+      | "discount"
+      | "payee"
+      | "reference"
+    ),
     FieldCaptures,
   ][] = [
     ["orderId", ORDER_ID_CAPTURES],
@@ -661,11 +870,31 @@ export function validateReceiptParserDefinition(
     ["shipping", AMOUNT_CAPTURES],
     ["discount", AMOUNT_CAPTURES],
     ["payee", PAYEE_CAPTURES],
+    ["reference", REFERENCE_CAPTURES],
   ];
   for (const [field, captures] of fields) {
     if (input[field] === undefined) continue;
     const patterns = checkPatternList(input[field], field, captures, errors, 0);
     if (patterns !== null) out[field] = patterns;
+  }
+  if (input.match !== undefined) {
+    const match = checkMatch(
+      input.match,
+      Array.isArray(input.reference) && input.reference.length > 0,
+      errors,
+    );
+    if (match !== null) out.match = match;
+  }
+  if (input.tag !== undefined) {
+    const tag = checkTag(input.tag, errors);
+    if (tag !== null) out.tag = tag;
+  }
+  if (input.aiCategories !== undefined) {
+    if (typeof input.aiCategories === "boolean") {
+      out.aiCategories = input.aiCategories;
+    } else {
+      errors.add("aiCategories", "invalid_type");
+    }
   }
   if (input.items !== undefined) {
     const items = checkItems(input.items, errors);

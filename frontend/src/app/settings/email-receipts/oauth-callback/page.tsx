@@ -16,7 +16,8 @@ import { emailReceiptsApi } from '@/lib/email-receipts-api';
 import { getErrorMessage } from '@/lib/errors';
 import type { EmailReceiptMailbox } from '@/types/email-receipts';
 
-const SETTINGS_HREF = '/settings/email-receipts';
+/** Where the connection ends up: the hub's Mailbox tab (the redirect URI itself, registered with the provider, is unchanged). */
+const SETTINGS_HREF = '/email-receipts?tab=mailbox';
 
 /** A provider's own words are shown, but never more than a sentence or two of them. */
 const PROVIDER_TEXT_MAX_LENGTH = 300;

@@ -19,6 +19,13 @@ describe('aiReviewApi', () => {
     expect(apiClient.get).toHaveBeenCalledWith('/ai-review-requests', { params: { status: 'proposed' } });
   });
 
+  it('approves a batch with one POST of the ids and returns the per-request results', async () => {
+    const answer = { results: [{ id: 'r-1', ok: true }, { id: 'r-2', ok: false, error: 'changed' }], approved: 1, failed: 1 };
+    vi.mocked(apiClient.post).mockResolvedValue({ data: answer });
+    expect(await aiReviewApi.approveBatch(['r-1', 'r-2'])).toEqual(answer);
+    expect(apiClient.post).toHaveBeenCalledWith('/ai-review-requests/approve-batch', { ids: ['r-1', 'r-2'] });
+  });
+
   it('posts a dismissal to the request', async () => {
     vi.mocked(apiClient.post).mockResolvedValue({ data: { id: 'r-1', status: 'rejected' } });
     expect(await aiReviewApi.dismiss('r-1')).toEqual({ id: 'r-1', status: 'rejected' });

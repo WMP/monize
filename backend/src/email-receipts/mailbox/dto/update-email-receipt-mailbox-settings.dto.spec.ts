@@ -41,6 +41,18 @@ describe("UpdateEmailReceiptMailboxSettingsDto", () => {
     });
   });
 
+  it("accepts the switch for profile proposals and the AI limit, a boolean only", async () => {
+    await expect(
+      check({ profileProposalsCountTowardAiLimit: false }),
+    ).resolves.toMatchObject({ profileProposalsCountTowardAiLimit: false });
+    await expect(
+      check({ profileProposalsCountTowardAiLimit: true }),
+    ).resolves.toMatchObject({ profileProposalsCountTowardAiLimit: true });
+    await expect(
+      check({ profileProposalsCountTowardAiLimit: "no" }),
+    ).rejects.toBeDefined();
+  });
+
   it("treats a blank folder as not sent, like the full save", async () => {
     await expect(check({ folder: "", enabled: true })).resolves.toMatchObject({
       enabled: true,

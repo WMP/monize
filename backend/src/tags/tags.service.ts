@@ -402,6 +402,73 @@ export class TagsService {
     }
   }
 
+  /**
+   * The user's tags whose names equal `names` case-insensitively, on the
+   * caller's manager (read only). A name the user has no tag for is absent from
+   * the result. Used to preview which tag names a proposal would create.
+   */
+  async findByNames(
+    m: EntityManager,
+    userId: string,
+    names: readonly string[],
+  ): Promise<Tag[]> {
+    const lowered = [...new Set(names.map((n) => n.trim().toLowerCase()))];
+    if (lowered.length === 0) return [];
+    return m
+      .getRepository(Tag)
+      .createQueryBuilder("tag")
+      .where("tag.userId = :userId", { userId })
+      .andWhere("LOWER(tag.name) IN (:...lowered)", { lowered })
+      .getMany();
+  }
+
+  /**
+   * Find the user's tag for each name (case-insensitively) or create it, on the
+   * caller's manager, and return them in the order of `names`, each once. The
+   * insert is guarded by `WHERE NOT EXISTS` and by `ON CONFLICT DO NOTHING` against
+   * the unique index `idx_tags_user_name`, so two writers racing for one name leave
+   * one tag and neither fails; the select that follows reads what is there. The tag is
+   * written in the caller's transaction, so a rollback drops a tag it created.
+   * Blank names are skipped; at most `MAX_TAGS_PER_CALL` are taken.
+   */
+  async findOrCreateByNames(
+    m: EntityManager,
+    userId: string,
+    names: readonly string[],
+  ): Promise<Tag[]> {
+    const wanted: string[] = [];
+    const seen = new Set<string>();
+    for (const raw of names) {
+      const name = raw.trim();
+      const key = name.toLowerCase();
+      if (name === "" || seen.has(key)) continue;
+      seen.add(key);
+      wanted.push(name);
+      if (wanted.length >= MAX_TAGS_PER_CALL) break;
+    }
+    for (const name of wanted) {
+      // The WHERE NOT EXISTS makes the common case a no-op; the unique index
+      // `idx_tags_user_name` (user_id, LOWER(name)) is the backstop for two
+      // writers racing for one name, and a target-less ON CONFLICT DO NOTHING
+      // turns that loss into "the other one's tag", which the select below reads.
+      await m.query(
+        `INSERT INTO tags (user_id, name)
+         SELECT $1::uuid, $2::varchar
+          WHERE NOT EXISTS (
+                  SELECT 1 FROM tags
+                   WHERE user_id = $1::uuid AND LOWER(name) = LOWER($2::varchar))
+         ON CONFLICT DO NOTHING`,
+        [userId, name],
+      );
+    }
+    const found = await this.findByNames(m, userId, wanted);
+    const byKey = new Map(found.map((tag) => [tag.name.toLowerCase(), tag]));
+    return wanted.flatMap((name) => {
+      const tag = byKey.get(name.toLowerCase());
+      return tag ? [tag] : [];
+    });
+  }
+
   /** Remove exactly the named (transaction, tag) links; other tags stay. */
   async removeTransactionTags(
     m: EntityManager,

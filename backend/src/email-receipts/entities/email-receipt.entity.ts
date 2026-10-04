@@ -38,16 +38,26 @@ export const EMAIL_RECEIPT_STATUSES: readonly EmailReceiptStatus[] = [
   "ignored",
 ];
 
-/** How the receipt was tied to its transaction (the schema's match_kind CHECK). */
+/**
+ * How the receipt was tied to its transaction (the schema's match_kind CHECK):
+ * the name of the profile strategy that found it (`reference`, `order_id`,
+ * `amount_payee`, `amount_date`) or `manual`. `amount_only` is what a row matched
+ * before the strategies were configurable carries: it is read, never written (the
+ * same rule is now `amount_date`).
+ */
 export type EmailReceiptMatchKind =
   | "order_id"
+  | "reference"
   | "amount_payee"
+  | "amount_date"
   | "amount_only"
   | "manual";
 
 export const EMAIL_RECEIPT_MATCH_KINDS: readonly EmailReceiptMatchKind[] = [
   "order_id",
+  "reference",
   "amount_payee",
+  "amount_date",
   "amount_only",
   "manual",
 ];

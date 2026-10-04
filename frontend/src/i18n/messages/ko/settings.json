@@ -996,7 +996,7 @@
     },
     "emailReceiptsCard": {
       "title": "이메일 영수증",
-      "description": "주문 확인 메일용 메일함을 연결하고, 이를 읽는 파서를 관리합니다."
+      "description": "주문 확인 메일용 메일함을 연결하고, 이를 읽는 프로필을 관리합니다."
     },
     "bankSyncCard": {
       "title": "은행 동기화",

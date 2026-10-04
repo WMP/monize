@@ -143,7 +143,10 @@
     "transferNotSupported": "Bir transfer öneriyle incelenemez. Bunun yerine isteği reddedin.",
     "splitDifference": "Bölme satırlarının toplamı {{ sum }} ancak işlem tutarı {{ amount }}: {{ difference }} atanmadı. Satırların toplamını işlem tutarına eşitleyin; teslimat ücreti gibi bir artık kendi satırına ihtiyaç duyar veya atanmak yerine kullanıcıya bildirilir.",
     "noTransaction": "Bu yapay zekâ inceleme isteği bir işlemle ilgili değil.",
-    "parserDraftNotSubmittable": "Bir ayrıştırıcı taslağı isteği işlem önerisiyle değil, email_receipt_parsers aracıyla yanıtlanır (önce test edin, sonra bu requestId ile save_draft)."
+    "parserDraftNotSubmittable": "Bir ayrıştırıcı taslağı isteği işlem önerisiyle değil, email_receipt_parsers aracıyla yanıtlanır (önce test edin, sonra bu requestId ile save_draft).",
+    "tagNamesInvalid": "Bir öneri en fazla {{ max }} etiket ekleyebilir; her etiket 1 ile {{ length }} karakter uzunluğunda olmalı ve denetim karakteri içermemelidir.",
+    "noApprovableProposal": "Bu isteğin burada onaylanacak bir önerisi yok.",
+    "approveFailed": "Bu öneri onaylanamadı. Tek başına deneyin."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Çok fazla doğrulama denemesi. Lütfen tekrar giriş yapın.",

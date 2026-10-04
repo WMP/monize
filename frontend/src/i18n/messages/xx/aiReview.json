@@ -13,6 +13,12 @@
     "rejected": "[XX-Rejected-XX]",
     "expired": "[XX-Expired-XX]"
   },
+  "kindFilter": {
+    "label": "[XX-Filter by kind-XX]",
+    "all": "[XX-All-XX]",
+    "email_receipt": "[XX-Email receipts-XX]",
+    "transaction_review": "[XX-Rules-XX]"
+  },
   "status": {
     "pending": "[XX-Pending-XX]",
     "claimed": "[XX-In review-XX]",
@@ -47,6 +53,23 @@
   },
   "proposal": {
     "errorTitle": "[XX-This proposal can no longer be applied-XX]"
+  },
+  "bulk": {
+    "selectRow": "[XX-Select {name}-XX]",
+    "selectAll": "[XX-Select all approvable requests shown-XX]",
+    "approveSelected": "[XX-Approve selected ({count})-XX]",
+    "approveAllShown": "[XX-Approve all shown ({count})-XX]",
+    "summary": "[XX-{approved, plural, one {# proposal} other {# proposals}} applied, {failed, plural, one {# not applied} other {# not applied}}.-XX]",
+    "closeSummary": "[XX-Close-XX]",
+    "failure": "[XX-{name}: {reason}-XX]",
+    "noReason": "[XX-No reason was given-XX]",
+    "unknownRequest": "[XX-A request-XX]",
+    "failed": "[XX-Could not apply the proposals-XX]",
+    "dialog": {
+      "title": "[XX-{count, plural, one {Apply # proposal?} other {Apply # proposals?}}-XX]",
+      "message": "[XX-Each proposal is checked against its transaction as it is now and applied on its own. One that no longer fits is skipped and reported, and the rest are still applied. Review the proposals before approving them.-XX]",
+      "confirm": "[XX-{count, plural, one {Apply # proposal} other {Apply # proposals}}-XX]"
+    }
   },
   "dismissDialog": {
     "title": "[XX-Dismiss this request?-XX]",

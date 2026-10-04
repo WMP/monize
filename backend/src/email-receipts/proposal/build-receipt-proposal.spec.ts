@@ -708,3 +708,138 @@ describe("buildReceiptProposal: the payee", () => {
     expect(proposal.input).toMatchObject({ payeeName: "Sklep X" });
   });
 });
+
+describe("buildReceiptProposal: the profile's tag (design 5.5)", () => {
+  const ctx = (tagName?: string | null) => ({ ...CTX, tagName });
+
+  it("adds the tag to an itemized proposal", () => {
+    const { input, kind } = buildReceiptProposal(example(), TX, ctx("Allegro"));
+    expect(kind).toBe("itemized");
+    expect(input?.tagNames).toEqual(["Allegro"]);
+    expect(input?.splits).toHaveLength(4);
+  });
+
+  it("adds the tag to a one-category proposal", () => {
+    const { input, kind } = buildReceiptProposal(
+      single(),
+      { ...TX, amount: -12.5 },
+      ctx("Allegro"),
+    );
+    expect(kind).toBe("single_category");
+    expect(input?.tagNames).toEqual(["Allegro"]);
+  });
+
+  it("adds none to a description-only proposal: the profile did not categorise the transaction", () => {
+    const { input, kind } = buildReceiptProposal(
+      example(),
+      { ...TX, amount: -35 },
+      ctx("Allegro"),
+    );
+    expect(kind).toBe("description_only");
+    expect(input).not.toHaveProperty("tagNames");
+    const incomplete = buildReceiptProposal(
+      example({ complete: false, reason: "items_uncategorized" }),
+      TX,
+      ctx("Allegro"),
+    );
+    expect(incomplete.input).not.toHaveProperty("tagNames");
+  });
+
+  it("adds none when the profile has no tag, a blank one, or the context says null", () => {
+    for (const tag of [undefined, null, "", "   "]) {
+      const { input } = buildReceiptProposal(example(), TX, ctx(tag));
+      expect(input).not.toHaveProperty("tagNames");
+    }
+  });
+
+  it("cleans the tag like every other text that came from the profile: markup stripped, cut to 50 characters", () => {
+    const { input } = buildReceiptProposal(
+      example(),
+      TX,
+      ctx(`<b>${"x".repeat(80)}</b>`),
+    );
+    expect(input?.tagNames).toHaveLength(1);
+    expect(input?.tagNames?.[0]).not.toMatch(/[<>]/);
+    expect(input?.tagNames?.[0]).toHaveLength(50);
+  });
+
+  it("changes nothing else about the proposal", () => {
+    const without = buildReceiptProposal(example(), TX, ctx());
+    const withTag = buildReceiptProposal(example(), TX, ctx("Allegro"));
+    expect({ ...withTag.input, tagNames: undefined }).toEqual({
+      ...without.input,
+      tagNames: undefined,
+    });
+    expect(withTag.kind).toBe(without.kind);
+  });
+});
+
+describe("buildReceiptProposal: categories the AI chose (design 5.6)", () => {
+  const ai = (item: ParsedReceipt["items"][number]) => ({
+    ...item,
+    categorySource: "ai" as const,
+  });
+
+  it("marks only the split lines of the items whose category the AI chose", () => {
+    const { input } = buildReceiptProposal(
+      example({
+        items: [
+          ai({
+            name: "USB-C cable",
+            qty: 2,
+            amount: 199800,
+            categoryId: CAT_CABLE,
+          }),
+          { name: "Phone case", qty: 1, amount: 150000, categoryId: CAT_CASE },
+        ],
+      }),
+      TX,
+      CTX,
+    );
+    expect(input?.splits?.map((s) => s.categorySource)).toEqual([
+      "ai",
+      undefined,
+      undefined,
+      undefined,
+    ]);
+    expect(input?.splits?.[1]).not.toHaveProperty("categorySource");
+  });
+
+  it("marks a one-category proposal when the AI chose that category", () => {
+    const { input, kind } = buildReceiptProposal(
+      single({
+        items: [
+          ai({
+            name: "Widget",
+            qty: 1,
+            amount: 125000,
+            categoryId: CAT_DEFAULT,
+          }),
+        ],
+      }),
+      { ...TX, amount: -12.5 },
+      CTX,
+    );
+    expect(kind).toBe("single_category");
+    expect(input?.categorySource).toBe("ai");
+  });
+
+  it("marks nothing for a reading no AI categorised", () => {
+    const { input } = buildReceiptProposal(example(), TX, CTX);
+    expect(JSON.stringify(input)).not.toContain("categorySource");
+  });
+
+  it("never changes an amount or a category name because of the mark", () => {
+    const plain = buildReceiptProposal(example(), TX, CTX).input;
+    const marked = buildReceiptProposal(
+      example({
+        items: example().items.map((item) => ai(item)),
+      }),
+      TX,
+      CTX,
+    ).input;
+    expect(marked?.splits?.map((s) => [s.categoryName, s.amount])).toEqual(
+      plain?.splits?.map((s) => [s.categoryName, s.amount]),
+    );
+  });
+});

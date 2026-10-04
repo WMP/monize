@@ -13,6 +13,12 @@
     "rejected": "Đã từ chối",
     "expired": "Đã hết hạn"
   },
+  "kindFilter": {
+    "label": "Lọc theo loại",
+    "all": "Tất cả",
+    "email_receipt": "Hóa đơn qua email",
+    "transaction_review": "Quy tắc"
+  },
   "status": {
     "pending": "Đang chờ",
     "claimed": "Đang xem xét",
@@ -47,6 +53,23 @@
   },
   "proposal": {
     "errorTitle": "Đề xuất này không thể áp dụng nữa"
+  },
+  "bulk": {
+    "selectRow": "Chọn {name}",
+    "selectAll": "Chọn tất cả yêu cầu có thể phê duyệt đang hiển thị",
+    "approveSelected": "Phê duyệt mục đã chọn ({count})",
+    "approveAllShown": "Phê duyệt tất cả mục đang hiển thị ({count})",
+    "summary": "Đã áp dụng {approved, plural, one {# đề xuất} other {# đề xuất}}, {failed, plural, one {# chưa được áp dụng} other {# chưa được áp dụng}}.",
+    "closeSummary": "Đóng",
+    "failure": "{name}: {reason}",
+    "noReason": "Không có lý do nào được đưa ra",
+    "unknownRequest": "Một yêu cầu",
+    "failed": "Không thể áp dụng các đề xuất",
+    "dialog": {
+      "title": "{count, plural, one {Áp dụng # đề xuất?} other {Áp dụng # đề xuất?}}",
+      "message": "Mỗi đề xuất được kiểm tra với giao dịch ở trạng thái hiện tại và được áp dụng riêng. Đề xuất nào không còn phù hợp sẽ bị bỏ qua và được báo cáo, còn các đề xuất khác vẫn được áp dụng. Hãy xem xét các đề xuất trước khi phê duyệt.",
+      "confirm": "{count, plural, one {Áp dụng # đề xuất} other {Áp dụng # đề xuất}}"
+    }
   },
   "dismissDialog": {
     "title": "Bỏ qua yêu cầu này?",

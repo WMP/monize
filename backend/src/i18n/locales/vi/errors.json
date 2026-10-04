@@ -143,7 +143,10 @@
     "transferNotSupported": "Không thể xem xét một khoản chuyển tiền bằng đề xuất. Hãy từ chối yêu cầu thay vào đó.",
     "splitDifference": "Các dòng chia cộng lại là {{ sum }} nhưng giao dịch là {{ amount }}: {{ difference }} chưa được phân bổ. Hãy làm cho các dòng cộng lại bằng giao dịch; phần dư như phí giao hàng cần một dòng riêng hoặc được nêu cho người dùng thay vì phân bổ.",
     "noTransaction": "Yêu cầu xem xét AI này không liên quan đến một giao dịch.",
-    "parserDraftNotSubmittable": "Yêu cầu soạn trình phân tích được trả lời bằng công cụ email_receipt_parsers (thử trước, rồi save_draft với requestId này), không phải bằng một đề xuất giao dịch."
+    "parserDraftNotSubmittable": "Yêu cầu soạn trình phân tích được trả lời bằng công cụ email_receipt_parsers (thử trước, rồi save_draft với requestId này), không phải bằng một đề xuất giao dịch.",
+    "tagNamesInvalid": "Một đề xuất có thể thêm tối đa {{ max }} thẻ, mỗi thẻ dài từ 1 đến {{ length }} ký tự và không chứa ký tự điều khiển.",
+    "noApprovableProposal": "Yêu cầu này không có đề xuất nào để phê duyệt tại đây.",
+    "approveFailed": "Không thể phê duyệt đề xuất này. Hãy thử riêng đề xuất này."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Quá nhiều lần xác minh thất bại. Vui lòng đăng nhập lại.",

@@ -20,6 +20,17 @@
     "sameSign": "Die Werte von \"{{ param }}\" und \"{{ other }}\" müssen dasselbe Vorzeichen haben",
     "onOrBefore": "Der Wert von \"{{ param }}\" muss am oder vor \"{{ other }}\" liegen"
   },
+  "attachments": {
+    "notFound": "Anhang nicht gefunden",
+    "storageUnavailable": "Die Datei dieses Anhangs liegt im Speicher-Backend \"{{ provider }}\", auf das dieser Server nicht zugreifen kann",
+    "transactionNotFound": "Transaktion nicht gefunden",
+    "empty": "Die hochgeladene Datei ist leer",
+    "fileTooLarge": "Die Datei überschreitet die maximale Größe von {{ max }} Bytes",
+    "unsupportedType": "Nicht unterstützter Dateityp. Erlaubte Typen: {{ types }}",
+    "tooMany": "Diese Transaktion hat bereits die maximale Anzahl von {{ max }} Anhängen",
+    "swept": "Der Upload hat zu lange gedauert und sein Speicherplatz wurde freigegeben. Bitte versuchen Sie es erneut.",
+    "pairRequiresImages": "Ein gescanntes Dokument und sein Original müssen beide Bilder sein"
+  },
   "accounts": {
     "accountWithIdNotFound": "Konto mit ID {{ id }} nicht gefunden",
     "notInvestmentPair": "Dieses Konto ist nicht Teil eines Investmentkonto-Paares",
@@ -132,7 +143,10 @@
     "transferNotSupported": "Eine Überweisung kann nicht per Vorschlag geprüft werden. Lehnen Sie die Anfrage stattdessen ab.",
     "splitDifference": "Die Teilbeträge ergeben zusammen {{ sum }}, die Buchung beträgt aber {{ amount }}: {{ difference }} sind nicht zugeordnet. Die Zeilen müssen zur Buchung passen; ein Rest wie Lieferkosten braucht eine eigene Zeile oder wird dem Nutzer genannt, statt zugeordnet zu werden.",
     "noTransaction": "Diese KI-Prüfanfrage betrifft keine Buchung.",
-    "parserDraftNotSubmittable": "Eine Parser-Entwurfsanfrage wird mit dem Tool email_receipt_parsers beantwortet (test, dann save_draft mit dieser requestId), nicht mit einem Buchungsvorschlag."
+    "parserDraftNotSubmittable": "Eine Parser-Entwurfsanfrage wird mit dem Tool email_receipt_parsers beantwortet (test, dann save_draft mit dieser requestId), nicht mit einem Buchungsvorschlag.",
+    "tagNamesInvalid": "Ein Vorschlag darf bis zu {{ max }} Tags enthalten, jeweils mit 1 bis {{ length }} Zeichen und ohne Steuerzeichen.",
+    "noApprovableProposal": "Diese Anfrage hat hier keinen Vorschlag, der freigegeben werden könnte.",
+    "approveFailed": "Dieser Vorschlag konnte nicht freigegeben werden. Versuche ihn einzeln."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Zu viele Verifikationsversuche. Bitte melden Sie sich erneut an.",
@@ -230,14 +244,14 @@
     "backupPasswordBreached": "Dieses Passwort wurde in einem Datenleck gefunden. Bitte wählen Sie ein anderes Passwort.",
     "restoreBodyMustBeFile": "Anfrage-Body muss eine Sicherungsdatei sein",
     "reauthUnavailable": "Legen Sie zuerst das Passwort für Ihr Konto fest, bevor Sie ein Backup wiederherstellen.",
-    "supportPasswordRequired": "Ein Support-Backup muss verschlüsselt sein: Bitte ein Passwort angeben.",
     "passwordHeaderNotBase64": "Der Header {header} muss base64-codiert sein.",
+    "folderOutsideAllowedRoots": "Backup-Ordner \"{path}\" liegt außerhalb der erlaubten Wurzelverzeichnisse ({roots}). Setze BACKUP_ALLOWED_ROOTS, um ihn zuzulassen.",
     "decompressTooLarge": "Backup ist zu groß zum Wiederherstellen: Es entpackt sich über das Limit dieser Instanz von {limit} Bytes hinaus. Diese Obergrenze wird aus dem Speicher des Containers und einem gemessenen Aufwand pro Byte abgeleitet -- sie allein zu erhöhen, modelliert eine Wiederherstellung, die der Prozess nicht abschließen kann. Erhöhen Sie stattdessen das Speicherlimit des Containers (Kubernetes: backend.resources.limits.memory).",
     "exportTooLarge": "Dieses Backup ist zu groß, um in einem Stück erzeugt zu werden (über {limit} Bytes bei Tabelle \"{table}\"). Automatische und Support-Backups müssen im Speicher gehalten werden; lade ein manuelles Backup herunter, das streamt, oder erhöhe BACKUP_EXPORT_BUFFER_LIMIT.",
+    "supportPasswordRequired": "Ein Support-Backup muss verschlüsselt sein: Bitte ein Passwort angeben.",
     "supportExportTooLarge": "Dieses Support-Backup wäre {{ size }} MiB JSON und liegt damit über dem Limit von {{ limit }} MiB. Schränke es mit einer Kontoauswahl oder einem Zeitraum ein, oder erhöhe BACKUP_EXPORT_BUFFER_LIMIT.",
-    "folderUnusable": "Ordner \"{{ path }}\" kann nicht als Verzeichnis verwendet werden ({{ reason }}).",
-    "folderOutsideAllowedRoots": "Backup-Ordner \"{path}\" liegt außerhalb der erlaubten Wurzelverzeichnisse ({roots}). Setze BACKUP_ALLOWED_ROOTS, um ihn zuzulassen.",
     "noBackupStorage": "Diese Installation hat keinen beschreibbaren Backup-Speicher: {{ safePath }} existiert nicht und kann nicht erstellt werden ({{ reason }}). Binde dort ein Volume ein (Docker: Bind-Mount oder benanntes Volume; Kubernetes: backend.persistence.backups im Helm-Chart setzen) und versuche es erneut.",
+    "folderUnusable": "Ordner \"{{ path }}\" kann nicht als Verzeichnis verwendet werden ({{ reason }}).",
     "restoreNoMemoryHeadroom": "Diese Installation hat keinen Speicherspielraum für eine Wiederherstellung: Der modellierte Spitzenbedarf einer Wiederherstellung passt nicht in den Container. Erhöhe das Speicherlimit des Containers oder senke BACKUP_RESTORE_EXPANDED_LIMIT.",
     "restoreQueueFull": "Zu viele Wiederherstellungen warten bereits auf die Wiederherstellungskapazität dieser Instanz. Versuchen Sie es in einem Moment erneut.",
     "restoreQueueWaitTimeout": "Zeitüberschreitung beim Warten auf Wiederherstellungskapazität: Eine andere Wiederherstellung läuft noch. Versuchen Sie es in einem Moment erneut.",
@@ -290,12 +304,12 @@
   },
   "currencies": {
     "alreadyInList": "Währung \"{{ code }}\" ist bereits in Ihrer Liste",
+    "alreadyInListInactive": "Währung \"{{ code }}\" ist bereits in Ihrer Liste, aber derzeit inaktiv. Reaktivieren Sie sie, um sie zu verwenden.",
     "notFound": "Währung \"{{ code }}\" nicht gefunden",
     "cannotModifySystem": "Systemwährungs-Metadaten können nicht geändert werden",
     "cannotModifyOther": "Währung eines anderen Benutzers kann nicht geändert werden",
     "inUse": "Währung \"{{ code }}\" wird von Ihren Konten, Wertpapieren oder anderen Einträgen verwendet. Deaktivieren Sie sie stattdessen.",
     "invalidRateDate": "date muss im Format JJJJ-MM-TT angegeben werden",
-    "alreadyInListInactive": "Währung \"{{ code }}\" ist bereits in Ihrer Liste, aber derzeit inaktiv. Reaktivieren Sie sie, um sie zu verwenden.",
     "sameCurrencyHistory": "{{ code }} ist Ihre Standardwährung; sie hat keinen Wechselkursverlauf",
     "rateProviderUnavailable": "Der Wechselkursanbieter hat nicht geantwortet. Bitte versuchen Sie es später erneut."
   },
@@ -497,7 +511,6 @@
     "loanLedgerUnreadable": "Diese Kreditrate konnte nicht berechnet werden, da ihr Kontosaldo nicht gelesen werden konnte. Bitte erneut versuchen."
   },
   "securities": {
-    "exchangeRateUnavailable": "Wechselkurs für {{ from }} -> {{ to }} zum Transaktionsdatum konnte nicht ermittelt werden. Geben Sie einen expliziten exchangeRate an, damit die Buchung auf dem Geldkonto korrekt ist.",
     "accountMustBeInvestment": "Konto muss vom Typ INVESTMENT sein",
     "transferPairSameRow": "Die beiden Seiten einer Übertragung können nicht dieselbe Transaktion sein",
     "transferPairNotFound": "Eine der beiden Transaktionen existiert nicht mehr",
@@ -511,8 +524,14 @@
     "transferPairOutsidePortfolio": "Beide Seiten müssen auf Anlagekonten dieses Portfolios liegen",
     "providerCurrencyMismatch": "Preisaktualisierung für {{ symbol }} abgelehnt: {{ provider }} notiert es in {{ reported }}, aber das Wertpapier ist in {{ configured }} erfasst. Korrigieren Sie die Währung, das Symbol oder die Börse des Wertpapiers und aktualisieren Sie dann erneut.",
     "securityIdRequired": "Wertpapier-ID ist für {{ action }}-Buchungen erforderlich",
+    "exchangeRateUnavailable": "Wechselkurs für {{ from }} -> {{ to }} zum Transaktionsdatum konnte nicht ermittelt werden. Geben Sie einen expliziten exchangeRate an, damit die Buchung auf dem Geldkonto korrekt ist.",
     "splitRatioRequired": "Teilungsverhältnis (Menge) muss größer als null sein",
     "acquisitionPriceRequired": "Für {{ action }}-Transaktionen ist ein Preis pro Anteil erforderlich, der größer als null sein muss. Verwenden Sie ADD_SHARES für Anteile, deren Kosten nicht bekannt sind.",
+    "ambiguousSecurity": "\"{{ query }}\" entspricht mehreren Wertpapieren: {{ list }}. Verwenden Sie das genaue Tickersymbol.",
+    "allocationExceedsTotal": "Die Aufteilungsprozentsätze ergeben in Summe mehr als 100 %.",
+    "assetOptionNameRequired": "Ein Name für die Anlageklasse ist erforderlich.",
+    "invalidTagKey": "Ein Tag-Schlüssel (1–100 Zeichen) ist erforderlich",
+    "securityNotFoundByQuery": "Kein Wertpapier entspricht \"{{ query }}\". Fügen Sie das Wertpapier zuerst hinzu oder überprüfen Sie das Tickersymbol.",
     "cannotHoldSecurities": "{{ label }} kann keine Wertpapiere halten",
     "sourceDestMustDiffer": "Quell- und Zielkonto müssen verschieden sein",
     "bothAccountsMustBeInvestment": "Beide Konten müssen vom Typ INVESTMENT sein",
@@ -538,6 +557,10 @@
     "limitMax200": "limit darf 200 nicht überschreiten",
     "invalidAction": "Ungültige Aktion: {{ action }}. Muss eine der folgenden sein: {{ validActions }}",
     "symbolAlreadyExists": "Wertpapier mit Symbol {{ symbol }} existiert bereits",
+    "lookupQueryRequired": "Geben Sie ein Tickersymbol oder einen Wertpapiernamen zum Nachschlagen ein.",
+    "lookupNotFound": "Kein Wertpapier gefunden, das auf \"{{ query }}\" passt. Überprüfen Sie das Symbol oder den Namen oder geben Sie eine Börse an.",
+    "lookupAmbiguous": "\"{{ query }}\" passt auf mehrere Wertpapiere: {{ list }}. Führen Sie die Suche erneut mit Angabe einer Börse aus.",
+    "lookupNoCurrency": "Die Währung für \"{{ symbol }}\" konnte nicht ermittelt werden. Fügen Sie das Wertpapier stattdessen manuell hinzu.",
     "notFoundById": "Wertpapier mit ID {{ id }} nicht gefunden",
     "notFoundBySymbol": "Wertpapier mit Symbol {{ symbol }} nicht gefunden",
     "cannotDeactivateWithHoldings": "Wertpapier mit aktiven Beständen kann nicht deaktiviert werden. Bitte verkaufen Sie zuerst alle Anteile.",
@@ -554,21 +577,12 @@
     "invalidUuid": "Ungültige {{ label }}-UUID: {{ id }}",
     "symbolLength": "Symbol muss zwischen 1 und 20 Zeichen lang sein",
     "symbolCharacters": "Symbol darf nur Buchstaben, Ziffern, Punkte oder Bindestriche enthalten",
-    "ambiguousSecurity": "\"{{ query }}\" entspricht mehreren Wertpapieren: {{ list }}. Verwenden Sie das genaue Tickersymbol.",
-    "securityNotFoundByQuery": "Kein Wertpapier entspricht \"{{ query }}\". Fügen Sie das Wertpapier zuerst hinzu oder überprüfen Sie das Tickersymbol.",
-    "lookupQueryRequired": "Geben Sie ein Tickersymbol oder einen Wertpapiernamen zum Nachschlagen ein.",
-    "lookupNotFound": "Kein Wertpapier gefunden, das auf \"{{ query }}\" passt. Überprüfen Sie das Symbol oder den Namen oder geben Sie eine Börse an.",
-    "lookupAmbiguous": "\"{{ query }}\" passt auf mehrere Wertpapiere: {{ list }}. Führen Sie die Suche erneut mit Angabe einer Börse aus.",
-    "lookupNoCurrency": "Die Währung für \"{{ symbol }}\" konnte nicht ermittelt werden. Fügen Sie das Wertpapier stattdessen manuell hinzu.",
     "noUpdateFields": "Geben Sie mindestens ein zu änderndes Feld an.",
-    "allocationExceedsTotal": "Die Aufteilungsprozentsätze ergeben in Summe mehr als 100 %.",
-    "invalidTagKey": "Ein Tag-Schlüssel (1–100 Zeichen) ist erforderlich",
-    "assetOptionNameRequired": "Ein Name für die Anlageklasse ist erforderlich.",
     "documentNotFound": "Dokument nicht gefunden",
-    "embeddedSplitAmountMismatch": "Dieser Buchungsteil verzeichnet {{ amount }}, aber {{ action }} {{ quantity }} @ {{ price }} ergibt umgerechnet {{ expected }} bei einem Kurs von {{ rate }}. Verwenden Sie diesen Betrag, oder geben Sie den gemeinten Wechselkurs an.",
     "selectionNotFound": "Eine oder mehrere der ausgewählten Wertpapiere wurden nicht gefunden",
     "comparisonSelectionEmpty": "Wählen Sie mindestens ein Wertpapier oder einen Marktindex zum Vergleich aus",
-    "exchangeRateNotPositive": "Der Wechselkurs muss größer als null sein"
+    "exchangeRateNotPositive": "Der Wechselkurs muss größer als null sein",
+    "embeddedSplitAmountMismatch": "Dieser Buchungsteil verzeichnet {{ amount }}, aber {{ action }} {{ quantity }} @ {{ price }} ergibt umgerechnet {{ expected }} bei einem Kurs von {{ rate }}. Verwenden Sie diesen Betrag, oder geben Sie den gemeinten Wechselkurs an."
   },
   "tags": {
     "notFound": "Etikett mit ID {{ id }} nicht gefunden",
@@ -686,17 +700,6 @@
     "recalculateMortgageOnly": "Die Neuberechnung der Rate ist nur für Hypothekenkonten verfügbar",
     "insufficientData": "Nicht genügend Zahlungen mit Zinsdetails, um Zinssatzänderungen zu erkennen",
     "frequencyMismatch": "Die Zahlungsdaten stimmen nicht mit dem Zahlungsintervall des Kontos überein; abgeleitete Zinssätze sind möglicherweise weniger genau"
-  },
-  "attachments": {
-    "notFound": "Anhang nicht gefunden",
-    "storageUnavailable": "Die Datei dieses Anhangs liegt im Speicher-Backend \"{{ provider }}\", auf das dieser Server nicht zugreifen kann",
-    "transactionNotFound": "Transaktion nicht gefunden",
-    "empty": "Die hochgeladene Datei ist leer",
-    "fileTooLarge": "Die Datei überschreitet die maximale Größe von {{ max }} Bytes",
-    "unsupportedType": "Nicht unterstützter Dateityp. Erlaubte Typen: {{ types }}",
-    "tooMany": "Diese Transaktion hat bereits die maximale Anzahl von {{ max }} Anhängen",
-    "swept": "Der Upload hat zu lange gedauert und sein Speicherplatz wurde freigegeben. Bitte versuchen Sie es erneut.",
-    "pairRequiresImages": "Ein gescanntes Dokument und sein Original müssen beide Bilder sein"
   },
   "strategies": {
     "accountNotFound": "Konto nicht gefunden",

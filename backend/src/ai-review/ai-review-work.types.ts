@@ -60,6 +60,11 @@ export interface AiReviewSplitLine {
   categoryName: string;
   amount: number;
   memo?: string;
+  /**
+   * `"ai"` when the AI chose this line's category (email-receipts design 5.6).
+   * Display only: the card marks the category, and nothing signed or written reads it.
+   */
+  categorySource?: "ai";
 }
 
 /**
@@ -72,7 +77,21 @@ export interface AiReviewProposalInput {
   categoryName?: string;
   payeeName?: string;
   description?: string;
+  /** `"ai"` when the AI chose `categoryName` (display only, like `AiReviewSplitLine.categorySource`). */
+  categorySource?: "ai";
+  /**
+   * Tags to ADD to the transaction (it keeps the ones it has), created when the
+   * user has none by that name. Set only by the email-receipts module from a
+   * profile's `tag`; the agents' tools do not take it. At most
+   * `AI_REVIEW_MAX_TAG_NAMES` names of 1 to `AI_REVIEW_MAX_TAG_NAME_LENGTH`
+   * characters.
+   */
+  tagNames?: string[];
 }
+
+/** Bounds of `AiReviewProposalInput.tagNames`. */
+export const AI_REVIEW_MAX_TAG_NAMES = 5;
+export const AI_REVIEW_MAX_TAG_NAME_LENGTH = 50;
 
 /** A request as a model reads it. The claim key itself never leaves the server. */
 export interface LlmAiReviewRequest {

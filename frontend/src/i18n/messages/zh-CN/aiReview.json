@@ -13,6 +13,12 @@
     "rejected": "已拒绝",
     "expired": "已过期"
   },
+  "kindFilter": {
+    "label": "按类型筛选",
+    "all": "全部",
+    "email_receipt": "邮件收据",
+    "transaction_review": "规则"
+  },
   "status": {
     "pending": "待处理",
     "claimed": "审核中",
@@ -47,6 +53,23 @@
   },
   "proposal": {
     "errorTitle": "此提议已无法应用"
+  },
+  "bulk": {
+    "selectRow": "选择 {name}",
+    "selectAll": "选择显示的所有可批准请求",
+    "approveSelected": "批准所选（{count}）",
+    "approveAllShown": "批准显示的全部（{count}）",
+    "summary": "已应用 {approved, plural, one {# 条提议} other {# 条提议}}，{failed, plural, one {# 条未应用} other {# 条未应用}}。",
+    "closeSummary": "关闭",
+    "failure": "{name}：{reason}",
+    "noReason": "未给出原因",
+    "unknownRequest": "一个请求",
+    "failed": "无法应用这些提议",
+    "dialog": {
+      "title": "{count, plural, one {应用 # 条提议？} other {应用 # 条提议？}}",
+      "message": "每条提议都会对照交易当前的状态进行检查，并单独应用。不再适用的提议会被跳过并报告，其余的仍会应用。批准之前请先审核这些提议。",
+      "confirm": "{count, plural, one {应用 # 条提议} other {应用 # 条提议}}"
+    }
   },
   "dismissDialog": {
     "title": "忽略此请求？",

@@ -100,6 +100,32 @@ describe('emailReceiptsApi', () => {
       expect(client.get).toHaveBeenLastCalledWith('/email-receipts', { params: { status: 'unmatched', limit: 20 } });
     });
 
+    it('lists with a sender domain beside the status, and reads the domain counts', async () => {
+      client.get.mockResolvedValue({ data: [] });
+      await emailReceiptsApi.receipts.list(undefined, undefined, 'shop.example.com');
+      expect(client.get).toHaveBeenLastCalledWith('/email-receipts', { params: { domain: 'shop.example.com' } });
+      await emailReceiptsApi.receipts.list('review', 10, 'shop.example.com');
+      expect(client.get).toHaveBeenLastCalledWith('/email-receipts', {
+        params: { status: 'review', domain: 'shop.example.com', limit: 10 },
+      });
+      client.get.mockResolvedValue({ data: [{ domain: 'shop.example.com', count: 3 }] });
+      await expect(emailReceiptsApi.receipts.listDomains()).resolves.toEqual([{ domain: 'shop.example.com', count: 3 }]);
+      expect(client.get).toHaveBeenLastCalledWith('/email-receipts/domains');
+    });
+
+    it('reads the overview and processes in bulk with the run\'s own request', async () => {
+      client.get.mockResolvedValue({ data: { processable: 4 } });
+      await expect(emailReceiptsApi.receipts.overview()).resolves.toEqual({ processable: 4 });
+      expect(client.get).toHaveBeenLastCalledWith('/email-receipts/overview');
+
+      const answer = { processed: 2, byOutcome: { review: 2 }, failed: 0, remaining: 0, since: 'T' };
+      client.post.mockResolvedValue({ data: answer });
+      await expect(emailReceiptsApi.receipts.processBatch()).resolves.toEqual(answer);
+      expect(client.post).toHaveBeenLastCalledWith('/email-receipts/process-batch', {});
+      await emailReceiptsApi.receipts.processBatch({ domain: 'shop.example.com', since: 'T' });
+      expect(client.post).toHaveBeenLastCalledWith('/email-receipts/process-batch', { domain: 'shop.example.com', since: 'T' });
+    });
+
     it('addresses one email by id', async () => {
       client.get.mockResolvedValue({ data: { id: 'r-1' } });
       await emailReceiptsApi.receipts.get('r-1');

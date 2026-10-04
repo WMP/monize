@@ -12,7 +12,9 @@ import type { AiReviewWorkService } from "../../ai-review/ai-review-work.service
 import type { AiReviewSubmitResult } from "../../ai-review/ai-review-work.types";
 import { Category } from "../../categories/entities/category.entity";
 import { Payee } from "../../payees/entities/payee.entity";
+import type { PayeesService } from "../../payees/payees.service";
 import { createScopedDbMocks } from "../../test-helpers/scoped-db-testing";
+import type { EmailReceiptCategoryAiService } from "../ai/email-receipt-category-ai.service";
 import { EmailReceiptMailbox } from "../entities/email-receipt-mailbox.entity";
 import { EmailReceiptParser } from "../entities/email-receipt-parser.entity";
 import { EmailReceipt } from "../entities/email-receipt.entity";
@@ -23,6 +25,8 @@ import {
   EmailReceiptPipelineService,
   RECEIPT_AUTOMATIC_AI_INSTRUCTION,
   RECEIPT_CHAT_INSTRUCTION,
+  RECEIPT_NO_HTML_REASON,
+  RECEIPT_SCHEMA_ORG_REASON,
   type AutoApplyFacts,
   type ProcessReceiptOptions,
 } from "./email-receipt-pipeline.service";
@@ -74,6 +78,7 @@ const receiptRow = (over: Partial<EmailReceipt> = {}): EmailReceipt =>
     subject: "Your order ABCD1234",
     receivedAt: new Date("2026-09-10T10:00:00Z"),
     bodyText: BODY,
+    bodyHtml: null,
     status: "pending",
     statusReason: null,
     parserId: null,
@@ -145,6 +150,8 @@ interface World {
   mailbox: EmailReceiptMailbox;
   parsers: EmailReceiptParser[];
   payee: Partial<Payee> | null;
+  /** What `PayeesService.resolveByName` answers for the seller of a schema.org order. */
+  sellerPayee: Partial<Payee> | null;
   candidates: Array<Record<string, unknown>>;
   linkRow: Record<string, unknown> | null;
   requestStatus: string | null;
@@ -156,6 +163,7 @@ function setup(over: Partial<World> = {}) {
     mailbox: mailboxRow(),
     parsers: [parserRow()],
     payee: null,
+    sellerPayee: null,
     candidates: [candidate()],
     linkRow: null,
     requestStatus: null,
@@ -222,15 +230,30 @@ function setup(over: Partial<World> = {}) {
     confirm: jest.fn(async () => ({ type: "update_transaction", id: TX })),
   } as unknown as jest.Mocked<AiActionsService>;
 
+  const payees = {
+    resolveByName: jest.fn(async () => world.sellerPayee),
+  } as unknown as jest.Mocked<PayeesService>;
+
+  const categoryAi = {
+    canAnswerNow: jest.fn(async () => true),
+    categorize: jest.fn(
+      async (): Promise<Map<number, string> | null> => new Map(),
+    ),
+  } as unknown as jest.Mocked<EmailReceiptCategoryAiService>;
+
   const service = new EmailReceiptPipelineService(
     dataSource as never,
     requests,
     work,
     actions,
+    payees,
+    categoryAi,
   );
   return {
     service,
     world,
+    payees,
+    categoryAi,
     manager,
     receiptRepo,
     requests,
@@ -1261,7 +1284,7 @@ describe("EmailReceiptPipelineService.process", () => {
         candidates: [candidate({ description: "CARD" })],
       });
       const result = await run(h);
-      expect(result.matchKind).toBe("amount_only");
+      expect(result.matchKind).toBe("amount_date");
       expect(h.actions.confirm).not.toHaveBeenCalled();
     });
 
@@ -1362,10 +1385,32 @@ describe("autoApplyAllowed", () => {
   it("holds when every condition does", () => {
     expect(autoApplyAllowed(facts())).toBe(true);
     expect(autoApplyAllowed(facts({ matchKind: "amount_payee" }))).toBe(true);
+    // The profile's own identifier in the bank operation is as strong as an order number.
+    expect(autoApplyAllowed(facts({ matchKind: "reference" }))).toBe(true);
     expect(autoApplyAllowed(facts({ proposalKind: "single_category" }))).toBe(
       true,
     );
     expect(autoApplyAllowed(facts({ transactionAmount: 15 }))).toBe(true);
+  });
+
+  it.each(["amount_date", "amount_only", "manual"] as const)(
+    "never applies a match by %s: the amount alone is not certain",
+    (matchKind) => {
+      expect(autoApplyAllowed(facts({ matchKind }))).toBe(false);
+    },
+  );
+
+  it("still demands the exact amount whatever tolerance the profile matched with", () => {
+    expect(
+      autoApplyAllowed(
+        facts({ matchKind: "amount_payee", transactionAmount: -15.4 }),
+      ),
+    ).toBe(false);
+    expect(
+      autoApplyAllowed(
+        facts({ matchKind: "reference", transactionAmount: -15.4 }),
+      ),
+    ).toBe(false);
   });
 
   it("compares the transaction with the amount paid, else the total", () => {
@@ -1389,6 +1434,10 @@ describe("autoApplyAllowed", () => {
   it.each<[string, Partial<AutoApplyFacts>]>([
     ["the mailbox has not opted in", { mailboxAutoApply: false }],
     ["the parser is a draft", { parserStatus: "draft" }],
+    [
+      "the reading came from the email's schema.org markup, not a parser",
+      { parsed: parsed({ source: "schema_org" }) },
+    ],
     [
       "the parse is incomplete",
       { parsed: parsed({ complete: false, reason: "no_items" }) },
@@ -1416,5 +1465,483 @@ describe("describeFailure", () => {
     );
     expect(describeFailure(new Error("secret detail"))).toBe("Error");
     expect(describeFailure("text")).toBe("unknown error");
+  });
+});
+
+/** An email whose HTML carries only what a parser reading it would use. */
+const HTML_BODY =
+  "<table>" +
+  "<tr><td>Order number:</td><td>ABCD1234</td></tr>" +
+  "<tr><td>Wrapped product name that the text conversion would split</td><td>12.00</td></tr>" +
+  "<tr><td>Order total:</td><td>12.00</td></tr>" +
+  "</table>";
+
+const HTML_DEFINITION = {
+  version: 2,
+  source: "html",
+  orderId: [{ label: "Order number:", value: "{orderid}" }],
+  total: [{ label: "Order total:", value: "{amount}" }],
+  items: {
+    startAfter: "Order number:",
+    stopAt: "Order total:",
+    record: [{ line: "{name}" }, { line: "{amount}" }],
+  },
+  defaultCategoryId: CAT_BOOKS,
+};
+
+describe("EmailReceiptPipelineService.process: the lines source of a parser", () => {
+  const candidates12 = [candidate({ amount: "-12.0000" })];
+
+  it("reads the lines of the HTML part for a parser with source html", async () => {
+    const h = setup({
+      receipt: receiptRow({ bodyText: "unreadable text", bodyHtml: HTML_BODY }),
+      parsers: [parserRow({ definition: HTML_DEFINITION })],
+      candidates: candidates12,
+    });
+    const result = await run(h);
+    expect(result).toMatchObject({ status: "review", matchKind: "order_id" });
+    const stored = h.lastUpdate()?.[1] as {
+      parsed: ParsedReceipt;
+      parserId: string;
+    };
+    expect(stored.parserId).toBe("parser-1");
+    expect(stored.parsed).toMatchObject({
+      orderId: "ABCD1234",
+      total: 120000,
+      complete: true,
+      items: [
+        {
+          name: "Wrapped product name that the text conversion would split",
+          amount: 120000,
+        },
+      ],
+    });
+    expect(stored.parsed.source).toBeUndefined();
+    expect(h.payees.resolveByName).not.toHaveBeenCalled();
+  });
+
+  it("reads the text, not the HTML, for a parser with no source or source text", async () => {
+    for (const extra of [{}, { source: "text" }]) {
+      const h = setup({
+        receipt: receiptRow({ bodyHtml: HTML_BODY }),
+        parsers: [parserRow({ definition: { ...DEFINITION, ...extra } })],
+      });
+      const result = await run(h);
+      expect(result.status).toBe("review");
+      const stored = h.lastUpdate()?.[1] as { parsed: ParsedReceipt };
+      expect(stored.parsed.total).toBe(150000);
+    }
+  });
+
+  it("applies the parser's guards to the lines of its own source", async () => {
+    const guarded = {
+      ...HTML_DEFINITION,
+      requireLine: ["Wrapped product name*"],
+    };
+    // The HTML line exists only in the HTML source; the text holds no such line.
+    const h = setup({
+      receipt: receiptRow({ bodyText: "nothing", bodyHtml: HTML_BODY }),
+      parsers: [parserRow({ definition: guarded })],
+      candidates: candidates12,
+    });
+    expect((await run(h)).status).toBe("review");
+    const skipped = setup({
+      receipt: receiptRow({ bodyText: "nothing", bodyHtml: HTML_BODY }),
+      parsers: [
+        parserRow({
+          definition: { ...HTML_DEFINITION, skipIfLine: ["Order total:"] },
+        }),
+      ],
+    });
+    expect(await run(skipped)).toMatchObject({
+      status: "ignored",
+      statusReason: "skip_line",
+    });
+  });
+
+  it("is parse_failed no_html for an html parser and an email with no HTML part, keeping the parser and reading nothing", async () => {
+    const h = setup({
+      receipt: receiptRow({ bodyHtml: null }),
+      parsers: [parserRow({ definition: HTML_DEFINITION })],
+    });
+    const result = await run(h);
+    expect(result).toMatchObject({
+      status: "parse_failed",
+      statusReason: RECEIPT_NO_HTML_REASON,
+    });
+    expect(RECEIPT_NO_HTML_REASON).toBe("no_html");
+    expect(h.lastUpdate()?.[1]).toMatchObject({
+      status: "parse_failed",
+      statusReason: "no_html",
+      parserId: "parser-1",
+      parsed: null,
+      aiReviewRequestId: null,
+    });
+    expect(h.requests.enqueueClaimed).not.toHaveBeenCalled();
+    expect(h.payees.resolveByName).not.toHaveBeenCalled();
+  });
+
+  it("an html parser with no HTML to read is passed over for another parser of the sender that reads the text", async () => {
+    const h = setup({
+      receipt: receiptRow({ bodyHtml: null }),
+      parsers: [
+        parserRow({ id: "html-parser", definition: HTML_DEFINITION }),
+        parserRow({
+          id: "text-parser",
+          createdAt: new Date("2026-09-02T00:00:00Z"),
+        }),
+      ],
+    });
+    const result = await run(h);
+    expect(result.status).toBe("review");
+    expect(h.lastUpdate()?.[1]).toMatchObject({ parserId: "text-parser" });
+  });
+
+  it("keeps a person's link when the parser needs HTML the email lacks: parse_failed no_html on the chosen transaction", async () => {
+    const h = setup({
+      receipt: receiptRow({ bodyHtml: null }),
+      parsers: [parserRow({ definition: HTML_DEFINITION })],
+      linkRow: {
+        id: "tx-9",
+        amount: "-15.0000",
+        description: "CARD",
+        payee_id: null,
+        is_transfer: false,
+        status: "UNRECONCILED",
+        plain: true,
+      },
+    });
+    const result = await run(h, { link: { transactionId: "tx-9" } });
+    expect(result).toMatchObject({
+      status: "parse_failed",
+      statusReason: "no_html",
+      transactionId: "tx-9",
+      matchKind: "manual",
+    });
+  });
+});
+
+/** Synthetic JSON-LD in Google's Gmail "Order" shape, paid 15.00 for 12.00 + 3.00. */
+const jsonLdOrder = (over: Record<string, unknown> = {}): string =>
+  '<html><body><p>Thanks for your order</p><script type="application/ld+json">' +
+  JSON.stringify({
+    "@context": "http://schema.org",
+    "@type": "Order",
+    merchant: { "@type": "Organization", name: "Example Shop" },
+    orderNumber: "ABCD1234",
+    priceCurrency: "USD",
+    price: "15.00",
+    acceptedOffer: [
+      {
+        "@type": "Offer",
+        itemOffered: { "@type": "Product", name: "Widget" },
+        price: "12.00",
+        eligibleQuantity: { value: 1 },
+      },
+      {
+        "@type": "Offer",
+        itemOffered: { "@type": "Product", name: "Gadget" },
+        price: "3.00",
+      },
+    ],
+    ...over,
+  }) +
+  "</script></body></html>";
+
+const SELLER_PAYEE = {
+  id: "seller-1",
+  name: "Example Shop",
+  defaultCategoryId: CAT_BOOKS,
+};
+
+describe("EmailReceiptPipelineService.process: the email's own schema.org order", () => {
+  const storedParsed = (h: ReturnType<typeof setup>) =>
+    (h.lastUpdate()?.[1] as { parsed: ParsedReceipt }).parsed;
+
+  it("is used when no parser applies: matched, proposed and stored as review with source schema_org", async () => {
+    const h = setup({
+      receipt: receiptRow({ bodyHtml: jsonLdOrder() }),
+      parsers: [],
+      sellerPayee: SELLER_PAYEE,
+    });
+    const result = await run(h);
+    expect(result).toMatchObject({
+      status: "review",
+      statusReason: RECEIPT_SCHEMA_ORG_REASON,
+      matchKind: "order_id",
+      transactionId: TX,
+      requestId: "rq-1",
+    });
+    expect(RECEIPT_SCHEMA_ORG_REASON).toBe("schema_org");
+    expect(h.lastUpdate()?.[1]).toMatchObject({
+      status: "review",
+      statusReason: "schema_org",
+      parserId: null,
+    });
+    expect(storedParsed(h)).toEqual({
+      orderId: "ABCD1234",
+      total: 150000,
+      paid: null,
+      payee: "Example Shop",
+      shipping: null,
+      discount: null,
+      items: [
+        { name: "Widget", qty: 1, amount: 120000, categoryId: CAT_BOOKS },
+        { name: "Gadget", qty: 1, amount: 30000, categoryId: CAT_BOOKS },
+      ],
+      shippingCategoryId: null,
+      discountCategoryId: CAT_BOOKS,
+      complete: true,
+      reason: null,
+      source: "schema_org",
+    });
+    // The seller is looked up, never created; the same proposal path as a parser's.
+    expect(h.payees.resolveByName).toHaveBeenCalledWith(USER, "Example Shop");
+    const [, , , input] = h.work.submit.mock.calls[0];
+    expect(input.splits).toEqual([
+      { categoryName: "Books", amount: -12, memo: "Widget" },
+      { categoryName: "Books", amount: -3, memo: "Gadget" },
+    ]);
+  });
+
+  it("labels the proposal's summary by the sender's domain when no parser stands behind it", async () => {
+    const h = setup({
+      receipt: receiptRow({ bodyHtml: jsonLdOrder() }),
+      parsers: [],
+      sellerPayee: SELLER_PAYEE,
+    });
+    await run(h);
+    const [, , , input] = h.work.submit.mock.calls[0];
+    expect(input.description).toContain(
+      "shop.example.com ABCD1234: Widget, Gadget",
+    );
+  });
+
+  it("is used when the parser found no total and no paid, and keeps that parser on the receipt", async () => {
+    const h = setup({
+      receipt: receiptRow({
+        bodyText: "nothing the parser can read",
+        bodyHtml: jsonLdOrder(),
+      }),
+      sellerPayee: SELLER_PAYEE,
+    });
+    const result = await run(h);
+    expect(result).toMatchObject({
+      status: "review",
+      statusReason: "schema_org",
+    });
+    expect(storedParsed(h)).toMatchObject({
+      source: "schema_org",
+      total: 150000,
+    });
+    expect(h.lastUpdate()?.[1]).toMatchObject({ parserId: "parser-1" });
+  });
+
+  it("never replaces a parser that read a total, even when the HTML carries an order", async () => {
+    const h = setup({
+      receipt: receiptRow({ bodyHtml: jsonLdOrder({ price: "99.00" }) }),
+      sellerPayee: SELLER_PAYEE,
+    });
+    const result = await run(h);
+    expect(result).toMatchObject({ status: "review", statusReason: null });
+    expect(storedParsed(h).source).toBeUndefined();
+    expect(storedParsed(h).total).toBe(150000);
+    expect(h.payees.resolveByName).not.toHaveBeenCalled();
+  });
+
+  it("is not used when the order states no total or no item: no parser stays no_parser", async () => {
+    for (const over of [
+      { price: undefined },
+      { acceptedOffer: [] },
+      { acceptedOffer: undefined },
+    ]) {
+      const h = setup({
+        receipt: receiptRow({ bodyHtml: jsonLdOrder(over) }),
+        parsers: [],
+        sellerPayee: SELLER_PAYEE,
+      });
+      const result = await run(h);
+      expect(result.status).toBe("no_parser");
+      expect(h.lastUpdate()?.[1]).toMatchObject({
+        parsed: null,
+        parserId: null,
+      });
+      expect(h.payees.resolveByName).not.toHaveBeenCalled();
+    }
+  });
+
+  it("is not used when the HTML has no order markup, malformed JSON-LD, or another type", async () => {
+    for (const html of [
+      "<p>No markup</p>",
+      '<script type="application/ld+json">{broken</script>',
+      jsonLdOrder({ "@type": "Product" }),
+    ]) {
+      const h = setup({
+        receipt: receiptRow({ bodyHtml: html }),
+        parsers: [],
+        sellerPayee: SELLER_PAYEE,
+      });
+      expect((await run(h)).status).toBe("no_parser");
+    }
+  });
+
+  it("leaves the parser's own failure when it found nothing and the order is unusable", async () => {
+    const h = setup({
+      receipt: receiptRow({
+        bodyText: "hello\nnothing here",
+        bodyHtml: jsonLdOrder({ acceptedOffer: [] }),
+      }),
+    });
+    const result = await run(h);
+    expect(result).toMatchObject({
+      status: "parse_failed",
+      statusReason: "no_total",
+    });
+  });
+
+  it("is used only to the end of the same pipeline: an unmatched order is unmatched, reason schema_org, and stored", async () => {
+    const h = setup({
+      receipt: receiptRow({ bodyHtml: jsonLdOrder() }),
+      parsers: [],
+      candidates: [],
+      sellerPayee: SELLER_PAYEE,
+    });
+    const result = await run(h);
+    expect(result).toMatchObject({
+      status: "unmatched",
+      statusReason: "schema_org",
+    });
+    expect(storedParsed(h).source).toBe("schema_org");
+    expect(h.requests.enqueueClaimed).not.toHaveBeenCalled();
+  });
+
+  it("is ambiguous when several transactions fit, as a parser's reading would be", async () => {
+    const h = setup({
+      receipt: receiptRow({ bodyHtml: jsonLdOrder({ orderNumber: "Z" }) }),
+      parsers: [],
+      candidates: [candidate({ id: "tx-a" }), candidate({ id: "tx-b" })],
+      sellerPayee: SELLER_PAYEE,
+    });
+    const result = await run(h);
+    expect(result.status).toBe("ambiguous");
+    expect(h.lastUpdate()?.[1]).toMatchObject({
+      statusReason: "schema_org",
+      candidateTransactionIds: ["tx-a", "tx-b"],
+    });
+  });
+
+  it("without a payee for the seller the lines have no category: a description-only proposal that names why (the reason is not overwritten)", async () => {
+    const h = setup({
+      receipt: receiptRow({ bodyHtml: jsonLdOrder() }),
+      parsers: [],
+      sellerPayee: null,
+    });
+    const result = await run(h);
+    expect(result).toMatchObject({
+      status: "review",
+      statusReason: "items_uncategorized",
+    });
+    expect(storedParsed(h)).toMatchObject({
+      complete: false,
+      reason: "items_uncategorized",
+      source: "schema_org",
+    });
+    const [, , , input] = h.work.submit.mock.calls[0];
+    expect(input.splits).toBeUndefined();
+    expect(input.categoryName).toBeUndefined();
+  });
+
+  it("without a payee that has a default category, a seller found by name is still looked up by name only", async () => {
+    const h = setup({
+      receipt: receiptRow({ bodyHtml: jsonLdOrder() }),
+      parsers: [],
+      sellerPayee: {
+        id: "seller-2",
+        name: "Example Shop",
+        defaultCategoryId: null,
+      },
+    });
+    const result = await run(h);
+    expect(result.statusReason).toBe("items_uncategorized");
+    expect(h.payees.resolveByName).toHaveBeenCalledTimes(1);
+  });
+
+  it("an order that does not add up is judged by the parser's table: items_unbalanced, description only", async () => {
+    const h = setup({
+      receipt: receiptRow({ bodyHtml: jsonLdOrder({ price: "20.00" }) }),
+      parsers: [],
+      sellerPayee: SELLER_PAYEE,
+      candidates: [candidate({ amount: "-20.0000" })],
+    });
+    const result = await run(h);
+    expect(result.statusReason).toBe("items_unbalanced");
+    expect(storedParsed(h).complete).toBe(false);
+  });
+
+  it("asks the AI in mode automatic when the reading is incomplete, as it does for a parser's", async () => {
+    const h = setup({
+      receipt: receiptRow({ bodyHtml: jsonLdOrder() }),
+      parsers: [],
+      sellerPayee: null,
+      mailbox: mailboxRow({ aiMode: "automatic" }),
+    });
+    const result = await run(h);
+    expect(result).toMatchObject({ status: "review", requestId: "rq-ai" });
+    expect(h.requests.enqueuePendingForReceipt).toHaveBeenCalledTimes(1);
+    expect(h.work.submit).not.toHaveBeenCalled();
+  });
+
+  it("never auto-applies: the markup is not an approved parser's reading", async () => {
+    const h = setup({
+      receipt: receiptRow({ bodyHtml: jsonLdOrder() }),
+      parsers: [],
+      sellerPayee: SELLER_PAYEE,
+      mailbox: mailboxRow({ autoApply: true }),
+    });
+    const result = await run(h);
+    expect(result).toMatchObject({ status: "review", autoApplied: false });
+    expect(h.actions.confirm).not.toHaveBeenCalled();
+  });
+
+  it("serves a person's link: no matching, the order read for the transaction they chose", async () => {
+    const h = setup({
+      receipt: receiptRow({ bodyHtml: jsonLdOrder() }),
+      parsers: [],
+      sellerPayee: SELLER_PAYEE,
+      linkRow: {
+        id: "tx-9",
+        amount: "-15.0000",
+        description: "CARD",
+        payee_id: null,
+        is_transfer: false,
+        status: "UNRECONCILED",
+        plain: true,
+      },
+    });
+    const result = await run(h, { link: { transactionId: "tx-9" } });
+    expect(result).toMatchObject({
+      matchKind: "manual",
+      transactionId: "tx-9",
+    });
+    expect(storedParsed(h).source).toBe("schema_org");
+  });
+
+  it("reads a microdata order as well", async () => {
+    const microdata =
+      '<div itemscope itemtype="http://schema.org/Order">' +
+      '<div itemprop="seller" itemscope><meta itemprop="name" content="Example Shop"></div>' +
+      '<meta itemprop="orderNumber" content="ABCD1234"><meta itemprop="price" content="15.00">' +
+      '<div itemprop="acceptedOffer" itemscope itemtype="http://schema.org/Offer"><div itemprop="itemOffered" itemscope><meta itemprop="name" content="Bundle"></div><meta itemprop="price" content="15.00"></div></div>';
+    const h = setup({
+      receipt: receiptRow({ bodyHtml: microdata }),
+      parsers: [],
+      sellerPayee: SELLER_PAYEE,
+    });
+    const result = await run(h);
+    expect(result.status).toBe("review");
+    expect(storedParsed(h)).toMatchObject({
+      source: "schema_org",
+      items: [{ name: "Bundle", amount: 150000 }],
+    });
   });
 });

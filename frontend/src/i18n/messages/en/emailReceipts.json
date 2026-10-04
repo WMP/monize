@@ -1,17 +1,11 @@
 {
   "settingsPage": {
-    "backLink": "Back to Settings",
-    "title": "Email Receipts",
-    "subtitle": "Read order confirmations from a mailbox and turn them into itemized transactions",
-    "receiptsLink": "Open the stored emails",
-    "demoRestricted": {
-      "heading": "Restricted in Demo Mode",
-      "body": "Connecting a mailbox is disabled in demo mode."
-    }
+    "redirecting": "Opening the Email Receipts page...",
+    "redirectLink": "Go to the mailbox settings"
   },
   "page": {
     "title": "Email Receipts",
-    "subtitle": "The order-confirmation emails read from your mailbox, and what became of each one"
+    "subtitle": "Read order confirmations from a mailbox and turn them into itemized transactions: what is connected, what became of each email, and what waits for you"
   },
   "mailbox": {
     "heading": "Mailbox",
@@ -99,7 +93,9 @@
         "automatic": "The poll asks the AI about a matched receipt that no approved parser could read completely, and drafts a parser for a sender that has none."
       },
       "autoApplyLabel": "Apply proposals automatically",
-      "autoApplyHelp": "Off by default. A proposal is applied without asking only when all of these hold: an approved parser read the whole email, the transaction was found by order number or by exact amount and payee with a single candidate, and the proposal adds up to the cent. Everything else waits for your approval."
+      "autoApplyHelp": "Off by default. A proposal is applied without asking only when all of these hold: an approved profile read the whole email, the transaction was found by an order number or a reference, or by exact amount and payee, with a single candidate, and the proposal adds up to the cent. Everything else waits for your approval.",
+      "profileLimitLabel": "Count profile proposals toward the daily AI limit",
+      "profileLimitHelp": "On by default: an edit a profile proposes from an email is counted in the daily limit of AI-proposed changes, like any other AI proposal. Turn it off when a large batch of stored emails would otherwise use the limit up. Only proposals from profiles are exempt; every proposal still waits for your approval."
     },
     "status": {
       "lastPolled": "Last poll",
@@ -121,8 +117,8 @@
     }
   },
   "parsers": {
-    "heading": "Parsers",
-    "description": "A parser reads the order confirmations of one sender with patterns you write or review. Once approved it runs without the AI.",
+    "heading": "Profiles",
+    "description": "A profile reads the order confirmations of one sender with patterns you write or review, and says how the bank transaction is found. Once approved it runs without the AI.",
     "newButton": "New parser",
     "loading": "Loading parsers",
     "error": {
@@ -174,6 +170,12 @@
       "copy": "Copy",
       "copied": "JSON copied",
       "copyFailed": "Could not copy the JSON"
+    },
+    "processOffer": {
+      "title": "Process the stored emails now?",
+      "message": "{count, plural, one {Process the # stored email} other {Process the # stored emails}} from {domains} now? Each one is read with this profile again; what it proposes waits in the review inbox unless auto-apply is on.",
+      "confirm": "Process now",
+      "later": "Not now"
     }
   },
   "editor": {
@@ -202,6 +204,12 @@
     "conflict": "This parser was changed elsewhere since you opened it. Reload it to see the current version. Your edits here are not saved.",
     "conflictReload": "Reload the parser",
     "patterns": {
+      "sourceLabel": "Lines source",
+      "sourceHint": "Which rendering of the email the patterns below are matched against. Text is the text part of the email, one line per line break. HTML reads the HTML part: every block and every table cell becomes its own line, so a product name that the text splits over several lines stays whole. The email's Lines view shows exactly what each source gives.",
+      "sourceOptions": {
+        "text": "Text",
+        "html": "HTML"
+      },
       "globHelp": "Each pattern is matched against one whole line of the email, ignoring case. Use {star} for any text and a name in braces, such as {capture}, to capture a value. Each field takes up to {max} patterns, one per line.",
       "orderIdLabel": "Order number patterns",
       "orderIdHint": "Must capture {capture}. Example: Order number: {capture}",
@@ -243,6 +251,44 @@
       "label": "Parser definition (JSON)",
       "help": "The same definition the form builds. The server checks it when you save, and the test below reads it as it is now.",
       "parseError": "This is not valid JSON, or it is not a JSON object. Fix it to save or test the parser."
+    },
+    "matching": {
+      "heading": "Matching",
+      "help": "How the bank transaction an email paid for is found. The strategies are tried in order; the first that leaves exactly one transaction decides, several are ambiguous, and none passes to the next.",
+      "referenceLabel": "Reference patterns",
+      "referenceHint": "The identifier the shop or payment gateway puts into the bank operation, such as a statement text or a transfer title. Must capture {capture}.",
+      "strategiesLabel": "Strategies, in the order tried",
+      "strategiesHelp": "Order number and reference look for the value in the transaction's description, payee or reference number. Amount and payee needs the amount plus a payee signal. Amount and date needs the amount alone, within the window. At least one must stay on.",
+      "strategyPosition": "{position}. {name}",
+      "moveUp": "Move {name} earlier",
+      "moveDown": "Move {name} later",
+      "strategies": {
+        "reference": "Reference",
+        "orderId": "Order number",
+        "amount_payee": "Amount and payee",
+        "amount_date": "Amount and date"
+      },
+      "referenceNeeded": "The reference strategy is on but there are no reference patterns, so it will find nothing.",
+      "referenceInLabel": "Look for the reference and the order number in",
+      "referenceInHint": "Values shorter than 4 characters are never looked for.",
+      "referenceIn": {
+        "description": "Description",
+        "payee": "Payee name",
+        "referenceNumber": "Reference number"
+      },
+      "daysBeforeLabel": "Days before the purchase",
+      "daysAfterLabel": "Days after the purchase",
+      "daysHint": "The window around the purchase date. Default {default}, at most {max}.",
+      "toleranceLabel": "Amount tolerance",
+      "toleranceHint": "How far the bank amount may differ from the email's total. Default 0, at most {max}."
+    },
+    "proposal": {
+      "heading": "Proposal",
+      "tagLabel": "Add a tag to the transactions this profile categorizes",
+      "tagHelp": "The tag is created when you have none by that name. It is shown on the proposal, and nothing is written until you approve it.",
+      "tagNameLabel": "Tag name",
+      "aiCategoriesLabel": "Let the AI choose the category of items no rule matches",
+      "aiCategoriesHelp": "When an item matches no category rule and there is no default category, the AI is asked for its category from your category list. The choice is marked as the AI's on the proposal. With this off the AI is never asked."
     }
   },
   "problems": {
@@ -284,10 +330,20 @@
       "requireLine": "Required lines",
       "skipIfLine": "Lines that skip the email",
       "waitIfLine": "Lines that hold the email",
+      "source": "Lines source",
       "single": "Single item",
       "singleName": "Single item name",
       "joinWrapped": "Join wrapped lines",
-      "ruleField": "field"
+      "ruleField": "field",
+      "reference": "Reference patterns",
+      "match": "The matching section",
+      "matchBy": "Matching strategies",
+      "matchReferenceIn": "Fields the reference is looked for in",
+      "matchDaysBefore": "Days before the purchase",
+      "matchDaysAfter": "Days after the purchase",
+      "matchTolerance": "Amount tolerance",
+      "tag": "Tag",
+      "aiCategories": "AI categories"
     },
     "codes": {
       "not_object": "is not a valid definition",
@@ -312,7 +368,11 @@
       "record_name_missing": "must capture {capture} in one of its steps",
       "items_single_conflict": "has a single item beside patterns or a record. Use one of them.",
       "join_wrapped_needs_patterns": "only works with item patterns",
-      "invalid_value": "has a value this field does not accept"
+      "invalid_value": "has a value this field does not accept",
+      "duplicate_entry": "lists the same entry twice",
+      "reference_field_missing": "needs reference patterns (the reference strategy is on)",
+      "out_of_range_days": "must be a whole number from 0 to {max}",
+      "out_of_range_tolerance": "must be an amount from 0.00 to {max}"
     }
   },
   "test": {
@@ -331,7 +391,9 @@
       "order_id": "order number",
       "amount_payee": "amount and payee",
       "amount_only": "amount",
-      "manual": "your choice"
+      "manual": "your choice",
+      "reference": "reference",
+      "amount_date": "amount and date"
     },
     "noPayee": "no payee",
     "ambiguous": "{count, plural, one {# transaction fits} other {# transactions fit}} equally well, so none would be linked until you choose.",
@@ -340,7 +402,8 @@
     "outcome": {
       "not_applicable": "This parser would not read this email: none of its required lines is in it, so the next parser for the sender would be tried.",
       "skip_line": "This parser would set this email aside: a line it skips on is in it.",
-      "wait_line": "This parser would hold this email: a line says the order is not final, so it is read again later."
+      "wait_line": "This parser would hold this email: a line says the order is not final, so it is read again later.",
+      "no_html": "This parser reads the HTML part of the email, and this email has none, so it would be marked as unreadable (no HTML)."
     },
     "matchedBy": {
       "heading": "Matched by",
@@ -354,13 +417,30 @@
         "payee": "Merchant",
         "requireLine": "Required line",
         "skipIfLine": "Skip line",
-        "waitIfLine": "Wait line"
+        "waitIfLine": "Wait line",
+        "reference": "Reference"
       },
       "entryLine": "entry {entry} ({pattern}), line {line}: {text}",
       "entrySubject": "entry {entry} ({pattern}), the subject: {text}",
       "labelled": "entry {entry}, label {label} on line {labelLine} ({labelText}), value {pattern} on line {line}: {text}",
       "item": "Item {number}",
       "itemLine": "{pattern}, line {line}: {text}"
+    },
+    "trace": {
+      "heading": "What the matcher looked at",
+      "window": "Transactions from {from} to {to} ({before} days before, {after} days after the purchase): {considered, plural, one {# considered} other {# considered}}.",
+      "tolerance": "The amount may differ by {amount}.",
+      "attempt": "{position}. {name}",
+      "kept": "{count, plural, =0 {kept none} one {kept # transaction} other {kept # transactions}}",
+      "decided": "Decided",
+      "transaction": "{date}, {amount}, {payee}",
+      "noPayee": "no payee",
+      "strategies": {
+        "reference": "Reference",
+        "orderId": "Order number",
+        "amount_payee": "Amount and payee",
+        "amount_date": "Amount and date"
+      }
     }
   },
   "parsed": {
@@ -390,8 +470,11 @@
       "item_amount_missing": "An item has no amount, and the email has no single total to give it."
     },
     "readByAi": "Read by the AI",
+    "readFromStructuredData": "Read from structured data",
     "paid": "Paid",
-    "payee": "Merchant"
+    "payee": "Merchant",
+    "reference": "Reference",
+    "categoryByAi": "AI"
   },
   "state": {
     "pending": "Waiting to be read",
@@ -413,7 +496,7 @@
     "loading": "Loading emails",
     "links": {
       "reviewInbox": "Open the AI review inbox",
-      "settings": "Mailbox and parser settings"
+      "settings": "Mailbox settings"
     },
     "filter": {
       "label": "Filter by state",
@@ -427,6 +510,12 @@
       "review_conflict": "Another request is open",
       "review": "In review",
       "ignored": "Ignored"
+    },
+    "domainFilter": {
+      "label": "Sender domain",
+      "all": "All senders",
+      "option": "{domain} ({count})",
+      "help": "Showing emails from {domain} and its sub-domains. Select several of them to draft one parser for the sender."
     },
     "columns": {
       "select": "Select",
@@ -511,12 +600,15 @@
     "state": "State",
     "parser": "Parser",
     "noParser": "None",
+    "structuredSource": "Structured data",
     "matchedBy": "Matched by",
     "matchKinds": {
       "order_id": "Order number",
       "amount_payee": "Amount and payee",
       "amount_only": "Amount",
-      "manual": "Your choice"
+      "manual": "Your choice",
+      "reference": "Reference",
+      "amount_date": "Amount and date"
     },
     "transaction": "Transaction",
     "transactionSummary": "{date}, {amount}, {payee}",
@@ -539,6 +631,8 @@
       "proposal_refused": "The proposal was refused, so nothing was proposed.",
       "skip_line": "A line this parser skips on was found, so the email was ignored.",
       "wait_line": "A line says the order is not final yet, so the email will be read again later.",
+      "no_html": "This parser reads the HTML part of the email, and this email has none.",
+      "schema_org": "No parser was needed: the order was read from the structured data (schema.org) in the email.",
       "item_amount_missing": "An item has no amount, and the email has no single total to give it."
     },
     "reasonUnknown": "Reason: {reason}",
@@ -556,10 +650,34 @@
     "bodyView": {
       "label": "Show the email as",
       "html": "HTML",
-      "text": "Text"
+      "text": "Text",
+      "lines": "Lines"
     },
     "remoteImagesNote": "Remote images are not loaded.",
-    "htmlFrameTitle": "The email as its sender formatted it"
+    "htmlFrameTitle": "The email as its sender formatted it",
+    "structured": {
+      "heading": "Structured data (schema.org)",
+      "help": "An order or invoice that the email carries as markup for mail clients. It is read only when no parser applies or the parser finds no total.",
+      "found": "Found",
+      "notFound": "Not found",
+      "notFoundHelp": "The email carries no order markup, or it states no total and no line items.",
+      "seller": "Seller",
+      "currency": "Currency",
+      "orderDate": "Order date",
+      "unitPrice": "Unit price"
+    },
+    "lines": {
+      "help": "The lines a parser's patterns are matched against, numbered as a test's \"Matched by\" list numbers them.",
+      "sourceLabel": "Lines source",
+      "sources": {
+        "text": "Text",
+        "html": "HTML"
+      },
+      "noHtml": "This email has no HTML part, so a parser that reads HTML cannot read it.",
+      "capped": "Only the first {max} lines are read.",
+      "empty": "No lines.",
+      "listLabel": "Numbered lines of the email"
+    }
   },
   "picker": {
     "heading": "Choose the transaction",
@@ -632,5 +750,119 @@
     "inboxLink": "Open the AI review inbox",
     "opened": "Opened the chat with the email attached. Read the message and press Send.",
     "chatPrompt": "Recognize the products, quantities and prices in the attached order email and split my transaction of {date} ({payee}, {amount}) by product with a category for each. Claim AI review request {requestId} and submit your proposal for it."
+  },
+  "hub": {
+    "tabs": {
+      "ariaLabel": "Email receipts sections",
+      "overview": "Overview",
+      "emails": "Emails",
+      "profiles": "Profiles",
+      "mailbox": "Mailbox"
+    },
+    "demoRestricted": {
+      "heading": "Restricted in Demo Mode",
+      "body": "Connecting a mailbox and writing profiles are disabled in demo mode."
+    }
+  },
+  "process": {
+    "button": "Process all",
+    "buttonCount": "Process all ({count})",
+    "dialog": {
+      "title": "{count, plural, one {Process # stored email?} other {Process # stored emails?}}",
+      "message": "Every stored email that has not been read yet, or that a new profile or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
+      "messageDomain": "Every stored email from {domain} that has not been read yet, or that a new profile or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
+      "confirm": "Process"
+    },
+    "starting": "Starting...",
+    "progress": "{processed, plural, one {# email processed} other {# emails processed}}, {remaining} left.",
+    "cancel": "Cancel",
+    "cancelling": "Cancelling...",
+    "summary": "{count, plural, one {# email processed.} other {# emails processed.}}",
+    "cancelledSummary": "Cancelled after {count, plural, one {# email.} other {# emails.}}",
+    "outcomes": "They ended as: {outcomes}.",
+    "passedOver": "{count, plural, one {# email raised an error and was passed over.} other {# emails raised an error and were passed over.}}",
+    "failed": "Processing stopped because a request failed.",
+    "failedWithReason": "Processing stopped: {reason}",
+    "outcome": "{count} {state}",
+    "close": "Close"
+  },
+  "overview": {
+    "loading": "Loading the overview...",
+    "error": {
+      "title": "The overview could not be loaded",
+      "body": "The request failed, so nothing here may be taken as empty. Try again.",
+      "retry": "Try again"
+    },
+    "mailbox": {
+      "title": "Mailbox",
+      "none": "No mailbox is connected yet.",
+      "connect": "Connect a mailbox",
+      "manage": "Open the mailbox settings",
+      "state": {
+        "notConnected": "Not connected",
+        "failing": "Last poll failed",
+        "off": "Polling is off",
+        "polling": "Polling"
+      },
+      "auth": {
+        "password": "Password login",
+        "oauth2": "Sign-in with a provider"
+      },
+      "lastSuccess": "Last successful poll {when}",
+      "neverPolled": "Not polled successfully yet.",
+      "lastError": "Last error: {error}"
+    },
+    "emails": {
+      "title": "Emails",
+      "stored": "stored",
+      "processable": "{count, plural, one {# email can be processed again} other {# emails can be processed again}}.",
+      "open": "Open the emails"
+    },
+    "proposals": {
+      "title": "Proposals",
+      "waiting": "waiting for your approval",
+      "review": "Review the proposals",
+      "open": "Open the review inbox"
+    },
+    "profiles": {
+      "title": "Profiles",
+      "approved": "approved",
+      "drafts": "{count, plural, one {# draft waits for your approval} other {# drafts wait for your approval}}.",
+      "manage": "Open the profiles"
+    },
+    "uncovered": {
+      "title": "Senders without a profile",
+      "help": "These senders sent emails no profile reads. Create a profile for one, or ask the assistant to draft it.",
+      "none": "Every sender of the stored emails is covered by a profile.",
+      "row": "{domain} ({count, plural, one {# email} other {# emails}})",
+      "show": "Show the emails"
+    }
+  },
+  "wizard": {
+    "heading": "Get started with email receipts",
+    "intro": "Four steps from nothing to your first proposal.",
+    "done": "(done)",
+    "steps": {
+      "mailbox": {
+        "title": "Connect a mailbox",
+        "body": "Use a dedicated mailbox that receives your order confirmations. Monize only reads it.",
+        "action": "Connect a mailbox"
+      },
+      "emails": {
+        "title": "Fetch the emails",
+        "body": "Emails are read when the mailbox is polled. Poll it from the mailbox settings to see the first ones.",
+        "action": "Open the emails"
+      },
+      "profile": {
+        "title": "Create a profile for a sender",
+        "body": "A profile tells Monize how to read one sender's order confirmations. Write one, or draft it from a stored email.",
+        "action": "Open the profiles"
+      },
+      "review": {
+        "title": "Review the proposals",
+        "body": "Each email becomes a proposal on a transaction. Nothing is changed until you approve it.",
+        "action": "Open the review inbox"
+      }
+    }
   }
 }

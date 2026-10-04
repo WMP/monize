@@ -121,6 +121,20 @@ export class EmailReceiptMailbox {
   @Column({ type: "boolean", name: "auto_apply", default: false })
   autoApply: boolean;
 
+  /**
+   * Whether a confirmed proposal built by a saved parser profile (the
+   * deterministic reading, claimed under `EMAIL_RECEIPTS_CLAIM_KEY`) counts toward
+   * the daily AI write limit. The user's own switch: true (the default) counts
+   * every confirm, false leaves profile proposals out of the count. A proposal an
+   * AI or an agent built always counts (design 7.1).
+   */
+  @Column({
+    type: "boolean",
+    name: "profile_proposals_count_toward_ai_limit",
+    default: true,
+  })
+  profileProposalsCountTowardAiLimit: boolean;
+
   @Column({ type: "bigint", name: "uid_validity", nullable: true })
   uidValidity: string | null;
 

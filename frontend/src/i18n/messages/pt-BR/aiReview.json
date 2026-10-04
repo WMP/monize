@@ -13,6 +13,12 @@
     "rejected": "Rejeitado",
     "expired": "Expirado"
   },
+  "kindFilter": {
+    "label": "Filtrar por tipo",
+    "all": "Todos",
+    "email_receipt": "Recibos por e-mail",
+    "transaction_review": "Regras"
+  },
   "status": {
     "pending": "Pendente",
     "claimed": "Em revisão",
@@ -47,6 +53,23 @@
   },
   "proposal": {
     "errorTitle": "Esta proposta não pode mais ser aplicada"
+  },
+  "bulk": {
+    "selectRow": "Selecionar {name}",
+    "selectAll": "Selecionar todas as solicitações aprováveis exibidas",
+    "approveSelected": "Aprovar as selecionadas ({count})",
+    "approveAllShown": "Aprovar todas as exibidas ({count})",
+    "summary": "{approved, plural, one {# proposta aplicada} other {# propostas aplicadas}}, {failed, plural, one {# não aplicada} other {# não aplicadas}}.",
+    "closeSummary": "Fechar",
+    "failure": "{name}: {reason}",
+    "noReason": "Nenhum motivo foi informado",
+    "unknownRequest": "Uma solicitação",
+    "failed": "Não foi possível aplicar as propostas",
+    "dialog": {
+      "title": "{count, plural, one {Aplicar # proposta?} other {Aplicar # propostas?}}",
+      "message": "Cada proposta é verificada com a transação como ela está agora e aplicada separadamente. Uma que não se encaixa mais é ignorada e informada, e as demais são aplicadas mesmo assim. Revise as propostas antes de aprová-las.",
+      "confirm": "{count, plural, one {Aplicar # proposta} other {Aplicar # propostas}}"
+    }
   },
   "dismissDialog": {
     "title": "Dispensar esta solicitação?",

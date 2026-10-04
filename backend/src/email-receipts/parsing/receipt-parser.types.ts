@@ -38,6 +38,8 @@ export const MAX_LINE_GUARDS = 10;
 export const MAX_JOINED_LINES = 3;
 /** A traced line is cut to this many characters. */
 export const MAX_TRACE_LINE_LENGTH = 200;
+/** The longest tag a profile may add to the transactions it splits. */
+export const MAX_PROFILE_TAG_LENGTH = 50;
 
 /** The item section and the patterns that read one line item per line. */
 export interface ReceiptItemsDefinition {
@@ -112,6 +114,59 @@ export interface ReceiptSingleItemsDefinition {
 export type ReceiptCategoryRuleField = "item" | "payee" | "line";
 
 /**
+ * Which rendering of the email a parser reads its lines from: the stored text
+ * (`"text"`, the default) or the lines of the HTML part (`"html"`, one line per
+ * block element and per table cell; `imap/html-lines.util.ts`). Every pattern,
+ * guard and trace line number refers to the chosen source.
+ */
+export type ReceiptLinesSource = "text" | "html";
+export const RECEIPT_LINES_SOURCES: readonly ReceiptLinesSource[] = [
+  "text",
+  "html",
+];
+
+/**
+ * How a profile identifies the bank transaction an email paid for, in the order
+ * the profile lists them (design 5.5, spec 3a): `reference` and `orderId` look
+ * for the parsed value in the transaction's text, `amount_payee` is an amount
+ * within the tolerance plus a payee signal, `amount_date` an amount within the
+ * tolerance inside the date window.
+ */
+export type ReceiptMatchStrategy =
+  | "reference"
+  | "orderId"
+  | "amount_payee"
+  | "amount_date";
+export const RECEIPT_MATCH_STRATEGIES: readonly ReceiptMatchStrategy[] = [
+  "reference",
+  "orderId",
+  "amount_payee",
+  "amount_date",
+];
+
+/** The transaction fields a `reference` or `orderId` strategy looks in. */
+export type ReceiptMatchTextField = "description" | "payee" | "referenceNumber";
+export const RECEIPT_MATCH_TEXT_FIELDS: readonly ReceiptMatchTextField[] = [
+  "description",
+  "payee",
+  "referenceNumber",
+];
+
+/**
+ * The `match` section of a profile: every key is optional and the defaults
+ * reproduce the matching a profile without the section had (spec 3a).
+ * `amountTolerance` is a decimal string (`"0.00"` to `"5.00"`) because it is
+ * money: it is compared in 1/10000 units, never as a float.
+ */
+export interface ReceiptMatchDefinition {
+  by?: ReceiptMatchStrategy[];
+  referenceIn?: ReceiptMatchTextField[];
+  daysBefore?: number;
+  daysAfter?: number;
+  amountTolerance?: string;
+}
+
+/**
  * A per-merchant parser (the `definition` jsonb of `email_receipt_parsers`).
  * A field's entries are tried in array order; an entry is a line pattern or a
  * labelled `{label, value, within}`; items are one per line (`patterns`) or a
@@ -119,6 +174,8 @@ export type ReceiptCategoryRuleField = "item" | "payee" | "line";
  */
 export interface ReceiptParserDefinition {
   version: 2;
+  /** The lines the parser reads: the email's text (default) or its HTML part. */
+  source?: ReceiptLinesSource;
   orderId?: ReceiptFieldEntry[];
   total?: ReceiptFieldEntry[];
   /** The amount actually paid (after a discount); `total` is then the list price. */
@@ -127,6 +184,24 @@ export interface ReceiptParserDefinition {
   discount?: ReceiptFieldEntry[];
   /** The merchant, when it is not the sender (a payment gateway). Capture `{payee}`. */
   payee?: ReceiptFieldEntry[];
+  /**
+   * An identifier the shop or the payment gateway puts into the bank operation
+   * (the card statement line, a transfer title). Capture `{reference}`; the
+   * `reference` match strategy looks for it in the transaction's text.
+   */
+  reference?: ReceiptFieldEntry[];
+  /** How the transaction this email paid for is identified (design 5.5). */
+  match?: ReceiptMatchDefinition;
+  /**
+   * A tag the proposal adds to every transaction this profile splits (created
+   * when missing, at confirm time). 1 to 50 characters, trimmed.
+   */
+  tag?: string;
+  /**
+   * Ask the user's AI for the category of an item no rule categorised, when it
+   * can answer now; otherwise queue the request for an agent (design 5.6).
+   */
+  aiCategories?: boolean;
   items?:
     | ReceiptItemsDefinition
     | ReceiptBlockItemsDefinition
@@ -149,6 +224,11 @@ export interface ParsedReceiptItem {
   /** The line total, in 1/10000 units. */
   amount: number;
   categoryId: string | null;
+  /**
+   * `"ai"` when the AI chose this item's category (design 5.6); absent when a
+   * rule, the default or the payee did. The card and the receipt page label it.
+   */
+  categorySource?: "ai";
 }
 
 /** The first thing missing from a receipt that is not complete (spec section 4). */
@@ -175,6 +255,12 @@ export interface ParsedReceipt {
   paid: number | null;
   /** The merchant the email names; null when it names none. */
   payee: string | null;
+  /**
+   * The identifier the profile's `reference` field read (what the shop put into
+   * the bank operation); null or absent when none (and on a receipt stored
+   * before it existed).
+   */
+  reference?: string | null;
   shipping: number | null;
   discount: number | null;
   items: ParsedReceiptItem[];
@@ -184,11 +270,12 @@ export interface ParsedReceipt {
   reason: ParsedReceiptReason | null;
   /**
    * Who read the email: a saved parser (absent, as every receipt stored before
-   * this field existed) or the AI (`"ai"`, spec "AI extraction"). It changes
+   * this field existed), the AI (`"ai"`, spec "AI extraction") or the email's
+   * own structured data (`"schema_org"`, spec "Structured data"). It changes
    * nothing about the completeness rules or the proposal; it tells the reader
    * where the figures came from.
    */
-  source?: "parser" | "ai";
+  source?: "parser" | "ai" | "schema_org";
 }
 
 /** A line a trace points at: its 1-based number among the email's lines (0 is the subject) and its text. */
@@ -222,6 +309,7 @@ export interface ReceiptTraceItem {
 /** Why a parser read what it read: for the `test` operation and the editor's test panel. */
 export interface ReceiptTrace {
   orderId: ReceiptTraceHit | null;
+  reference: ReceiptTraceHit | null;
   total: ReceiptTraceHit | null;
   paid: ReceiptTraceHit | null;
   shipping: ReceiptTraceHit | null;

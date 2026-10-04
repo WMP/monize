@@ -102,6 +102,11 @@ describe('ParserProblems', () => {
     expect(within(alert).getByText('Category rule 4, field: has a value this field does not accept')).toBeInTheDocument();
   });
 
+  it('says where a bad lines source is', () => {
+    render(<ParserProblems problems={[{ path: 'source', code: 'invalid_value' }]} />);
+    expect(screen.getByText('Lines source: has a value this field does not accept')).toBeInTheDocument();
+  });
+
   it('bounds the number of category rules by the rule limit, not the pattern limit', () => {
     render(<ParserProblems problems={[{ path: 'categoryRules', code: 'too_many' }]} />);
     expect(screen.getByText('Category rules: has too many entries (at most 50)')).toBeInTheDocument();

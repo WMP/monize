@@ -1,9 +1,18 @@
-import type {
-  CreateEmailReceiptParserPayload,
-  EmailReceiptParser,
-  ReceiptCategoryRule,
-  ReceiptParserDefinition,
-  ReceiptParserValidationError,
+import {
+  DEFAULT_MATCH_BY,
+  RECEIPT_LINES_SOURCES,
+  RECEIPT_MATCH_STRATEGIES,
+  RECEIPT_MATCH_TEXT_FIELDS,
+  RECEIPT_PARSER_LIMITS,
+  type CreateEmailReceiptParserPayload,
+  type EmailReceiptParser,
+  type ReceiptCategoryRule,
+  type ReceiptLinesSource,
+  type ReceiptMatchDefinition,
+  type ReceiptMatchStrategy,
+  type ReceiptMatchTextField,
+  type ReceiptParserDefinition,
+  type ReceiptParserValidationError,
 } from '@/types/email-receipts';
 
 /**
@@ -31,6 +40,8 @@ export interface ParserFormState {
   fromDomains: string;
   /** Comma or line separated (a word may hold spaces). */
   subjectContains: string;
+  /** The lines the patterns read: the email's text (the default) or its HTML part. */
+  source: ReceiptLinesSource;
   /** One pattern per line, for each of the four fields below. */
   orderId: string;
   total: string;
@@ -42,6 +53,23 @@ export interface ParserFormState {
   categoryRules: CategoryRuleRow[];
   defaultCategoryId: string;
   shippingCategoryId: string;
+  /** One pattern per line: an identifier the shop or gateway puts into the bank operation. */
+  reference: string;
+  /** The strategies that are on, in the order they are tried. Never empty. */
+  matchBy: ReceiptMatchStrategy[];
+  /** The transaction fields `reference` and `orderId` are looked for in; never empty. */
+  matchReferenceIn: ReceiptMatchTextField[];
+  /** Days before the purchase date to look; `null` is the default (3). */
+  matchDaysBefore: number | null;
+  /** Days after the purchase date to look; `null` is the default (14). */
+  matchDaysAfter: number | null;
+  /** How far the bank amount may differ, in currency units (0 to 5); `null` is exact. */
+  matchTolerance: number | null;
+  /** Whether the profile adds a tag to the transactions it categorises. */
+  tagEnabled: boolean;
+  tagName: string;
+  /** Ask the user's AI for the category of an item no rule matched. */
+  aiCategories: boolean;
 }
 
 /**
@@ -59,6 +87,7 @@ export const emptyParserForm = (overrides: Partial<ParserFormState> = {}): Parse
   payeeId: '',
   fromDomains: '',
   subjectContains: '',
+  source: 'text',
   orderId: '',
   total: '',
   shipping: '',
@@ -69,8 +98,56 @@ export const emptyParserForm = (overrides: Partial<ParserFormState> = {}): Parse
   categoryRules: [],
   defaultCategoryId: '',
   shippingCategoryId: '',
+  reference: '',
+  matchBy: [...DEFAULT_MATCH_BY],
+  matchReferenceIn: [...RECEIPT_MATCH_TEXT_FIELDS],
+  matchDaysBefore: null,
+  matchDaysAfter: null,
+  matchTolerance: null,
+  tagEnabled: false,
+  tagName: '',
+  aiCategories: false,
   ...overrides,
 });
+
+const sameList = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && a.every((value, index) => value === b[index]);
+
+/**
+ * A tolerance in whole currency units as the server's decimal string, in integer
+ * cents (no float is formatted): `0.5` is `"0.50"`. `null` and zero are "exact" and
+ * leave the key out.
+ */
+export function toleranceToString(value: number | null): string | null {
+  if (value === null || !Number.isFinite(value) || value <= 0) return null;
+  const cents = Math.round(value * 100);
+  return `${Math.trunc(cents / 100)}.${String(cents % 100).padStart(2, '0')}`;
+}
+
+/**
+ * A tolerance string as currency units, or `null` when the form cannot hold it
+ * (more than two decimals, a sign, text): such a profile is edited as JSON. Read
+ * digit by digit, never with `parseFloat`.
+ */
+export function toleranceFromString(text: string): number | null {
+  const dot = text.indexOf('.');
+  const whole = dot === -1 ? text : text.slice(0, dot);
+  const fraction = dot === -1 ? '' : text.slice(dot + 1);
+  if (!/^\d{1,3}$/.test(whole) || (dot !== -1 && !/^\d{1,2}$/.test(fraction))) return null;
+  return (Number(whole) * 100 + Number(fraction.padEnd(2, '0'))) / 100;
+}
+
+/** The `match` section the form describes: only what differs from the defaults, so a form that changes nothing sends nothing. */
+export function buildMatchDefinition(form: ParserFormState): ReceiptMatchDefinition | null {
+  const match: ReceiptMatchDefinition = {};
+  if (!sameList(form.matchBy, DEFAULT_MATCH_BY)) match.by = [...form.matchBy];
+  if (!sameList(form.matchReferenceIn, RECEIPT_MATCH_TEXT_FIELDS)) match.referenceIn = [...form.matchReferenceIn];
+  if (form.matchDaysBefore !== null) match.daysBefore = form.matchDaysBefore;
+  if (form.matchDaysAfter !== null) match.daysAfter = form.matchDaysAfter;
+  const tolerance = toleranceToString(form.matchTolerance);
+  if (tolerance !== null) match.amountTolerance = tolerance;
+  return Object.keys(match).length > 0 ? match : null;
+}
 
 const newRow = (match: string, categoryId: string): CategoryRuleRow => ({
   uid: crypto.randomUUID(),
@@ -112,6 +189,8 @@ export function splitDomains(text: string): string[] {
  */
 export function buildParserDefinition(form: ParserFormState): ReceiptParserDefinition {
   const definition: ReceiptParserDefinition = { version: PARSER_DEFINITION_VERSION };
+  // The text source is the default, so it is left out (reading it back gives the same form).
+  if (form.source === 'html') definition.source = 'html';
 
   const orderId = splitLines(form.orderId);
   const total = splitLines(form.total);
@@ -140,6 +219,15 @@ export function buildParserDefinition(form: ParserFormState): ReceiptParserDefin
 
   if (form.defaultCategoryId !== '') definition.defaultCategoryId = form.defaultCategoryId;
   if (form.shippingCategoryId !== '') definition.shippingCategoryId = form.shippingCategoryId;
+
+  const reference = splitLines(form.reference);
+  if (reference.length > 0) definition.reference = reference;
+  const match = buildMatchDefinition(form);
+  if (match !== null) definition.match = match;
+  // A tag switched on with no name takes the profile's own name (the default the form offers).
+  const tag = form.tagName.trim() !== '' ? form.tagName.trim() : form.name.trim();
+  if (form.tagEnabled && tag !== '') definition.tag = tag;
+  if (form.aiCategories) definition.aiCategories = true;
   return definition;
 }
 
@@ -170,6 +258,7 @@ const text = (value: unknown): string => (typeof value === 'string' ? value : ''
 
 type DefinitionFields = Pick<
   ParserFormState,
+  | 'source'
   | 'orderId'
   | 'total'
   | 'shipping'
@@ -180,7 +269,25 @@ type DefinitionFields = Pick<
   | 'categoryRules'
   | 'defaultCategoryId'
   | 'shippingCategoryId'
+  | 'reference'
+  | 'matchBy'
+  | 'matchReferenceIn'
+  | 'matchDaysBefore'
+  | 'matchDaysAfter'
+  | 'matchTolerance'
+  | 'tagEnabled'
+  | 'tagName'
+  | 'aiCategories'
 >;
+
+const choiceList = <T extends string>(value: unknown, allowed: readonly T[], fallback: readonly T[]): T[] => {
+  if (!Array.isArray(value)) return [...fallback];
+  const picked = value.filter((entry): entry is T => allowed.includes(entry as T));
+  return picked.length > 0 ? [...new Set(picked)] : [...fallback];
+};
+
+const wholeDays = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null;
 
 /**
  * The form fields a definition fills. The definition comes off the wire as a
@@ -192,8 +299,10 @@ type DefinitionFields = Pick<
 export function definitionToFormFields(value: unknown): DefinitionFields {
   const definition = isRecord(value) ? value : {};
   const items = isRecord(definition.items) ? definition.items : {};
+  const match = isRecord(definition.match) ? definition.match : {};
   const rules = Array.isArray(definition.categoryRules) ? definition.categoryRules : [];
   return {
+    source: definition.source === 'html' ? 'html' : 'text',
     orderId: stringList(definition.orderId).join('\n'),
     total: stringList(definition.total).join('\n'),
     shipping: stringList(definition.shipping).join('\n'),
@@ -206,6 +315,15 @@ export function definitionToFormFields(value: unknown): DefinitionFields {
       .map((rule) => newRow(text(rule.match), text(rule.categoryId))),
     defaultCategoryId: text(definition.defaultCategoryId),
     shippingCategoryId: text(definition.shippingCategoryId),
+    reference: stringList(definition.reference).join('\n'),
+    matchBy: choiceList(match.by, RECEIPT_MATCH_STRATEGIES, DEFAULT_MATCH_BY),
+    matchReferenceIn: choiceList(match.referenceIn, RECEIPT_MATCH_TEXT_FIELDS, RECEIPT_MATCH_TEXT_FIELDS),
+    matchDaysBefore: wholeDays(match.daysBefore),
+    matchDaysAfter: wholeDays(match.daysAfter),
+    matchTolerance: typeof match.amountTolerance === 'string' ? toleranceFromString(match.amountTolerance) : null,
+    tagEnabled: text(definition.tag).trim() !== '',
+    tagName: text(definition.tag).trim(),
+    aiCategories: definition.aiCategories === true,
   };
 }
 
@@ -222,6 +340,7 @@ export function parserToForm(parser: EmailReceiptParser): ParserFormState {
 
 const FORM_TOP_LEVEL_KEYS = [
   'version',
+  'source',
   'orderId',
   'total',
   'shipping',
@@ -230,8 +349,42 @@ const FORM_TOP_LEVEL_KEYS = [
   'categoryRules',
   'defaultCategoryId',
   'shippingCategoryId',
+  'reference',
+  'match',
+  'tag',
+  'aiCategories',
 ];
 const FORM_ITEMS_KEYS = ['startAfter', 'stopAt', 'patterns'];
+const FORM_MATCH_KEYS = ['by', 'referenceIn', 'daysBefore', 'daysAfter', 'amountTolerance'];
+
+/** A list of distinct values from a closed set, as the form's checkboxes hold them. */
+const distinctFrom = (value: unknown, allowed: readonly string[]): boolean =>
+  value === undefined ||
+  (Array.isArray(value) &&
+    value.length > 0 &&
+    new Set(value).size === value.length &&
+    value.every((entry) => typeof entry === 'string' && allowed.includes(entry)));
+
+/** Whole days within the server's bound, or absent. */
+const daysWithin = (value: unknown, max: number): boolean =>
+  value === undefined || (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= max);
+
+/** Can the form hold this `match` section? Its keys, lists and numbers all fit its controls. */
+function formCanRepresentMatch(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!isRecord(value) || !onlyKeys(value, FORM_MATCH_KEYS)) return false;
+  if (!distinctFrom(value.by, RECEIPT_MATCH_STRATEGIES) || !distinctFrom(value.referenceIn, RECEIPT_MATCH_TEXT_FIELDS)) {
+    return false;
+  }
+  if (!daysWithin(value.daysBefore, RECEIPT_PARSER_LIMITS.maxDaysBefore)) return false;
+  if (!daysWithin(value.daysAfter, RECEIPT_PARSER_LIMITS.maxDaysAfter)) return false;
+  if (value.amountTolerance !== undefined) {
+    if (typeof value.amountTolerance !== 'string') return false;
+    const tolerance = toleranceFromString(value.amountTolerance);
+    if (tolerance === null || tolerance > RECEIPT_PARSER_LIMITS.maxAmountTolerance) return false;
+  }
+  return true;
+}
 
 const onlyStrings = (value: unknown): boolean =>
   value === undefined || (Array.isArray(value) && value.every((entry) => typeof entry === 'string'));
@@ -251,9 +404,13 @@ const onlyKeys = (value: Record<string, unknown>, allowed: readonly string[]): b
 export function formCanRepresent(value: unknown): boolean {
   if (!isRecord(value)) return false;
   if (!onlyKeys(value, FORM_TOP_LEVEL_KEYS)) return false;
-  for (const field of ['orderId', 'total', 'shipping', 'discount']) {
+  if (value.source !== undefined && !RECEIPT_LINES_SOURCES.includes(value.source as ReceiptLinesSource)) return false;
+  for (const field of ['orderId', 'total', 'shipping', 'discount', 'reference']) {
     if (!onlyStrings(value[field])) return false;
   }
+  if (!formCanRepresentMatch(value.match)) return false;
+  if (value.tag !== undefined && typeof value.tag !== 'string') return false;
+  if (value.aiCategories !== undefined && typeof value.aiCategories !== 'boolean') return false;
   if (value.items !== undefined) {
     if (!isRecord(value.items) || !onlyKeys(value.items, FORM_ITEMS_KEYS)) return false;
     if (!onlyStrings(value.items.patterns)) return false;
@@ -324,6 +481,8 @@ export const PARSER_VALIDATION_CODES = [
   'items_single_conflict',
   'join_wrapped_needs_patterns',
   'invalid_value',
+  'duplicate_entry',
+  'reference_field_missing',
 ] as const;
 
 const PROBLEM = new RegExp(

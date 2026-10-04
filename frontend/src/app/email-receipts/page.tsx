@@ -1,8 +1,9 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useTranslations } from 'next-intl';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { EmailReceiptsManager } from '@/components/email-receipts/EmailReceiptsManager';
+import { EmailReceiptsHub } from '@/components/email-receipts/EmailReceiptsHub';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PageLayout } from '@/components/layout/PageLayout';
 
@@ -21,7 +22,10 @@ function EmailReceiptsContent() {
     <PageLayout>
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
         <PageHeader title={t('title')} subtitle={t('subtitle')} />
-        <EmailReceiptsManager />
+        {/* The hub reads `?tab=` and `?domain=`, which needs a Suspense boundary above it. */}
+        <Suspense fallback={null}>
+          <EmailReceiptsHub />
+        </Suspense>
       </main>
     </PageLayout>
   );

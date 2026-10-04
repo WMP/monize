@@ -87,6 +87,8 @@ function setup() {
     [Category, categoryRepo],
     [Payee, payeeRepo],
   ]);
+  // The candidate query (`JOIN accounts`) the test's matching runs; none by default.
+  manager.query.mockResolvedValue([]);
   const payees = {
     resolveByName: jest.fn().mockResolvedValue(null),
   };
@@ -189,6 +191,7 @@ describe("EmailReceiptParserToolsService.testDefinition", () => {
     expect(result.emails.map((e) => e.receiptId)).toEqual([R2, R1]);
     expect(result.emails[1].parsed).toEqual({
       orderId: "ABCD1234",
+      reference: null,
       total: 15,
       paid: null,
       payee: null,
@@ -244,6 +247,81 @@ describe("EmailReceiptParserToolsService.testDefinition", () => {
 
     expect(result.emails[0].outcome).toBe("not_applicable");
     expect(result.emails[0].trace.requireLine).toBeNull();
+  });
+
+  it("reads the lines of the definition's source: html lines for source html, the text otherwise", async () => {
+    const { service, receiptRepo } = setup();
+    const html =
+      "<table><tr><td>Order number:</td><td>HTML-1</td></tr>" +
+      "<tr><td>Wrapped product name</td><td>12.00</td></tr>" +
+      "<tr><td>Order total:</td><td>12.00</td></tr></table>";
+    receiptRepo.find.mockResolvedValue([receipt({ bodyHtml: html })]);
+    const htmlDefinition = {
+      version: 2,
+      source: "html",
+      orderId: [{ label: "Order number:", value: "{orderid}" }],
+      total: [{ label: "Order total:", value: "{amount}" }],
+      items: { patterns: ["{name} {amount}"] },
+      defaultCategoryId: CAT_BOOKS,
+    };
+
+    const html1 = await service.testDefinition(USER, {
+      definition: htmlDefinition,
+      receiptIds: [R1],
+    });
+    const [email] = html1.emails;
+    expect(email.outcome).toBe("read");
+    expect(email.parsed).toMatchObject({ orderId: "HTML-1", total: 12 });
+    expect(email.trace.total?.line).toEqual({ line: 6, text: "12.00" });
+
+    // The same email read as text: the definition's own source decides.
+    const text = await service.testDefinition(USER, {
+      definition: DEFINITION,
+      receiptIds: [R1],
+    });
+    expect(text.emails[0].parsed).toMatchObject({
+      orderId: "ABCD1234",
+      total: 15,
+    });
+  });
+
+  it("an html parser on an email with no HTML part is outcome no_html and not complete", async () => {
+    const { service, receiptRepo } = setup();
+    receiptRepo.find.mockResolvedValue([receipt({ bodyHtml: null })]);
+    const result = await service.testDefinition(USER, {
+      definition: { ...DEFINITION, source: "html" },
+      receiptIds: [R1],
+    });
+    expect(result.emails[0].outcome).toBe("no_html");
+    expect(result.emails[0].parsed).toMatchObject({
+      total: null,
+      complete: false,
+      reason: "no_total",
+    });
+    expect(result.allComplete).toBe(false);
+  });
+
+  it("asks the store for the HTML part, which the test reads for an html parser", async () => {
+    const { service, receiptRepo } = setup();
+    await service.testDefinition(USER, {
+      definition: DEFINITION,
+      receiptIds: [R1],
+    });
+    expect(receiptRepo.find.mock.calls[0][0].select).toMatchObject({
+      bodyText: true,
+      bodyHtml: true,
+    });
+  });
+
+  it("refuses an unknown source as an invalid definition, reading no email", async () => {
+    const { service, receiptRepo } = setup();
+    const result = await service.testDefinition(USER, {
+      definition: { ...DEFINITION, source: "pdf" },
+      receiptIds: [R1],
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual([{ path: "source", code: "invalid_value" }]);
+    expect(receiptRepo.find).not.toHaveBeenCalled();
   });
 
   it("traces at most 20 items per email", async () => {
@@ -373,7 +451,100 @@ describe("EmailReceiptParserToolsService.testDefinition", () => {
     });
 
     expect(parserRepo.save).not.toHaveBeenCalled();
-    expect(manager.query).not.toHaveBeenCalled();
+    // The only statement is the matcher's read-only candidate SELECT.
+    for (const [sql] of manager.query.mock.calls) {
+      expect(String(sql).trim()).toMatch(/^SELECT/);
+    }
+  });
+
+  describe("what the definition's match section would do", () => {
+    const CANDIDATE = {
+      id: "tx-1",
+      transaction_date: "2026-09-12",
+      amount: "-15.0000",
+      payee_id: null,
+      payee_name: "Shop",
+      description: "CARD PURCHASE ORDER ABCD1234",
+      reference_number: null,
+    };
+
+    it("reports the strategy that matched, the transaction and what each strategy kept", async () => {
+      const { service, manager } = setup();
+      manager.query.mockResolvedValue([CANDIDATE]);
+
+      const result = await service.testDefinition(USER, {
+        definition: {
+          ...DEFINITION,
+          match: { by: ["orderId", "amount_date"] },
+        },
+        receiptIds: [R1],
+      });
+
+      expect(result.emails[0].match).toEqual({
+        outcome: "matched",
+        strategy: "orderId",
+        transaction: {
+          id: "tx-1",
+          date: "2026-09-12",
+          amount: -15,
+          payeeName: "Shop",
+        },
+        considered: 1,
+        attempts: [{ strategy: "orderId", count: 1 }],
+      });
+    });
+
+    it("loads candidates for the profile's window, not the default one", async () => {
+      const { service, manager } = setup();
+
+      await service.testDefinition(USER, {
+        definition: {
+          ...DEFINITION,
+          match: { by: ["amount_date"], daysBefore: 0, daysAfter: 30 },
+        },
+        receiptIds: [R1],
+      });
+
+      const params = manager.query.mock.calls[0][1] as unknown[];
+      expect(params[1]).toBe("2026-09-10");
+      expect(params[2]).toBe("2026-10-10");
+    });
+
+    it("is unmatched, with each strategy's count, when nothing fits", async () => {
+      const { service } = setup();
+
+      const result = await service.testDefinition(USER, {
+        definition: DEFINITION,
+        receiptIds: [R1],
+      });
+
+      expect(result.emails[0].match).toEqual({
+        outcome: "unmatched",
+        strategy: null,
+        transaction: null,
+        considered: 0,
+        attempts: [
+          { strategy: "orderId", count: 0 },
+          { strategy: "amount_payee", count: 0 },
+          { strategy: "amount_date", count: 0 },
+        ],
+      });
+    });
+
+    it("reads the profile's reference field", async () => {
+      const { service } = setup();
+
+      const result = await service.testDefinition(USER, {
+        definition: {
+          ...DEFINITION,
+          reference: ["Order number: {reference}"],
+          match: { by: ["reference"] },
+        },
+        receiptIds: [R1],
+      });
+
+      expect(result.emails[0].parsed.reference).toBe("ABCD1234");
+    });
   });
 
   it("dates an email by the shop's day when a forward carried it", async () => {

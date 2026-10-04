@@ -143,7 +143,10 @@
     "transferNotSupported": "Transfer tidak dapat ditinjau melalui usulan. Tolak permintaan tersebut sebagai gantinya.",
     "splitDifference": "Baris pemisahan berjumlah {{ sum }} tetapi transaksinya {{ amount }}: {{ difference }} belum dialokasikan. Buat baris sesuai jumlah transaksi; sisa seperti biaya pengiriman perlu barisnya sendiri, atau disebutkan kepada pengguna alih-alih dialokasikan.",
     "noTransaction": "Permintaan tinjauan AI ini tidak terkait dengan transaksi.",
-    "parserDraftNotSubmittable": "Permintaan draf parser dijawab dengan alat email_receipt_parsers (uji dulu, lalu save_draft dengan requestId ini), bukan dengan usulan transaksi."
+    "parserDraftNotSubmittable": "Permintaan draf parser dijawab dengan alat email_receipt_parsers (uji dulu, lalu save_draft dengan requestId ini), bukan dengan usulan transaksi.",
+    "tagNamesInvalid": "Sebuah usulan dapat menambahkan hingga {{ max }} tag dengan panjang masing-masing 1 sampai {{ length }} karakter, tanpa karakter kontrol.",
+    "noApprovableProposal": "Permintaan ini tidak memiliki usulan untuk disetujui di sini.",
+    "approveFailed": "Usulan ini tidak dapat disetujui. Coba setujui secara terpisah."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Terlalu banyak percobaan verifikasi. Silakan masuk lagi.",

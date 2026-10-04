@@ -7,6 +7,8 @@ import {
   looksLikeHtml,
   canRecognizeWithAi,
   isReceiptActionable,
+  normalizeDomainFilter,
+  processableForDomains,
   readParsedReceipt,
   senderDomain,
   shownReceiptState,
@@ -123,6 +125,7 @@ describe('readParsedReceipt source', () => {
   it('keeps who read the email, and leaves it absent when the server did not say', () => {
     expect(readParsedReceipt({ source: 'ai', items: [] })?.source).toBe('ai');
     expect(readParsedReceipt({ source: 'parser', items: [] })?.source).toBe('parser');
+    expect(readParsedReceipt({ source: 'schema_org', items: [] })?.source).toBe('schema_org');
     expect(readParsedReceipt({ items: [] })).not.toHaveProperty('source');
     expect(readParsedReceipt({ source: 'robot', items: [] })).not.toHaveProperty('source');
   });
@@ -212,4 +215,43 @@ describe('dominantSenderDomain', () => {
     expect(dominantSenderDomain([{ fromDomain: '', fromAddress: '' }])).toBe('');
     expect(dominantSenderDomain([])).toBe('');
   });
+});
+
+describe('processableForDomains', () => {
+  const domains = [
+    { domain: 'amazon.com', count: 9, processable: 4 },
+    { domain: 'mail.amazon.com', count: 3, processable: 3 },
+    { domain: 'notamazon.com', count: 5, processable: 5 },
+    { domain: 'old.example', count: 2 },
+  ];
+
+  it('sums the processable emails of the domain and its sub-domains, and of no look-alike', () => {
+    expect(processableForDomains(domains, ['amazon.com'])).toBe(7);
+  });
+
+  it('sums several domains, ignoring case and blanks', () => {
+    expect(processableForDomains(domains, ['Amazon.com', ' ', 'old.example'])).toBe(9);
+  });
+
+  it('reads a server that sends no processable as all of the emails, never zero', () => {
+    expect(processableForDomains(domains, ['old.example'])).toBe(2);
+  });
+
+  it('is zero for a sender with no stored email', () => {
+    expect(processableForDomains(domains, ['nowhere.example'])).toBe(0);
+  });
+});
+
+describe('normalizeDomainFilter', () => {
+  it('trims and lower-cases a host name, and drops a leading @ and a trailing dot', () => {
+    expect(normalizeDomainFilter('shop.example.com')).toBe('shop.example.com');
+    expect(normalizeDomainFilter('  @Shop.Example.COM. ')).toBe('shop.example.com');
+  });
+
+  it.each([null, undefined, '', '   ', 'nodots', 'a b.example.com', 'a%.example.com', 'a_b.example.com', 'x.com/y', '<script>.com', `${'a'.repeat(250)}.com`])(
+    'is no filter for %j',
+    (raw) => {
+      expect(normalizeDomainFilter(raw as string | null | undefined)).toBe('');
+    },
+  );
 });

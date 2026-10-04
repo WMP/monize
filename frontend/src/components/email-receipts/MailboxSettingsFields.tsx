@@ -7,12 +7,14 @@ import { Select } from '@/components/ui/Select';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { EMAIL_RECEIPT_AI_MODES, type EmailReceiptAiMode } from '@/types/email-receipts';
 
-/** The four settings every mailbox has, whichever way it logs in. */
+/** The five settings every mailbox has, whichever way it logs in. */
 export interface MailboxSettingsValues {
   folder: string;
   enabled: boolean;
   aiMode: EmailReceiptAiMode;
   autoApply: boolean;
+  /** Whether a proposal from an email profile counts toward the daily limit of AI-proposed writes. */
+  profileProposalsCountTowardAiLimit: boolean;
 }
 
 interface MailboxSettingsFieldsProps {
@@ -24,7 +26,7 @@ interface MailboxSettingsFieldsProps {
 }
 
 /**
- * Folder, polling switch, AI mode and auto-apply. Shared by the password form
+ * Folder, polling switch, AI mode, auto-apply and the AI-limit switch. Shared by the password form
  * (saved with the whole configuration) and the OAuth panel (saved through
  * `PATCH /settings`), so the two cannot word the auto-apply gate differently:
  * it is the one switch that lets a proposal reach the ledger unasked.
@@ -86,6 +88,17 @@ export function MailboxSettingsFields({ idPrefix, values, onChange, disabled }: 
         />
         <span className="text-sm text-gray-700 dark:text-gray-300">{t('autoApplyLabel')}</span>
         <InfoTooltip text={t('autoApplyHelp')} placement="top" usePortal />
+      </div>
+
+      <div className="flex items-center gap-3">
+        <ToggleSwitch
+          checked={values.profileProposalsCountTowardAiLimit}
+          disabled={disabled}
+          label={t('profileLimitLabel')}
+          onChange={(profileProposalsCountTowardAiLimit) => onChange({ ...values, profileProposalsCountTowardAiLimit })}
+        />
+        <span className="text-sm text-gray-700 dark:text-gray-300">{t('profileLimitLabel')}</span>
+        <InfoTooltip text={t('profileLimitHelp')} placement="top" usePortal />
       </div>
     </div>
   );

@@ -509,7 +509,7 @@ scripts, no same-origin, no forms, no popups) whose `srcDoc` starts with a CSP
 meta (`default-src 'none'`, inline styles and `data:` images only, so remote images, fonts and
 frames are not loaded) and `<base target="_blank">`; the dialog says "Remote
 images are not loaded." `dangerouslySetInnerHTML` stays out of this tree. A
-stored `body_text` that is really HTML is drawn the same way (`looksLikeHtml`).
+stored `body_text` that is really HTML is drawn the same way (`looksLikeHtml`). The dialog's third view, "Lines" (`EmailLinesView`), shows the numbered lines a parser matches against, per source, as plain text: the server derives them from the HTML (`lines` on the detail), and the page never parses the HTML itself.
 
 ## Nothing interactive goes inside a `<button>` or an `<a>`
 
