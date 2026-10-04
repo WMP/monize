@@ -252,9 +252,9 @@ describe('CategoryForm automatic sign', () => {
     await act(async () => { fireEvent.click(screen.getByText(name)); });
   }
 
-  it('offers only On and Off for a root category, defaulting to On', () => {
+  it('offers only Enabled and Disabled for a root category, defaulting to Enabled', () => {
     render(<CategoryForm categories={categories} onSubmit={vi.fn()} onCancel={onCancel} />);
-    expect(optionLabels()).toEqual(['On', 'Off']);
+    expect(optionLabels()).toEqual(['Enabled', 'Disabled']);
     expect(autoSignSelect().value).toBe('true');
     expect(screen.queryByText(/Inherited from parent/)).not.toBeInTheDocument();
   });
@@ -263,14 +263,14 @@ describe('CategoryForm automatic sign', () => {
     render(
       <CategoryForm category={subcategory(null)} categories={categories} onSubmit={vi.fn()} onCancel={onCancel} />,
     );
-    expect(optionLabels()).toEqual(['Inherit from parent', 'On', 'Off']);
+    expect(optionLabels()).toEqual(['Inherit from parent', 'Enabled', 'Disabled']);
     expect(autoSignSelect().value).toBe('');
     expect(
-      screen.getByText('Inherited from parent (Food): currently Off'),
+      screen.getByText('Inherited from parent (Food): currently Disabled'),
     ).toBeInTheDocument();
   });
 
-  it('shows an explicit Off without the inherited hint', () => {
+  it('shows an explicit Disabled without the inherited hint', () => {
     render(
       <CategoryForm category={subcategory(false, 'p2')} categories={categories} onSubmit={vi.fn()} onCancel={onCancel} />,
     );
@@ -287,14 +287,14 @@ describe('CategoryForm automatic sign', () => {
     // Food is explicitly off; the child still inherits rather than copying it.
     expect(autoSignSelect().value).toBe('');
     expect(
-      screen.getByText('Inherited from parent (Food): currently Off'),
+      screen.getByText('Inherited from parent (Food): currently Disabled'),
     ).toBeInTheDocument();
     await act(async () => { fireEvent.click(screen.getByText('Update Category')); });
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onSubmit.mock.calls[0][0]).toMatchObject({ parentId: 'p1', autoSign: null });
   });
 
-  it('keeps an explicit On when moved under a parent that is off', async () => {
+  it('keeps an explicit Enabled when moved under a parent that is off', async () => {
     render(
       <CategoryForm category={subcategory(true, 'p2')} categories={categories} onSubmit={vi.fn()} onCancel={onCancel} />,
     );
