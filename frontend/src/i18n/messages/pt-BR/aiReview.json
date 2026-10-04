@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "Caixa de revisão de IA",
-    "subtitle": "Transações que uma regra pediu para uma IA revisar e as alterações que um assistente propõe para a sua aprovação."
+    "subtitle": "Transações que uma regra pediu para uma IA revisar, analisadores que um assistente foi solicitado a redigir e as alterações que um assistente propõe para a sua aprovação."
   },
   "filter": {
     "label": "Filtrar por status",
@@ -34,11 +34,13 @@
     "manualRequest": "Solicitado manualmente",
     "emailReceipt": "Recibo por e-mail: {subject} de {sender}",
     "emailReceiptMissing": "Recibo por e-mail (o e-mail foi excluído)",
+    "parserDraft": "Rascunho de analisador a partir de {count, plural, one {# e-mail} other {# e-mails}} ({domain})",
     "viewEmailReceipts": "Ver recibos por e-mail",
     "agentNote": "Nota do assistente: {reason}",
     "dates": "Criado em {created}, expira em {expires}",
     "viewTransaction": "Ver transação",
-    "waitingForAgent": "Aguardando um agente de IA. <link>Conecte um provedor de IA em Configurações</link> ou deixe um cliente MCP assumi-la."
+    "waitingForAgent": "Aguardando um agente de IA. <link>Conecte um provedor de IA em Configurações</link> ou deixe um cliente MCP assumi-la.",
+    "parserDraftReady": "Rascunho de analisador pronto. <link>Teste e aprove-o nas configurações dos analisadores</link>."
   },
   "actions": {
     "dismiss": "Dispensar"
@@ -48,7 +50,7 @@
   },
   "dismissDialog": {
     "title": "Dispensar esta solicitação?",
-    "message": "Ninguém será solicitado novamente a revisar esta transação. A transação em si não é alterada.",
+    "message": "Ninguém será solicitado novamente a trabalhar nesta solicitação. Nada do que ela envolvia é alterado.",
     "confirm": "Dispensar solicitação"
   },
   "loading": "Carregando as solicitações de revisão...",

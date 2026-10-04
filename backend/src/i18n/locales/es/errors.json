@@ -129,7 +129,9 @@
     "nothingProposed": "Una propuesta necesita al menos un cambio: splits, categoryName, payeeName o description.",
     "splitsAndCategory": "Envíe splits o categoryName, no ambos: una transacción dividida no tiene una sola categoría.",
     "transferNotSupported": "Una transferencia no se puede revisar mediante propuesta. Rechace la solicitud en su lugar.",
-    "splitDifference": "Las líneas de división suman {{ sum }} pero la transacción es {{ amount }}: {{ difference }} no está asignado. Haga que las líneas sumen el importe de la transacción; un sobrante como el coste de envío necesita su propia línea, o se indica al usuario en lugar de asignarse."
+    "splitDifference": "Las líneas de división suman {{ sum }} pero la transacción es {{ amount }}: {{ difference }} no está asignado. Haga que las líneas sumen el importe de la transacción; un sobrante como el coste de envío necesita su propia línea, o se indica al usuario en lugar de asignarse.",
+    "noTransaction": "Esta solicitud de revisión de IA no trata de una transacción.",
+    "parserDraftNotSubmittable": "Una solicitud de borrador de analizador se responde con la herramienta email_receipt_parsers (test y después save_draft con este requestId), no con una propuesta de transacción."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Demasiados intentos de verificación. Inicia sesión de nuevo.",
@@ -347,7 +349,6 @@
     "openRequestExists": "Ya hay otra solicitud de revisión abierta para esta transacción. Termínela o descártela primero.",
     "receiptNotFound": "No se encontró el correo {{ id }}",
     "aiOff": "La IA está desactivada para este buzón. Cambie primero el modo de IA en la configuración del buzón.",
-    "pollMailboxDisabled": "El buzón está desactivado. Actívelo en la configuración del buzón para consultarlo.",
     "pollBusy": "El buzón se está leyendo en este momento. Inténtelo de nuevo en un minuto.",
     "parserPayeeNotFound": "No se encontró el beneficiario de este analizador.",
     "parserNotFound": "No se encontró el analizador de recibos {{ id }}",
@@ -369,7 +370,10 @@
     "oauthReconnectRequired": "El inicio de sesión del buzón se revocó o ha caducado. Vuelva a conectar el buzón en la configuración del buzón.",
     "oauthTokenUnreadable": "El inicio de sesión almacenado no se puede leer en este servidor. Vuelva a conectar el buzón en la configuración del buzón.",
     "notOAuthMailbox": "Este buzón no inicia sesión con Google ni con Microsoft.",
-    "settingsEmpty": "Envíe al menos un ajuste para cambiar."
+    "settingsEmpty": "Envíe al menos un ajuste para cambiar.",
+    "parserToolReceiptCount": "Indique de 1 a 5 correos con los que probar el analizador.",
+    "parserToolInvalidSender": "Un borrador necesita un nombre y de uno a diez dominios de remitente, como shop.example.com.",
+    "parserDraftRequestNotClaimed": "Esta solicitud de borrador de analizador no está reclamada por usted. Reclámela primero con ai_review_requests o guarde el borrador sin requestId."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "El correo electrónico no está configurado. El acceso de emergencia no puede habilitarse hasta que se configure SMTP.",

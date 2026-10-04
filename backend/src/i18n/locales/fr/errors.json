@@ -129,7 +129,9 @@
     "nothingProposed": "Une proposition nécessite au moins une modification : splits, categoryName, payeeName ou description.",
     "splitsAndCategory": "Envoyez soit splits, soit categoryName, pas les deux : une transaction ventilée n'a pas de catégorie unique.",
     "transferNotSupported": "Un virement ne peut pas être revu par proposition. Rejetez plutôt la demande.",
-    "splitDifference": "Les lignes de ventilation totalisent {{ sum }} alors que la transaction est de {{ amount }} : {{ difference }} n'est pas affecté. Faites correspondre les lignes à la transaction ; un reliquat tel que des frais de livraison nécessite sa propre ligne, ou est signalé à l'utilisateur au lieu d'être affecté."
+    "splitDifference": "Les lignes de ventilation totalisent {{ sum }} alors que la transaction est de {{ amount }} : {{ difference }} n'est pas affecté. Faites correspondre les lignes à la transaction ; un reliquat tel que des frais de livraison nécessite sa propre ligne, ou est signalé à l'utilisateur au lieu d'être affecté.",
+    "noTransaction": "Cette demande de revue IA ne concerne pas une transaction.",
+    "parserDraftNotSubmittable": "Une demande de brouillon d'analyseur reçoit sa réponse avec l'outil email_receipt_parsers (test, puis save_draft avec ce requestId), pas avec une proposition de transaction."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Trop de tentatives de vérification. Veuillez vous reconnecter.",
@@ -347,7 +349,6 @@
     "openRequestExists": "Une autre demande de revue est déjà ouverte pour cette transaction. Terminez-la ou fermez-la d'abord.",
     "receiptNotFound": "E-mail {{ id }} introuvable",
     "aiOff": "L'IA est désactivée pour cette boîte mail. Modifiez d'abord le mode IA dans les paramètres de la boîte mail.",
-    "pollMailboxDisabled": "La boîte mail est désactivée. Activez-la dans les paramètres de la boîte mail pour la relever.",
     "pollBusy": "La boîte mail est en cours de lecture. Réessayez dans une minute.",
     "parserPayeeNotFound": "Le bénéficiaire de cet analyseur est introuvable.",
     "parserNotFound": "Analyseur de reçus {{ id }} introuvable",
@@ -369,7 +370,10 @@
     "oauthReconnectRequired": "La connexion de la boîte mail a été révoquée ou a expiré. Reconnectez la boîte mail dans ses paramètres.",
     "oauthTokenUnreadable": "La connexion enregistrée est illisible sur ce serveur. Reconnectez la boîte mail dans ses paramètres.",
     "notOAuthMailbox": "Cette boîte mail ne se connecte pas avec Google ou Microsoft.",
-    "settingsEmpty": "Envoyez au moins un paramètre à modifier."
+    "settingsEmpty": "Envoyez au moins un paramètre à modifier.",
+    "parserToolReceiptCount": "Indiquez de 1 à 5 e-mails sur lesquels tester l'analyseur.",
+    "parserToolInvalidSender": "Un brouillon nécessite un nom et un à dix domaines d'expéditeur tels que shop.example.com.",
+    "parserDraftRequestNotClaimed": "Cette demande de brouillon d'analyseur n'est pas prise en charge par vous. Prenez-la d'abord en charge avec ai_review_requests, ou enregistrez le brouillon sans requestId."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "L'e-mail n'est pas configuré. L'accès d'urgence ne peut pas être activé tant que SMTP n'est pas configuré.",

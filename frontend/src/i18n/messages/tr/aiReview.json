@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "Yapay zekâ inceleme kutusu",
-    "subtitle": "Bir kuralın yapay zekâya incelettirmek istediği işlemler ve bir asistanın onayınız için önerdiği değişiklikler."
+    "subtitle": "Bir kuralın yapay zekâya incelettirmek istediği işlemler, bir asistandan taslağı istenen ayrıştırıcılar ve bir asistanın onayınız için önerdiği değişiklikler."
   },
   "filter": {
     "label": "Duruma göre filtrele",
@@ -34,11 +34,13 @@
     "manualRequest": "Elle istendi",
     "emailReceipt": "E-posta makbuzu: {subject}, gönderen: {sender}",
     "emailReceiptMissing": "E-posta makbuzu (e-posta silindi)",
+    "parserDraft": "{count, plural, one {# e-postadan} other {# e-postadan}} ayrıştırıcı taslağı ({domain})",
     "viewEmailReceipts": "E-posta makbuzlarını görüntüle",
     "agentNote": "Asistanın notu: {reason}",
     "dates": "Oluşturulma {created}, bitiş {expires}",
     "viewTransaction": "İşlemi görüntüle",
-    "waitingForAgent": "Bir yapay zekâ ajanı bekleniyor. <link>Ayarlar'dan bir yapay zekâ sağlayıcısı bağlayın</link> veya bir MCP istemcisinin üstlenmesine izin verin."
+    "waitingForAgent": "Bir yapay zekâ ajanı bekleniyor. <link>Ayarlar'dan bir yapay zekâ sağlayıcısı bağlayın</link> veya bir MCP istemcisinin üstlenmesine izin verin.",
+    "parserDraftReady": "Ayrıştırıcı taslağı hazır. <link>Ayrıştırıcı ayarlarında deneyin ve onaylayın</link>."
   },
   "actions": {
     "dismiss": "Yoksay"
@@ -48,7 +50,7 @@
   },
   "dismissDialog": {
     "title": "Bu istek yoksayılsın mı?",
-    "message": "Bu işlemi incelemesi için artık kimseden istekte bulunulmayacak. İşlemin kendisi değişmez.",
+    "message": "Bu istek üzerinde çalışması için artık kimseden istekte bulunulmayacak. İsteğin konusu olan hiçbir şey değişmez.",
     "confirm": "İsteği yoksay"
   },
   "loading": "İnceleme istekleri yükleniyor...",

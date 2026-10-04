@@ -129,7 +129,9 @@
     "nothingProposed": "Een voorstel heeft minstens één wijziging nodig: splits, categoryName, payeeName of description.",
     "splitsAndCategory": "Stuur splits of categoryName, niet beide: een gesplitste transactie heeft geen enkele categorie.",
     "transferNotSupported": "Een overboeking kan niet met een voorstel worden beoordeeld. Wijs het verzoek in plaats daarvan af.",
-    "splitDifference": "De splitsregels tellen op tot {{ sum }}, maar de transactie is {{ amount }}: {{ difference }} is niet toegewezen. Laat de regels optellen tot de transactie; een restbedrag zoals verzendkosten heeft een eigen regel nodig of wordt aan de gebruiker gemeld in plaats van toegewezen."
+    "splitDifference": "De splitsregels tellen op tot {{ sum }}, maar de transactie is {{ amount }}: {{ difference }} is niet toegewezen. Laat de regels optellen tot de transactie; een restbedrag zoals verzendkosten heeft een eigen regel nodig of wordt aan de gebruiker gemeld in plaats van toegewezen.",
+    "noTransaction": "Dit AI-beoordelingsverzoek gaat niet over een transactie.",
+    "parserDraftNotSubmittable": "Een verzoek om een parserconcept wordt beantwoord met de tool email_receipt_parsers (test, daarna save_draft met dit requestId), niet met een transactievoorstel."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Te veel verificatiepogingen. Log opnieuw in.",
@@ -347,7 +349,6 @@
     "openRequestExists": "Er staat al een ander beoordelingsverzoek open voor deze transactie. Rond het eerst af of wijs het af.",
     "receiptNotFound": "E-mail {{ id }} niet gevonden",
     "aiOff": "De AI is uitgeschakeld voor deze mailbox. Wijzig eerst de AI-modus in de mailboxinstellingen.",
-    "pollMailboxDisabled": "De mailbox is uitgeschakeld. Schakel hem in via de mailboxinstellingen om hem op te halen.",
     "pollBusy": "De mailbox wordt op dit moment gelezen. Probeer het over een minuut opnieuw.",
     "parserPayeeNotFound": "De begunstigde van deze parser is niet gevonden.",
     "parserNotFound": "Bonparser {{ id }} niet gevonden",
@@ -369,7 +370,10 @@
     "oauthReconnectRequired": "De aanmelding van de mailbox is ingetrokken of verlopen. Koppel de mailbox opnieuw in de mailboxinstellingen.",
     "oauthTokenUnreadable": "De opgeslagen aanmelding kan op deze server niet worden gelezen. Koppel de mailbox opnieuw in de mailboxinstellingen.",
     "notOAuthMailbox": "Deze mailbox meldt zich niet aan met Google of Microsoft.",
-    "settingsEmpty": "Stuur ten minste één instelling mee om te wijzigen."
+    "settingsEmpty": "Stuur ten minste één instelling mee om te wijzigen.",
+    "parserToolReceiptCount": "Noem 1 tot 5 e-mails om de parser op te testen.",
+    "parserToolInvalidSender": "Een concept heeft een naam en één tot tien afzenderdomeinen nodig, zoals shop.example.com.",
+    "parserDraftRequestNotClaimed": "Dit verzoek om een parserconcept is niet door u geclaimd. Claim het eerst met ai_review_requests, of sla het concept op zonder requestId."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "E-mail is niet geconfigureerd. Noodtoegang kan pas worden ingeschakeld als SMTP is ingesteld.",
