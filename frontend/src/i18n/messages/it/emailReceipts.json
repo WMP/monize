@@ -153,7 +153,8 @@
     "payeeUnknown": "Beneficiario non trovato",
     "payeeUnavailable": "Elenco dei beneficiari non disponibile",
     "actions": {
-      "approve": "Approva"
+      "approve": "Approva",
+      "viewJson": "Mostra JSON"
     },
     "toasts": {
       "approved": "Parser approvato",
@@ -165,6 +166,14 @@
     "deleteDialog": {
       "title": "Eliminare il parser?",
       "message": "Il parser {name} verrà eliminato. Le email che ha già letto mantengono i loro risultati."
+    },
+    "jsonDialog": {
+      "title": "Definizione di {name}",
+      "help": "La definizione del parser così come è salvata. Qui è di sola lettura; usa Modifica per cambiarla.",
+      "contentLabel": "JSON della definizione",
+      "copy": "Copia",
+      "copied": "JSON copiato",
+      "copyFailed": "Impossibile copiare il JSON"
     }
   },
   "editor": {
@@ -222,6 +231,18 @@
       "defaultHelp": "Usata per gli articoli a cui non corrisponde nessuna regola.",
       "shippingLabel": "Categoria della spedizione",
       "shippingHelp": "La categoria della riga di spedizione."
+    },
+    "mode": {
+      "label": "Modalità di modifica",
+      "form": "Modulo",
+      "json": "JSON",
+      "formUnavailable": "Questa definizione usa qualcosa che il modulo non può mostrare: voci con etichetta, articoli su più righe o chiavi per cui non ha un campo. Modificala come JSON.",
+      "jsonInvalid": "Il JSON non è ancora valido, quindi il modulo non può essere mostrato. Correggilo prima."
+    },
+    "json": {
+      "label": "Definizione del parser (JSON)",
+      "help": "La stessa definizione che costruisce il modulo. Il server la controlla al salvataggio, e il test qui sotto la legge così com'è ora.",
+      "parseError": "Questo non è un JSON valido oppure non è un oggetto JSON. Correggilo per salvare o testare il parser."
     }
   },
   "problems": {
@@ -230,7 +251,12 @@
     "paths": {
       "definition": "La definizione",
       "line": "{field}, riga {line}",
-      "rule": "Regola di categoria {rule}, {part}"
+      "rule": "Regola di categoria {rule}, {part}",
+      "entryPart": "{field}, voce {line}, {part}",
+      "skipLine": "Riga da saltare {line}",
+      "recordStep": "Passaggio del record {step}",
+      "recordStepPart": "Passaggio del record {step}, {part}",
+      "recordAlternative": "Passaggio del record {step}, alternativa {alternative}"
     },
     "fields": {
       "orderId": "Modelli del numero d'ordine",
@@ -245,12 +271,28 @@
       "rulePattern": "modello",
       "ruleCategory": "categoria",
       "defaultCategory": "Categoria predefinita",
-      "shippingCategory": "Categoria della spedizione"
+      "shippingCategory": "Categoria della spedizione",
+      "skipLines": "Righe da saltare",
+      "record": "Record",
+      "label": "label",
+      "value": "value",
+      "within": "within",
+      "line": "line",
+      "optional": "optional",
+      "paid": "Modelli dell'importo pagato",
+      "payee": "Modelli dell'esercente",
+      "requireLine": "Righe obbligatorie",
+      "skipIfLine": "Righe che fanno saltare l'email",
+      "waitIfLine": "Righe che trattengono l'email",
+      "single": "Articolo singolo",
+      "singleName": "Nome dell'articolo singolo",
+      "joinWrapped": "Unisci le righe spezzate",
+      "ruleField": "field"
     },
     "codes": {
       "not_object": "non è una definizione valida",
       "unknown_key": "non è qualcosa che un parser può avere",
-      "invalid_version": "è una versione che questo server non legge",
+      "unsupported_version": "è una versione che questo server non legge (usa la versione 2)",
       "invalid_type": "ha un tipo di valore sbagliato",
       "empty": "non deve essere vuoto",
       "too_many": "ha troppe voci (al massimo {max})",
@@ -262,7 +304,15 @@
       "capture_not_allowed": "usa un nome di cattura che questo campo non accetta",
       "capture_missing": "manca di una cattura di cui questo campo ha bisogno",
       "capture_conflict": "cattura sia il totale della riga sia il prezzo unitario. Usane uno solo.",
-      "invalid_uuid": "non è una categoria valida"
+      "invalid_uuid": "non è una categoria valida",
+      "out_of_range": "deve essere un numero intero da 1 a {max}",
+      "items_patterns_and_record": "ha sia modelli sia un record. Usane uno solo.",
+      "items_shape_missing": "richiede modelli oppure un record",
+      "skip_lines_need_record": "può essere usato solo insieme a un record",
+      "record_name_missing": "deve catturare {capture} in uno dei suoi passaggi",
+      "items_single_conflict": "ha un articolo singolo accanto a modelli o a un record. Usane uno solo.",
+      "join_wrapped_needs_patterns": "funziona solo con i modelli degli articoli",
+      "invalid_value": "ha un valore che questo campo non accetta"
     }
   },
   "test": {
@@ -285,7 +335,33 @@
     },
     "noPayee": "nessun beneficiario",
     "ambiguous": "{count, plural, one {# transazione corrisponde} other {# transazioni corrispondono}} ugualmente bene, quindi nessuna verrebbe collegata finché non ne scegli una.",
-    "unmatched": "Nessuna transazione corrisponde, su {count, plural, one {# candidata} other {# candidate}}."
+    "unmatched": "Nessuna transazione corrisponde, su {count, plural, one {# candidata} other {# candidate}}.",
+    "jsonInvalid": "Il JSON non è valido, quindi non c'è ancora nulla da testare.",
+    "outcome": {
+      "not_applicable": "Questo parser non leggerebbe questa email: nessuna delle sue righe obbligatorie è presente, quindi verrebbe provato il parser successivo per il mittente.",
+      "skip_line": "Questo parser metterebbe da parte questa email: contiene una riga su cui la salta.",
+      "wait_line": "Questo parser tratterrebbe questa email: una riga indica che l'ordine non è ancora definitivo, quindi verrà riletta più tardi."
+    },
+    "matchedBy": {
+      "heading": "Trovato tramite",
+      "none": "Nessun valore è stato letto da questa email.",
+      "fields": {
+        "orderId": "Numero d'ordine",
+        "total": "Totale",
+        "paid": "Pagato",
+        "shipping": "Spedizione",
+        "discount": "Sconto",
+        "payee": "Esercente",
+        "requireLine": "Riga obbligatoria",
+        "skipIfLine": "Riga da saltare",
+        "waitIfLine": "Riga di attesa"
+      },
+      "entryLine": "voce {entry} ({pattern}), riga {line}: {text}",
+      "entrySubject": "voce {entry} ({pattern}), l'oggetto: {text}",
+      "labelled": "voce {entry}, etichetta {label} alla riga {labelLine} ({labelText}), valore {pattern} alla riga {line}: {text}",
+      "item": "Articolo {number}",
+      "itemLine": "{pattern}, riga {line}: {text}"
+    }
   },
   "parsed": {
     "notFound": "Non trovato",
@@ -310,9 +386,12 @@
       "no_items": "Non è stata trovata alcuna riga di articolo.",
       "items_unbalanced": "Le righe degli articoli non sommano al totale.",
       "items_uncategorized": "Alcune righe degli articoli non hanno una categoria.",
-      "shipping_uncategorized": "La riga di spedizione non ha una categoria."
+      "shipping_uncategorized": "La riga di spedizione non ha una categoria.",
+      "item_amount_missing": "Un articolo non ha un importo, e l'email non ha un totale unico da assegnargli."
     },
-    "readByAi": "Letto dall'IA"
+    "readByAi": "Letto dall'IA",
+    "paid": "Pagato",
+    "payee": "Esercente"
   },
   "state": {
     "pending": "In attesa di lettura",
@@ -457,7 +536,10 @@
       "amount_differs": "Il totale letto differisce dall'importo della transazione, quindi viene proposta solo una descrizione.",
       "proposal_fallback": "La proposta dettagliata è stata rifiutata, quindi viene proposta solo una descrizione.",
       "nothing_to_propose": "L'email non aggiunge nulla a questa transazione.",
-      "proposal_refused": "La proposta è stata rifiutata, quindi non è stato proposto nulla."
+      "proposal_refused": "La proposta è stata rifiutata, quindi non è stato proposto nulla.",
+      "skip_line": "È stata trovata una riga su cui questo parser salta, quindi l'email è stata ignorata.",
+      "wait_line": "Una riga indica che l'ordine non è ancora definitivo, quindi l'email verrà riletta più tardi.",
+      "item_amount_missing": "Un articolo non ha un importo, e l'email non ha un totale unico da assegnargli."
     },
     "reasonUnknown": "Motivo: {reason}",
     "requestNote": "Richiesta di revisione ({state}): {note}",
