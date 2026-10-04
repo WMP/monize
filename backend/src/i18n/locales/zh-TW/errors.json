@@ -142,7 +142,10 @@
     "transferNotSupported": "轉帳無法透過提案進行審核。請改為拒絕該請求。",
     "splitDifference": "拆分行合計為 {{ sum }}，但交易金額為 {{ amount }}：{{ difference }} 尚未分配。請讓各行合計等於交易金額；運費等餘額需要單獨一行，或告知使用者而不是自行分配。",
     "noTransaction": "此 AI 審核請求與交易無關。",
-    "parserDraftNotSubmittable": "解析器草稿請求應使用 email_receipt_parsers 工具回覆（先測試，再用此 requestId 執行 save_draft），而不是提交交易提案。"
+    "parserDraftNotSubmittable": "解析器草稿請求應使用 email_receipt_parsers 工具回覆（先測試，再用此 requestId 執行 save_draft），而不是提交交易提案。",
+    "tagNamesInvalid": "一則提議最多可新增 {{ max }} 個標籤，每個標籤 1 到 {{ length }} 個字元，且不能包含控制字元。",
+    "noApprovableProposal": "此請求在這裡沒有可核准的提議。",
+    "approveFailed": "無法核准此提議。請單獨嘗試。"
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "驗證嘗試次數過多。請重新登入。",

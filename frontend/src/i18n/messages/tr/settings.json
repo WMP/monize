@@ -993,7 +993,7 @@
     },
     "emailReceiptsCard": {
       "title": "E-posta Makbuzları",
-      "description": "Sipariş onayları için bir posta kutusu bağlayın ve onları okuyan ayrıştırıcıları yönetin."
+      "description": "Sipariş onayları için bir posta kutusu bağlayın ve onları okuyan profilleri yönetin."
     },
     "delegateSecurityError": "Güvenlik ayarlarınız yüklenemiyor.",
     "toasts": {

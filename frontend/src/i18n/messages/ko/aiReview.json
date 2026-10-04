@@ -13,6 +13,12 @@
     "rejected": "거부됨",
     "expired": "만료됨"
   },
+  "kindFilter": {
+    "label": "종류별 필터",
+    "all": "전체",
+    "email_receipt": "이메일 영수증",
+    "transaction_review": "규칙"
+  },
   "status": {
     "pending": "대기 중",
     "claimed": "검토 중",
@@ -47,6 +53,23 @@
   },
   "proposal": {
     "errorTitle": "이 제안은 더 이상 적용할 수 없습니다"
+  },
+  "bulk": {
+    "selectRow": "{name} 선택",
+    "selectAll": "표시된 승인 가능한 요청 모두 선택",
+    "approveSelected": "선택 항목 승인 ({count})",
+    "approveAllShown": "표시된 항목 모두 승인 ({count})",
+    "summary": "{approved, plural, one {제안 #건} other {제안 #건}} 적용, {failed, plural, one {#건 미적용} other {#건 미적용}}.",
+    "closeSummary": "닫기",
+    "failure": "{name}: {reason}",
+    "noReason": "이유가 제공되지 않았습니다",
+    "unknownRequest": "요청",
+    "failed": "제안을 적용하지 못했습니다",
+    "dialog": {
+      "title": "{count, plural, one {제안 #건을 적용할까요?} other {제안 #건을 적용할까요?}}",
+      "message": "각 제안은 현재 상태의 거래와 대조해 확인한 뒤 개별적으로 적용됩니다. 더 이상 맞지 않는 제안은 건너뛰고 알려 주며, 나머지는 계속 적용됩니다. 승인하기 전에 제안을 검토하세요.",
+      "confirm": "{count, plural, one {제안 #건 적용} other {제안 #건 적용}}"
+    }
   },
   "dismissDialog": {
     "title": "이 요청을 무시할까요?",

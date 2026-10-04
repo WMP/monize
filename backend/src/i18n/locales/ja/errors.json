@@ -142,7 +142,10 @@
     "transferNotSupported": "振替は提案によるレビューができません。代わりにリクエストを却下してください。",
     "splitDifference": "分割行の合計は {{ sum }} ですが、取引は {{ amount }} です。{{ difference }} が未割り当てです。行の合計を取引と一致させてください。送料などの残りは専用の行にするか、割り当てずにユーザーへ伝えてください。",
     "noTransaction": "この AI レビューリクエストは取引に関するものではありません。",
-    "parserDraftNotSubmittable": "パーサー下書きのリクエストには、取引の提案ではなく email_receipt_parsers ツールで回答します (テストしてから、この requestId で save_draft)。"
+    "parserDraftNotSubmittable": "パーサー下書きのリクエストには、取引の提案ではなく email_receipt_parsers ツールで回答します (テストしてから、この requestId で save_draft)。",
+    "tagNamesInvalid": "提案に追加できるタグは最大 {{ max }} 個で、各タグは 1 から {{ length }} 文字、制御文字は使えません。",
+    "noApprovableProposal": "このリクエストには、ここで承認できる提案がありません。",
+    "approveFailed": "この提案は承認できませんでした。単独でもう一度お試しください。"
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "確認の試行回数が多すぎます。もう一度ログインしてください。",

@@ -993,7 +993,7 @@
     },
     "emailReceiptsCard": {
       "title": "郵件收據",
-      "description": "連接用於接收訂單確認郵件的信箱，並管理讀取這些郵件的解析器。"
+      "description": "連接用於接收訂單確認郵件的信箱，並管理讀取這些郵件的設定檔。"
     },
     "delegateSecurityError": "無法載入您的安全設定。",
     "toasts": {

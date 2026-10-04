@@ -1,17 +1,11 @@
 {
   "settingsPage": {
-    "backLink": "返回设置",
-    "title": "邮件收据",
-    "subtitle": "从邮箱读取订单确认邮件，并将其转换为带明细的交易",
-    "receiptsLink": "打开已保存的邮件",
-    "demoRestricted": {
-      "heading": "演示模式下不可用",
-      "body": "演示模式下已禁用连接邮箱。"
-    }
+    "redirecting": "正在打开邮件收据页面...",
+    "redirectLink": "前往邮箱设置"
   },
   "page": {
     "title": "邮件收据",
-    "subtitle": "从邮箱读取的订单确认邮件，以及每封邮件的处理结果"
+    "subtitle": "从邮箱读取订单确认邮件，并将其转换为逐项明细的交易：已连接的内容、每封邮件的处理结果，以及等待您处理的事项"
   },
   "mailbox": {
     "heading": "邮箱",
@@ -99,7 +93,9 @@
         "automatic": "检查邮箱时，对于已匹配但已批准的解析器无法完整读取的收据，会询问 AI；对于没有解析器的发件人，会起草解析器。"
       },
       "autoApplyLabel": "自动应用提议",
-      "autoApplyHelp": "默认关闭。仅当以下条件全部满足时，提议才会不经询问直接应用：已批准的解析器读取了整封邮件；通过订单号，或通过完全一致的金额和收款人找到了交易，且只有一个候选；提议的合计精确到最小货币单位。其他情况都会等待您的批准。"
+      "autoApplyHelp": "默认关闭。仅当以下条件全部满足时，提议才会不经询问直接应用：已批准的配置文件读取了整封邮件；通过订单号或参考号，或通过完全一致的金额和收款人找到了交易，且只有一个候选；提议的合计精确到最小货币单位。其他情况都会等待您的批准。",
+      "profileLimitLabel": "将配置文件的提议计入每日 AI 上限",
+      "profileLimitHelp": "默认开启：配置文件根据邮件提出的修改，与其他 AI 提议一样，计入 AI 提议更改的每日上限。如果大批已保存的邮件会耗尽该上限，请将其关闭。只有来自配置文件的提议可免计；每条提议仍需等待您的批准。"
     },
     "status": {
       "lastPolled": "上次检查",
@@ -121,8 +117,8 @@
     }
   },
   "parsers": {
-    "heading": "解析器",
-    "description": "解析器使用您编写或审核过的模式，读取某个发件人的订单确认邮件。一旦获得批准，它无需 AI 即可运行。",
+    "heading": "配置文件",
+    "description": "配置文件使用您编写或审核过的模式，读取某个发件人的订单确认邮件，并说明如何找到对应的银行交易。一旦获得批准，它无需 AI 即可运行。",
     "newButton": "新建解析器",
     "loading": "正在加载解析器",
     "error": {
@@ -174,6 +170,12 @@
       "copy": "复制",
       "copied": "已复制 JSON",
       "copyFailed": "无法复制 JSON"
+    },
+    "processOffer": {
+      "title": "现在处理已保存的邮件？",
+      "message": "现在处理来自 {domains} 的{count, plural, one {# 封已保存邮件} other {# 封已保存邮件}}吗？每封邮件都会用此配置文件重新读取；除非开启了自动应用，否则它提出的提议会在审核收件箱中等待。",
+      "confirm": "立即处理",
+      "later": "暂不处理"
     }
   },
   "editor": {
@@ -249,6 +251,44 @@
       "label": "解析器定义（JSON）",
       "help": "与表单生成的定义相同。保存时服务器会检查它，下方的测试则按其当前内容读取。",
       "parseError": "这不是有效的 JSON，或者不是 JSON 对象。请修正后再保存或测试解析器。"
+    },
+    "matching": {
+      "heading": "匹配",
+      "help": "如何找到邮件所支付的银行交易。各策略按顺序尝试：第一个恰好只剩一笔交易的策略做出决定，剩下多笔则无法确定，一笔都不剩则交给下一个策略。",
+      "referenceLabel": "参考号模式",
+      "referenceHint": "商店或支付网关写入银行操作的标识符，例如对账单文字或转账标题。必须捕获 {capture}。",
+      "strategiesLabel": "策略，按尝试顺序",
+      "strategiesHelp": "订单号和参考号会在交易的说明、收款人或参考编号中查找该值。金额和收款人除金额外还需要收款人线索。金额和日期只需要金额，且须在时间范围内。至少要保持开启一个。",
+      "strategyPosition": "{position}. {name}",
+      "moveUp": "将{name}前移",
+      "moveDown": "将{name}后移",
+      "strategies": {
+        "reference": "参考号",
+        "orderId": "订单号",
+        "amount_payee": "金额和收款人",
+        "amount_date": "金额和日期"
+      },
+      "referenceNeeded": "参考号策略已开启，但没有参考号模式，因此什么也找不到。",
+      "referenceInLabel": "在以下位置查找参考号和订单号",
+      "referenceInHint": "短于 4 个字符的值不会被查找。",
+      "referenceIn": {
+        "description": "说明",
+        "payee": "收款人名称",
+        "referenceNumber": "参考编号"
+      },
+      "daysBeforeLabel": "购买前的天数",
+      "daysAfterLabel": "购买后的天数",
+      "daysHint": "购买日期前后的范围。默认 {default}，最多 {max}。",
+      "toleranceLabel": "金额容差",
+      "toleranceHint": "银行金额与邮件合计允许相差多少。默认 0，最多 {max}。"
+    },
+    "proposal": {
+      "heading": "提议",
+      "tagLabel": "为此配置文件归类的交易添加标签",
+      "tagHelp": "如果您没有同名标签，则会创建该标签。它会显示在提议中，在您批准之前不会写入任何内容。",
+      "tagNameLabel": "标签名称",
+      "aiCategoriesLabel": "让 AI 为没有规则匹配的商品选择类别",
+      "aiCategoriesHelp": "当商品不匹配任何类别规则且没有默认类别时，会请 AI 从您的类别列表中为其选择类别。提议中会将该选择标记为 AI 所选。关闭后，永远不会询问 AI。"
     }
   },
   "problems": {
@@ -294,7 +334,16 @@
       "single": "单个明细",
       "singleName": "单个明细名称",
       "joinWrapped": "合并折行",
-      "ruleField": "field"
+      "ruleField": "field",
+      "reference": "参考号模式",
+      "match": "匹配部分",
+      "matchBy": "匹配策略",
+      "matchReferenceIn": "查找参考号的字段",
+      "matchDaysBefore": "购买前的天数",
+      "matchDaysAfter": "购买后的天数",
+      "matchTolerance": "金额容差",
+      "tag": "标签",
+      "aiCategories": "AI 类别"
     },
     "codes": {
       "not_object": "不是有效的定义",
@@ -319,7 +368,11 @@
       "record_name_missing": "必须在其某个步骤中捕获 {capture}",
       "items_single_conflict": "在 patterns 或 record 之外还有单个明细。请只使用其中之一。",
       "join_wrapped_needs_patterns": "仅适用于明细模式",
-      "invalid_value": "的值不被此字段接受"
+      "invalid_value": "的值不被此字段接受",
+      "duplicate_entry": "重复列出了同一条目",
+      "reference_field_missing": "需要参考号模式（参考号策略已开启）",
+      "out_of_range_days": "必须是 0 到 {max} 之间的整数",
+      "out_of_range_tolerance": "必须是 0.00 到 {max} 之间的金额"
     }
   },
   "test": {
@@ -338,7 +391,9 @@
       "order_id": "订单号",
       "amount_payee": "金额和收款人",
       "amount_only": "金额",
-      "manual": "您的选择"
+      "manual": "您的选择",
+      "reference": "参考号",
+      "amount_date": "金额和日期"
     },
     "noPayee": "无收款人",
     "ambiguous": "{count, plural, one {# 笔交易} other {# 笔交易}}同样匹配，因此在您选择之前不会关联任何一笔。",
@@ -362,13 +417,30 @@
         "payee": "商家",
         "requireLine": "必需的行",
         "skipIfLine": "跳过行",
-        "waitIfLine": "暂缓行"
+        "waitIfLine": "暂缓行",
+        "reference": "参考号"
       },
       "entryLine": "条目 {entry}（{pattern}），第 {line} 行：{text}",
       "entrySubject": "条目 {entry}（{pattern}），主题：{text}",
       "labelled": "条目 {entry}，第 {labelLine} 行（{labelText}）上的标签 {label}，第 {line} 行上的值 {pattern}：{text}",
       "item": "明细 {number}",
       "itemLine": "{pattern}，第 {line} 行：{text}"
+    },
+    "trace": {
+      "heading": "匹配器查看的内容",
+      "window": "从 {from} 到 {to} 的交易（购买前 {before} 天、购买后 {after} 天）：已考虑 {considered, plural, one {# 笔} other {# 笔}}。",
+      "tolerance": "金额最多可相差 {amount}。",
+      "attempt": "{position}. {name}",
+      "kept": "{count, plural, =0 {一笔都没留下} one {留下 # 笔交易} other {留下 # 笔交易}}",
+      "decided": "已决定",
+      "transaction": "{date}，{amount}，{payee}",
+      "noPayee": "无收款人",
+      "strategies": {
+        "reference": "参考号",
+        "orderId": "订单号",
+        "amount_payee": "金额和收款人",
+        "amount_date": "金额和日期"
+      }
     }
   },
   "parsed": {
@@ -400,7 +472,9 @@
     "readByAi": "由 AI 读取",
     "readFromStructuredData": "由结构化数据读取",
     "paid": "已付",
-    "payee": "商家"
+    "payee": "商家",
+    "reference": "参考号",
+    "categoryByAi": "AI"
   },
   "state": {
     "pending": "等待读取",
@@ -422,7 +496,7 @@
     "loading": "正在加载邮件",
     "links": {
       "reviewInbox": "打开 AI 审核收件箱",
-      "settings": "邮箱和解析器设置"
+      "settings": "邮箱设置"
     },
     "filter": {
       "label": "按状态筛选",
@@ -532,7 +606,9 @@
       "order_id": "订单号",
       "amount_payee": "金额和收款人",
       "amount_only": "金额",
-      "manual": "您的选择"
+      "manual": "您的选择",
+      "reference": "参考号",
+      "amount_date": "金额和日期"
     },
     "transaction": "交易",
     "transactionSummary": "{date}，{amount}，{payee}",
@@ -674,5 +750,119 @@
     "inboxLink": "打开 AI 审核收件箱",
     "opened": "已打开聊天并附上该邮件。请阅读消息并点击“发送”。",
     "chatPrompt": "请识别所附订单邮件中的商品、数量和价格，并将我 {date} 的交易（{payee}，{amount}）按商品拆分，并为每项指定类别。请认领 AI 审核请求 {requestId}，并为它提交你的提议。"
+  },
+  "hub": {
+    "tabs": {
+      "ariaLabel": "邮件收据分区",
+      "overview": "概览",
+      "emails": "邮件",
+      "profiles": "配置文件",
+      "mailbox": "邮箱"
+    },
+    "demoRestricted": {
+      "heading": "演示模式下不可用",
+      "body": "演示模式下已禁用连接邮箱和编写配置文件。"
+    }
+  },
+  "process": {
+    "button": "全部处理",
+    "buttonCount": "全部处理（{count}）",
+    "dialog": {
+      "title": "{count, plural, one {处理 # 封已保存邮件？} other {处理 # 封已保存邮件？}}",
+      "message": "每封尚未读取、或可能因新的配置文件或交易而改变结果的已保存邮件，都会被重新读取。除非开启了自动应用，否则它提出的提议会在审核收件箱中等待。",
+      "messageDomain": "来自 {domain} 的每封尚未读取、或可能因新的配置文件或交易而改变结果的已保存邮件，都会被重新读取。除非开启了自动应用，否则它提出的提议会在审核收件箱中等待。",
+      "confirm": "处理"
+    },
+    "starting": "正在开始...",
+    "progress": "{processed, plural, one {已处理 # 封邮件} other {已处理 # 封邮件}}，剩余 {remaining} 封。",
+    "cancel": "取消",
+    "cancelling": "正在取消...",
+    "summary": "{count, plural, one {已处理 # 封邮件。} other {已处理 # 封邮件。}}",
+    "cancelledSummary": "{count, plural, one {处理 # 封邮件后已取消。} other {处理 # 封邮件后已取消。}}",
+    "outcomes": "结果：{outcomes}。",
+    "passedOver": "{count, plural, one {# 封邮件出错，已被跳过。} other {# 封邮件出错，已被跳过。}}",
+    "failed": "处理已停止，因为有请求失败。",
+    "failedWithReason": "处理已停止：{reason}",
+    "outcome": "{count} {state}",
+    "close": "关闭"
+  },
+  "overview": {
+    "loading": "正在加载概览...",
+    "error": {
+      "title": "无法加载概览",
+      "body": "请求失败，因此这里没有显示的内容不应被视为空。请重试。",
+      "retry": "重试"
+    },
+    "mailbox": {
+      "title": "邮箱",
+      "none": "尚未连接邮箱。",
+      "connect": "连接邮箱",
+      "manage": "打开邮箱设置",
+      "state": {
+        "notConnected": "未连接",
+        "failing": "上次检查失败",
+        "off": "检查已关闭",
+        "polling": "检查中"
+      },
+      "auth": {
+        "password": "密码登录",
+        "oauth2": "使用提供商登录"
+      },
+      "lastSuccess": "上次成功检查：{when}",
+      "neverPolled": "尚未成功检查过。",
+      "lastError": "上次错误：{error}"
+    },
+    "emails": {
+      "title": "邮件",
+      "stored": "已保存",
+      "processable": "{count, plural, one {可重新处理 # 封邮件} other {可重新处理 # 封邮件}}。",
+      "open": "打开邮件"
+    },
+    "proposals": {
+      "title": "提议",
+      "waiting": "等待您的批准",
+      "review": "审核提议",
+      "open": "打开审核收件箱"
+    },
+    "profiles": {
+      "title": "配置文件",
+      "approved": "已批准",
+      "drafts": "{count, plural, one {# 份草稿等待您的批准} other {# 份草稿等待您的批准}}。",
+      "manage": "打开配置文件"
+    },
+    "uncovered": {
+      "title": "没有配置文件的发件人",
+      "help": "这些发件人发来的邮件没有任何配置文件读取。请为其中之一创建配置文件，或让助手起草。",
+      "none": "已保存邮件的每个发件人都有配置文件覆盖。",
+      "row": "{domain}（{count, plural, one {# 封邮件} other {# 封邮件}}）",
+      "show": "显示邮件"
+    }
+  },
+  "wizard": {
+    "heading": "开始使用邮件收据",
+    "intro": "从零到第一条提议，只需四步。",
+    "done": "（已完成）",
+    "steps": {
+      "mailbox": {
+        "title": "连接邮箱",
+        "body": "请使用专门接收订单确认邮件的邮箱。Monize 只会读取它。",
+        "action": "连接邮箱"
+      },
+      "emails": {
+        "title": "获取邮件",
+        "body": "检查邮箱时才会读取邮件。请在邮箱设置中执行检查，以查看最初的几封。",
+        "action": "打开邮件"
+      },
+      "profile": {
+        "title": "为发件人创建配置文件",
+        "body": "配置文件告诉 Monize 如何读取某个发件人的订单确认邮件。可以自己编写，也可以根据已保存的邮件起草。",
+        "action": "打开配置文件"
+      },
+      "review": {
+        "title": "审核提议",
+        "body": "每封邮件都会成为针对某笔交易的提议。在您批准之前不会更改任何内容。",
+        "action": "打开审核收件箱"
+      }
+    }
   }
 }

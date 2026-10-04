@@ -142,7 +142,10 @@
     "transferNotSupported": "이체는 제안으로 검토할 수 없습니다. 대신 요청을 거부하세요.",
     "splitDifference": "분할 항목의 합계는 {{ sum }}이지만 거래는 {{ amount }}입니다. {{ difference }}이(가) 배정되지 않았습니다. 항목의 합이 거래와 같도록 하세요. 배송비 같은 나머지는 별도 항목이 필요하거나, 배정하지 않고 사용자에게 알려야 합니다.",
     "noTransaction": "이 AI 검토 요청은 거래에 관한 것이 아닙니다.",
-    "parserDraftNotSubmittable": "파서 초안 요청에는 거래 제안이 아니라 email_receipt_parsers 도구로 응답합니다(테스트한 뒤 이 requestId로 save_draft)."
+    "parserDraftNotSubmittable": "파서 초안 요청에는 거래 제안이 아니라 email_receipt_parsers 도구로 응답합니다(테스트한 뒤 이 requestId로 save_draft).",
+    "tagNamesInvalid": "제안에는 태그를 최대 {{ max }}개까지 추가할 수 있으며, 각 태그는 1자에서 {{ length }}자 사이여야 하고 제어 문자를 포함할 수 없습니다.",
+    "noApprovableProposal": "이 요청에는 여기에서 승인할 제안이 없습니다.",
+    "approveFailed": "이 제안을 승인하지 못했습니다. 단독으로 다시 시도하세요."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "인증 시도 횟수가 너무 많습니다. 다시 로그인하세요.",
