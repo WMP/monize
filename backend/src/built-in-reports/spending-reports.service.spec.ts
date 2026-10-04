@@ -41,6 +41,7 @@ describe("SpendingReportsService", () => {
     icon: null,
     color: "#FF5733",
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-01"),
   };
@@ -56,6 +57,7 @@ describe("SpendingReportsService", () => {
     icon: null,
     color: "#33FF57",
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-02"),
   };
@@ -323,6 +325,7 @@ describe("SpendingReportsService", () => {
         icon: null,
         color: null,
         isIncome: false,
+        autoSign: null,
         isSystem: false,
         createdAt: new Date(),
       }));
@@ -907,6 +910,7 @@ describe("SpendingReportsService", () => {
         icon: null,
         color: null,
         isIncome: false,
+        autoSign: null,
         isSystem: false,
         createdAt: new Date(),
       }));

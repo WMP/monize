@@ -53,7 +53,7 @@ import { ContactLookupDialog } from '@/components/payees/ContactLookupDialog';
 import { useContactLookupAvailable } from '@/hooks/useContactLookupAvailable';
 import { usePayeeContactLookup } from '@/hooks/usePayeeContactLookup';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { buildCategoryTree } from '@/lib/categoryUtils';
+import { buildCategoryTree, signAmountByCategory } from '@/lib/categoryUtils';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { usePreferencesStore } from '@/store/preferencesStore';
@@ -89,25 +89,6 @@ const buildTransactionSchema = (t: (key: string) => string) => z.object({
 });
 
 type TransactionFormData = z.infer<ReturnType<typeof buildTransactionSchema>>;
-
-/**
- * Sign a freshly entered amount magnitude according to a category: an income
- * category makes it positive, an expense category negative. An explicit sign
- * toggle -- the magnitude is unchanged from `reference`, so the user just
- * flipped the sign -- is preserved so a manual override is respected. Shared by
- * the account-currency and foreign-currency amount inputs so both behave
- * identically. With no category (or no reference), the value is returned as-is.
- */
-function signAmountByCategory(
-  value: number,
-  reference: number | undefined,
-  category: Category | undefined,
-): number {
-  const referenceAbs = reference !== undefined ? Math.abs(reference) : 0;
-  const isJustSignChange = referenceAbs === Math.abs(value) && referenceAbs !== 0;
-  if (isJustSignChange || !category) return value;
-  return category.isIncome ? Math.abs(value) : -Math.abs(value);
-}
 
 /**
  * A reconciled transaction was matched against a statement during
@@ -920,6 +901,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
   // converted amount), otherwise on the account-currency amount. Mirrors the
   // sign adjustment the account-currency flow applies on category change.
   const resignActiveAmount = (category: Category) => {
+    if (category.effectiveAutoSign === false) return;
     if (isForeign) {
       if (foreignAmount === undefined || foreignAmount === 0) return;
       const signed = category.isIncome

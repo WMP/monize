@@ -50,6 +50,7 @@ describe("BuiltInReportsService", () => {
     icon: null,
     color: "#FF5733",
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-01"),
   };
@@ -65,6 +66,7 @@ describe("BuiltInReportsService", () => {
     icon: null,
     color: "#33FF57",
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-02"),
   };
@@ -80,6 +82,7 @@ describe("BuiltInReportsService", () => {
     icon: null,
     color: "#5733FF",
     isIncome: true,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-03"),
   };
@@ -95,6 +98,7 @@ describe("BuiltInReportsService", () => {
     icon: null,
     color: "#FF0000",
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-04"),
   };
@@ -291,6 +295,7 @@ describe("BuiltInReportsService", () => {
         icon: null,
         color: null,
         isIncome: false,
+        autoSign: null,
         isSystem: false,
         createdAt: new Date(),
       }));
@@ -566,6 +571,7 @@ describe("BuiltInReportsService", () => {
         icon: null,
         color: null,
         isIncome: true,
+        autoSign: null,
         isSystem: false,
         createdAt: new Date(),
       }));
@@ -747,6 +753,7 @@ describe("BuiltInReportsService", () => {
         icon: null,
         color: null,
         isIncome: false,
+        autoSign: null,
         isSystem: false,
         createdAt: new Date(),
       }));
@@ -1033,6 +1040,7 @@ describe("BuiltInReportsService", () => {
         icon: null,
         color: null,
         isIncome: false,
+        autoSign: null,
         isSystem: false,
         createdAt: new Date(),
       }));

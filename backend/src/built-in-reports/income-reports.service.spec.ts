@@ -40,6 +40,7 @@ describe("IncomeReportsService", () => {
     icon: null,
     color: "#5733FF",
     isIncome: true,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-03"),
   };
@@ -55,6 +56,7 @@ describe("IncomeReportsService", () => {
     icon: null,
     color: "#FF5733",
     isIncome: true,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-01"),
   };
@@ -70,6 +72,7 @@ describe("IncomeReportsService", () => {
     icon: null,
     color: "#33FF57",
     isIncome: true,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-02"),
   };
@@ -246,6 +249,7 @@ describe("IncomeReportsService", () => {
         icon: null,
         color: null,
         isIncome: true,
+        autoSign: null,
         isSystem: false,
         createdAt: new Date(),
       }));

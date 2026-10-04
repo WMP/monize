@@ -255,6 +255,7 @@ CREATE TABLE categories (
     icon VARCHAR(50),
     color VARCHAR(7), -- hex color
     is_income BOOLEAN DEFAULT false,
+    auto_sign BOOLEAN,
     is_system BOOLEAN DEFAULT false, -- system categories can't be deleted
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, name, parent_id)

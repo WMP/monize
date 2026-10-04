@@ -41,6 +41,7 @@ describe("BudgetActivityReportsService", () => {
     icon: null,
     color: null,
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-01"),
   };
@@ -56,6 +57,7 @@ describe("BudgetActivityReportsService", () => {
     icon: null,
     color: null,
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-01"),
   };

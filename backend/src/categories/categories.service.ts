@@ -68,6 +68,7 @@ export class CategoriesService {
         icon: saved.icon,
         color: saved.color,
         isIncome: saved.isIncome,
+        autoSign: saved.autoSign,
         parentId: saved.parentId,
         isSystem: saved.isSystem,
       },
@@ -124,6 +125,42 @@ export class CategoriesService {
       ...cat,
       effectiveColor: inherit(cat, "color"),
       effectiveIcon: inherit(cat, "icon"),
+    }));
+  }
+
+  /**
+   * Effective auto-sign per category: a category's own explicit value wins;
+   * otherwise the nearest ancestor's explicit value; a root with none behaves
+   * as on. Unlike isIncome, a category's own `autoSign` is never rewritten to
+   * match an ancestor -- only this computed value is inherited.
+   */
+  private resolveEffectiveAutoSign<
+    T extends { id: string; parentId: string | null; autoSign: boolean | null },
+  >(categories: T[]): (T & { effectiveAutoSign: boolean })[] {
+    const categoryMap = new Map(categories.map((c) => [c.id, c]));
+    const resolved = new Map<string, boolean>();
+
+    const resolve = (cat: T): boolean => {
+      if (resolved.has(cat.id)) return resolved.get(cat.id)!;
+      if (cat.autoSign !== null) {
+        resolved.set(cat.id, cat.autoSign);
+        return cat.autoSign;
+      }
+      if (cat.parentId) {
+        const parent = categoryMap.get(cat.parentId);
+        if (parent) {
+          const value = resolve(parent);
+          resolved.set(cat.id, value);
+          return value;
+        }
+      }
+      resolved.set(cat.id, true);
+      return true;
+    };
+
+    return categories.map((cat) => ({
+      ...cat,
+      effectiveAutoSign: resolve(cat),
     }));
   }
 
@@ -186,7 +223,9 @@ export class CategoriesService {
       },
     );
 
-    return this.resolveInheritedAttributes(categoriesWithCounts);
+    return this.resolveEffectiveAutoSign(
+      this.resolveInheritedAttributes(categoriesWithCounts),
+    );
   }
 
   async getTree(
@@ -338,7 +377,11 @@ export class CategoriesService {
     userId: string,
     id: string,
   ): Promise<
-    Category & { effectiveColor: string | null; effectiveIcon: string | null }
+    Category & {
+      effectiveColor: string | null;
+      effectiveIcon: string | null;
+      effectiveAutoSign: boolean;
+    }
   > {
     return withScopedDb(this.dataSource, async (m) => {
       const repo = m.getRepository(Category);
@@ -360,24 +403,33 @@ export class CategoriesService {
       // it, and the walk ends once neither is still outstanding.
       let effectiveColor = category.color;
       let effectiveIcon = category.icon;
+      let effectiveAutoSign: boolean | null = category.autoSign;
       let currentParentId: string | null = category.parentId;
       while (
         currentParentId !== null &&
-        (effectiveColor === null || effectiveIcon === null)
+        (effectiveColor === null ||
+          effectiveIcon === null ||
+          effectiveAutoSign === null)
       ) {
         const parent: Category | null = await repo.findOne({
           where: { id: currentParentId, userId },
-          select: ["id", "color", "icon", "parentId"],
+          select: ["id", "color", "icon", "autoSign", "parentId"],
         });
         if (!parent) {
           break;
         }
         effectiveColor = effectiveColor ?? parent.color;
         effectiveIcon = effectiveIcon ?? parent.icon;
+        effectiveAutoSign = effectiveAutoSign ?? parent.autoSign;
         currentParentId = parent.parentId;
       }
 
-      return { ...category, effectiveColor, effectiveIcon };
+      return {
+        ...category,
+        effectiveColor,
+        effectiveIcon,
+        effectiveAutoSign: effectiveAutoSign ?? true,
+      };
     });
   }
 
@@ -393,6 +445,7 @@ export class CategoriesService {
       icon: category.icon,
       color: category.color,
       isIncome: category.isIncome,
+      autoSign: category.autoSign,
       parentId: category.parentId,
     };
 
@@ -450,6 +503,8 @@ export class CategoriesService {
       category.icon = updateCategoryDto.icon;
     if (updateCategoryDto.color !== undefined)
       category.color = updateCategoryDto.color;
+    if (updateCategoryDto.autoSign !== undefined)
+      category.autoSign = updateCategoryDto.autoSign;
     if (updateCategoryDto.parentId !== undefined)
       category.parentId = updateCategoryDto.parentId;
 
@@ -492,6 +547,7 @@ export class CategoriesService {
         icon: saved.icon,
         color: saved.color,
         isIncome: saved.isIncome,
+        autoSign: saved.autoSign,
         parentId: saved.parentId,
       },
       description: `Updated category "${saved.name}"`,

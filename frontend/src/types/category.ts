@@ -15,6 +15,14 @@ export interface Category {
    */
   effectiveColor: string | null;
   effectiveIcon: string | null;
+  /**
+   * This category's own explicit automatic-sign choice, or `null` to inherit
+   * from the nearest ancestor that has one (a root with none behaves as on).
+   * Never forced to match a parent the way `isIncome` is.
+   */
+  autoSign: boolean | null;
+  /** Resolved server-side by walking the ancestor chain; always a concrete boolean. */
+  effectiveAutoSign: boolean;
   isIncome: boolean;
   isSystem: boolean;
   createdAt: string;
@@ -78,6 +86,7 @@ export interface CreateCategoryData {
   icon?: string;
   color?: string;
   isIncome?: boolean;
+  autoSign?: boolean | null;
 }
 
 export interface UpdateCategoryData extends Partial<CreateCategoryData> {}

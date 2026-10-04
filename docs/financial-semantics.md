@@ -29,6 +29,14 @@ No server rule requires an income category to carry a positive amount, so the
 category and the sign can disagree; code that needs to know direction must read
 the sign, not the category.
 
+The client's habit of signing a freshly typed amount from the category's
+income/expense type is a data-entry convenience, not a server rule, and a
+category can switch it off: `categories.auto_sign` is a nullable per-category
+override (`null` inherits the nearest ancestor's, a root with none is on),
+resolved into the read-only `effectiveAutoSign` the same way `effectiveColor`
+and `effectiveIcon` already are. The frontend's `signAmountByCategory`
+(`frontend/src/lib/categoryUtils.ts`) is the one place that reads it.
+
 For transfers the sign is structural rather than caller-supplied. The DTO's
 `amount` must be non-negative, and `createTransfer` writes the source leg as
 `-amount` and the destination leg as `+toAmount`. Consequently **the sign is
