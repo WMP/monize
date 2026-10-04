@@ -85,17 +85,17 @@
       "folderLabel": "資料夾",
       "folderHelp": "要讀取的資料夾。將以唯讀方式開啟。",
       "enabledLabel": "自動讀取信箱",
-      "enabledHelp": "開啟後，每 15 分鐘檢查一次信箱。您也可以隨時使用「立即檢查」。",
+      "enabledHelp": "僅控制自動讀取：開啟後，Monize 每 15 分鐘讀取一次信箱。關閉不會中斷信箱連線，無論此項開啟或關閉，「立即檢查」都會讀取信箱。",
       "aiModeLabel": "AI 模式",
-      "aiModeHelp": "是否允許對收據使用您設定的 AI 供應商。AI 的回答一律只是供您核准的提議或草稿。",
+      "aiModeHelp": "檢查時是否允許對收據使用您設定的 AI 供應商。無論哪種模式，「用 AI 辨識」和「用 AI 起草解析器」都會在聊天中詢問助理，AI 的回答一律只是供您核准的提議或草稿。",
       "aiModes": {
         "off": "關閉",
         "on_demand": "依需求",
         "automatic": "自動"
       },
       "aiModeDescriptions": {
-        "off": "從不對收據呼叫 AI。",
-        "on_demand": "僅在您按下「用 AI 辨識」或「用 AI 起草解析器」時呼叫 AI。",
+        "off": "檢查時從不對收據呼叫 AI。",
+        "on_demand": "檢查時從不呼叫 AI。您可以透過「用 AI 辨識」或「用 AI 起草解析器」自行詢問助理。",
         "automatic": "檢查信箱時，對於已比對但已核准的解析器無法完整讀取的收據，會詢問 AI；對於沒有解析器的寄件者，會起草解析器。"
       },
       "autoApplyLabel": "自動套用提議",
@@ -109,6 +109,7 @@
       "lastErrorAt": "上次錯誤（{at}）：{error}",
       "pollNow": "立即檢查",
       "pollResult": "檢查完成：{fetched, plural, one {已儲存 # 封郵件} other {已儲存 # 封郵件}}，略過 {skipped} 封，處理 {processed} 封。",
+      "pollResultLink": "檢視已儲存的郵件",
       "pollFailed": "檢查失敗",
       "deleteButton": "刪除信箱",
       "deleteDialog": {
@@ -176,7 +177,7 @@
       "retry": "重試"
     },
     "draftNote": "此解析器是草稿。在您核准之前，它不會讀取任何內容。",
-    "draftAiNote": "AI 根據一封範例郵件起草了此解析器。請對照您的郵件檢查每個模式，然後在清單中核准它。在您核准之前，它不會讀取任何內容。",
+    "draftAiNote": "AI 根據您的範例郵件起草了此解析器。請用每一封郵件測試它並檢查每個模式，然後在清單中核准它。在您核准之前，它不會讀取任何內容。",
     "identityHeading": "讀取哪些郵件",
     "nameLabel": "名稱",
     "payeeLabel": "收款人",
@@ -349,6 +350,7 @@
       "ignored": "已忽略"
     },
     "columns": {
+      "select": "選取",
       "received": "接收時間",
       "email": "郵件",
       "transaction": "交易",
@@ -383,15 +385,10 @@
     "toasts": {
       "reprocessed": "郵件已重新處理",
       "reprocessFailed": "無法重新處理郵件",
-      "draftFailed": "無法起草解析器",
       "ignored": "郵件已忽略",
       "ignoreFailed": "無法忽略郵件",
       "deleted": "郵件已刪除",
       "deleteFailed": "無法刪除郵件"
-    },
-    "notices": {
-      "draftCreated": "AI 起草了解析器 {name}。在您審核並核准之前，它不會讀取任何內容。",
-      "draftLink": "在解析器設定中審核"
     },
     "ignoreDialog": {
       "title": "忽略此郵件？",
@@ -401,6 +398,22 @@
     "deleteDialog": {
       "title": "刪除此郵件？",
       "message": "已儲存的郵件 {subject} 將被刪除，其未完成的審核請求將被駁回。信箱中的郵件本身不會受到影響，之後的檢查也不會再次擷取它。"
+    },
+    "selection": {
+      "label": "已選取的郵件",
+      "select": "選取 {subject}",
+      "count": "{count, plural, one {已選取 # 封郵件} other {已選取 # 封郵件}}（最多 {max} 封）",
+      "draftButton": "用 AI 起草解析器（{count}）",
+      "clear": "清除選取",
+      "differentSenders": "所選郵件來自不同的寄件者（{domains}）。解析器只讀取一個寄件者的郵件，請選取同一寄件者的郵件。"
+    },
+    "draft": {
+      "failed": "無法開始起草解析器",
+      "queued": "已排入佇列：請求會在 AI 審核收件匣中等待代理處理。目前沒有可回答的助理。",
+      "handoffFailed": "請求已排入佇列，但無法在聊天中開啟這些郵件。它會在 AI 審核收件匣中等待代理處理。",
+      "inboxLink": "開啟 AI 審核收件匣",
+      "opened": "已開啟聊天並附上這些郵件。請閱讀訊息並按下「傳送」。",
+      "chatPrompt": "請為來自 {domain} 的{count, plural, one {這封訂單郵件} other {這 # 封訂單郵件}}建立一個郵件收據解析器。請認領 AI 審核請求 {requestId}，用 email_receipt_parsers 工具在每封所附郵件上測試你的解析器，修改到每封都能完整讀取，然後將其儲存為請求 {requestId} 的草稿。"
     }
   },
   "detail": {
@@ -413,6 +426,8 @@
     },
     "from": "寄件者",
     "received": "接收時間",
+    "forwardedBy": "轉寄者",
+    "originalSent": "商店寄出",
     "subject": "主旨",
     "state": "狀態",
     "parser": "解析器",
@@ -453,28 +468,39 @@
     "linkButton": "連結到此交易",
     "linked": "郵件已連結到交易",
     "linkFailed": "無法連結郵件",
-    "textHeading": "郵件內文",
+    "bodyHeading": "郵件",
     "textLabel": "郵件內文",
-    "noText": "這封郵件沒有內文。"
+    "noText": "這封郵件沒有內文。",
+    "bodyView": {
+      "label": "郵件顯示方式",
+      "html": "HTML",
+      "text": "文字"
+    },
+    "remoteImagesNote": "不會載入遠端圖片。",
+    "htmlFrameTitle": "依寄件者排版的郵件"
   },
   "picker": {
     "heading": "選擇交易",
-    "help": "沒有自動比對到交易。以下是您在 {from} 至 {to}（郵件前後幾天）的交易。請選擇它所支付的那一筆。",
+    "help": "沒有自動比對到交易。以下是下方日期範圍內的交易，範圍起初為購買前後幾天。請選擇它所支付的那一筆，或修改日期以查看更早或更晚的交易。",
+    "fromLabel": "開始日期",
+    "toLabel": "結束日期",
     "searchLabel": "搜尋",
     "searchPlaceholder": "收款人、說明或金額",
     "searchButton": "搜尋",
     "loading": "正在載入交易",
     "error": "無法載入交易。",
     "retry": "重試",
-    "empty": "此期間沒有可以連結的交易。",
-    "emptySearch": "此期間沒有與搜尋相符的交易。",
+    "empty": "此期間沒有可以連結的交易。您可以擴大上方的日期範圍繼續查找。",
+    "emptySearch": "此期間沒有與搜尋相符的交易。您可以擴大上方的日期範圍。",
+    "rangeReversed": "開始日期晚於結束日期。",
+    "rangeIncomplete": "請輸入兩個日期以列出交易。",
     "row": "{date}，{amount}，{payee}",
     "noPayee": "無收款人",
     "linkButton": "連結",
     "hasMore": "僅顯示前 {count} 筆。請使用搜尋縮小範圍。",
     "ai": {
       "heading": "選擇供 AI 使用的交易",
-      "help": "這是 {from} 至 {to} 期間的交易，也就是郵件前後的日期。請選擇 AI 應依郵件中的商品拆分的那一筆。",
+      "help": "以下是下方日期範圍內的交易，範圍起初為購買前後幾天。請選擇 AI 應依郵件中的商品拆分的那一筆，或修改日期以查看更早或更晚的交易。",
       "linkButton": "使用此交易"
     }
   },

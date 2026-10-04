@@ -85,17 +85,17 @@
       "folderLabel": "Map",
       "folderHelp": "De map die wordt gelezen. Hij wordt alleen-lezen geopend.",
       "enabledLabel": "De mailbox automatisch lezen",
-      "enabledHelp": "Als dit aan staat, wordt de mailbox elke 15 minuten opgehaald. Je kunt altijd Nu ophalen gebruiken.",
+      "enabledHelp": "Bepaalt alleen het automatisch lezen: als dit aan staat, leest Monize de mailbox elke 15 minuten. Uitzetten koppelt de mailbox niet los, en Nu ophalen leest hem ongeacht of dit aan of uit staat.",
       "aiModeLabel": "AI-modus",
-      "aiModeHelp": "Of de AI-provider die je hebt ingesteld voor bonnen mag worden gebruikt. Een AI-antwoord is altijd een voorstel of concept dat jij goedkeurt.",
+      "aiModeHelp": "Of het ophalen de AI-provider die je hebt ingesteld voor bonnen mag gebruiken. Herkennen met AI en Parser laten opstellen door AI vragen de assistent in de chat, ongeacht de modus, en een AI-antwoord is altijd een voorstel of concept dat jij goedkeurt.",
       "aiModes": {
         "off": "Uit",
         "on_demand": "Op verzoek",
         "automatic": "Automatisch"
       },
       "aiModeDescriptions": {
-        "off": "De AI wordt nooit aangeroepen voor bonnen.",
-        "on_demand": "De AI wordt alleen aangeroepen wanneer je op Herkennen met AI of Parser laten opstellen door AI drukt.",
+        "off": "Het ophalen roept de AI nooit aan voor bonnen.",
+        "on_demand": "Het ophalen roept de AI nooit aan. Je vraagt de assistent zelf met Herkennen met AI of Parser laten opstellen door AI.",
         "automatic": "Bij het ophalen vraagt de AI naar een gekoppelde bon die geen enkele goedgekeurde parser volledig kon lezen, en stelt hij een parser op voor een afzender die er geen heeft."
       },
       "autoApplyLabel": "Voorstellen automatisch toepassen",
@@ -109,6 +109,7 @@
       "lastErrorAt": "Laatste fout ({at}): {error}",
       "pollNow": "Nu ophalen",
       "pollResult": "Ophalen voltooid: {fetched, plural, one {# e-mail opgeslagen} other {# e-mails opgeslagen}}, {skipped} overgeslagen, {processed} verwerkt.",
+      "pollResultLink": "De opgeslagen e-mails bekijken",
       "pollFailed": "Het ophalen is mislukt",
       "deleteButton": "Mailbox verwijderen",
       "deleteDialog": {
@@ -176,7 +177,7 @@
       "retry": "Opnieuw proberen"
     },
     "draftNote": "Deze parser is een concept. Hij leest niets totdat je hem goedkeurt.",
-    "draftAiNote": "De AI heeft deze parser opgesteld uit één voorbeeld-e-mail. Controleer elk patroon aan de hand van je e-mails en keur hem daarna goed vanuit de lijst. Hij leest niets totdat je dat doet.",
+    "draftAiNote": "De AI heeft deze parser opgesteld uit je voorbeeld-e-mails. Test hem op elk ervan en controleer elk patroon, en keur hem daarna goed vanuit de lijst. Hij leest niets totdat je dat doet.",
     "identityHeading": "Welke e-mails hij leest",
     "nameLabel": "Naam",
     "payeeLabel": "Begunstigde",
@@ -349,6 +350,7 @@
       "ignored": "Genegeerd"
     },
     "columns": {
+      "select": "Selecteren",
       "received": "Ontvangen",
       "email": "E-mail",
       "transaction": "Transactie",
@@ -383,15 +385,10 @@
     "toasts": {
       "reprocessed": "E-mail opnieuw verwerkt",
       "reprocessFailed": "De e-mail kon niet opnieuw worden verwerkt",
-      "draftFailed": "Er kon geen parser worden opgesteld",
       "ignored": "E-mail genegeerd",
       "ignoreFailed": "De e-mail kon niet worden genegeerd",
       "deleted": "E-mail verwijderd",
       "deleteFailed": "De e-mail kon niet worden verwijderd"
-    },
-    "notices": {
-      "draftCreated": "De AI heeft de parser {name} opgesteld. Hij leest niets totdat je hem controleert en goedkeurt.",
-      "draftLink": "Controleer hem in de parserinstellingen"
     },
     "ignoreDialog": {
       "title": "Deze e-mail negeren?",
@@ -401,6 +398,22 @@
     "deleteDialog": {
       "title": "Deze e-mail verwijderen?",
       "message": "De opgeslagen e-mail {subject} wordt verwijderd en het openstaande controleverzoek genegeerd. Het bericht in de mailbox blijft ongemoeid, en bij een volgende keer ophalen wordt het niet opnieuw opgehaald."
+    },
+    "selection": {
+      "label": "Geselecteerde e-mails",
+      "select": "{subject} selecteren",
+      "count": "{count, plural, one {# e-mail geselecteerd} other {# e-mails geselecteerd}} (maximaal {max})",
+      "draftButton": "Parser laten opstellen door AI ({count})",
+      "clear": "Selectie wissen",
+      "differentSenders": "De geselecteerde e-mails komen van verschillende afzenders ({domains}). Een parser leest de e-mails van één afzender, dus selecteer e-mails van één afzender."
+    },
+    "draft": {
+      "failed": "Het opstellen van een parser kon niet worden gestart",
+      "queued": "In de wachtrij: het verzoek wacht in het AI-controlepostvak op een agent. Er is nu geen assistent beschikbaar om te antwoorden.",
+      "handoffFailed": "Het verzoek staat in de wachtrij, maar de e-mails konden niet in de chat worden geopend. Het wacht in het AI-controlepostvak op een agent.",
+      "inboxLink": "Het AI-controlepostvak openen",
+      "opened": "De chat is geopend met de e-mails als bijlage. Lees het bericht en druk op Verzenden.",
+      "chatPrompt": "Maak een parser voor e-mailbonnen voor {count, plural, one {deze bestelmail} other {deze # bestelmails}} van {domain}. Claim AI-beoordelingsverzoek {requestId}, test je parser op elke bijgevoegde e-mail met de tool email_receipt_parsers, verbeter hem totdat elke e-mail volledig wordt gelezen en sla hem daarna op als concept voor verzoek {requestId}."
     }
   },
   "detail": {
@@ -413,6 +426,8 @@
     },
     "from": "Van",
     "received": "Ontvangen",
+    "forwardedBy": "Doorgestuurd door",
+    "originalSent": "Verzonden door de winkel",
     "subject": "Onderwerp",
     "state": "Status",
     "parser": "Parser",
@@ -453,28 +468,39 @@
     "linkButton": "Aan deze transactie koppelen",
     "linked": "E-mail aan de transactie gekoppeld",
     "linkFailed": "De e-mail kon niet worden gekoppeld",
-    "textHeading": "Tekst van de e-mail",
+    "bodyHeading": "E-mail",
     "textLabel": "Tekst van de e-mail",
-    "noText": "De e-mail heeft geen tekst."
+    "noText": "De e-mail heeft geen tekst.",
+    "bodyView": {
+      "label": "De e-mail weergeven als",
+      "html": "HTML",
+      "text": "Tekst"
+    },
+    "remoteImagesNote": "Externe afbeeldingen worden niet geladen.",
+    "htmlFrameTitle": "De e-mail zoals de afzender hem heeft opgemaakt"
   },
   "picker": {
     "heading": "Kies de transactie",
-    "help": "Er is automatisch geen transactie gekoppeld. Dit zijn je transacties van {from} tot {to}, de dagen rond de e-mail. Kies de transactie die ermee is betaald.",
+    "help": "Er is automatisch geen transactie gekoppeld. Dit zijn je transacties in het datumbereik hieronder, dat begint met de dagen rond de aankoop. Kies de transactie die ermee is betaald, of wijzig de datums om verder te zoeken.",
+    "fromLabel": "Van",
+    "toLabel": "Tot",
     "searchLabel": "Zoeken",
     "searchPlaceholder": "Begunstigde, omschrijving of bedrag",
     "searchButton": "Zoeken",
     "loading": "Transacties laden",
     "error": "De transacties konden niet worden geladen.",
     "retry": "Opnieuw proberen",
-    "empty": "Je hebt in deze periode geen transacties die kunnen worden gekoppeld.",
-    "emptySearch": "Geen enkele transactie in deze periode komt overeen met de zoekopdracht.",
+    "empty": "Je hebt in deze periode geen transacties die kunnen worden gekoppeld. Je kunt de datums hierboven verruimen om verder te zoeken.",
+    "emptySearch": "Geen enkele transactie in deze periode komt overeen met de zoekopdracht. Je kunt de datums hierboven verruimen.",
+    "rangeReversed": "De Van-datum ligt na de Tot-datum.",
+    "rangeIncomplete": "Vul beide datums in om transacties weer te geven.",
     "row": "{date}, {amount}, {payee}",
     "noPayee": "geen begunstigde",
     "linkButton": "Koppelen",
     "hasMore": "Alleen de eerste {count} worden getoond. Gebruik het zoekveld om de lijst te beperken.",
     "ai": {
       "heading": "Kies de transactie voor de AI",
-      "help": "Dit zijn je transacties van {from} tot {to}, de dagen rond de e-mail. Kies de transactie die de AI moet splitsen op basis van de producten in de e-mail.",
+      "help": "Dit zijn je transacties in het datumbereik hieronder, dat begint met de dagen rond de aankoop. Kies de transactie die de AI moet splitsen op basis van de producten in de e-mail, of wijzig de datums om verder te zoeken.",
       "linkButton": "Deze transactie gebruiken"
     }
   },

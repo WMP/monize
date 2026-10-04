@@ -85,17 +85,17 @@
       "folderLabel": "폴더",
       "folderHelp": "읽어 올 폴더입니다. 읽기 전용으로 열립니다.",
       "enabledLabel": "메일함 자동 읽기",
-      "enabledHelp": "켜면 15분마다 메일함을 확인합니다. 언제든 지금 확인을 사용할 수 있습니다.",
+      "enabledHelp": "자동 읽기만 제어합니다. 켜면 Monize가 15분마다 메일함을 읽습니다. 끄더라도 메일함 연결은 해제되지 않으며, 지금 확인은 이 설정이 켜져 있든 꺼져 있든 메일함을 읽습니다.",
       "aiModeLabel": "AI 모드",
-      "aiModeHelp": "설정해 둔 AI 공급자를 영수증에 사용해도 되는지 정합니다. AI의 답변은 항상 제안 또는 초안이며, 승인은 직접 합니다.",
+      "aiModeHelp": "확인할 때 설정해 둔 AI 공급자를 영수증에 사용해도 되는지 정합니다. AI로 인식과 AI로 파서 초안 작성은 모드와 관계없이 채팅에서 어시스턴트에게 요청하며, AI의 답변은 항상 제안 또는 초안이고 승인은 직접 합니다.",
       "aiModes": {
         "off": "끔",
         "on_demand": "요청 시",
         "automatic": "자동"
       },
       "aiModeDescriptions": {
-        "off": "영수증에 AI를 호출하지 않습니다.",
-        "on_demand": "AI로 인식 또는 AI로 파서 초안 작성을 누를 때만 AI를 호출합니다.",
+        "off": "확인할 때 영수증에 AI를 호출하지 않습니다.",
+        "on_demand": "확인할 때 AI를 호출하지 않습니다. AI로 인식 또는 AI로 파서 초안 작성으로 직접 어시스턴트에게 요청합니다.",
         "automatic": "메일함을 확인할 때, 승인된 파서가 끝까지 읽지 못한 일치된 영수증은 AI에게 묻고, 파서가 없는 발신자에 대해서는 파서 초안을 작성합니다."
       },
       "autoApplyLabel": "제안 자동 적용",
@@ -109,6 +109,7 @@
       "lastErrorAt": "마지막 오류 ({at}): {error}",
       "pollNow": "지금 확인",
       "pollResult": "확인 완료: {fetched, plural, one {이메일 #개 저장} other {이메일 #개 저장}}, {skipped}개 건너뜀, {processed}개 처리됨.",
+      "pollResultLink": "저장된 이메일 보기",
       "pollFailed": "확인에 실패했습니다",
       "deleteButton": "메일함 삭제",
       "deleteDialog": {
@@ -176,7 +177,7 @@
       "retry": "다시 시도"
     },
     "draftNote": "이 파서는 초안입니다. 승인하기 전에는 아무것도 읽지 않습니다.",
-    "draftAiNote": "AI가 샘플 이메일 한 통으로 이 파서의 초안을 작성했습니다. 모든 패턴을 내 이메일과 대조해 확인한 다음 목록에서 승인하세요. 승인하기 전에는 아무것도 읽지 않습니다.",
+    "draftAiNote": "AI가 샘플 이메일로 이 파서의 초안을 작성했습니다. 각 이메일로 테스트하고 모든 패턴을 확인한 다음 목록에서 승인하세요. 승인하기 전에는 아무것도 읽지 않습니다.",
     "identityHeading": "읽을 이메일",
     "nameLabel": "이름",
     "payeeLabel": "수취인",
@@ -349,6 +350,7 @@
       "ignored": "제외됨"
     },
     "columns": {
+      "select": "선택",
       "received": "수신 시각",
       "email": "이메일",
       "transaction": "거래",
@@ -383,15 +385,10 @@
     "toasts": {
       "reprocessed": "이메일을 다시 처리했습니다",
       "reprocessFailed": "이메일을 다시 처리하지 못했습니다",
-      "draftFailed": "파서 초안을 작성하지 못했습니다",
       "ignored": "이메일을 제외했습니다",
       "ignoreFailed": "이메일을 제외하지 못했습니다",
       "deleted": "이메일을 삭제했습니다",
       "deleteFailed": "이메일을 삭제하지 못했습니다"
-    },
-    "notices": {
-      "draftCreated": "AI가 파서 {name}의 초안을 작성했습니다. 검토하고 승인하기 전에는 아무것도 읽지 않습니다.",
-      "draftLink": "파서 설정에서 검토하기"
     },
     "ignoreDialog": {
       "title": "이 이메일을 제외할까요?",
@@ -401,6 +398,22 @@
     "deleteDialog": {
       "title": "이 이메일을 삭제할까요?",
       "message": "저장된 이메일 {subject}을(를) 삭제하고 진행 중인 검토 요청을 무시합니다. 메일함 안의 메시지는 건드리지 않으며, 이후 확인에서도 다시 가져오지 않습니다."
+    },
+    "selection": {
+      "label": "선택한 이메일",
+      "select": "{subject} 선택",
+      "count": "{count, plural, one {이메일 #개 선택됨} other {이메일 #개 선택됨}} (최대 {max}개)",
+      "draftButton": "AI로 파서 초안 작성 ({count})",
+      "clear": "선택 해제",
+      "differentSenders": "선택한 이메일의 발신자가 서로 다릅니다 ({domains}). 파서는 한 발신자의 이메일을 읽으므로 같은 발신자의 이메일을 선택하세요."
+    },
+    "draft": {
+      "failed": "파서 초안 작성을 시작하지 못했습니다",
+      "queued": "대기열에 추가됨: 요청이 AI 검토 수신함에서 에이전트를 기다립니다. 지금 응답할 수 있는 어시스턴트가 없습니다.",
+      "handoffFailed": "요청은 대기열에 추가되었지만 채팅에서 이메일을 열 수 없었습니다. AI 검토 수신함에서 에이전트를 기다립니다.",
+      "inboxLink": "AI 검토 수신함 열기",
+      "opened": "이메일을 첨부한 채로 채팅을 열었습니다. 메시지를 읽고 보내기를 누르세요.",
+      "chatPrompt": "{domain}에서 온 {count, plural, one {주문 이메일 #통} other {주문 이메일 #통}}으로 이메일 영수증 파서를 만들어 주세요. AI 검토 요청 {requestId}을(를) 맡아서, email_receipt_parsers 도구로 첨부한 모든 이메일에서 파서를 테스트하고, 각 이메일이 끝까지 읽힐 때까지 고친 다음, 요청 {requestId}의 초안으로 저장해 주세요."
     }
   },
   "detail": {
@@ -413,6 +426,8 @@
     },
     "from": "보낸 사람",
     "received": "수신 시각",
+    "forwardedBy": "전달한 사람",
+    "originalSent": "상점이 보냄",
     "subject": "제목",
     "state": "상태",
     "parser": "파서",
@@ -453,28 +468,39 @@
     "linkButton": "이 거래에 연결",
     "linked": "이메일을 거래에 연결했습니다",
     "linkFailed": "이메일을 연결하지 못했습니다",
-    "textHeading": "이메일 본문",
+    "bodyHeading": "이메일",
     "textLabel": "이메일 본문 텍스트",
-    "noText": "이메일에 본문이 없습니다."
+    "noText": "이메일에 본문이 없습니다.",
+    "bodyView": {
+      "label": "이메일 표시 형식",
+      "html": "HTML",
+      "text": "텍스트"
+    },
+    "remoteImagesNote": "원격 이미지는 불러오지 않습니다.",
+    "htmlFrameTitle": "발신자가 서식을 지정한 그대로의 이메일"
   },
   "picker": {
     "heading": "거래 선택",
-    "help": "자동으로 일치한 거래가 없습니다. 이메일 전후 날짜인 {from}부터 {to}까지의 거래입니다. 이 이메일이 결제한 거래를 선택하세요.",
+    "help": "자동으로 일치한 거래가 없습니다. 아래 날짜 범위의 거래입니다. 범위는 처음에 구매 전후의 날짜로 설정됩니다. 이 이메일이 결제한 거래를 선택하거나, 날짜를 바꿔 더 넓게 찾아보세요.",
+    "fromLabel": "시작일",
+    "toLabel": "종료일",
     "searchLabel": "검색",
     "searchPlaceholder": "수취인, 설명 또는 금액",
     "searchButton": "검색",
     "loading": "거래를 불러오는 중",
     "error": "거래를 불러오지 못했습니다.",
     "retry": "다시 시도",
-    "empty": "이 기간에 연결할 수 있는 거래가 없습니다.",
-    "emptySearch": "이 기간에 검색과 일치하는 거래가 없습니다.",
+    "empty": "이 기간에 연결할 수 있는 거래가 없습니다. 위의 날짜를 넓혀 더 찾아볼 수 있습니다.",
+    "emptySearch": "이 기간에 검색과 일치하는 거래가 없습니다. 위의 날짜를 넓힐 수 있습니다.",
+    "rangeReversed": "시작일이 종료일보다 늦습니다.",
+    "rangeIncomplete": "거래를 나열하려면 두 날짜를 모두 입력하세요.",
     "row": "{date}, {amount}, {payee}",
     "noPayee": "수취인 없음",
     "linkButton": "연결",
     "hasMore": "처음 {count}건만 표시됩니다. 검색으로 목록을 좁히세요.",
     "ai": {
       "heading": "AI가 사용할 거래 선택",
-      "help": "이메일 전후 날짜인 {from}부터 {to}까지의 거래입니다. 이메일에 적힌 상품별로 AI가 나눌 거래를 선택하세요.",
+      "help": "아래 날짜 범위의 거래입니다. 범위는 처음에 구매 전후의 날짜로 설정됩니다. 이메일에 적힌 상품별로 AI가 나눌 거래를 선택하거나, 날짜를 바꿔 더 넓게 찾아보세요.",
       "linkButton": "이 거래 사용"
     }
   },

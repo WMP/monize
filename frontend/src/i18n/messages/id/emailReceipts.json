@@ -85,17 +85,17 @@
       "folderLabel": "Folder",
       "folderHelp": "Folder yang dibaca. Folder dibuka dalam mode hanya baca.",
       "enabledLabel": "Baca kotak surel secara otomatis",
-      "enabledHelp": "Saat aktif, kotak surel diperiksa setiap 15 menit. Anda selalu dapat menggunakan Periksa sekarang.",
+      "enabledHelp": "Hanya mengatur pembacaan otomatis: saat aktif, Monize membaca kotak surel setiap 15 menit. Menonaktifkannya tidak memutus koneksi kotak surel, dan Periksa sekarang membaca kotak surel baik pengaturan ini aktif maupun tidak.",
       "aiModeLabel": "Mode AI",
-      "aiModeHelp": "Apakah penyedia AI yang Anda konfigurasi boleh digunakan pada struk. Jawaban AI selalu berupa usulan atau draf yang Anda setujui.",
+      "aiModeHelp": "Apakah pemeriksaan boleh menggunakan penyedia AI yang Anda konfigurasi pada struk. Kenali dengan AI dan Buat draf pengurai dengan AI menanyakan asisten di obrolan apa pun modenya, dan jawaban AI selalu berupa usulan atau draf yang Anda setujui.",
       "aiModes": {
         "off": "Nonaktif",
         "on_demand": "Sesuai permintaan",
         "automatic": "Otomatis"
       },
       "aiModeDescriptions": {
-        "off": "AI tidak pernah dipanggil untuk struk.",
-        "on_demand": "AI hanya dipanggil saat Anda menekan Kenali dengan AI atau Buat draf pengurai dengan AI.",
+        "off": "Pemeriksaan tidak pernah memanggil AI untuk struk.",
+        "on_demand": "Pemeriksaan tidak pernah memanggil AI. Anda sendiri yang bertanya kepada asisten dengan Kenali dengan AI atau Buat draf pengurai dengan AI.",
         "automatic": "Setiap pemeriksaan menanyakan AI tentang struk yang cocok tetapi tidak terbaca lengkap oleh pengurai yang disetujui, dan membuat draf pengurai untuk pengirim yang belum memilikinya."
       },
       "autoApplyLabel": "Terapkan usulan secara otomatis",
@@ -109,6 +109,7 @@
       "lastErrorAt": "Kesalahan terakhir ({at}): {error}",
       "pollNow": "Periksa sekarang",
       "pollResult": "Pemeriksaan selesai: {fetched, plural, one {# surel disimpan} other {# surel disimpan}}, {skipped} dilewati, {processed} diproses.",
+      "pollResultLink": "Lihat surel yang disimpan",
       "pollFailed": "Pemeriksaan gagal",
       "deleteButton": "Hapus kotak surel",
       "deleteDialog": {
@@ -176,7 +177,7 @@
       "retry": "Coba lagi"
     },
     "draftNote": "Pengurai ini adalah draf. Pengurai ini tidak membaca apa pun sampai Anda menyetujuinya.",
-    "draftAiNote": "AI membuat draf pengurai ini dari satu contoh surel. Periksa setiap pola terhadap surel Anda, lalu setujui dari daftar. Pengurai ini tidak membaca apa pun sampai Anda melakukannya.",
+    "draftAiNote": "AI membuat draf pengurai ini dari contoh surel Anda. Uji pada setiap surel dan periksa setiap pola, lalu setujui dari daftar. Pengurai ini tidak membaca apa pun sampai Anda melakukannya.",
     "identityHeading": "Surel yang dibacanya",
     "nameLabel": "Nama",
     "payeeLabel": "Penerima",
@@ -349,6 +350,7 @@
       "ignored": "Dikecualikan"
     },
     "columns": {
+      "select": "Pilih",
       "received": "Diterima",
       "email": "Surel",
       "transaction": "Transaksi",
@@ -383,15 +385,10 @@
     "toasts": {
       "reprocessed": "Surel diproses ulang",
       "reprocessFailed": "Surel tidak dapat diproses ulang",
-      "draftFailed": "Draf pengurai tidak dapat dibuat",
       "ignored": "Surel dikecualikan",
       "ignoreFailed": "Surel tidak dapat dikecualikan",
       "deleted": "Surel dihapus",
       "deleteFailed": "Surel tidak dapat dihapus"
-    },
-    "notices": {
-      "draftCreated": "AI membuat draf pengurai {name}. Pengurai ini tidak membaca apa pun sampai Anda meninjau dan menyetujuinya.",
-      "draftLink": "Tinjau di pengaturan pengurai"
     },
     "ignoreDialog": {
       "title": "Kecualikan surel ini?",
@@ -401,6 +398,22 @@
     "deleteDialog": {
       "title": "Hapus surel ini?",
       "message": "Surel tersimpan {subject} akan dihapus dan permintaan peninjauannya yang terbuka diabaikan. Pesan di kotak surel tidak disentuh, dan pemeriksaan berikutnya tidak akan mengambilnya lagi."
+    },
+    "selection": {
+      "label": "Surel yang dipilih",
+      "select": "Pilih {subject}",
+      "count": "{count, plural, one {# surel dipilih} other {# surel dipilih}} (maksimal {max})",
+      "draftButton": "Buat draf pengurai dengan AI ({count})",
+      "clear": "Hapus pilihan",
+      "differentSenders": "Surel yang dipilih berasal dari pengirim yang berbeda ({domains}). Sebuah pengurai membaca surel dari satu pengirim, jadi pilih surel dari satu pengirim."
+    },
+    "draft": {
+      "failed": "Tidak dapat memulai pembuatan draf pengurai",
+      "queued": "Diantrekan: permintaan menunggu di kotak masuk peninjauan AI untuk sebuah agen. Saat ini tidak ada asisten yang dapat menjawab.",
+      "handoffFailed": "Permintaan sudah diantrekan, tetapi surel tidak dapat dibuka di obrolan. Permintaan menunggu di kotak masuk peninjauan AI untuk sebuah agen.",
+      "inboxLink": "Buka kotak masuk peninjauan AI",
+      "opened": "Obrolan dibuka dengan surel terlampir. Baca pesannya lalu tekan Kirim.",
+      "chatPrompt": "Buat pengurai struk surel untuk {count, plural, one {surel pesanan ini} other {# surel pesanan ini}} dari {domain}. Ambil permintaan peninjauan AI {requestId}, uji pengurai Anda pada setiap surel terlampir dengan alat email_receipt_parsers, perbaiki sampai setiap surel terbaca lengkap, lalu simpan sebagai draf untuk permintaan {requestId}."
     }
   },
   "detail": {
@@ -413,6 +426,8 @@
     },
     "from": "Dari",
     "received": "Diterima",
+    "forwardedBy": "Diteruskan oleh",
+    "originalSent": "Dikirim oleh toko",
     "subject": "Subjek",
     "state": "Status",
     "parser": "Pengurai",
@@ -453,28 +468,39 @@
     "linkButton": "Tautkan ke transaksi ini",
     "linked": "Surel ditautkan ke transaksi",
     "linkFailed": "Surel tidak dapat ditautkan",
-    "textHeading": "Isi surel",
+    "bodyHeading": "Surel",
     "textLabel": "Isi surel",
-    "noText": "Surel ini tidak memiliki isi teks."
+    "noText": "Surel ini tidak memiliki isi teks.",
+    "bodyView": {
+      "label": "Tampilkan surel sebagai",
+      "html": "HTML",
+      "text": "Teks"
+    },
+    "remoteImagesNote": "Gambar jarak jauh tidak dimuat.",
+    "htmlFrameTitle": "Surel seperti yang diformat pengirimnya"
   },
   "picker": {
     "heading": "Pilih transaksi",
-    "help": "Tidak ada transaksi yang cocok secara otomatis. Berikut transaksi Anda dari {from} sampai {to}, hari-hari di sekitar surel. Pilih transaksi yang dibayarnya.",
+    "help": "Tidak ada transaksi yang cocok secara otomatis. Berikut transaksi Anda dalam rentang tanggal di bawah, yang semula berupa hari-hari di sekitar pembelian. Pilih transaksi yang dibayarnya, atau ubah tanggal untuk mencari lebih jauh.",
+    "fromLabel": "Dari tanggal",
+    "toLabel": "Sampai tanggal",
     "searchLabel": "Cari",
     "searchPlaceholder": "Penerima, deskripsi, atau jumlah",
     "searchButton": "Cari",
     "loading": "Memuat transaksi",
     "error": "Transaksi tidak dapat dimuat.",
     "retry": "Coba lagi",
-    "empty": "Anda tidak memiliki transaksi pada periode ini yang dapat ditautkan.",
-    "emptySearch": "Tidak ada transaksi pada periode ini yang cocok dengan pencarian.",
+    "empty": "Anda tidak memiliki transaksi pada periode ini yang dapat ditautkan. Anda dapat memperlebar tanggal di atas untuk mencari lebih jauh.",
+    "emptySearch": "Tidak ada transaksi pada periode ini yang cocok dengan pencarian. Anda dapat memperlebar tanggal di atas.",
+    "rangeReversed": "Tanggal mulai berada setelah tanggal akhir.",
+    "rangeIncomplete": "Masukkan kedua tanggal untuk menampilkan daftar transaksi.",
     "row": "{date}, {amount}, {payee}",
     "noPayee": "tanpa penerima",
     "linkButton": "Tautkan",
     "hasMore": "Hanya {count} pertama yang ditampilkan. Gunakan pencarian untuk mempersempit daftar.",
     "ai": {
       "heading": "Pilih transaksi untuk AI",
-      "help": "Ini transaksi Anda dari {from} sampai {to}, yaitu hari-hari di sekitar tanggal surel. Pilih transaksi yang harus dirinci AI per produk dalam surel.",
+      "help": "Berikut transaksi Anda dalam rentang tanggal di bawah, yang semula berupa hari-hari di sekitar pembelian. Pilih transaksi yang harus dirinci AI per produk dalam surel, atau ubah tanggal untuk mencari lebih jauh.",
       "linkButton": "Gunakan transaksi ini"
     }
   },

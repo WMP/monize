@@ -85,17 +85,17 @@
       "folderLabel": "Ordner",
       "folderHelp": "Der Ordner, der gelesen wird. Er wird schreibgeschützt geöffnet.",
       "enabledLabel": "Postfach automatisch lesen",
-      "enabledHelp": "Wenn aktiviert, wird das Postfach alle 15 Minuten abgerufen. Du kannst jederzeit Jetzt abrufen verwenden.",
+      "enabledHelp": "Steuert nur das automatische Lesen: Wenn aktiviert, liest Monize das Postfach alle 15 Minuten. Das Ausschalten trennt das Postfach nicht, und Jetzt abrufen liest es, egal ob dies an oder aus ist.",
       "aiModeLabel": "KI-Modus",
-      "aiModeHelp": "Ob der von dir eingerichtete KI-Anbieter für Belege verwendet werden darf. Eine KI-Antwort ist immer ein Vorschlag oder ein Entwurf, den du freigibst.",
+      "aiModeHelp": "Ob der Abruf den von dir eingerichteten KI-Anbieter für Belege verwenden darf. Mit KI erkennen und Parser mit KI entwerfen fragen unabhängig vom Modus den Assistenten im Chat, und eine KI-Antwort ist immer ein Vorschlag oder ein Entwurf, den du freigibst.",
       "aiModes": {
         "off": "Aus",
         "on_demand": "Auf Abruf",
         "automatic": "Automatisch"
       },
       "aiModeDescriptions": {
-        "off": "Die KI wird für Belege nie aufgerufen.",
-        "on_demand": "Die KI wird nur aufgerufen, wenn du Mit KI erkennen oder Parser mit KI entwerfen drückst.",
+        "off": "Der Abruf ruft die KI für Belege nie auf.",
+        "on_demand": "Der Abruf ruft die KI nie auf. Du fragst den Assistenten selbst mit Mit KI erkennen oder Parser mit KI entwerfen.",
         "automatic": "Beim Abruf fragt die KI zu einem zugeordneten Beleg nach, den kein freigegebener Parser vollständig lesen konnte, und entwirft einen Parser für einen Absender, der noch keinen hat."
       },
       "autoApplyLabel": "Vorschläge automatisch anwenden",
@@ -109,6 +109,7 @@
       "lastErrorAt": "Letzter Fehler ({at}): {error}",
       "pollNow": "Jetzt abrufen",
       "pollResult": "Abruf abgeschlossen: {fetched, plural, one {# E-Mail gespeichert} other {# E-Mails gespeichert}}, {skipped} übersprungen, {processed} verarbeitet.",
+      "pollResultLink": "Gespeicherte E-Mails anzeigen",
       "pollFailed": "Der Abruf ist fehlgeschlagen",
       "deleteButton": "Postfach löschen",
       "deleteDialog": {
@@ -176,7 +177,7 @@
       "retry": "Erneut versuchen"
     },
     "draftNote": "Dieser Parser ist ein Entwurf. Er liest nichts, bis du ihn freigibst.",
-    "draftAiNote": "Die KI hat diesen Parser aus einer Beispiel-E-Mail entworfen. Prüfe jedes Muster anhand deiner E-Mails und gib ihn dann in der Liste frei. Er liest nichts, bis du das tust.",
+    "draftAiNote": "Die KI hat diesen Parser aus deinen Beispiel-E-Mails entworfen. Teste ihn an jeder davon und prüfe jedes Muster, gib ihn dann in der Liste frei. Er liest nichts, bis du das tust.",
     "identityHeading": "Welche E-Mails er liest",
     "nameLabel": "Name",
     "payeeLabel": "Zahlungsempfänger",
@@ -349,6 +350,7 @@
       "ignored": "Ignoriert"
     },
     "columns": {
+      "select": "Auswählen",
       "received": "Empfangen",
       "email": "E-Mail",
       "transaction": "Buchung",
@@ -383,15 +385,10 @@
     "toasts": {
       "reprocessed": "E-Mail erneut verarbeitet",
       "reprocessFailed": "Die E-Mail konnte nicht erneut verarbeitet werden",
-      "draftFailed": "Es konnte kein Parser entworfen werden",
       "ignored": "E-Mail ignoriert",
       "ignoreFailed": "Die E-Mail konnte nicht ignoriert werden",
       "deleted": "E-Mail gelöscht",
       "deleteFailed": "Die E-Mail konnte nicht gelöscht werden"
-    },
-    "notices": {
-      "draftCreated": "Die KI hat den Parser {name} entworfen. Er liest nichts, bis du ihn prüfst und freigibst.",
-      "draftLink": "In den Parser-Einstellungen prüfen"
     },
     "ignoreDialog": {
       "title": "Diese E-Mail ignorieren?",
@@ -401,6 +398,22 @@
     "deleteDialog": {
       "title": "Diese E-Mail löschen?",
       "message": "Die gespeicherte E-Mail {subject} wird gelöscht und ihre offene Prüfanfrage verworfen. Die Nachricht im Postfach bleibt unberührt, und ein späterer Abruf holt sie nicht erneut."
+    },
+    "selection": {
+      "label": "Ausgewählte E-Mails",
+      "select": "{subject} auswählen",
+      "count": "{count, plural, one {# E-Mail ausgewählt} other {# E-Mails ausgewählt}} (höchstens {max})",
+      "draftButton": "Parser mit KI entwerfen ({count})",
+      "clear": "Auswahl aufheben",
+      "differentSenders": "Die ausgewählten E-Mails stammen von verschiedenen Absendern ({domains}). Ein Parser liest die E-Mails eines Absenders, wähle daher E-Mails von einem Absender aus."
+    },
+    "draft": {
+      "failed": "Der Entwurf eines Parsers konnte nicht gestartet werden",
+      "queued": "In die Warteschlange gestellt: Die Anfrage wartet im KI-Prüfungseingang auf einen Agenten. Derzeit steht kein Assistent zur Verfügung, der antworten kann.",
+      "handoffFailed": "Die Anfrage ist in der Warteschlange, aber die E-Mails konnten nicht im Chat geöffnet werden. Sie wartet im KI-Prüfungseingang auf einen Agenten.",
+      "inboxLink": "KI-Prüfungseingang öffnen",
+      "opened": "Der Chat wurde mit den angehängten E-Mails geöffnet. Lies die Nachricht und drücke auf Senden.",
+      "chatPrompt": "Erstelle einen Parser für E-Mail-Belege für {count, plural, one {diese Bestell-E-Mail} other {diese # Bestell-E-Mails}} von {domain}. Übernimm die KI-Prüfanfrage {requestId}, teste deinen Parser mit dem Tool email_receipt_parsers an jeder angehängten E-Mail, korrigiere ihn, bis jede vollständig gelesen wird, und speichere ihn dann als Entwurf für die Anfrage {requestId}."
     }
   },
   "detail": {
@@ -413,6 +426,8 @@
     },
     "from": "Von",
     "received": "Empfangen",
+    "forwardedBy": "Weitergeleitet von",
+    "originalSent": "Vom Shop gesendet",
     "subject": "Betreff",
     "state": "Status",
     "parser": "Parser",
@@ -453,28 +468,39 @@
     "linkButton": "Mit dieser Buchung verknüpfen",
     "linked": "E-Mail mit der Buchung verknüpft",
     "linkFailed": "Die E-Mail konnte nicht verknüpft werden",
-    "textHeading": "E-Mail-Text",
+    "bodyHeading": "E-Mail",
     "textLabel": "Text der E-Mail",
-    "noText": "Die E-Mail enthält keinen Text."
+    "noText": "Die E-Mail enthält keinen Text.",
+    "bodyView": {
+      "label": "E-Mail anzeigen als",
+      "html": "HTML",
+      "text": "Text"
+    },
+    "remoteImagesNote": "Externe Bilder werden nicht geladen.",
+    "htmlFrameTitle": "Die E-Mail so, wie der Absender sie formatiert hat"
   },
   "picker": {
     "heading": "Buchung auswählen",
-    "help": "Es wurde keine Buchung automatisch zugeordnet. Hier siehst du deine Buchungen vom {from} bis zum {to}, den Tagen rund um die E-Mail. Wähle die, die damit bezahlt wurde.",
+    "help": "Es wurde keine Buchung automatisch zugeordnet. Hier siehst du deine Buchungen im Zeitraum unten, der zunächst die Tage rund um den Kauf umfasst. Wähle die, die damit bezahlt wurde, oder ändere die Daten, um weiter zu suchen.",
+    "fromLabel": "Von",
+    "toLabel": "Bis",
     "searchLabel": "Suchen",
     "searchPlaceholder": "Zahlungsempfänger, Beschreibung oder Betrag",
     "searchButton": "Suchen",
     "loading": "Buchungen werden geladen",
     "error": "Die Buchungen konnten nicht geladen werden.",
     "retry": "Erneut versuchen",
-    "empty": "In diesem Zeitraum hast du keine Buchungen, die verknüpft werden können.",
-    "emptySearch": "In diesem Zeitraum passt keine Buchung zur Suche.",
+    "empty": "In diesem Zeitraum hast du keine Buchungen, die verknüpft werden können. Du kannst die Daten oben erweitern, um weiter zu suchen.",
+    "emptySearch": "In diesem Zeitraum passt keine Buchung zur Suche. Du kannst die Daten oben erweitern.",
+    "rangeReversed": "Das Von-Datum liegt nach dem Bis-Datum.",
+    "rangeIncomplete": "Gib beide Daten ein, um Buchungen aufzulisten.",
     "row": "{date}, {amount}, {payee}",
     "noPayee": "kein Zahlungsempfänger",
     "linkButton": "Verknüpfen",
     "hasMore": "Es werden nur die ersten {count} angezeigt. Grenze die Liste mit der Suche ein.",
     "ai": {
       "heading": "Buchung für die KI auswählen",
-      "help": "Hier siehst du deine Buchungen vom {from} bis zum {to}, den Tagen rund um die E-Mail. Wähle die, die die KI nach den Produkten in der E-Mail aufteilen soll.",
+      "help": "Hier siehst du deine Buchungen im Zeitraum unten, der zunächst die Tage rund um den Kauf umfasst. Wähle die, die die KI nach den Produkten in der E-Mail aufteilen soll, oder ändere die Daten, um weiter zu suchen.",
       "linkButton": "Diese Buchung verwenden"
     }
   },

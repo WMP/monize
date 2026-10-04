@@ -85,17 +85,17 @@
       "folderLabel": "Cartella",
       "folderHelp": "La cartella da leggere. Viene aperta in sola lettura.",
       "enabledLabel": "Leggi la casella di posta automaticamente",
-      "enabledHelp": "Se attivo, la casella di posta viene controllata ogni 15 minuti. Puoi sempre usare Controlla ora.",
+      "enabledHelp": "Controlla solo la lettura automatica: se attivo, Monize legge la casella di posta ogni 15 minuti. Disattivarlo non scollega la casella, e Controlla ora la legge sia che sia attivo sia che non lo sia.",
       "aiModeLabel": "Modalità IA",
-      "aiModeHelp": "Indica se il provider IA che hai configurato può essere usato sulle ricevute. Una risposta dell'IA è sempre una proposta o una bozza che approvi tu.",
+      "aiModeHelp": "Indica se il controllo può usare sulle ricevute il provider IA che hai configurato. Riconosci con l'IA e Prepara parser con l'IA chiedono all'assistente nella chat qualunque sia la modalità, e una risposta dell'IA è sempre una proposta o una bozza che approvi tu.",
       "aiModes": {
         "off": "Disattivata",
         "on_demand": "Su richiesta",
         "automatic": "Automatica"
       },
       "aiModeDescriptions": {
-        "off": "L'IA non viene mai chiamata per le ricevute.",
-        "on_demand": "L'IA viene chiamata solo quando premi Riconosci con l'IA o Prepara parser con l'IA.",
+        "off": "Il controllo non chiama mai l'IA per le ricevute.",
+        "on_demand": "Il controllo non chiama mai l'IA. Sei tu a chiedere all'assistente con Riconosci con l'IA o Prepara parser con l'IA.",
         "automatic": "Il controllo interroga l'IA su una ricevuta abbinata che nessun parser approvato ha potuto leggere per intero, e prepara un parser per un mittente che non ne ha."
       },
       "autoApplyLabel": "Applica le proposte automaticamente",
@@ -109,6 +109,7 @@
       "lastErrorAt": "Ultimo errore ({at}): {error}",
       "pollNow": "Controlla ora",
       "pollResult": "Controllo terminato: {fetched, plural, one {# email salvata} other {# email salvate}}, {skipped} saltate, {processed} elaborate.",
+      "pollResultLink": "Vedi le email salvate",
       "pollFailed": "Il controllo non è riuscito",
       "deleteButton": "Elimina casella di posta",
       "deleteDialog": {
@@ -176,7 +177,7 @@
       "retry": "Riprova"
     },
     "draftNote": "Questo parser è una bozza. Non legge nulla finché non lo approvi.",
-    "draftAiNote": "L'IA ha preparato questo parser da un'email di esempio. Controlla ogni modello con le tue email, poi approvalo dall'elenco. Non legge nulla finché non lo fai.",
+    "draftAiNote": "L'IA ha preparato questo parser dalle tue email di esempio. Provalo su ciascuna e controlla ogni modello, poi approvalo dall'elenco. Non legge nulla finché non lo fai.",
     "identityHeading": "Quali email legge",
     "nameLabel": "Nome",
     "payeeLabel": "Beneficiario",
@@ -349,6 +350,7 @@
       "ignored": "Ignorata"
     },
     "columns": {
+      "select": "Seleziona",
       "received": "Ricevuta",
       "email": "Email",
       "transaction": "Transazione",
@@ -383,15 +385,10 @@
     "toasts": {
       "reprocessed": "Email rielaborata",
       "reprocessFailed": "Impossibile rielaborare l'email",
-      "draftFailed": "Impossibile preparare un parser",
       "ignored": "Email ignorata",
       "ignoreFailed": "Impossibile ignorare l'email",
       "deleted": "Email eliminata",
       "deleteFailed": "Impossibile eliminare l'email"
-    },
-    "notices": {
-      "draftCreated": "L'IA ha preparato il parser {name}. Non legge nulla finché non lo controlli e lo approvi.",
-      "draftLink": "Controllalo nelle impostazioni dei parser"
     },
     "ignoreDialog": {
       "title": "Ignorare questa email?",
@@ -401,6 +398,22 @@
     "deleteDialog": {
       "title": "Eliminare questa email?",
       "message": "L'email salvata {subject} verrà eliminata e la sua richiesta di revisione aperta scartata. Il messaggio nella casella di posta non viene toccato, e un controllo successivo non lo recupererà di nuovo."
+    },
+    "selection": {
+      "label": "Email selezionate",
+      "select": "Seleziona {subject}",
+      "count": "{count, plural, one {# email selezionata} other {# email selezionate}} (al massimo {max})",
+      "draftButton": "Prepara parser con l'IA ({count})",
+      "clear": "Cancella selezione",
+      "differentSenders": "Le email selezionate provengono da mittenti diversi ({domains}). Un parser legge le email di un solo mittente, quindi seleziona email di un unico mittente."
+    },
+    "draft": {
+      "failed": "Impossibile avviare la preparazione di un parser",
+      "queued": "In coda: la richiesta attende un agente nella posta di revisione IA. Nessun assistente è disponibile a rispondere ora.",
+      "handoffFailed": "La richiesta è in coda, ma non è stato possibile aprire le email nella chat. Attende un agente nella posta di revisione IA.",
+      "inboxLink": "Apri la posta di revisione IA",
+      "opened": "Chat aperta con le email allegate. Leggi il messaggio e premi Invia.",
+      "chatPrompt": "Crea un parser per le ricevute via email per {count, plural, one {questa email di ordine} other {queste # email di ordine}} di {domain}. Prendi in carico la richiesta di revisione IA {requestId}, prova il tuo parser su ogni email allegata con lo strumento email_receipt_parsers, correggilo finché ciascuna viene letta per intero, poi salvalo come bozza per la richiesta {requestId}."
     }
   },
   "detail": {
@@ -413,6 +426,8 @@
     },
     "from": "Da",
     "received": "Ricevuta",
+    "forwardedBy": "Inoltrata da",
+    "originalSent": "Inviata dal negozio",
     "subject": "Oggetto",
     "state": "Stato",
     "parser": "Parser",
@@ -453,28 +468,39 @@
     "linkButton": "Collega a questa transazione",
     "linked": "Email collegata alla transazione",
     "linkFailed": "Impossibile collegare l'email",
-    "textHeading": "Testo dell'email",
+    "bodyHeading": "Email",
     "textLabel": "Testo dell'email",
-    "noText": "L'email non ha testo."
+    "noText": "L'email non ha testo.",
+    "bodyView": {
+      "label": "Mostra l'email come",
+      "html": "HTML",
+      "text": "Testo"
+    },
+    "remoteImagesNote": "Le immagini remote non vengono caricate.",
+    "htmlFrameTitle": "L'email come l'ha formattata il mittente"
   },
   "picker": {
     "heading": "Scegli la transazione",
-    "help": "Nessuna transazione è stata abbinata automaticamente. Queste sono le tue transazioni dal {from} al {to}, i giorni intorno all'email. Scegli quella che ha pagato.",
+    "help": "Nessuna transazione è stata abbinata automaticamente. Queste sono le tue transazioni nell'intervallo di date qui sotto, che parte dai giorni intorno all'acquisto. Scegli quella che ha pagato, oppure cambia le date per cercare più lontano.",
+    "fromLabel": "Da",
+    "toLabel": "A",
     "searchLabel": "Cerca",
     "searchPlaceholder": "Beneficiario, descrizione o importo",
     "searchButton": "Cerca",
     "loading": "Caricamento delle transazioni",
     "error": "Impossibile caricare le transazioni.",
     "retry": "Riprova",
-    "empty": "In questo periodo non hai transazioni che possano essere collegate.",
-    "emptySearch": "Nessuna transazione di questo periodo corrisponde alla ricerca.",
+    "empty": "In questo periodo non hai transazioni che possano essere collegate. Puoi ampliare le date qui sopra per cercare più lontano.",
+    "emptySearch": "Nessuna transazione di questo periodo corrisponde alla ricerca. Puoi ampliare le date qui sopra.",
+    "rangeReversed": "La data Da è successiva alla data A.",
+    "rangeIncomplete": "Inserisci entrambe le date per elencare le transazioni.",
     "row": "{date}, {amount}, {payee}",
     "noPayee": "nessun beneficiario",
     "linkButton": "Collega",
     "hasMore": "Vengono mostrate solo le prime {count}. Usa la ricerca per restringere l'elenco.",
     "ai": {
       "heading": "Scegli la transazione per l'IA",
-      "help": "Queste sono le tue transazioni dal {from} al {to}, i giorni intorno all'email. Scegli quella che l'IA deve suddividere in base ai prodotti dell'email.",
+      "help": "Queste sono le tue transazioni nell'intervallo di date qui sotto, che parte dai giorni intorno all'acquisto. Scegli quella che l'IA deve suddividere in base ai prodotti dell'email, oppure cambia le date per cercare più lontano.",
       "linkButton": "Usa questa transazione"
     }
   },

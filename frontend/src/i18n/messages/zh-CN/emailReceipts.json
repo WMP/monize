@@ -85,17 +85,17 @@
       "folderLabel": "文件夹",
       "folderHelp": "要读取的文件夹。将以只读方式打开。",
       "enabledLabel": "自动读取邮箱",
-      "enabledHelp": "开启后，每 15 分钟检查一次邮箱。您也可以随时使用“立即检查”。",
+      "enabledHelp": "仅控制自动读取：开启后，Monize 每 15 分钟读取一次邮箱。关闭不会断开邮箱连接，无论此项开启还是关闭，“立即检查”都会读取邮箱。",
       "aiModeLabel": "AI 模式",
-      "aiModeHelp": "是否允许对收据使用您配置的 AI 提供商。AI 的回答始终只是供您批准的提议或草稿。",
+      "aiModeHelp": "检查时是否允许对收据使用您配置的 AI 提供商。无论哪种模式，“用 AI 识别”和“用 AI 起草解析器”都会在聊天中询问助手，AI 的回答始终只是供您批准的提议或草稿。",
       "aiModes": {
         "off": "关闭",
         "on_demand": "按需",
         "automatic": "自动"
       },
       "aiModeDescriptions": {
-        "off": "从不对收据调用 AI。",
-        "on_demand": "仅在您点击“用 AI 识别”或“用 AI 起草解析器”时调用 AI。",
+        "off": "检查时从不对收据调用 AI。",
+        "on_demand": "检查时从不调用 AI。您可以通过“用 AI 识别”或“用 AI 起草解析器”自行询问助手。",
         "automatic": "检查邮箱时，对于已匹配但已批准的解析器无法完整读取的收据，会询问 AI；对于没有解析器的发件人，会起草解析器。"
       },
       "autoApplyLabel": "自动应用提议",
@@ -109,6 +109,7 @@
       "lastErrorAt": "上次错误（{at}）：{error}",
       "pollNow": "立即检查",
       "pollResult": "检查完成：{fetched, plural, one {已保存 # 封邮件} other {已保存 # 封邮件}}，跳过 {skipped} 封，处理 {processed} 封。",
+      "pollResultLink": "查看已保存的邮件",
       "pollFailed": "检查失败",
       "deleteButton": "删除邮箱",
       "deleteDialog": {
@@ -176,7 +177,7 @@
       "retry": "重试"
     },
     "draftNote": "此解析器是草稿。在您批准之前，它不会读取任何内容。",
-    "draftAiNote": "AI 根据一封示例邮件起草了此解析器。请对照您的邮件检查每个模式，然后在列表中批准它。在您批准之前，它不会读取任何内容。",
+    "draftAiNote": "AI 根据您的示例邮件起草了此解析器。请用每一封邮件测试它并检查每个模式，然后在列表中批准它。在您批准之前，它不会读取任何内容。",
     "identityHeading": "读取哪些邮件",
     "nameLabel": "名称",
     "payeeLabel": "收款人",
@@ -349,6 +350,7 @@
       "ignored": "已忽略"
     },
     "columns": {
+      "select": "选择",
       "received": "接收时间",
       "email": "邮件",
       "transaction": "交易",
@@ -383,15 +385,10 @@
     "toasts": {
       "reprocessed": "邮件已重新处理",
       "reprocessFailed": "无法重新处理邮件",
-      "draftFailed": "无法起草解析器",
       "ignored": "邮件已忽略",
       "ignoreFailed": "无法忽略邮件",
       "deleted": "邮件已删除",
       "deleteFailed": "无法删除邮件"
-    },
-    "notices": {
-      "draftCreated": "AI 起草了解析器 {name}。在您审核并批准之前，它不会读取任何内容。",
-      "draftLink": "在解析器设置中审核"
     },
     "ignoreDialog": {
       "title": "忽略此邮件？",
@@ -401,6 +398,22 @@
     "deleteDialog": {
       "title": "删除此邮件？",
       "message": "已保存的邮件 {subject} 将被删除，其未完成的审核请求将被驳回。邮箱中的邮件本身不会受到影响，之后的检查也不会再次获取它。"
+    },
+    "selection": {
+      "label": "已选邮件",
+      "select": "选择 {subject}",
+      "count": "{count, plural, one {已选择 # 封邮件} other {已选择 # 封邮件}}（最多 {max} 封）",
+      "draftButton": "用 AI 起草解析器（{count}）",
+      "clear": "清除选择",
+      "differentSenders": "所选邮件来自不同的发件人（{domains}）。解析器只读取一个发件人的邮件，请选择同一发件人的邮件。"
+    },
+    "draft": {
+      "failed": "无法开始起草解析器",
+      "queued": "已排队：请求会在 AI 审核收件箱中等待代理处理。目前没有可回答的助手。",
+      "handoffFailed": "请求已排队，但无法在聊天中打开这些邮件。它会在 AI 审核收件箱中等待代理处理。",
+      "inboxLink": "打开 AI 审核收件箱",
+      "opened": "已打开聊天并附上这些邮件。请阅读消息并点击“发送”。",
+      "chatPrompt": "请为来自 {domain} 的{count, plural, one {这封订单邮件} other {这 # 封订单邮件}}构建一个邮件收据解析器。请认领 AI 审核请求 {requestId}，用 email_receipt_parsers 工具在每封所附邮件上测试你的解析器，修改到每封都能完整读取，然后将其保存为请求 {requestId} 的草稿。"
     }
   },
   "detail": {
@@ -413,6 +426,8 @@
     },
     "from": "发件人",
     "received": "接收时间",
+    "forwardedBy": "转发者",
+    "originalSent": "商店发送",
     "subject": "主题",
     "state": "状态",
     "parser": "解析器",
@@ -453,28 +468,39 @@
     "linkButton": "关联到此交易",
     "linked": "邮件已关联到交易",
     "linkFailed": "无法关联邮件",
-    "textHeading": "邮件正文",
+    "bodyHeading": "邮件",
     "textLabel": "邮件正文内容",
-    "noText": "这封邮件没有正文。"
+    "noText": "这封邮件没有正文。",
+    "bodyView": {
+      "label": "邮件显示方式",
+      "html": "HTML",
+      "text": "文本"
+    },
+    "remoteImagesNote": "不会加载远程图片。",
+    "htmlFrameTitle": "按发件人排版的邮件"
   },
   "picker": {
     "heading": "选择交易",
-    "help": "没有自动匹配到交易。以下是您在 {from} 至 {to}（邮件前后几天）的交易。请选择它所支付的那一笔。",
+    "help": "没有自动匹配到交易。以下是下方日期范围内的交易，范围起初为购买前后几天。请选择它所支付的那一笔，或修改日期以查看更早或更晚的交易。",
+    "fromLabel": "开始日期",
+    "toLabel": "结束日期",
     "searchLabel": "搜索",
     "searchPlaceholder": "收款人、说明或金额",
     "searchButton": "搜索",
     "loading": "正在加载交易",
     "error": "无法加载交易。",
     "retry": "重试",
-    "empty": "此期间没有可以关联的交易。",
-    "emptySearch": "此期间没有与搜索匹配的交易。",
+    "empty": "此期间没有可以关联的交易。您可以扩大上方的日期范围继续查找。",
+    "emptySearch": "此期间没有与搜索匹配的交易。您可以扩大上方的日期范围。",
+    "rangeReversed": "开始日期晚于结束日期。",
+    "rangeIncomplete": "请输入两个日期以列出交易。",
     "row": "{date}，{amount}，{payee}",
     "noPayee": "无收款人",
     "linkButton": "关联",
     "hasMore": "仅显示前 {count} 条。请使用搜索缩小范围。",
     "ai": {
       "heading": "选择供 AI 使用的交易",
-      "help": "这是 {from} 至 {to} 期间的交易，即邮件前后的日期。请选择 AI 应按邮件中的商品拆分的那一笔。",
+      "help": "以下是下方日期范围内的交易，范围起初为购买前后几天。请选择 AI 应按邮件中的商品拆分的那一笔，或修改日期以查看更早或更晚的交易。",
       "linkButton": "使用此交易"
     }
   },
