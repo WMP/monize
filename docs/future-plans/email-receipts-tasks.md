@@ -86,3 +86,13 @@ Files: `frontend/src/lib/email-receipts-api.ts`, `frontend/src/types/email-recei
 `frontend/src/app/settings/email-receipts/`, `frontend/src/app/email-receipts/`,
 `frontend/src/components/email-receipts/`, `frontend/src/lib/nav-links.ts`,
 `frontend/src/components/ai-review/AiReviewRow.tsx`.
+
+### F4. Matching and profile follow-up
+
+Files: `backend/src/email-receipts/` (`parsing/`, `proposal/`, `parsers/`, `pipeline/`, `receipts/`), `frontend/src/components/email-receipts/`.
+
+- [x] Effective `match` in the view, the form, the tool result and AI drafts.
+- [x] `fees`, `joinWrapped` fallback, `balanceTolerance`.
+- [x] Categories by name; category history before the AI.
+- [x] Status counts, domains by state, select all, card actions, creation guide.
+- [ ] PDF attachments and source-email link after approval (needs a migration; separate proposal).

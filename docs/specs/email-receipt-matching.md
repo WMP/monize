@@ -150,6 +150,15 @@ The test result carries the trace: the window, `considered`, the tolerance, the 
 attempts (strategy, kept count, at most 10 candidate transactions with date, amount and
 payee) and the strategy that decided.
 
+## 3b. Visible defaults, fees, balance tolerance and category sources
+
+- **The effective `match`.** `effectiveMatchDefinition` (`backend/src/email-receipts/parsing/receipt-match-config.ts`) fills every default. A profile view, the profile form, the `email_receipt_parsers` tool result and every AI draft show it. Default strategy order: `reference` (only when the profile reads a `reference` field), `orderId`, `amount_payee`, `amount_date`.
+- **`fees`.** A list of entries; each adds one fee (deposit, packaging, delivery), and the same line read by two entries counts once. Gross = items + shipping + fees. Each fee above zero is its own split line after shipping, in `feesCategory`; a fee without a category makes the proposal `items_uncategorized`.
+- **`joinWrapped`.** The reader tries a buffer of 3, 2, 1 and then 0 previous lines, and the trace shows the lines actually used.
+- **`balanceTolerance`.** A decimal text from `"0"` to `"0.05"`, compared in 1/10000 units. A difference inside it is added to the last split line so the splits sum to the transaction to the cent. A larger difference, or one that would change the sign of the last line, is refused as `amount_differs`.
+- **Categories by name.** `defaultCategory`, `shippingCategory` and `feesCategory` hold a category name (`Parent: Child` allowed). The server resolves a name to the ID in the save transaction (case-insensitive; unknown or ambiguous is a 400) and the JSON view shows names, never IDs.
+- **Item category sources, in order:** history (the same item name already approved with a category: `proposal/receipt-category-history.ts`), then the profile's `categoryRules` (an advanced option, not in the form), then the AI for the rest.
+
 ## 4. Completeness (`ParsedReceipt.complete`)
 
 Let `gross = sum(items.amount) + shipping` and `net = gross - discount` (absent
