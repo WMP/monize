@@ -12,6 +12,7 @@
     "type-check": "tsc --noEmit",
     "pretest": "node scripts/copy-vendor.mjs",
     "test": "vitest run",
+    "test:changed": "node scripts/test-changed.mjs",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "i18n:pseudo": "node scripts/i18n-pseudo.mjs",
