@@ -46,7 +46,10 @@ FROM node:24-slim AS deps
 WORKDIR /app
 
 COPY backend/package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+# --libc=musl: these node_modules run on the Alpine production stage, so
+# libc-specific optional binaries (@napi-rs/canvas, pulled in by pdf-parse)
+# must be the musl builds, not the glibc ones this stage would pick natively.
+RUN npm ci --omit=dev --libc=musl && npm cache clean --force
 
 # Production stage
 FROM node:24-alpine AS production
