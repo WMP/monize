@@ -218,10 +218,7 @@
       "highcontrast": "Hoher Kontrast",
       "colorblind": "Farbenblind-sicher"
     },
-    "timezoneBrowserOption": "Browser-Zeitzone verwenden (automatisch erkannt: {tz})",
-    "categories": {
-      "EMAIL_RECEIPTS": "E-Mail-Belege"
-    }
+    "timezoneBrowserOption": "Browser-Zeitzone verwenden (automatisch erkannt: {tz})"
   },
   "notifications": {
     "heading": "Benachrichtigungen",
@@ -360,7 +357,8 @@
         "INVESTMENTS": "Anlagewert",
         "STRATEGIES": "Strategiesignale",
         "BANK_SYNC": "Bankverbindungen",
-        "BANK_SYNC_ACTIVITY": "Ergebnisse der Bank-Synchronisierung"
+        "BANK_SYNC_ACTIVITY": "Ergebnisse der Bank-Synchronisierung",
+        "EMAIL_RECEIPTS": "E-Mail-Belege"
       },
       "channelNotApplicable": "Für diese Benachrichtigungsart nicht zutreffend",
       "emailToggleLabel": "Bericht-E-Mail für {category}",

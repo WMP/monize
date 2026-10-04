@@ -218,10 +218,7 @@
       "highcontrast": "Высокий контраст",
       "colorblind": "Для слабовидящих"
     },
-    "timezoneBrowserOption": "Использовать часовой пояс браузера (автоопределено: {tz})",
-    "categories": {
-      "EMAIL_RECEIPTS": "Письма-квитанции"
-    }
+    "timezoneBrowserOption": "Использовать часовой пояс браузера (автоопределено: {tz})"
   },
   "notifications": {
     "heading": "Уведомления",
@@ -360,7 +357,8 @@
         "INVESTMENTS": "Стоимость инвестиций",
         "STRATEGIES": "Сигналы стратегий",
         "BANK_SYNC": "Банковские подключения",
-        "BANK_SYNC_ACTIVITY": "Результаты банковской синхронизации"
+        "BANK_SYNC_ACTIVITY": "Результаты банковской синхронизации",
+        "EMAIL_RECEIPTS": "Письма-квитанции"
       },
       "channelNotApplicable": "Неприменимо для этого типа уведомлений",
       "emailToggleLabel": "Эл. почта (отчёт) для «{category}»",

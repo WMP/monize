@@ -218,10 +218,7 @@
       "highcontrast": "Wysoki kontrast",
       "colorblind": "Bezpieczny dla daltonistów"
     },
-    "timezoneBrowserOption": "Użyj strefy czasowej przeglądarki (wykryto {tz})",
-    "categories": {
-      "EMAIL_RECEIPTS": "Potwierdzenia e-maili"
-    }
+    "timezoneBrowserOption": "Użyj strefy czasowej przeglądarki (wykryto {tz})"
   },
   "notifications": {
     "heading": "Powiadomienia",
@@ -360,7 +357,8 @@
         "INVESTMENTS": "Wartość inwestycji",
         "STRATEGIES": "Sygnały strategii",
         "BANK_SYNC": "Połączenia bankowe",
-        "BANK_SYNC_ACTIVITY": "Wyniki synchronizacji bankowej"
+        "BANK_SYNC_ACTIVITY": "Wyniki synchronizacji bankowej",
+        "EMAIL_RECEIPTS": "Potwierdzenia e-maili"
       },
       "channelNotApplicable": "Nie dotyczy tego typu powiadomienia",
       "emailToggleLabel": "E-mail (raport) dla: {category}",
