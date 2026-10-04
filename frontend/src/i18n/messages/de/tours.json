@@ -46,7 +46,7 @@
     "requires": {
       "transactionEntry": "Legen Sie zuerst ein Konto an — diese Tour führt durch das Erfassen einer Transaktion.",
       "securitiesExist": "Legen Sie zuerst ein Wertpapier an — diese Tour öffnet eines aus Ihrer Wertpapierliste.",
-      "ownerView": "Wechseln Sie zuerst zu Ihren eigenen Daten zurück. Diese Führung behandelt Regeln und den KI-Prüfungseingang, die nicht verfügbar sind, solange Sie für jemand anderen handeln."
+      "ownerView": "Wechseln Sie zuerst zu Ihren eigenen Daten zurück. Diese Führung behandelt Funktionen, die nicht verfügbar sind, solange Sie für jemand anderen handeln."
     },
     "start": "Starten",
     "restart": "Wiederholen",
@@ -423,6 +423,48 @@
           "reviews": {
             "title": "Der KI-Prüfungseingang",
             "body": "Eine Regel mit der Aktion **KI-Prüfung anfordern** ändert die Transaktion nicht, sondern legt sie hier ab. Ein Assistent schlägt eine Änderung vor, und nichts wird geschrieben, bevor Sie zustimmen. Sie können eine Anfrage auch verwerfen. Sie finden ihn im Menü **KI** als **KI-Prüfungseingang**."
+          }
+        }
+      }
+    },
+    "v1_18_0": {
+      "bankSync": {
+        "title": "Bank-Synchronisierung",
+        "steps": {
+          "welcome": {
+            "title": "Transaktionen von Ihrer Bank importieren",
+            "body": "Die Bank-Synchronisierung liest die gebuchten Transaktionen Ihrer Bankkonten über Open Banking. Sie importiert sie in Ihre Monize-Konten. Der Zugriff ist nur lesend. Sie melden sich bei Ihrer eigenen Bank an, und Monize sieht Ihr Bankpasswort nie. Diese Führung zeigt, wo Sie sie einrichten."
+          },
+          "credentials": {
+            "title": "Ihre Enable-Banking-Anwendung",
+            "body": "Monize erreicht Ihre Bank über Ihre eigene Enable-Banking-Anwendung. Registrieren Sie eine im Enable-Banking-Kontrollbereich. Wählen Sie dann **Zugangsdaten einrichten** und geben Sie die Anwendungs-ID und den privaten Schlüssel ein. Registrieren Sie auch die hier gezeigte **Weiterleitungs-URL** im Kontrollbereich. **Verbindung testen** prüft, ob alles funktioniert. **Einrichtungshilfe anzeigen** erklärt jeden Schritt."
+          },
+          "connect": {
+            "title": "Eine Bank verbinden",
+            "body": "**Bank verbinden** ist möglich, sobald die Zugangsdaten gespeichert sind. Wählen Sie das Land und Ihre Bank. Wählen Sie, ob das Konto privat oder geschäftlich ist. Wählen Sie dann **Weiter zur Bank**. Sie melden sich bei Ihrer Bank an und erlauben Monize, Ihre Konten zu lesen. Danach schickt Ihre Bank Sie zurück zu Monize."
+          },
+          "connections": {
+            "title": "Ihre verbundenen Banken",
+            "body": "Jede verbundene Bank hat eine Karte. Sie zeigt den Status und das Datum, bis zu dem der Zugriff gültig ist. Ein Schalter aktiviert eine Synchronisierung pro Tag. **Alle synchronisieren** importiert aus allen verknüpften Konten. **Trennen** beendet die Synchronisierung. Bereits importierte Transaktionen bleiben erhalten. Ist keine Bank verbunden, steht das hier."
+          },
+          "link": {
+            "title": "Ein Bankkonto mit einem Monize-Konto verknüpfen",
+            "body": "Jedes Bankkonto wird mit einem Monize-Konto verknüpft. Wählen Sie hier das Monize-Konto oder wählen Sie **Neues Konto erstellen**. Monize fragt nach dem Datum, ab dem importiert wird. Transaktionen vor diesem Datum werden nie importiert. **Nach Kontonummer abgleichen** verknüpft Konten mit derselben Nummer.",
+            "fallbackBody": "Nachdem Sie eine Bank verbunden haben, wird jedes ihrer Bankkonten mit einer Auswahl **Monize-Konto** aufgelistet. Sie verknüpfen jedes mit einem Monize-Konto oder legen ein neues Konto an. Monize fragt nach dem Datum, ab dem importiert wird. Transaktionen vor diesem Datum werden nie importiert."
+          },
+          "preview": {
+            "title": "Vorschau vor dem ersten Import",
+            "body": "Der erste Import eines verknüpften Kontos wird in einer Vorschau bestätigt. Wählen Sie **Jetzt synchronisieren**, um sie zu öffnen. Nichts wird importiert, bevor Sie bestätigen. Jede Zeile hat ein Kontrollkästchen und eine Schaltfläche für ihre Details. Die Details zeigen das Ergebnis des Regeltests: jede Importregel, ob sie zutraf und was sie ändern würde. Sie zeigen auch, wie der Banktext zum Zahlungsempfänger wurde. Bereits importierte oder abgelehnte Zeilen werden aufgelistet, aber nicht importiert. Spätere Synchronisierungen importieren sofort.",
+            "fallbackBody": "Sobald ein Bankkonto verknüpft ist, öffnet **Jetzt synchronisieren** eine Vorschau seiner Transaktionen. Nichts wird importiert, bevor Sie bestätigen. Jede Zeile hat ein Kontrollkästchen und eine Schaltfläche für ihre Details. Die Details zeigen das Ergebnis des Regeltests und wie der Banktext zum Zahlungsempfänger wurde. Spätere Synchronisierungen importieren sofort."
+          },
+          "consent": {
+            "title": "Einwilligung und ihre Erneuerung",
+            "body": "Ihre Einwilligung gilt nur begrenzt, bis zu 180 Tage. Die Karte zeigt das Datum, bis zu dem der Zugriff gültig ist. In den letzten 7 Tagen zeigt sie **Läuft bald ab**. Wählen Sie **Einwilligung erneuern**, um sich erneut bei Ihrer Bank zu autorisieren. Die verknüpften Konten bleiben erhalten. Wenn die Einwilligung endet, stoppt die Synchronisierung, bis Sie sie erneuern.",
+            "fallbackBody": "Sobald eine Bank verbunden ist, zeigt ihre Karte das Datum, bis zu dem der Zugriff gültig ist. Ihre Einwilligung gilt bis zu 180 Tage. Naht das Ende, erscheint hier **Einwilligung erneuern**. Wählen Sie es, um sich erneut bei Ihrer Bank zu autorisieren. Die verknüpften Konten bleiben erhalten."
+          },
+          "notifications": {
+            "title": "Erinnerungen und Synchronisierungsergebnisse",
+            "body": "Monize benachrichtigt Sie, bevor die Einwilligung endet, und wenn sie beendet ist. Es sagt Ihnen auch, wie die tägliche Synchronisierung verlief: neue Transaktionen, nichts Neues oder ein Fehler. In dieser Tabelle enthält **Bankverbindungen** die Erinnerungen zur Einwilligung. **Ergebnisse der Bank-Synchronisierung** enthält die Ergebnisse der Synchronisierung. Wählen Sie, wohin jede zugestellt wird. Auf jeder Bankkarte legt **Nach der täglichen Synchronisierung benachrichtigen** fest, welche erfolgreichen Synchronisierungen Sie benachrichtigen."
           }
         }
       }

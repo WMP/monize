@@ -46,7 +46,7 @@
     "requires": {
       "transactionEntry": "Najpierw dodaj konto — ten przewodnik pokazuje, jak zapisać transakcję.",
       "securitiesExist": "Najpierw dodaj papier wartościowy — ten przewodnik otwiera jeden z Twojej listy.",
-      "ownerView": "Najpierw wróć do własnych danych. Ten przewodnik omawia Reguły i skrzynkę przeglądów AI, które nie są dostępne, gdy działasz w imieniu kogoś innego."
+      "ownerView": "Najpierw wróć do własnych danych. Ten przewodnik opisuje funkcje niedostępne, gdy działasz w imieniu kogoś innego."
     },
     "start": "Rozpocznij",
     "restart": "Powtórz",
@@ -423,6 +423,48 @@
           "reviews": {
             "title": "Skrzynka przeglądów AI",
             "body": "Reguła z akcją **Poproś o przegląd AI** nie zmienia transakcji, tylko przekazuje ją tutaj. Asystent proponuje zmianę i nic nie zostaje zapisane, dopóki jej nie zatwierdzisz. Możesz też odrzucić zgłoszenie. Skrzynkę znajdziesz w menu **AI** jako **Skrzynka przeglądów AI**."
+          }
+        }
+      }
+    },
+    "v1_18_0": {
+      "bankSync": {
+        "title": "Synchronizacja bankowa",
+        "steps": {
+          "welcome": {
+            "title": "Importuj transakcje z banku",
+            "body": "Synchronizacja z bankiem odczytuje zaksięgowane transakcje z Twoich rachunków bankowych przez Open Banking. Importuje je do Twoich kont w Monize. Dostęp jest tylko do odczytu. Logujesz się we własnym banku, a Monize nigdy nie widzi Twojego hasła bankowego. Ten przewodnik pokazuje, gdzie ją skonfigurować."
+          },
+          "credentials": {
+            "title": "Twoja aplikacja Enable Banking",
+            "body": "Monize łączy się z Twoim bankiem przez Twoją własną aplikację Enable Banking. Zarejestruj ją w panelu sterowania Enable Banking. Następnie wybierz **Skonfiguruj dane uwierzytelniające** i wpisz identyfikator aplikacji oraz klucz prywatny. W panelu sterowania zarejestruj też **Adres przekierowania** pokazany tutaj. **Testuj połączenie** sprawdza, czy to działa. **Pokaż pomoc w konfiguracji** wyjaśnia każdy krok."
+          },
+          "connect": {
+            "title": "Połącz bank",
+            "body": "**Połącz bank** działa, gdy dane uwierzytelniające są zapisane. Wybierz kraj i swój bank. Wybierz, czy konto jest osobiste, czy firmowe. Następnie wybierz **Przejdź do banku**. Logujesz się w banku i zezwalasz Monize na odczyt kont. Gdy skończysz, bank odsyła Cię z powrotem do Monize."
+          },
+          "connections": {
+            "title": "Twoje połączone banki",
+            "body": "Każdy połączony bank ma kartę. Pokazuje ona stan i datę, do której dostęp jest ważny. Przełącznik włącza synchronizację raz dziennie. **Synchronizuj wszystko** importuje ze wszystkich powiązanych kont. **Rozłącz** zatrzymuje synchronizację. Zaimportowane już transakcje zostają. Gdy nie ma połączonego banku, ten obszar to mówi."
+          },
+          "link": {
+            "title": "Powiąż konto bankowe z kontem w Monize",
+            "body": "Każde konto bankowe jest powiązane z jednym kontem w Monize. Wybierz tutaj konto w Monize albo wybierz **Utwórz nowe konto**. Monize pyta o datę, od której importować. Transakcje sprzed tej daty nigdy nie są importowane. **Dopasuj według numeru konta** powiązuje konta o tym samym numerze.",
+            "fallbackBody": "Po połączeniu banku każde z jego kont bankowych pojawi się z polem wyboru **Konto Monize**. Każde powiązujesz z jednym kontem w Monize albo tworzysz nowe konto. Monize pyta o datę, od której importować. Transakcje sprzed tej daty nigdy nie są importowane."
+          },
+          "preview": {
+            "title": "Podgląd przed pierwszym importem",
+            "body": "Pierwszy import powiązanego konta potwierdzasz z podglądu. Wybierz **Synchronizuj teraz**, aby go otworzyć. Nic nie jest importowane, dopóki nie potwierdzisz. Każdy wiersz ma pole wyboru i przycisk szczegółów. Szczegóły pokazują wynik testu reguł: każdą regułę importu, czy pasowała i co by zmieniła. Pokazują też, jak tekst z banku stał się odbiorcą. Wiersze już zaimportowane lub odrzucone są na liście, ale nie są importowane. Kolejne synchronizacje importują od razu.",
+            "fallbackBody": "Gdy konto bankowe jest powiązane, **Synchronizuj teraz** otwiera podgląd jego transakcji. Nic nie jest importowane, dopóki nie potwierdzisz. Każdy wiersz ma pole wyboru i przycisk szczegółów. Szczegóły pokazują wynik testu reguł i to, jak tekst z banku stał się odbiorcą. Kolejne synchronizacje importują od razu."
+          },
+          "consent": {
+            "title": "Zgoda i jej odnowienie",
+            "body": "Twoja zgoda obowiązuje ograniczony czas, do 180 dni. Karta pokazuje datę, do której dostęp jest ważny. W ostatnich 7 dniach pokazuje **Wkrótce wygasa**. Wybierz **Odnów zgodę**, aby ponownie autoryzować w banku. Powiązane konta zostają. Gdy zgoda wygaśnie, synchronizacja się zatrzyma, dopóki jej nie odnowisz.",
+            "fallbackBody": "Gdy bank jest połączony, jego karta pokazuje datę, do której dostęp jest ważny. Twoja zgoda obowiązuje do 180 dni. Gdy koniec się zbliża, pojawia się tu **Odnów zgodę**. Wybierz go, aby ponownie autoryzować w banku. Powiązane konta zostają."
+          },
+          "notifications": {
+            "title": "Przypomnienia i wyniki synchronizacji",
+            "body": "Monize powiadamia Cię przed końcem zgody i gdy już wygasła. Mówi też, jak poszła codzienna synchronizacja: nowe transakcje, nic nowego lub błąd. W tej tabeli **Połączenia bankowe** zawiera przypomnienia o zgodzie. **Wyniki synchronizacji bankowej** zawiera wyniki synchronizacji. Wybierz, gdzie ma trafiać każde z nich. Na każdej karcie banku **Powiadom po codziennej synchronizacji** ustawia, które udane synchronizacje wysyłają powiadomienie."
           }
         }
       }
