@@ -17,10 +17,14 @@ import {
 } from "../matching/match-receipt";
 import { effectiveReceiptDate } from "../imap/forwarded-receipt";
 import { loadReceiptCandidates } from "../pipeline/receipt-candidates";
-import { parseReceipt } from "../parsing/parse-receipt";
+import {
+  parseReceiptTraced,
+  type ReceiptOutcome,
+} from "../parsing/parse-receipt";
 import type {
   ParsedReceipt,
   ReceiptParserDefinition,
+  ReceiptTrace,
 } from "../parsing/receipt-parser.types";
 import {
   collectParserCategoryIds,
@@ -76,6 +80,10 @@ export function dominantSenderDomain(domains: readonly string[]): string {
 /** What a parser test returns: the read, and what the matcher would do with it. */
 export interface EmailReceiptParserTestResult {
   parsed: ParsedReceipt;
+  /** Which entry and which line read each value (see `ReceiptTrace`). */
+  trace: ReceiptTrace;
+  /** `read`, or the guard (`requireLine`, `skipIfLine`, `waitIfLine`) that stops the pipeline reading it. */
+  outcome: ReceiptOutcome;
   match: ReceiptMatchResult;
   /** Candidate transactions the matcher was given (at most 200). */
   candidateCount: number;
@@ -368,7 +376,7 @@ export class EmailReceiptParsersService {
           ),
         );
       }
-      const parsed = parseReceipt(
+      const { parsed, trace, outcome } = parseReceiptTraced(
         definition,
         receipt.subject,
         receipt.bodyText,
@@ -396,6 +404,8 @@ export class EmailReceiptParsersService {
           : undefined;
       return {
         parsed,
+        trace,
+        outcome,
         match,
         candidateCount: candidates.length,
         transaction: hit

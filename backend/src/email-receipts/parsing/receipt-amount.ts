@@ -80,6 +80,20 @@ export function isPlainReceiptAmount(text: string): boolean {
   );
 }
 
+/** A character that turns a line into arithmetic, a ratio or a tag, never part of an amount. */
+const OPERATOR_CHARACTER = /[\u00d7\u00f7+*/=%<>@#\\|]/;
+
+/**
+ * "Is an amount" for the parser: `isPlainReceiptAmount` AND no operator
+ * character. `parseReceiptAmount` drops every symbol, so "3 × 1,47 zł"
+ * (a quantity line) would parse as 31,47 and "10,95 + 5,00" as 10 955,00; a
+ * reader that looks at neighbouring lines must not take either for an amount.
+ * Punctuation a lazy capture drags along (": 1 234,56 zł") is still an amount.
+ */
+export function isStrictReceiptAmount(text: string): boolean {
+  return isPlainReceiptAmount(text) && !OPERATOR_CHARACTER.test(text);
+}
+
 /**
  * Read the text of a `{qty}` capture: a positive integer from 1 to 9999
  * written with digits only, after a trailing `x` or `pcs` (any case) is

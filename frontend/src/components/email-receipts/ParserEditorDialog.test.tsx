@@ -3,7 +3,7 @@ import { AxiosError } from 'axios';
 import toast from 'react-hot-toast';
 import { render, screen, fireEvent, act, within } from '@/test/render';
 import { ParserEditorDialog } from './ParserEditorDialog';
-import { makeParser, makeReceipt } from './email-receipts-fixtures';
+import { makeParser, makeReceipt, PARSED_RECEIPT } from './email-receipts-fixtures';
 import type { ReceiptParserLookupsState } from '@/hooks/useReceiptParserLookups';
 
 const api = vi.hoisted(() => ({ create: vi.fn(), update: vi.fn(), test: vi.fn(), list: vi.fn() }));
@@ -131,7 +131,7 @@ describe('ParserEditorDialog', () => {
         fromDomains: ['allegro.pl', 'mail.allegro.pl'],
         subjectContains: ['order', 'receipt'],
         definition: {
-          version: 1,
+          version: 2,
           orderId: ['Order number: {orderid}'],
           total: ['Total {amount}', 'Sum {amount}'],
           shipping: ['Shipping {amount}'],
@@ -197,7 +197,7 @@ describe('ParserEditorDialog', () => {
       name: 'Allegro parser',
       fromDomains: ['allegro.pl'],
       definition: {
-        version: 1,
+        version: 2,
         total: ['Total {amount}'],
         categoryRules: [{ match: '*cable*', categoryId: CAT_CABLES }],
       },
@@ -254,6 +254,166 @@ describe('ParserEditorDialog', () => {
     it('does not show the draft warning for an approved parser', async () => {
       await renderEditor({ parser });
       expect(screen.queryByRole('note')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('the Form and JSON modes', () => {
+    const V2_DEFINITION = {
+      version: 2,
+      orderId: ['*/kupione/{orderid}?*'],
+      total: [{ label: 'RAZEM', value: '{amount} zł', within: 3 }],
+      shipping: [{ label: 'Metoda dostawy', value: '{amount} zł', within: 4 }],
+      items: {
+        startAfter: 'od ',
+        stopAt: 'Metoda dostawy',
+        skipLines: ['<*>', '(*)'],
+        record: [{ line: '{name}' }, { line: '{amount} zł' }, { line: '{qty} × {price} zł', optional: true }],
+      },
+      defaultCategoryId: CAT_CABLES,
+      shippingCategoryId: CAT_SHIPPING,
+    };
+    const v2Parser = makeParser({ definition: V2_DEFINITION });
+
+    const mode = (name: 'Form' | 'JSON') => screen.getByRole('button', { name });
+    const jsonBox = () => screen.getByLabelText('Parser definition (JSON)') as HTMLTextAreaElement;
+    const switchTo = async (name: 'Form' | 'JSON') => {
+      await act(async () => {
+        fireEvent.click(mode(name));
+      });
+    };
+
+    it('shows a Form | JSON switch at the top of the dialog, on the form for a new parser', async () => {
+      await renderEditor();
+      const group = screen.getByRole('group', { name: 'Editing mode' });
+      expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['Form', 'JSON']);
+      expect(mode('Form')).toHaveAttribute('aria-pressed', 'true');
+      expect(mode('JSON')).toHaveAttribute('aria-pressed', 'false');
+      expect(screen.getByLabelText('Total patterns')).toBeInTheDocument();
+    });
+
+    it('opens a version 2 definition the form cannot show directly in JSON, with the form switch disabled and explained', async () => {
+      await renderEditor({ parser: v2Parser });
+      expect(mode('JSON')).toHaveAttribute('aria-pressed', 'true');
+      expect(mode('Form')).toBeDisabled();
+      expect(screen.getByText(/uses something the form cannot show/)).toBeInTheDocument();
+      expect(mode('Form')).toHaveAccessibleDescription(/Edit it as JSON/);
+      expect(screen.queryByLabelText('Total patterns')).not.toBeInTheDocument();
+      expect(jsonBox().value).toBe(JSON.stringify(V2_DEFINITION, null, 2));
+    });
+
+    it('saves the JSON without dropping a single version 2 field', async () => {
+      api.update.mockResolvedValue(makeParser({ revision: 3 }));
+      await renderEditor({ parser: v2Parser });
+      await type('Name', 'Renamed');
+      await save();
+      expect(api.update).toHaveBeenCalledWith('p-1', {
+        name: 'Renamed',
+        payeeId: 'payee-1',
+        fromDomains: ['allegro.pl'],
+        subjectContains: [],
+        definition: V2_DEFINITION,
+        expectedRevision: v2Parser.revision,
+      });
+    });
+
+    it('saves what was typed in the JSON box, not the form behind it', async () => {
+      api.create.mockResolvedValue(makeParser());
+      await renderEditor();
+      await type('Name', 'Allegro');
+      await type('Sender domains', 'allegro.pl');
+      await switchTo('JSON');
+      // The box starts from what the form builds.
+      expect(JSON.parse(jsonBox().value)).toEqual({ version: 2 });
+      const typed = { version: 2, total: [{ label: 'RAZEM', value: '{amount} zł' }] };
+      await type('Parser definition (JSON)', JSON.stringify(typed));
+      await save();
+      expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Allegro', definition: typed }));
+    });
+
+    it('carries the form into the JSON box as version 2', async () => {
+      await renderEditor();
+      await type('Total patterns', 'Total {amount}');
+      await type('Item patterns', '{name} {amount}');
+      await switchTo('JSON');
+      expect(JSON.parse(jsonBox().value)).toEqual({
+        version: 2,
+        total: ['Total {amount}'],
+        items: { patterns: ['{name} {amount}'] },
+      });
+    });
+
+    it('switches back to the form while the JSON is something the form can show, and fills it', async () => {
+      await renderEditor();
+      await switchTo('JSON');
+      const shown = { version: 2, total: ['Sum {amount}'], defaultCategoryId: CAT_CABLES };
+      await type('Parser definition (JSON)', JSON.stringify(shown));
+      expect(mode('Form')).toBeEnabled();
+      await switchTo('Form');
+      expect((screen.getByLabelText('Total patterns') as HTMLTextAreaElement).value).toBe('Sum {amount}');
+      expect((screen.getByLabelText('Default category') as HTMLInputElement).value).toBe('Electronics: Cables');
+    });
+
+    it('turns the form switch off when the JSON gains something the form cannot hold, and back on when it goes', async () => {
+      await renderEditor();
+      await switchTo('JSON');
+      await type('Parser definition (JSON)', JSON.stringify({ version: 2, total: [{ label: 'X', value: '{amount}' }] }));
+      expect(mode('Form')).toBeDisabled();
+      await type('Parser definition (JSON)', JSON.stringify({ version: 2, total: ['X {amount}'] }));
+      expect(mode('Form')).toBeEnabled();
+    });
+
+    it('opens a version 1 definition the form can show on the form, and saves it as version 2', async () => {
+      api.update.mockResolvedValue(makeParser({ revision: 3 }));
+      const old = makeParser({ definition: { version: 1, total: ['Total {amount}'] }, definitionValid: false });
+      await renderEditor({ parser: old });
+      expect(mode('Form')).toHaveAttribute('aria-pressed', 'true');
+      await save();
+      expect(api.update).toHaveBeenCalledWith(
+        'p-1',
+        expect.objectContaining({ definition: { version: 2, total: ['Total {amount}'] } }),
+      );
+    });
+
+    it('says the JSON is not valid, refuses to save or test it, and keeps the form switch off', async () => {
+      await renderEditor({ parser: v2Parser });
+      await type('Parser definition (JSON)', '{ "version": 2,');
+      expect(screen.getByText(/This is not valid JSON/)).toBeInTheDocument();
+      expect(screen.getByText(/The JSON is not valid yet, so the form cannot be shown/)).toBeInTheDocument();
+      expect(screen.getByText('The JSON is not valid, so there is nothing to test yet.')).toBeInTheDocument();
+      expect(mode('Form')).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Save parser' })).toBeDisabled();
+      await type('Parser definition (JSON)', '[1]');
+      expect(screen.getByRole('button', { name: 'Save parser' })).toBeDisabled();
+    });
+
+    it('tests the JSON as it is now, not the form', async () => {
+      api.test.mockResolvedValue({
+        parsed: PARSED_RECEIPT,
+        match: { kind: 'unmatched' },
+        candidateCount: 0,
+        transaction: null,
+      });
+      await renderEditor({ parser: v2Parser, initialReceiptId: 'r-1' });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+      });
+      await act(async () => {});
+      expect(api.test).toHaveBeenCalledWith({ definition: V2_DEFINITION, receiptId: 'r-1', payeeId: 'payee-1' });
+    });
+
+    it('shows the server codes for the JSON in the words of the editor', async () => {
+      api.update.mockRejectedValue(
+        axiosError(
+          400,
+          'The parser definition is not valid: total[0].within: out_of_range; items: items_patterns_and_record; items.record: record_name_missing',
+        ),
+      );
+      await renderEditor({ parser: v2Parser });
+      await save();
+      const alert = screen.getByText(/The parser definition is not valid:/).closest('[role="alert"]') as HTMLElement;
+      expect(alert).toHaveTextContent('Total patterns, entry 1, within: must be a whole number from 1 to 10');
+      expect(alert).toHaveTextContent('Line items: has both patterns and a record. Use one of them.');
+      expect(alert).toHaveTextContent('Record: must capture {name} in one of its steps');
     });
   });
 
@@ -315,7 +475,7 @@ describe('ParserEditorDialog', () => {
       });
       await act(async () => {});
       expect(api.test).toHaveBeenCalledWith({
-        definition: { version: 1, total: ['Total {amount}'] },
+        definition: { version: 2, total: ['Total {amount}'] },
         receiptId: 'r-1',
         payeeId: 'payee-2',
       });

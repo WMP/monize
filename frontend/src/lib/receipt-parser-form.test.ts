@@ -3,7 +3,11 @@ import {
   blankCategoryRule,
   buildParserDefinition,
   buildParserPayload,
+  definitionToFormFields,
   emptyParserForm,
+  formCanRepresent,
+  formatDefinitionJson,
+  parseDefinitionJson,
   parseValidationProblems,
   parserToForm,
   splitDomains,
@@ -39,7 +43,7 @@ describe('splitting', () => {
 
 describe('buildParserDefinition', () => {
   it('is only the version for an empty form', () => {
-    expect(buildParserDefinition(emptyParserForm())).toEqual({ version: 1 });
+    expect(buildParserDefinition(emptyParserForm())).toEqual({ version: 2 });
   });
 
   it('builds every part of the definition', () => {
@@ -61,7 +65,7 @@ describe('buildParserDefinition', () => {
       }),
     );
     expect(definition).toEqual({
-      version: 1,
+      version: 2,
       orderId: ['Order {orderid}'],
       total: ['Total {amount}', 'Grand total {amount}'],
       shipping: ['Shipping {amount}'],
@@ -103,7 +107,7 @@ describe('buildParserPayload', () => {
       payeeId: null,
       fromDomains: ['shop.example.com'],
       subjectContains: ['order', 'receipt'],
-      definition: { version: 1, total: ['Total {amount}'] },
+      definition: { version: 2, total: ['Total {amount}'] },
     });
   });
 
@@ -120,7 +124,7 @@ describe('parserToForm', () => {
     fromDomains: ['shop.example.com', 'mail.shop.example.com'],
     subjectContains: ['order'],
     definition: {
-      version: 1,
+      version: 2,
       orderId: ['Order {orderid}'],
       total: ['Total {amount}'],
       items: { startAfter: 'Items', stopAt: 'Subtotal', patterns: ['{name} {amount}'] },
@@ -148,7 +152,7 @@ describe('parserToForm', () => {
 
   it('reads a definition restored as {} as an empty form, never a crash', () => {
     const form = parserToForm(parser({ definition: {}, definitionValid: false }));
-    expect(buildParserDefinition(form)).toEqual({ version: 1 });
+    expect(buildParserDefinition(form)).toEqual({ version: 2 });
   });
 
   it('ignores parts of the wrong shape', () => {
@@ -187,5 +191,115 @@ describe('parseValidationProblems', () => {
 
   it('is empty when the message lists none', () => {
     expect(parseValidationProblems('Payee not found')).toEqual([]);
+  });
+});
+
+describe('formCanRepresent', () => {
+  it('shows a definition of plain line patterns, whatever its version, and an empty one', () => {
+    expect(formCanRepresent({})).toBe(true);
+    expect(formCanRepresent({ version: 1, total: ['Total {amount}'] })).toBe(true);
+    expect(
+      formCanRepresent({
+        version: 2,
+        orderId: ['*#{orderid}'],
+        total: ['Total {amount}'],
+        items: { startAfter: 'Items', stopAt: 'Subtotal', patterns: ['{name} {amount}'] },
+        categoryRules: [{ match: '*cable*', categoryId: CATEGORY }],
+        defaultCategoryId: CATEGORY,
+        shippingCategoryId: OTHER,
+      }),
+    ).toBe(true);
+  });
+
+  it.each([
+    ['a labelled entry', { version: 2, total: [{ label: 'RAZEM', value: '{amount} zł' }] }],
+    ['a labelled order id', { version: 2, orderId: ['*#{orderid}', { label: 'N', value: '{orderid}' }] }],
+    ['multi-line items', { version: 2, items: { record: [{ line: '{name}' }, { line: '{amount}' }] } }],
+    ['skipLines', { version: 2, items: { skipLines: ['<*>'], patterns: ['{name} {amount}'] } }],
+    ['paid', { version: 2, paid: ['Zapłacono {amount}'] }],
+    ['a payee', { version: 2, payee: ['Sprzedawca: {payee}'] }],
+    ['a line guard', { version: 2, requireLine: ['*PayU*'] }],
+    ['single items', { version: 2, items: { single: { name: 'Opis: {name}' } } }],
+    ['joinWrapped', { version: 2, items: { patterns: ['{name} {amount} zł'], joinWrapped: true } }],
+    ['a category rule field', { version: 2, categoryRules: [{ match: '*a*', categoryId: CATEGORY, field: 'payee' }] }],
+    ['an unknown key', { version: 2, note: 'x' }],
+    ['an unknown key under items', { version: 2, items: { patterns: ['{name} {amount}'], extra: 1 } }],
+    ['a field that is not a list', { version: 2, total: 'Total {amount}' }],
+    ['items that are not an object', { version: 2, items: [] }],
+    ['a marker that is not text', { version: 2, items: { startAfter: 5, patterns: [] } }],
+    ['a rule with an extra key', { version: 2, categoryRules: [{ match: 'x', categoryId: CATEGORY, extra: 1 }] }],
+    ['categoryRules that is not a list', { version: 2, categoryRules: {} }],
+    ['a default category that is not text', { version: 2, defaultCategoryId: 5 }],
+    ['a definition that is not an object', [1]],
+    ['null', null],
+  ])('does not show %s: the form would drop it', (_label, definition) => {
+    expect(formCanRepresent(definition)).toBe(false);
+  });
+
+  it('never drops what it says it can show: the round trip through the form is the definition', () => {
+    const definition = {
+      version: 2 as const,
+      orderId: ['*#{orderid}'],
+      total: ['Total {amount}', 'Sum {amount}'],
+      shipping: ['Shipping {amount}'],
+      discount: ['Discount {amount}'],
+      items: { startAfter: 'Items', stopAt: 'Subtotal', patterns: ['{name} {amount}'] },
+      categoryRules: [{ match: '*cable*', categoryId: CATEGORY }],
+      defaultCategoryId: CATEGORY,
+      shippingCategoryId: OTHER,
+    };
+    expect(formCanRepresent(definition)).toBe(true);
+    const form = { ...emptyParserForm(), ...definitionToFormFields(definition) };
+    expect(buildParserDefinition(form)).toEqual(definition);
+  });
+});
+
+describe('the definition as JSON', () => {
+  it('pretty-prints with two spaces, and an absent definition as {}', () => {
+    expect(formatDefinitionJson({ version: 2, total: ['T {amount}'] })).toBe(
+      '{\n  "version": 2,\n  "total": [\n    "T {amount}"\n  ]\n}',
+    );
+    expect(formatDefinitionJson(undefined)).toBe('{}');
+  });
+
+  it('keeps every version 2 field through a print and a parse', () => {
+    const definition = {
+      version: 2,
+      total: [{ label: 'RAZEM', value: '{amount} zł', within: 3 }],
+      items: {
+        startAfter: 'od ',
+        skipLines: ['<*>'],
+        record: [{ line: '{name}' }, { line: '{amount} zł' }, { line: '{qty} × {price} zł', optional: true }],
+      },
+    };
+    expect(parseDefinitionJson(formatDefinitionJson(definition))).toEqual({ ok: true, definition });
+  });
+
+  it.each([['not json'], ['[1, 2]'], ['"text"'], ['null'], ['5'], ['']])('refuses %j as a definition', (source) => {
+    expect(parseDefinitionJson(source)).toEqual({ ok: false });
+  });
+
+  it('sends the JSON editor definition in the payload instead of the form', () => {
+    const definition = { version: 2 as const, total: [{ label: 'RAZEM', value: '{amount} zł' }] };
+    const payload = buildParserPayload({ ...emptyParserForm(), name: 'A', fromDomains: 'a.example' }, definition);
+    expect(payload.definition).toBe(definition);
+  });
+});
+
+describe('the server codes of version 2', () => {
+  it('reads every new code out of a 400 message', () => {
+    const message =
+      'The parser definition is not valid: version: unsupported_version; total[0].within: out_of_range; items: items_patterns_and_record; items: items_shape_missing; items.skipLines: skip_lines_need_record; items.record: record_name_missing; items: items_single_conflict; items.joinWrapped: join_wrapped_needs_patterns; categoryRules[0].field: invalid_value';
+    expect(parseValidationProblems(message)).toEqual([
+      { path: 'version', code: 'unsupported_version' },
+      { path: 'total[0].within', code: 'out_of_range' },
+      { path: 'items', code: 'items_patterns_and_record' },
+      { path: 'items', code: 'items_shape_missing' },
+      { path: 'items.skipLines', code: 'skip_lines_need_record' },
+      { path: 'items.record', code: 'record_name_missing' },
+      { path: 'items', code: 'items_single_conflict' },
+      { path: 'items.joinWrapped', code: 'join_wrapped_needs_patterns' },
+      { path: 'categoryRules[0].field', code: 'invalid_value' },
+    ]);
   });
 });

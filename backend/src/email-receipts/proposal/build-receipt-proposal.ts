@@ -46,6 +46,8 @@ export interface ReceiptProposalTransaction {
 
 export interface ReceiptProposalContext {
   parserName: string;
+  /** The parser payee (a payment gateway, say), by id. */
+  parserPayeeId?: string | null;
   /** The parser payee's name, used only when the transaction has no payee. */
   payeeName: string | null;
   /** Category id to name, for every category the proposal may use. */
@@ -158,6 +160,38 @@ function receiptLines(parsed: ParsedReceipt): ReceiptLine[] {
 }
 
 /**
+ * The payee the proposal sets, or undefined for none. When the email names the
+ * merchant (a payment gateway's notice), that name is proposed when the
+ * transaction has no payee or its payee is the parser's own (the gateway);
+ * a transaction with another payee keeps it. An email that names none falls
+ * back to the parser payee's name, for a transaction without a payee.
+ */
+function proposedPayeeName(
+  parsed: ParsedReceipt,
+  tx: ReceiptProposalTransaction,
+  ctx: ReceiptProposalContext,
+): string | undefined {
+  const merchant = parsed.payee ? clean(parsed.payee) : "";
+  if (merchant !== "") {
+    const gateway =
+      tx.payeeId !== null &&
+      ctx.parserPayeeId !== undefined &&
+      ctx.parserPayeeId !== null &&
+      tx.payeeId === ctx.parserPayeeId;
+    return tx.payeeId === null || gateway ? merchant : undefined;
+  }
+  return tx.payeeId === null &&
+    ctx.payeeName !== null &&
+    clean(ctx.payeeName) !== ""
+    ? clean(ctx.payeeName)
+    : undefined;
+}
+
+/** The amount the transaction must equal: what was paid, else the total. */
+const expectedAmount = (parsed: ParsedReceipt): number | null =>
+  parsed.paid ?? parsed.total;
+
+/**
  * Build the proposal for one matched receipt.
  *
  * A complete parse whose total equals the transaction amount becomes one
@@ -175,10 +209,7 @@ export function buildReceiptProposal(
 ): ReceiptProposal {
   const summary = buildSummary(parsed, ctx.parserName);
   const description = buildDescription(tx.description, summary);
-  const payeeName =
-    tx.payeeId === null && ctx.payeeName !== null && clean(ctx.payeeName) !== ""
-      ? clean(ctx.payeeName)
-      : undefined;
+  const payeeName = proposedPayeeName(parsed, tx, ctx);
   const common: AiReviewProposalInput = {
     ...(payeeName === undefined ? {} : { payeeName }),
     ...(description === null ? {} : { description }),
@@ -192,7 +223,9 @@ export function buildReceiptProposal(
       : { input: common, kind: "description_only", reason };
 
   if (!parsed.complete) return descriptionOnly(parsed.reason);
-  if (Math.round(Math.abs(tx.amount) * MONEY_UNITS) !== parsed.total) {
+  if (
+    Math.round(Math.abs(tx.amount) * MONEY_UNITS) !== expectedAmount(parsed)
+  ) {
     return descriptionOnly("amount_differs");
   }
 
@@ -225,9 +258,9 @@ export function buildReceiptProposal(
   if (
     Math.round(splitTotal * MONEY_UNITS) !== Math.round(tx.amount * MONEY_UNITS)
   ) {
-    throw new Error(
-      `Receipt split lines sum to ${splitTotal}, the transaction is ${tx.amount}`,
-    );
+    // Complete but not payable as split: the email's total is the list price
+    // and no `paid` says what the bank was charged after the discount.
+    return descriptionOnly("amount_differs");
   }
   return { input: { splits, ...common }, kind: "itemized", reason: null };
 }

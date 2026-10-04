@@ -132,7 +132,7 @@ describe('emailReceiptsApi', () => {
       expect(client.post).toHaveBeenLastCalledWith('/email-receipt-parsers/draft-with-ai', { receiptIds: ['r-1', 'r-2'] });
     });
 
-    const definition = { version: 1 as const, total: ['Total {amount}'] };
+    const definition = { version: 2 as const, total: ['Total {amount}'] };
 
     it('lists, reads, creates, updates and deletes', async () => {
       client.get.mockResolvedValue({ data: [] });

@@ -335,11 +335,17 @@ the trade.
 
 ## 5. The parser
 
-### 5.1 Definition (`definition` jsonb, version 1)
+### 5.1 Definition (`definition` jsonb, version 2)
+
+There is one parser language, version 2. A version 1 definition (one line
+pattern per field, the first matching line wins) was replaced before any parser
+used it: the validator refuses any other `version` with `unsupported_version`,
+and a stored definition that fails validation is listed as invalid and is saved
+again, never read by another rule.
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "orderId": ["*order #{orderid}*", "Order number: {orderid}"],
   "total": ["Order total: {amount}", "*Grand total*{amount}"],
   "shipping": ["Shipping: {amount}"],
@@ -358,36 +364,223 @@ the trade.
 }
 ```
 
+An email that prints a caption on one line and its value on a later one, and a
+product over several lines (the Allegro "Kupiłeś i zapłaciłeś" mail), reads
+with labelled entries and block items:
+
+```json
+{
+  "version": 2,
+  "orderId": ["*/moje-allegro/zakupy/kupione/{orderid}?*"],
+  "total": [{ "label": "RAZEM", "value": "{amount} zł", "within": 3 }],
+  "shipping": [{ "label": "Metoda dostawy", "value": "{amount} zł", "within": 4 }],
+  "items": {
+    "startAfter": "od ",
+    "stopAt": "Metoda dostawy",
+    "skipLines": ["<*>", "(*)"],
+    "record": [
+      { "line": "{name}" },
+      { "line": "{amount} zł" },
+      { "line": "{qty} × {price} zł", "optional": true }
+    ]
+  },
+  "defaultCategoryId": "<uuid>",
+  "shippingCategoryId": "<uuid>"
+}
+```
+
+A payment gateway's notice, and a Google Play receipt with a promotion, read
+with `paid`, `payee`, `items.single`, `joinWrapped` and the literal asterisk:
+
+```json
+{
+  "version": 2,
+  "requireLine": ["*PayU*"],
+  "orderId": ["Numer transakcji: {orderid}"],
+  "total": ["Kwota: *{amount} PLN*"],
+  "paid": ["Kwota: *{amount} PLN*"],
+  "payee": [{ "label": "Sprzedawca", "value": "{payee}", "within": 2 }],
+  "items": { "single": { "name": "Opis płatności: {*}{name}{*}" } },
+  "categoryRules": [{ "match": "*OLX*", "field": "payee", "categoryId": "<uuid>" }],
+  "defaultCategoryId": "<uuid>"
+}
+```
+
+```json
+{
+  "version": 2,
+  "orderId": ["*Numer zamówienia:* {orderid}"],
+  "total": ["Razem: {amount} zł"],
+  "paid": ["Visa-*: {amount} zł", "Razem: {amount} zł"],
+  "discount": ["*{*} -{amount} zł"],
+  "items": {
+    "startAfter": "Produkt Cena",
+    "stopAt": "Razem",
+    "joinWrapped": true,
+    "patterns": ["{name} (deweloper: *) {amount} zł", "{name} {amount} zł"]
+  },
+  "defaultCategoryId": "<uuid>"
+}
+```
+
+Amazon.pl, whose mail names the product only inside `[image: ...]` (the line
+under the link is cut), drops the lines between the name and the quantity and
+gives its one item the order total:
+
+```json
+{
+  "version": 2,
+  "orderId": ["Nr zamówienia {orderid}"],
+  "total": ["Suma {amount}"],
+  "items": {
+    "startAfter": "Wyświetl lub edytuj zamówienie",
+    "stopAt": "Suma",
+    "skipLines": ["<*>", "*zł", "Sprzedawca *", "Stan: *", "*..."],
+    "record": [{ "line": ["[image: {name}]", "{name}"] }, { "line": "Ilość: {qty}" }]
+  },
+  "defaultCategoryId": "<uuid>"
+}
+```
+
 - Every pattern is a rule glob (`*` wildcard, `{name}` capture), matched
-  case-insensitively against one whole line. `orderId` patterns are tried on
-  the subject first, then on each line.
-- Capture names: `orderid` (order patterns), `amount` (total, shipping,
-  discount), and in item patterns `name` (required), `amount` (the line total)
-  or `price` with `qty` (the line total is `price * qty`), `qty` optional
-  (default 1).
-- `startAfter` / `stopAt` are plain case-insensitive substrings that bound the
-  item section: items are read from the line after the first line containing
-  `startAfter` (or from the top) up to the first line containing `stopAt`
-  (or the end).
+  case-insensitively against one whole line (the email's non-empty lines,
+  whitespace folded, invisible characters such as zero-width spaces, bidi
+  marks and soft hyphens removed). A line pattern of `orderId` is tried on the
+  subject first, then on each line.
+- **Literal asterisk and trimming.** `{*}` and `\*` in a pattern are a literal
+  `*` (the receipt matcher swaps each literal `*` of the pattern and of the line
+  for a private-use character, matches, and swaps it back in the captures; the
+  rule matcher is untouched). Every captured value is trimmed of leading and
+  trailing whitespace, `*` and `_`, because Gmail draws bold as `*text*`; the
+  accept rules see the trimmed value. There is no opt-out.
+- Capture names: `orderid` (order patterns), `amount` (total, paid, shipping,
+  discount), `payee` (the merchant), and in items `name` (required), `amount`
+  (the line total) or `price` with `qty` (the line total is `price * qty`),
+  `qty` optional (default 1).
+- **`paid` and the arithmetic.** `total` is the amount the email calls the
+  total (a list price), `paid` the amount actually charged (a card line after a
+  promotion). `gross` = items + shipping; `net` = `gross` - discount (a missing
+  discount is 0, and a discount above `gross` is unbalanced). A receipt is
+  complete only when at least one of `total` and `paid` is found, `paid` (when
+  found) equals `net`, and `total` (when found) equals `gross` OR `net`; the
+  first of the truth table that fails is the reason. The bank amount a receipt
+  is matched and proposed against is `paid`, else `total`.
+- **`payee`.** The merchant when it is not the sender (a payment gateway).
+  Entries have the same shapes as `total`. It is `ParsedReceipt.payee`
+  (`null` when none).
+- **Priority by array order.** A field's entries (`orderId`, `total`,
+  `shipping`, `discount`) are tried in array order, each over the whole email:
+  entry 0 first (a line pattern: the first line that matches and holds an
+  accepted value; a labelled entry: below), then entry 1 only when entry 0 found
+  nothing anywhere. A specific entry goes first, a general one after it. For
+  `orderId` a line pattern reads the subject, then the lines, per entry.
+- **Labelled entries.** An entry is a string (a line pattern) or
+  `{ "label", "value", "within" }`. `label` is a capture-free glob matched
+  against a whole line; `value` is a glob with the field's capture; `within`
+  is a whole number from 1 to 10 (default 3). The reader finds a line matching
+  `label`, then looks at the next `within` lines (the non-empty normalised
+  lines, so a blank line does not use up the window) and takes the FIRST one
+  whose `value` matches and holds an accepted value; if none does, it goes on
+  to the next line matching `label`. A labelled `orderId` entry reads lines
+  only, never the subject. The label's own line is never the value.
+- **Accepted values.** An amount is a plain amount (the spec's amount grammar)
+  that holds no operator character (`×`, `÷`, `+`, `*`, `/`, `=`, `%`, `<`,
+  `>`, `@`, `#`, `\`, `|`), so a quantity line such as `3 × 1,47 zł` is never
+  an amount. An order id is a non-empty first token. A zero amount is a value.
+- **Items** hold exactly one of `patterns` (one item per line), `record` (an
+  item over several lines) and `single` (one item for the whole email);
+  `startAfter` / `stopAt` are plain case-insensitive substrings bounding the
+  section in all three shapes: items are read from the line after the first
+  line containing `startAfter` (or from the top) up to the first line
+  containing `stopAt` (or the end).
+- **`joinWrapped`** (patterns only). A section line no pattern reads is held,
+  at most the last three; the next line is read as the held lines, then itself,
+  joined by single spaces, and an emitted item clears what was held. It is for
+  a name wrapped over lines with the price on the last (Google Play).
+- **`single`.** `{ "name": <glob with {name}> }`: one item named by the first
+  section line the glob reads, quantity 1, its amount the email's `total`, else
+  `paid`. With a discount the item therefore carries the `total` (the gross).
+  No item when no line gives a name or the email states neither amount.
+- **An item without an amount.** An item a `record` or `single` read with no
+  `amount` or `price` takes `total`, else `paid`, when it is the ONLY item;
+  with two or more items, or when the email states neither, it is dropped and
+  the reason is `item_amount_missing` (checked after `no_total`).
+- **Block items.** `skipLines` (0 to 10 capture-free globs) drops the section
+  lines matching any of them first (links, offer numbers). Then a cursor walks
+  the remaining lines. `record` is 1 to 6 steps `{ "line", "optional" }`, each
+  a glob over one line with the item captures. From the cursor, each step
+  consumes one line when its glob matches and its values read (an amount or
+  price is a plain amount, `qty` a whole number from 1 to 9999, `name`
+  non-empty); an optional step that does not match consumes nothing; a required
+  step that does not match fails the record. A step's `line` may be a list of
+  up to 5 alternative globs, tried in order; the first that matches and reads
+  wins (`["[image: {name}]", "{name}"]`). A matched record is one item: its
+  captures are merged across the steps (a capture name belongs to one step),
+  the line total is the `amount` capture if there is one, else `price * qty`,
+  and `qty` defaults to 1; the cursor moves past the consumed lines. A failed
+  record moves the cursor ONE line, so the next product is still found (a name
+  that appears twice is read once). The record must capture `name`.
+- **Category rules.** `categoryRules[].field` is `item` (the default: the glob
+  is matched against the item's name), `payee` (against the parsed payee; it
+  covers every item) or `line` (against any line of the email; every item).
+  Rules are tried in order and the first that covers an item wins; then
+  `defaultCategoryId`, then the parser payee's default.
+- **Line guards.** `requireLine`, `skipIfLine` and `waitIfLine` are lists of up
+  to 10 capture-free globs. `requireLine`: the parser applies only to an email
+  with a line matching one of them; otherwise the pipeline tries the next
+  parser for the sender (best first: the longer domain, the older, the lower
+  id), and `no_parser` when none is left. `skipIfLine`: a matching line makes
+  the receipt `ignored` with `status_reason` `skip_line` (nothing is parsed or
+  matched). `waitIfLine`: it leaves the receipt `unmatched` with `status_reason`
+  `wait_line`; the poll's rematch (recent `unmatched` receipts) reads the whole
+  email again from the top, parser selection included, so it is read normally
+  once the line is gone. `skipIfLine` wins over `waitIfLine`; a person's own
+  link is a command and no guard holds it back. `status_reason` is free text
+  (40 characters, no CHECK), so no migration is needed.
+- **The test trace.** `POST /email-receipt-parsers/test` and the tool's `test`
+  return, beside `parsed`, an `outcome` (`read`, or the guard that would stop
+  the read: `not_applicable`, `skip_line`, `wait_line`) and a `trace`: for
+  `orderId`, `total`, `paid`, `shipping`, `discount`, `payee` and the three
+  guards the entry index, the glob (a labelled entry: its `value`, its `label`
+  and the label line) and the line (1-based number among the email's lines, 0
+  for the subject, and its text cut to 200 characters) that produced the value,
+  and for each item (at most 20 in the tool's answer) the globs and lines that
+  read it. The editor's test panel lists them under "Matched by".
 - A line item's category is the first `categoryRules` entry whose glob matches
   the item's name, else `defaultCategoryId`, else the parser payee's default
   category, else none.
 
 ### 5.2 Bounds (validated on save, by the same validator the AI draft passes)
 
-At most 10 patterns per field, 200 characters per pattern, 5 captures per
-pattern (the glob's own limit), 50 category rules, 100 characters per section
-marker; unknown keys refused; every category id owned by the user (checked in
-the write's transaction). Parsing reads at most 2,000 lines and 100 items.
+At most 10 entries per field, 200 characters per pattern (and per `label` and
+`value`), 5 captures per pattern (the glob's own limit), 50 category rules, 100
+characters per section marker, 10 `skipLines`, 6 record steps, 5 alternatives
+per step, 10 globs in each line guard, 3 held lines for `joinWrapped`, `within`
+1 to 10;
+unknown keys refused; every category id owned by the user (checked in the
+write's transaction). Parsing reads at most 2,000 lines and 100 items. A
+labelled entry matches each line against its `value` once however many label
+lines look at it, and a record is tried once per line, so reading is linear in
+the lines for any definition within the bounds.
+
+The validator's codes, each at the path of the problem: `not_object`,
+`unknown_key`, `unsupported_version`, `invalid_type`, `empty`, `too_many`,
+`too_long`, `control_character`, `malformed_capture`, `too_many_captures`,
+`duplicate_capture`, `capture_not_allowed`, `capture_missing`,
+`capture_conflict`, `invalid_uuid`, `out_of_range` (`within`),
+`items_patterns_and_record`, `items_single_conflict`, `items_shape_missing`,
+`skip_lines_need_record`, `join_wrapped_needs_patterns`, `record_name_missing`,
+`invalid_value` (a category rule `field`).
 
 ### 5.3 Output (`ParsedReceipt`)
 
 `{ orderId, total, shipping, discount, items: [{ name, qty, amount,
 categoryId }], complete, reason, source? }` (`source` is `"ai"` when the AI read
 the email, absent for a parser), every amount a non-negative integer in
-1/10000 units. `complete` is true only when `total` was found and the items,
-plus shipping, minus discount, equal the total exactly and every item and the
-shipping line (when present) has a category. `reason` names the first missing
+1/10000 units. `complete` is true only when `total` or `paid` was found, the items plus
+shipping (gross) and minus the discount (net) agree with them as section 5.1
+says, and every item and the shipping line (when present) has a category. The
+object also carries `paid` and `payee` (`null` when the email states none). `reason` names the first missing
 thing otherwise. The spec has the amount grammar and the truth table.
 
 ## 6. Pipeline and receipt states
@@ -568,6 +761,19 @@ section 3a.
   parsers list with an editor (name, domains, subject words, payee, patterns
   one per line, section markers, category rules, default and shipping
   category), a test panel against a stored receipt, approve and delete.
+  The editor has a "Form | JSON" switch at the top. The form shows only what it
+  can hold without loss (plain line patterns, `startAfter` / `stopAt`, item
+  patterns, category rules with a default and shipping category); a definition
+  that uses anything else (labelled entries, `paid`, `payee`, block or single
+  items, `joinWrapped`, line guards, a rule `field`, an unknown key) opens in
+  the JSON mode, a monospace box validated by the server on save, and the form
+  switch stays off for it with the reason; a definition the form can show can
+  switch both ways, and saving it from the form writes version 2. The list has a
+  "View JSON" row action for every parser (draft or approved, valid or not): a
+  read-only dialog with the pretty-printed stored definition and a Copy button.
+  The test panel works in both modes and lists under "Matched by" which entry
+  and line read each value (design 5.1, the test trace), and says when a guard
+  would stop the pipeline reading the email.
 - `/email-receipts` (Tools menu, owner only): the receipts table with state
   badges and actions (a checkbox column selects up to five emails; the selection
   bar offers "Draft parser with AI (N)" and warns, without blocking, when the
@@ -594,7 +800,7 @@ section 3a.
 
 | Layer | Suite | Proves |
 |---|---|---|
-| Unit | `parsing/*.spec.ts` | Amount grammar, item section, captures, bounds, `complete` truth table |
+| Unit | `parsing/*.spec.ts` | Amount grammar, item section, captures, bounds, `complete` truth table; priority by order, labelled entries and their `within` edges, block items, `skipLines`, resync after a failed record; `paid` arithmetic, `single`, `joinWrapped`, literal asterisk and trimming, `payee`, category rule fields, line guards, the trace; the Allegro, PayU, Google Play and Amazon mails read complete |
 | Unit | `matching/*.spec.ts` | Every row of the match truth table (spec section 3) |
 | Unit | `proposal/*.spec.ts` | Signs, single line vs split, shipping and discount lines, description cap |
 | Unit | `imap/*.spec.ts` | Read-only options, egress lookup passed, IP literal refused, source scan of write calls |

@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { DocumentTextIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { ParserEditorDialog } from '@/components/email-receipts/ParserEditorDialog';
+import { ParserJsonDialog } from '@/components/email-receipts/ParserJsonDialog';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -40,6 +41,7 @@ export function ParsersSection() {
   const [parsers, setParsers] = useState<EmailReceiptParser[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [editor, setEditor] = useState<EditorTarget>({ kind: 'closed' });
+  const [jsonTarget, setJsonTarget] = useState<EmailReceiptParser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EmailReceiptParser | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   // Only the newest load may write the list (a reload after a 409 must not be
@@ -121,6 +123,13 @@ export function ParsersSection() {
       tone: 'primary',
       onClick: () => setEditor({ kind: 'edit', parser }),
       disabled: busyId === parser.id,
+    },
+    {
+      key: 'viewJson',
+      label: t('actions.viewJson'),
+      icon: 'view',
+      tone: 'view',
+      onClick: () => setJsonTarget(parser),
     },
     {
       key: 'approve',
@@ -210,7 +219,7 @@ export function ParsersSection() {
                   ) : null}
                 </Td>
                 <Td align="right" className="px-2 align-top sm:px-4">
-                  <RowActions actions={actionsFor(parser)} density="normal" maxInline={3} />
+                  <RowActions actions={actionsFor(parser)} density="normal" maxInline={4} />
                 </Td>
               </tr>
             ))}
@@ -245,6 +254,8 @@ export function ParsersSection() {
           onConflict={handleConflict}
         />
       )}
+
+      {jsonTarget !== null && <ParserJsonDialog parser={jsonTarget} onClose={() => setJsonTarget(null)} />}
 
       <ConfirmDialog
         isOpen={deleteTarget !== null}

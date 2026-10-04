@@ -97,7 +97,7 @@ export class CreateEmailReceiptParserDto {
   @ApiProperty({
     type: "object",
     additionalProperties: true,
-    description: "The version 1 definition (design section 5.1).",
+    description: "The version 2 definition (design section 5).",
   })
   @IsObject()
   definition: Record<string, unknown>;

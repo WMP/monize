@@ -52,7 +52,7 @@ export function makeParser(overrides: Partial<EmailReceiptParser> = {}): EmailRe
     payeeId: 'payee-1',
     fromDomains: ['allegro.pl'],
     subjectContains: [],
-    definition: { version: 1, total: ['Total {amount}'] },
+    definition: { version: 2, total: ['Total {amount}'] },
     definitionValid: true,
     definitionErrors: [],
     status: 'approved',

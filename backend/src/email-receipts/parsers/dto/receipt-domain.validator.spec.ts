@@ -45,7 +45,7 @@ describe("CreateEmailReceiptParserDto", () => {
   const base = {
     name: "Shop",
     fromDomains: ["@Shop.Example.com"],
-    definition: { version: 1 },
+    definition: { version: 2 },
   };
   const check = async (over: Record<string, unknown> = {}) => {
     const dto = plainToInstance(CreateEmailReceiptParserDto, {

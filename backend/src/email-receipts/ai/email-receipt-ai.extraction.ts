@@ -123,6 +123,7 @@ export function buildAiParsedReceipt(
     return units;
   };
   const total = figure("total", answer.total);
+  const paid = figure("paid", answer.paid);
   const shipping = figure("shipping", answer.shipping);
   const discount = figure("discount", answer.discount);
   const shippingCategoryId = resolveCategory(answer.shippingCategoryId);
@@ -136,6 +137,8 @@ export function buildAiParsedReceipt(
   const base = {
     orderId: orderId === "" ? null : orderId,
     total,
+    paid,
+    payee: null,
     shipping,
     discount,
     items,

@@ -54,6 +54,8 @@ export function readParsedReceipt(value: unknown): ParsedReceipt | null {
   return {
     orderId: readText(value.orderId),
     total: readAmount(value.total),
+    paid: readAmount(value.paid),
+    payee: readText(value.payee),
     shipping: readAmount(value.shipping),
     discount: readAmount(value.discount),
     items: Array.isArray(value.items)

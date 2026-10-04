@@ -14,6 +14,9 @@ import type {
  * here rejects a pattern, it only builds the structure.
  */
 
+/** The only definition version the server reads; the form always writes it. */
+export const PARSER_DEFINITION_VERSION = 2;
+
 export interface CategoryRuleRow {
   /** A list key, never sent. */
   uid: string;
@@ -108,7 +111,7 @@ export function splitDomains(text: string): string[] {
  * `items.patterns: empty` instead of being dropped without a word.
  */
 export function buildParserDefinition(form: ParserFormState): ReceiptParserDefinition {
-  const definition: ReceiptParserDefinition = { version: 1 };
+  const definition: ReceiptParserDefinition = { version: PARSER_DEFINITION_VERSION };
 
   const orderId = splitLines(form.orderId);
   const total = splitLines(form.total);
@@ -140,14 +143,20 @@ export function buildParserDefinition(form: ParserFormState): ReceiptParserDefin
   return definition;
 }
 
-/** The create payload; update sends the same fields plus the revision it was read at. */
-export function buildParserPayload(form: ParserFormState): CreateEmailReceiptParserPayload {
+/**
+ * The create payload; update sends the same fields plus the revision it was
+ * read at. The definition is the form's unless the JSON editor supplies one.
+ */
+export function buildParserPayload(
+  form: ParserFormState,
+  definition: ReceiptParserDefinition = buildParserDefinition(form),
+): CreateEmailReceiptParserPayload {
   return {
     name: form.name.trim(),
     payeeId: form.payeeId === '' ? null : form.payeeId,
     fromDomains: splitDomains(form.fromDomains),
     subjectContains: splitWords(form.subjectContains),
-    definition: buildParserDefinition(form),
+    definition,
   };
 }
 
@@ -159,20 +168,32 @@ const stringList = (value: unknown): string[] =>
 
 const text = (value: unknown): string => (typeof value === 'string' ? value : '');
 
+type DefinitionFields = Pick<
+  ParserFormState,
+  | 'orderId'
+  | 'total'
+  | 'shipping'
+  | 'discount'
+  | 'startAfter'
+  | 'stopAt'
+  | 'itemPatterns'
+  | 'categoryRules'
+  | 'defaultCategoryId'
+  | 'shippingCategoryId'
+>;
+
 /**
- * A stored parser as form state. The definition comes off the wire as a bare
- * record (a draft restored from a backup can be `{}`), so each part is read
- * defensively and a missing part is an empty field, never a crash.
+ * The form fields a definition fills. The definition comes off the wire as a
+ * bare record (a draft restored from a backup can be `{}`), so each part is
+ * read defensively and a missing part is an empty field, never a crash. What
+ * the form has no field for is not read: `formCanRepresent` says when that
+ * would lose something.
  */
-export function parserToForm(parser: EmailReceiptParser): ParserFormState {
-  const definition = isRecord(parser.definition) ? parser.definition : {};
+export function definitionToFormFields(value: unknown): DefinitionFields {
+  const definition = isRecord(value) ? value : {};
   const items = isRecord(definition.items) ? definition.items : {};
   const rules = Array.isArray(definition.categoryRules) ? definition.categoryRules : [];
   return {
-    name: parser.name,
-    payeeId: parser.payeeId ?? '',
-    fromDomains: parser.fromDomains.join('\n'),
-    subjectContains: parser.subjectContains.join('\n'),
     orderId: stringList(definition.orderId).join('\n'),
     total: stringList(definition.total).join('\n'),
     shipping: stringList(definition.shipping).join('\n'),
@@ -188,11 +209,101 @@ export function parserToForm(parser: EmailReceiptParser): ParserFormState {
   };
 }
 
+/** A stored parser as form state. */
+export function parserToForm(parser: EmailReceiptParser): ParserFormState {
+  return {
+    name: parser.name,
+    payeeId: parser.payeeId ?? '',
+    fromDomains: parser.fromDomains.join('\n'),
+    subjectContains: parser.subjectContains.join('\n'),
+    ...definitionToFormFields(parser.definition),
+  };
+}
+
+const FORM_TOP_LEVEL_KEYS = [
+  'version',
+  'orderId',
+  'total',
+  'shipping',
+  'discount',
+  'items',
+  'categoryRules',
+  'defaultCategoryId',
+  'shippingCategoryId',
+];
+const FORM_ITEMS_KEYS = ['startAfter', 'stopAt', 'patterns'];
+
+const onlyStrings = (value: unknown): boolean =>
+  value === undefined || (Array.isArray(value) && value.every((entry) => typeof entry === 'string'));
+
+const onlyKeys = (value: Record<string, unknown>, allowed: readonly string[]): boolean =>
+  Object.keys(value).every((key) => allowed.includes(key));
+
+/**
+ * Can the form show this definition without losing any of it? Only a
+ * definition of plain line patterns, one item per line, with nothing the form
+ * has no field for: a labelled entry, a multi-line `record`, `skipLines`, an
+ * unknown key or a value of the wrong kind would be dropped by the next
+ * `buildParserDefinition`, so such a definition is edited as JSON. The version
+ * does not matter: an old definition the form can show is shown, and saving it
+ * writes the current version.
+ */
+export function formCanRepresent(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  if (!onlyKeys(value, FORM_TOP_LEVEL_KEYS)) return false;
+  for (const field of ['orderId', 'total', 'shipping', 'discount']) {
+    if (!onlyStrings(value[field])) return false;
+  }
+  if (value.items !== undefined) {
+    if (!isRecord(value.items) || !onlyKeys(value.items, FORM_ITEMS_KEYS)) return false;
+    if (!onlyStrings(value.items.patterns)) return false;
+    for (const marker of [value.items.startAfter, value.items.stopAt]) {
+      if (marker !== undefined && typeof marker !== 'string') return false;
+    }
+  }
+  if (value.categoryRules !== undefined) {
+    if (!Array.isArray(value.categoryRules)) return false;
+    const simple = value.categoryRules.every(
+      (rule) =>
+        isRecord(rule) &&
+        onlyKeys(rule, ['match', 'categoryId']) &&
+        typeof rule.match === 'string' &&
+        typeof rule.categoryId === 'string',
+    );
+    if (!simple) return false;
+  }
+  for (const id of [value.defaultCategoryId, value.shippingCategoryId]) {
+    if (id !== undefined && typeof id !== 'string') return false;
+  }
+  return true;
+}
+
+/** The definition as the JSON editor shows it: indented, so a person can read and edit it. */
+export function formatDefinitionJson(definition: unknown): string {
+  return JSON.stringify(definition ?? {}, null, 2);
+}
+
+export type DefinitionJsonResult = { ok: true; definition: Record<string, unknown> } | { ok: false };
+
+/**
+ * The text of the JSON editor as a definition. Only the shape is checked here
+ * (a JSON object); what the object may hold is the server's validator's call,
+ * reported with the same codes as the form's.
+ */
+export function parseDefinitionJson(source: string): DefinitionJsonResult {
+  try {
+    const parsed: unknown = JSON.parse(source);
+    return isRecord(parsed) ? { ok: true, definition: parsed } : { ok: false };
+  } catch {
+    return { ok: false };
+  }
+}
+
 /** Every code the server's validator reports (`ReceiptParserValidationError.code`). */
 export const PARSER_VALIDATION_CODES = [
   'not_object',
   'unknown_key',
-  'invalid_version',
+  'unsupported_version',
   'invalid_type',
   'empty',
   'too_many',
@@ -205,6 +316,14 @@ export const PARSER_VALIDATION_CODES = [
   'capture_missing',
   'capture_conflict',
   'invalid_uuid',
+  'out_of_range',
+  'items_patterns_and_record',
+  'items_shape_missing',
+  'skip_lines_need_record',
+  'record_name_missing',
+  'items_single_conflict',
+  'join_wrapped_needs_patterns',
+  'invalid_value',
 ] as const;
 
 const PROBLEM = new RegExp(

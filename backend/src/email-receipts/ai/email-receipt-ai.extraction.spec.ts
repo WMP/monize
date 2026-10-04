@@ -44,6 +44,54 @@ describe("aiAmountToUnits", () => {
   });
 });
 
+describe("buildAiParsedReceipt: paid", () => {
+  const answer = (over: Record<string, unknown>) => ({
+    items: [{ name: "Game", amount: "24.99", categoryId: BOOKS }],
+    discount: "3.00",
+    discountCategoryId: BOOKS,
+    ...over,
+  });
+
+  it("reads paid and judges it with the shared arithmetic: paid is the net, total the list price", () => {
+    const result = build(answer({ total: "24.99", paid: "21.99" }));
+    expect(result).toMatchObject({
+      ok: true,
+      parsed: {
+        total: 249900,
+        paid: 219900,
+        payee: null,
+        complete: true,
+        reason: null,
+      },
+    });
+  });
+
+  it("is incomplete when paid is not the net", () => {
+    const result = build(answer({ total: "24.99", paid: "24.99" }));
+    expect(result).toMatchObject({
+      ok: true,
+      parsed: { complete: false, reason: "items_unbalanced" },
+    });
+  });
+
+  it("is complete from paid alone, and null paid when it is not given", () => {
+    expect(build(answer({ paid: "21.99" }))).toMatchObject({
+      parsed: { total: null, paid: 219900, complete: true },
+    });
+    expect(build(answer({ total: "21.99" }))).toMatchObject({
+      parsed: { paid: null, complete: true },
+    });
+  });
+
+  it("reads an unreadable paid as not stated, and says so", () => {
+    const result = build(answer({ total: "21.99", paid: "soon" }));
+    expect(result).toMatchObject({ parsed: { paid: null } });
+    expect(result).toMatchObject({
+      notes: ["The paid was not a readable amount."],
+    });
+  });
+});
+
 describe("buildAiParsedReceipt", () => {
   it("reads a complete receipt, marked as read by the AI, with the same truth table as a parser", () => {
     const result = build({
@@ -60,6 +108,8 @@ describe("buildAiParsedReceipt", () => {
       parsed: {
         orderId: "A-1",
         total: 349800,
+        paid: null,
+        payee: null,
         shipping: null,
         discount: null,
         items: [

@@ -153,7 +153,8 @@
     "payeeUnknown": "[XX-Payee not found-XX]",
     "payeeUnavailable": "[XX-Payee list unavailable-XX]",
     "actions": {
-      "approve": "[XX-Approve-XX]"
+      "approve": "[XX-Approve-XX]",
+      "viewJson": "[XX-View JSON-XX]"
     },
     "toasts": {
       "approved": "[XX-Parser approved-XX]",
@@ -165,6 +166,14 @@
     "deleteDialog": {
       "title": "[XX-Delete the parser?-XX]",
       "message": "[XX-The parser {name} will be deleted. Emails it already read keep their results.-XX]"
+    },
+    "jsonDialog": {
+      "title": "[XX-Definition of {name}-XX]",
+      "help": "[XX-The parser definition as it is stored. It is read-only here; use Edit to change it.-XX]",
+      "contentLabel": "[XX-Definition JSON-XX]",
+      "copy": "[XX-Copy-XX]",
+      "copied": "[XX-JSON copied-XX]",
+      "copyFailed": "[XX-Could not copy the JSON-XX]"
     }
   },
   "editor": {
@@ -222,6 +231,18 @@
       "defaultHelp": "[XX-Used for items that no rule matches.-XX]",
       "shippingLabel": "[XX-Shipping category-XX]",
       "shippingHelp": "[XX-The category of the shipping line.-XX]"
+    },
+    "mode": {
+      "label": "[XX-Editing mode-XX]",
+      "form": "[XX-Form-XX]",
+      "json": "[XX-JSON-XX]",
+      "formUnavailable": "[XX-This definition uses something the form cannot show: labelled entries, multi-line items or keys it has no field for. Edit it as JSON.-XX]",
+      "jsonInvalid": "[XX-The JSON is not valid yet, so the form cannot be shown. Fix it first.-XX]"
+    },
+    "json": {
+      "label": "[XX-Parser definition (JSON)-XX]",
+      "help": "[XX-The same definition the form builds. The server checks it when you save, and the test below reads it as it is now.-XX]",
+      "parseError": "[XX-This is not valid JSON, or it is not a JSON object. Fix it to save or test the parser.-XX]"
     }
   },
   "problems": {
@@ -230,7 +251,12 @@
     "paths": {
       "definition": "[XX-The definition-XX]",
       "line": "[XX-{field}, line {line}-XX]",
-      "rule": "[XX-Category rule {rule}, {part}-XX]"
+      "rule": "[XX-Category rule {rule}, {part}-XX]",
+      "entryPart": "[XX-{field}, entry {line}, {part}-XX]",
+      "skipLine": "[XX-Line to skip {line}-XX]",
+      "recordStep": "[XX-Record step {step}-XX]",
+      "recordStepPart": "[XX-Record step {step}, {part}-XX]",
+      "recordAlternative": "[XX-Record step {step}, alternative {alternative}-XX]"
     },
     "fields": {
       "orderId": "[XX-Order number patterns-XX]",
@@ -245,12 +271,28 @@
       "rulePattern": "[XX-pattern-XX]",
       "ruleCategory": "[XX-category-XX]",
       "defaultCategory": "[XX-Default category-XX]",
-      "shippingCategory": "[XX-Shipping category-XX]"
+      "shippingCategory": "[XX-Shipping category-XX]",
+      "skipLines": "[XX-Lines to skip-XX]",
+      "record": "[XX-Record-XX]",
+      "label": "[XX-label-XX]",
+      "value": "[XX-value-XX]",
+      "within": "[XX-within-XX]",
+      "line": "[XX-line-XX]",
+      "optional": "[XX-optional-XX]",
+      "paid": "[XX-Paid patterns-XX]",
+      "payee": "[XX-Merchant patterns-XX]",
+      "requireLine": "[XX-Required lines-XX]",
+      "skipIfLine": "[XX-Lines that skip the email-XX]",
+      "waitIfLine": "[XX-Lines that hold the email-XX]",
+      "single": "[XX-Single item-XX]",
+      "singleName": "[XX-Single item name-XX]",
+      "joinWrapped": "[XX-Join wrapped lines-XX]",
+      "ruleField": "[XX-field-XX]"
     },
     "codes": {
       "not_object": "[XX-is not a valid definition-XX]",
       "unknown_key": "[XX-is not something a parser can have-XX]",
-      "invalid_version": "[XX-is a version this server does not read-XX]",
+      "unsupported_version": "[XX-is a version this server does not read (use version 2)-XX]",
       "invalid_type": "[XX-has the wrong kind of value-XX]",
       "empty": "[XX-must not be empty-XX]",
       "too_many": "[XX-has too many entries (at most {max})-XX]",
@@ -262,7 +304,15 @@
       "capture_not_allowed": "[XX-uses a capture name this field does not accept-XX]",
       "capture_missing": "[XX-is missing a capture this field needs-XX]",
       "capture_conflict": "[XX-captures both the line total and the unit price. Use one of them.-XX]",
-      "invalid_uuid": "[XX-is not a valid category-XX]"
+      "invalid_uuid": "[XX-is not a valid category-XX]",
+      "out_of_range": "[XX-must be a whole number from 1 to {max}-XX]",
+      "items_patterns_and_record": "[XX-has both patterns and a record. Use one of them.-XX]",
+      "items_shape_missing": "[XX-needs either patterns or a record-XX]",
+      "skip_lines_need_record": "[XX-can only be used together with a record-XX]",
+      "record_name_missing": "[XX-must capture {capture} in one of its steps-XX]",
+      "items_single_conflict": "[XX-has a single item beside patterns or a record. Use one of them.-XX]",
+      "join_wrapped_needs_patterns": "[XX-only works with item patterns-XX]",
+      "invalid_value": "[XX-has a value this field does not accept-XX]"
     }
   },
   "test": {
@@ -285,7 +335,33 @@
     },
     "noPayee": "[XX-no payee-XX]",
     "ambiguous": "[XX-{count, plural, one {# transaction fits} other {# transactions fit}} equally well, so none would be linked until you choose.-XX]",
-    "unmatched": "[XX-No transaction matches, out of {count, plural, one {# candidate} other {# candidates}}.-XX]"
+    "unmatched": "[XX-No transaction matches, out of {count, plural, one {# candidate} other {# candidates}}.-XX]",
+    "jsonInvalid": "[XX-The JSON is not valid, so there is nothing to test yet.-XX]",
+    "outcome": {
+      "not_applicable": "[XX-This parser would not read this email: none of its required lines is in it, so the next parser for the sender would be tried.-XX]",
+      "skip_line": "[XX-This parser would set this email aside: a line it skips on is in it.-XX]",
+      "wait_line": "[XX-This parser would hold this email: a line says the order is not final, so it is read again later.-XX]"
+    },
+    "matchedBy": {
+      "heading": "[XX-Matched by-XX]",
+      "none": "[XX-No value was read from this email.-XX]",
+      "fields": {
+        "orderId": "[XX-Order number-XX]",
+        "total": "[XX-Total-XX]",
+        "paid": "[XX-Paid-XX]",
+        "shipping": "[XX-Shipping-XX]",
+        "discount": "[XX-Discount-XX]",
+        "payee": "[XX-Merchant-XX]",
+        "requireLine": "[XX-Required line-XX]",
+        "skipIfLine": "[XX-Skip line-XX]",
+        "waitIfLine": "[XX-Wait line-XX]"
+      },
+      "entryLine": "[XX-entry {entry} ({pattern}), line {line}: {text}-XX]",
+      "entrySubject": "[XX-entry {entry} ({pattern}), the subject: {text}-XX]",
+      "labelled": "[XX-entry {entry}, label {label} on line {labelLine} ({labelText}), value {pattern} on line {line}: {text}-XX]",
+      "item": "[XX-Item {number}-XX]",
+      "itemLine": "[XX-{pattern}, line {line}: {text}-XX]"
+    }
   },
   "parsed": {
     "notFound": "[XX-Not found-XX]",
@@ -310,9 +386,12 @@
       "no_items": "[XX-No line items were found.-XX]",
       "items_unbalanced": "[XX-The line items do not add up to the total.-XX]",
       "items_uncategorized": "[XX-Some line items have no category.-XX]",
-      "shipping_uncategorized": "[XX-The shipping line has no category.-XX]"
+      "shipping_uncategorized": "[XX-The shipping line has no category.-XX]",
+      "item_amount_missing": "[XX-An item has no amount, and the email has no single total to give it.-XX]"
     },
-    "readByAi": "[XX-Read by the AI-XX]"
+    "readByAi": "[XX-Read by the AI-XX]",
+    "paid": "[XX-Paid-XX]",
+    "payee": "[XX-Merchant-XX]"
   },
   "state": {
     "pending": "[XX-Waiting to be read-XX]",
@@ -457,7 +536,10 @@
       "amount_differs": "[XX-The parsed total differs from the transaction amount, so only a description is proposed.-XX]",
       "proposal_fallback": "[XX-The itemized proposal was refused, so only a description is proposed.-XX]",
       "nothing_to_propose": "[XX-The email adds nothing to this transaction.-XX]",
-      "proposal_refused": "[XX-The proposal was refused, so nothing was proposed.-XX]"
+      "proposal_refused": "[XX-The proposal was refused, so nothing was proposed.-XX]",
+      "skip_line": "[XX-A line this parser skips on was found, so the email was ignored.-XX]",
+      "wait_line": "[XX-A line says the order is not final yet, so the email will be read again later.-XX]",
+      "item_amount_missing": "[XX-An item has no amount, and the email has no single total to give it.-XX]"
     },
     "reasonUnknown": "[XX-Reason: {reason}-XX]",
     "requestNote": "[XX-Review request ({state}): {note}-XX]",

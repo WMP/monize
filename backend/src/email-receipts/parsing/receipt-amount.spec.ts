@@ -1,5 +1,6 @@
 import {
   isPlainReceiptAmount,
+  isStrictReceiptAmount,
   parseReceiptAmount,
   parseReceiptQty,
 } from "./receipt-amount";
@@ -168,5 +169,26 @@ describe("isPlainReceiptAmount", () => {
     [""],
   ])("refuses %j", (text) => {
     expect(isPlainReceiptAmount(text)).toBe(false);
+  });
+});
+
+describe("isStrictReceiptAmount", () => {
+  it.each(["12,99", "$12.99", "1 234,56 zł", "PLN 5", ": 1 234,56 zł", "0,00"])(
+    "accepts %s",
+    (text) => {
+      expect(isStrictReceiptAmount(text)).toBe(true);
+    },
+  );
+
+  it.each([
+    ["a quantity line", "3 × 1,47 zł"],
+    ["a sum", "10,95 + 5,00"],
+    ["a ratio", "1/2 zł"],
+    ["a percentage", "23% 18,45"],
+    ["words", "Akumulator AGM SSB 12V5Ah x 8szt. F1"],
+    ["a minus", "-5,00"],
+    ["nothing", ""],
+  ])("refuses %s", (_label, text) => {
+    expect(isStrictReceiptAmount(text)).toBe(false);
   });
 });

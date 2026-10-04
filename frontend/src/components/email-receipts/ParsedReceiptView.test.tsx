@@ -20,6 +20,24 @@ describe('ParsedReceiptView', () => {
     expect(screen.queryByText(/250,000|199,800|\$250000|19980/)).not.toBeInTheDocument();
   });
 
+  it('shows what was paid and the merchant only when the email states them', () => {
+    const { rerender } = render(<ParsedReceiptView parsed={parsed} currencyCode="USD" categoryLabels={labels} />);
+    expect(screen.queryByText('Paid')).not.toBeInTheDocument();
+    expect(screen.queryByText('Merchant')).not.toBeInTheDocument();
+
+    const promo = { ...parsed, total: 249_900, paid: 219_900, payee: 'GRUPA OLX SP. Z O.O.' };
+    rerender(<ParsedReceiptView parsed={promo} currencyCode="USD" categoryLabels={labels} />);
+    expect(screen.getByText('Paid').nextElementSibling).toHaveTextContent('$21.99');
+    expect(screen.getByText('Total').nextElementSibling).toHaveTextContent('$24.99');
+    expect(screen.getByText('Merchant').nextElementSibling).toHaveTextContent('GRUPA OLX SP. Z O.O.');
+  });
+
+  it('says an item has no amount and no single total to give it', () => {
+    const missing = { ...parsed, complete: false, reason: 'item_amount_missing' as const };
+    render(<ParsedReceiptView parsed={missing} currencyCode="USD" categoryLabels={labels} />);
+    expect(screen.getByText('An item has no amount, and the email has no single total to give it.')).toBeInTheDocument();
+  });
+
   it('shows a figure the email did not state as "Not found", never as a zero', () => {
     render(<ParsedReceiptView parsed={parsed} currencyCode="USD" categoryLabels={labels} />);
     expect(screen.getByText('Discount').nextElementSibling).toHaveTextContent('Not found');
