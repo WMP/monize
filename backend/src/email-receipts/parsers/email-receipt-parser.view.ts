@@ -3,6 +3,9 @@ import type {
   EmailReceiptParserSource,
   EmailReceiptParserStatus,
 } from "../entities/email-receipt-parser.entity";
+import { effectiveMatchDefinition } from "../parsing/receipt-match-config";
+import type { ReceiptMatchDefinition } from "../parsing/receipt-parser.types";
+import { nameParserCategories } from "./parser-category-names.util";
 import {
   validateReceiptParserDefinition,
   type ReceiptParserValidationError,
@@ -30,8 +33,39 @@ export interface EmailReceiptParserView {
   updatedAt: string;
 }
 
-/** The view of a stored row, field by field so a new column is not shown by accident. */
-export function toParserView(row: EmailReceiptParser): EmailReceiptParserView {
+/**
+ * The definition a client sees: the matching the profile EFFECTIVELY has (every
+ * default filled in, so the form and the AI show what the matcher will do) and
+ * the categories by name. An invalid definition is shown as stored.
+ */
+function viewDefinition(
+  stored: Record<string, unknown>,
+  valid: boolean,
+  categoryNames: ReadonlyMap<string, string>,
+): Record<string, unknown> {
+  if (!valid) return stored;
+  return nameParserCategories(
+    {
+      ...stored,
+      match: effectiveMatchDefinition(
+        stored as {
+          reference?: unknown[];
+          match?: ReceiptMatchDefinition | null;
+        },
+      ),
+    },
+    categoryNames,
+  );
+}
+
+/**
+ * The view of a stored row, field by field so a new column is not shown by
+ * accident. `categoryNames` is `id -> qualified name` of the owner's categories.
+ */
+export function toParserView(
+  row: EmailReceiptParser,
+  categoryNames: ReadonlyMap<string, string> = new Map(),
+): EmailReceiptParserView {
   const validation = validateReceiptParserDefinition(row.definition);
   return {
     id: row.id,
@@ -39,7 +73,7 @@ export function toParserView(row: EmailReceiptParser): EmailReceiptParserView {
     payeeId: row.payeeId,
     fromDomains: row.fromDomains,
     subjectContains: row.subjectContains,
-    definition: row.definition,
+    definition: viewDefinition(row.definition, validation.ok, categoryNames),
     definitionValid: validation.ok,
     definitionErrors: validation.ok ? [] : validation.errors,
     status: row.status,

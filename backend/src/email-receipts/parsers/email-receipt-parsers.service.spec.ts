@@ -71,6 +71,7 @@ function setup() {
     delete: jest.fn().mockResolvedValue({ affected: 1 }),
   };
   const categoryRepo = {
+    find: jest.fn().mockResolvedValue([]),
     count: jest.fn().mockImplementation(
       async ({ where }) =>
         // every id asked for is owned, unless a spec says otherwise
@@ -183,8 +184,8 @@ describe("EmailReceiptParsersService.create", () => {
     expect(parserRepo.save).not.toHaveBeenCalled();
   });
 
-  it("lists every code of an invalid definition in the 400, and opens no transaction", async () => {
-    const { service, manager } = setup();
+  it("lists every code of an invalid definition in the 400, and writes nothing", async () => {
+    const { service, parserRepo } = setup();
     const error = await service
       .create(
         USER,
@@ -196,7 +197,7 @@ describe("EmailReceiptParsersService.create", () => {
     expect(error).toBeInstanceOf(BadRequestException);
     expect(error.message).toContain("bogus: unknown_key");
     expect(error.message).toContain("total[0]: capture_missing");
-    expect(manager.getRepository).not.toHaveBeenCalled();
+    expect(parserRepo.save).not.toHaveBeenCalled();
   });
 
   it("reports a definition restored as {} as invalid rather than crashing", async () => {
@@ -300,12 +301,13 @@ describe("EmailReceiptParsersService.update", () => {
     );
   });
 
-  it("validates a new definition and refuses a bad one before locking", async () => {
+  it("validates a new definition and refuses a bad one before writing", async () => {
     const { service, parserRepo } = setup();
+    parserRepo.findOne.mockResolvedValue(stored());
     await expect(
       service.update(USER, "p1", dto({ definition: {} })),
     ).rejects.toBeInstanceOf(BadRequestException);
-    expect(parserRepo.findOne).not.toHaveBeenCalled();
+    expect(parserRepo.update).not.toHaveBeenCalled();
   });
 
   it("checks a new payee and new categories are the user's, and writes nothing otherwise", async () => {
@@ -824,5 +826,85 @@ describe("EmailReceiptParsersService.test", () => {
     expect(error).toBeInstanceOf(BadRequestException);
     expect(error.message).toContain("unsupported_version");
     expect(manager.getRepository).not.toHaveBeenCalled();
+  });
+});
+
+describe("category names in a profile", () => {
+  const categories = [
+    { id: CAT_A, name: "Groceries", parentId: null },
+    { id: CAT_B, name: "Fees", parentId: null },
+  ];
+
+  it("stores the ids of the named categories (case-insensitive) and shows names and the effective match", async () => {
+    const { service, parserRepo, categoryRepo } = setup();
+    categoryRepo.find.mockResolvedValue(categories);
+    const view = await service.create(
+      USER,
+      createDto({
+        definition: {
+          version: 2,
+          total: ["Order total: {amount}"],
+          defaultCategory: "groceries",
+          feesCategory: "FEES",
+        },
+      }),
+    );
+    const saved = parserRepo.save.mock.calls[0][0] as EmailReceiptParser;
+    expect(saved.definition).toMatchObject({
+      defaultCategoryId: CAT_A,
+      feesCategoryId: CAT_B,
+    });
+    expect(saved.definition).not.toHaveProperty("defaultCategory");
+    expect(saved.definition).not.toHaveProperty("feesCategory");
+    expect(view.definition).toMatchObject({
+      defaultCategory: "Groceries",
+      feesCategory: "Fees",
+      match: {
+        by: ["orderId", "amount_payee", "amount_date"],
+        daysBefore: 3,
+        daysAfter: 14,
+        amountTolerance: "0.00",
+      },
+    });
+    expect(view.definition).not.toHaveProperty("defaultCategoryId");
+    expect(view.definition).not.toHaveProperty("feesCategoryId");
+  });
+
+  it("refuses an unknown category name with a readable 400 and writes nothing", async () => {
+    const { service, parserRepo, categoryRepo } = setup();
+    categoryRepo.find.mockResolvedValue(categories);
+    const error = await service
+      .create(
+        USER,
+        createDto({
+          definition: {
+            version: 2,
+            total: ["Order total: {amount}"],
+            shippingCategory: "Nope",
+          },
+        }),
+      )
+      .catch((e) => e);
+    expect(error).toBeInstanceOf(BadRequestException);
+    expect(error.message).toContain("Nope");
+    expect(parserRepo.save).not.toHaveBeenCalled();
+  });
+
+  it("leads the effective match with reference when the profile reads a reference field", async () => {
+    const { service, parserRepo, categoryRepo } = setup();
+    categoryRepo.find.mockResolvedValue(categories);
+    parserRepo.find.mockResolvedValue([
+      stored({
+        definition: definition({ reference: ["Ref: {reference}"] }),
+      }),
+    ]);
+    const [view] = await service.list(USER);
+    expect((view.definition.match as { by: string[] }).by).toEqual([
+      "reference",
+      "orderId",
+      "amount_payee",
+      "amount_date",
+    ]);
+    expect(view.definition.defaultCategory).toBe("Groceries");
   });
 });

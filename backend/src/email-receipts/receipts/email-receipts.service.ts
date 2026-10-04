@@ -34,6 +34,7 @@ import type {
   EmailReceiptDomainCount,
   EmailReceiptListItem,
   EmailReceiptsOverview,
+  EmailReceiptStatusCounts,
 } from "./email-receipt.view";
 
 /** At most this many sender domains are listed for the filter. */
@@ -208,9 +209,14 @@ export class EmailReceiptsService {
   /**
    * The sender domains of the user's emails (the shop's, after forward
    * detection), each with its count: most emails first, then by name, at most
-   * 200. What the receipts page's domain filter offers.
+   * 200. What the receipts page's domain filter offers. With `status` the
+   * domains and the counts are those of the emails in that state only, so the
+   * filter never offers a domain the chosen state has no email from.
    */
-  async listDomains(userId: string): Promise<EmailReceiptDomainCount[]> {
+  async listDomains(
+    userId: string,
+    options: { status?: EmailReceiptStatus } = {},
+  ): Promise<EmailReceiptDomainCount[]> {
     const rows = await withScopedDb(this.dataSource, async (m) =>
       returnedRows<{
         domain: string;
@@ -225,6 +231,7 @@ export class EmailReceiptsService {
              FROM email_receipts r
             WHERE r.user_id = $1
               AND r.from_domain <> ''
+              AND ($4::varchar IS NULL OR r.status = $4::varchar)
             GROUP BY r.from_domain
             ORDER BY count DESC, r.from_domain ASC
             LIMIT $2`,
@@ -232,6 +239,7 @@ export class EmailReceiptsService {
             userId,
             EMAIL_RECEIPTS_MAX_DOMAINS,
             [...EMAIL_RECEIPT_PROCESSABLE_STATUSES],
+            options.status ?? null,
           ],
         ),
       ),
@@ -241,6 +249,45 @@ export class EmailReceiptsService {
       count: Number(row.count),
       processable: Number(row.processable),
     }));
+  }
+
+  /**
+   * How many of the user's emails are in each state, optionally only those from
+   * one sender domain (or a sub-domain of it, as the list's filter reads it):
+   * what the status tabs show next to their names. A state with no email is
+   * absent from `byStatus`; `total` is their sum.
+   */
+  async statusCounts(
+    userId: string,
+    options: { domain?: string } = {},
+  ): Promise<EmailReceiptStatusCounts> {
+    const domain = options.domain?.trim().toLowerCase() || null;
+    const rows = await withScopedDb(this.dataSource, async (m) =>
+      returnedRows<{ status: EmailReceiptStatus; count: string | number }>(
+        await m.query(
+          `SELECT r.status, COUNT(*)::int AS count
+             FROM email_receipts r
+            WHERE r.user_id = $1
+              AND ($2::varchar IS NULL
+                   OR r.from_domain = $2::varchar
+                   OR r.from_domain LIKE $3::varchar ESCAPE '\\')
+            GROUP BY r.status`,
+          [
+            userId,
+            domain,
+            domain === null ? null : `%.${escapeLikePattern(domain)}`,
+          ],
+        ),
+      ),
+    );
+    const byStatus: EmailReceiptStatusCounts["byStatus"] = {};
+    let total = 0;
+    for (const row of rows) {
+      const count = Number(row.count);
+      byStatus[row.status] = count;
+      total += count;
+    }
+    return { total, byStatus };
   }
 
   /**
@@ -493,7 +540,8 @@ export class EmailReceiptsService {
   }
 
   /**
-   * The user's emails, newest first, without their text. `domain` keeps the
+   * The user's emails, newest first by the day the shop sent the order
+   * (`original_sent_at`, else `received_at`: the list's `effectiveDate`), without their text. `domain` keeps the
    * emails from exactly that sender domain or one of its sub-domains; it
    * combines with `status`.
    */
@@ -523,7 +571,7 @@ export class EmailReceiptsService {
               AND ($3::varchar IS NULL
                    OR r.from_domain = $3::varchar
                    OR r.from_domain LIKE $4::varchar ESCAPE '\\')
-            ORDER BY r.received_at DESC, r.id DESC
+            ORDER BY COALESCE(r.original_sent_at, r.received_at) DESC, r.id DESC
             LIMIT $5`,
           [
             userId,

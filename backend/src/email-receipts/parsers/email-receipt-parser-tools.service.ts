@@ -22,7 +22,11 @@ import { effectiveReceiptDate } from "../imap/forwarded-receipt";
 import { ReceiptSourceLines } from "../pipeline/receipt-source-lines";
 import { loadReceiptCandidates } from "../pipeline/receipt-candidates";
 import { matchReceipt } from "../matching/match-receipt";
-import { resolveMatchConfig } from "../parsing/receipt-match-config";
+import {
+  effectiveMatchDefinition,
+  resolveMatchConfig,
+} from "../parsing/receipt-match-config";
+import { resolveParserCategoryNames } from "./parser-category-names.util";
 import type { ReceiptMatchStrategy } from "../parsing/receipt-parser.types";
 import {
   parseReceiptLinesTraced,
@@ -171,6 +175,8 @@ export interface ParserToolSaveResult {
   fromDomains: string[];
   /** The payee the name resolved to, or null when none did (nothing is created). */
   payee: { id: string; name: string } | null;
+  /** The matching the saved profile effectively has (defaults filled in). */
+  match: ReturnType<typeof effectiveMatchDefinition>;
   /** True when the request named by `requestId` is now `proposed`. */
   requestProposed: boolean;
 }
@@ -245,6 +251,17 @@ export class EmailReceiptParserToolsService {
   }
 
   /**
+   * The definition with the category NAMES it carries (`defaultCategory`, ...)
+   * turned into the user's category ids, so an agent may write either. An
+   * unknown or ambiguous name is a 400 naming it; nothing is written.
+   */
+  private resolveNames(userId: string, definition: unknown): Promise<unknown> {
+    return withScopedDb(this.dataSource, (m) =>
+      resolveParserCategoryNames(m, userId, definition),
+    );
+  }
+
+  /**
    * Read 1 to 5 of the user's stored emails with a definition that is not saved.
    * An invalid definition is a RESULT (`valid: false` and every error with its
    * path), not an exception, so the agent can fix it and test again. Reads only:
@@ -272,7 +289,7 @@ export class EmailReceiptParserToolsService {
       );
     }
     const validation = validateReceiptParserDefinition(
-      withVersion(input.definition),
+      withVersion(await this.resolveNames(userId, input.definition)),
     );
     if (!validation.ok) {
       return {
@@ -393,7 +410,7 @@ export class EmailReceiptParserToolsService {
     input: ParserToolSaveInput,
   ): Promise<ParserToolSaveResult> {
     const validation = validateReceiptParserDefinition(
-      withVersion(input.definition),
+      withVersion(await this.resolveNames(userId, input.definition)),
     );
     if (!validation.ok) throw invalidDefinitionError(validation.errors);
     const definition = validation.definition;
@@ -481,6 +498,7 @@ export class EmailReceiptParserToolsService {
         status: "draft" as const,
         fromDomains: saved.fromDomains,
         payee: payee ? { id: payee.id, name: payee.name } : null,
+        match: effectiveMatchDefinition(definition),
         requestProposed,
       };
     });

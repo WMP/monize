@@ -104,6 +104,12 @@ export interface EmailReceiptDomainCount {
   processable: number;
 }
 
+/** The emails by state (`GET /email-receipts/status-counts`); a state with no email is absent. */
+export interface EmailReceiptStatusCounts {
+  total: number;
+  byStatus: Partial<Record<EmailReceiptStatus, number>>;
+}
+
 /**
  * What the hub's Overview cards show, from ONE query (`GET
  * /email-receipts/overview`, design 9): the mailbox's state, the stored emails

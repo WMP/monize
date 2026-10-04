@@ -278,7 +278,7 @@ export class EmailReceiptAiService {
         }),
       );
     });
-    return toParserView(created);
+    return toParserView(created, categories);
   }
 
   // ---------------------------------------------------------------------

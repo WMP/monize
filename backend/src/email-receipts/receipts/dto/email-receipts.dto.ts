@@ -73,6 +73,30 @@ export class ListEmailReceiptsDto {
   limit?: number;
 }
 
+/** Query of `GET /email-receipts/domains`. */
+export class ListEmailReceiptDomainsDto {
+  @ApiPropertyOptional({
+    enum: EMAIL_RECEIPT_STATUSES,
+    description: "Count only the emails in this state.",
+  })
+  @IsOptional()
+  @IsIn(EMAIL_RECEIPT_STATUSES)
+  status?: EmailReceiptStatus;
+}
+
+/** Query of `GET /email-receipts/status-counts`. */
+export class EmailReceiptStatusCountsDto {
+  @ApiPropertyOptional({
+    description:
+      "Count only emails from exactly this domain or one of its sub-domains. Lower-cased and trimmed.",
+    example: "shop.example.com",
+  })
+  @IsOptional()
+  @Transform(({ value }) => normalizeReceiptDomain(value))
+  @IsReceiptDomain()
+  domain?: string;
+}
+
 /** Body of `POST /email-receipts/:id/link`. */
 export class LinkEmailReceiptDto {
   @ApiProperty({ description: "The transaction this email paid for." })

@@ -19,6 +19,8 @@ import { OwnerOnly } from "../../delegation/decorators/delegate-access.decorator
 import { EmailReceiptAiService } from "../ai/email-receipt-ai.service";
 import {
   AskAiEmailReceiptDto,
+  EmailReceiptStatusCountsDto,
+  ListEmailReceiptDomainsDto,
   LinkEmailReceiptDto,
   ListEmailReceiptsDto,
   ProcessBatchEmailReceiptsDto,
@@ -64,10 +66,26 @@ export class EmailReceiptsController {
   @Get("domains")
   @ApiOperation({
     summary:
-      "The sender domains of my stored emails with their counts, most first (at most 200)",
+      "The sender domains of my stored emails with their counts, most first (at most 200); `status` keeps only the emails in that state",
   })
-  domains(@Request() req: { user: { id: string } }) {
-    return this.receipts.listDomains(req.user.id);
+  domains(
+    @Request() req: { user: { id: string } },
+    @Query() query: ListEmailReceiptDomainsDto,
+  ) {
+    return this.receipts.listDomains(req.user.id, { status: query.status });
+  }
+
+  // Declared before `:id`, so the literal segment is matched first.
+  @Get("status-counts")
+  @ApiOperation({
+    summary:
+      "How many of my stored emails are in each state, optionally only from one sender domain",
+  })
+  statusCounts(
+    @Request() req: { user: { id: string } },
+    @Query() query: EmailReceiptStatusCountsDto,
+  ) {
+    return this.receipts.statusCounts(req.user.id, { domain: query.domain });
   }
 
   // Declared before `:id`, so the literal segment is matched first.
