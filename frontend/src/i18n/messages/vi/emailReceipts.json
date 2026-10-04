@@ -202,6 +202,12 @@
     "conflict": "Trình phân tích này đã được thay đổi ở nơi khác kể từ khi bạn mở. Hãy tải lại để xem phiên bản hiện tại. Các chỉnh sửa của bạn ở đây chưa được lưu.",
     "conflictReload": "Tải lại trình phân tích",
     "patterns": {
+      "sourceLabel": "Nguồn dòng",
+      "sourceHint": "Các mẫu bên dưới được so khớp với dạng hiển thị nào của email. Văn bản là phần văn bản của email, mỗi lần xuống dòng là một dòng. HTML đọc phần HTML: mỗi khối và mỗi ô trong bảng trở thành một dòng riêng, nên tên sản phẩm mà phần văn bản tách thành nhiều dòng vẫn được giữ nguyên. Chế độ xem Dòng của email cho thấy chính xác mỗi nguồn trả về gì.",
+      "sourceOptions": {
+        "text": "Văn bản",
+        "html": "HTML"
+      },
       "globHelp": "Mỗi mẫu được so khớp với toàn bộ một dòng của email, không phân biệt hoa thường. Dùng {star} cho văn bản bất kỳ và một tên đặt trong dấu ngoặc nhọn, chẳng hạn {capture}, để lấy một giá trị. Mỗi trường nhận tối đa {max} mẫu, mỗi dòng một mẫu.",
       "orderIdLabel": "Mẫu mã đơn hàng",
       "orderIdHint": "Phải lấy {capture}. Ví dụ: Mã đơn hàng: {capture}",
@@ -284,6 +290,7 @@
       "requireLine": "Các dòng bắt buộc",
       "skipIfLine": "Các dòng khiến email bị bỏ qua",
       "waitIfLine": "Các dòng khiến email bị giữ lại",
+      "source": "Nguồn dòng",
       "single": "Một mục hàng duy nhất",
       "singleName": "Tên mục hàng duy nhất",
       "joinWrapped": "Nối các dòng bị ngắt",
@@ -340,7 +347,8 @@
     "outcome": {
       "not_applicable": "Trình phân tích này sẽ không đọc email này: không có dòng bắt buộc nào của nó nằm trong email, nên trình phân tích tiếp theo của người gửi sẽ được thử.",
       "skip_line": "Trình phân tích này sẽ gác email này sang một bên: trong email có một dòng mà nó bỏ qua.",
-      "wait_line": "Trình phân tích này sẽ giữ lại email này: có một dòng cho biết đơn hàng chưa chốt, nên email sẽ được đọc lại sau."
+      "wait_line": "Trình phân tích này sẽ giữ lại email này: có một dòng cho biết đơn hàng chưa chốt, nên email sẽ được đọc lại sau.",
+      "no_html": "Trình phân tích này đọc phần HTML của email, mà email này không có HTML, nên sẽ bị đánh dấu là không đọc được (không có HTML)."
     },
     "matchedBy": {
       "heading": "Khớp theo",
@@ -390,6 +398,7 @@
       "item_amount_missing": "Một mục hàng không có số tiền, và email không có tổng duy nhất nào để gán cho nó."
     },
     "readByAi": "AI đã đọc",
+    "readFromStructuredData": "Đọc từ dữ liệu có cấu trúc",
     "paid": "Đã trả",
     "payee": "Người bán"
   },
@@ -427,6 +436,12 @@
       "review_conflict": "Đang có yêu cầu khác mở",
       "review": "Đang xem xét",
       "ignored": "Đã phớt lờ"
+    },
+    "domainFilter": {
+      "label": "Tên miền người gửi",
+      "all": "Tất cả người gửi",
+      "option": "{domain} ({count})",
+      "help": "Đang hiển thị email từ {domain} và các tên miền phụ của nó. Chọn nhiều email trong số đó để soạn một trình phân tích cho người gửi."
     },
     "columns": {
       "select": "Chọn",
@@ -511,6 +526,7 @@
     "state": "Trạng thái",
     "parser": "Trình phân tích",
     "noParser": "Không có",
+    "structuredSource": "Dữ liệu có cấu trúc",
     "matchedBy": "Khớp theo",
     "matchKinds": {
       "order_id": "Mã đơn hàng",
@@ -539,6 +555,8 @@
       "proposal_refused": "Đề xuất bị từ chối, nên không có gì được đề xuất.",
       "skip_line": "Đã tìm thấy một dòng mà trình phân tích này dùng để loại email, nên email đã bị bỏ qua.",
       "wait_line": "Một dòng cho biết đơn hàng chưa chốt, nên email sẽ được đọc lại sau.",
+      "no_html": "Trình phân tích này đọc phần HTML của email, mà email này không có HTML.",
+      "schema_org": "Không cần trình phân tích: đơn hàng được đọc từ dữ liệu có cấu trúc (schema.org) trong email.",
       "item_amount_missing": "Một mục hàng không có số tiền, và email không có tổng duy nhất nào để gán cho nó."
     },
     "reasonUnknown": "Lý do: {reason}",
@@ -556,10 +574,34 @@
     "bodyView": {
       "label": "Hiển thị email dưới dạng",
       "html": "HTML",
-      "text": "Văn bản"
+      "text": "Văn bản",
+      "lines": "Dòng"
     },
     "remoteImagesNote": "Hình ảnh từ xa không được tải.",
-    "htmlFrameTitle": "Email theo định dạng của người gửi"
+    "htmlFrameTitle": "Email theo định dạng của người gửi",
+    "structured": {
+      "heading": "Dữ liệu có cấu trúc (schema.org)",
+      "help": "Đơn hàng hoặc hóa đơn mà email mang theo dưới dạng đánh dấu dành cho ứng dụng email. Chỉ được đọc khi không có trình phân tích nào áp dụng hoặc trình phân tích không tìm thấy tổng.",
+      "found": "Đã tìm thấy",
+      "notFound": "Không tìm thấy",
+      "notFoundHelp": "Email không có đánh dấu đơn hàng, hoặc không nêu tổng cũng như mục hàng nào.",
+      "seller": "Người bán",
+      "currency": "Tiền tệ",
+      "orderDate": "Ngày đặt hàng",
+      "unitPrice": "Đơn giá"
+    },
+    "lines": {
+      "help": "Các dòng mà mẫu của trình phân tích được so khớp, được đánh số giống như danh sách \"Khớp theo\" của một lần kiểm thử.",
+      "sourceLabel": "Nguồn dòng",
+      "sources": {
+        "text": "Văn bản",
+        "html": "HTML"
+      },
+      "noHtml": "Email này không có phần HTML, nên trình phân tích đọc HTML không thể đọc nó.",
+      "capped": "Chỉ đọc {max} dòng đầu tiên.",
+      "empty": "Không có dòng nào.",
+      "listLabel": "Các dòng được đánh số của email"
+    }
   },
   "picker": {
     "heading": "Chọn giao dịch",

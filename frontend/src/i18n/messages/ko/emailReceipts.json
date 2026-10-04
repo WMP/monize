@@ -202,6 +202,12 @@
     "conflict": "이 파서는 연 이후에 다른 곳에서 변경되었습니다. 다시 불러와 현재 버전을 확인하세요. 여기서 편집한 내용은 저장되지 않았습니다.",
     "conflictReload": "파서 다시 불러오기",
     "patterns": {
+      "sourceLabel": "줄 소스",
+      "sourceHint": "아래 패턴을 이메일의 어떤 표현과 비교할지 정합니다. 텍스트는 이메일의 텍스트 부분이며 줄바꿈마다 한 줄이 됩니다. HTML은 HTML 부분을 읽으며, 모든 블록과 표 셀이 각각 한 줄이 되므로 텍스트에서는 여러 줄로 나뉘는 상품명도 한 줄로 유지됩니다. 이메일의 줄 보기에서 각 소스가 내는 결과를 그대로 볼 수 있습니다.",
+      "sourceOptions": {
+        "text": "텍스트",
+        "html": "HTML"
+      },
       "globHelp": "각 패턴은 이메일의 한 줄 전체와 대소문자 구분 없이 비교됩니다. 모든 텍스트에는 {star}를 쓰고, 값을 가져오려면 {capture}처럼 중괄호 안에 이름을 쓰세요. 각 필드에는 패턴을 한 줄에 하나씩 최대 {max}개까지 입력할 수 있습니다.",
       "orderIdLabel": "주문 번호 패턴",
       "orderIdHint": "{capture}을(를) 가져와야 합니다. 예: 주문 번호: {capture}",
@@ -284,6 +290,7 @@
       "requireLine": "필수 줄",
       "skipIfLine": "이메일을 건너뛰게 하는 줄",
       "waitIfLine": "이메일을 보류하게 하는 줄",
+      "source": "줄 소스",
       "single": "단일 품목",
       "singleName": "단일 품목 이름",
       "joinWrapped": "줄바꿈된 줄 합치기",
@@ -340,7 +347,8 @@
     "outcome": {
       "not_applicable": "이 파서는 이 이메일을 읽지 않습니다. 필수 줄이 하나도 없으므로 발신자의 다음 파서를 시도합니다.",
       "skip_line": "이 파서는 이 이메일을 따로 둡니다. 건너뛰기 대상 줄이 들어 있습니다.",
-      "wait_line": "이 파서는 이 이메일을 보류합니다. 주문이 아직 확정되지 않았다는 줄이 있으므로 나중에 다시 읽습니다."
+      "wait_line": "이 파서는 이 이메일을 보류합니다. 주문이 아직 확정되지 않았다는 줄이 있으므로 나중에 다시 읽습니다.",
+      "no_html": "이 파서는 이메일의 HTML 부분을 읽는데 이 이메일에는 HTML이 없으므로 읽을 수 없음(HTML 없음)으로 표시됩니다."
     },
     "matchedBy": {
       "heading": "일치한 항목",
@@ -390,6 +398,7 @@
       "item_amount_missing": "품목에 금액이 없고, 이메일에도 그 금액을 정할 단일 합계가 없습니다."
     },
     "readByAi": "AI가 읽음",
+    "readFromStructuredData": "구조화된 데이터에서 읽음",
     "paid": "결제 금액",
     "payee": "판매처"
   },
@@ -427,6 +436,12 @@
       "review_conflict": "다른 요청이 진행 중",
       "review": "검토 중",
       "ignored": "제외됨"
+    },
+    "domainFilter": {
+      "label": "발신자 도메인",
+      "all": "모든 발신자",
+      "option": "{domain} ({count})",
+      "help": "{domain} 및 그 하위 도메인의 이메일을 표시하고 있습니다. 여러 개를 선택하면 해당 발신자용 파서 초안을 하나 만들 수 있습니다."
     },
     "columns": {
       "select": "선택",
@@ -511,6 +526,7 @@
     "state": "상태",
     "parser": "파서",
     "noParser": "없음",
+    "structuredSource": "구조화된 데이터",
     "matchedBy": "일치 기준",
     "matchKinds": {
       "order_id": "주문 번호",
@@ -539,6 +555,8 @@
       "proposal_refused": "제안이 거부되어 아무것도 제안하지 않았습니다.",
       "skip_line": "이 파서가 건너뛰는 줄이 발견되어 이메일을 무시했습니다.",
       "wait_line": "주문이 아직 확정되지 않았다는 줄이 있어 이메일을 나중에 다시 읽습니다.",
+      "no_html": "이 파서는 이메일의 HTML 부분을 읽는데 이 이메일에는 HTML이 없습니다.",
+      "schema_org": "파서가 필요하지 않았습니다. 주문은 이메일의 구조화된 데이터(schema.org)에서 읽었습니다.",
       "item_amount_missing": "품목에 금액이 없고, 이메일에도 그 금액을 정할 단일 합계가 없습니다."
     },
     "reasonUnknown": "사유: {reason}",
@@ -556,10 +574,34 @@
     "bodyView": {
       "label": "이메일 표시 형식",
       "html": "HTML",
-      "text": "텍스트"
+      "text": "텍스트",
+      "lines": "줄"
     },
     "remoteImagesNote": "원격 이미지는 불러오지 않습니다.",
-    "htmlFrameTitle": "발신자가 서식을 지정한 그대로의 이메일"
+    "htmlFrameTitle": "발신자가 서식을 지정한 그대로의 이메일",
+    "structured": {
+      "heading": "구조화된 데이터(schema.org)",
+      "help": "이메일이 메일 클라이언트용 마크업으로 담고 있는 주문 또는 청구서입니다. 적용되는 파서가 없거나 파서가 합계를 찾지 못할 때만 읽습니다.",
+      "found": "찾음",
+      "notFound": "찾지 못함",
+      "notFoundHelp": "이메일에 주문 마크업이 없거나, 마크업에 합계도 품목도 없습니다.",
+      "seller": "판매자",
+      "currency": "통화",
+      "orderDate": "주문 날짜",
+      "unitPrice": "단가"
+    },
+    "lines": {
+      "help": "파서의 패턴이 비교되는 줄이며, 테스트의 \"일치한 항목\" 목록이 번호를 매기는 방식과 같게 번호가 붙습니다.",
+      "sourceLabel": "줄 소스",
+      "sources": {
+        "text": "텍스트",
+        "html": "HTML"
+      },
+      "noHtml": "이 이메일에는 HTML 부분이 없으므로 HTML을 읽는 파서는 읽을 수 없습니다.",
+      "capped": "처음 {max}줄만 읽습니다.",
+      "empty": "줄이 없습니다.",
+      "listLabel": "이메일의 번호가 매겨진 줄"
+    }
   },
   "picker": {
     "heading": "거래 선택",

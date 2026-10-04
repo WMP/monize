@@ -202,6 +202,12 @@
     "conflict": "自您開啟以來，此解析器已在別處被修改。請重新載入以檢視目前版本。您在此所做的修改尚未儲存。",
     "conflictReload": "重新載入解析器",
     "patterns": {
+      "sourceLabel": "行來源",
+      "sourceHint": "下方模式與郵件的哪種呈現形式比對。「文字」是郵件的文字部分，每個換行一行。「HTML」讀取郵件的 HTML 部分：每個區塊和每個表格儲存格各成一行，因此文字拆成多行的商品名稱仍保持完整。郵件的「行」檢視會準確顯示各來源給出的內容。",
+      "sourceOptions": {
+        "text": "文字",
+        "html": "HTML"
+      },
       "globHelp": "每個模式都會與郵件的整整一行比對，不區分大小寫。用 {star} 比對任意文字，用大括號中的名稱（例如 {capture}）擷取一個值。每個欄位最多可填 {max} 個模式，每行一個。",
       "orderIdLabel": "訂單編號模式",
       "orderIdHint": "必須擷取 {capture}。範例：訂單編號：{capture}",
@@ -284,6 +290,7 @@
       "requireLine": "必要的行",
       "skipIfLine": "使郵件被略過的行",
       "waitIfLine": "使郵件暫緩處理的行",
+      "source": "行來源",
       "single": "單一明細",
       "singleName": "單一明細名稱",
       "joinWrapped": "合併折行",
@@ -340,7 +347,8 @@
     "outcome": {
       "not_applicable": "此解析器不會讀取這封郵件：郵件中沒有任何必要的行，因此會嘗試該寄件者的下一個解析器。",
       "skip_line": "此解析器會將這封郵件排除在外：郵件中含有它要略過的行。",
-      "wait_line": "此解析器會暫緩處理這封郵件：有一行表示訂單尚未最終確定，因此稍後會再次讀取。"
+      "wait_line": "此解析器會暫緩處理這封郵件：有一行表示訂單尚未最終確定，因此稍後會再次讀取。",
+      "no_html": "此解析器讀取郵件的 HTML 部分，而這封郵件沒有 HTML，因此會被標記為無法讀取（無 HTML）。"
     },
     "matchedBy": {
       "heading": "比對依據",
@@ -390,6 +398,7 @@
       "item_amount_missing": "某個明細沒有金額，而郵件中也沒有可分配給它的單一合計。"
     },
     "readByAi": "由 AI 讀取",
+    "readFromStructuredData": "由結構化資料讀取",
     "paid": "已付",
     "payee": "商家"
   },
@@ -427,6 +436,12 @@
       "review_conflict": "已有其他請求未完成",
       "review": "審核中",
       "ignored": "已忽略"
+    },
+    "domainFilter": {
+      "label": "寄件者網域",
+      "all": "所有寄件者",
+      "option": "{domain}（{count}）",
+      "help": "正在顯示來自 {domain} 及其子網域的郵件。選取其中多封，可為該寄件者起草一個解析器。"
     },
     "columns": {
       "select": "選取",
@@ -511,6 +526,7 @@
     "state": "狀態",
     "parser": "解析器",
     "noParser": "無",
+    "structuredSource": "結構化資料",
     "matchedBy": "比對依據",
     "matchKinds": {
       "order_id": "訂單編號",
@@ -539,6 +555,8 @@
       "proposal_refused": "提議被拒絕，因此沒有提出任何提議。",
       "skip_line": "發現了此解析器要略過的行，因此該郵件已被忽略。",
       "wait_line": "有一行表示訂單尚未最終確定，因此稍後會再次讀取該郵件。",
+      "no_html": "此解析器讀取郵件的 HTML 部分，而這封郵件沒有 HTML。",
+      "schema_org": "無需解析器：訂單是從郵件中的結構化資料（schema.org）讀取的。",
       "item_amount_missing": "某個明細沒有金額，而郵件中也沒有可分配給它的單一合計。"
     },
     "reasonUnknown": "原因：{reason}",
@@ -556,10 +574,34 @@
     "bodyView": {
       "label": "郵件顯示方式",
       "html": "HTML",
-      "text": "文字"
+      "text": "文字",
+      "lines": "行"
     },
     "remoteImagesNote": "不會載入遠端圖片。",
-    "htmlFrameTitle": "依寄件者排版的郵件"
+    "htmlFrameTitle": "依寄件者排版的郵件",
+    "structured": {
+      "heading": "結構化資料（schema.org）",
+      "help": "郵件以面向郵件用戶端的標記形式攜帶的訂單或發票。僅當沒有適用的解析器，或解析器未找到合計時才會讀取。",
+      "found": "已找到",
+      "notFound": "未找到",
+      "notFoundHelp": "郵件不含訂單標記，或標記中既沒有合計也沒有明細行。",
+      "seller": "賣家",
+      "currency": "幣別",
+      "orderDate": "訂單日期",
+      "unitPrice": "單價"
+    },
+    "lines": {
+      "help": "解析器的模式所比對的各行，編號方式與測試中「比對依據」清單相同。",
+      "sourceLabel": "行來源",
+      "sources": {
+        "text": "文字",
+        "html": "HTML"
+      },
+      "noHtml": "這封郵件沒有 HTML 部分，因此讀取 HTML 的解析器無法讀取它。",
+      "capped": "僅讀取前 {max} 行。",
+      "empty": "沒有行。",
+      "listLabel": "郵件的編號行"
+    }
   },
   "picker": {
     "heading": "選擇交易",
