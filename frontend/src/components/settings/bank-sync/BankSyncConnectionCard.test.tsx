@@ -183,6 +183,7 @@ function renderCard(
     accounts?: Account[];
     linked?: string[];
     disabled?: boolean;
+    tourAnchors?: boolean;
   } = {},
 ) {
   const onChanged = vi.fn().mockResolvedValue(undefined);
@@ -193,6 +194,7 @@ function renderCard(
       linkedAccountIds={new Set(options.linked ?? [])}
       disabled={options.disabled}
       onChanged={onChanged}
+      tourAnchors={options.tourAnchors}
     />,
   );
   return { onChanged, ...view };
@@ -1956,6 +1958,46 @@ describe('BankSyncConnectionCard', () => {
       await click("Show how this bank's API works");
       await click("Hide how this bank's API works");
       expect(screen.queryByText('The bank joins town and merchant.')).toBeNull();
+    });
+  });
+
+  describe('tour anchors', () => {
+    const anchored = (container: HTMLElement, id: string) =>
+      container.querySelectorAll(`[data-tour-id="${id}"]`);
+
+    it('marks the card actions, and the first bank account link and actions, once', () => {
+      const linked = connection({
+        accounts: [
+          bankAccount({ id: 'ba-1', accountId: 'a1', syncFromDate: '2026-01-01' }),
+          bankAccount({ id: 'ba-2', accountId: 'a2', syncFromDate: '2026-01-01' }),
+        ],
+      });
+      const { container } = renderCard(linked, { tourAnchors: true });
+
+      expect(anchored(container, 'bank-sync-connection-actions')).toHaveLength(1);
+      expect(anchored(container, 'bank-sync-account-link')).toHaveLength(1);
+      expect(anchored(container, 'bank-sync-account-actions')).toHaveLength(1);
+      expect(anchored(container, 'bank-sync-connection-actions')[0]).toHaveTextContent('Disconnect');
+      expect(anchored(container, 'bank-sync-account-link')[0]).toContainElement(
+        screen.getAllByLabelText('Monize account')[0],
+      );
+      expect(anchored(container, 'bank-sync-account-actions')[0]).toHaveTextContent('Sync now');
+    });
+
+    it('marks nothing unless asked, so a second connection adds no second anchor', () => {
+      const { container } = renderCard(
+        connection({ accounts: [bankAccount({ accountId: 'a1', syncFromDate: '2026-01-01' })] }),
+      );
+
+      expect(container.querySelectorAll('[data-tour-id^="bank-sync-"]')).toHaveLength(0);
+    });
+
+    it('has no sync actions to anchor while the bank account is not linked', () => {
+      const { container } = renderCard(connection(), { tourAnchors: true });
+
+      expect(anchored(container, 'bank-sync-connection-actions')).toHaveLength(1);
+      expect(anchored(container, 'bank-sync-account-link')).toHaveLength(1);
+      expect(anchored(container, 'bank-sync-account-actions')).toHaveLength(0);
     });
   });
 });

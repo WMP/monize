@@ -24,6 +24,7 @@ import { BankSyncLinkDialog } from './BankSyncLinkDialog';
 import { BankSyncPreviewModal } from './BankSyncPreviewModal';
 import { useAccountTypeMismatchMessage } from './useAccountTypeMismatchMessage';
 import { useBankAccountTypeLabel } from './useBankAccountTypeLabel';
+import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 import { useBankSyncToast } from './useBankSyncToast';
 
 /** The picker's "Create a new account" entry; no account id can equal it. */
@@ -48,6 +49,8 @@ interface BankSyncAccountRowProps {
   disabled?: boolean;
   /** Reload after a write, so the row shows what the server now holds. */
   onChanged: () => Promise<void> | void;
+  /** Mark the link picker and the sync actions as tour anchors (first row only). */
+  tourAnchors?: boolean;
 }
 
 /** The link the dialog is open for; `created` is set for an account made a moment ago. */
@@ -83,6 +86,7 @@ export function BankSyncAccountRow({
   linkedElsewhere,
   disabled = false,
   onChanged,
+  tourAnchors = false,
 }: BankSyncAccountRowProps) {
   const t = useTranslations('settings.bankSync.account');
   const tLink = useTranslations('settings.bankSync.link');
@@ -290,7 +294,10 @@ export function BankSyncAccountRow({
         </div>
 
         {bankAccount.accountId && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="flex flex-wrap items-center gap-2"
+            {...(tourAnchors ? tourAnchor(TOUR_ANCHORS.bankSyncAccountActions) : {})}
+          >
             <Button
               type="button"
               variant="outline"
@@ -325,7 +332,10 @@ export function BankSyncAccountRow({
         )}
       </div>
 
-      <div className="mt-3 max-w-md">
+      <div
+        className="mt-3 max-w-md"
+        {...(tourAnchors ? tourAnchor(TOUR_ANCHORS.bankSyncAccountLink) : {})}
+      >
         <Select
           label={t('linkLabel')}
           id={`bank-sync-link-${bankAccount.id}`}

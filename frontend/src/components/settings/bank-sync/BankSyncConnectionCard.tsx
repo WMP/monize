@@ -16,6 +16,7 @@ import { bankSyncApi } from '@/lib/bank-sync';
 import { isUnknownSyncOutcome } from '@/lib/bank-sync-outcome';
 import { safeAuthorizationUrl } from '@/lib/bank-sync-redirect';
 import { getErrorMessage } from '@/lib/errors';
+import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 import type { Account } from '@/types/account';
 import {
   BANK_SYNC_NOTIFY_SUCCESS_MODES,
@@ -47,6 +48,11 @@ interface BankSyncConnectionCardProps {
   disabled?: boolean;
   /** Reload connections and accounts after a write. */
   onChanged: () => Promise<void> | void;
+  /**
+   * Mark this card's actions and its first bank account's controls as tour
+   * anchors. Only the first connection sets it: an anchor is attached once.
+   */
+  tourAnchors?: boolean;
 }
 
 /**
@@ -64,6 +70,7 @@ export function BankSyncConnectionCard({
   linkedAccountIds,
   disabled = false,
   onChanged,
+  tourAnchors = false,
 }: BankSyncConnectionCardProps) {
   const t = useTranslations('settings.bankSync.connection');
   const tConnect = useTranslations('settings.bankSync.connect');
@@ -300,7 +307,10 @@ export function BankSyncConnectionCard({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div
+          className="flex flex-wrap items-center gap-2"
+          {...(tourAnchors ? tourAnchor(TOUR_ANCHORS.bankSyncConnectionActions) : {})}
+        >
           {canRenew && (
             <Button
               type="button"
@@ -446,9 +456,10 @@ export function BankSyncConnectionCard({
             {t('accountsHeading')}
           </h4>
           <ul>
-            {connection.accounts.map((bankAccount) => (
+            {connection.accounts.map((bankAccount, index) => (
               <BankSyncAccountRow
                 key={bankAccount.id}
+                tourAnchors={tourAnchors && index === 0}
                 bankAccount={bankAccount}
                 connectionActive={displayStatus === 'active'}
                 accounts={accounts}

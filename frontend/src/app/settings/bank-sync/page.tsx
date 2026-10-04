@@ -15,6 +15,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { accountsApi } from '@/lib/accounts';
+import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 import { bankSyncApi } from '@/lib/bank-sync';
 import type { Account } from '@/types/account';
 import type { BankSyncConnection, BankSyncStatus } from '@/types/bank-sync';
@@ -132,23 +133,29 @@ function BankSyncSettingsContent() {
           </div>
         )}
 
-        {status.state === 'loading' && <LoadingSpinner />}
-        {status.state === 'failed' && (
-          <LoadFailedCard
-            title={t('loadFailed.title')}
-            retryLabel={t('loadFailed.retry')}
-            onRetry={retryStatus}
-          />
-        )}
-        {status.state === 'ready' && (
-          <BankSyncCredentialsCard
-            status={status.data}
-            disabled={isDemoMode}
-            onStatusChange={(next) => setStatus({ state: 'ready', data: next })}
-          />
-        )}
+        {/* The anchor wraps every state of the block: spinner, failure, card. */}
+        <div {...tourAnchor(TOUR_ANCHORS.bankSyncCredentials)}>
+          {status.state === 'loading' && <LoadingSpinner />}
+          {status.state === 'failed' && (
+            <LoadFailedCard
+              title={t('loadFailed.title')}
+              retryLabel={t('loadFailed.retry')}
+              onRetry={retryStatus}
+            />
+          )}
+          {status.state === 'ready' && (
+            <BankSyncCredentialsCard
+              status={status.data}
+              disabled={isDemoMode}
+              onStatusChange={(next) => setStatus({ state: 'ready', data: next })}
+            />
+          )}
+        </div>
 
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div
+          className="mb-4 flex flex-wrap items-center justify-between gap-3"
+          {...tourAnchor(TOUR_ANCHORS.bankSyncConnectHeader)}
+        >
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               {t('connections.title')}
@@ -171,34 +178,38 @@ function BankSyncSettingsContent() {
           </p>
         )}
 
-        {connections.state === 'loading' && <LoadingSpinner />}
-        {connections.state === 'failed' && (
-          <LoadFailedCard
-            title={t('connections.loadFailed')}
-            retryLabel={t('loadFailed.retry')}
-            onRetry={retryConnections}
-          />
-        )}
-        {connections.state === 'ready' &&
-          (connections.data.connections.length === 0 ? (
-            <Card padding="md">
-              <EmptyState
-                title={t('connections.empty.title')}
-                description={t('connections.empty.description')}
-              />
-            </Card>
-          ) : (
-            connections.data.connections.map((connection) => (
-              <BankSyncConnectionCard
-                key={connection.id}
-                connection={connection}
-                accounts={connections.data.accounts}
-                linkedAccountIds={linkedAccountIds}
-                disabled={isDemoMode}
-                onChanged={reloadConnections}
-              />
-            ))
-          ))}
+        {/* The anchor wraps every state of the list: spinner, failure, empty, cards. */}
+        <div {...tourAnchor(TOUR_ANCHORS.bankSyncConnections)}>
+          {connections.state === 'loading' && <LoadingSpinner />}
+          {connections.state === 'failed' && (
+            <LoadFailedCard
+              title={t('connections.loadFailed')}
+              retryLabel={t('loadFailed.retry')}
+              onRetry={retryConnections}
+            />
+          )}
+          {connections.state === 'ready' &&
+            (connections.data.connections.length === 0 ? (
+              <Card padding="md">
+                <EmptyState
+                  title={t('connections.empty.title')}
+                  description={t('connections.empty.description')}
+                />
+              </Card>
+            ) : (
+              connections.data.connections.map((connection, index) => (
+                <BankSyncConnectionCard
+                  key={connection.id}
+                  connection={connection}
+                  accounts={connections.data.accounts}
+                  linkedAccountIds={linkedAccountIds}
+                  disabled={isDemoMode}
+                  onChanged={reloadConnections}
+                  tourAnchors={index === 0}
+                />
+              ))
+            ))}
+        </div>
 
         {showConnect && (
           <BankSyncConnectDialog

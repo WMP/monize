@@ -101,6 +101,17 @@ export const TOUR_ANCHORS = {
   ruleEditorThen: 'rule-editor-then',
   ruleEditorTest: 'rule-editor-test',
   aiReviewInbox: 'ai-review-inbox',
+
+  // Bank sync (Settings > Bank sync). The first three wrap blocks that render
+  // in every state of the page (loading, failed, empty, populated). The last
+  // four sit on the first connection's card and its first bank account, which
+  // exist only once a bank is connected, so their steps carry a fallback body.
+  bankSyncCredentials: 'bank-sync-credentials',
+  bankSyncConnectHeader: 'bank-sync-connect-header',
+  bankSyncConnections: 'bank-sync-connections',
+  bankSyncConnectionActions: 'bank-sync-connection-actions',
+  bankSyncAccountLink: 'bank-sync-account-link',
+  bankSyncAccountActions: 'bank-sync-account-actions',
 } as const;
 
 export type TourAnchorId = (typeof TOUR_ANCHORS)[keyof typeof TOUR_ANCHORS];

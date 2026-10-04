@@ -294,4 +294,71 @@ describe('BankSyncSettingsPage', () => {
     await waitFor(() => expect(mockListConnections).toHaveBeenCalledTimes(2));
     expect(await screen.findByText('No banks connected')).toBeInTheDocument();
   });
+
+  describe('tour anchors', () => {
+    const count = (container: HTMLElement, id: string) =>
+      container.querySelectorAll(`[data-tour-id="${id}"]`).length;
+    const PAGE_ANCHORS = [
+      'bank-sync-credentials',
+      'bank-sync-connect-header',
+      'bank-sync-connections',
+    ];
+
+    it('is on the three page blocks while everything loads', () => {
+      mockGetStatus.mockReturnValue(new Promise(() => {}));
+      mockListConnections.mockReturnValue(new Promise(() => {}));
+      const { container } = render(<BankSyncSettingsPage />);
+
+      for (const id of PAGE_ANCHORS) expect(count(container, id)).toBe(1);
+    });
+
+    it('is on the three page blocks when both reads failed', async () => {
+      mockGetStatus.mockRejectedValue(new Error('down'));
+      mockListConnections.mockRejectedValue(new Error('down'));
+      let container!: HTMLElement;
+      await act(async () => {
+        container = render(<BankSyncSettingsPage />).container;
+      });
+
+      expect(screen.getByText('Could not load bank sync')).toBeInTheDocument();
+      for (const id of PAGE_ANCHORS) expect(count(container, id)).toBe(1);
+    });
+
+    it('is on the three page blocks with no credentials and no connection', async () => {
+      mockGetStatus.mockResolvedValue(status({ credentials: null }));
+      let container!: HTMLElement;
+      await act(async () => {
+        container = render(<BankSyncSettingsPage />).container;
+      });
+
+      for (const id of PAGE_ANCHORS) expect(count(container, id)).toBe(1);
+      expect(count(container, 'bank-sync-connection-actions')).toBe(0);
+    });
+
+    it('is on the connect header whether or not the button is enabled', async () => {
+      let container!: HTMLElement;
+      await act(async () => {
+        container = render(<BankSyncSettingsPage />).container;
+      });
+
+      const header = container.querySelector('[data-tour-id="bank-sync-connect-header"]');
+      expect(header).toContainElement(screen.getByRole('button', { name: 'Connect a bank' }));
+    });
+
+    it('marks only the first connection card, however many there are', async () => {
+      mockListConnections.mockResolvedValue([
+        connection(),
+        connection({ id: 'c2', institutionName: 'Beta Credit' }),
+      ]);
+      let container!: HTMLElement;
+      await act(async () => {
+        container = render(<BankSyncSettingsPage />).container;
+      });
+
+      expect(count(container, 'bank-sync-connections')).toBe(1);
+      expect(count(container, 'bank-sync-connection-actions')).toBe(1);
+      const anchor = container.querySelector('[data-tour-id="bank-sync-connection-actions"]');
+      expect(anchor?.closest('div.mb-4')).toHaveTextContent('Alpha Bank');
+    });
+  });
 });
