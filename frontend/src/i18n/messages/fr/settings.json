@@ -218,10 +218,7 @@
       "highcontrast": "Contraste élevé",
       "colorblind": "Adapté aux daltoniens"
     },
-    "timezoneBrowserOption": "Utiliser le fuseau horaire du navigateur (détecté automatiquement : {tz})",
-    "categories": {
-      "EMAIL_RECEIPTS": "Reçus par courrier"
-    }
+    "timezoneBrowserOption": "Utiliser le fuseau horaire du navigateur (détecté automatiquement : {tz})"
   },
   "notifications": {
     "heading": "Notifications",
@@ -360,7 +357,8 @@
         "INVESTMENTS": "Valeur des placements",
         "STRATEGIES": "Signaux de stratégie",
         "BANK_SYNC": "Connexions bancaires",
-        "BANK_SYNC_ACTIVITY": "Résultats de la synchronisation bancaire"
+        "BANK_SYNC_ACTIVITY": "Résultats de la synchronisation bancaire",
+        "EMAIL_RECEIPTS": "Reçus par courrier"
       },
       "channelNotApplicable": "Non applicable à ce type de notification",
       "emailToggleLabel": "E-mail (rapport) pour {category}",

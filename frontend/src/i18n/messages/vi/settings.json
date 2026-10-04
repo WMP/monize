@@ -218,10 +218,7 @@
       "highcontrast": "Độ tương phản cao",
       "colorblind": "An toàn cho người mù màu"
     },
-    "timezoneBrowserOption": "Sử dụng múi giờ trình duyệt (tự động phát hiện là {tz})",
-    "categories": {
-      "EMAIL_RECEIPTS": "Biên lai email"
-    }
+    "timezoneBrowserOption": "Sử dụng múi giờ trình duyệt (tự động phát hiện là {tz})"
   },
   "notifications": {
     "heading": "Thông báo",
@@ -360,11 +357,17 @@
         "INVESTMENTS": "Giá trị đầu tư",
         "STRATEGIES": "Tín hiệu chiến lược",
         "BANK_SYNC": "Kết nối ngân hàng",
-        "BANK_SYNC_ACTIVITY": "Kết quả đồng bộ ngân hàng"
+        "BANK_SYNC_ACTIVITY": "Kết quả đồng bộ ngân hàng",
+        "EMAIL_RECEIPTS": "Biên lai email"
       },
       "channelNotApplicable": "Không áp dụng cho loại thông báo này",
       "emailToggleLabel": "Email báo cáo cho {category}",
+      "emailNotificationToggleLabel": "Email cảnh báo cho {category}",
+      "pushToggleLabel": "Push cho {category}",
+      "unifiedpushToggleLabel": "UnifiedPush cho {category}",
       "saveFailed": "Không thể lưu cài đặt đó",
+      "emailUnavailable": "Bật thông báo qua email ở trên để gửi chúng qua email.",
+      "pushUnavailable": "Chưa có thiết bị nào đăng ký nhận push, nên kênh này không thể gửi được gì.",
       "throttle": {
         "label": "Giãn cách",
         "ariaLabel": "Thời gian chờ cho {category}",
@@ -379,11 +382,6 @@
           "1440": "24 giờ"
         }
       },
-      "emailNotificationToggleLabel": "Email cảnh báo cho {category}",
-      "pushToggleLabel": "Push cho {category}",
-      "unifiedpushToggleLabel": "UnifiedPush cho {category}",
-      "emailUnavailable": "Bật thông báo qua email ở trên để gửi chúng qua email.",
-      "pushUnavailable": "Chưa có thiết bị nào đăng ký nhận push, nên kênh này không thể gửi được gì.",
       "pushEnableHint": "Trình duyệt này chưa đăng ký nhận thông báo push."
     }
   },
@@ -758,8 +756,8 @@
       },
       "toasts": {
         "success": "Sao lưu đã được tải xuống thành công",
-        "incomplete": "Đã tải xuống bản sao lưu, nhưng bản này KHÔNG ĐẦY ĐỦ: {unusable} trong {total} tệp đính kèm không thể được lưu nguyên vẹn ({missing} bị thiếu, {inconsistent} không qua được kiểm tra tính toàn vẹn). Đừng coi tệp này là bản sao lưu đầy đủ — hãy sửa bộ lưu trữ tệp đính kèm và xuất lại.",
-        "failed": "Không thể tạo sao lưu"
+        "failed": "Không thể tạo sao lưu",
+        "incomplete": "Đã tải xuống bản sao lưu, nhưng bản này KHÔNG ĐẦY ĐỦ: {unusable} trong {total} tệp đính kèm không thể được lưu nguyên vẹn ({missing} bị thiếu, {inconsistent} không qua được kiểm tra tính toàn vẹn). Đừng coi tệp này là bản sao lưu đầy đủ — hãy sửa bộ lưu trữ tệp đính kèm và xuất lại."
       }
     },
     "restore": {
@@ -789,9 +787,9 @@
       "title": "Khôi phục hoàn tất",
       "description": "Dữ liệu của bạn đã được khôi phục thành công. Dưới đây là tóm tắt những gì đã được khôi phục:",
       "totalRecords": "Tổng số bản ghi",
-      "doneButton": "Xong",
       "skippedAttachments": "{count, plural, other {# tệp đính kèm không được phục hồi}}: bản sao lưu không mang theo byte dùng được cho chúng — khi xuất, chúng bị thiếu hoặc không qua được kiểm tra tổng, hoặc tệp có trước các bản sao lưu tự chứa. Hãy xuất bản sao lưu mới khi bộ lưu trữ tệp đính kèm đã ổn.",
-      "unusableAiProviderKeys": "{count, plural, other {# nhà cung cấp AI đã được khôi phục mà không có khóa API dùng được}}: bản sao lưu này được tạo trước khi khóa của nhà cung cấp đi kèm trong đó, nên khóa đã lưu thuộc về máy chủ tạo ra tệp, hoặc máy chủ này chưa cấu hình khóa mã hóa để lưu khóa đó. Hãy mở Cài đặt → Nhà cung cấp AI và nhập lại khóa API."
+      "unusableAiProviderKeys": "{count, plural, other {# nhà cung cấp AI đã được khôi phục mà không có khóa API dùng được}}: bản sao lưu này được tạo trước khi khóa của nhà cung cấp đi kèm trong đó, nên khóa đã lưu thuộc về máy chủ tạo ra tệp, hoặc máy chủ này chưa cấu hình khóa mã hóa để lưu khóa đó. Hãy mở Cài đặt → Nhà cung cấp AI và nhập lại khóa API.",
+      "doneButton": "Xong"
     },
     "storedBackups": {
       "heading": "Sao lưu tự động",

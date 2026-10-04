@@ -218,10 +218,7 @@
       "highcontrast": "高对比度",
       "colorblind": "色盲友好"
     },
-    "timezoneBrowserOption": "使用浏览器时区（自动检测为 {tz}）",
-    "categories": {
-      "EMAIL_RECEIPTS": "电子邮件收据"
-    }
+    "timezoneBrowserOption": "使用浏览器时区（自动检测为 {tz}）"
   },
   "notifications": {
     "heading": "通知",
@@ -360,11 +357,17 @@
         "INVESTMENTS": "投资价值",
         "STRATEGIES": "策略信号",
         "BANK_SYNC": "银行连接",
-        "BANK_SYNC_ACTIVITY": "银行同步结果"
+        "BANK_SYNC_ACTIVITY": "银行同步结果",
+        "EMAIL_RECEIPTS": "电子邮件收据"
       },
       "channelNotApplicable": "不适用于此通知类型",
       "emailToggleLabel": "{category} 的报告邮件",
+      "emailNotificationToggleLabel": "{category} 的提醒邮件",
+      "pushToggleLabel": "{category} 的推送",
+      "unifiedpushToggleLabel": "{category} 的 UnifiedPush",
       "saveFailed": "无法保存该设置",
+      "emailUnavailable": "在上方开启邮件通知，即可通过邮件发送。",
+      "pushUnavailable": "没有设备注册推送，因此此通道无法投递。",
       "throttle": {
         "label": "间隔",
         "ariaLabel": "{category} 的冷却时间",
@@ -379,11 +382,6 @@
           "1440": "24 小时"
         }
       },
-      "emailNotificationToggleLabel": "{category} 的提醒邮件",
-      "pushToggleLabel": "{category} 的推送",
-      "unifiedpushToggleLabel": "{category} 的 UnifiedPush",
-      "emailUnavailable": "在上方开启邮件通知，即可通过邮件发送。",
-      "pushUnavailable": "没有设备注册推送，因此此通道无法投递。",
       "pushEnableHint": "此浏览器尚未注册推送通知。"
     }
   },
@@ -758,8 +756,8 @@
       },
       "toasts": {
         "success": "备份已成功下载",
-        "incomplete": "备份已下载，但内容不完整：{total} 个附件中有 {unusable} 个未能完整保存（{missing} 个缺失，{inconsistent} 个未通过完整性校验）。请勿将此文件视为完整备份——修复附件存储后重新导出。",
-        "failed": "创建备份失败"
+        "failed": "创建备份失败",
+        "incomplete": "备份已下载，但内容不完整：{total} 个附件中有 {unusable} 个未能完整保存（{missing} 个缺失，{inconsistent} 个未通过完整性校验）。请勿将此文件视为完整备份——修复附件存储后重新导出。"
       }
     },
     "restore": {
@@ -789,9 +787,9 @@
       "title": "恢复完成",
       "description": "您的数据已成功恢复。以下是恢复内容摘要：",
       "totalRecords": "总记录数",
-      "doneButton": "完成",
       "skippedAttachments": "{count, plural, other {# 个附件未被恢复}}：备份中没有可用的字节——导出时它们缺失或未通过校验和，或该文件早于自包含备份。请在附件存储恢复正常后重新导出备份。",
-      "unusableAiProviderKeys": "{count, plural, other {# 个 AI 提供商在恢复后没有可用的 API 密钥}}：该备份创建于提供商密钥随备份一同保存之前，因此存储的密钥属于生成该文件的服务器，或者本服务器没有配置用于保存密钥的加密密钥。请打开“设置 → AI 提供商”并重新输入 API 密钥。"
+      "unusableAiProviderKeys": "{count, plural, other {# 个 AI 提供商在恢复后没有可用的 API 密钥}}：该备份创建于提供商密钥随备份一同保存之前，因此存储的密钥属于生成该文件的服务器，或者本服务器没有配置用于保存密钥的加密密钥。请打开“设置 → AI 提供商”并重新输入 API 密钥。",
+      "doneButton": "完成"
     },
     "storedBackups": {
       "heading": "自动备份",

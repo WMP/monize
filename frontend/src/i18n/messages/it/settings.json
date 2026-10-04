@@ -218,10 +218,7 @@
       "highcontrast": "Alto contrasto",
       "colorblind": "Accessibile per daltonici"
     },
-    "timezoneBrowserOption": "Usa fuso orario del browser (rilevato automaticamente: {tz})",
-    "categories": {
-      "EMAIL_RECEIPTS": "Ricevute email"
-    }
+    "timezoneBrowserOption": "Usa fuso orario del browser (rilevato automaticamente: {tz})"
   },
   "notifications": {
     "heading": "Notifiche",
@@ -360,7 +357,8 @@
         "INVESTMENTS": "Valore degli investimenti",
         "STRATEGIES": "Segnali di strategia",
         "BANK_SYNC": "Collegamenti bancari",
-        "BANK_SYNC_ACTIVITY": "Risultati della sincronizzazione bancaria"
+        "BANK_SYNC_ACTIVITY": "Risultati della sincronizzazione bancaria",
+        "EMAIL_RECEIPTS": "Ricevute email"
       },
       "channelNotApplicable": "Non applicabile a questo tipo di notifica",
       "emailToggleLabel": "Email (report) per {category}",

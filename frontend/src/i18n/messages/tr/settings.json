@@ -218,10 +218,7 @@
       "highcontrast": "Yüksek kontrast",
       "colorblind": "Renk körü uyumlu"
     },
-    "timezoneBrowserOption": "Tarayıcı saat dilimini kullan (otomatik algılandı: {tz})",
-    "categories": {
-      "EMAIL_RECEIPTS": "E-posta makbuzları"
-    }
+    "timezoneBrowserOption": "Tarayıcı saat dilimini kullan (otomatik algılandı: {tz})"
   },
   "notifications": {
     "heading": "Bildirimler",
@@ -360,11 +357,17 @@
         "INVESTMENTS": "Yatırım değeri",
         "STRATEGIES": "Strateji sinyalleri",
         "BANK_SYNC": "Banka bağlantıları",
-        "BANK_SYNC_ACTIVITY": "Banka senkronizasyonu sonuçları"
+        "BANK_SYNC_ACTIVITY": "Banka senkronizasyonu sonuçları",
+        "EMAIL_RECEIPTS": "E-posta makbuzları"
       },
       "channelNotApplicable": "Bu bildirim türü için geçerli değil",
       "emailToggleLabel": "{category} için rapor e-postası",
+      "emailNotificationToggleLabel": "{category} için uyarı e-postası",
+      "pushToggleLabel": "{category} için push",
+      "unifiedpushToggleLabel": "{category} için UnifiedPush",
       "saveFailed": "Bu ayar kaydedilemedi",
+      "emailUnavailable": "Bunları e-postayla göndermek için yukarıdan e-posta bildirimlerini açın.",
+      "pushUnavailable": "Push için kayıtlı cihaz yok, bu yüzden bu kanal hiçbir şey iletemez.",
       "throttle": {
         "label": "Bekleme",
         "ariaLabel": "{category} için bekleme süresi",
@@ -379,11 +382,6 @@
           "1440": "24 saat"
         }
       },
-      "emailNotificationToggleLabel": "{category} için uyarı e-postası",
-      "pushToggleLabel": "{category} için push",
-      "unifiedpushToggleLabel": "{category} için UnifiedPush",
-      "emailUnavailable": "Bunları e-postayla göndermek için yukarıdan e-posta bildirimlerini açın.",
-      "pushUnavailable": "Push için kayıtlı cihaz yok, bu yüzden bu kanal hiçbir şey iletemez.",
       "pushEnableHint": "Bu tarayıcı push bildirimleri için kayıtlı değil."
     }
   },
@@ -758,8 +756,8 @@
       },
       "toasts": {
         "success": "Yedekleme başarıyla indirildi",
-        "incomplete": "Yedek indirildi, ancak EKSİK: {total} ekten {unusable} tanesi bozulmadan kaydedilemedi ({missing} eksik, {inconsistent} bütünlük denetiminden geçemedi). Bu dosyayı tam bir yedek olarak değerlendirmeyin — ek depolamasını onarın ve yeniden dışa aktarın.",
-        "failed": "Yedekleme oluşturulamadı"
+        "failed": "Yedekleme oluşturulamadı",
+        "incomplete": "Yedek indirildi, ancak EKSİK: {total} ekten {unusable} tanesi bozulmadan kaydedilemedi ({missing} eksik, {inconsistent} bütünlük denetiminden geçemedi). Bu dosyayı tam bir yedek olarak değerlendirmeyin — ek depolamasını onarın ve yeniden dışa aktarın."
       }
     },
     "restore": {
@@ -789,9 +787,9 @@
       "title": "Geri Yükleme Tamamlandı",
       "description": "Verileriniz başarıyla geri yüklendi. Geri yüklenenler hakkında özet:",
       "totalRecords": "Toplam kayıt",
-      "doneButton": "Tamam",
       "skippedAttachments": "{count, plural, other {# ek geri yüklenmedi}}: yedek bunlar için kullanılabilir bayt içermiyordu — dışa aktarma sırasında eksiktiler veya sağlama toplamından geçemediler, ya da dosya kendi kendine yeten yedeklerden öncesine ait. Ek depolaması düzeldiğinde yeni bir yedek alın.",
-      "unusableAiProviderKeys": "{count, plural, other {# AI sağlayıcısı kullanılabilir API anahtarı olmadan geri yüklendi}}: bu yedek, sağlayıcı anahtarları yedeğe eklenmeden önce oluşturulmuştu; bu yüzden kayıtlı anahtar dosyayı üreten sunucuya ait ya da bu sunucuda anahtarı saklayacak bir şifreleme anahtarı tanımlı değil. Ayarlar → AI Sağlayıcıları bölümünü açıp API anahtarını yeniden girin."
+      "unusableAiProviderKeys": "{count, plural, other {# AI sağlayıcısı kullanılabilir API anahtarı olmadan geri yüklendi}}: bu yedek, sağlayıcı anahtarları yedeğe eklenmeden önce oluşturulmuştu; bu yüzden kayıtlı anahtar dosyayı üreten sunucuya ait ya da bu sunucuda anahtarı saklayacak bir şifreleme anahtarı tanımlı değil. Ayarlar → AI Sağlayıcıları bölümünü açıp API anahtarını yeniden girin.",
+      "doneButton": "Tamam"
     },
     "storedBackups": {
       "heading": "Otomatik Yedekler",

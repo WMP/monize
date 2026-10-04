@@ -218,10 +218,7 @@
       "highcontrast": "ハイコントラスト",
       "colorblind": "色覚対応"
     },
-    "timezoneBrowserOption": "ブラウザのタイムゾーンを使用（自動検出: {tz}）",
-    "categories": {
-      "EMAIL_RECEIPTS": "メール領収書"
-    }
+    "timezoneBrowserOption": "ブラウザのタイムゾーンを使用（自動検出: {tz}）"
   },
   "notifications": {
     "heading": "通知",
@@ -360,11 +357,17 @@
         "INVESTMENTS": "投資価値",
         "STRATEGIES": "戦略シグナル",
         "BANK_SYNC": "銀行接続",
-        "BANK_SYNC_ACTIVITY": "銀行同期の結果"
+        "BANK_SYNC_ACTIVITY": "銀行同期の結果",
+        "EMAIL_RECEIPTS": "メール領収書"
       },
       "channelNotApplicable": "この通知タイプには適用されません",
       "emailToggleLabel": "{category} のレポートメール",
+      "emailNotificationToggleLabel": "{category} のアラートメール",
+      "pushToggleLabel": "{category} のプッシュ",
+      "unifiedpushToggleLabel": "{category} の UnifiedPush",
       "saveFailed": "設定を保存できませんでした",
+      "emailUnavailable": "これらをメールで送信するには、上のメール通知をオンにしてください。",
+      "pushUnavailable": "プッシュに登録されたデバイスがないため、このチャネルは配信できません。",
       "throttle": {
         "label": "間隔",
         "ariaLabel": "{category} のクールダウン",
@@ -379,11 +382,6 @@
           "1440": "24時間"
         }
       },
-      "emailNotificationToggleLabel": "{category} のアラートメール",
-      "pushToggleLabel": "{category} のプッシュ",
-      "unifiedpushToggleLabel": "{category} の UnifiedPush",
-      "emailUnavailable": "これらをメールで送信するには、上のメール通知をオンにしてください。",
-      "pushUnavailable": "プッシュに登録されたデバイスがないため、このチャネルは配信できません。",
       "pushEnableHint": "このブラウザーはプッシュ通知に登録されていません。"
     }
   },
@@ -758,8 +756,8 @@
       },
       "toasts": {
         "success": "バックアップを正常にダウンロードしました",
-        "incomplete": "バックアップをダウンロードしましたが、内容は不完全です: {total} 件のうち {unusable} 件の添付ファイルを完全な状態で保存できませんでした（{missing} 件が欠落、{inconsistent} 件が整合性チェックに失敗）。このファイルを完全なバックアップとして扱わないでください。添付ファイルのストレージを修復してから再度エクスポートしてください。",
-        "failed": "バックアップの作成に失敗しました"
+        "failed": "バックアップの作成に失敗しました",
+        "incomplete": "バックアップをダウンロードしましたが、内容は不完全です: {total} 件のうち {unusable} 件の添付ファイルを完全な状態で保存できませんでした（{missing} 件が欠落、{inconsistent} 件が整合性チェックに失敗）。このファイルを完全なバックアップとして扱わないでください。添付ファイルのストレージを修復してから再度エクスポートしてください。"
       }
     },
     "restore": {
@@ -789,9 +787,9 @@
       "title": "復元完了",
       "description": "データが正常に復元されました。復元された内容のサマリー:",
       "totalRecords": "総レコード数",
-      "doneButton": "完了",
       "skippedAttachments": "{count, plural, other {# 件の添付ファイルが復元されませんでした}}: バックアップに使用可能なバイト列が含まれていませんでした。エクスポート時に欠落していたかチェックサムに失敗したか、あるいはファイルが自己完結型バックアップより前のものです。添付ファイルのストレージが正常になってから新しいバックアップを取得してください。",
-      "unusableAiProviderKeys": "{count, plural, other {# 件の AI プロバイダーが使用可能な API キーなしで復元されました}}: このバックアップはプロバイダーのキーが含まれるようになる前に作成されたため、保存されているキーはファイルを作成したサーバーのものです。あるいは、このサーバーにはキーを保存するための暗号化キーが設定されていません。設定 → AIプロバイダー を開き、API キーを入力し直してください。"
+      "unusableAiProviderKeys": "{count, plural, other {# 件の AI プロバイダーが使用可能な API キーなしで復元されました}}: このバックアップはプロバイダーのキーが含まれるようになる前に作成されたため、保存されているキーはファイルを作成したサーバーのものです。あるいは、このサーバーにはキーを保存するための暗号化キーが設定されていません。設定 → AIプロバイダー を開き、API キーを入力し直してください。",
+      "doneButton": "完了"
     },
     "storedBackups": {
       "heading": "自動バックアップ",
