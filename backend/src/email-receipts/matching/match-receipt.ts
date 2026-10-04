@@ -1,4 +1,5 @@
 import { addDaysYMD } from "../../common/date-utils";
+import { normalizePayeeName } from "../../payees/payee-normalize.util";
 import type { ParsedReceipt } from "../parsing/receipt-parser.types";
 
 /**
@@ -91,18 +92,37 @@ function mentionsOrderId(
     .some((text) => text.toLowerCase().includes(needle));
 }
 
+/** The amount the bank was charged: what was paid, else the total; null when the email states neither. */
+export function receiptMatchAmount(
+  parsed: Partial<Pick<ParsedReceipt, "total" | "paid">>,
+): number | null {
+  return parsed.paid ?? parsed.total ?? null;
+}
+
+/** Signal P (by name): the candidate's payee is the merchant the email names, ignoring case, accents and legal suffixes. */
+function namesParsedPayee(
+  candidate: ReceiptMatchCandidate,
+  parsedPayee: string | null,
+): boolean {
+  if (parsedPayee === null || candidate.payeeName === null) return false;
+  const wanted = normalizePayeeName(parsedPayee);
+  return wanted !== "" && normalizePayeeName(candidate.payeeName) === wanted;
+}
+
 /**
  * Match a parsed receipt against the user's candidate transactions.
  *
  * Signals per candidate: O (the order id, at least four characters, appears in
  * its description, payee name or reference), A (`abs(amount)` in units equals
- * the parsed total exactly; false when no total was parsed) and P (its payee is
- * the parser's payee). One O candidate wins; else one A-and-P candidate; else
- * one A candidate; two or more at any step are ambiguous (that step's set).
- * A candidate outside the window around `purchaseDate` is ignored.
+ * the amount paid, else the parsed total, exactly; false when neither was
+ * parsed) and P (its payee is the parser's payee, or its payee's name is the
+ * merchant the email names). One O candidate wins; else one A-and-P candidate;
+ * else one A candidate; two or more at any step are ambiguous (that step's
+ * set). A candidate outside the window around `purchaseDate` is ignored.
  */
 export function matchReceipt(
-  parsed: Pick<ParsedReceipt, "orderId" | "total">,
+  parsed: Partial<Pick<ParsedReceipt, "total" | "paid" | "payee">> &
+    Pick<ParsedReceipt, "orderId">,
   purchaseDate: string,
   candidates: readonly ReceiptMatchCandidate[],
   parserPayeeId: string | null,
@@ -129,7 +149,8 @@ export function matchReceipt(
     };
   }
 
-  const { total } = parsed;
+  const total = receiptMatchAmount(parsed);
+  const parsedPayee = parsed.payee ?? null;
   const withAmount =
     total === null
       ? []
@@ -137,10 +158,11 @@ export function matchReceipt(
           (candidate) =>
             Math.round(Math.abs(candidate.amount) * MONEY_UNITS) === total,
         );
-  const withAmountAndPayee =
-    parserPayeeId === null
-      ? []
-      : withAmount.filter((candidate) => candidate.payeeId === parserPayeeId);
+  const withAmountAndPayee = withAmount.filter(
+    (candidate) =>
+      (parserPayeeId !== null && candidate.payeeId === parserPayeeId) ||
+      namesParsedPayee(candidate, parsedPayee),
+  );
   if (withAmountAndPayee.length === 1) {
     return matched(withAmountAndPayee[0], "amount_payee");
   }

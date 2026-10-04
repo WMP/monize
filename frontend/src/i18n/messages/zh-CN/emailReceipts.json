@@ -153,7 +153,8 @@
     "payeeUnknown": "未找到收款人",
     "payeeUnavailable": "收款人列表不可用",
     "actions": {
-      "approve": "批准"
+      "approve": "批准",
+      "viewJson": "查看 JSON"
     },
     "toasts": {
       "approved": "解析器已批准",
@@ -165,6 +166,14 @@
     "deleteDialog": {
       "title": "删除解析器？",
       "message": "解析器 {name} 将被删除。它已读取的邮件会保留其结果。"
+    },
+    "jsonDialog": {
+      "title": "{name} 的定义",
+      "help": "解析器定义的存储原样。此处为只读；如需更改，请使用“编辑”。",
+      "contentLabel": "定义 JSON",
+      "copy": "复制",
+      "copied": "已复制 JSON",
+      "copyFailed": "无法复制 JSON"
     }
   },
   "editor": {
@@ -222,6 +231,18 @@
       "defaultHelp": "用于没有任何规则匹配的商品。",
       "shippingLabel": "运费类别",
       "shippingHelp": "运费行所属的类别。"
+    },
+    "mode": {
+      "label": "编辑模式",
+      "form": "表单",
+      "json": "JSON",
+      "formUnavailable": "此定义包含表单无法显示的内容：带标签的条目、多行明细，或表单中没有对应字段的键。请以 JSON 方式编辑。",
+      "jsonInvalid": "JSON 尚无效，因此无法显示表单。请先修正。"
+    },
+    "json": {
+      "label": "解析器定义（JSON）",
+      "help": "与表单生成的定义相同。保存时服务器会检查它，下方的测试则按其当前内容读取。",
+      "parseError": "这不是有效的 JSON，或者不是 JSON 对象。请修正后再保存或测试解析器。"
     }
   },
   "problems": {
@@ -230,7 +251,12 @@
     "paths": {
       "definition": "定义",
       "line": "{field}，第 {line} 行",
-      "rule": "类别规则 {rule}，{part}"
+      "rule": "类别规则 {rule}，{part}",
+      "entryPart": "{field}，第 {line} 个条目，{part}",
+      "skipLine": "要跳过的行 {line}",
+      "recordStep": "记录步骤 {step}",
+      "recordStepPart": "记录步骤 {step}，{part}",
+      "recordAlternative": "记录步骤 {step}，备选项 {alternative}"
     },
     "fields": {
       "orderId": "订单号模式",
@@ -245,12 +271,28 @@
       "rulePattern": "模式",
       "ruleCategory": "类别",
       "defaultCategory": "默认类别",
-      "shippingCategory": "运费类别"
+      "shippingCategory": "运费类别",
+      "skipLines": "要跳过的行",
+      "record": "记录",
+      "label": "label",
+      "value": "value",
+      "within": "within",
+      "line": "line",
+      "optional": "optional",
+      "paid": "已付金额模式",
+      "payee": "商家模式",
+      "requireLine": "必需的行",
+      "skipIfLine": "使邮件被跳过的行",
+      "waitIfLine": "使邮件暂缓处理的行",
+      "single": "单个明细",
+      "singleName": "单个明细名称",
+      "joinWrapped": "合并折行",
+      "ruleField": "field"
     },
     "codes": {
       "not_object": "不是有效的定义",
       "unknown_key": "不是解析器可以包含的内容",
-      "invalid_version": "是此服务器无法读取的版本",
+      "unsupported_version": "是此服务器无法读取的版本（请使用版本 2）",
       "invalid_type": "的值类型不正确",
       "empty": "不能为空",
       "too_many": "的条目过多（最多 {max} 个）",
@@ -262,7 +304,15 @@
       "capture_not_allowed": "使用了此字段不接受的捕获名称",
       "capture_missing": "缺少此字段所需的捕获",
       "capture_conflict": "同时捕获了该行合计和单价。请只使用其中之一。",
-      "invalid_uuid": "不是有效的类别"
+      "invalid_uuid": "不是有效的类别",
+      "out_of_range": "必须是 1 到 {max} 之间的整数",
+      "items_patterns_and_record": "同时包含 patterns 和 record。请只使用其中之一。",
+      "items_shape_missing": "需要 patterns 或 record 其中之一",
+      "skip_lines_need_record": "只能与 record 一起使用",
+      "record_name_missing": "必须在其某个步骤中捕获 {capture}",
+      "items_single_conflict": "在 patterns 或 record 之外还有单个明细。请只使用其中之一。",
+      "join_wrapped_needs_patterns": "仅适用于明细模式",
+      "invalid_value": "的值不被此字段接受"
     }
   },
   "test": {
@@ -285,7 +335,33 @@
     },
     "noPayee": "无收款人",
     "ambiguous": "{count, plural, one {# 笔交易} other {# 笔交易}}同样匹配，因此在您选择之前不会关联任何一笔。",
-    "unmatched": "在 {count, plural, one {# 个候选} other {# 个候选}}中没有匹配的交易。"
+    "unmatched": "在 {count, plural, one {# 个候选} other {# 个候选}}中没有匹配的交易。",
+    "jsonInvalid": "JSON 无效，因此暂时没有可测试的内容。",
+    "outcome": {
+      "not_applicable": "此解析器不会读取这封邮件：邮件中没有任何必需的行，因此将尝试该发件人的下一个解析器。",
+      "skip_line": "此解析器会将这封邮件排除在外：邮件中含有它要跳过的行。",
+      "wait_line": "此解析器会暂缓处理这封邮件：有一行表明订单尚未最终确定，因此稍后会再次读取。"
+    },
+    "matchedBy": {
+      "heading": "匹配依据",
+      "none": "没有从这封邮件中读取到任何值。",
+      "fields": {
+        "orderId": "订单号",
+        "total": "合计",
+        "paid": "已付",
+        "shipping": "运费",
+        "discount": "折扣",
+        "payee": "商家",
+        "requireLine": "必需的行",
+        "skipIfLine": "跳过行",
+        "waitIfLine": "暂缓行"
+      },
+      "entryLine": "条目 {entry}（{pattern}），第 {line} 行：{text}",
+      "entrySubject": "条目 {entry}（{pattern}），主题：{text}",
+      "labelled": "条目 {entry}，第 {labelLine} 行（{labelText}）上的标签 {label}，第 {line} 行上的值 {pattern}：{text}",
+      "item": "明细 {number}",
+      "itemLine": "{pattern}，第 {line} 行：{text}"
+    }
   },
   "parsed": {
     "notFound": "未找到",
@@ -310,9 +386,12 @@
       "no_items": "未找到明细行。",
       "items_unbalanced": "明细行之和与合计不符。",
       "items_uncategorized": "部分明细行没有类别。",
-      "shipping_uncategorized": "运费行没有类别。"
+      "shipping_uncategorized": "运费行没有类别。",
+      "item_amount_missing": "某个明细没有金额，而邮件中也没有可分配给它的单一合计。"
     },
-    "readByAi": "由 AI 读取"
+    "readByAi": "由 AI 读取",
+    "paid": "已付",
+    "payee": "商家"
   },
   "state": {
     "pending": "等待读取",
@@ -457,7 +536,10 @@
       "amount_differs": "解析出的合计与交易金额不同，因此仅提议更新说明。",
       "proposal_fallback": "带明细的提议被拒绝，因此仅提议更新说明。",
       "nothing_to_propose": "这封邮件没有给这笔交易增加任何信息。",
-      "proposal_refused": "提议被拒绝，因此没有提出任何提议。"
+      "proposal_refused": "提议被拒绝，因此没有提出任何提议。",
+      "skip_line": "发现了此解析器要跳过的行，因此该邮件已被忽略。",
+      "wait_line": "有一行表明订单尚未最终确定，因此稍后会再次读取该邮件。",
+      "item_amount_missing": "某个明细没有金额，而邮件中也没有可分配给它的单一合计。"
     },
     "reasonUnknown": "原因：{reason}",
     "requestNote": "审核请求（{state}）：{note}",

@@ -70,9 +70,13 @@ Signals per candidate:
 
 - **O**: the parsed order id (at least 4 characters) appears, case-insensitive,
   in the transaction's `description`, `payeeName` or `referenceNumber`.
-- **A**: `abs(amount)` in units equals the parsed `total` exactly. With no
-  parsed total, A is false for every candidate.
-- **P**: the transaction's payee is the parser's payee (by id).
+- **A**: `abs(amount)` in units equals the amount the bank was charged,
+  `paid ?? total`, exactly. With neither parsed, A is false for every candidate.
+- **P**: the transaction's payee is the parser's payee (by id), OR the
+  transaction's payee NAME is the merchant the email names (`ParsedReceipt.payee`),
+  compared with `normalizePayeeName` (case, accents and legal suffixes ignored;
+  an empty normalisation never matches). A payment gateway's notice names the
+  merchant, whose bank line carries the merchant's name.
 
 | Candidates with O | with A and P | with A only | Result | `match_kind` |
 |---|---|---|---|---|
@@ -91,17 +95,27 @@ link.
 
 ## 4. Completeness (`ParsedReceipt.complete`)
 
-Let `S = sum(items.amount) + shipping - discount` (absent shipping or discount
-is 0).
+Let `gross = sum(items.amount) + shipping` and `net = gross - discount` (absent
+shipping or discount is 0). `total` is the amount the email calls the total
+(possibly a list price), `paid` the amount actually charged.
 
-| total found | items found | S = total | every item categorised | shipping categorised (if shipping > 0) | complete | reason |
-|---|---|---|---|---|---|---|
-| no | -- | -- | -- | -- | false | `no_total` |
-| yes | no | -- | -- | -- | false | `no_items` |
-| yes | yes | no | -- | -- | false | `items_unbalanced` |
-| yes | yes | yes | no | -- | false | `items_uncategorized` |
-| yes | yes | yes | yes | no | false | `shipping_uncategorized` |
-| yes | yes | yes | yes | yes | true | -- |
+Checked in this order; the first that fails is the reason:
+
+| # | Check | Fails with |
+|---|---|---|
+| 1 | at least one of `total` and `paid` was found | `no_total` |
+| 2 | no item is left without an amount (an item with no `amount` or `price` takes `total ?? paid` when it is the only item) | `item_amount_missing` |
+| 3 | at least one item | `no_items` |
+| 4 | `net >= 0`, and `paid` (if found) `= net`, and `total` (if found) `= gross` or `= net` | `items_unbalanced` |
+| 5 | every item categorised, and a discount above 0 has a category | `items_uncategorized` |
+| 6 | shipping above 0 has a category | `shipping_uncategorized` |
+| -- | all hold | complete, no reason |
+
+Table rows (items 10.00, discount 3.00): `total 10.00` complete (gross);
+`total 7.00` complete (net); `paid 7.00` complete; `paid 10.00` unbalanced;
+`total 10.00, paid 7.00` complete (the promotion case); `total 8.00`
+unbalanced; neither found: `no_total`. A discount above `gross` is unbalanced
+whatever `total` says.
 
 A discount needs a category only through the item it reduces: it is a line of
 its own under `defaultCategoryId`, and without one the receipt is
@@ -109,18 +123,22 @@ its own under `defaultCategoryId`, and without one the receipt is
 
 ## 5. The proposal (`buildReceiptProposal`)
 
-Let `T` be the transaction amount (signed, a decimal), `sign = T < 0 ? -1 : 1`.
+Let `T` be the transaction amount (signed, a decimal), `sign = T < 0 ? -1 : 1`,
+and `E = paid ?? total`, the amount the bank was charged.
 
-| Parse complete | `abs(T)` = total | Lines | Proposal |
+| Parse complete | `abs(T)` = E | Lines | Proposal |
 |---|---|---|---|
 | yes | yes | 1 (one item, no shipping, no discount) | `categoryName` of the item, `description` |
-| yes | yes | 2 or more | `splits`: each item `sign * amount`, memo; shipping `sign * shipping`; discount `-sign * discount`; `description` |
+| yes | yes | 2 or more, summing (net) to `abs(T)` | `splits`: each item `sign * amount`, memo; shipping `sign * shipping`; discount `-sign * discount`; `description` |
+| yes | yes | 2 or more, not summing to `abs(T)` | `description` only, reason `amount_differs` |
 | yes | no | -- | `description` only, reason `amount_differs` |
 | no | -- | -- | `description` only, reason from section 4 |
 
-The split lines sum to `T` exactly by construction (section 4 proves
-`S = total = abs(T)`); `AiReviewWorkService.submit` checks it again with
-`sumMoney` and refuses otherwise.
+The split lines sum to `net`. When `paid` is stated, completeness proves
+`net = paid = abs(T)`. When only `total` is stated and it equals `gross` while a
+discount exists, `net` differs from `abs(T)`: the proposal never splits what
+does not sum to the transaction, so it is description-only (`amount_differs`);
+`AiReviewWorkService.submit` checks the sum again with `sumMoney`.
 
 **Description summary**: `"{parser name} {orderId}: item1 x2, item2"`, items
 in order, joined by `, `, `x qty` only when qty > 1; the whole summary is cut
@@ -128,8 +146,11 @@ to 300 characters with `...`. It is appended to an existing description with
 ` | ` (`composeDescription`, 750 cap); an existing description that already
 contains the summary is left as it is and the proposal carries no description.
 
-**Payee**: `payeeName` is the parser payee's name only when the transaction has
-no payee.
+**Payee**: when the email names a merchant (`ParsedReceipt.payee`), `payeeName`
+is that merchant when the transaction has no payee OR its payee is the parser's
+own (the gateway, such as PayU); a transaction with another payee is left
+alone. When the email names none, `payeeName` is the parser payee's name only
+when the transaction has no payee.
 
 ### Numerical example
 
@@ -142,6 +163,13 @@ Proposal splits: `-19.98` (cable, memo `USB-C cable x 2`), `-15.00` (case),
 
 Same receipt, transaction `-35.00` (a partial capture): description only,
 reason `amount_differs`.
+
+A promotion (Google Play): item `24.99`, `Razem: 24.99` (total), a `-3.00`
+promotion line (discount), `Visa-1234: 21,99 zł` (paid). `gross = 249900`,
+`net = 219900`; `total = gross` and `paid = net`: complete. Transaction
+`-21.99`: splits `-24.99` (item) and `+3.00` (discount), sum `-21.99`. A
+transaction of `-24.99` is description only, reason `amount_differs` (`paid` is
+`21.99`).
 
 ## 6. Missing-data policy
 
@@ -161,7 +189,7 @@ reason `amount_differs`.
 ## 7. Auto-apply gate
 
 Applies only when every one holds: mailbox `auto_apply`; parser `approved`;
-`complete`; `abs(T) = total`; `match_kind` is `order_id` or `amount_payee`; the
+`complete`; `abs(T) = paid ?? total`; `match_kind` is `order_id` or `amount_payee`; the
 card was built. Any refusal from `confirm` (write limit, reconciled lock, a
 changed row) leaves the proposal waiting in the inbox.
 
@@ -175,8 +203,12 @@ the model returns the receipt's content, never a split of the transaction:
   "items": [ { "name": "Widget", "qty": 2, "amount": "19.98", "categoryId": "<id or null>" } ],
   "shipping": "4.99", "shippingCategoryId": "<id or null>",
   "discount": "2.00", "discountCategoryId": "<id or null>",
-  "total": "37.97", "description": "..." }
+  "total": "37.97", "paid": "37.97", "description": "..." }
 ```
+
+`paid` is optional: the amount actually charged, stated only when the email
+shows it separately from the total (a card line after a promotion). It is read
+like `total` and judged with section 4.
 
 Bounds (`email-receipt-ai.schema.ts`, unknown keys refused): at most 100 items,
 names 1 to 200 characters, `qty` an integer from 1 to 9999, `description` at
@@ -220,12 +252,81 @@ instruction (`RECEIPT_CHAT_INSTRUCTION`) and is never taken by the poll.
 assistant in the chat, or an agent, answers it by id with splits, which
 `submit` validates as in section 5 (the lines must add up to the transaction).
 
+## 7b. Parser language (version 2)
+
+The parser language is version 2 (design 5.1), the only one: the validator
+refuses any other `version` (version 1 included) with `unsupported_version`.
+What the parser reads is unchanged: a `ParsedReceipt` in units, judged by the
+completeness table of section 4. What version 2 adds is HOW a value is found.
+
+- **Priority by order.** The entries of `orderId`, `total`, `paid`, `shipping`,
+  `discount` and `payee` are tried in array order, each over all lines; the
+  first entry that finds an accepted value wins. A general `{amount} zł` entry
+  is therefore read only when the specific entries before it found nothing.
+- **Labelled entry** `{label, value, within}`: a line matching `label` (whole
+  line, case-insensitive, no capture), then the first of the next `within`
+  non-empty lines (1 to 10, default 3) whose `value` matches and holds an
+  accepted value; otherwise the next label line. The Allegro total is
+  `{label: "RAZEM", value: "{amount} zł"}`: the amount under the label, not the
+  second figure under it (the basket without the Smart! package).
+- **Accepted amount.** Section 2's grammar AND no operator character
+  (`×`, `÷`, `+`, `*`, `/`, `=`, `%`, `<`, `>`, `@`, `#`, `\`, `|`): the grammar
+  drops symbols, so `3 × 1,47 zł` would read as 31,47 and `10,95 + 5,00` as
+  10 955,00. Punctuation a lazy capture drags along (`: 1 234,56 zł`) is still
+  an amount.
+- **Literal asterisk, trimming, invisible characters.** `{*}` and `\*` in a
+  pattern are a literal `*`; every captured value is trimmed of whitespace, `*`
+  and `_` (a bold `*149,41 PLN*` reads as `149,41 PLN`); zero-width characters,
+  bidi marks and soft hyphens are removed from every line (Amazon puts U+202B
+  before an order number).
+- **Block items.** `skipLines` drop section lines; a `record` of 1 to 6 steps
+  (each a glob, or up to 5 alternatives tried in order) is read from a cursor,
+  one item per match (name, amount or price, optional qty from separate lines).
+  The line total is `amount`, else `price * qty`; a failed record moves the
+  cursor one line. `joinWrapped` (patterns) puts up to three unread lines in
+  front of the next. `single` is one item for the whole email: its name from the
+  first line the glob reads, quantity 1, amount `total ?? paid`.
+- **An item with no amount** takes `total ?? paid` when it is the only item;
+  otherwise it is dropped and the reason is `item_amount_missing`.
+- **Payee and category rule fields.** `payee` entries read the merchant;
+  `categoryRules[].field` is `item` (default), `payee` or `line`.
+- **Line guards.** `requireLine` (the next parser for the sender is tried when
+  no line matches; `no_parser` when none is left), `skipIfLine` (`ignored`,
+  `status_reason` `skip_line`), `waitIfLine` (`unmatched`, `status_reason`
+  `wait_line`, read again whole by the poll's 30-day rematch). Skip wins over
+  wait; a manual link is not held back.
+
+Worked example (Allegro, three products, shipping 0,00): the items are
+`3 × 1,47 = 4,41`, `3 × 2,50 = 7,50` and `26 × 1,94 = 50,44`; shipping is 0,00;
+the total under `RAZEM` is 62,35; items plus shipping equal the total, so
+`complete` is true. The second figure under `RAZEM` (73,30) and the Smart!
+delivery price (10,95) are neither total nor shipping.
+
+Worked example (Amazon): the mail names the product in `[image: ...]`, the
+quantity `Ilość: 3`, the unit price `4799zł` (dropped by `skipLines: ["*zł"]`)
+and `Suma 143.97zł`. One item of quantity 3 takes the total, 143,97: complete.
+
 ## 8. Test matrix
 
 | Case | Suite |
 |---|---|
 | Every row of the amount table | `parsing/receipt-amount.spec.ts` |
 | Item section bounds, `price * qty`, 100-item cap, 500-character lines | `parsing/parse-receipt.spec.ts` |
+| Priority by array order (an earlier entry wins wherever it sits; subject before body per entry) | `parsing/parse-receipt.spec.ts`, `parsing/parse-receipt.labelled.spec.ts` |
+| Labelled entries: the value under the label; `within` exactly and `within` + 1; the next label line when a window held nothing; whole-line, case-insensitive label; blank lines do not use up the window | `parsing/parse-receipt.labelled.spec.ts` |
+| Block items: record with an optional step present and absent; resync after a failed record; `skipLines`; section bounds; `price * qty`; 100-item cap | `parsing/parse-receipt.block.spec.ts` |
+| A quantity line or a sum is not an amount | `parsing/receipt-amount.spec.ts`, `parsing/parse-receipt.block.spec.ts` |
+| The four Allegro mails read complete: totals 59,20, 62,35, 99,21, 400,00; shipping 0,00; the Smart! price and the second figure under RAZEM never total or shipping; ` x 8szt.` in a name is not a quantity | `parsing/parse-receipt.allegro.spec.ts` |
+| Every validator code of the language, each at its path | `parsing/receipt-parser.validation.spec.ts` |
+| The completeness table: `paid` and `total` rows, gross and net, a discount above gross | `parsing/parse-receipt.features.spec.ts`, `parsing/parse-receipt.spec.ts` |
+| `items.single`, `joinWrapped` (cap of three held lines, cleared on an item), alternatives, an item without an amount (`item_amount_missing`) | `parsing/parse-receipt.features.spec.ts` |
+| Literal asterisk, trimming of values, invisible characters | `parsing/parse-receipt.features.spec.ts`, `parsing/receipt-lines.spec.ts` |
+| Payee field, `categoryRules[].field`, first rule wins | `parsing/parse-receipt.features.spec.ts` |
+| The PayU, Google Play and Amazon mails (anonymised from real ones) read complete; the forwarded header of each; the VAT note and the unit price are never an amount | `parsing/parse-receipt.gateways.spec.ts` |
+| Signal A by `paid ?? total`; signal P by the merchant's name | `matching/match-receipt.spec.ts` |
+| Proposal against `paid ?? total`; the payee rule; a split that does not sum is description only | `proposal/build-receipt-proposal.spec.ts` |
+| `requireLine` passes to the next parser, `skipIfLine` is `ignored`, `waitIfLine` is `unmatched` and is read again whole by the rematch | `pipeline/email-receipt-pipeline.service.spec.ts`, `pipeline/select-receipt-parser.rank.spec.ts` |
+| The test result's `outcome` and `trace` (REST and tool) | `parsers/email-receipt-parsers.service.spec.ts`, `parsers/email-receipt-parser-tools.service.spec.ts` |
 | Every row of the completeness table | `parsing/parse-receipt.spec.ts` |
 | Every row of the match table; date window edges (day -3, day +14, day +15) | `matching/match-receipt.spec.ts` |
 | Forwarded-header detection (Gmail, Outlook, Apple Mail, Thunderbird; English and Polish labels; date formats; the 200-line bound; no header means no result) | `imap/forwarded-message.spec.ts`, `imap/forwarded-receipt.spec.ts` |

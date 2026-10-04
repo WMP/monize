@@ -153,7 +153,8 @@
     "payeeUnknown": "Không tìm thấy người nhận",
     "payeeUnavailable": "Danh sách người nhận không khả dụng",
     "actions": {
-      "approve": "Duyệt"
+      "approve": "Duyệt",
+      "viewJson": "Xem JSON"
     },
     "toasts": {
       "approved": "Đã duyệt trình phân tích",
@@ -165,6 +166,14 @@
     "deleteDialog": {
       "title": "Xóa trình phân tích?",
       "message": "Trình phân tích {name} sẽ bị xóa. Các email nó đã đọc vẫn giữ kết quả."
+    },
+    "jsonDialog": {
+      "title": "Định nghĩa của {name}",
+      "help": "Định nghĩa trình phân tích như đang được lưu. Ở đây chỉ để xem; hãy dùng Chỉnh sửa để thay đổi.",
+      "contentLabel": "JSON định nghĩa",
+      "copy": "Sao chép",
+      "copied": "Đã sao chép JSON",
+      "copyFailed": "Không thể sao chép JSON"
     }
   },
   "editor": {
@@ -222,6 +231,18 @@
       "defaultHelp": "Dùng cho các mục hàng không khớp quy tắc nào.",
       "shippingLabel": "Danh mục phí vận chuyển",
       "shippingHelp": "Danh mục của dòng phí vận chuyển."
+    },
+    "mode": {
+      "label": "Chế độ chỉnh sửa",
+      "form": "Biểu mẫu",
+      "json": "JSON",
+      "formUnavailable": "Định nghĩa này dùng thứ mà biểu mẫu không hiển thị được: các mục có nhãn, mục hàng nhiều dòng hoặc các khóa mà biểu mẫu không có trường tương ứng. Hãy sửa dưới dạng JSON.",
+      "jsonInvalid": "JSON chưa hợp lệ nên chưa thể hiển thị biểu mẫu. Hãy sửa nó trước."
+    },
+    "json": {
+      "label": "Định nghĩa trình phân tích (JSON)",
+      "help": "Cùng định nghĩa mà biểu mẫu tạo ra. Máy chủ kiểm tra nó khi bạn lưu, còn phần kiểm thử bên dưới đọc nó đúng như hiện tại.",
+      "parseError": "Đây không phải JSON hợp lệ hoặc không phải một đối tượng JSON. Hãy sửa để lưu hoặc kiểm thử trình phân tích."
     }
   },
   "problems": {
@@ -230,7 +251,12 @@
     "paths": {
       "definition": "Định nghĩa",
       "line": "{field}, dòng {line}",
-      "rule": "Quy tắc danh mục {rule}, {part}"
+      "rule": "Quy tắc danh mục {rule}, {part}",
+      "entryPart": "{field}, mục {line}, {part}",
+      "skipLine": "Dòng cần bỏ qua {line}",
+      "recordStep": "Bước bản ghi {step}",
+      "recordStepPart": "Bước bản ghi {step}, {part}",
+      "recordAlternative": "Bước bản ghi {step}, phương án thay thế {alternative}"
     },
     "fields": {
       "orderId": "Mẫu mã đơn hàng",
@@ -245,12 +271,28 @@
       "rulePattern": "mẫu",
       "ruleCategory": "danh mục",
       "defaultCategory": "Danh mục mặc định",
-      "shippingCategory": "Danh mục phí vận chuyển"
+      "shippingCategory": "Danh mục phí vận chuyển",
+      "skipLines": "Các dòng cần bỏ qua",
+      "record": "Bản ghi",
+      "label": "label",
+      "value": "value",
+      "within": "within",
+      "line": "line",
+      "optional": "optional",
+      "paid": "Mẫu số tiền đã trả",
+      "payee": "Mẫu người bán",
+      "requireLine": "Các dòng bắt buộc",
+      "skipIfLine": "Các dòng khiến email bị bỏ qua",
+      "waitIfLine": "Các dòng khiến email bị giữ lại",
+      "single": "Một mục hàng duy nhất",
+      "singleName": "Tên mục hàng duy nhất",
+      "joinWrapped": "Nối các dòng bị ngắt",
+      "ruleField": "field"
     },
     "codes": {
       "not_object": "không phải là một định nghĩa hợp lệ",
       "unknown_key": "không phải thứ một trình phân tích có thể có",
-      "invalid_version": "là phiên bản mà máy chủ này không đọc được",
+      "unsupported_version": "là phiên bản mà máy chủ này không đọc được (hãy dùng phiên bản 2)",
       "invalid_type": "có kiểu giá trị không đúng",
       "empty": "không được để trống",
       "too_many": "có quá nhiều mục (tối đa {max})",
@@ -262,7 +304,15 @@
       "capture_not_allowed": "dùng một tên lấy giá trị mà trường này không chấp nhận",
       "capture_missing": "thiếu một phần lấy giá trị mà trường này cần",
       "capture_conflict": "lấy cả tổng của dòng lẫn đơn giá. Hãy chỉ dùng một trong hai.",
-      "invalid_uuid": "không phải là một danh mục hợp lệ"
+      "invalid_uuid": "không phải là một danh mục hợp lệ",
+      "out_of_range": "phải là số nguyên từ 1 đến {max}",
+      "items_patterns_and_record": "có cả patterns lẫn record. Hãy chỉ dùng một trong hai.",
+      "items_shape_missing": "cần patterns hoặc record",
+      "skip_lines_need_record": "chỉ dùng được cùng với record",
+      "record_name_missing": "phải lấy {capture} ở một trong các bước của nó",
+      "items_single_conflict": "có một mục hàng duy nhất bên cạnh patterns hoặc record. Hãy chỉ dùng một trong hai.",
+      "join_wrapped_needs_patterns": "chỉ hoạt động với các mẫu mục hàng",
+      "invalid_value": "có giá trị mà trường này không chấp nhận"
     }
   },
   "test": {
@@ -285,7 +335,33 @@
     },
     "noPayee": "không có người nhận",
     "ambiguous": "{count, plural, one {# giao dịch} other {# giao dịch}} đều khớp như nhau, nên sẽ không liên kết giao dịch nào cho đến khi bạn chọn.",
-    "unmatched": "Không có giao dịch nào khớp, trong số {count, plural, one {# ứng viên} other {# ứng viên}}."
+    "unmatched": "Không có giao dịch nào khớp, trong số {count, plural, one {# ứng viên} other {# ứng viên}}.",
+    "jsonInvalid": "JSON không hợp lệ nên chưa có gì để kiểm thử.",
+    "outcome": {
+      "not_applicable": "Trình phân tích này sẽ không đọc email này: không có dòng bắt buộc nào của nó nằm trong email, nên trình phân tích tiếp theo của người gửi sẽ được thử.",
+      "skip_line": "Trình phân tích này sẽ gác email này sang một bên: trong email có một dòng mà nó bỏ qua.",
+      "wait_line": "Trình phân tích này sẽ giữ lại email này: có một dòng cho biết đơn hàng chưa chốt, nên email sẽ được đọc lại sau."
+    },
+    "matchedBy": {
+      "heading": "Khớp theo",
+      "none": "Không có giá trị nào được đọc từ email này.",
+      "fields": {
+        "orderId": "Mã đơn hàng",
+        "total": "Tổng cộng",
+        "paid": "Đã trả",
+        "shipping": "Phí vận chuyển",
+        "discount": "Giảm giá",
+        "payee": "Người bán",
+        "requireLine": "Dòng bắt buộc",
+        "skipIfLine": "Dòng bỏ qua",
+        "waitIfLine": "Dòng chờ"
+      },
+      "entryLine": "mục {entry} ({pattern}), dòng {line}: {text}",
+      "entrySubject": "mục {entry} ({pattern}), tiêu đề: {text}",
+      "labelled": "mục {entry}, nhãn {label} ở dòng {labelLine} ({labelText}), giá trị {pattern} ở dòng {line}: {text}",
+      "item": "Mục hàng {number}",
+      "itemLine": "{pattern}, dòng {line}: {text}"
+    }
   },
   "parsed": {
     "notFound": "Không tìm thấy",
@@ -310,9 +386,12 @@
       "no_items": "Không tìm thấy dòng mục hàng nào.",
       "items_unbalanced": "Các dòng mục hàng không cộng lại đúng bằng tổng cộng.",
       "items_uncategorized": "Một số dòng mục hàng chưa có danh mục.",
-      "shipping_uncategorized": "Dòng phí vận chuyển chưa có danh mục."
+      "shipping_uncategorized": "Dòng phí vận chuyển chưa có danh mục.",
+      "item_amount_missing": "Một mục hàng không có số tiền, và email không có tổng duy nhất nào để gán cho nó."
     },
-    "readByAi": "AI đã đọc"
+    "readByAi": "AI đã đọc",
+    "paid": "Đã trả",
+    "payee": "Người bán"
   },
   "state": {
     "pending": "Đang chờ đọc",
@@ -457,7 +536,10 @@
       "amount_differs": "Tổng cộng đọc được khác với số tiền của giao dịch, nên chỉ đề xuất một mô tả.",
       "proposal_fallback": "Đề xuất chi tiết từng mục bị từ chối, nên chỉ đề xuất một mô tả.",
       "nothing_to_propose": "Email này không bổ sung gì cho giao dịch này.",
-      "proposal_refused": "Đề xuất bị từ chối, nên không có gì được đề xuất."
+      "proposal_refused": "Đề xuất bị từ chối, nên không có gì được đề xuất.",
+      "skip_line": "Đã tìm thấy một dòng mà trình phân tích này dùng để loại email, nên email đã bị bỏ qua.",
+      "wait_line": "Một dòng cho biết đơn hàng chưa chốt, nên email sẽ được đọc lại sau.",
+      "item_amount_missing": "Một mục hàng không có số tiền, và email không có tổng duy nhất nào để gán cho nó."
     },
     "reasonUnknown": "Lý do: {reason}",
     "requestNote": "Yêu cầu xem xét ({state}): {note}",

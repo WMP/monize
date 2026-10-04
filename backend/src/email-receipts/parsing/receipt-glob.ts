@@ -119,11 +119,35 @@ function matchGreedy(text: string, pattern: string): GlobCaptures | null {
 }
 
 /**
+ * A literal `*` in a pattern: `{*}` or `\*`. The rule matcher gives `*` one
+ * meaning (any text), so the receipt wrapper swaps each literal asterisk, in the
+ * pattern and in the line, for one private-use character before matching and
+ * swaps it back in the captured values. The rule matcher itself is untouched.
+ */
+const LITERAL_STAR = "\uE000";
+const LITERAL_STAR_IN_PATTERN = /\{\*\}|\\\*/g;
+const LITERAL_STAR_OUT = new RegExp(LITERAL_STAR, "g");
+
+/** What a value is trimmed of: whitespace and the `*` and `_` a mail client leaves around bold and italic text. */
+const WRAPPING = /^[\s*_]+|[\s*_]+$/g;
+
+function readable(captures: GlobCaptures): GlobCaptures {
+  const out: Record<string, string> = Object.create(null);
+  for (const [name, value] of Object.entries(captures)) {
+    out[name] = value.replace(LITERAL_STAR_OUT, "*").replace(WRAPPING, "");
+  }
+  return Object.freeze(out);
+}
+
+/**
  * Match one line against one pattern: the rules' lazy reading first, then the
  * greedy one, each only as far as `accept` allows. Returns the captured values
- * (trimmed, at most 200 characters each) of the first reading `accept` takes,
- * or null when neither reading is usable. A line or pattern over 500
- * characters never matches.
+ * of the first reading `accept` takes, or null when neither reading is usable.
+ * A line or pattern over 500 characters never matches.
+ *
+ * `{*}` and `\*` in the pattern are a literal `*`. A captured value is trimmed
+ * of leading and trailing whitespace, `*` and `_` (Gmail renders bold as
+ * `*text*`) and cut to 200 characters; `accept` sees the trimmed values.
  */
 export function matchReceiptPattern(
   pattern: string,
@@ -133,8 +157,15 @@ export function matchReceiptPattern(
   if (pattern.length > MAX_GLOB_LENGTH || line.length > MAX_GLOB_LENGTH) {
     return null;
   }
-  const lazy = matchGlobWithCaptures(line, pattern);
-  if (lazy !== null && accept(lazy)) return lazy;
-  const greedy = matchGreedy(line, pattern);
-  return greedy !== null && accept(greedy) ? greedy : null;
+  const glob = pattern.replace(LITERAL_STAR_IN_PATTERN, LITERAL_STAR);
+  const text = line.replace(/\*/g, LITERAL_STAR);
+  const lazy = matchGlobWithCaptures(text, glob);
+  if (lazy !== null) {
+    const read = readable(lazy);
+    if (accept(read)) return read;
+  }
+  const greedy = matchGreedy(text, glob);
+  if (greedy === null) return null;
+  const read = readable(greedy);
+  return accept(read) ? read : null;
 }

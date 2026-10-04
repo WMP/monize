@@ -153,7 +153,8 @@
     "payeeUnknown": "Nie znaleziono odbiorcy",
     "payeeUnavailable": "Lista odbiorców niedostępna",
     "actions": {
-      "approve": "Zatwierdź"
+      "approve": "Zatwierdź",
+      "viewJson": "Pokaż JSON"
     },
     "toasts": {
       "approved": "Parser zatwierdzony",
@@ -165,6 +166,14 @@
     "deleteDialog": {
       "title": "Usunąć parser?",
       "message": "Parser {name} zostanie usunięty. Wiadomości, które już odczytał, zachowają swoje wyniki."
+    },
+    "jsonDialog": {
+      "title": "Definicja parsera {name}",
+      "help": "Definicja parsera w postaci, w jakiej jest zapisana. Tutaj jest tylko do odczytu; aby ją zmienić, użyj przycisku Edytuj.",
+      "contentLabel": "JSON definicji",
+      "copy": "Kopiuj",
+      "copied": "Skopiowano JSON",
+      "copyFailed": "Nie udało się skopiować JSON"
     }
   },
   "editor": {
@@ -222,6 +231,18 @@
       "defaultHelp": "Używana dla pozycji, do których nie pasuje żadna reguła.",
       "shippingLabel": "Kategoria wysyłki",
       "shippingHelp": "Kategoria wiersza z kosztami wysyłki."
+    },
+    "mode": {
+      "label": "Tryb edycji",
+      "form": "Formularz",
+      "json": "JSON",
+      "formUnavailable": "Ta definicja używa czegoś, czego formularz nie potrafi pokazać: wpisów z etykietami, pozycji wielowierszowych lub kluczy, dla których nie ma pola. Edytuj ją jako JSON.",
+      "jsonInvalid": "JSON nie jest jeszcze prawidłowy, więc nie można pokazać formularza. Najpierw go popraw."
+    },
+    "json": {
+      "label": "Definicja parsera (JSON)",
+      "help": "Ta sama definicja, którą buduje formularz. Serwer sprawdza ją przy zapisie, a poniższy test odczytuje ją w obecnym stanie.",
+      "parseError": "To nie jest prawidłowy JSON albo nie jest to obiekt JSON. Popraw go, aby zapisać lub przetestować parser."
     }
   },
   "problems": {
@@ -230,7 +251,12 @@
     "paths": {
       "definition": "Definicja",
       "line": "{field}, wiersz {line}",
-      "rule": "Reguła kategorii {rule}, {part}"
+      "rule": "Reguła kategorii {rule}, {part}",
+      "entryPart": "{field}, wpis {line}, {part}",
+      "skipLine": "Wiersz do pominięcia {line}",
+      "recordStep": "Krok rekordu {step}",
+      "recordStepPart": "Krok rekordu {step}, {part}",
+      "recordAlternative": "Krok rekordu {step}, wariant {alternative}"
     },
     "fields": {
       "orderId": "Wzorce numeru zamówienia",
@@ -245,12 +271,28 @@
       "rulePattern": "wzorzec",
       "ruleCategory": "kategoria",
       "defaultCategory": "Kategoria domyślna",
-      "shippingCategory": "Kategoria wysyłki"
+      "shippingCategory": "Kategoria wysyłki",
+      "skipLines": "Wiersze do pominięcia",
+      "record": "Record",
+      "label": "label",
+      "value": "value",
+      "within": "within",
+      "line": "line",
+      "optional": "optional",
+      "paid": "Wzorce zapłaconej kwoty",
+      "payee": "Wzorce sprzedawcy",
+      "requireLine": "Wymagane wiersze",
+      "skipIfLine": "Wiersze pomijające wiadomość",
+      "waitIfLine": "Wiersze wstrzymujące wiadomość",
+      "single": "Pojedyncza pozycja",
+      "singleName": "Nazwa pojedynczej pozycji",
+      "joinWrapped": "Łączenie zawiniętych wierszy",
+      "ruleField": "field"
     },
     "codes": {
       "not_object": "nie jest prawidłową definicją",
       "unknown_key": "nie jest czymś, co parser może mieć",
-      "invalid_version": "to wersja, której ten serwer nie odczytuje",
+      "unsupported_version": "to wersja, której ten serwer nie odczytuje (użyj wersji 2)",
       "invalid_type": "ma wartość niewłaściwego rodzaju",
       "empty": "nie może być puste",
       "too_many": "ma zbyt wiele wpisów (najwyżej {max})",
@@ -262,7 +304,15 @@
       "capture_not_allowed": "używa nazwy przechwytywania, której to pole nie przyjmuje",
       "capture_missing": "brakuje przechwytywania, którego to pole potrzebuje",
       "capture_conflict": "przechwytuje jednocześnie sumę wiersza i cenę jednostkową. Użyj jednego z nich.",
-      "invalid_uuid": "nie jest prawidłową kategorią"
+      "invalid_uuid": "nie jest prawidłową kategorią",
+      "out_of_range": "musi być liczbą całkowitą od 1 do {max}",
+      "items_patterns_and_record": "ma jednocześnie wzorce i rekord. Użyj jednego z nich.",
+      "items_shape_missing": "wymaga wzorców albo rekordu",
+      "skip_lines_need_record": "można używać tylko razem z rekordem",
+      "record_name_missing": "musi przechwytywać {capture} w jednym ze swoich kroków",
+      "items_single_conflict": "ma pojedynczą pozycję obok wzorców lub rekordu. Użyj jednego z nich.",
+      "join_wrapped_needs_patterns": "działa tylko ze wzorcami pozycji",
+      "invalid_value": "ma wartość, której to pole nie przyjmuje"
     }
   },
   "test": {
@@ -285,7 +335,33 @@
     },
     "noPayee": "brak odbiorcy",
     "ambiguous": "{count, plural, one {Pasuje # transakcja} few {Pasują # transakcje} many {Pasuje # transakcji} other {Pasuje # transakcji}} jednakowo dobrze, więc żadna nie zostanie powiązana, dopóki jednej nie wybierzesz.",
-    "unmatched": "Żadna transakcja nie pasuje (sprawdzono {count, plural, one {# kandydata} few {# kandydatów} many {# kandydatów} other {# kandydatów}})."
+    "unmatched": "Żadna transakcja nie pasuje (sprawdzono {count, plural, one {# kandydata} few {# kandydatów} many {# kandydatów} other {# kandydatów}}).",
+    "jsonInvalid": "JSON jest nieprawidłowy, więc nie ma jeszcze czego testować.",
+    "outcome": {
+      "not_applicable": "Ten parser nie odczytałby tej wiadomości: nie ma w niej żadnego z jego wymaganych wierszy, więc zostałby wypróbowany kolejny parser dla tego nadawcy.",
+      "skip_line": "Ten parser odłożyłby tę wiadomość na bok: znajduje się w niej wiersz, po którym ją pomija.",
+      "wait_line": "Ten parser wstrzymałby tę wiadomość: jeden z wierszy mówi, że zamówienie nie jest jeszcze ostateczne, więc zostanie odczytana ponownie później."
+    },
+    "matchedBy": {
+      "heading": "Dopasowano przez",
+      "none": "Z tej wiadomości nie odczytano żadnej wartości.",
+      "fields": {
+        "orderId": "Numer zamówienia",
+        "total": "Suma",
+        "paid": "Zapłacono",
+        "shipping": "Wysyłka",
+        "discount": "Rabat",
+        "payee": "Sprzedawca",
+        "requireLine": "Wymagany wiersz",
+        "skipIfLine": "Wiersz pomijający",
+        "waitIfLine": "Wiersz wstrzymujący"
+      },
+      "entryLine": "wpis {entry} ({pattern}), wiersz {line}: {text}",
+      "entrySubject": "wpis {entry} ({pattern}), temat: {text}",
+      "labelled": "wpis {entry}, etykieta {label} w wierszu {labelLine} ({labelText}), wartość {pattern} w wierszu {line}: {text}",
+      "item": "Pozycja {number}",
+      "itemLine": "{pattern}, wiersz {line}: {text}"
+    }
   },
   "parsed": {
     "notFound": "Nie znaleziono",
@@ -310,9 +386,12 @@
       "no_items": "Nie znaleziono żadnych pozycji.",
       "items_unbalanced": "Pozycje nie sumują się do łącznej kwoty.",
       "items_uncategorized": "Niektóre pozycje nie mają kategorii.",
-      "shipping_uncategorized": "Wiersz z kosztami wysyłki nie ma kategorii."
+      "shipping_uncategorized": "Wiersz z kosztami wysyłki nie ma kategorii.",
+      "item_amount_missing": "Pozycja nie ma kwoty, a wiadomość nie podaje jednej sumy, którą można by jej przypisać."
     },
-    "readByAi": "Odczytano przez AI"
+    "readByAi": "Odczytano przez AI",
+    "paid": "Zapłacono",
+    "payee": "Sprzedawca"
   },
   "state": {
     "pending": "Czeka na odczyt",
@@ -457,7 +536,10 @@
       "amount_differs": "Odczytana suma różni się od kwoty transakcji, więc proponowany jest tylko opis.",
       "proposal_fallback": "Propozycja ze szczegółami pozycji została odrzucona, więc proponowany jest tylko opis.",
       "nothing_to_propose": "Wiadomość niczego nie wnosi do tej transakcji.",
-      "proposal_refused": "Propozycja została odrzucona, więc nic nie zaproponowano."
+      "proposal_refused": "Propozycja została odrzucona, więc nic nie zaproponowano.",
+      "skip_line": "Znaleziono wiersz, po którym ten parser pomija wiadomość, więc została zignorowana.",
+      "wait_line": "Jeden z wierszy mówi, że zamówienie nie jest jeszcze ostateczne, więc wiadomość zostanie odczytana ponownie później.",
+      "item_amount_missing": "Pozycja nie ma kwoty, a wiadomość nie podaje jednej sumy, którą można by jej przypisać."
     },
     "reasonUnknown": "Powód: {reason}",
     "requestNote": "Prośba o przegląd ({state}): {note}",

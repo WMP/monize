@@ -60,6 +60,7 @@ export type EmailReceiptParserSource = (typeof EMAIL_RECEIPT_PARSER_SOURCES)[num
 export const PARSED_RECEIPT_REASONS = [
   'no_total',
   'no_items',
+  'item_amount_missing',
   'items_unbalanced',
   'items_uncategorized',
   'shipping_uncategorized',
@@ -237,34 +238,80 @@ export const RECEIPT_PARSER_LIMITS = {
   maxPatternLength: 200,
   maxCategoryRules: 50,
   maxSectionMarkerLength: 100,
+  maxSkipLines: 10,
+  maxRecordSteps: 6,
+  maxLabelWithin: 10,
+  maxStepAlternatives: 5,
+  maxLineGuards: 10,
   maxNameLength: 100,
   maxFromDomains: 10,
   maxSubjectWords: 10,
   maxSubjectWordLength: 100,
 } as const;
 
+/** Items read one per line. */
 export interface ReceiptItemsDefinition {
   startAfter?: string;
   stopAt?: string;
   patterns: string[];
+  /** A line no pattern reads is held (the last three) and put in front of the next line. */
+  joinWrapped?: boolean;
+}
+
+/** An entry of a field that finds its value on a line near a label line. */
+export interface ReceiptLabelledPattern {
+  label: string;
+  value: string;
+  within?: number;
+}
+
+/** A field entry: a line pattern or a labelled one. Entries are tried in array order. */
+export type ReceiptFieldEntry = string | ReceiptLabelledPattern;
+
+export interface ReceiptRecordStep {
+  /** A glob, or up to five alternative globs tried in order. */
+  line: string | string[];
+  optional?: boolean;
+}
+
+/** Items that span several lines: lines to drop, then a record read from a cursor. */
+export interface ReceiptBlockItemsDefinition {
+  startAfter?: string;
+  stopAt?: string;
+  skipLines?: string[];
+  record: ReceiptRecordStep[];
 }
 
 export interface ReceiptCategoryRule {
   match: string;
   categoryId: string;
+  /** What the glob is matched against: the item's name (default), the parsed payee or any line. */
+  field?: 'item' | 'payee' | 'line';
 }
 
-/** A parser definition, version 1 (`definition` of an `email_receipt_parsers` row). */
+/** One item for the whole email: its name from the first line the glob reads. */
+export interface ReceiptSingleItemsDefinition {
+  startAfter?: string;
+  stopAt?: string;
+  single: { name: string };
+}
+
+/** A parser definition, version 2 (`definition` of an `email_receipt_parsers` row). */
 export interface ReceiptParserDefinition {
-  version: 1;
-  orderId?: string[];
-  total?: string[];
-  shipping?: string[];
-  discount?: string[];
-  items?: ReceiptItemsDefinition;
+  version: 2;
+  orderId?: ReceiptFieldEntry[];
+  total?: ReceiptFieldEntry[];
+  paid?: ReceiptFieldEntry[];
+  shipping?: ReceiptFieldEntry[];
+  discount?: ReceiptFieldEntry[];
+  payee?: ReceiptFieldEntry[];
+  items?: ReceiptItemsDefinition | ReceiptBlockItemsDefinition | ReceiptSingleItemsDefinition;
   categoryRules?: ReceiptCategoryRule[];
   defaultCategoryId?: string;
   shippingCategoryId?: string;
+  requireLine?: string[];
+  skipIfLine?: string[];
+  waitIfLine?: string[];
 }
 
 /** One problem the server's validator found: where, and a machine-readable code. */
@@ -320,6 +367,10 @@ export interface ParsedReceiptItem {
 export interface ParsedReceipt {
   orderId: string | null;
   total: number | null;
+  /** What was actually charged, when the email states it separately. Absent on a receipt stored before the field existed. */
+  paid?: number | null;
+  /** The merchant the email names (a payment gateway's notice). Absent on a receipt stored before the field existed. */
+  payee?: string | null;
   shipping: number | null;
   discount: number | null;
   items: ParsedReceiptItem[];
@@ -336,8 +387,53 @@ export type ReceiptMatchResult =
   | { kind: 'ambiguous'; candidateIds: string[] }
   | { kind: 'unmatched' };
 
+/** A line a trace points at: its 1-based number (0 is the subject) and its text. */
+export interface ReceiptTraceLine {
+  line: number;
+  text: string;
+}
+
+/** What found one value: the entry index of the field, its glob and the line that produced it. */
+export interface ReceiptTraceHit {
+  entry: number;
+  /** The line glob; for a labelled entry, its `value` glob. */
+  pattern: string;
+  /** A labelled entry's label glob and the line it matched. */
+  label?: string;
+  labelLine?: ReceiptTraceLine;
+  line: ReceiptTraceLine;
+}
+
+export interface ReceiptTraceItem {
+  mode: 'patterns' | 'record' | 'single';
+  patterns: string[];
+  lines: ReceiptTraceLine[];
+}
+
+/** The fields a trace names, in the order the panel lists them. */
+export const RECEIPT_TRACE_FIELDS = [
+  'orderId',
+  'total',
+  'paid',
+  'shipping',
+  'discount',
+  'payee',
+  'requireLine',
+  'skipIfLine',
+  'waitIfLine',
+] as const;
+export type ReceiptTraceField = (typeof RECEIPT_TRACE_FIELDS)[number];
+
+export type ReceiptTrace = Record<ReceiptTraceField, ReceiptTraceHit | null> & { items: ReceiptTraceItem[] };
+
+/** What the pipeline would do with the email under this parser. */
+export type ReceiptOutcome = 'read' | 'not_applicable' | 'skip_line' | 'wait_line';
+
 export interface EmailReceiptParserTestResult {
   parsed: ParsedReceipt;
+  /** Which entry and which line read each value. Absent from a server that predates it. */
+  trace?: ReceiptTrace;
+  outcome?: ReceiptOutcome;
   match: ReceiptMatchResult;
   /** Candidate transactions the matcher was given. */
   candidateCount: number;

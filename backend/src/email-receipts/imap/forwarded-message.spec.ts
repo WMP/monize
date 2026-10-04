@@ -35,6 +35,43 @@ describe("detectForwardedOriginal: Gmail", () => {
     });
   });
 
+  it("joins a Subject that Gmail hard-wrapped at 76 columns onto an unindented line", () => {
+    const text = lines(
+      "---------- Forwarded message ---------",
+      "Od: Allegro <powiadomienia@allegro.pl>",
+      "Date: niedz., 23 sie 2026 o 21:40",
+      "Subject: Kupiłeś i zapłaciłeś: Szukacz Par Przewodów Kabli Sonda Tester",
+      "MS6812R",
+      "To: <alice.example@example.com>",
+      "",
+      "Twój zakup: opłacony",
+    );
+
+    expect(detectForwardedOriginal(text)).toMatchObject({
+      fromAddress: "powiadomienia@allegro.pl",
+      subject:
+        "Kupiłeś i zapłaciłeś: Szukacz Par Przewodów Kabli Sonda Tester MS6812R",
+      sentAt: new Date("2026-08-23T21:40:00.000Z"),
+      bodyStartLine: 7,
+    });
+  });
+
+  it("does not take the first body line for the rest of a short Subject", () => {
+    const text = lines(
+      "---------- Forwarded message ---------",
+      "From: Example Shop <orders@shop.example.com>",
+      "Date: Mon, Aug 31, 2026 at 10:15 AM",
+      "To: <alice.example@example.com>",
+      "Subject: Order #A-1001 confirmed",
+      "Order total: 49.99",
+    );
+
+    expect(detectForwardedOriginal(text)).toMatchObject({
+      subject: "Order #A-1001 confirmed",
+      bodyStartLine: 5,
+    });
+  });
+
   it("reads a Polish Gmail forward with a Polish date", () => {
     const text = lines(
       "---------- Wiadomość przekazana dalej ---------",

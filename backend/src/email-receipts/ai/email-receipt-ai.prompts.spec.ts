@@ -169,6 +169,27 @@ describe("the two user messages", () => {
     }
     expect(PARSER_DRAFT_SYSTEM_PROMPT).toMatch(/\{orderid\}/);
     expect(PARSER_DRAFT_SYSTEM_PROMPT).toMatch(/ONLY ids that appear/);
+    // The language the validator accepts: version 2, labelled entries, order, blocks.
+    expect(PARSER_DRAFT_SYSTEM_PROMPT).toContain('"version": 2');
+    for (const word of [
+      '"label"',
+      '"within"',
+      "ARRAY ORDER",
+      '"record"',
+      '"skipLines"',
+      '"optional"',
+      '"paid"',
+      '"payee"',
+      '"single"',
+      '"joinWrapped"',
+      '"requireLine"',
+      '"skipIfLine"',
+      '"waitIfLine"',
+      "{*}",
+      "gross",
+    ]) {
+      expect(PARSER_DRAFT_SYSTEM_PROMPT).toContain(word);
+    }
     expect(RECEIPT_REVIEW_SYSTEM_PROMPT).toMatch(/LINE TOTAL/);
     expect(RECEIPT_REVIEW_SYSTEM_PROMPT).toContain('"shippingCategoryId"');
     expect(RECEIPT_REVIEW_SYSTEM_PROMPT).toContain('"discountCategoryId"');

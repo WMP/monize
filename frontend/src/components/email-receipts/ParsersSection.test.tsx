@@ -93,6 +93,40 @@ describe('ParsersSection', () => {
     expect(within(screen.getByRole('row', { name: /Allegro parser/ })).queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument();
   });
 
+  describe('view JSON', () => {
+    it('offers View JSON on every parser, draft or approved, valid or not', async () => {
+      api.list.mockResolvedValue([
+        approved,
+        draft,
+        makeParser({ id: 'p-3', name: 'Broken', definitionValid: false, definition: {} }),
+      ]);
+      await renderSection();
+      for (const name of [/Allegro parser/, /Amazon draft/, /Broken/]) {
+        expect(within(screen.getByRole('row', { name })).getByRole('button', { name: 'View JSON' })).toBeInTheDocument();
+      }
+    });
+
+    it('opens the stored definition read-only and copies it', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      const definition = { version: 2, total: [{ label: 'RAZEM', value: '{amount} zł' }] };
+      api.list.mockResolvedValue([makeParser({ definition })]);
+      await renderSection();
+      await click(within(screen.getByRole('row', { name: /Allegro parser/ })).getByRole('button', { name: 'View JSON' }));
+
+      const dialog = screen.getByRole('dialog', { name: 'Definition of Allegro parser' });
+      expect(within(dialog).getByLabelText('Definition JSON').textContent).toBe(JSON.stringify(definition, null, 2));
+      await click(within(dialog).getByRole('button', { name: 'Copy' }));
+      expect(writeText).toHaveBeenCalledWith(JSON.stringify(definition, null, 2));
+      expect(toast.success).toHaveBeenCalledWith('JSON copied');
+
+      await act(async () => {
+        fireEvent.keyDown(document, { key: 'Escape' });
+      });
+      expect(screen.queryByRole('dialog', { name: 'Definition of Allegro parser' })).not.toBeInTheDocument();
+    });
+  });
+
   describe('approve', () => {
     it('approves at the revision the person read and updates the row', async () => {
       api.approve.mockResolvedValue({ ...draft, status: 'approved', revision: 6 });
