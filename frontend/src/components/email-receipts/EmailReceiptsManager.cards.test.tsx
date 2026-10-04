@@ -41,7 +41,7 @@ const tx = { id: 'tx-1', date: '2026-08-30', amount: -25, currencyCode: 'USD', p
 const shop = (n: number, over: Record<string, unknown> = {}) =>
   makeReceipt({ id: `r-${n}`, subject: `Order ${n}`, status: 'no_parser', fromAddress: 'o@shop.example', fromDomain: 'shop.example', ...over });
 const seven = [1, 2, 3, 4, 5, 6, 7].map((n) => shop(n));
-const proposed = makeReceipt({ id: 'r-p', subject: 'Order proposed', status: 'review', displayState: 'proposed', transaction: tx });
+const proposed = makeReceipt({ id: 'r-p', aiReviewRequestId: 'rq-1', subject: 'Order proposed', status: 'review', displayState: 'proposed', transaction: tx });
 const applied = makeReceipt({ id: 'r-a', subject: 'Order applied', status: 'review', displayState: 'applied', transaction: tx });
 const unmatched = makeReceipt({ id: 'r-u', subject: 'Order unmatched', status: 'unmatched' });
 
@@ -166,7 +166,7 @@ describe('EmailReceiptsManager: the cards', () => {
       await click(screen.getByRole('button', { name: /^In review/ }));
       expect(inlineActions('Order proposed')[0]).toBe('Approve');
       await click(within(rowOf('Order proposed')).getByRole('button', { name: 'Approve' }));
-      expect(api.approveProposal).toHaveBeenCalledWith('r-p');
+      expect(api.approveProposal).toHaveBeenCalledWith('rq-1');
       expect(toast.success).toHaveBeenCalledWith('Proposal approved');
     });
 
