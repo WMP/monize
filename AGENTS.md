@@ -45,10 +45,10 @@ scripts/verify-schema.sh                                  # migrations replay as
 
 ## Required before you push
 
-Mirrors `.github/workflows/ci.yml`. Run the focused test while developing; run the gate for each layer you touched once, before pushing, and quote the result.
+Mirrors `.github/workflows/ci.yml`. While developing run `npm run test:changed` (changed specs plus every guard, failures only); the coverage gate is CI's, run it locally only when asked.
 
-- `backend/`: the three lint/typecheck commands, `TZ=UTC npm run test:unit -- --coverage`, plus `migration:lint` when a migration changed and `npm run build && npm run test:integration` when a query, an entity, a migration or an RLS context changed.
-- `frontend/`: `lint`, `type-check`, `i18n:check`, `test:cov`, `build`.
+- `backend/`: the three lint/typecheck commands, `npm run test:changed`, plus `migration:lint` when a migration changed and `npm run build && npm run test:integration` when a query, an entity, a migration or an RLS context changed.
+- `frontend/`: `lint`, `type-check`, `i18n:check`, `test:changed`, `build`.
 - A migration or `database/schema.sql`: `migration:lint`, `scripts/verify-schema.sh`, `node scripts/check-migration-prefixes.mjs`.
 - An env var, a documented path or a Helm default: the two `scripts/check-*.mjs` above.
 - A control an E2E spec drives was renamed or removed: grep `e2e/` for its accessible name; no unit suite loads those specs.

@@ -12,6 +12,7 @@ npm run build              # Production build (standalone output for Docker)
 npm run lint               # ESLint
 npm run type-check         # tsc --noEmit
 npm run test               # Vitest (single run)
+npm run test:changed       # Tests related to changes since origin/main plus every guard; prints failures only; no coverage
 npm run test:watch         # Vitest (watch mode)
 npm run test:cov           # Coverage report (91% lines, 90% stmts, 87% funcs, 85% branches)
 npm run i18n:pseudo        # Regenerate the xx pseudo-locale from en

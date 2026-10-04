@@ -22,6 +22,7 @@ npm run format             # Prettier over src/ and test/
 npm run typecheck          # tsc over src AND test (CI gate; plain `tsc --noEmit` skips test/)
 npm run test               # test:unit then test:integration -- needs PostgreSQL; takes no args
 npm run test:unit          # Unit tests only (src/**/*.spec.ts); no database needed
+npm run test:changed       # Specs related to changes since origin/main plus every guard; prints failures only; no coverage
 npm run test:integration   # test/integration/*.spec.ts against real PG, one worker
 npm run test:cov           # Coverage report (95% lines, 94% stmts, 95% funcs, 85% branches)
 npm run test:e2e           # test/*.e2e-spec.ts -- not a CI gate; three of five suites are broken (docs/backend/testing.md)
