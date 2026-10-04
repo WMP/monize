@@ -153,7 +153,8 @@
     "payeeUnknown": "Alıcı bulunamadı",
     "payeeUnavailable": "Alıcı listesi kullanılamıyor",
     "actions": {
-      "approve": "Onayla"
+      "approve": "Onayla",
+      "viewJson": "JSON'u görüntüle"
     },
     "toasts": {
       "approved": "Ayrıştırıcı onaylandı",
@@ -165,6 +166,14 @@
     "deleteDialog": {
       "title": "Ayrıştırıcı silinsin mi?",
       "message": "{name} ayrıştırıcısı silinecek. Daha önce okuduğu e-postalar sonuçlarını korur."
+    },
+    "jsonDialog": {
+      "title": "{name} tanımı",
+      "help": "Ayrıştırıcı tanımı, saklandığı hâliyle. Burada salt okunurdur; değiştirmek için Düzenle'yi kullanın.",
+      "contentLabel": "Tanım JSON'u",
+      "copy": "Kopyala",
+      "copied": "JSON kopyalandı",
+      "copyFailed": "JSON kopyalanamadı"
     }
   },
   "editor": {
@@ -222,6 +231,18 @@
       "defaultHelp": "Hiçbir kuralla eşleşmeyen kalemler için kullanılır.",
       "shippingLabel": "Kargo kategorisi",
       "shippingHelp": "Kargo satırının kategorisi."
+    },
+    "mode": {
+      "label": "Düzenleme modu",
+      "form": "Form",
+      "json": "JSON",
+      "formUnavailable": "Bu tanım formun gösteremediği bir şey kullanıyor: etiketli girdiler, çok satırlı kalemler veya formda karşılığı olmayan anahtarlar. JSON olarak düzenleyin.",
+      "jsonInvalid": "JSON henüz geçerli değil, bu yüzden form gösterilemiyor. Önce düzeltin."
+    },
+    "json": {
+      "label": "Ayrıştırıcı tanımı (JSON)",
+      "help": "Formun oluşturduğu tanımın aynısı. Sunucu kaydettiğinizde kontrol eder, aşağıdaki sınama da onu şu anki hâliyle okur.",
+      "parseError": "Bu geçerli bir JSON değil ya da bir JSON nesnesi değil. Ayrıştırıcıyı kaydetmek veya sınamak için düzeltin."
     }
   },
   "problems": {
@@ -230,7 +251,12 @@
     "paths": {
       "definition": "Tanım",
       "line": "{field}, {line}. satır",
-      "rule": "Kategori kuralı {rule}, {part}"
+      "rule": "Kategori kuralı {rule}, {part}",
+      "entryPart": "{field}, {line}. girdi, {part}",
+      "skipLine": "Atlanacak satır {line}",
+      "recordStep": "Kayıt adımı {step}",
+      "recordStepPart": "Kayıt adımı {step}, {part}",
+      "recordAlternative": "Kayıt adımı {step}, alternatif {alternative}"
     },
     "fields": {
       "orderId": "Sipariş numarası desenleri",
@@ -245,12 +271,28 @@
       "rulePattern": "desen",
       "ruleCategory": "kategori",
       "defaultCategory": "Varsayılan kategori",
-      "shippingCategory": "Kargo kategorisi"
+      "shippingCategory": "Kargo kategorisi",
+      "skipLines": "Atlanacak satırlar",
+      "record": "Kayıt",
+      "label": "label",
+      "value": "value",
+      "within": "within",
+      "line": "line",
+      "optional": "optional",
+      "paid": "Ödenen tutar desenleri",
+      "payee": "Satıcı desenleri",
+      "requireLine": "Zorunlu satırlar",
+      "skipIfLine": "E-postayı atlatan satırlar",
+      "waitIfLine": "E-postayı bekleten satırlar",
+      "single": "Tek kalem",
+      "singleName": "Tek kalem adı",
+      "joinWrapped": "Bölünmüş satırları birleştir",
+      "ruleField": "field"
     },
     "codes": {
       "not_object": "geçerli bir tanım değil",
       "unknown_key": "bir ayrıştırıcıda bulunabilecek bir şey değil",
-      "invalid_version": "bu sunucunun okumadığı bir sürüm",
+      "unsupported_version": "bu sunucunun okumadığı bir sürüm (sürüm 2'yi kullanın)",
       "invalid_type": "yanlış türde bir değer içeriyor",
       "empty": "boş olmamalı",
       "too_many": "çok fazla girdi içeriyor (en fazla {max})",
@@ -262,7 +304,15 @@
       "capture_not_allowed": "bu alanın kabul etmediği bir yakalama adı kullanıyor",
       "capture_missing": "bu alanın ihtiyaç duyduğu bir yakalamayı içermiyor",
       "capture_conflict": "hem satır toplamını hem birim fiyatı yakalıyor. Birini seçin.",
-      "invalid_uuid": "geçerli bir kategori değil"
+      "invalid_uuid": "geçerli bir kategori değil",
+      "out_of_range": "1 ile {max} arasında bir tam sayı olmalı",
+      "items_patterns_and_record": "hem patterns hem record içeriyor. Birini seçin.",
+      "items_shape_missing": "patterns veya record'dan birine ihtiyaç duyuyor",
+      "skip_lines_need_record": "yalnızca record ile birlikte kullanılabilir",
+      "record_name_missing": "adımlarından birinde {capture} yakalamalı",
+      "items_single_conflict": "patterns veya record'un yanında tek bir kalem içeriyor. Birini seçin.",
+      "join_wrapped_needs_patterns": "yalnızca kalem desenleriyle çalışır",
+      "invalid_value": "bu alanın kabul etmediği bir değer içeriyor"
     }
   },
   "test": {
@@ -285,7 +335,33 @@
     },
     "noPayee": "alıcı yok",
     "ambiguous": "{count, plural, one {# işlem} other {# işlem}} eşit derecede uyuyor, bu yüzden siz seçene kadar hiçbiri bağlanmaz.",
-    "unmatched": "{count, plural, one {# aday} other {# aday}} arasında eşleşen işlem yok."
+    "unmatched": "{count, plural, one {# aday} other {# aday}} arasında eşleşen işlem yok.",
+    "jsonInvalid": "JSON geçerli değil, bu yüzden henüz sınanacak bir şey yok.",
+    "outcome": {
+      "not_applicable": "Bu ayrıştırıcı bu e-postayı okumaz: zorunlu satırlarından hiçbiri e-postada yok, bu yüzden gönderen için sıradaki ayrıştırıcı denenir.",
+      "skip_line": "Bu ayrıştırıcı bu e-postayı kenara ayırır: e-postada atlamasını gerektiren bir satır var.",
+      "wait_line": "Bu ayrıştırıcı bu e-postayı bekletir: bir satır siparişin henüz kesinleşmediğini söylüyor, bu yüzden e-posta daha sonra yeniden okunur."
+    },
+    "matchedBy": {
+      "heading": "Eşleşen",
+      "none": "Bu e-postadan hiçbir değer okunmadı.",
+      "fields": {
+        "orderId": "Sipariş numarası",
+        "total": "Toplam",
+        "paid": "Ödenen",
+        "shipping": "Kargo",
+        "discount": "İndirim",
+        "payee": "Satıcı",
+        "requireLine": "Zorunlu satır",
+        "skipIfLine": "Atlama satırı",
+        "waitIfLine": "Bekleme satırı"
+      },
+      "entryLine": "girdi {entry} ({pattern}), {line}. satır: {text}",
+      "entrySubject": "girdi {entry} ({pattern}), konu: {text}",
+      "labelled": "girdi {entry}, {labelLine}. satırdaki {label} etiketi ({labelText}), {line}. satırdaki {pattern} değeri: {text}",
+      "item": "Kalem {number}",
+      "itemLine": "{pattern}, {line}. satır: {text}"
+    }
   },
   "parsed": {
     "notFound": "Bulunamadı",
@@ -310,9 +386,12 @@
       "no_items": "Hiç kalem bulunamadı.",
       "items_unbalanced": "Kalemler toplamla tutmuyor.",
       "items_uncategorized": "Bazı kalemlerin kategorisi yok.",
-      "shipping_uncategorized": "Kargo satırının kategorisi yok."
+      "shipping_uncategorized": "Kargo satırının kategorisi yok.",
+      "item_amount_missing": "Bir kalemin tutarı yok ve e-postada ona verilecek tek bir toplam yok."
     },
-    "readByAi": "Yapay zekâ okudu"
+    "readByAi": "Yapay zekâ okudu",
+    "paid": "Ödenen",
+    "payee": "Satıcı"
   },
   "state": {
     "pending": "Okunmayı bekliyor",
@@ -457,7 +536,10 @@
       "amount_differs": "Okunan toplam işlem tutarından farklı, bu yüzden yalnızca bir açıklama öneriliyor.",
       "proposal_fallback": "Kalem kalem öneri reddedildi, bu yüzden yalnızca bir açıklama öneriliyor.",
       "nothing_to_propose": "E-posta bu işleme bir şey eklemiyor.",
-      "proposal_refused": "Öneri reddedildi, bu yüzden hiçbir şey önerilmedi."
+      "proposal_refused": "Öneri reddedildi, bu yüzden hiçbir şey önerilmedi.",
+      "skip_line": "Bu ayrıştırıcının atladığı bir satır bulundu, bu yüzden e-posta yok sayıldı.",
+      "wait_line": "Bir satır siparişin henüz kesinleşmediğini söylüyor, bu yüzden e-posta daha sonra yeniden okunacak.",
+      "item_amount_missing": "Bir kalemin tutarı yok ve e-postada ona verilecek tek bir toplam yok."
     },
     "reasonUnknown": "Neden: {reason}",
     "requestNote": "İnceleme isteği ({state}): {note}",

@@ -153,7 +153,8 @@
     "payeeUnknown": "수취인을 찾을 수 없음",
     "payeeUnavailable": "수취인 목록을 사용할 수 없음",
     "actions": {
-      "approve": "승인"
+      "approve": "승인",
+      "viewJson": "JSON 보기"
     },
     "toasts": {
       "approved": "파서를 승인했습니다",
@@ -165,6 +166,14 @@
     "deleteDialog": {
       "title": "파서를 삭제할까요?",
       "message": "파서 {name}을(를) 삭제합니다. 이 파서가 이미 읽은 이메일의 결과는 그대로 유지됩니다."
+    },
+    "jsonDialog": {
+      "title": "{name}의 정의",
+      "help": "저장된 그대로의 파서 정의입니다. 여기서는 읽기 전용이며, 변경하려면 편집을 사용하세요.",
+      "contentLabel": "정의 JSON",
+      "copy": "복사",
+      "copied": "JSON을 복사했습니다",
+      "copyFailed": "JSON을 복사하지 못했습니다"
     }
   },
   "editor": {
@@ -222,6 +231,18 @@
       "defaultHelp": "어떤 규칙과도 일치하지 않는 품목에 사용됩니다.",
       "shippingLabel": "배송비 카테고리",
       "shippingHelp": "배송비 줄의 카테고리입니다."
+    },
+    "mode": {
+      "label": "편집 모드",
+      "form": "양식",
+      "json": "JSON",
+      "formUnavailable": "이 정의에는 양식에서 표시할 수 없는 내용이 있습니다. 레이블이 있는 항목, 여러 줄 품목, 또는 양식에 해당 필드가 없는 키입니다. JSON으로 편집하세요.",
+      "jsonInvalid": "JSON이 아직 올바르지 않아 양식을 표시할 수 없습니다. 먼저 수정하세요."
+    },
+    "json": {
+      "label": "파서 정의 (JSON)",
+      "help": "양식이 만드는 것과 같은 정의입니다. 저장할 때 서버가 확인하며, 아래 테스트는 지금 내용 그대로 읽습니다.",
+      "parseError": "올바른 JSON이 아니거나 JSON 객체가 아닙니다. 파서를 저장하거나 테스트하려면 수정하세요."
     }
   },
   "problems": {
@@ -230,7 +251,12 @@
     "paths": {
       "definition": "정의",
       "line": "{field}, {line}번째 줄",
-      "rule": "카테고리 규칙 {rule}, {part}"
+      "rule": "카테고리 규칙 {rule}, {part}",
+      "entryPart": "{field}, {line}번째 항목, {part}",
+      "skipLine": "건너뛸 줄 {line}",
+      "recordStep": "레코드 단계 {step}",
+      "recordStepPart": "레코드 단계 {step}, {part}",
+      "recordAlternative": "레코드 단계 {step}, 대체 {alternative}"
     },
     "fields": {
       "orderId": "주문 번호 패턴",
@@ -245,12 +271,28 @@
       "rulePattern": "패턴",
       "ruleCategory": "카테고리",
       "defaultCategory": "기본 카테고리",
-      "shippingCategory": "배송비 카테고리"
+      "shippingCategory": "배송비 카테고리",
+      "skipLines": "건너뛸 줄",
+      "record": "레코드",
+      "label": "label",
+      "value": "value",
+      "within": "within",
+      "line": "line",
+      "optional": "optional",
+      "paid": "결제 금액 패턴",
+      "payee": "판매처 패턴",
+      "requireLine": "필수 줄",
+      "skipIfLine": "이메일을 건너뛰게 하는 줄",
+      "waitIfLine": "이메일을 보류하게 하는 줄",
+      "single": "단일 품목",
+      "singleName": "단일 품목 이름",
+      "joinWrapped": "줄바꿈된 줄 합치기",
+      "ruleField": "field"
     },
     "codes": {
       "not_object": "은(는) 유효한 정의가 아닙니다",
       "unknown_key": "은(는) 파서에 넣을 수 없는 항목입니다",
-      "invalid_version": "은(는) 이 서버가 읽을 수 없는 버전입니다",
+      "unsupported_version": "은(는) 이 서버가 읽을 수 없는 버전입니다 (버전 2를 사용하세요)",
       "invalid_type": "의 값 종류가 올바르지 않습니다",
       "empty": "은(는) 비워 둘 수 없습니다",
       "too_many": "의 항목이 너무 많습니다 (최대 {max}개)",
@@ -262,7 +304,15 @@
       "capture_not_allowed": "에서 이 필드가 허용하지 않는 캡처 이름을 사용했습니다",
       "capture_missing": "에 이 필드에 필요한 캡처가 없습니다",
       "capture_conflict": "에서 줄 합계와 단가를 모두 가져옵니다. 둘 중 하나만 사용하세요.",
-      "invalid_uuid": "은(는) 유효한 카테고리가 아닙니다"
+      "invalid_uuid": "은(는) 유효한 카테고리가 아닙니다",
+      "out_of_range": "은(는) 1부터 {max}까지의 정수여야 합니다",
+      "items_patterns_and_record": "에 patterns와 record가 모두 있습니다. 둘 중 하나만 사용하세요.",
+      "items_shape_missing": "에는 patterns 또는 record 중 하나가 필요합니다",
+      "skip_lines_need_record": "은(는) record와 함께만 사용할 수 있습니다",
+      "record_name_missing": "은(는) 단계 중 하나에서 {capture}을(를) 가져와야 합니다",
+      "items_single_conflict": "에 patterns 또는 record 외에 단일 품목이 있습니다. 둘 중 하나만 사용하세요.",
+      "join_wrapped_needs_patterns": "은(는) 품목 패턴에서만 작동합니다",
+      "invalid_value": "에 이 필드가 받아들이지 않는 값이 있습니다"
     }
   },
   "test": {
@@ -285,7 +335,33 @@
     },
     "noPayee": "수취인 없음",
     "ambiguous": "{count, plural, one {거래 #건이} other {거래 #건이}} 똑같이 잘 맞으므로 직접 선택하기 전까지 연결되지 않습니다.",
-    "unmatched": "{count, plural, one {후보 #건} other {후보 #건}} 중 일치하는 거래가 없습니다."
+    "unmatched": "{count, plural, one {후보 #건} other {후보 #건}} 중 일치하는 거래가 없습니다.",
+    "jsonInvalid": "JSON이 올바르지 않아 아직 테스트할 내용이 없습니다.",
+    "outcome": {
+      "not_applicable": "이 파서는 이 이메일을 읽지 않습니다. 필수 줄이 하나도 없으므로 발신자의 다음 파서를 시도합니다.",
+      "skip_line": "이 파서는 이 이메일을 따로 둡니다. 건너뛰기 대상 줄이 들어 있습니다.",
+      "wait_line": "이 파서는 이 이메일을 보류합니다. 주문이 아직 확정되지 않았다는 줄이 있으므로 나중에 다시 읽습니다."
+    },
+    "matchedBy": {
+      "heading": "일치한 항목",
+      "none": "이 이메일에서 읽은 값이 없습니다.",
+      "fields": {
+        "orderId": "주문 번호",
+        "total": "합계",
+        "paid": "결제 금액",
+        "shipping": "배송비",
+        "discount": "할인",
+        "payee": "판매처",
+        "requireLine": "필수 줄",
+        "skipIfLine": "건너뛰기 줄",
+        "waitIfLine": "보류 줄"
+      },
+      "entryLine": "항목 {entry} ({pattern}), {line}번째 줄: {text}",
+      "entrySubject": "항목 {entry} ({pattern}), 제목: {text}",
+      "labelled": "항목 {entry}, {labelLine}번째 줄({labelText})의 레이블 {label}, {line}번째 줄의 값 {pattern}: {text}",
+      "item": "품목 {number}",
+      "itemLine": "{pattern}, {line}번째 줄: {text}"
+    }
   },
   "parsed": {
     "notFound": "찾을 수 없음",
@@ -310,9 +386,12 @@
       "no_items": "품목을 찾지 못했습니다.",
       "items_unbalanced": "품목의 합이 합계와 맞지 않습니다.",
       "items_uncategorized": "카테고리가 없는 품목이 있습니다.",
-      "shipping_uncategorized": "배송비 줄에 카테고리가 없습니다."
+      "shipping_uncategorized": "배송비 줄에 카테고리가 없습니다.",
+      "item_amount_missing": "품목에 금액이 없고, 이메일에도 그 금액을 정할 단일 합계가 없습니다."
     },
-    "readByAi": "AI가 읽음"
+    "readByAi": "AI가 읽음",
+    "paid": "결제 금액",
+    "payee": "판매처"
   },
   "state": {
     "pending": "읽기 대기 중",
@@ -457,7 +536,10 @@
       "amount_differs": "읽은 합계가 거래 금액과 달라 설명만 제안합니다.",
       "proposal_fallback": "품목별 제안이 거부되어 설명만 제안합니다.",
       "nothing_to_propose": "이 이메일은 이 거래에 추가할 내용이 없습니다.",
-      "proposal_refused": "제안이 거부되어 아무것도 제안하지 않았습니다."
+      "proposal_refused": "제안이 거부되어 아무것도 제안하지 않았습니다.",
+      "skip_line": "이 파서가 건너뛰는 줄이 발견되어 이메일을 무시했습니다.",
+      "wait_line": "주문이 아직 확정되지 않았다는 줄이 있어 이메일을 나중에 다시 읽습니다.",
+      "item_amount_missing": "품목에 금액이 없고, 이메일에도 그 금액을 정할 단일 합계가 없습니다."
     },
     "reasonUnknown": "사유: {reason}",
     "requestNote": "검토 요청 ({state}): {note}",

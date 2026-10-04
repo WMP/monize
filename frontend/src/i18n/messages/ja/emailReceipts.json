@@ -153,7 +153,8 @@
     "payeeUnknown": "支払先が見つかりません",
     "payeeUnavailable": "支払先の一覧を利用できません",
     "actions": {
-      "approve": "承認"
+      "approve": "承認",
+      "viewJson": "JSONを表示"
     },
     "toasts": {
       "approved": "パーサーを承認しました",
@@ -165,6 +166,14 @@
     "deleteDialog": {
       "title": "パーサーを削除しますか?",
       "message": "パーサー {name} を削除します。このパーサーがすでに読み取ったメールの結果は保持されます。"
+    },
+    "jsonDialog": {
+      "title": "{name} の定義",
+      "help": "保存されている状態のパーサー定義です。ここでは読み取り専用です。変更するには「編集」を使ってください。",
+      "contentLabel": "定義のJSON",
+      "copy": "コピー",
+      "copied": "JSONをコピーしました",
+      "copyFailed": "JSONをコピーできませんでした"
     }
   },
   "editor": {
@@ -222,6 +231,18 @@
       "defaultHelp": "どのルールにも一致しない商品に使用されます。",
       "shippingLabel": "送料のカテゴリ",
       "shippingHelp": "送料の行に設定するカテゴリです。"
+    },
+    "mode": {
+      "label": "編集モード",
+      "form": "フォーム",
+      "json": "JSON",
+      "formUnavailable": "この定義には、フォームで表示できないものが含まれています。ラベル付きの項目、複数行の明細、対応するフィールドがないキーなどです。JSONとして編集してください。",
+      "jsonInvalid": "JSONがまだ有効ではないため、フォームを表示できません。先に修正してください。"
+    },
+    "json": {
+      "label": "パーサーの定義 (JSON)",
+      "help": "フォームが作成するものと同じ定義です。保存時にサーバーが検証し、下のテストは現在の内容のまま読み取ります。",
+      "parseError": "有効なJSONではないか、JSONオブジェクトではありません。パーサーを保存またはテストするには修正してください。"
     }
   },
   "problems": {
@@ -230,7 +251,12 @@
     "paths": {
       "definition": "定義",
       "line": "{field}、{line} 行目",
-      "rule": "カテゴリのルール {rule}、{part}"
+      "rule": "カテゴリのルール {rule}、{part}",
+      "entryPart": "{field}、項目 {line}、{part}",
+      "skipLine": "スキップする行 {line}",
+      "recordStep": "レコードのステップ {step}",
+      "recordStepPart": "レコードのステップ {step}、{part}",
+      "recordAlternative": "レコードのステップ {step}、代替 {alternative}"
     },
     "fields": {
       "orderId": "注文番号のパターン",
@@ -245,12 +271,28 @@
       "rulePattern": "パターン",
       "ruleCategory": "カテゴリ",
       "defaultCategory": "既定のカテゴリ",
-      "shippingCategory": "送料のカテゴリ"
+      "shippingCategory": "送料のカテゴリ",
+      "skipLines": "スキップする行",
+      "record": "レコード",
+      "label": "label",
+      "value": "value",
+      "within": "within",
+      "line": "line",
+      "optional": "optional",
+      "paid": "支払額のパターン",
+      "payee": "販売元のパターン",
+      "requireLine": "必須の行",
+      "skipIfLine": "メールをスキップする行",
+      "waitIfLine": "メールを保留にする行",
+      "single": "単一の明細",
+      "singleName": "単一の明細の名前",
+      "joinWrapped": "折り返された行を連結",
+      "ruleField": "field"
     },
     "codes": {
       "not_object": "は有効な定義ではありません",
       "unknown_key": "はパーサーに指定できない項目です",
-      "invalid_version": "はこのサーバーが読み取れないバージョンです",
+      "unsupported_version": "はこのサーバーが読み取れないバージョンです (バージョン 2 を使用してください)",
       "invalid_type": "の値の種類が正しくありません",
       "empty": "は空にできません",
       "too_many": "の項目数が多すぎます (最大 {max} 個)",
@@ -262,7 +304,15 @@
       "capture_not_allowed": "でこのフィールドが受け付けないキャプチャ名が使われています",
       "capture_missing": "に、このフィールドに必要なキャプチャがありません",
       "capture_conflict": "が行の合計と単価の両方を取り込んでいます。どちらか一方にしてください。",
-      "invalid_uuid": "は有効なカテゴリではありません"
+      "invalid_uuid": "は有効なカテゴリではありません",
+      "out_of_range": "は 1 から {max} までの整数にしてください",
+      "items_patterns_and_record": "に patterns と record の両方があります。どちらか一方にしてください。",
+      "items_shape_missing": "には patterns か record のどちらかが必要です",
+      "skip_lines_need_record": "は record と一緒にのみ使用できます",
+      "record_name_missing": "は、いずれかのステップで {capture} を取り込む必要があります",
+      "items_single_conflict": "に patterns または record のほかに単一の明細があります。どちらか一方にしてください。",
+      "join_wrapped_needs_patterns": "は明細のパターンでのみ機能します",
+      "invalid_value": "に、このフィールドが受け付けない値があります"
     }
   },
   "test": {
@@ -285,7 +335,33 @@
     },
     "noPayee": "支払先なし",
     "ambiguous": "{count, plural, one {# 件の取引が} other {# 件の取引が}}同じ程度に一致するため、あなたが選ぶまでどれにも紐づけられません。",
-    "unmatched": "{count, plural, one {# 件の候補} other {# 件の候補}}のうち、一致する取引はありません。"
+    "unmatched": "{count, plural, one {# 件の候補} other {# 件の候補}}のうち、一致する取引はありません。",
+    "jsonInvalid": "JSONが有効ではないため、まだテストするものがありません。",
+    "outcome": {
+      "not_applicable": "このパーサーはこのメールを読み取りません。必須の行が1つも含まれていないため、送信元の次のパーサーが試されます。",
+      "skip_line": "このパーサーはこのメールを除外します。スキップ対象の行が含まれています。",
+      "wait_line": "このパーサーはこのメールを保留にします。注文がまだ確定していないことを示す行があるため、後でもう一度読み取られます。"
+    },
+    "matchedBy": {
+      "heading": "一致した内容",
+      "none": "このメールから読み取られた値はありません。",
+      "fields": {
+        "orderId": "注文番号",
+        "total": "合計",
+        "paid": "支払額",
+        "shipping": "送料",
+        "discount": "割引",
+        "payee": "販売元",
+        "requireLine": "必須の行",
+        "skipIfLine": "スキップする行",
+        "waitIfLine": "保留にする行"
+      },
+      "entryLine": "項目 {entry} ({pattern})、{line} 行目: {text}",
+      "entrySubject": "項目 {entry} ({pattern})、件名: {text}",
+      "labelled": "項目 {entry}、{labelLine} 行目 ({labelText}) のラベル {label}、{line} 行目の値 {pattern}: {text}",
+      "item": "明細 {number}",
+      "itemLine": "{pattern}、{line} 行目: {text}"
+    }
   },
   "parsed": {
     "notFound": "見つかりません",
@@ -310,9 +386,12 @@
       "no_items": "明細行が見つかりませんでした。",
       "items_unbalanced": "明細行の合計が総額と一致しません。",
       "items_uncategorized": "カテゴリのない明細行があります。",
-      "shipping_uncategorized": "送料の行にカテゴリがありません。"
+      "shipping_uncategorized": "送料の行にカテゴリがありません。",
+      "item_amount_missing": "明細に金額がなく、メールにも割り当てられる単一の合計がありません。"
     },
-    "readByAi": "AIが読み取り"
+    "readByAi": "AIが読み取り",
+    "paid": "支払額",
+    "payee": "販売元"
   },
   "state": {
     "pending": "読み取り待ち",
@@ -457,7 +536,10 @@
       "amount_differs": "読み取った合計が取引の金額と異なるため、説明のみを提案しています。",
       "proposal_fallback": "明細付きの提案は拒否されたため、説明のみを提案しています。",
       "nothing_to_propose": "このメールからこの取引に追加できる情報はありません。",
-      "proposal_refused": "提案が拒否されたため、何も提案されませんでした。"
+      "proposal_refused": "提案が拒否されたため、何も提案されませんでした。",
+      "skip_line": "このパーサーがスキップ対象とする行が見つかったため、メールは無視されました。",
+      "wait_line": "注文がまだ確定していないことを示す行があるため、メールは後でもう一度読み取られます。",
+      "item_amount_missing": "明細に金額がなく、メールにも割り当てられる単一の合計がありません。"
     },
     "reasonUnknown": "理由: {reason}",
     "requestNote": "レビュー依頼 ({state}): {note}",

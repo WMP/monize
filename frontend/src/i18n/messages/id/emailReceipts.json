@@ -153,7 +153,8 @@
     "payeeUnknown": "Penerima tidak ditemukan",
     "payeeUnavailable": "Daftar penerima tidak tersedia",
     "actions": {
-      "approve": "Setujui"
+      "approve": "Setujui",
+      "viewJson": "Lihat JSON"
     },
     "toasts": {
       "approved": "Pengurai disetujui",
@@ -165,6 +166,14 @@
     "deleteDialog": {
       "title": "Hapus pengurai?",
       "message": "Pengurai {name} akan dihapus. Surel yang sudah dibacanya tetap menyimpan hasilnya."
+    },
+    "jsonDialog": {
+      "title": "Definisi {name}",
+      "help": "Definisi pengurai sebagaimana tersimpan. Di sini hanya dapat dibaca; gunakan Ubah untuk mengubahnya.",
+      "contentLabel": "JSON definisi",
+      "copy": "Salin",
+      "copied": "JSON disalin",
+      "copyFailed": "Tidak dapat menyalin JSON"
     }
   },
   "editor": {
@@ -222,6 +231,18 @@
       "defaultHelp": "Digunakan untuk item yang tidak cocok dengan aturan mana pun.",
       "shippingLabel": "Kategori ongkos kirim",
       "shippingHelp": "Kategori untuk baris ongkos kirim."
+    },
+    "mode": {
+      "label": "Mode pengeditan",
+      "form": "Formulir",
+      "json": "JSON",
+      "formUnavailable": "Definisi ini menggunakan sesuatu yang tidak dapat ditampilkan formulir: entri berlabel, item multibaris, atau kunci yang tidak punya bidang. Edit sebagai JSON.",
+      "jsonInvalid": "JSON belum valid, jadi formulir tidak dapat ditampilkan. Perbaiki dahulu."
+    },
+    "json": {
+      "label": "Definisi pengurai (JSON)",
+      "help": "Definisi yang sama dengan yang dibuat formulir. Server memeriksanya saat Anda menyimpan, dan pengujian di bawah membacanya sebagaimana adanya sekarang.",
+      "parseError": "Ini bukan JSON yang valid, atau bukan objek JSON. Perbaiki agar pengurai dapat disimpan atau diuji."
     }
   },
   "problems": {
@@ -230,7 +251,12 @@
     "paths": {
       "definition": "Definisi",
       "line": "{field}, baris {line}",
-      "rule": "Aturan kategori {rule}, {part}"
+      "rule": "Aturan kategori {rule}, {part}",
+      "entryPart": "{field}, entri {line}, {part}",
+      "skipLine": "Baris yang dilewati {line}",
+      "recordStep": "Langkah rekaman {step}",
+      "recordStepPart": "Langkah rekaman {step}, {part}",
+      "recordAlternative": "Langkah rekaman {step}, alternatif {alternative}"
     },
     "fields": {
       "orderId": "Pola nomor pesanan",
@@ -245,12 +271,28 @@
       "rulePattern": "pola",
       "ruleCategory": "kategori",
       "defaultCategory": "Kategori default",
-      "shippingCategory": "Kategori ongkos kirim"
+      "shippingCategory": "Kategori ongkos kirim",
+      "skipLines": "Baris yang dilewati",
+      "record": "Rekaman",
+      "label": "label",
+      "value": "value",
+      "within": "within",
+      "line": "line",
+      "optional": "optional",
+      "paid": "Pola jumlah dibayar",
+      "payee": "Pola penjual",
+      "requireLine": "Baris wajib",
+      "skipIfLine": "Baris yang membuat surel dilewati",
+      "waitIfLine": "Baris yang menahan surel",
+      "single": "Item tunggal",
+      "singleName": "Nama item tunggal",
+      "joinWrapped": "Gabungkan baris yang terpotong",
+      "ruleField": "field"
     },
     "codes": {
       "not_object": "bukan definisi yang valid",
       "unknown_key": "bukan sesuatu yang dapat dimiliki pengurai",
-      "invalid_version": "adalah versi yang tidak dibaca server ini",
+      "unsupported_version": "memiliki versi yang tidak dibaca server ini (gunakan versi 2)",
       "invalid_type": "memiliki jenis nilai yang salah",
       "empty": "tidak boleh kosong",
       "too_many": "memiliki terlalu banyak entri (maksimal {max})",
@@ -262,7 +304,15 @@
       "capture_not_allowed": "memakai nama tangkapan yang tidak diterima bidang ini",
       "capture_missing": "kekurangan tangkapan yang dibutuhkan bidang ini",
       "capture_conflict": "menangkap total baris sekaligus harga satuan. Gunakan salah satunya saja.",
-      "invalid_uuid": "bukan kategori yang valid"
+      "invalid_uuid": "bukan kategori yang valid",
+      "out_of_range": "harus berupa bilangan bulat dari 1 sampai {max}",
+      "items_patterns_and_record": "memiliki patterns sekaligus record. Gunakan salah satunya saja.",
+      "items_shape_missing": "membutuhkan patterns atau record",
+      "skip_lines_need_record": "hanya dapat digunakan bersama record",
+      "record_name_missing": "harus menangkap {capture} di salah satu langkahnya",
+      "items_single_conflict": "memiliki item tunggal di samping patterns atau record. Gunakan salah satunya saja.",
+      "join_wrapped_needs_patterns": "hanya berfungsi dengan pola item",
+      "invalid_value": "memiliki nilai yang tidak diterima bidang ini"
     }
   },
   "test": {
@@ -285,7 +335,33 @@
     },
     "noPayee": "tanpa penerima",
     "ambiguous": "{count, plural, one {# transaksi} other {# transaksi}} sama-sama cocok, jadi tidak ada yang akan ditautkan sampai Anda memilih.",
-    "unmatched": "Tidak ada transaksi yang cocok, dari {count, plural, one {# kandidat} other {# kandidat}}."
+    "unmatched": "Tidak ada transaksi yang cocok, dari {count, plural, one {# kandidat} other {# kandidat}}.",
+    "jsonInvalid": "JSON tidak valid, jadi belum ada yang dapat diuji.",
+    "outcome": {
+      "not_applicable": "Pengurai ini tidak akan membaca surel ini: tidak ada satu pun baris wajibnya di dalam surel, jadi pengurai berikutnya untuk pengirim akan dicoba.",
+      "skip_line": "Pengurai ini akan menyisihkan surel ini: ada baris yang membuatnya melewati surel.",
+      "wait_line": "Pengurai ini akan menahan surel ini: sebuah baris menyatakan pesanan belum final, jadi surel dibaca lagi nanti."
+    },
+    "matchedBy": {
+      "heading": "Dicocokkan oleh",
+      "none": "Tidak ada nilai yang dibaca dari surel ini.",
+      "fields": {
+        "orderId": "Nomor pesanan",
+        "total": "Total",
+        "paid": "Dibayar",
+        "shipping": "Pengiriman",
+        "discount": "Diskon",
+        "payee": "Penjual",
+        "requireLine": "Baris wajib",
+        "skipIfLine": "Baris lewati",
+        "waitIfLine": "Baris tunggu"
+      },
+      "entryLine": "entri {entry} ({pattern}), baris {line}: {text}",
+      "entrySubject": "entri {entry} ({pattern}), subjek: {text}",
+      "labelled": "entri {entry}, label {label} di baris {labelLine} ({labelText}), nilai {pattern} di baris {line}: {text}",
+      "item": "Item {number}",
+      "itemLine": "{pattern}, baris {line}: {text}"
+    }
   },
   "parsed": {
     "notFound": "Tidak ditemukan",
@@ -310,9 +386,12 @@
       "no_items": "Tidak ada baris item yang ditemukan.",
       "items_unbalanced": "Baris item tidak berjumlah sama dengan total.",
       "items_uncategorized": "Beberapa baris item belum memiliki kategori.",
-      "shipping_uncategorized": "Baris ongkos kirim belum memiliki kategori."
+      "shipping_uncategorized": "Baris ongkos kirim belum memiliki kategori.",
+      "item_amount_missing": "Sebuah item tidak memiliki jumlah, dan surel tidak memiliki total tunggal untuk diberikan kepadanya."
     },
-    "readByAi": "Dibaca oleh AI"
+    "readByAi": "Dibaca oleh AI",
+    "paid": "Dibayar",
+    "payee": "Penjual"
   },
   "state": {
     "pending": "Menunggu dibaca",
@@ -457,7 +536,10 @@
       "amount_differs": "Total yang terbaca berbeda dari jumlah transaksi, jadi hanya deskripsi yang diusulkan.",
       "proposal_fallback": "Usulan dengan rincian item ditolak, jadi hanya deskripsi yang diusulkan.",
       "nothing_to_propose": "Surel ini tidak menambahkan apa pun pada transaksi ini.",
-      "proposal_refused": "Usulan ditolak, jadi tidak ada yang diusulkan."
+      "proposal_refused": "Usulan ditolak, jadi tidak ada yang diusulkan.",
+      "skip_line": "Ditemukan baris yang membuat pengurai ini melewati surel, jadi surel diabaikan.",
+      "wait_line": "Sebuah baris menyatakan pesanan belum final, jadi surel akan dibaca lagi nanti.",
+      "item_amount_missing": "Sebuah item tidak memiliki jumlah, dan surel tidak memiliki total tunggal untuk diberikan kepadanya."
     },
     "reasonUnknown": "Alasan: {reason}",
     "requestNote": "Permintaan peninjauan ({state}): {note}",
