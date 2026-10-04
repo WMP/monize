@@ -218,7 +218,10 @@
       "highcontrast": "Contraste élevé",
       "colorblind": "Adapté aux daltoniens"
     },
-    "timezoneBrowserOption": "Utiliser le fuseau horaire du navigateur (détecté automatiquement : {tz})"
+    "timezoneBrowserOption": "Utiliser le fuseau horaire du navigateur (détecté automatiquement : {tz})",
+    "categories": {
+      "EMAIL_RECEIPTS": "Reçus par courrier"
+    }
   },
   "notifications": {
     "heading": "Notifications",

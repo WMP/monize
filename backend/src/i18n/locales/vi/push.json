@@ -35,6 +35,10 @@
     "bank_sync_activity": {
       "title": "Đồng bộ ngân hàng",
       "body": "Đồng bộ ngân hàng của bạn có tin mới. Mở Monize để xem chi tiết."
+    },
+    "email_receipts": {
+      "title": "Biên lai email cần chú ý",
+      "body": "Một số email trong hộp inbox biên lai của bạn cần profil hoặc sửa chữa. Mở Monize để biết chi tiết."
     }
   },
   "actions": {

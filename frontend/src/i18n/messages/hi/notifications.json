@@ -135,5 +135,9 @@
     "importedMessage": "दैनिक सिंक द्वारा {institution} से आयात किए गए लेन-देन: {imported}।",
     "importedNoneTitle": "{institution}: कोई नया लेन-देन नहीं",
     "importedNoneMessage": "{institution} के दैनिक सिंक में कोई नया लेन-देन नहीं मिला।"
+  },
+  "emailReceiptsAttention": {
+    "title": "ईमेल रसीदों को ध्यान की आवश्यकता है",
+    "message": "आपके रसीद इनबॉक्स में {noParser} बिना प्रोफ़ाइल के और {parseFailed} जो उनकी प्रोफ़ाइल ने मान्यता नहीं दी है। समीक्षा के लिए खोलें।"
   }
 }

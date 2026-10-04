@@ -324,6 +324,10 @@
       "importedMessage": "Транзакції, імпортовані з {{ institution }} щоденною синхронізацією: {{ imported }}.",
       "importedNoneTitle": "{{ institution }}: нових транзакцій немає",
       "importedNoneMessage": "Щоденна синхронізація {{ institution }} не знайшла нових транзакцій."
+    },
+    "emailReceiptsAttention": {
+      "title": "Квитанції електронної пошти потребують уваги",
+      "message": "Ваша папка квитанцій містить {{ noParser }} без профілю та {{ parseFailed }}, які профіль не розпізнав. Відкрийте для перегляду."
     }
   },
   "backupOffsite": {

@@ -218,7 +218,10 @@
       "highcontrast": "高對比",
       "colorblind": "色盲安全"
     },
-    "timezoneBrowserOption": "使用瀏覽器時區（自動偵測為 {tz}）"
+    "timezoneBrowserOption": "使用瀏覽器時區（自動偵測為 {tz}）",
+    "categories": {
+      "EMAIL_RECEIPTS": "電子郵件收據"
+    }
   },
   "notifications": {
     "heading": "通知",

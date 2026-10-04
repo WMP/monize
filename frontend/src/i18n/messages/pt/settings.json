@@ -218,7 +218,10 @@
       "highcontrast": "Alto contraste",
       "colorblind": "Seguro para daltónicos"
     },
-    "timezoneBrowserOption": "Utilizar fuso horário do browser (detetado automaticamente como {tz})"
+    "timezoneBrowserOption": "Utilizar fuso horário do browser (detetado automaticamente como {tz})",
+    "categories": {
+      "EMAIL_RECEIPTS": "Recibos de e-mail"
+    }
   },
   "notifications": {
     "heading": "Notificações",

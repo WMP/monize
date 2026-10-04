@@ -135,5 +135,9 @@
     "importedMessage": "Transactions importées depuis {institution} par la synchronisation quotidienne : {imported}.",
     "importedNoneTitle": "{institution} : aucune nouvelle transaction",
     "importedNoneMessage": "La synchronisation quotidienne de {institution} n'a trouvé aucune nouvelle transaction."
+  },
+  "emailReceiptsAttention": {
+    "title": "Les reçus par courrier nécessitent attention",
+    "message": "Votre boîte de réception des reçus contient {noParser} sans profil et {parseFailed} que votre profil n'a pas reconnus. Ouvrez pour vérifier."
   }
 }

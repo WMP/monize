@@ -218,7 +218,10 @@
       "highcontrast": "Hoher Kontrast",
       "colorblind": "Farbenblind-sicher"
     },
-    "timezoneBrowserOption": "Browser-Zeitzone verwenden (automatisch erkannt: {tz})"
+    "timezoneBrowserOption": "Browser-Zeitzone verwenden (automatisch erkannt: {tz})",
+    "categories": {
+      "EMAIL_RECEIPTS": "E-Mail-Belege"
+    }
   },
   "notifications": {
     "heading": "Benachrichtigungen",

@@ -218,7 +218,10 @@
       "highcontrast": "Alto contrasto",
       "colorblind": "Accessibile per daltonici"
     },
-    "timezoneBrowserOption": "Usa fuso orario del browser (rilevato automaticamente: {tz})"
+    "timezoneBrowserOption": "Usa fuso orario del browser (rilevato automaticamente: {tz})",
+    "categories": {
+      "EMAIL_RECEIPTS": "Ricevute email"
+    }
   },
   "notifications": {
     "heading": "Notifiche",

@@ -324,6 +324,10 @@
       "importedMessage": "Durch die tägliche Synchronisierung aus {{ institution }} importierte Buchungen: {{ imported }}.",
       "importedNoneTitle": "{{ institution }}: keine neuen Buchungen",
       "importedNoneMessage": "Die tägliche Synchronisierung von {{ institution }} hat keine neuen Buchungen gefunden."
+    },
+    "emailReceiptsAttention": {
+      "title": "E-Mail-Belege benötigen Aufmerksamkeit",
+      "message": "Ihr Belegepostfach enthält {{ noParser }} ohne Profil und {{ parseFailed }}, die ihr Profil nicht erkannt hat. Öffnen Sie zur Prüfung."
     }
   },
   "backupOffsite": {

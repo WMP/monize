@@ -218,7 +218,10 @@
       "highcontrast": "Wysoki kontrast",
       "colorblind": "Bezpieczny dla daltonistów"
     },
-    "timezoneBrowserOption": "Użyj strefy czasowej przeglądarki (wykryto {tz})"
+    "timezoneBrowserOption": "Użyj strefy czasowej przeglądarki (wykryto {tz})",
+    "categories": {
+      "EMAIL_RECEIPTS": "Potwierdzenia e-maili"
+    }
   },
   "notifications": {
     "heading": "Powiadomienia",

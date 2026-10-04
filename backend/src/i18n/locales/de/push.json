@@ -35,6 +35,10 @@
     "bank_sync_activity": {
       "title": "Bank-Synchronisierung",
       "body": "Es gibt Neuigkeiten zu Ihrer Bank-Synchronisierung. Öffnen Sie Monize für die Details."
+    },
+    "email_receipts": {
+      "title": "E-Mail-Belege benötigen Aufmerksamkeit",
+      "body": "Einige E-Mails in Ihrem Belegepostfach benötigen ein Profil oder eine Korrektur. Öffnen Sie Monize für die Details."
     }
   },
   "actions": {
