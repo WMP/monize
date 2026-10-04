@@ -20,6 +20,17 @@
     "sameSign": "De waarden van \"{{ param }}\" en \"{{ other }}\" moeten hetzelfde teken hebben",
     "onOrBefore": "De waarde van \"{{ param }}\" moet op of vóór \"{{ other }}\" liggen"
   },
+  "attachments": {
+    "notFound": "Bijlage niet gevonden",
+    "storageUnavailable": "Het bestand van deze bijlage staat in de opslag \"{{ provider }}\", die deze server niet kan bereiken",
+    "transactionNotFound": "Transactie niet gevonden",
+    "empty": "Geüpload bestand is leeg",
+    "fileTooLarge": "Bestand overschrijdt de maximale grootte van {{ max }} bytes",
+    "unsupportedType": "Niet-ondersteund bestandstype. Toegestane types: {{ types }}",
+    "tooMany": "Deze transactie heeft al het maximum van {{ max }} bijlagen",
+    "swept": "Het uploaden duurde te lang en de opslag is vrijgegeven. Probeer het opnieuw.",
+    "pairRequiresImages": "Een gescand document en het origineel moeten allebei afbeeldingen zijn"
+  },
   "accounts": {
     "accountWithIdNotFound": "Rekening met ID {{ id }} niet gevonden",
     "notInvestmentPair": "Deze rekening maakt geen deel uit van een beleggingsrekeningpaar",
@@ -135,7 +146,10 @@
     "transferNotSupported": "Een overboeking kan niet met een voorstel worden beoordeeld. Wijs het verzoek in plaats daarvan af.",
     "splitDifference": "De splitsregels tellen op tot {{ sum }}, maar de transactie is {{ amount }}: {{ difference }} is niet toegewezen. Laat de regels optellen tot de transactie; een restbedrag zoals verzendkosten heeft een eigen regel nodig of wordt aan de gebruiker gemeld in plaats van toegewezen.",
     "noTransaction": "Dit AI-beoordelingsverzoek gaat niet over een transactie.",
-    "parserDraftNotSubmittable": "Een verzoek om een parserconcept wordt beantwoord met de tool email_receipt_parsers (test, daarna save_draft met dit requestId), niet met een transactievoorstel."
+    "parserDraftNotSubmittable": "Een verzoek om een parserconcept wordt beantwoord met de tool email_receipt_parsers (test, daarna save_draft met dit requestId), niet met een transactievoorstel.",
+    "tagNamesInvalid": "Een voorstel mag maximaal {{ max }} labels toevoegen van elk 1 tot {{ length }} tekens, zonder stuurtekens.",
+    "noApprovableProposal": "Dit verzoek heeft hier geen voorstel om goed te keuren.",
+    "approveFailed": "Dit voorstel kon niet worden goedgekeurd. Probeer het apart."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Te veel verificatiepogingen. Log opnieuw in.",
@@ -233,14 +247,14 @@
     "backupPasswordBreached": "Dit wachtwoord is aangetroffen in een datalek. Kies een ander wachtwoord.",
     "restoreBodyMustBeFile": "De aanvraagtekst moet een back-upbestand zijn",
     "reauthUnavailable": "Stel eerst het wachtwoord van je account in voordat je een back-up terugzet.",
-    "supportPasswordRequired": "Een supportback-up moet versleuteld zijn: geef een wachtwoord op.",
     "passwordHeaderNotBase64": "De header {header} moet base64-gecodeerd zijn.",
+    "folderOutsideAllowedRoots": "Back-upmap \"{path}\" ligt buiten de toegestane roots ({roots}). Stel BACKUP_ALLOWED_ROOTS in om deze toe te staan.",
     "decompressTooLarge": "De back-up is te groot om te herstellen: uitgepakt overschrijdt hij de limiet van {limit} bytes van deze installatie. Die bovengrens is afgeleid van het geheugen van de container en een gemeten kost per byte, dus alleen die verhogen beschrijft een herstelbewerking die het proces niet kan afmaken -- verhoog in plaats daarvan de geheugenlimiet van de container (Kubernetes: backend.resources.limits.memory).",
     "exportTooLarge": "Deze back-up is te groot om in één keer te maken (voorbij {limit} bytes bij tabel \"{table}\"). Automatische en supportback-ups moeten in het geheugen worden gehouden; download een handmatige back-up, die streamt, of verhoog BACKUP_EXPORT_BUFFER_LIMIT.",
+    "supportPasswordRequired": "Een supportback-up moet versleuteld zijn: geef een wachtwoord op.",
     "supportExportTooLarge": "Deze supportback-up zou {{ size }} MiB JSON zijn, boven de limiet van {{ limit }} MiB. Beperk deze met een rekeningselectie of een datumbereik, of verhoog BACKUP_EXPORT_BUFFER_LIMIT.",
-    "folderUnusable": "Map \"{{ path }}\" kan niet als directory worden gebruikt ({{ reason }}).",
-    "folderOutsideAllowedRoots": "Back-upmap \"{path}\" ligt buiten de toegestane roots ({roots}). Stel BACKUP_ALLOWED_ROOTS in om deze toe te staan.",
     "noBackupStorage": "Deze installatie heeft geen beschrijfbare back-upopslag: {{ safePath }} bestaat niet en kan niet worden aangemaakt ({{ reason }}). Koppel daar een volume aan (Docker: bind mount of named volume; Kubernetes: stel backend.persistence.backups in de Helm-chart in) en probeer het opnieuw.",
+    "folderUnusable": "Map \"{{ path }}\" kan niet als directory worden gebruikt ({{ reason }}).",
     "restoreNoMemoryHeadroom": "Deze installatie heeft geen geheugenruimte voor een restore: de gemodelleerde piek van één restore past niet in de container. Verhoog de geheugenlimiet van de container of verlaag BACKUP_RESTORE_EXPANDED_LIMIT.",
     "restoreQueueFull": "Er wachten al te veel herstelbewerkingen op de herstelcapaciteit van deze installatie. Probeer het over een moment opnieuw.",
     "restoreQueueWaitTimeout": "Time-out bij het wachten op herstelcapaciteit: een andere herstelbewerking is nog bezig. Probeer het over een moment opnieuw.",
@@ -293,12 +307,12 @@
   },
   "currencies": {
     "alreadyInList": "Valuta \"{{ code }}\" staat al in je lijst",
+    "alreadyInListInactive": "Valuta \"{{ code }}\" staat al in je lijst, maar is momenteel inactief. Activeer deze opnieuw om te gebruiken.",
     "notFound": "Valuta \"{{ code }}\" niet gevonden",
     "cannotModifySystem": "Kan systeemvalutametadata niet wijzigen",
     "cannotModifyOther": "Kan de valuta van een andere gebruiker niet wijzigen",
     "inUse": "Valuta \"{{ code }}\" is in gebruik door je rekeningen, waardepapieren of andere records. Deactiveer deze in plaats daarvan.",
     "invalidRateDate": "date moet de indeling JJJJ-MM-DD hebben",
-    "alreadyInListInactive": "Valuta \"{{ code }}\" staat al in je lijst, maar is momenteel inactief. Activeer deze opnieuw om te gebruiken.",
     "sameCurrencyHistory": "{{ code }} is uw standaardvaluta; er is geen wisselkoersgeschiedenis voor",
     "rateProviderUnavailable": "De wisselkoersaanbieder heeft niet gereageerd. Probeer het later opnieuw."
   },
@@ -500,7 +514,6 @@
     "loanLedgerUnreadable": "Deze leningbetaling kon niet worden berekend omdat het grootboeksaldo niet kon worden gelezen. Probeer het opnieuw."
   },
   "securities": {
-    "exchangeRateUnavailable": "Kon geen wisselkoers bepalen voor {{ from }} -> {{ to }} op de transactiedatum. Geef een expliciete exchangeRate op zodat de boeking op de geldrekening correct is.",
     "accountMustBeInvestment": "Rekening moet van het type INVESTMENT zijn",
     "transferPairSameRow": "De twee zijden van een overboeking kunnen niet dezelfde transactie zijn",
     "transferPairNotFound": "Een van de twee transacties bestaat niet meer",
@@ -514,8 +527,14 @@
     "transferPairOutsidePortfolio": "Beide zijden moeten op beleggingsrekeningen van deze portefeuille staan",
     "providerCurrencyMismatch": "Prijsupdate geweigerd voor {{ symbol }}: {{ provider }} noteert het in {{ reported }}, maar het waardepapier staat geregistreerd in {{ configured }}. Corrigeer de valuta, het symbool of de beurs van het waardepapier en ververs opnieuw.",
     "securityIdRequired": "Waardepapier-ID is vereist voor {{ action }}-transacties",
+    "exchangeRateUnavailable": "Kon geen wisselkoers bepalen voor {{ from }} -> {{ to }} op de transactiedatum. Geef een expliciete exchangeRate op zodat de boeking op de geldrekening correct is.",
     "splitRatioRequired": "Splitsingsverhouding (hoeveelheid) moet groter zijn dan nul",
     "acquisitionPriceRequired": "Voor {{ action }}-transacties is een prijs per aandeel groter dan nul vereist. Gebruik ADD_SHARES voor aandelen die zonder bekende kostprijs zijn verworven.",
+    "ambiguousSecurity": "\"{{ query }}\" komt overeen met meerdere effecten: {{ list }}. Gebruik het exacte tickersymbool.",
+    "allocationExceedsTotal": "De toewijzingspercentages tellen op tot meer dan 100%.",
+    "assetOptionNameRequired": "Een naam voor de beleggingscategorie is verplicht.",
+    "invalidTagKey": "Een tagsleutel (1-100 tekens) is vereist",
+    "securityNotFoundByQuery": "Geen effect komt overeen met \"{{ query }}\". Voeg het effect eerst toe of controleer het tickersymbool.",
     "cannotHoldSecurities": "{{ label }} kan geen waardepapieren aanhouden",
     "sourceDestMustDiffer": "Bron- en doelrekeningen moeten verschillend zijn",
     "bothAccountsMustBeInvestment": "Beide rekeningen moeten van het type INVESTMENT zijn",
@@ -541,6 +560,10 @@
     "limitMax200": "limiet mag niet meer dan 200 zijn",
     "invalidAction": "Ongeldige actie: {{ action }}. Moet een van zijn: {{ validActions }}",
     "symbolAlreadyExists": "Waardepapier met symbool {{ symbol }} bestaat al",
+    "lookupQueryRequired": "Geef een tickersymbool of effectnaam op om op te zoeken.",
+    "lookupNotFound": "Geen effect gevonden dat overeenkomt met \"{{ query }}\". Controleer het symbool of de naam, of geef een beurs op.",
+    "lookupAmbiguous": "\"{{ query }}\" komt overeen met meerdere effecten: {{ list }}. Voer opnieuw uit en geef een beurs op.",
+    "lookupNoCurrency": "Kan de valuta voor \"{{ symbol }}\" niet bepalen. Voeg het effect in plaats daarvan handmatig toe.",
     "notFoundById": "Waardepapier met ID {{ id }} niet gevonden",
     "notFoundBySymbol": "Waardepapier met symbool {{ symbol }} niet gevonden",
     "cannotDeactivateWithHoldings": "Kan waardepapier met actieve posities niet deactiveren. Verkoop eerst alle aandelen.",
@@ -557,21 +580,12 @@
     "invalidUuid": "Ongeldige {{ label }} UUID: {{ id }}",
     "symbolLength": "Symbool moet tussen 1 en 20 tekens lang zijn",
     "symbolCharacters": "Symbool mag alleen letters, cijfers, punten of koppeltekens bevatten",
-    "ambiguousSecurity": "\"{{ query }}\" komt overeen met meerdere effecten: {{ list }}. Gebruik het exacte tickersymbool.",
-    "securityNotFoundByQuery": "Geen effect komt overeen met \"{{ query }}\". Voeg het effect eerst toe of controleer het tickersymbool.",
-    "lookupQueryRequired": "Geef een tickersymbool of effectnaam op om op te zoeken.",
-    "lookupNotFound": "Geen effect gevonden dat overeenkomt met \"{{ query }}\". Controleer het symbool of de naam, of geef een beurs op.",
-    "lookupAmbiguous": "\"{{ query }}\" komt overeen met meerdere effecten: {{ list }}. Voer opnieuw uit en geef een beurs op.",
-    "lookupNoCurrency": "Kan de valuta voor \"{{ symbol }}\" niet bepalen. Voeg het effect in plaats daarvan handmatig toe.",
     "noUpdateFields": "Geef ten minste één veld op om te wijzigen.",
-    "allocationExceedsTotal": "De toewijzingspercentages tellen op tot meer dan 100%.",
-    "invalidTagKey": "Een tagsleutel (1-100 tekens) is vereist",
-    "assetOptionNameRequired": "Een naam voor de beleggingscategorie is verplicht.",
     "documentNotFound": "Document niet gevonden",
-    "embeddedSplitAmountMismatch": "Deze splitsing registreert {{ amount }}, maar {{ action }} {{ quantity }} @ {{ price }} komt tegen een koers van {{ rate }} uit op {{ expected }}. Gebruik dat bedrag, of geef de bedoelde wisselkoers op.",
     "selectionNotFound": "Een of meer van de geselecteerde effecten zijn niet gevonden",
     "comparisonSelectionEmpty": "Selecteer minstens één effect of marktindex om te vergelijken",
-    "exchangeRateNotPositive": "De wisselkoers moet groter zijn dan nul"
+    "exchangeRateNotPositive": "De wisselkoers moet groter zijn dan nul",
+    "embeddedSplitAmountMismatch": "Deze splitsing registreert {{ amount }}, maar {{ action }} {{ quantity }} @ {{ price }} komt tegen een koers van {{ rate }} uit op {{ expected }}. Gebruik dat bedrag, of geef de bedoelde wisselkoers op."
   },
   "tags": {
     "notFound": "Label met ID {{ id }} niet gevonden",
@@ -690,17 +704,6 @@
     "methodDerivesPayment": "De termijn van een {{ type }}-hypotheek wordt op elke vervaldatum berekend uit de schuld en de rente, dus een rentewijziging kan geen betalingsbedrag vastleggen",
     "insufficientData": "Niet genoeg betalingen met rentegegevens om renteveranderingen te detecteren",
     "frequencyMismatch": "Betaaldatums komen niet overeen met de betalingsfrequentie van de rekening; afgeleide rentepercentages zijn mogelijk minder nauwkeurig"
-  },
-  "attachments": {
-    "notFound": "Bijlage niet gevonden",
-    "storageUnavailable": "Het bestand van deze bijlage staat in de opslag \"{{ provider }}\", die deze server niet kan bereiken",
-    "transactionNotFound": "Transactie niet gevonden",
-    "empty": "Geüpload bestand is leeg",
-    "fileTooLarge": "Bestand overschrijdt de maximale grootte van {{ max }} bytes",
-    "unsupportedType": "Niet-ondersteund bestandstype. Toegestane types: {{ types }}",
-    "tooMany": "Deze transactie heeft al het maximum van {{ max }} bijlagen",
-    "swept": "Het uploaden duurde te lang en de opslag is vrijgegeven. Probeer het opnieuw.",
-    "pairRequiresImages": "Een gescand document en het origineel moeten allebei afbeeldingen zijn"
   },
   "strategies": {
     "accountNotFound": "Rekening niet gevonden",

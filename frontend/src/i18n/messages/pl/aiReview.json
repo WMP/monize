@@ -13,6 +13,12 @@
     "rejected": "Odrzucone",
     "expired": "Wygasłe"
   },
+  "kindFilter": {
+    "label": "Filtruj według rodzaju",
+    "all": "Wszystkie",
+    "email_receipt": "Paragony z e-maili",
+    "transaction_review": "Reguły"
+  },
   "status": {
     "pending": "Oczekuje",
     "claimed": "W trakcie przeglądu",
@@ -47,6 +53,23 @@
   },
   "proposal": {
     "errorTitle": "Tej propozycji nie można już zastosować"
+  },
+  "bulk": {
+    "selectRow": "Zaznacz: {name}",
+    "selectAll": "Zaznacz wszystkie pokazane prośby, które można zatwierdzić",
+    "approveSelected": "Zatwierdź zaznaczone ({count})",
+    "approveAllShown": "Zatwierdź wszystkie pokazane ({count})",
+    "summary": "{approved, plural, one {Zastosowano # propozycję} few {Zastosowano # propozycje} many {Zastosowano # propozycji} other {Zastosowano # propozycji}}, nie zastosowano: {failed}.",
+    "closeSummary": "Zamknij",
+    "failure": "{name}: {reason}",
+    "noReason": "Nie podano powodu",
+    "unknownRequest": "Prośba",
+    "failed": "Nie udało się zastosować propozycji",
+    "dialog": {
+      "title": "{count, plural, one {Zastosować # propozycję?} few {Zastosować # propozycje?} many {Zastosować # propozycji?} other {Zastosować # propozycji?}}",
+      "message": "Każda propozycja jest sprawdzana względem transakcji w jej obecnym stanie i stosowana osobno. Propozycja, która już nie pasuje, jest pomijana i zgłaszana, a pozostałe są nadal stosowane. Przejrzyj propozycje przed ich zatwierdzeniem.",
+      "confirm": "{count, plural, one {Zastosuj # propozycję} few {Zastosuj # propozycje} many {Zastosuj # propozycji} other {Zastosuj # propozycji}}"
+    }
   },
   "dismissDialog": {
     "title": "Odrzucić tę prośbę?",

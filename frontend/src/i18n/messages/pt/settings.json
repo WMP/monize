@@ -361,7 +361,12 @@
       },
       "channelNotApplicable": "Não aplicável a este tipo de notificação",
       "emailToggleLabel": "Email (relatório) para {category}",
+      "emailNotificationToggleLabel": "E-mail de alerta para {category}",
+      "pushToggleLabel": "Push para {category}",
+      "unifiedpushToggleLabel": "UnifiedPush para {category}",
       "saveFailed": "Não foi possível guardar essa definição",
+      "emailUnavailable": "Ative acima as notificações por e-mail para enviá-las por e-mail.",
+      "pushUnavailable": "Não há nenhum dispositivo registado para push, por isso este canal não consegue entregar nada.",
       "throttle": {
         "label": "Intervalo",
         "ariaLabel": "Intervalo para {category}",
@@ -376,11 +381,6 @@
           "1440": "24 horas"
         }
       },
-      "emailNotificationToggleLabel": "E-mail de alerta para {category}",
-      "pushToggleLabel": "Push para {category}",
-      "unifiedpushToggleLabel": "UnifiedPush para {category}",
-      "emailUnavailable": "Ative acima as notificações por e-mail para enviá-las por e-mail.",
-      "pushUnavailable": "Não há nenhum dispositivo registado para push, por isso este canal não consegue entregar nada.",
       "pushEnableHint": "Este navegador não está registado para notificações push."
     }
   },
@@ -755,8 +755,8 @@
       },
       "toasts": {
         "success": "Cópia de segurança transferida com sucesso",
-        "incomplete": "Backup descarregado, mas está INCOMPLETO: {unusable} de {total} anexo(s) não puderam ser guardados intactos ({missing} em falta, {inconsistent} falharam a verificação de integridade). Não trate este ficheiro como um backup completo — corrija o armazenamento de anexos e exporte novamente.",
-        "failed": "Falha ao criar a cópia de segurança"
+        "failed": "Falha ao criar a cópia de segurança",
+        "incomplete": "Backup descarregado, mas está INCOMPLETO: {unusable} de {total} anexo(s) não puderam ser guardados intactos ({missing} em falta, {inconsistent} falharam a verificação de integridade). Não trate este ficheiro como um backup completo — corrija o armazenamento de anexos e exporte novamente."
       }
     },
     "restore": {
@@ -786,9 +786,9 @@
       "title": "Restauro Concluído",
       "description": "Os seus dados foram restaurados com sucesso. Aqui está um resumo do que foi restaurado:",
       "totalRecords": "Total de registos",
-      "doneButton": "Concluído",
       "skippedAttachments": "{count, plural, one {# anexo não foi restaurado} other {# anexos não foram restaurados}}: o backup não continha bytes utilizáveis para eles — faltavam ou falharam a soma de verificação na exportação, ou o ficheiro é anterior aos backups autossuficientes. Exporte um backup novo quando o armazenamento de anexos estiver saudável.",
-      "unusableAiProviderKeys": "{count, plural, one {# fornecedor de IA foi restaurado sem uma chave de API utilizável} other {# fornecedores de IA foram restaurados sem chaves de API utilizáveis}}: a cópia de segurança foi criada antes de as chaves dos fornecedores seguirem nela, por isso a chave guardada pertence ao servidor que gerou o ficheiro, ou este servidor não tem qualquer chave de cifra configurada para a guardar. Abra Definições → Fornecedores de IA e introduza novamente a chave de API."
+      "unusableAiProviderKeys": "{count, plural, one {# fornecedor de IA foi restaurado sem uma chave de API utilizável} other {# fornecedores de IA foram restaurados sem chaves de API utilizáveis}}: a cópia de segurança foi criada antes de as chaves dos fornecedores seguirem nela, por isso a chave guardada pertence ao servidor que gerou o ficheiro, ou este servidor não tem qualquer chave de cifra configurada para a guardar. Abra Definições → Fornecedores de IA e introduza novamente a chave de API.",
+      "doneButton": "Concluído"
     },
     "storedBackups": {
       "heading": "Cópias de segurança automáticas",
@@ -996,7 +996,7 @@
     },
     "emailReceiptsCard": {
       "title": "Recibos por e-mail",
-      "description": "Ligue uma caixa de correio para confirmações de encomenda e gira os analisadores que as leem."
+      "description": "Ligue uma caixa de correio para confirmações de encomenda e gira os perfis que as leem."
     },
     "bankSyncCard": {
       "title": "Sincronização Bancária",

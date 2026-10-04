@@ -13,6 +13,12 @@
     "rejected": "Abgelehnt",
     "expired": "Abgelaufen"
   },
+  "kindFilter": {
+    "label": "Nach Art filtern",
+    "all": "Alle",
+    "email_receipt": "E-Mail-Belege",
+    "transaction_review": "Regeln"
+  },
   "status": {
     "pending": "Ausstehend",
     "claimed": "In Prüfung",
@@ -47,6 +53,23 @@
   },
   "proposal": {
     "errorTitle": "Dieser Vorschlag kann nicht mehr angewendet werden"
+  },
+  "bulk": {
+    "selectRow": "{name} auswählen",
+    "selectAll": "Alle angezeigten freigabefähigen Anfragen auswählen",
+    "approveSelected": "Ausgewählte freigeben ({count})",
+    "approveAllShown": "Alle angezeigten freigeben ({count})",
+    "summary": "{approved, plural, one {# Vorschlag} other {# Vorschläge}} angewendet, {failed, plural, one {# nicht angewendet} other {# nicht angewendet}}.",
+    "closeSummary": "Schließen",
+    "failure": "{name}: {reason}",
+    "noReason": "Es wurde kein Grund angegeben",
+    "unknownRequest": "Eine Anfrage",
+    "failed": "Die Vorschläge konnten nicht angewendet werden",
+    "dialog": {
+      "title": "{count, plural, one {# Vorschlag anwenden?} other {# Vorschläge anwenden?}}",
+      "message": "Jeder Vorschlag wird mit dem aktuellen Stand seiner Buchung abgeglichen und einzeln angewendet. Ein Vorschlag, der nicht mehr passt, wird übersprungen und gemeldet, die übrigen werden trotzdem angewendet. Die Vorschläge sollten vor der Freigabe geprüft werden.",
+      "confirm": "{count, plural, one {# Vorschlag anwenden} other {# Vorschläge anwenden}}"
+    }
   },
   "dismissDialog": {
     "title": "Diese Anfrage verwerfen?",
