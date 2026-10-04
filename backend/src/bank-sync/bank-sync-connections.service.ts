@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { DataSource, EntityManager } from "typeorm";
+import { tokenHashesEqual } from "../auth/crypto.util";
 import { returnedRows } from "../common/db/query-result";
 import { withScopedDb } from "../common/db/scoped-db";
 import { resolveUserEmailLocale } from "../i18n/resolve-user-email-locale";
@@ -860,8 +861,10 @@ export class BankSyncConnectionsService {
         existing.find(
           (row) =>
             !claimed.has(row.id) &&
-            descriptor.identificationHash !== null &&
-            row.identificationHash === descriptor.identificationHash,
+            tokenHashesEqual(
+              row.identificationHash,
+              descriptor.identificationHash,
+            ),
         ) ??
         existing.find(
           (row) =>
