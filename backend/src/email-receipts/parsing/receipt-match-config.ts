@@ -89,3 +89,30 @@ export function resolveMatchConfig(
 
 /** The config of a profile that says nothing about matching. */
 export const DEFAULT_MATCH_CONFIG: ResolvedMatchConfig = resolveMatchConfig();
+
+/**
+ * The `match` section a profile effectively has: every default filled in, so a
+ * view, a form or an AI draft shows what the matcher will do. `reference`
+ * leads the strategies only when the profile reads a `reference` field.
+ */
+export function effectiveMatchDefinition(definition: {
+  reference?: unknown[];
+  match?: ReceiptMatchDefinition | null;
+}): Required<ReceiptMatchDefinition> {
+  const match = definition.match;
+  const hasReference =
+    Array.isArray(definition.reference) && definition.reference.length > 0;
+  const defaultBy: ReceiptMatchStrategy[] = hasReference
+    ? ["reference", ...DEFAULT_MATCH_BY]
+    : [...DEFAULT_MATCH_BY];
+  return {
+    by: match?.by && match.by.length > 0 ? [...match.by] : defaultBy,
+    referenceIn:
+      match?.referenceIn && match.referenceIn.length > 0
+        ? [...match.referenceIn]
+        : [...DEFAULT_REFERENCE_IN],
+    daysBefore: match?.daysBefore ?? DEFAULT_DAYS_BEFORE,
+    daysAfter: match?.daysAfter ?? DEFAULT_DAYS_AFTER,
+    amountTolerance: match?.amountTolerance ?? "0.00",
+  };
+}
