@@ -33,6 +33,7 @@ export const NOTIFICATION_PREFERENCE_CATEGORIES: readonly NotificationCategory[]
     NotificationCategory.STRATEGIES,
     NotificationCategory.BANK_SYNC,
     NotificationCategory.BANK_SYNC_ACTIVITY,
+    NotificationCategory.EMAIL_RECEIPTS,
   ];
 
 /**
@@ -138,6 +139,14 @@ export const NOTIFICATION_CATEGORY_CHANNELS: Record<
     push: true,
     unifiedpush: true,
   },
+  // Receipts waiting for a profile or a fix: user-facing, so every channel is a
+  // live control (the producer goes through the dispatch seam).
+  [NotificationCategory.EMAIL_RECEIPTS]: {
+    email: true,
+    emailNotification: true,
+    push: true,
+    unifiedpush: true,
+  },
 };
 
 /** A category's channel state when the user has stored no row for it. */
@@ -185,6 +194,14 @@ export const NOTIFICATION_CATEGORY_DEFAULTS: Readonly<
     unifiedpush: false,
   },
   [NotificationCategory.BANK_SYNC_ACTIVITY]: GLOBAL_DEFAULTS,
+  // Receipts waiting for a profile or a fix: user-facing, so every channel is a
+  // live control (the producer goes through the dispatch seam).
+  [NotificationCategory.EMAIL_RECEIPTS]: {
+    email: true,
+    emailNotification: true,
+    push: true,
+    unifiedpush: true,
+  },
 };
 
 /**

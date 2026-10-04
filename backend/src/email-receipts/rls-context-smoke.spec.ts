@@ -221,6 +221,7 @@ describe("email receipts module RLS identity smoke (real withScopedDb)", () => {
       jobClaims,
       pipeline,
       { runAutomaticStep: jest.fn() } as never,
+      { evaluate: jest.fn(async () => false) } as never,
     );
     warn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
   });

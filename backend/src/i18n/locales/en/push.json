@@ -35,6 +35,10 @@
     "bank_sync_activity": {
       "title": "Bank sync",
       "body": "Your bank sync has news. Open Monize for the details."
+    },
+    "email_receipts": {
+      "title": "Email receipts need attention",
+      "body": "Some emails in your receipts inbox need a profile or a fix. Open Monize for the details."
     }
   },
   "actions": {

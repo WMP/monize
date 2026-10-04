@@ -146,6 +146,7 @@ const examples = {
     skipped: 1,
     accounts: 2,
   },
+  EMAIL_RECEIPTS_ATTENTION: { noParser: 3, parseFailed: 2 },
 } satisfies Record<
   Exclude<NotificationType, NotificationType.PACE_WARNING>,
   Record<string, unknown>
@@ -452,6 +453,10 @@ describe("notification email copy", () => {
     [
       NotificationType.PORTFOLIO_MOVEMENT,
       { direction: "down", changePercent: Infinity },
+    ],
+    [
+      NotificationType.EMAIL_RECEIPTS_ATTENTION,
+      { noParser: 3, parseFailed: "2" },
     ],
     [
       NotificationType.GEM_SIGNAL_CHANGED,

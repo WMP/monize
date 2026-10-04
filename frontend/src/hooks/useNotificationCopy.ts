@@ -492,6 +492,32 @@ export function useNotificationCopy() {
     return t(`priceMovement.${part}`, { symbol: data.symbol, percent: formatNumber(data.changePercent, 2) });
   };
 
+  /**
+   * The receipts-inbox attention row, composed from the producer's counts. A row
+   * without both counts falls back to the stored English.
+   */
+  const emailReceiptsAttentionData = (
+    notification: Notification,
+  ): { noParser: number; parseFailed: number } | null => {
+    if (notification.type !== 'EMAIL_RECEIPTS_ATTENTION') return null;
+    const data = notification.data;
+    if (typeof data?.noParser !== 'number' || typeof data.parseFailed !== 'number') return null;
+    return { noParser: data.noParser, parseFailed: data.parseFailed };
+  };
+
+  const emailReceiptsAttentionTitle = (notification: Notification): string | null =>
+    emailReceiptsAttentionData(notification) ? t('emailReceiptsAttention.title') : null;
+
+  const emailReceiptsAttentionMessage = (notification: Notification): string | null => {
+    const data = emailReceiptsAttentionData(notification);
+    return data
+      ? t('emailReceiptsAttention.message', {
+          noParser: formatNumber(data.noParser, 0),
+          parseFailed: formatNumber(data.parseFailed, 0),
+        })
+      : null;
+  };
+
   return (notification: Notification) => ({
     title:
       priceCopy(notification, 'title') ??
@@ -501,6 +527,7 @@ export function useNotificationCopy() {
       portfolioMovementTitle(notification) ??
       balanceThresholdTitle(notification) ??
       bankSyncCopy(notification, 'title') ??
+      emailReceiptsAttentionTitle(notification) ??
       notification.title,
     message:
       priceCopy(notification, 'message') ??
@@ -510,6 +537,7 @@ export function useNotificationCopy() {
       portfolioMovementMessage(notification) ??
       balanceThresholdMessage(notification) ??
       bankSyncCopy(notification, 'message') ??
+      emailReceiptsAttentionMessage(notification) ??
       notification.message,
   });
 }

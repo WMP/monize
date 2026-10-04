@@ -38,6 +38,8 @@ function notificationRoute(notification: Notification): string | null {
     case 'ENCRYPTION_KEY_MISSING':
     case 'SMTP_FAILURE':
       return '/settings';
+    case 'EMAIL_RECEIPTS_ATTENTION':
+      return '/email-receipts?tab=emails';
     case 'PROVIDER_OUTAGE':
     case 'PROVIDER_RECOVERED':
     // A server setting, fixed in the deployment's configuration: no page here

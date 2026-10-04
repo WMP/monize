@@ -71,6 +71,10 @@ export const PUSH_CATEGORY_COPY: Readonly<
     title: "Bank sync",
     body: "Your bank sync has news. Open Monize for the details.",
   },
+  [NotificationCategory.EMAIL_RECEIPTS]: {
+    title: "Email receipts need attention",
+    body: "Some emails in your receipts inbox need a profile or a fix. Open Monize for the details.",
+  },
 };
 
 export interface NotifyOptions {

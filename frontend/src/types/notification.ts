@@ -43,7 +43,10 @@ export type NotificationType =
   | 'BANK_SYNC_CONSENT_EXPIRING'
   | 'BANK_SYNC_CONSENT_EXPIRED'
   | 'BANK_SYNC_FAILED'
-  | 'BANK_SYNC_IMPORTED';
+  | 'BANK_SYNC_IMPORTED'
+  // Receipts inbox emails with no profile or that their profile did not recognize
+  // (EMAIL_RECEIPTS). Financial, not system.
+  | 'EMAIL_RECEIPTS_ATTENTION';
 
 /** How urgent, and how it is drawn. */
 export type NotificationSeverity = 'info' | 'warning' | 'critical' | 'success';
@@ -83,7 +86,8 @@ export type NotificationCategory =
   | 'INVESTMENTS'
   | 'STRATEGIES'
   | 'BANK_SYNC'
-  | 'BANK_SYNC_ACTIVITY';
+  | 'BANK_SYNC_ACTIVITY'
+  | 'EMAIL_RECEIPTS';
 
 export interface Notification {
   id: string;

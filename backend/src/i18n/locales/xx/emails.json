@@ -240,6 +240,10 @@
       },
       "allocationMessageUnknown": "[XX-Your GEM strategy \"{{ strategy }}\" changed its target. Open to review the recommendation.-XX]"
     },
+    "emailReceiptsAttention": {
+      "title": "[XX-Email receipts need attention-XX]",
+      "message": "[XX-Your receipts inbox holds {{ noParser }} without a profile and {{ parseFailed }} that their profile did not recognize. Open to review.-XX]"
+    },
     "portfolioMovement": {
       "titleUp": "[XX-Investments up {{ percent }}%-XX]",
       "titleDown": "[XX-Investments down {{ percent }}%-XX]",
