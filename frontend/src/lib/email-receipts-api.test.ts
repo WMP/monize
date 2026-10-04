@@ -110,7 +110,10 @@ describe('emailReceiptsApi', () => {
       });
       client.get.mockResolvedValue({ data: [{ domain: 'shop.example.com', count: 3 }] });
       await expect(emailReceiptsApi.receipts.listDomains()).resolves.toEqual([{ domain: 'shop.example.com', count: 3 }]);
-      expect(client.get).toHaveBeenLastCalledWith('/email-receipts/domains');
+      expect(client.get).toHaveBeenLastCalledWith('/email-receipts/domains', { params: undefined });
+      // The cloud is counted within one state.
+      await emailReceiptsApi.receipts.listDomains('review');
+      expect(client.get).toHaveBeenLastCalledWith('/email-receipts/domains', { params: { status: 'review' } });
     });
 
     it('reads the overview and processes in bulk with the run\'s own request', async () => {

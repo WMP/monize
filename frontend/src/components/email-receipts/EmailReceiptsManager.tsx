@@ -8,6 +8,9 @@ import { useTranslations } from 'next-intl';
 import { EnvelopeIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { EmailReceiptDetailDialog } from '@/components/email-receipts/EmailReceiptDetailDialog';
 import { ProcessAllButton } from '@/components/email-receipts/ProcessAllButton';
+import { ProfileCreationGuide } from '@/components/email-receipts/ProfileCreationGuide';
+import { SelectAllCheckbox } from '@/components/email-receipts/SelectAllCheckbox';
+import { SenderDomainCloud } from '@/components/email-receipts/SenderDomainCloud';
 import { ParserEditorDialog } from '@/components/email-receipts/ParserEditorDialog';
 import { RecognizeWithAiDialog } from '@/components/email-receipts/RecognizeWithAiDialog';
 import { ReceiptStateBadge } from '@/components/email-receipts/ReceiptStateBadge';
@@ -18,7 +21,6 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { RowActions, type RowAction } from '@/components/ui/row-actions';
-import { Select } from '@/components/ui/Select';
 import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 import { TABLE_BODY_CLASS, TABLE_CLASS, Td, Th } from '@/components/ui/Table';
 import { useDateFormat } from '@/hooks/useDateFormat';
@@ -35,6 +37,7 @@ import {
   senderDomain,
 } from '@/lib/email-receipts-format';
 import { getErrorMessage } from '@/lib/errors';
+import { leadActionKey, orderActionsForCard, type ReceiptActionKey } from '@/lib/receipt-row-actions';
 import { createLogger } from '@/lib/logger';
 import {
   EMAIL_RECEIPT_STATUSES,
@@ -42,6 +45,7 @@ import {
   type EmailReceiptDomainCount,
   type EmailReceiptListItem,
   type EmailReceiptStatus,
+  type EmailReceiptStatusCounts,
 } from '@/types/email-receipts';
 
 const logger = createLogger('EmailReceipts');
@@ -63,6 +67,12 @@ interface LoadedList {
 type MailboxState = { status: 'loading' } | { status: 'failed' } | { status: 'none' } | { status: 'ready' };
 
 type Confirmation = { kind: 'ignore' | 'delete'; receipt: EmailReceiptListItem };
+
+/** The sender domains counted within one state (`filter`), the answer for that state only. */
+interface DomainCloudState {
+  filter: ReceiptFilter;
+  items: EmailReceiptDomainCount[];
+}
 
 interface Notice {
   tone: 'success' | 'error';
@@ -90,7 +100,7 @@ export function EmailReceiptsManager() {
   const t = useTranslations('emailReceipts.receipts');
   const tc = useTranslations('common');
   const { formatDate, formatDateTime } = useDateFormat();
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, formatNumber } = useNumberFormat();
   const { state: lookups, reload: reloadLookups } = useReceiptParserLookups();
 
   const router = useRouter();
@@ -102,6 +112,10 @@ export function EmailReceiptsManager() {
   const [domain, setDomain] = useState<string>(() => normalizeDomainFilter(searchParams.get('domain')));
   // The sender domains with their counts for the filter; null while unknown or failed (the select then offers only "All" and the current one).
   const [domains, setDomains] = useState<EmailReceiptDomainCount[] | null>(null);
+  // The same counts within the state the reader is on, for every state but "All"; null while unknown or failed.
+  const [cloud, setCloud] = useState<DomainCloudState | null>(null);
+  // How many emails are in each state, printed on the filter buttons; null while unknown or failed (no number is shown then).
+  const [counts, setCounts] = useState<EmailReceiptStatusCounts | null>(null);
   // How many stored emails "Process all" runs over, from the overview (the domain list is capped, so it cannot be summed); null while unknown or failed.
   const [processableTotal, setProcessableTotal] = useState<number | null>(null);
   const [loaded, setLoaded] = useState<LoadedList | null>(null);
@@ -122,6 +136,8 @@ export function EmailReceiptsManager() {
   // asks for the filter the reader is on NOW, not the one the handler saw.
   const latestLoad = useRef(0);
   const latestDomains = useRef(0);
+  const latestCloud = useRef(0);
+  const latestCounts = useRef(0);
   const currentFilters = useRef({ filter, domain });
   useEffect(() => {
     currentFilters.current = { filter, domain };
@@ -166,11 +182,42 @@ export function EmailReceiptsManager() {
     }
   }, []);
 
-  // After a command or a change the list and the domain counts are read again.
+  /** The sender domains of one state's emails; a failed read leaves them unknown. */
+  const loadCloud = useCallback(async (forFilter: ReceiptFilter) => {
+    if (forFilter === 'all') return;
+    const request = ++latestCloud.current;
+    try {
+      const items = await emailReceiptsApi.receipts.listDomains(forFilter);
+      if (request !== latestCloud.current) return;
+      setCloud({ filter: forFilter, items });
+    } catch (error) {
+      if (request !== latestCloud.current) return;
+      logger.error(error);
+      setCloud(null);
+    }
+  }, []);
+
+  /** The per-state counts; a failed read leaves them unknown, never zero. */
+  const loadCounts = useCallback(async () => {
+    const request = ++latestCounts.current;
+    try {
+      const found = await emailReceiptsApi.receipts.getStatusCounts();
+      if (request !== latestCounts.current) return;
+      setCounts(found);
+    } catch (error) {
+      if (request !== latestCounts.current) return;
+      logger.error(error);
+      setCounts(null);
+    }
+  }, []);
+
+  // After a command or a change the list, the state counts and the domain counts are read again.
   const reload = useCallback(async () => {
     void loadDomains();
+    void loadCounts();
+    void loadCloud(currentFilters.current.filter);
     await load(currentFilters.current.filter, currentFilters.current.domain);
-  }, [load, loadDomains]);
+  }, [load, loadDomains, loadCounts, loadCloud]);
 
   useEffect(() => {
     void load(filter, domain);
@@ -178,7 +225,12 @@ export function EmailReceiptsManager() {
 
   useEffect(() => {
     void loadDomains();
-  }, [loadDomains]);
+    void loadCounts();
+  }, [loadDomains, loadCounts]);
+
+  useEffect(() => {
+    void loadCloud(filter);
+  }, [filter, loadCloud]);
 
   const changeDomain = (next: string) => {
     setDomain(next);
@@ -271,6 +323,17 @@ export function EmailReceiptsManager() {
     }
   };
 
+  const handleApprove = (receipt: EmailReceiptListItem) =>
+    runCommand(
+      receipt,
+      async () => {
+        await emailReceiptsApi.receipts.approveProposal(receipt.id);
+        toast.success(t('toasts.approved'));
+        return null;
+      },
+      t('toasts.approveFailed'),
+    );
+
   const toggleSelected = (receipt: EmailReceiptListItem) =>
     setSelectedIds((previous) => {
       const next = new Set(previous);
@@ -309,13 +372,23 @@ export function EmailReceiptsManager() {
   const actionsFor = (receipt: EmailReceiptListItem): RowAction[] => {
     const actionable = isReceiptActionable(receipt);
     const disabled = busyId === receipt.id;
-    return [
+    const actions: Array<RowAction & { key: ReceiptActionKey }> = [
       {
         key: 'view',
         label: t('actions.view'),
         icon: 'view',
         tone: 'view',
         onClick: () => setDetailId(receipt.id),
+        disabled,
+      },
+      {
+        // The proposal this email made, applied as the review inbox's Confirm does.
+        key: 'approve',
+        label: t('actions.approve'),
+        icon: 'post',
+        tone: 'success',
+        onClick: () => void handleApprove(receipt),
+        hidden: receipt.status !== 'review' || receipt.displayState !== 'proposed',
         disabled,
       },
       {
@@ -387,8 +460,9 @@ export function EmailReceiptsManager() {
         onClick: () => setConfirmation({ kind: 'delete', receipt }),
         disabled,
       },
-
     ];
+    // The card being looked at decides which action leads (and so shows inline first).
+    return orderActionsForCard(actions, leadActionKey(filter, receipt));
   };
 
   const current = loaded !== null && loaded.filter === filter && loaded.domain === domain ? loaded : null;
@@ -396,15 +470,26 @@ export function EmailReceiptsManager() {
   const selected = (current?.items ?? []).filter((receipt) => selectedIds.has(receipt.id));
   const selectedDomains = distinctSenderDomains(selected);
 
-  // "All senders", each domain with its count, and the filtered one even when it is not (yet) in the list.
-  const domainOptions = [
-    { value: '', label: t('domainFilter.all') },
-    ...(domains ?? []).map((entry) => ({
-      value: entry.domain,
-      label: t('domainFilter.option', { domain: entry.domain, count: entry.count }),
-    })),
-    ...(domain !== '' && !(domains ?? []).some((entry) => entry.domain === domain) ? [{ value: domain, label: domain }] : []),
-  ];
+  // The tag cloud counts within the state on screen; "All" reads the unfiltered list.
+  const cloudDomains = filter === 'all' ? domains : cloud !== null && cloud.filter === filter ? cloud.items : null;
+
+  // Which emails the header checkbox covers: the selectable ones, as many as a draft may hold.
+  const selectable = (current?.items ?? []).filter((receipt) => receipt.status !== 'skipped').slice(0, PARSER_DRAFT_MAX_RECEIPTS);
+  const allSelected = selectable.length > 0 && selectable.every((receipt) => selectedIds.has(receipt.id));
+  const someSelected = selected.length > 0 && !allSelected;
+
+  const toggleAll = () => setSelectedIds(allSelected ? new Set() : new Set(selectable.map((receipt) => receipt.id)));
+
+  /** The label of a state's button: its name with how many emails are in it, when that is known. */
+  const filterLabel = (option: ReceiptFilter) => {
+    const label = t(`filter.${option}`);
+    if (counts === null) return label;
+    const count =
+      option === 'all'
+        ? EMAIL_RECEIPT_STATUSES.reduce((sum, status) => sum + (counts[status] ?? 0), 0)
+        : (counts[option] ?? 0);
+    return t('filter.option', { label, count: formatNumber(count, 0) });
+  };
 
   // "Process all" for the sender being looked at, or every sender; unknown (and the button off) until the counts are read.
   const processCount =
@@ -452,7 +537,13 @@ export function EmailReceiptsManager() {
           <thead>
             <tr>
               <Th className="w-8 px-2 sm:px-4">
-                <span className="sr-only">{t('columns.select')}</span>
+                <SelectAllCheckbox
+                  checked={allSelected}
+                  indeterminate={someSelected}
+                  disabled={drafting || selectable.length === 0}
+                  label={t('selection.selectAll', { max: PARSER_DRAFT_MAX_RECEIPTS })}
+                  onChange={toggleAll}
+                />
               </Th>
               <Th className="px-2 sm:px-4">{t('columns.received')}</Th>
               <Th className="px-2 sm:px-4">{t('columns.email')}</Th>
@@ -551,21 +642,18 @@ export function EmailReceiptsManager() {
               }}
               className={segmentClass(filter === option)}
             >
-              {t(`filter.${option}`)}
+              {filterLabel(option)}
             </button>
           ))}
         </div>
-        <div className="w-full sm:w-72">
-          <Select
-            id="receipts-domain-filter"
-            label={t('domainFilter.label')}
-            value={domain}
-            onChange={(e) => changeDomain(e.target.value)}
-            options={domainOptions}
-          />
-        </div>
+      </div>
+      <div className="space-y-1">
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('domainFilter.label')}</span>
+        <SenderDomainCloud domains={cloudDomains} selected={domain} onSelect={changeDomain} />
       </div>
       {domain !== '' && <p className="text-xs text-gray-500 dark:text-gray-400">{t('domainFilter.help', { domain })}</p>}
+
+      {selected.length === 0 && <ProfileCreationGuide />}
 
       <ProcessAllButton
         count={processCount}

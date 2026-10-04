@@ -236,7 +236,7 @@ describe('AiReviewInbox', () => {
     expect(screen.queryByRole('link', { name: 'View transaction' })).not.toBeInTheDocument();
   });
 
-  describe('a parser draft request among the others', () => {
+  describe('a profile draft request among the others', () => {
     const draft = (over: Partial<AiReviewItem> = {}) =>
       makeReviewItem({
         id: 'req-draft',
@@ -252,7 +252,7 @@ describe('AiReviewInbox', () => {
     it('lists it with an ordinary request, each in its own shape', async () => {
       api.list.mockResolvedValue([draft(), makeReviewItem()]);
       await renderInbox();
-      expect(screen.getByText('Parser draft from 2 emails (shop.example.com)')).toBeInTheDocument();
+      expect(screen.getByText('Profile draft from 2 emails (shop.example.com)')).toBeInTheDocument();
       expect(screen.getByText('Rule: Allegro orders')).toBeInTheDocument();
     });
 
@@ -266,10 +266,10 @@ describe('AiReviewInbox', () => {
       expect(toast.success).toHaveBeenCalledWith('Request dismissed');
     });
 
-    it('points a proposed one at the parser settings and offers no approve button here', async () => {
+    it('points a proposed one at the profile settings and offers no approve button here', async () => {
       api.list.mockResolvedValue([draft({ status: 'proposed', parserDraft: { domain: 'shop.example.com', emailCount: 2, parserId: 'p-1' } })]);
       await renderInbox();
-      expect(screen.getByRole('link', { name: 'Test and approve it in the parser settings' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: 'Test and approve it in the profile settings' })).toHaveAttribute(
         'href',
         '/email-receipts?tab=profiles',
       );

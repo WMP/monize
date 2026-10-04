@@ -8,6 +8,8 @@ import { makeDetail, makeMailbox, makeParser, makeReceipt } from './email-receip
 const api = vi.hoisted(() => ({
   list: vi.fn(),
   listDomains: vi.fn(),
+  getStatusCounts: vi.fn(),
+  approveProposal: vi.fn(),
   overview: vi.fn(),
   processBatch: vi.fn(),
   get: vi.fn(),
@@ -40,6 +42,8 @@ vi.mock('@/lib/email-receipts-api', () => ({
     receipts: {
       list: api.list,
       listDomains: api.listDomains,
+      getStatusCounts: api.getStatusCounts,
+      approveProposal: api.approveProposal,
       overview: api.overview,
       processBatch: api.processBatch,
       get: api.get,
@@ -73,7 +77,7 @@ vi.mock('@/lib/logger', () => ({
 const tx = { id: 'tx-1', date: '2026-08-30', amount: -25, currencyCode: 'USD', payeeName: 'Allegro' };
 
 const unmatched = makeReceipt({ id: 'r-unmatched', subject: 'Order unmatched', status: 'unmatched' });
-const noParser = makeReceipt({ id: 'r-noparser', subject: 'Order no parser', status: 'no_parser', fromAddress: 'orders@shop.example', fromDomain: 'shop.example' });
+const noParser = makeReceipt({ id: 'r-noparser', subject: 'Order no profile', status: 'no_parser', fromAddress: 'orders@shop.example', fromDomain: 'shop.example' });
 const ambiguous = makeReceipt({ id: 'r-ambiguous', subject: 'Order ambiguous', status: 'ambiguous' });
 const proposed = makeReceipt({ id: 'r-proposed', subject: 'Order proposed', status: 'review', displayState: 'proposed', transaction: tx, parserName: 'Allegro parser' });
 const applied = makeReceipt({ id: 'r-applied', subject: 'Order applied', status: 'review', displayState: 'applied', transaction: tx });
@@ -155,6 +159,7 @@ describe('EmailReceiptsManager', () => {
       { domain: 'shop.example.com', count: 2, processable: 2 },
     ]);
     api.overview.mockResolvedValue({ processable: 6 });
+    api.getStatusCounts.mockResolvedValue({ pending: 1, no_parser: 2, review: 3, unmatched: 4 });
     api.mailboxGet.mockResolvedValue(makeMailbox({ aiMode: 'on_demand' }));
     payeesApi.getAll.mockResolvedValue([]);
     categoriesApi.getAll.mockResolvedValue([]);
@@ -222,23 +227,23 @@ describe('EmailReceiptsManager', () => {
   describe('the status filter', () => {
     it('asks the server for the chosen status', async () => {
       await renderManager();
-      await click(screen.getByRole('button', { name: 'Could not be read' }));
+      await click(screen.getByRole('button', { name: 'Could not be read (0)' }));
       expect(api.list).toHaveBeenLastCalledWith('parse_failed', undefined, undefined);
-      expect(screen.getByRole('button', { name: 'Could not be read' })).toHaveAttribute('aria-pressed', 'true');
-      expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'false');
+      expect(screen.getByRole('button', { name: 'Could not be read (0)' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: 'All (10)' })).toHaveAttribute('aria-pressed', 'false');
     });
 
     it('never draws the previous filter\'s rows, nor offers their actions, while the new one loads', async () => {
       await renderManager();
       let resolve!: (value: unknown) => void;
       api.list.mockReturnValueOnce(new Promise((r) => (resolve = r)));
-      await click(screen.getByRole('button', { name: 'No parser' }));
+      await click(screen.getByRole('button', { name: 'No profile (2)' }));
       expect(screen.queryByRole('row', { name: /Order proposed/ })).not.toBeInTheDocument();
       expect(screen.getByText('Loading emails')).toBeInTheDocument();
       await act(async () => {
         resolve([noParser]);
       });
-      expect(screen.getByRole('row', { name: /Order no parser/ })).toBeInTheDocument();
+      expect(screen.getByRole('row', { name: /Order no profile/ })).toBeInTheDocument();
       expect(screen.queryByRole('row', { name: /Order proposed/ })).not.toBeInTheDocument();
     });
 
@@ -249,7 +254,7 @@ describe('EmailReceiptsManager', () => {
         render(<EmailReceiptsManager />);
       });
       api.list.mockResolvedValueOnce([ignored]);
-      await click(screen.getByRole('button', { name: 'Ignored' }));
+      await click(screen.getByRole('button', { name: 'Ignored (0)' }));
       expect(screen.getByRole('row', { name: /Order ignored/ })).toBeInTheDocument();
       await act(async () => {
         resolveAll(all);
@@ -261,7 +266,7 @@ describe('EmailReceiptsManager', () => {
     it('says which state is empty, apart from an empty mailbox', async () => {
       await renderManager();
       api.list.mockResolvedValueOnce([]);
-      await click(screen.getByRole('button', { name: 'Skipped' }));
+      await click(screen.getByRole('button', { name: 'Skipped (0)' }));
       expect(screen.getByText('No emails in this state')).toBeInTheDocument();
     });
   });
@@ -291,34 +296,59 @@ describe('EmailReceiptsManager', () => {
   });
 
   describe('the sender domain filter', () => {
-    const domainSelect = () => screen.getByLabelText('Sender domain') as HTMLSelectElement;
-    const choose = (value: string) =>
-      act(async () => {
-        fireEvent.change(domainSelect(), { target: { value } });
-      });
+    const tag = (name: string) => screen.getByRole('button', { name });
+    const choose = (name: string) => click(tag(name));
+    const SHOP = 'shop.example.com (2)';
 
-    it('offers "All senders" and each sender domain with its count, on all senders by default', async () => {
+    it('offers "All senders" and each sender domain with its count as tags, on all senders by default', async () => {
       await renderManager();
       expect(api.listDomains).toHaveBeenCalledTimes(1);
-      expect(within(domainSelect()).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      const cloud = screen.getByRole('group', { name: 'Sender domain' });
+      expect(within(cloud).getAllByRole('button').map((b) => b.textContent)).toEqual([
         'All senders',
         'allegro.pl (5)',
-        'shop.example.com (2)',
+        SHOP,
       ]);
-      expect(domainSelect().value).toBe('');
+      expect(tag('All senders')).toHaveAttribute('aria-pressed', 'true');
+      expect(tag('allegro.pl (5)')).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('counts the sender domains within the chosen state, asking the server for that state', async () => {
+      await renderManager();
+      api.listDomains.mockResolvedValueOnce([{ domain: 'only.example', count: 7 }]);
+      await click(screen.getByRole('button', { name: /^Could not be read/ }));
+      expect(api.listDomains).toHaveBeenLastCalledWith('parse_failed');
+      const cloud = screen.getByRole('group', { name: 'Sender domain' });
+      expect(within(cloud).getAllByRole('button').map((b) => b.textContent)).toEqual(['All senders', 'only.example (7)']);
+    });
+
+    it('never shows another state\'s domains while this state\'s are loading', async () => {
+      await renderManager();
+      api.listDomains.mockReturnValueOnce(new Promise(() => {}));
+      await click(screen.getByRole('button', { name: /^Could not be read/ }));
+      expect(screen.queryByRole('button', { name: 'allegro.pl (5)' })).not.toBeInTheDocument();
+      expect(screen.getByText('The sender counts could not be loaded.')).toBeInTheDocument();
+    });
+
+    it('toggles a domain: choosing the chosen tag again clears it', async () => {
+      await renderManager();
+      await choose(SHOP);
+      expect(api.list).toHaveBeenLastCalledWith(undefined, undefined, 'shop.example.com');
+      await choose(SHOP);
+      expect(api.list).toHaveBeenLastCalledWith(undefined, undefined, undefined);
     });
 
     it('asks the server for the chosen domain beside the status, and writes it to the URL', async () => {
       await renderManager();
-      await choose('shop.example.com');
+      await choose(SHOP);
       expect(api.list).toHaveBeenLastCalledWith(undefined, undefined, 'shop.example.com');
       expect(nav.router.replace).toHaveBeenLastCalledWith('/email-receipts?tab=emails&domain=shop.example.com', { scroll: false });
-      await click(screen.getByRole('button', { name: 'Could not be read' }));
+      await click(screen.getByRole('button', { name: /^Could not be read/ }));
       expect(api.list).toHaveBeenLastCalledWith('parse_failed', undefined, 'shop.example.com');
       expect(
-        screen.getByText('Showing emails from shop.example.com and its sub-domains. Select several of them to draft one parser for the sender.'),
+        screen.getByText('Showing emails from shop.example.com and its sub-domains. Select several of them to draft one profile for the sender.'),
       ).toBeInTheDocument();
-      await choose('');
+      await choose('All senders');
       expect(api.list).toHaveBeenLastCalledWith('parse_failed', undefined, undefined);
       expect(nav.router.replace).toHaveBeenLastCalledWith('/email-receipts?tab=emails', { scroll: false });
     });
@@ -326,7 +356,7 @@ describe('EmailReceiptsManager', () => {
     it('keeps the other query parameters when it writes the domain', async () => {
       nav.params = new URLSearchParams('keep=1');
       await renderManager();
-      await choose('allegro.pl');
+      await choose('allegro.pl (5)');
       expect(nav.router.replace).toHaveBeenLastCalledWith('/email-receipts?keep=1&tab=emails&domain=allegro.pl', { scroll: false });
     });
 
@@ -334,14 +364,14 @@ describe('EmailReceiptsManager', () => {
       nav.params = new URLSearchParams('domain=Shop.Example.com');
       await renderManager();
       expect(api.list).toHaveBeenCalledWith(undefined, undefined, 'shop.example.com');
-      expect(domainSelect().value).toBe('shop.example.com');
+      expect(tag(SHOP)).toHaveAttribute('aria-pressed', 'true');
     });
 
     it('treats a ?domain= that is no host name as no filter, and offers a domain the list does not know', async () => {
       nav.params = new URLSearchParams('domain=%3Cscript%3E');
       await renderManager();
       expect(api.list).toHaveBeenCalledWith(undefined, undefined, undefined);
-      expect(domainSelect().value).toBe('');
+      expect(tag('All senders')).toHaveAttribute('aria-pressed', 'true');
       expect(nav.router.replace).not.toHaveBeenCalled();
     });
 
@@ -349,14 +379,16 @@ describe('EmailReceiptsManager', () => {
       nav.params = new URLSearchParams('domain=gone.example.com');
       api.list.mockResolvedValue([]);
       await renderManager();
-      expect(domainSelect().value).toBe('gone.example.com');
+      expect(tag('gone.example.com')).toHaveAttribute('aria-pressed', 'true');
       expect(screen.getByText('No emails in this state')).toBeInTheDocument();
     });
 
     it('works with only "All senders" when the domains could not be read, never as an empty list', async () => {
       api.listDomains.mockRejectedValue(new Error('boom'));
       await renderManager();
-      expect(within(domainSelect()).getAllByRole('option').map((o) => o.textContent)).toEqual(['All senders']);
+      const cloud = screen.getByRole('group', { name: 'Sender domain' });
+      expect(within(cloud).getAllByRole('button').map((b) => b.textContent)).toEqual(['All senders']);
+      expect(screen.getByText('The sender counts could not be loaded.')).toBeInTheDocument();
       expect(screen.getByRole('row', { name: /Order proposed/ })).toBeInTheDocument();
     });
 
@@ -364,24 +396,24 @@ describe('EmailReceiptsManager', () => {
       let resolveOld!: (value: unknown) => void;
       await renderManager();
       api.list.mockReturnValueOnce(new Promise((r) => (resolveOld = r)));
-      await choose('allegro.pl');
+      await choose('allegro.pl (5)');
       expect(screen.queryByRole('row', { name: /Order proposed/ })).not.toBeInTheDocument();
       expect(screen.getByText('Loading emails')).toBeInTheDocument();
       api.list.mockResolvedValueOnce([noParser]);
-      await choose('shop.example.com');
-      expect(screen.getByRole('row', { name: /Order no parser/ })).toBeInTheDocument();
+      await choose(SHOP);
+      expect(screen.getByRole('row', { name: /Order no profile/ })).toBeInTheDocument();
       await act(async () => {
         resolveOld(all);
       });
-      expect(screen.getByRole('row', { name: /Order no parser/ })).toBeInTheDocument();
+      expect(screen.getByRole('row', { name: /Order no profile/ })).toBeInTheDocument();
       expect(screen.queryByRole('row', { name: /Order proposed/ })).not.toBeInTheDocument();
     });
 
     it('clears the selection when the domain changes', async () => {
       await renderManager();
-      await click(within(rowOf('Order no parser')).getByRole('checkbox'));
+      await click(within(rowOf('Order no profile')).getByRole('checkbox'));
       expect(screen.getByRole('region', { name: 'Selected emails' })).toBeInTheDocument();
-      await choose('shop.example.com');
+      await choose(SHOP);
       expect(screen.queryByRole('region', { name: 'Selected emails' })).not.toBeInTheDocument();
     });
 
@@ -396,30 +428,31 @@ describe('EmailReceiptsManager', () => {
   });
 
   describe('which actions each email offers', () => {
-    it('offers everything for an email with no parser', async () => {
+    it('offers everything for an email with no profile', async () => {
       await renderManager();
-      expect(await allActions('Order no parser')).toEqual(
-        expect.arrayContaining(['View', 'Create parser', 'Draft parser with AI', 'Reprocess', 'Ignore', 'Delete']),
+      expect(await allActions('Order no profile')).toEqual(
+        expect.arrayContaining(['View', 'Create profile', 'Prepare a profile with AI', 'Reprocess', 'Ignore', 'Delete']),
       );
     });
 
-    it('puts "Draft parser with AI" inline and "Create parser" in the menu for an email with no parser', async () => {
+    it('puts "Prepare a profile with AI" inline and "Create profile" in the menu for an email with no profile', async () => {
       await renderManager();
-      const row = rowOf('Order no parser');
-      expect(actionNames('Order no parser')).toEqual(['View', 'Draft parser with AI']);
-      expect(within(row).queryByRole('button', { name: 'Create parser' })).not.toBeInTheDocument();
+      const row = rowOf('Order no profile');
+      // The card's lead action goes first: an email nothing read is turned into a profile.
+      expect(actionNames('Order no profile')).toEqual(['Prepare a profile with AI', 'View']);
+      expect(within(row).queryByRole('button', { name: 'Create profile' })).not.toBeInTheDocument();
       await click(within(row).getByRole('button', { name: 'More actions' }));
-      expect(screen.getByRole('menuitem', { name: 'Create parser' })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: 'Create profile' })).toBeInTheDocument();
     });
 
-    it('offers the AI draft for an email a parser could not read, and for no other state', async () => {
+    it('offers the AI draft for an email a profile could not read, and for no other state', async () => {
       api.list.mockResolvedValue([...all, parseFailed, conflict, dismissed, waiting]);
       await renderManager();
-      for (const subject of ['Order no parser', 'Order failed']) {
-        expect(await allActions(subject), subject).toContain('Draft parser with AI');
+      for (const subject of ['Order no profile', 'Order failed']) {
+        expect(await allActions(subject), subject).toContain('Prepare a profile with AI');
       }
       for (const subject of ['Order unmatched', 'Order ambiguous', 'Order proposed', 'Order applied', 'Order ignored', 'Order skipped', 'Order pending', 'Order conflict', 'Order dismissed', 'Order waiting']) {
-        expect(await allActions(subject), subject).not.toContain('Draft parser with AI');
+        expect(await allActions(subject), subject).not.toContain('Prepare a profile with AI');
       }
     });
 
@@ -428,7 +461,7 @@ describe('EmailReceiptsManager', () => {
       await renderManager();
       for (const subject of [
         'Order unmatched',
-        'Order no parser',
+        'Order no profile',
         'Order ambiguous',
         'Order failed',
         'Order conflict',
@@ -468,21 +501,21 @@ describe('EmailReceiptsManager', () => {
       async (aiMode) => {
         api.mailboxGet.mockResolvedValue(makeMailbox({ aiMode }));
         await renderManager();
-        expect(await allActions('Order no parser')).toContain('Draft parser with AI');
+        expect(await allActions('Order no profile')).toContain('Prepare a profile with AI');
       },
     );
 
     it('offers the AI draft when the mailbox could not be read, and when there is none', async () => {
       api.mailboxGet.mockRejectedValue(new Error('boom'));
       await renderManager();
-      expect(await allActions('Order no parser')).toContain('Draft parser with AI');
+      expect(await allActions('Order no profile')).toContain('Prepare a profile with AI');
     });
 
     it('offers choosing a transaction for an email the matcher could not tie to one', async () => {
       await renderManager();
       expect(await allActions('Order ambiguous')).toContain('Choose transaction');
       expect(await allActions('Order unmatched')).toContain('Choose transaction');
-      expect(await allActions('Order no parser')).toContain('Choose transaction');
+      expect(await allActions('Order no profile')).toContain('Choose transaction');
     });
 
     it('offers no choosing once there is a proposal, or for a closed email', async () => {
@@ -592,21 +625,21 @@ describe('EmailReceiptsManager', () => {
   });
 
   describe('parsers', () => {
-    it('opens the parser editor prefilled with the sender domain and the email to test against', async () => {
+    it('opens the profile editor prefilled with the sender domain and the email to test against', async () => {
       api.list.mockResolvedValue([noParser]);
       await renderManager();
-      await runAction('Order no parser', 'Create parser');
-      const dialog = screen.getByRole('dialog', { name: 'New parser' });
+      await runAction('Order no profile', 'Create profile');
+      const dialog = screen.getByRole('dialog', { name: 'New profile' });
       expect((within(dialog).getByLabelText('Name') as HTMLInputElement).value).toBe('shop.example');
       expect((within(dialog).getByLabelText('Sender domains') as HTMLTextAreaElement).value).toBe('shop.example');
     });
 
-    it('refreshes the list when a parser was created, and closes the editor', async () => {
+    it('refreshes the list when a profile was created, and closes the editor', async () => {
       api.list.mockResolvedValue([noParser]);
       api.parserCreate.mockResolvedValue(makeParser());
       await renderManager();
-      await runAction('Order no parser', 'Create parser');
-      await click(screen.getByRole('button', { name: 'Save parser' }));
+      await runAction('Order no profile', 'Create profile');
+      await click(screen.getByRole('button', { name: 'Save profile' }));
       expect(api.parserCreate).toHaveBeenCalledTimes(1);
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       // The page's own list (the editor's test panel asks for its own, with a limit).

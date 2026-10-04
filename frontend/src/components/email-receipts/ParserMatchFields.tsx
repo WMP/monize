@@ -6,7 +6,7 @@ import { HOVER_ROW_ON_CARD } from '@/components/ui/Card';
 import { PatternArea } from '@/components/email-receipts/ParserPatternFields';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { NumericInput } from '@/components/ui/NumericInput';
-import type { ParserFormChange, ParserFormState } from '@/lib/receipt-parser-form';
+import { matchByAfterReferenceChange, type ParserFormChange, type ParserFormState } from '@/lib/receipt-parser-form';
 import {
   DEFAULT_MATCH_DAYS_AFTER,
   DEFAULT_MATCH_DAYS_BEFORE,
@@ -32,6 +32,10 @@ const CHECKBOX_CLASS =
  * how far the bank amount may differ. Every control writes the simple form of the
  * `match` section; what equals the default is left out of the definition, so a
  * profile that changes nothing here sends nothing.
+ *
+ * The form shows the effective matching the server answers (the defaults filled
+ * in); the default order is the reference first when the profile has a reference
+ * pattern, then the order number, the amount with the payee, the amount with the date.
  *
  * The strategies that are on are listed in the order they are tried, then the ones
  * that are off. At least one stays on: the server refuses an empty list.
@@ -82,6 +86,9 @@ export function ParserMatchFields({ form, onChange }: ParserMatchFieldsProps) {
     <fieldset className="space-y-4 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
       <legend className="px-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{t('heading')}</legend>
       <p className="text-xs text-gray-500 dark:text-gray-400">{t('help')}</p>
+      <p className="rounded-md bg-blue-50 p-2 text-xs text-blue-900 dark:bg-blue-900/20 dark:text-blue-100">
+        {t('instruction')}
+      </p>
 
       <PatternArea
         id="parser-reference"
@@ -89,7 +96,13 @@ export function ParserMatchFields({ form, onChange }: ParserMatchFieldsProps) {
         hint={t('referenceHint', { capture: '{reference}' })}
         value={form.reference}
         rows={2}
-        onChange={(reference) => onChange({ reference })}
+        onChange={(reference) =>
+          onChange((current) => ({
+            reference,
+            // The first reference pattern puts the reference strategy first (and the last one's removal takes it out) while the order is the default one.
+            matchBy: matchByAfterReferenceChange(current.matchBy, current.reference.trim() !== '', reference.trim() !== ''),
+          }))
+        }
       />
 
       <div>

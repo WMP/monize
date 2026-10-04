@@ -104,7 +104,7 @@ describe('AiReviewRow', () => {
     });
   });
 
-  describe('a parser draft request (kind email_parser_draft)', () => {
+  describe('a profile draft request (kind email_parser_draft)', () => {
     const draftItem = (overrides: Partial<AiReviewItem> = {}) =>
       makeReviewItem({
         kind: 'email_parser_draft',
@@ -112,7 +112,7 @@ describe('AiReviewRow', () => {
         ruleName: null,
         transactionId: null,
         transaction: null,
-        instruction: 'The user asked for a receipt parser for the order emails attached to this request.',
+        instruction: 'The user asked for a receipt profile for the order emails attached to this request.',
         parserDraft: { domain: 'shop.example.com', emailCount: 3, parserId: null },
         status: 'pending',
         ...overrides,
@@ -120,19 +120,19 @@ describe('AiReviewRow', () => {
 
     it('names the number of emails and the sender instead of a transaction', () => {
       renderRow(draftItem());
-      expect(screen.getByText('Parser draft from 3 emails (shop.example.com)')).toBeInTheDocument();
+      expect(screen.getByText('Profile draft from 3 emails (shop.example.com)')).toBeInTheDocument();
       expect(screen.queryByText('This transaction no longer exists')).not.toBeInTheDocument();
       expect(screen.queryByRole('link', { name: 'View transaction' })).not.toBeInTheDocument();
     });
 
     it('says one email when it names one', () => {
       renderRow(draftItem({ parserDraft: { domain: 'shop.example.com', emailCount: 1, parserId: null } }));
-      expect(screen.getByText('Parser draft from 1 email (shop.example.com)')).toBeInTheDocument();
+      expect(screen.getByText('Profile draft from 1 email (shop.example.com)')).toBeInTheDocument();
     });
 
     it('does not print the fixed instruction an agent reads', () => {
       renderRow(draftItem());
-      expect(screen.queryByText(/The user asked for a receipt parser/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/The user asked for a receipt profile/)).not.toBeInTheDocument();
     });
 
     it('shows the created date where a transaction date would be', () => {
@@ -153,15 +153,15 @@ describe('AiReviewRow', () => {
       expect(screen.getByRole('link', { name: 'Connect an AI provider in Settings' })).toHaveAttribute('href', '/settings/ai');
     });
 
-    it('says a proposed one is a draft parser ready, with a link to where it is tested and approved', () => {
+    it('says a proposed one is a draft profile ready, with a link to where it is tested and approved', () => {
       renderRow(
         draftItem({
           status: 'proposed',
           parserDraft: { domain: 'shop.example.com', emailCount: 3, parserId: 'p-1' },
         }),
       );
-      expect(screen.getByText(/Draft parser ready\./)).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: 'Test and approve it in the parser settings' })).toHaveAttribute(
+      expect(screen.getByText(/Draft profile ready\./)).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Test and approve it in the profile settings' })).toHaveAttribute(
         'href',
         '/email-receipts?tab=profiles',
       );
@@ -171,10 +171,10 @@ describe('AiReviewRow', () => {
     it.each(['claimed', 'applied', 'rejected', 'expired'] as const)('says neither of those once it is %s', (status) => {
       renderRow(draftItem({ status }));
       expect(screen.queryByText(/Waiting for an AI agent/)).not.toBeInTheDocument();
-      expect(screen.queryByText(/Draft parser ready/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Draft profile ready/)).not.toBeInTheDocument();
     });
 
-    it('shows no confirmation card: approving the parser in the settings is what applies it', () => {
+    it('shows no confirmation card: approving the profile in the settings is what applies it', () => {
       renderRow(draftItem({ status: 'proposed', parserDraft: { domain: 'shop.example.com', emailCount: 3, parserId: 'p-1' } }));
       expect(screen.getAllByRole('row')).toHaveLength(1);
     });

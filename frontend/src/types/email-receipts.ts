@@ -253,6 +253,9 @@ export interface EmailReceiptDomainCount {
   processable?: number;
 }
 
+/** How many stored emails are in each state (`GET /email-receipts/status-counts`); a state with none may be absent. */
+export type EmailReceiptStatusCounts = Partial<Record<EmailReceiptStatus, number>>;
+
 /** The statuses "Process all" acts on: the pipeline can run them again; `review` stands behind a proposal a person decides. */
 export const EMAIL_RECEIPT_PROCESSABLE_STATUSES = [
   'pending',
@@ -473,9 +476,16 @@ export interface ReceiptParserDefinition {
   /** Ask the user's AI for the category of an item no rule matched. */
   aiCategories?: boolean;
   items?: ReceiptItemsDefinition | ReceiptBlockItemsDefinition | ReceiptSingleItemsDefinition;
+  /** Fees of the order (a payment or handling charge), read like `shipping`. Capture `{amount}`. */
+  fees?: ReceiptFieldEntry[];
+  /** How far the items may differ from the bank amount before the proposal is not balanced; a decimal string. */
+  balanceTolerance?: string;
+  /** Advanced, edited as JSON only: rules in order, the first whose glob matches an item's name wins. */
   categoryRules?: ReceiptCategoryRule[];
-  defaultCategoryId?: string;
-  shippingCategoryId?: string;
+  /** Categories are named, not identified: the full name as the category list shows it (`Parent: Child`). */
+  defaultCategory?: string;
+  shippingCategory?: string;
+  feesCategory?: string;
   requireLine?: string[];
   skipIfLine?: string[];
   waitIfLine?: string[];

@@ -25,13 +25,31 @@ describe('ParserJsonDialog', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
   });
 
-  it('shows the stored definition pretty-printed, read-only, under the parser name', () => {
+  it('shows the stored definition pretty-printed, read-only, under the profile name', () => {
     render(<ParserJsonDialog parser={makeParser({ definition: DEFINITION })} onClose={vi.fn()} />);
     expect(screen.getByRole('dialog', { name: 'Definition of Allegro parser' })).toBeInTheDocument();
     const pre = screen.getByLabelText('Definition JSON');
     expect(pre.tagName).toBe('PRE');
     expect(pre.textContent).toBe(JSON.stringify(DEFINITION, null, 2));
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
+  it('shows the effective matching the server answers, defaults included, and says that it does', () => {
+    const effective = {
+      version: 2,
+      reference: ['Ref {reference}'],
+      match: {
+        by: ['reference', 'orderId', 'amount_payee', 'amount_date'],
+        referenceIn: ['description', 'payee', 'referenceNumber'],
+        daysBefore: 3,
+        daysAfter: 14,
+        amountTolerance: '0.00',
+      },
+    };
+    render(<ParserJsonDialog parser={makeParser({ definition: effective })} onClose={vi.fn()} />);
+    const text = screen.getByLabelText('Definition JSON').textContent ?? '';
+    expect(JSON.parse(text).match).toEqual(effective.match);
+    expect(screen.getByText(/The matching section shows the settings in effect, defaults included/)).toBeInTheDocument();
   });
 
   it('shows a definition as text, never as HTML', () => {

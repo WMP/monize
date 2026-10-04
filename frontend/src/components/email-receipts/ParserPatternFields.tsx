@@ -87,7 +87,7 @@ export function ParserPatternFields({ form, onChange }: ParserPatternFieldsProps
         value={form.total}
         onChange={(total) => onChange({ total })}
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <PatternArea
           id="parser-shipping"
           label={t('shippingLabel')}
@@ -103,6 +103,14 @@ export function ParserPatternFields({ form, onChange }: ParserPatternFieldsProps
           value={form.discount}
           rows={2}
           onChange={(discount) => onChange({ discount })}
+        />
+        <PatternArea
+          id="parser-fees"
+          label={t('feesLabel')}
+          hint={t('amountHint', { capture: '{amount}' })}
+          value={form.fees}
+          rows={2}
+          onChange={(fees) => onChange({ fees })}
         />
       </div>
 

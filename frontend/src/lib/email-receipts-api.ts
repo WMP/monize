@@ -1,4 +1,5 @@
 import apiClient from './api';
+import { clearAllCache } from './apiCache';
 import type {
   EmailReceiptDomainCount,
   CreateEmailReceiptParserPayload,
@@ -14,6 +15,7 @@ import type {
   EmailReceiptParserTestResult,
   EmailReceiptPollResult,
   EmailReceiptsOverview,
+  EmailReceiptStatusCounts,
   EmailReceiptStatus,
   ProcessEmailReceiptsPayload,
   ProcessEmailReceiptsResult,
@@ -114,10 +116,31 @@ export const emailReceiptsApi = {
       return response.data;
     },
 
-    /** The sender domains of the stored emails with their counts, most first (at most 200). */
-    listDomains: async (): Promise<EmailReceiptDomainCount[]> => {
-      const response = await apiClient.get<EmailReceiptDomainCount[]>(`${RECEIPTS}/domains`);
+    /**
+     * The sender domains of the stored emails with their counts, most first (at
+     * most 200). With `status` the counts are those of the emails in that state.
+     */
+    listDomains: async (status?: EmailReceiptStatus): Promise<EmailReceiptDomainCount[]> => {
+      const response = await apiClient.get<EmailReceiptDomainCount[]>(`${RECEIPTS}/domains`, {
+        params: status ? { status } : undefined,
+      });
       return response.data;
+    },
+
+    /** How many stored emails are in each state; the filter bar prints them. */
+    getStatusCounts: async (): Promise<EmailReceiptStatusCounts> => {
+      const response = await apiClient.get<EmailReceiptStatusCounts>(`${RECEIPTS}/status-counts`);
+      return response.data;
+    },
+
+    /**
+     * Approve the proposal this email made (its open AI review request): the
+     * server applies it as the review inbox's Confirm does. It edits a
+     * transaction, so every cached balance is dropped.
+     */
+    approveProposal: async (id: string): Promise<void> => {
+      await apiClient.post(`${RECEIPTS}/${id}/approve-proposal`);
+      clearAllCache();
     },
 
     /** What the hub's Overview cards show: one request, counts and names only. */

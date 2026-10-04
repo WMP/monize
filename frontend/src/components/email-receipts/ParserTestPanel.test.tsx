@@ -135,7 +135,7 @@ describe('ParserTestPanel', () => {
     expect(api.test).toHaveBeenCalledWith({ definition, receiptId: 'r-1' });
   });
 
-  it('shows what the parser read with every amount divided by 10000, and the matched transaction as it is', async () => {
+  it('shows what the profile read with every amount divided by 10000, and the matched transaction as it is', async () => {
     api.test.mockResolvedValue({
       parsed: PARSED_RECEIPT,
       match: { kind: 'matched', transactionId: 'tx-1', matchKind: 'order_id' },
@@ -190,7 +190,7 @@ describe('ParserTestPanel', () => {
   });
 
   it('shows the server refusal, such as a definition that is not valid, as an alert', async () => {
-    api.test.mockRejectedValue({ response: { data: { message: 'The parser definition is not valid: total[0]: capture_missing' } } });
+    api.test.mockRejectedValue({ response: { data: { message: 'The profile definition is not valid: total[0]: capture_missing' } } });
     await renderPanel();
     await choose('r-1');
     await runTest();
@@ -198,7 +198,7 @@ describe('ParserTestPanel', () => {
     expect(screen.queryByText('Transaction match')).not.toBeInTheDocument();
   });
 
-  it('preselects the email the parser is being written for', async () => {
+  it('preselects the email the profile is being written for', async () => {
     await renderPanel({ initialReceiptId: 'r-2' });
     expect((screen.getByLabelText('Email') as HTMLSelectElement).value).toBe('r-2');
     expect(screen.getByRole('button', { name: 'Test' })).toBeEnabled();

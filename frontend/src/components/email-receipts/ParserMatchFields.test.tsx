@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { useState } from 'react';
 import { render, screen, fireEvent } from '@/test/render';
 import { ParserMatchFields } from './ParserMatchFields';
-import { emptyParserForm, type ParserFormChange, type ParserFormState } from '@/lib/receipt-parser-form';
+import { defaultMatchBy, emptyParserForm, type ParserFormChange, type ParserFormState } from '@/lib/receipt-parser-form';
 
 /** The fields on a form held in state, so a change is seen in what the controls then show. */
 function Harness({ initial, onForm }: { initial?: Partial<ParserFormState>; onForm?: (form: ParserFormState) => void }) {
@@ -71,6 +71,26 @@ describe('ParserMatchFields', () => {
     expect(screen.queryByRole('note')).not.toBeInTheDocument();
   });
 
+  it('tells the person what identifies the transaction best, and the default order', () => {
+    render(<Harness />);
+    expect(screen.getByText(/Best is a reference number taken from the bank operation description/)).toBeInTheDocument();
+    expect(screen.getByText(/If there is none, the date and the amount are used/)).toBeInTheDocument();
+  });
+
+  it('puts the reference strategy first when the first reference pattern is typed, and out again when it is cleared', () => {
+    render(<Harness />);
+    fireEvent.change(screen.getByLabelText('Reference patterns'), { target: { value: 'Ref {reference}' } });
+    expect(order()).toEqual(['1. Reference', '2. Order number', '3. Amount and payee', '4. Amount and date']);
+    fireEvent.change(screen.getByLabelText('Reference patterns'), { target: { value: '' } });
+    expect(order()).toEqual(['1. Order number', '2. Amount and payee', '3. Amount and date', 'Reference']);
+  });
+
+  it('keeps an order the person arranged when a reference is typed', () => {
+    render(<Harness initial={{ matchBy: ['amount_date', 'orderId'] }} />);
+    fireEvent.change(screen.getByLabelText('Reference patterns'), { target: { value: 'Ref {reference}' } });
+    expect(order().slice(0, 2)).toEqual(['1. Amount and date', '2. Order number']);
+  });
+
   it('writes the reference patterns', () => {
     const forms: ParserFormState[] = [];
     render(<Harness onForm={(form) => forms.push(form)} />);
@@ -109,6 +129,8 @@ describe('ParserMatchFields with a spy', () => {
     const onChange = vi.fn();
     render(<ParserMatchFields form={emptyParserForm()} onChange={onChange} />);
     fireEvent.change(screen.getByLabelText('Reference patterns'), { target: { value: 'x' } });
-    expect(onChange).toHaveBeenCalledWith({ reference: 'x' });
+    // A function of the form, so the strategy order follows the reference.
+    const change = onChange.mock.calls[0][0] as (current: ParserFormState) => Partial<ParserFormState>;
+    expect(change(emptyParserForm())).toEqual({ reference: 'x', matchBy: defaultMatchBy(true) });
   });
 });

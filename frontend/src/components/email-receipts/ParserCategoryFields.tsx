@@ -1,17 +1,10 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/Button';
 import { Combobox } from '@/components/ui/Combobox';
-import { Input } from '@/components/ui/Input';
 import type { ReceiptParserOption } from '@/hooks/useReceiptParserLookups';
-import {
-  blankCategoryRule,
-  type CategoryRuleRow,
-  type ParserFormChange,
-  type ParserFormState,
-} from '@/lib/receipt-parser-form';
-import { RECEIPT_PARSER_LIMITS } from '@/types/email-receipts';
+import type { ParserFormChange, ParserFormState } from '@/lib/receipt-parser-form';
 
 interface ParserCategoryFieldsProps {
   form: ParserFormState;
@@ -19,121 +12,62 @@ interface ParserCategoryFieldsProps {
   onChange: ParserFormChange;
 }
 
+type NamedCategoryField = 'defaultCategory' | 'shippingCategory' | 'feesCategory';
+
+const FIELDS: ReadonlyArray<{ field: NamedCategoryField; label: string; help: string }> = [
+  { field: 'defaultCategory', label: 'defaultLabel', help: 'defaultHelp' },
+  { field: 'shippingCategory', label: 'shippingLabel', help: 'shippingHelp' },
+  { field: 'feesCategory', label: 'feesLabel', help: 'feesHelp' },
+];
+
 /**
- * Which category each line item gets: rules in order (the first whose pattern
- * matches the item's name wins), then a default, plus one for the shipping
- * line. A category is picked with the same combobox the transaction form uses,
- * so a rule never shows an id.
+ * Which category the items, the shipping line and the fees get. A profile names
+ * a category, never an id: the field takes the name as the category list shows it
+ * (`Parent: Child`) and offers the existing ones as you type. A name that is not
+ * in the list is flagged, because the server would refuse it when the profile is
+ * saved. Category rules by item name are an advanced option kept in the JSON.
  */
 export function ParserCategoryFields({ form, categories, onChange }: ParserCategoryFieldsProps) {
   const t = useTranslations('emailReceipts.editor.categories');
-  const options = [...categories];
-
-  const updateRule = (uid: string, changes: Partial<CategoryRuleRow>) =>
-    onChange((current) => ({
-      categoryRules: current.categoryRules.map((row) => (row.uid === uid ? { ...row, ...changes } : row)),
-    }));
-
-  const removeRule = (uid: string) =>
-    onChange((current) => ({ categoryRules: current.categoryRules.filter((row) => row.uid !== uid) }));
-
-  const addRule = () =>
-    onChange((current) =>
-      current.categoryRules.length >= RECEIPT_PARSER_LIMITS.maxCategoryRules
-        ? {}
-        : { categoryRules: [...current.categoryRules, blankCategoryRule()] },
-    );
-
-  const atLimit = form.categoryRules.length >= RECEIPT_PARSER_LIMITS.maxCategoryRules;
+  // The option's value is its name: what the profile stores.
+  const options = useMemo(() => categories.map((option) => ({ value: option.label, label: option.label })), [categories]);
+  const known = useMemo(() => new Set(categories.map((option) => option.label.toLowerCase())), [categories]);
 
   return (
     <div className="space-y-4">
       <div>
-        <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('rulesHeading')}</h4>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          {t('rulesHelp', { max: RECEIPT_PARSER_LIMITS.maxCategoryRules, example: '*cable*' })}
-        </p>
+        <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('heading')}</h4>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('help')}</p>
       </div>
-
-      {form.categoryRules.length === 0 && (
-        <p className="text-sm text-gray-500 dark:text-gray-400">{t('noRules')}</p>
-      )}
-
-      <ul className="space-y-3">
-        {form.categoryRules.map((row, index) => (
-          <li key={row.uid} className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
-            <Input
-              id={`parser-rule-${row.uid}-match`}
-              label={t('rulePatternLabel', { number: index + 1 })}
-              value={row.match}
-              maxLength={RECEIPT_PARSER_LIMITS.maxPatternLength}
-              onChange={(e) => updateRule(row.uid, { match: e.target.value })}
-            />
-            <Combobox
-              label={t('ruleCategoryLabel', { number: index + 1 })}
-              aria-label={t('ruleCategoryLabel', { number: index + 1 })}
-              placeholder={t('categoryPlaceholder')}
-              options={options}
-              value={row.categoryId}
-              onChange={(value) => updateRule(row.uid, { categoryId: value })}
-              valueIsId
-              usePortal
-              openOnFocus={false}
-            />
-            <Button type="button" variant="outline" size="sm" onClick={() => removeRule(row.uid)}>
-              {t('removeRule', { number: index + 1 })}
-            </Button>
-          </li>
-        ))}
-      </ul>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={atLimit}
-          onClick={addRule}
-        >
-          {t('addRule')}
-        </Button>
-        {atLimit && (
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            {t('ruleLimit', { max: RECEIPT_PARSER_LIMITS.maxCategoryRules })}
-          </span>
-        )}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {FIELDS.map(({ field, label, help }) => {
+          const name = form[field].trim();
+          const unknown = name !== '' && !known.has(name.toLowerCase());
+          return (
+            <div key={field}>
+              <Combobox
+                label={t(label)}
+                aria-label={t(label)}
+                placeholder={t('categoryPlaceholder')}
+                options={options}
+                value={form[field]}
+                // A picked option and a typed name both arrive as the label; clearing arrives as ''.
+                onChange={(value, text) => onChange({ [field]: text || value })}
+                allowCustomValue
+                usePortal
+                openOnFocus={false}
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t(help)}</p>
+              {unknown && (
+                <p role="note" className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                  {t('unknownCategory', { name })}
+                </p>
+              )}
+            </div>
+          );
+        })}
       </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <Combobox
-            label={t('defaultLabel')}
-            aria-label={t('defaultLabel')}
-            placeholder={t('categoryPlaceholder')}
-            options={options}
-            value={form.defaultCategoryId}
-            onChange={(value) => onChange({ defaultCategoryId: value })}
-            valueIsId
-            usePortal
-            openOnFocus={false}
-          />
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('defaultHelp')}</p>
-        </div>
-        <div>
-          <Combobox
-            label={t('shippingLabel')}
-            aria-label={t('shippingLabel')}
-            placeholder={t('categoryPlaceholder')}
-            options={options}
-            value={form.shippingCategoryId}
-            onChange={(value) => onChange({ shippingCategoryId: value })}
-            valueIsId
-            usePortal
-            openOnFocus={false}
-          />
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('shippingHelp')}</p>
-        </div>
-      </div>
+      <p className="text-xs text-gray-500 dark:text-gray-400">{t('rulesInJson')}</p>
     </div>
   );
 }

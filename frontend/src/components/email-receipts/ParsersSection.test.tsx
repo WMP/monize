@@ -68,7 +68,7 @@ describe('ParsersSection', () => {
     categoriesApi.getAll.mockResolvedValue([]);
   });
 
-  it('lists each parser with its domains, status, source and payee', async () => {
+  it('lists each profile with its domains, status, source and payee', async () => {
     await renderSection();
     const approvedRow = screen.getByRole('row', { name: /Allegro parser/ });
     expect(within(approvedRow).getByText('allegro.pl')).toBeInTheDocument();
@@ -82,7 +82,7 @@ describe('ParsersSection', () => {
     expect(within(draftRow).getByText('No payee')).toBeInTheDocument();
   });
 
-  it('flags a parser whose stored definition is not valid and does not offer to approve it', async () => {
+  it('flags a profile whose stored definition is not valid and does not offer to approve it', async () => {
     api.list.mockResolvedValue([makeParser({ status: 'draft', definitionValid: false })]);
     await renderSection();
     const row = screen.getByRole('row', { name: /Allegro parser/ });
@@ -97,7 +97,7 @@ describe('ParsersSection', () => {
   });
 
   describe('view JSON', () => {
-    it('offers View JSON on every parser, draft or approved, valid or not', async () => {
+    it('offers View JSON on every profile, draft or approved, valid or not', async () => {
       api.list.mockResolvedValue([
         approved,
         draft,
@@ -136,18 +136,18 @@ describe('ParsersSection', () => {
       await renderSection();
       await click(within(screen.getByRole('row', { name: /Amazon draft/ })).getByRole('button', { name: 'Approve' }));
       expect(api.approve).toHaveBeenCalledWith('p-2', 5);
-      expect(toast.success).toHaveBeenCalledWith('Parser approved');
+      expect(toast.success).toHaveBeenCalledWith('Profile approved');
       const row = screen.getByRole('row', { name: /Amazon draft/ });
       expect(within(row).getByText('Approved')).toBeInTheDocument();
       expect(within(row).queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument();
     });
 
-    it('says the parser changed elsewhere on a 409 and reloads the list', async () => {
+    it('says the profile changed elsewhere on a 409 and reloads the list', async () => {
       api.approve.mockRejectedValue(conflict());
       await renderSection();
       expect(api.list).toHaveBeenCalledTimes(1);
       await click(within(screen.getByRole('row', { name: /Amazon draft/ })).getByRole('button', { name: 'Approve' }));
-      expect(toast.error).toHaveBeenCalledWith('This parser was changed elsewhere. The list has been reloaded.');
+      expect(toast.error).toHaveBeenCalledWith('This profile was changed elsewhere. The list has been reloaded.');
       expect(api.list).toHaveBeenCalledTimes(2);
     });
 
@@ -210,7 +210,7 @@ describe('ParsersSection', () => {
       api.listDomains.mockRejectedValue(new Error('down'));
       await approveDraft();
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-      expect(toast.success).toHaveBeenCalledWith('Parser approved');
+      expect(toast.success).toHaveBeenCalledWith('Profile approved');
     });
   });
 
@@ -219,7 +219,7 @@ describe('ParsersSection', () => {
       await renderSection();
       await click(within(screen.getByRole('row', { name: /Allegro parser/ })).getByRole('button', { name: 'Delete' }));
       const dialog = screen.getByRole('dialog');
-      expect(within(dialog).getByText(/The parser Allegro parser will be deleted/)).toBeInTheDocument();
+      expect(within(dialog).getByText(/The profile Allegro parser will be deleted/)).toBeInTheDocument();
       await click(within(dialog).getByRole('button', { name: 'Cancel' }));
       expect(api.remove).not.toHaveBeenCalled();
       expect(screen.getByRole('row', { name: /Allegro parser/ })).toBeInTheDocument();
@@ -231,7 +231,7 @@ describe('ParsersSection', () => {
       await click(within(screen.getByRole('row', { name: /Allegro parser/ })).getByRole('button', { name: 'Delete' }));
       await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }));
       expect(api.remove).toHaveBeenCalledWith('p-1');
-      expect(toast.success).toHaveBeenCalledWith('Parser deleted');
+      expect(toast.success).toHaveBeenCalledWith('Profile deleted');
       expect(screen.queryByRole('row', { name: /Allegro parser/ })).not.toBeInTheDocument();
     });
 
@@ -246,37 +246,37 @@ describe('ParsersSection', () => {
   });
 
   describe('the editor', () => {
-    it('opens empty for a new parser and reloads the list after a save', async () => {
+    it('opens empty for a new profile and reloads the list after a save', async () => {
       api.create.mockResolvedValue(makeParser({ id: 'p-3' }));
       await renderSection();
-      await click(screen.getByRole('button', { name: 'New parser' }));
-      expect(screen.getByRole('dialog', { name: 'New parser' })).toBeInTheDocument();
+      await click(screen.getByRole('button', { name: 'New profile' }));
+      expect(screen.getByRole('dialog', { name: 'New profile' })).toBeInTheDocument();
       await act(async () => {
         fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Shop' } });
         fireEvent.change(screen.getByLabelText('Sender domains'), { target: { value: 'shop.example' } });
       });
-      await click(screen.getByRole('button', { name: 'Save parser' }));
+      await click(screen.getByRole('button', { name: 'Save profile' }));
       expect(api.create).toHaveBeenCalledTimes(1);
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       expect(api.list).toHaveBeenCalledTimes(2);
     });
 
-    it('opens a stored parser for editing', async () => {
+    it('opens a stored profile for editing', async () => {
       await renderSection();
       await click(within(screen.getByRole('row', { name: /Allegro parser/ })).getByRole('button', { name: 'Edit' }));
-      expect(screen.getByRole('dialog', { name: 'Edit parser' })).toBeInTheDocument();
+      expect(screen.getByRole('dialog', { name: 'Edit profile' })).toBeInTheDocument();
       expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('Allegro parser');
     });
 
-    it('closes the editor and reloads the list when the parser moved on under it', async () => {
+    it('closes the editor and reloads the list when the profile moved on under it', async () => {
       api.update.mockRejectedValue(conflict());
       await renderSection();
       await click(within(screen.getByRole('row', { name: /Allegro parser/ })).getByRole('button', { name: 'Edit' }));
       await act(async () => {
         fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Renamed' } });
       });
-      await click(screen.getByRole('button', { name: 'Save parser' }));
-      await click(screen.getByRole('button', { name: 'Reload the parser' }));
+      await click(screen.getByRole('button', { name: 'Save profile' }));
+      await click(screen.getByRole('button', { name: 'Reload the profile' }));
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       expect(api.list).toHaveBeenCalledTimes(2);
     });
@@ -288,17 +288,17 @@ describe('ParsersSection', () => {
     expect(within(screen.getByRole('row', { name: /Allegro parser/ })).getByText('Payee not found')).toBeInTheDocument();
   });
 
-  it('says there are no parsers only when the list loaded empty', async () => {
+  it('says there are no profiles only when the list loaded empty', async () => {
     api.list.mockResolvedValue([]);
     await renderSection();
-    expect(screen.getByText('No parsers yet')).toBeInTheDocument();
+    expect(screen.getByText('No profiles yet')).toBeInTheDocument();
   });
 
   it('shows a failed load as an error with a retry, never as an empty list', async () => {
     api.list.mockRejectedValueOnce(new Error('boom'));
     await renderSection();
-    expect(screen.getByRole('alert')).toHaveTextContent('The parsers could not be loaded');
-    expect(screen.queryByText('No parsers yet')).not.toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('The profiles could not be loaded');
+    expect(screen.queryByText('No profiles yet')).not.toBeInTheDocument();
     await click(screen.getByRole('button', { name: 'Try again' }));
     expect(screen.getByRole('row', { name: /Allegro parser/ })).toBeInTheDocument();
   });
