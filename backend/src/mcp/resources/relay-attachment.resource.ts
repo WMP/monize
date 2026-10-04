@@ -10,7 +10,7 @@ import { resolveUserContext, hasScope } from "../mcp-context";
  * (get_next_prompt) hands the agent a `monize-attachment://<id>` URI per file;
  * the agent reads that URI here before answering. Images are returned as a
  * base64 blob; text/CSV and text-extractable PDFs are returned as text. A PDF
- * with no text layer (scanned/image-only) or one pdf-parse cannot read falls
+ * with no text layer (scanned/image-only) or one pdf.js cannot read falls
  * back to a base64 blob, exactly like an image, so a vision-capable client or
  * model can still read it.
  *
@@ -89,7 +89,7 @@ export class McpRelayAttachmentResource {
         // blob: handing the agent's MCP client a raw application/pdf blob makes
         // it fall back to a local PDF handler that prompts the user to install
         // extra tooling. Returning text lets the agent read the PDF just like a
-        // CSV. But a scanned/image-only PDF (no text layer) or one pdf-parse
+        // CSV. But a scanned/image-only PDF (no text layer) or one pdf.js
         // cannot read yields no usable text -- in that case fall through to the
         // raw bytes as a blob below, like an image, so a vision-capable client
         // or model can still read it.
@@ -105,7 +105,7 @@ export class McpRelayAttachmentResource {
             }
             // No extractable text: fall through to the binary blob below.
           } catch {
-            // pdf-parse could not read the bytes: fall through to the binary
+            // pdf.js could not read the bytes: fall through to the binary
             // blob below rather than failing the read outright.
           }
         }
