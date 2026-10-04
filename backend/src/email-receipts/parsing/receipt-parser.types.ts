@@ -40,6 +40,10 @@ export const MAX_JOINED_LINES = 3;
 export const MAX_TRACE_LINE_LENGTH = 200;
 /** The longest tag a profile may add to the transactions it splits. */
 export const MAX_PROFILE_TAG_LENGTH = 50;
+/** The longest category name a profile may give (`defaultCategory`, `shippingCategory`, `feesCategory`). */
+export const MAX_PROFILE_CATEGORY_NAME_LENGTH = 100;
+/** The largest `balanceTolerance`, in 1/10000 units: `0.05`. */
+export const MAX_BALANCE_TOLERANCE_UNITS = 500;
 
 /** The item section and the patterns that read one line item per line. */
 export interface ReceiptItemsDefinition {
@@ -48,7 +52,11 @@ export interface ReceiptItemsDefinition {
   /** Case-insensitive substring: items end BEFORE the first line holding it after the start. */
   stopAt?: string;
   patterns: string[];
-  /** A line no pattern reads is held (up to 3) and put in front of the next line. */
+  /**
+   * A line no pattern reads is held (up to 3) and put in front of the next line;
+   * when the whole buffer does not make a readable line, a shorter one is tried
+   * (the last 2, 1, then 0 held lines).
+   */
   joinWrapped?: boolean;
 }
 
@@ -181,6 +189,12 @@ export interface ReceiptParserDefinition {
   /** The amount actually paid (after a discount); `total` is then the list price. */
   paid?: ReceiptFieldEntry[];
   shipping?: ReceiptFieldEntry[];
+  /**
+   * Further charges (a deposit, packing, delivery): EVERY entry that finds an
+   * accepted amount is one fee, and the fees are summed. Gross is items plus
+   * shipping plus fees; each fee is its own split line under `feesCategoryId`.
+   */
+  fees?: ReceiptFieldEntry[];
   discount?: ReceiptFieldEntry[];
   /** The merchant, when it is not the sender (a payment gateway). Capture `{payee}`. */
   payee?: ReceiptFieldEntry[];
@@ -209,6 +223,21 @@ export interface ReceiptParserDefinition {
   categoryRules?: ReceiptCategoryRule[];
   defaultCategoryId?: string;
   shippingCategoryId?: string;
+  feesCategoryId?: string;
+  /**
+   * The same categories by NAME (1 to 100 characters): the server replaces a
+   * name by the user's category id when the profile is saved; the engine only
+   * validates the text.
+   */
+  defaultCategory?: string;
+  shippingCategory?: string;
+  feesCategory?: string;
+  /**
+   * The difference between the lines and the stated total or paid amount that
+   * is still a balanced receipt: a decimal text `"0.00"` to `"0.05"` (integer
+   * 1/10000 arithmetic). The proposal adds the difference to its last split line.
+   */
+  balanceTolerance?: string;
   /** The parser applies only when a line matches one of these; else the next parser for the domain. */
   requireLine?: string[];
   /** A line matching one of these makes the receipt `ignored` (`skip_line`). */
@@ -228,7 +257,7 @@ export interface ParsedReceiptItem {
    * `"ai"` when the AI chose this item's category (design 5.6); absent when a
    * rule, the default or the payee did. The card and the receipt page label it.
    */
-  categorySource?: "ai";
+  categorySource?: "ai" | "history";
 }
 
 /** The first thing missing from a receipt that is not complete (spec section 4). */
@@ -262,9 +291,15 @@ export interface ParsedReceipt {
    */
   reference?: string | null;
   shipping: number | null;
+  /** Each fee the profile's `fees` entries read, in 1/10000 units, in entry order; absent on a receipt stored before fees existed. */
+  fees?: number[];
   discount: number | null;
   items: ParsedReceiptItem[];
   shippingCategoryId: string | null;
+  /** The category of every fee line; null or absent when none. */
+  feesCategoryId?: string | null;
+  /** 1/10000 units: what the lines may differ from the stated amounts by and still balance; absent is 0. */
+  balanceTolerance?: number;
   discountCategoryId: string | null;
   complete: boolean;
   reason: ParsedReceiptReason | null;
@@ -313,6 +348,8 @@ export interface ReceiptTrace {
   total: ReceiptTraceHit | null;
   paid: ReceiptTraceHit | null;
   shipping: ReceiptTraceHit | null;
+  /** One hit per `fees` entry that read an amount. */
+  fees?: ReceiptTraceHit[];
   discount: ReceiptTraceHit | null;
   payee: ReceiptTraceHit | null;
   requireLine: ReceiptTraceHit | null;

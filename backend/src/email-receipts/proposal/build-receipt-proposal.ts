@@ -143,7 +143,7 @@ export function buildDescription(
     : composed;
 }
 
-/** The lines an itemized proposal is made of: items, then shipping, then the discount. */
+/** The lines an itemized proposal is made of: items, shipping, each fee, then the discount. */
 function receiptLines(parsed: ParsedReceipt): ReceiptLine[] {
   const lines: ReceiptLine[] = parsed.items.map((item) => ({
     categoryId: item.categoryId,
@@ -158,6 +158,15 @@ function receiptLines(parsed: ParsedReceipt): ReceiptLine[] {
       units: parsed.shipping as number,
       direction: 1,
     });
+  }
+  for (const fee of parsed.fees ?? []) {
+    if (fee > 0) {
+      lines.push({
+        categoryId: parsed.feesCategoryId ?? null,
+        units: fee,
+        direction: 1,
+      });
+    }
   }
   if ((parsed.discount ?? 0) > 0) {
     lines.push({
@@ -270,9 +279,25 @@ export function buildReceiptProposal(
   }
 
   const sign = tx.amount < 0 ? -1 : 1;
+  // Signed 1/10000 units per line; what the lines miss the transaction by, when
+  // within the profile's balance tolerance, goes to the LAST line so the split
+  // sums to the transaction to the cent (integer arithmetic, never floats).
+  const signedUnits = lines.map((line) => sign * line.direction * line.units);
+  const missing =
+    Math.round(tx.amount * MONEY_UNITS) -
+    signedUnits.reduce((sum, units) => sum + units, 0);
+  if (missing !== 0) {
+    const last = signedUnits.length - 1;
+    const adjusted = signedUnits[last] + missing;
+    const sameSign = Math.sign(adjusted) === Math.sign(signedUnits[last]);
+    if (Math.abs(missing) > (parsed.balanceTolerance ?? 0) || !sameSign) {
+      return descriptionOnly("amount_differs");
+    }
+    signedUnits[last] = adjusted;
+  }
   const splits: AiReviewSplitLine[] = lines.map((line, index) => ({
     categoryName: names[index],
-    amount: roundMoney((sign * line.direction * line.units) / MONEY_UNITS),
+    amount: roundMoney(signedUnits[index] / MONEY_UNITS),
     ...(line.memo ? { memo: line.memo } : {}),
     ...(line.categorySource === "ai" ? { categorySource: "ai" as const } : {}),
   }));

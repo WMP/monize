@@ -13,6 +13,8 @@ import {
 } from "./receipt-match-config";
 import {
   MAX_CATEGORY_RULES,
+  MAX_BALANCE_TOLERANCE_UNITS,
+  MAX_PROFILE_CATEGORY_NAME_LENGTH,
   MAX_PROFILE_TAG_LENGTH,
   MAX_LABEL_WITHIN,
   MAX_LINE_GUARDS,
@@ -121,16 +123,22 @@ const TOP_LEVEL_KEYS: readonly string[] = [
   "total",
   "paid",
   "shipping",
+  "fees",
   "discount",
   "payee",
   "reference",
   "match",
   "tag",
   "aiCategories",
+  "balanceTolerance",
   "items",
   "categoryRules",
   "defaultCategoryId",
   "shippingCategoryId",
+  "feesCategoryId",
+  "defaultCategory",
+  "shippingCategory",
+  "feesCategory",
   "requireLine",
   "skipIfLine",
   "waitIfLine",
@@ -822,6 +830,50 @@ function checkTag(value: unknown, errors: Errors): string | null {
   return tag;
 }
 
+/** A category name a profile gives: 1 to 100 characters once trimmed, no control character. */
+function checkCategoryName(
+  value: unknown,
+  path: string,
+  errors: Errors,
+): string | null {
+  if (typeof value !== "string") {
+    errors.add(path, "invalid_type");
+    return null;
+  }
+  const name = value.trim();
+  if (name === "") {
+    errors.add(path, "empty");
+    return null;
+  }
+  if (name.length > MAX_PROFILE_CATEGORY_NAME_LENGTH) {
+    errors.add(path, "too_long");
+    return null;
+  }
+  if (hasControlCharacter(name)) {
+    errors.add(path, "control_character");
+    return null;
+  }
+  return name;
+}
+
+/** `balanceTolerance`: a decimal text from `"0"` to `"0.05"` (the amountTolerance grammar, a tighter bound). */
+function checkBalanceTolerance(value: unknown, errors: Errors): string | null {
+  if (typeof value !== "string") {
+    errors.add("balanceTolerance", "invalid_type");
+    return null;
+  }
+  const units = parseToleranceUnits(value);
+  if (units === null) {
+    errors.add("balanceTolerance", "invalid_value");
+    return null;
+  }
+  if (units > MAX_BALANCE_TOLERANCE_UNITS) {
+    errors.add("balanceTolerance", "out_of_range");
+    return null;
+  }
+  return value;
+}
+
 /**
  * Validate an untrusted value as a receipt parser definition (version 2, the
  * only one). Refuses unknown keys at every level, wrong types, another
@@ -858,6 +910,7 @@ export function validateReceiptParserDefinition(
       | "total"
       | "paid"
       | "shipping"
+      | "fees"
       | "discount"
       | "payee"
       | "reference"
@@ -868,6 +921,7 @@ export function validateReceiptParserDefinition(
     ["total", AMOUNT_CAPTURES],
     ["paid", AMOUNT_CAPTURES],
     ["shipping", AMOUNT_CAPTURES],
+    ["fees", AMOUNT_CAPTURES],
     ["discount", AMOUNT_CAPTURES],
     ["payee", PAYEE_CAPTURES],
     ["reference", REFERENCE_CAPTURES],
@@ -909,10 +963,27 @@ export function validateReceiptParserDefinition(
     const globs = checkGlobList(input[field], field, MAX_LINE_GUARDS, errors);
     if (globs !== null) out[field] = globs;
   }
-  for (const field of ["defaultCategoryId", "shippingCategoryId"] as const) {
+  for (const field of [
+    "defaultCategoryId",
+    "shippingCategoryId",
+    "feesCategoryId",
+  ] as const) {
     if (input[field] === undefined) continue;
     const id = checkUuid(input[field], field, errors);
     if (id !== null) out[field] = id;
+  }
+  for (const field of [
+    "defaultCategory",
+    "shippingCategory",
+    "feesCategory",
+  ] as const) {
+    if (input[field] === undefined) continue;
+    const name = checkCategoryName(input[field], field, errors);
+    if (name !== null) out[field] = name;
+  }
+  if (input.balanceTolerance !== undefined) {
+    const text = checkBalanceTolerance(input.balanceTolerance, errors);
+    if (text !== null) out.balanceTolerance = text;
   }
 
   return errors.list.length > 0
@@ -932,5 +1003,6 @@ export function collectParserCategoryIds(
   for (const rule of definition.categoryRules ?? []) ids.push(rule.categoryId);
   if (definition.defaultCategoryId) ids.push(definition.defaultCategoryId);
   if (definition.shippingCategoryId) ids.push(definition.shippingCategoryId);
+  if (definition.feesCategoryId) ids.push(definition.feesCategoryId);
   return [...new Set(ids)];
 }
