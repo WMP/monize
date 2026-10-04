@@ -202,6 +202,12 @@
     "conflict": "Este analisador foi alterado noutro local desde que o abriu. Recarregue-o para ver a versão atual. As suas edições aqui não são guardadas.",
     "conflictReload": "Recarregar o analisador",
     "patterns": {
+      "sourceLabel": "Origem das linhas",
+      "sourceHint": "Com que representação do e-mail os padrões abaixo são comparados. Texto é a parte de texto do e-mail, uma linha por quebra de linha. HTML lê a parte HTML: cada bloco e cada célula de tabela passa a ser uma linha própria, pelo que o nome de um produto que o texto divide por várias linhas fica inteiro. A vista Linhas do e-mail mostra exatamente o que cada origem fornece.",
+      "sourceOptions": {
+        "text": "Texto",
+        "html": "HTML"
+      },
       "globHelp": "Cada padrão é comparado com uma linha inteira do e-mail, sem distinguir maiúsculas de minúsculas. Use {star} para qualquer texto e um nome entre chavetas, como {capture}, para capturar um valor. Cada campo aceita até {max} padrões, um por linha.",
       "orderIdLabel": "Padrões do número da encomenda",
       "orderIdHint": "Tem de capturar {capture}. Exemplo: Número da encomenda: {capture}",
@@ -284,6 +290,7 @@
       "requireLine": "Linhas obrigatórias",
       "skipIfLine": "Linhas que fazem ignorar o e-mail",
       "waitIfLine": "Linhas que retêm o e-mail",
+      "source": "Origem das linhas",
       "single": "Artigo único",
       "singleName": "Nome do artigo único",
       "joinWrapped": "Juntar linhas quebradas",
@@ -340,7 +347,8 @@
     "outcome": {
       "not_applicable": "Este analisador não leria este e-mail: nenhuma das suas linhas obrigatórias consta nele, por isso seria tentado o analisador seguinte para o remetente.",
       "skip_line": "Este analisador poria este e-mail de parte: contém uma linha que o leva a ignorá-lo.",
-      "wait_line": "Este analisador reteria este e-mail: uma linha indica que a encomenda ainda não é definitiva, por isso será lido novamente mais tarde."
+      "wait_line": "Este analisador reteria este e-mail: uma linha indica que a encomenda ainda não é definitiva, por isso será lido novamente mais tarde.",
+      "no_html": "Este analisador lê a parte HTML do e-mail e este e-mail não tem nenhuma, por isso seria marcado como ilegível (sem HTML)."
     },
     "matchedBy": {
       "heading": "Encontrado por",
@@ -390,6 +398,7 @@
       "item_amount_missing": "Um artigo não tem montante, e o e-mail não tem um total único para lhe atribuir."
     },
     "readByAi": "Lido pela IA",
+    "readFromStructuredData": "Lido a partir de dados estruturados",
     "paid": "Pago",
     "payee": "Comerciante"
   },
@@ -427,6 +436,12 @@
       "review_conflict": "Há outro pedido aberto",
       "review": "Em revisão",
       "ignored": "Ignorado"
+    },
+    "domainFilter": {
+      "label": "Domínio do remetente",
+      "all": "Todos os remetentes",
+      "option": "{domain} ({count})",
+      "help": "A mostrar os e-mails de {domain} e dos seus subdomínios. Selecione vários para elaborar um analisador para o remetente."
     },
     "columns": {
       "select": "Selecionar",
@@ -511,6 +526,7 @@
     "state": "Estado",
     "parser": "Analisador",
     "noParser": "Nenhum",
+    "structuredSource": "Dados estruturados",
     "matchedBy": "Correspondido por",
     "matchKinds": {
       "order_id": "Número da encomenda",
@@ -539,6 +555,8 @@
       "proposal_refused": "A proposta foi recusada, por isso nada foi proposto.",
       "skip_line": "Foi encontrada uma linha que leva este analisador a ignorar o e-mail, por isso foi ignorado.",
       "wait_line": "Uma linha indica que a encomenda ainda não é definitiva, por isso o e-mail será lido novamente mais tarde.",
+      "no_html": "Este analisador lê a parte HTML do e-mail e este e-mail não tem nenhuma.",
+      "schema_org": "Não foi preciso nenhum analisador: a encomenda foi lida a partir dos dados estruturados (schema.org) do e-mail.",
       "item_amount_missing": "Um artigo não tem montante, e o e-mail não tem um total único para lhe atribuir."
     },
     "reasonUnknown": "Motivo: {reason}",
@@ -556,10 +574,34 @@
     "bodyView": {
       "label": "Mostrar o e-mail como",
       "html": "HTML",
-      "text": "Texto"
+      "text": "Texto",
+      "lines": "Linhas"
     },
     "remoteImagesNote": "As imagens remotas não são carregadas.",
-    "htmlFrameTitle": "O e-mail tal como o remetente o formatou"
+    "htmlFrameTitle": "O e-mail tal como o remetente o formatou",
+    "structured": {
+      "heading": "Dados estruturados (schema.org)",
+      "help": "Uma encomenda ou fatura que o e-mail transporta como marcação para os clientes de e-mail. Só é lida quando nenhum analisador se aplica ou o analisador não encontra um total.",
+      "found": "Encontrados",
+      "notFound": "Não encontrados",
+      "notFoundHelp": "O e-mail não contém marcação de encomenda, ou esta não indica nenhum total nem artigos.",
+      "seller": "Vendedor",
+      "currency": "Moeda",
+      "orderDate": "Data da encomenda",
+      "unitPrice": "Preço unitário"
+    },
+    "lines": {
+      "help": "As linhas com que os padrões de um analisador são comparados, numeradas como as numera a lista «Encontrado por» de um teste.",
+      "sourceLabel": "Origem das linhas",
+      "sources": {
+        "text": "Texto",
+        "html": "HTML"
+      },
+      "noHtml": "Este e-mail não tem parte HTML, por isso um analisador que lê HTML não o consegue ler.",
+      "capped": "Só são lidas as primeiras {max} linhas.",
+      "empty": "Sem linhas.",
+      "listLabel": "Linhas numeradas do e-mail"
+    }
   },
   "picker": {
     "heading": "Escolha a transação",

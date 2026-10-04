@@ -202,6 +202,12 @@
     "conflict": "Este analizador se modificó en otro lugar desde que lo abriste. Vuelve a cargarlo para ver la versión actual. Tus cambios aquí no se han guardado.",
     "conflictReload": "Recargar el analizador",
     "patterns": {
+      "sourceLabel": "Origen de las líneas",
+      "sourceHint": "Con qué representación del correo se comparan los patrones siguientes. Texto es la parte de texto del correo, una línea por salto de línea. HTML lee la parte HTML: cada bloque y cada celda de una tabla se convierte en su propia línea, de modo que el nombre de un producto que el texto reparte en varias líneas queda entero. La vista Líneas del correo muestra exactamente lo que da cada origen.",
+      "sourceOptions": {
+        "text": "Texto",
+        "html": "HTML"
+      },
       "globHelp": "Cada patrón se compara con una línea completa del correo, sin distinguir mayúsculas de minúsculas. Usa {star} para cualquier texto y un nombre entre llaves, como {capture}, para capturar un valor. Cada campo admite hasta {max} patrones, uno por línea.",
       "orderIdLabel": "Patrones del número de pedido",
       "orderIdHint": "Debe capturar {capture}. Ejemplo: Número de pedido: {capture}",
@@ -284,6 +290,7 @@
       "requireLine": "Líneas obligatorias",
       "skipIfLine": "Líneas que omiten el correo",
       "waitIfLine": "Líneas que retienen el correo",
+      "source": "Origen de las líneas",
       "single": "Artículo único",
       "singleName": "Nombre del artículo único",
       "joinWrapped": "Unir líneas partidas",
@@ -340,7 +347,8 @@
     "outcome": {
       "not_applicable": "Este analizador no leería este correo: no contiene ninguna de sus líneas obligatorias, así que se probaría el siguiente analizador del remitente.",
       "skip_line": "Este analizador apartaría este correo: contiene una línea ante la que se omite.",
-      "wait_line": "Este analizador retendría este correo: una línea indica que el pedido todavía no es definitivo, así que se leerá de nuevo más adelante."
+      "wait_line": "Este analizador retendría este correo: una línea indica que el pedido todavía no es definitivo, así que se leerá de nuevo más adelante.",
+      "no_html": "Este analizador lee la parte HTML del correo y este correo no la tiene, así que se marcaría como ilegible (sin HTML)."
     },
     "matchedBy": {
       "heading": "Encontrado por",
@@ -390,6 +398,7 @@
       "item_amount_missing": "Un artículo no tiene importe y el correo no tiene un único total que asignarle."
     },
     "readByAi": "Leído por la IA",
+    "readFromStructuredData": "Leído de datos estructurados",
     "paid": "Pagado",
     "payee": "Comercio"
   },
@@ -427,6 +436,12 @@
       "review_conflict": "Hay otra solicitud abierta",
       "review": "En revisión",
       "ignored": "Ignorado"
+    },
+    "domainFilter": {
+      "label": "Dominio del remitente",
+      "all": "Todos los remitentes",
+      "option": "{domain} ({count})",
+      "help": "Se muestran los correos de {domain} y de sus subdominios. Selecciona varios para redactar un analizador para el remitente."
     },
     "columns": {
       "select": "Seleccionar",
@@ -511,6 +526,7 @@
     "state": "Estado",
     "parser": "Analizador",
     "noParser": "Ninguno",
+    "structuredSource": "Datos estructurados",
     "matchedBy": "Asociado por",
     "matchKinds": {
       "order_id": "Número de pedido",
@@ -539,6 +555,8 @@
       "proposal_refused": "Se rechazó la propuesta, así que no se propuso nada.",
       "skip_line": "Se encontró una línea ante la que este analizador omite, así que se ignoró el correo.",
       "wait_line": "Una línea indica que el pedido todavía no es definitivo, así que el correo se leerá de nuevo más adelante.",
+      "no_html": "Este analizador lee la parte HTML del correo y este correo no la tiene.",
+      "schema_org": "No hizo falta ningún analizador: el pedido se leyó de los datos estructurados (schema.org) del correo.",
       "item_amount_missing": "Un artículo no tiene importe y el correo no tiene un único total que asignarle."
     },
     "reasonUnknown": "Motivo: {reason}",
@@ -556,10 +574,34 @@
     "bodyView": {
       "label": "Mostrar el correo como",
       "html": "HTML",
-      "text": "Texto"
+      "text": "Texto",
+      "lines": "Líneas"
     },
     "remoteImagesNote": "No se cargan las imágenes remotas.",
-    "htmlFrameTitle": "El correo con el formato que le dio su remitente"
+    "htmlFrameTitle": "El correo con el formato que le dio su remitente",
+    "structured": {
+      "heading": "Datos estructurados (schema.org)",
+      "help": "Un pedido o una factura que el correo lleva como marcado para los clientes de correo. Solo se lee cuando no se aplica ningún analizador o el analizador no encuentra un total.",
+      "found": "Encontrado",
+      "notFound": "No encontrado",
+      "notFoundHelp": "El correo no lleva marcado de pedido, o no indica ningún total ni artículos.",
+      "seller": "Vendedor",
+      "currency": "Moneda",
+      "orderDate": "Fecha del pedido",
+      "unitPrice": "Precio unitario"
+    },
+    "lines": {
+      "help": "Las líneas con las que se comparan los patrones de un analizador, numeradas como las numera la lista «Encontrado por» de una prueba.",
+      "sourceLabel": "Origen de las líneas",
+      "sources": {
+        "text": "Texto",
+        "html": "HTML"
+      },
+      "noHtml": "Este correo no tiene parte HTML, así que un analizador que lee HTML no puede leerlo.",
+      "capped": "Solo se leen las primeras {max} líneas.",
+      "empty": "No hay líneas.",
+      "listLabel": "Líneas numeradas del correo"
+    }
   },
   "picker": {
     "heading": "Elige la transacción",

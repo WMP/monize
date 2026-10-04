@@ -202,6 +202,12 @@
     "conflict": "Deze parser is elders gewijzigd sinds je hem hebt geopend. Laad hem opnieuw om de huidige versie te zien. Je wijzigingen hier zijn niet opgeslagen.",
     "conflictReload": "De parser opnieuw laden",
     "patterns": {
+      "sourceLabel": "Bron van de regels",
+      "sourceHint": "Met welke weergave van de e-mail de onderstaande patronen worden vergeleken. Tekst is het tekstdeel van de e-mail, één regel per regeleinde. HTML leest het HTML-deel: elk blok en elke tabelcel wordt een eigen regel, zodat een productnaam die de tekst over meerdere regels verdeelt heel blijft. De weergave Regels van de e-mail toont precies wat elke bron oplevert.",
+      "sourceOptions": {
+        "text": "Tekst",
+        "html": "HTML"
+      },
       "globHelp": "Elk patroon wordt vergeleken met één hele regel van de e-mail, hoofdletters worden genegeerd. Gebruik {star} voor willekeurige tekst en een naam tussen accolades, zoals {capture}, om een waarde vast te leggen. Elk veld accepteert maximaal {max} patronen, één per regel.",
       "orderIdLabel": "Patronen voor het ordernummer",
       "orderIdHint": "Moet {capture} vastleggen. Voorbeeld: Ordernummer: {capture}",
@@ -284,6 +290,7 @@
       "requireLine": "Vereiste regels",
       "skipIfLine": "Regels die de e-mail overslaan",
       "waitIfLine": "Regels die de e-mail vasthouden",
+      "source": "Bron van de regels",
       "single": "Enkel artikel",
       "singleName": "Naam van het enkele artikel",
       "joinWrapped": "Afgebroken regels samenvoegen",
@@ -340,7 +347,8 @@
     "outcome": {
       "not_applicable": "Deze parser zou deze e-mail niet lezen: geen van de vereiste regels komt erin voor, dus de volgende parser voor de afzender zou worden geprobeerd.",
       "skip_line": "Deze parser zou deze e-mail opzijzetten: er staat een regel in waarop hij overslaat.",
-      "wait_line": "Deze parser zou deze e-mail vasthouden: een regel zegt dat de bestelling nog niet definitief is, dus hij wordt later opnieuw gelezen."
+      "wait_line": "Deze parser zou deze e-mail vasthouden: een regel zegt dat de bestelling nog niet definitief is, dus hij wordt later opnieuw gelezen.",
+      "no_html": "Deze parser leest het HTML-deel van de e-mail en deze e-mail heeft er geen, dus hij zou worden gemarkeerd als onleesbaar (geen HTML)."
     },
     "matchedBy": {
       "heading": "Gevonden via",
@@ -390,6 +398,7 @@
       "item_amount_missing": "Een artikel heeft geen bedrag en de e-mail heeft geen enkel totaal om het te geven."
     },
     "readByAi": "Gelezen door de AI",
+    "readFromStructuredData": "Gelezen uit gestructureerde gegevens",
     "paid": "Betaald",
     "payee": "Verkoper"
   },
@@ -427,6 +436,12 @@
       "review_conflict": "Er staat een ander verzoek open",
       "review": "In controle",
       "ignored": "Genegeerd"
+    },
+    "domainFilter": {
+      "label": "Afzenderdomein",
+      "all": "Alle afzenders",
+      "option": "{domain} ({count})",
+      "help": "E-mails van {domain} en de bijbehorende subdomeinen worden getoond. Selecteer er meerdere om één parser voor de afzender op te stellen."
     },
     "columns": {
       "select": "Selecteren",
@@ -511,6 +526,7 @@
     "state": "Status",
     "parser": "Parser",
     "noParser": "Geen",
+    "structuredSource": "Gestructureerde gegevens",
     "matchedBy": "Gekoppeld via",
     "matchKinds": {
       "order_id": "Ordernummer",
@@ -539,6 +555,8 @@
       "proposal_refused": "Het voorstel is geweigerd, dus er is niets voorgesteld.",
       "skip_line": "Er is een regel gevonden waarop deze parser overslaat, dus de e-mail is genegeerd.",
       "wait_line": "Een regel zegt dat de bestelling nog niet definitief is, dus de e-mail wordt later opnieuw gelezen.",
+      "no_html": "Deze parser leest het HTML-deel van de e-mail en deze e-mail heeft er geen.",
+      "schema_org": "Er was geen parser nodig: de bestelling is gelezen uit de gestructureerde gegevens (schema.org) in de e-mail.",
       "item_amount_missing": "Een artikel heeft geen bedrag en de e-mail heeft geen enkel totaal om het te geven."
     },
     "reasonUnknown": "Reden: {reason}",
@@ -556,10 +574,34 @@
     "bodyView": {
       "label": "De e-mail weergeven als",
       "html": "HTML",
-      "text": "Tekst"
+      "text": "Tekst",
+      "lines": "Regels"
     },
     "remoteImagesNote": "Externe afbeeldingen worden niet geladen.",
-    "htmlFrameTitle": "De e-mail zoals de afzender hem heeft opgemaakt"
+    "htmlFrameTitle": "De e-mail zoals de afzender hem heeft opgemaakt",
+    "structured": {
+      "heading": "Gestructureerde gegevens (schema.org)",
+      "help": "Een bestelling of factuur die de e-mail meestuurt als markup voor e-mailprogramma's. Ze wordt alleen gelezen als er geen parser van toepassing is of de parser geen totaal vindt.",
+      "found": "Gevonden",
+      "notFound": "Niet gevonden",
+      "notFoundHelp": "De e-mail bevat geen bestelmarkup, of die vermeldt geen totaal en geen artikelregels.",
+      "seller": "Verkoper",
+      "currency": "Valuta",
+      "orderDate": "Besteldatum",
+      "unitPrice": "Stuksprijs"
+    },
+    "lines": {
+      "help": "De regels waarmee de patronen van een parser worden vergeleken, genummerd zoals de lijst “Gevonden via” van een test ze nummert.",
+      "sourceLabel": "Bron van de regels",
+      "sources": {
+        "text": "Tekst",
+        "html": "HTML"
+      },
+      "noHtml": "Deze e-mail heeft geen HTML-deel, dus een parser die HTML leest kan hem niet lezen.",
+      "capped": "Alleen de eerste {max} regels worden gelezen.",
+      "empty": "Geen regels.",
+      "listLabel": "Genummerde regels van de e-mail"
+    }
   },
   "picker": {
     "heading": "Kies de transactie",
