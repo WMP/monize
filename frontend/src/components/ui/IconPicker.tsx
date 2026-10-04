@@ -264,7 +264,7 @@ export function IconPicker({ value, onChange, label, onClear, clearLabel }: Icon
             onClick={() => setIsOpen(false)}
           />
           <div
-            className="fixed z-[101] bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg p-2 max-h-60 overflow-auto"
+            className="fixed z-[101] bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg p-2"
             style={{ top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}
           >
             {clearable && (
