@@ -158,7 +158,7 @@ describe("McpRelayAttachmentResource", () => {
     ctx.setUser({ userId: "u1", scopes: "read" });
 
     const result = await handler(uriFor(ref.id), { id: ref.id }, ctx);
-    // pdf-parse failing should not fail the read -- serve the raw bytes instead.
+    // PDF extraction failing should not fail the read -- serve the raw bytes instead.
     expect(result.contents[0].mimeType).toBe("application/pdf");
     expect(result.contents[0].blob).toBe(PDF_BASE64);
     expect(result.contents[0].text).toBeUndefined();
