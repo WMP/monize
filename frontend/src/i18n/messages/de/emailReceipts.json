@@ -153,7 +153,8 @@
     "payeeUnknown": "Zahlungsempfänger nicht gefunden",
     "payeeUnavailable": "Zahlungsempfängerliste nicht verfügbar",
     "actions": {
-      "approve": "Freigeben"
+      "approve": "Freigeben",
+      "viewJson": "JSON anzeigen"
     },
     "toasts": {
       "approved": "Parser freigegeben",
@@ -165,6 +166,14 @@
     "deleteDialog": {
       "title": "Parser löschen?",
       "message": "Der Parser {name} wird gelöscht. E-Mails, die er bereits gelesen hat, behalten ihre Ergebnisse."
+    },
+    "jsonDialog": {
+      "title": "Definition von {name}",
+      "help": "Die Parser-Definition so, wie sie gespeichert ist. Hier ist sie schreibgeschützt; ändere sie mit Bearbeiten.",
+      "contentLabel": "Definition als JSON",
+      "copy": "Kopieren",
+      "copied": "JSON kopiert",
+      "copyFailed": "Das JSON konnte nicht kopiert werden"
     }
   },
   "editor": {
@@ -222,6 +231,18 @@
       "defaultHelp": "Wird für Positionen verwendet, auf die keine Regel passt.",
       "shippingLabel": "Versandkategorie",
       "shippingHelp": "Die Kategorie der Versandzeile."
+    },
+    "mode": {
+      "label": "Bearbeitungsmodus",
+      "form": "Formular",
+      "json": "JSON",
+      "formUnavailable": "Diese Definition verwendet etwas, das das Formular nicht anzeigen kann: Einträge mit Beschriftung, mehrzeilige Positionen oder Schlüssel, für die es kein Feld gibt. Bearbeite sie als JSON.",
+      "jsonInvalid": "Das JSON ist noch nicht gültig, daher kann das Formular nicht angezeigt werden. Korrigiere es zuerst."
+    },
+    "json": {
+      "label": "Parser-Definition (JSON)",
+      "help": "Dieselbe Definition, die das Formular erstellt. Der Server prüft sie beim Speichern, und der Test unten liest sie so, wie sie jetzt ist.",
+      "parseError": "Das ist kein gültiges JSON oder kein JSON-Objekt. Korrigiere es, um den Parser zu speichern oder zu testen."
     }
   },
   "problems": {
@@ -230,7 +251,12 @@
     "paths": {
       "definition": "Die Definition",
       "line": "{field}, Zeile {line}",
-      "rule": "Kategorieregel {rule}, {part}"
+      "rule": "Kategorieregel {rule}, {part}",
+      "entryPart": "{field}, Eintrag {line}, {part}",
+      "skipLine": "Zu überspringende Zeile {line}",
+      "recordStep": "Datensatzschritt {step}",
+      "recordStepPart": "Datensatzschritt {step}, {part}",
+      "recordAlternative": "Datensatzschritt {step}, Alternative {alternative}"
     },
     "fields": {
       "orderId": "Muster für die Bestellnummer",
@@ -245,12 +271,28 @@
       "rulePattern": "Muster",
       "ruleCategory": "Kategorie",
       "defaultCategory": "Standardkategorie",
-      "shippingCategory": "Versandkategorie"
+      "shippingCategory": "Versandkategorie",
+      "skipLines": "Zu überspringende Zeilen",
+      "record": "Record",
+      "label": "label",
+      "value": "value",
+      "within": "within",
+      "line": "line",
+      "optional": "optional",
+      "paid": "Muster für den bezahlten Betrag",
+      "payee": "Muster für den Händler",
+      "requireLine": "Erforderliche Zeilen",
+      "skipIfLine": "Zeilen, die die E-Mail überspringen",
+      "waitIfLine": "Zeilen, die die E-Mail zurückhalten",
+      "single": "Einzelne Position",
+      "singleName": "Name der einzelnen Position",
+      "joinWrapped": "Umgebrochene Zeilen verbinden",
+      "ruleField": "field"
     },
     "codes": {
       "not_object": "ist keine gültige Definition",
       "unknown_key": "ist nichts, was ein Parser enthalten kann",
-      "invalid_version": "ist eine Version, die dieser Server nicht liest",
+      "unsupported_version": "ist eine Version, die dieser Server nicht liest (verwende Version 2)",
       "invalid_type": "hat die falsche Art von Wert",
       "empty": "darf nicht leer sein",
       "too_many": "hat zu viele Einträge (höchstens {max})",
@@ -262,7 +304,15 @@
       "capture_not_allowed": "verwendet einen Erfassungsnamen, den dieses Feld nicht akzeptiert",
       "capture_missing": "fehlt eine Erfassung, die dieses Feld braucht",
       "capture_conflict": "erfasst sowohl die Zeilensumme als auch den Einzelpreis. Verwende nur eines davon.",
-      "invalid_uuid": "ist keine gültige Kategorie"
+      "invalid_uuid": "ist keine gültige Kategorie",
+      "out_of_range": "muss eine ganze Zahl von 1 bis {max} sein",
+      "items_patterns_and_record": "enthält sowohl Muster als auch einen Datensatz. Verwende nur eines davon.",
+      "items_shape_missing": "braucht entweder Muster oder einen Datensatz",
+      "skip_lines_need_record": "kann nur zusammen mit einem Datensatz verwendet werden",
+      "record_name_missing": "muss {capture} in einem seiner Schritte erfassen",
+      "items_single_conflict": "enthält eine einzelne Position neben Mustern oder einem Datensatz. Verwende nur eines davon.",
+      "join_wrapped_needs_patterns": "funktioniert nur mit Positionsmustern",
+      "invalid_value": "hat einen Wert, den dieses Feld nicht akzeptiert"
     }
   },
   "test": {
@@ -285,7 +335,33 @@
     },
     "noPayee": "kein Zahlungsempfänger",
     "ambiguous": "{count, plural, one {# Buchung passt} other {# Buchungen passen}} gleich gut, daher würde keine verknüpft, bis du eine auswählst.",
-    "unmatched": "Keine Buchung passt, geprüft wurden {count, plural, one {# Kandidat} other {# Kandidaten}}."
+    "unmatched": "Keine Buchung passt, geprüft wurden {count, plural, one {# Kandidat} other {# Kandidaten}}.",
+    "jsonInvalid": "Das JSON ist nicht gültig, daher gibt es noch nichts zu testen.",
+    "outcome": {
+      "not_applicable": "Dieser Parser würde diese E-Mail nicht lesen: Keine seiner erforderlichen Zeilen kommt darin vor, daher würde der nächste Parser für den Absender versucht.",
+      "skip_line": "Dieser Parser würde diese E-Mail beiseitelegen: Sie enthält eine Zeile, bei der er überspringt.",
+      "wait_line": "Dieser Parser würde diese E-Mail zurückhalten: Eine Zeile besagt, dass die Bestellung noch nicht endgültig ist, daher wird sie später erneut gelesen."
+    },
+    "matchedBy": {
+      "heading": "Gefunden über",
+      "none": "Aus dieser E-Mail wurde kein Wert gelesen.",
+      "fields": {
+        "orderId": "Bestellnummer",
+        "total": "Summe",
+        "paid": "Bezahlt",
+        "shipping": "Versand",
+        "discount": "Rabatt",
+        "payee": "Händler",
+        "requireLine": "Erforderliche Zeile",
+        "skipIfLine": "Überspringzeile",
+        "waitIfLine": "Zurückhaltezeile"
+      },
+      "entryLine": "Eintrag {entry} ({pattern}), Zeile {line}: {text}",
+      "entrySubject": "Eintrag {entry} ({pattern}), der Betreff: {text}",
+      "labelled": "Eintrag {entry}, Beschriftung {label} in Zeile {labelLine} ({labelText}), Wert {pattern} in Zeile {line}: {text}",
+      "item": "Position {number}",
+      "itemLine": "{pattern}, Zeile {line}: {text}"
+    }
   },
   "parsed": {
     "notFound": "Nicht gefunden",
@@ -310,9 +386,12 @@
       "no_items": "Es wurden keine Positionen gefunden.",
       "items_unbalanced": "Die Positionen ergeben nicht die Summe.",
       "items_uncategorized": "Einige Positionen haben keine Kategorie.",
-      "shipping_uncategorized": "Die Versandzeile hat keine Kategorie."
+      "shipping_uncategorized": "Die Versandzeile hat keine Kategorie.",
+      "item_amount_missing": "Eine Position hat keinen Betrag, und die E-Mail enthält keine einzelne Summe, die ihr zugewiesen werden könnte."
     },
-    "readByAi": "Von der KI gelesen"
+    "readByAi": "Von der KI gelesen",
+    "paid": "Bezahlt",
+    "payee": "Händler"
   },
   "state": {
     "pending": "Wartet auf das Einlesen",
@@ -457,7 +536,10 @@
       "amount_differs": "Die gelesene Summe weicht vom Betrag der Buchung ab, daher wird nur eine Beschreibung vorgeschlagen.",
       "proposal_fallback": "Der aufgeschlüsselte Vorschlag wurde abgelehnt, daher wird nur eine Beschreibung vorgeschlagen.",
       "nothing_to_propose": "Die E-Mail ergänzt diese Buchung um nichts.",
-      "proposal_refused": "Der Vorschlag wurde abgelehnt, daher wurde nichts vorgeschlagen."
+      "proposal_refused": "Der Vorschlag wurde abgelehnt, daher wurde nichts vorgeschlagen.",
+      "skip_line": "Es wurde eine Zeile gefunden, bei der dieser Parser überspringt, daher wurde die E-Mail ignoriert.",
+      "wait_line": "Eine Zeile besagt, dass die Bestellung noch nicht endgültig ist, daher wird die E-Mail später erneut gelesen.",
+      "item_amount_missing": "Eine Position hat keinen Betrag, und die E-Mail enthält keine einzelne Summe, die ihr zugewiesen werden könnte."
     },
     "reasonUnknown": "Grund: {reason}",
     "requestNote": "Prüfanfrage ({state}): {note}",
