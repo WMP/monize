@@ -202,6 +202,12 @@
     "conflict": "自您打开以来，此解析器已在别处被修改。请重新加载以查看当前版本。您在此所做的修改尚未保存。",
     "conflictReload": "重新加载解析器",
     "patterns": {
+      "sourceLabel": "行来源",
+      "sourceHint": "下方模式与邮件的哪种呈现形式匹配。“文本”是邮件的文本部分，每个换行一行。“HTML”读取邮件的 HTML 部分：每个块和每个表格单元格各成一行，因此文本拆成多行的商品名称仍保持完整。邮件的“行”视图会准确显示各来源给出的内容。",
+      "sourceOptions": {
+        "text": "文本",
+        "html": "HTML"
+      },
       "globHelp": "每个模式都会与邮件的整整一行匹配，不区分大小写。用 {star} 匹配任意文本，用花括号中的名称（例如 {capture}）捕获一个值。每个字段最多可填 {max} 个模式，每行一个。",
       "orderIdLabel": "订单号模式",
       "orderIdHint": "必须捕获 {capture}。示例：订单号：{capture}",
@@ -284,6 +290,7 @@
       "requireLine": "必需的行",
       "skipIfLine": "使邮件被跳过的行",
       "waitIfLine": "使邮件暂缓处理的行",
+      "source": "行来源",
       "single": "单个明细",
       "singleName": "单个明细名称",
       "joinWrapped": "合并折行",
@@ -340,7 +347,8 @@
     "outcome": {
       "not_applicable": "此解析器不会读取这封邮件：邮件中没有任何必需的行，因此将尝试该发件人的下一个解析器。",
       "skip_line": "此解析器会将这封邮件排除在外：邮件中含有它要跳过的行。",
-      "wait_line": "此解析器会暂缓处理这封邮件：有一行表明订单尚未最终确定，因此稍后会再次读取。"
+      "wait_line": "此解析器会暂缓处理这封邮件：有一行表明订单尚未最终确定，因此稍后会再次读取。",
+      "no_html": "此解析器读取邮件的 HTML 部分，而这封邮件没有 HTML，因此会被标记为无法读取（无 HTML）。"
     },
     "matchedBy": {
       "heading": "匹配依据",
@@ -390,6 +398,7 @@
       "item_amount_missing": "某个明细没有金额，而邮件中也没有可分配给它的单一合计。"
     },
     "readByAi": "由 AI 读取",
+    "readFromStructuredData": "由结构化数据读取",
     "paid": "已付",
     "payee": "商家"
   },
@@ -427,6 +436,12 @@
       "review_conflict": "已有其他请求未完成",
       "review": "审核中",
       "ignored": "已忽略"
+    },
+    "domainFilter": {
+      "label": "发件人域名",
+      "all": "所有发件人",
+      "option": "{domain}（{count}）",
+      "help": "正在显示来自 {domain} 及其子域名的邮件。选择其中多封，可为该发件人起草一个解析器。"
     },
     "columns": {
       "select": "选择",
@@ -511,6 +526,7 @@
     "state": "状态",
     "parser": "解析器",
     "noParser": "无",
+    "structuredSource": "结构化数据",
     "matchedBy": "匹配依据",
     "matchKinds": {
       "order_id": "订单号",
@@ -539,6 +555,8 @@
       "proposal_refused": "提议被拒绝，因此没有提出任何提议。",
       "skip_line": "发现了此解析器要跳过的行，因此该邮件已被忽略。",
       "wait_line": "有一行表明订单尚未最终确定，因此稍后会再次读取该邮件。",
+      "no_html": "此解析器读取邮件的 HTML 部分，而这封邮件没有 HTML。",
+      "schema_org": "无需解析器：订单是从邮件中的结构化数据（schema.org）读取的。",
       "item_amount_missing": "某个明细没有金额，而邮件中也没有可分配给它的单一合计。"
     },
     "reasonUnknown": "原因：{reason}",
@@ -556,10 +574,34 @@
     "bodyView": {
       "label": "邮件显示方式",
       "html": "HTML",
-      "text": "文本"
+      "text": "文本",
+      "lines": "行"
     },
     "remoteImagesNote": "不会加载远程图片。",
-    "htmlFrameTitle": "按发件人排版的邮件"
+    "htmlFrameTitle": "按发件人排版的邮件",
+    "structured": {
+      "heading": "结构化数据（schema.org）",
+      "help": "邮件以面向邮件客户端的标记形式携带的订单或发票。仅当没有适用的解析器，或解析器未找到合计时才会读取。",
+      "found": "已找到",
+      "notFound": "未找到",
+      "notFoundHelp": "邮件不含订单标记，或标记中既没有合计也没有明细行。",
+      "seller": "卖家",
+      "currency": "币种",
+      "orderDate": "订单日期",
+      "unitPrice": "单价"
+    },
+    "lines": {
+      "help": "解析器的模式所匹配的各行，编号方式与测试中“匹配依据”列表相同。",
+      "sourceLabel": "行来源",
+      "sources": {
+        "text": "文本",
+        "html": "HTML"
+      },
+      "noHtml": "这封邮件没有 HTML 部分，因此读取 HTML 的解析器无法读取它。",
+      "capped": "仅读取前 {max} 行。",
+      "empty": "没有行。",
+      "listLabel": "邮件的编号行"
+    }
   },
   "picker": {
     "heading": "选择交易",

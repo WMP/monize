@@ -202,6 +202,12 @@
     "conflict": "Pengurai ini diubah di tempat lain sejak Anda membukanya. Muat ulang untuk melihat versi saat ini. Perubahan Anda di sini tidak tersimpan.",
     "conflictReload": "Muat ulang pengurai",
     "patterns": {
+      "sourceLabel": "Sumber baris",
+      "sourceHint": "Tampilan surel mana yang dicocokkan dengan pola di bawah. Teks adalah bagian teks surel, satu baris untuk setiap pergantian baris. HTML membaca bagian HTML: setiap blok dan setiap sel tabel menjadi barisnya sendiri, sehingga nama produk yang dipecah teks menjadi beberapa baris tetap utuh. Tampilan Baris pada surel menunjukkan persis apa yang dihasilkan tiap sumber.",
+      "sourceOptions": {
+        "text": "Teks",
+        "html": "HTML"
+      },
       "globHelp": "Setiap pola dicocokkan dengan satu baris penuh pada surel, tanpa membedakan huruf besar dan kecil. Gunakan {star} untuk teks apa pun dan sebuah nama dalam kurung kurawal, seperti {capture}, untuk menangkap nilai. Setiap bidang menerima hingga {max} pola, satu per baris.",
       "orderIdLabel": "Pola nomor pesanan",
       "orderIdHint": "Harus menangkap {capture}. Contoh: Nomor pesanan: {capture}",
@@ -284,6 +290,7 @@
       "requireLine": "Baris wajib",
       "skipIfLine": "Baris yang membuat surel dilewati",
       "waitIfLine": "Baris yang menahan surel",
+      "source": "Sumber baris",
       "single": "Item tunggal",
       "singleName": "Nama item tunggal",
       "joinWrapped": "Gabungkan baris yang terpotong",
@@ -340,7 +347,8 @@
     "outcome": {
       "not_applicable": "Pengurai ini tidak akan membaca surel ini: tidak ada satu pun baris wajibnya di dalam surel, jadi pengurai berikutnya untuk pengirim akan dicoba.",
       "skip_line": "Pengurai ini akan menyisihkan surel ini: ada baris yang membuatnya melewati surel.",
-      "wait_line": "Pengurai ini akan menahan surel ini: sebuah baris menyatakan pesanan belum final, jadi surel dibaca lagi nanti."
+      "wait_line": "Pengurai ini akan menahan surel ini: sebuah baris menyatakan pesanan belum final, jadi surel dibaca lagi nanti.",
+      "no_html": "Pengurai ini membaca bagian HTML surel, sedangkan surel ini tidak memilikinya, jadi akan ditandai tidak dapat dibaca (tanpa HTML)."
     },
     "matchedBy": {
       "heading": "Dicocokkan oleh",
@@ -390,6 +398,7 @@
       "item_amount_missing": "Sebuah item tidak memiliki jumlah, dan surel tidak memiliki total tunggal untuk diberikan kepadanya."
     },
     "readByAi": "Dibaca oleh AI",
+    "readFromStructuredData": "Dibaca dari data terstruktur",
     "paid": "Dibayar",
     "payee": "Penjual"
   },
@@ -427,6 +436,12 @@
       "review_conflict": "Permintaan lain masih terbuka",
       "review": "Sedang ditinjau",
       "ignored": "Dikecualikan"
+    },
+    "domainFilter": {
+      "label": "Domain pengirim",
+      "all": "Semua pengirim",
+      "option": "{domain} ({count})",
+      "help": "Menampilkan surel dari {domain} dan subdomainnya. Pilih beberapa di antaranya untuk membuat draf satu pengurai bagi pengirim."
     },
     "columns": {
       "select": "Pilih",
@@ -511,6 +526,7 @@
     "state": "Status",
     "parser": "Pengurai",
     "noParser": "Tidak ada",
+    "structuredSource": "Data terstruktur",
     "matchedBy": "Dicocokkan lewat",
     "matchKinds": {
       "order_id": "Nomor pesanan",
@@ -539,6 +555,8 @@
       "proposal_refused": "Usulan ditolak, jadi tidak ada yang diusulkan.",
       "skip_line": "Ditemukan baris yang membuat pengurai ini melewati surel, jadi surel diabaikan.",
       "wait_line": "Sebuah baris menyatakan pesanan belum final, jadi surel akan dibaca lagi nanti.",
+      "no_html": "Pengurai ini membaca bagian HTML surel, sedangkan surel ini tidak memilikinya.",
+      "schema_org": "Tidak perlu pengurai: pesanan dibaca dari data terstruktur (schema.org) di dalam surel.",
       "item_amount_missing": "Sebuah item tidak memiliki jumlah, dan surel tidak memiliki total tunggal untuk diberikan kepadanya."
     },
     "reasonUnknown": "Alasan: {reason}",
@@ -556,10 +574,34 @@
     "bodyView": {
       "label": "Tampilkan surel sebagai",
       "html": "HTML",
-      "text": "Teks"
+      "text": "Teks",
+      "lines": "Baris"
     },
     "remoteImagesNote": "Gambar jarak jauh tidak dimuat.",
-    "htmlFrameTitle": "Surel seperti yang diformat pengirimnya"
+    "htmlFrameTitle": "Surel seperti yang diformat pengirimnya",
+    "structured": {
+      "heading": "Data terstruktur (schema.org)",
+      "help": "Pesanan atau faktur yang dibawa surel sebagai markup untuk klien surel. Hanya dibaca jika tidak ada pengurai yang berlaku atau pengurai tidak menemukan total.",
+      "found": "Ditemukan",
+      "notFound": "Tidak ditemukan",
+      "notFoundHelp": "Surel tidak membawa markup pesanan, atau markup itu tidak mencantumkan total maupun item.",
+      "seller": "Penjual",
+      "currency": "Mata uang",
+      "orderDate": "Tanggal pesanan",
+      "unitPrice": "Harga satuan"
+    },
+    "lines": {
+      "help": "Baris yang dicocokkan dengan pola pengurai, diberi nomor sebagaimana daftar \"Dicocokkan oleh\" pada pengujian memberi nomor.",
+      "sourceLabel": "Sumber baris",
+      "sources": {
+        "text": "Teks",
+        "html": "HTML"
+      },
+      "noHtml": "Surel ini tidak memiliki bagian HTML, jadi pengurai yang membaca HTML tidak dapat membacanya.",
+      "capped": "Hanya {max} baris pertama yang dibaca.",
+      "empty": "Tidak ada baris.",
+      "listLabel": "Baris surel yang bernomor"
+    }
   },
   "picker": {
     "heading": "Pilih transaksi",
