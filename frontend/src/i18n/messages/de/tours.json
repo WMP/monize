@@ -435,9 +435,27 @@
             "title": "Transaktionen von Ihrer Bank importieren",
             "body": "Die Bank-Synchronisierung liest die gebuchten Transaktionen Ihrer Bankkonten über Open Banking. Sie importiert sie in Ihre Monize-Konten. Der Zugriff ist nur lesend. Sie melden sich bei Ihrer eigenen Bank an, und Monize sieht Ihr Bankpasswort nie. Diese Führung zeigt, wo Sie sie einrichten."
           },
+          "openSettings": {
+            "title": "Einstellungen öffnen",
+            "body": "Die Bank-Synchronisierung richten Sie in den Einstellungen ein. Die Schaltfläche **Einstellungen** finden Sie in der oberen Leiste. Der nächste Schritt öffnet sie für Sie.",
+            "fallbackBody": "Die Bank-Synchronisierung richten Sie in den Einstellungen ein. Öffnen Sie **Einstellungen** im Menü. Der nächste Schritt öffnet sie für Sie."
+          },
+          "settingsHub": {
+            "title": "Bank-Synchronisierung finden",
+            "body": "Die Einstellungen haben für jeden Bereich eine Karte. Wählen Sie die Karte **Bank-Synchronisierung**. Sie öffnet die Seite für diese Funktion.",
+            "fallbackBody": "Die Einstellungen haben eine Karte namens **Bank-Synchronisierung**. Wählen Sie sie, um die Seite für diese Funktion zu öffnen."
+          },
+          "helpWhat": {
+            "title": "Enable Banking ist eine Website",
+            "body": "Monize liest Ihre Bank über Enable Banking. Das ist ein externer Dienst im Web, kein Programm auf Ihrem Computer. Sie legen auf der Website ein kostenloses Konto an. Dort registrieren Sie einmal eine Anwendung. Die Anwendung liefert Ihnen die Schlüssel, die Monize braucht."
+          },
+          "helpSteps": {
+            "title": "Auf der Enable-Banking-Website registrieren",
+            "body": "Führen Sie diese Schritte auf der Enable-Banking-Website aus, nicht in Monize. Kopieren Sie die Werte von hier in das Formular dort. Dazu gehört die **Weiterleitungs-URL**. Der private Schlüssel wird als Datei gespeichert. Halten Sie sie geheim."
+          },
           "credentials": {
-            "title": "Ihre Enable-Banking-Anwendung",
-            "body": "Monize erreicht Ihre Bank über Ihre eigene Enable-Banking-Anwendung. Registrieren Sie eine im Enable-Banking-Kontrollbereich. Wählen Sie dann **Zugangsdaten einrichten** und geben Sie die Anwendungs-ID und den privaten Schlüssel ein. Registrieren Sie auch die hier gezeigte **Weiterleitungs-URL** im Kontrollbereich. **Verbindung testen** prüft, ob alles funktioniert. **Einrichtungshilfe anzeigen** erklärt jeden Schritt."
+            "title": "Schlüssel in Monize eingeben",
+            "body": "Wenn die Anwendung bereit ist, wählen Sie **Zugangsdaten einrichten**. Geben Sie ihre Anwendungs-ID und den privaten Schlüssel ein. Die hier gezeigte **Weiterleitungs-URL** muss auf der Website für die Anwendung registriert sein. **Verbindung testen** prüft, ob alles funktioniert. **Einrichtungshilfe anzeigen** holt die Schritte zurück."
           },
           "connect": {
             "title": "Eine Bank verbinden",
@@ -459,12 +477,16 @@
           },
           "consent": {
             "title": "Einwilligung und ihre Erneuerung",
-            "body": "Ihre Einwilligung gilt nur begrenzt, bis zu 180 Tage. Die Karte zeigt das Datum, bis zu dem der Zugriff gültig ist. In den letzten 7 Tagen zeigt sie **Läuft bald ab**. Wählen Sie **Einwilligung erneuern**, um sich erneut bei Ihrer Bank zu autorisieren. Die verknüpften Konten bleiben erhalten. Wenn die Einwilligung endet, stoppt die Synchronisierung, bis Sie sie erneuern.",
-            "fallbackBody": "Sobald eine Bank verbunden ist, zeigt ihre Karte das Datum, bis zu dem der Zugriff gültig ist. Ihre Einwilligung gilt bis zu 180 Tage. Naht das Ende, erscheint hier **Einwilligung erneuern**. Wählen Sie es, um sich erneut bei Ihrer Bank zu autorisieren. Die verknüpften Konten bleiben erhalten."
+            "body": "Ihre Einwilligung gilt nur begrenzt, bis zu 180 Tage. Dieser Teil der Karte zeigt das Datum, bis zu dem der Zugriff gültig ist. In den letzten 7 Tagen zeigt er **Läuft bald ab**. Wählen Sie dann **Einwilligung erneuern**, um sich erneut bei Ihrer Bank zu autorisieren. Die verknüpften Konten bleiben erhalten. Wenn die Einwilligung endet, stoppt die Synchronisierung, bis Sie sie erneuern.",
+            "fallbackBody": "Noch ist keine Bank verbunden, darum gibt es keine Karte zu zeigen. Sobald eine Bank verbunden ist, zeigt ihre Karte das Datum, bis zu dem der Zugriff gültig ist. Ihre Einwilligung gilt bis zu 180 Tage. Naht das Ende, zeigt die Karte **Läuft bald ab** und **Einwilligung erneuern**. Wählen Sie es, um sich erneut bei Ihrer Bank zu autorisieren. Die verknüpften Konten bleiben erhalten."
           },
           "notifications": {
-            "title": "Erinnerungen und Synchronisierungsergebnisse",
-            "body": "Monize benachrichtigt Sie, bevor die Einwilligung endet, und wenn sie beendet ist. Es sagt Ihnen auch, wie die tägliche Synchronisierung verlief: neue Transaktionen, nichts Neues oder ein Fehler. In dieser Tabelle enthält **Bankverbindungen** die Erinnerungen zur Einwilligung. **Ergebnisse der Bank-Synchronisierung** enthält die Ergebnisse der Synchronisierung. Wählen Sie, wohin jede zugestellt wird. Auf jeder Bankkarte legt **Nach der täglichen Synchronisierung benachrichtigen** fest, welche erfolgreichen Synchronisierungen Sie benachrichtigen."
+            "title": "Erinnerungen vor dem Ende der Einwilligung",
+            "body": "Diese Zeile heißt **Bankverbindungen**. Monize benachrichtigt Sie, bevor Ihre Einwilligung endet, und wenn sie beendet ist. Wählen Sie, wohin jede Erinnerung zugestellt wird."
+          },
+          "notificationsSync": {
+            "title": "Ergebnisse der täglichen Synchronisierung",
+            "body": "Diese Zeile heißt **Ergebnisse der Bank-Synchronisierung**. Monize sagt Ihnen, wie die tägliche Synchronisierung verlief: neue Transaktionen, nichts Neues oder ein Fehler. Wählen Sie, wohin es zugestellt wird. Auf jeder Bankkarte legt **Nach der täglichen Synchronisierung benachrichtigen** fest, welche erfolgreichen Synchronisierungen Sie benachrichtigen."
           }
         }
       }

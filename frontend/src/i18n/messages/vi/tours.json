@@ -435,9 +435,27 @@
             "title": "Nhập giao dịch từ ngân hàng của bạn",
             "body": "Đồng bộ ngân hàng đọc các giao dịch đã ghi sổ của tài khoản ngân hàng qua Open Banking. Nó nhập chúng vào tài khoản Monize của bạn. Quyền truy cập chỉ để đọc. Bạn đăng nhập tại chính ngân hàng của mình, và Monize không bao giờ thấy mật khẩu ngân hàng của bạn. Phần hướng dẫn này chỉ nơi thiết lập."
           },
+          "openSettings": {
+            "title": "Mở Cài đặt",
+            "body": "Đồng bộ ngân hàng được thiết lập trong Cài đặt. Nút **Cài đặt** nằm trên thanh phía trên. Bước tiếp theo sẽ mở nó cho bạn.",
+            "fallbackBody": "Đồng bộ ngân hàng được thiết lập trong Cài đặt. Hãy mở **Cài đặt** từ menu. Bước tiếp theo sẽ mở nó cho bạn."
+          },
+          "settingsHub": {
+            "title": "Tìm Đồng bộ ngân hàng",
+            "body": "Cài đặt có một thẻ cho mỗi khu vực. Hãy chọn thẻ **Đồng bộ ngân hàng**. Thẻ này mở trang của tính năng này.",
+            "fallbackBody": "Cài đặt có một thẻ tên là **Đồng bộ ngân hàng**. Hãy chọn thẻ đó để mở trang của tính năng này."
+          },
+          "helpWhat": {
+            "title": "Enable Banking là một trang web",
+            "body": "Monize đọc dữ liệu ngân hàng của bạn qua Enable Banking. Đây là một dịch vụ bên ngoài trên web, không phải chương trình cài trên máy tính của bạn. Bạn tạo một tài khoản miễn phí trên trang web của dịch vụ. Tại đó bạn đăng ký một ứng dụng, chỉ một lần. Ứng dụng cho bạn các khóa mà Monize cần."
+          },
+          "helpSteps": {
+            "title": "Đăng ký trên trang web Enable Banking",
+            "body": "Hãy làm theo các bước này trên trang web Enable Banking, không phải trong Monize. Sao chép các giá trị từ đây vào biểu mẫu của trang web. Trong đó có **URL chuyển hướng**. Khóa riêng được lưu thành một tệp. Hãy giữ bí mật tệp này."
+          },
           "credentials": {
-            "title": "Ứng dụng Enable Banking của bạn",
-            "body": "Monize kết nối đến ngân hàng của bạn qua ứng dụng Enable Banking của chính bạn. Hãy đăng ký một ứng dụng trong bảng điều khiển Enable Banking. Sau đó chọn **Thiết lập thông tin đăng nhập** và nhập ID ứng dụng cùng khóa riêng. Hãy đăng ký cả **URL chuyển hướng** hiển thị ở đây trong bảng điều khiển. **Kiểm tra kết nối** kiểm tra xem mọi thứ có hoạt động không. **Hiện trợ giúp thiết lập** giải thích từng bước."
+            "title": "Nhập khóa của bạn vào Monize",
+            "body": "Khi ứng dụng đã sẵn sàng, hãy chọn **Thiết lập thông tin đăng nhập**. Nhập ID ứng dụng và khóa riêng của nó. **URL chuyển hướng** hiển thị ở đây phải được đăng ký cho ứng dụng trên trang web. **Kiểm tra kết nối** kiểm tra mọi thứ có hoạt động không. **Hiện trợ giúp thiết lập** đưa các bước trở lại."
           },
           "connect": {
             "title": "Kết nối ngân hàng",
@@ -459,12 +477,16 @@
           },
           "consent": {
             "title": "Sự đồng ý và cách gia hạn",
-            "body": "Sự đồng ý của bạn có hiệu lực trong thời gian giới hạn, tối đa 180 ngày. Thẻ cho biết ngày quyền truy cập còn hiệu lực. Trong 7 ngày cuối, thẻ hiển thị **Sắp hết hạn**. Chọn **Gia hạn sự đồng ý** để cấp quyền lại tại ngân hàng. Các tài khoản đã liên kết được giữ lại. Khi sự đồng ý kết thúc, đồng bộ dừng cho đến khi bạn gia hạn.",
-            "fallbackBody": "Khi một ngân hàng đã được kết nối, thẻ của nó cho biết ngày quyền truy cập còn hiệu lực. Sự đồng ý của bạn kéo dài tối đa 180 ngày. Khi sắp hết hạn, **Gia hạn sự đồng ý** xuất hiện ở đây. Hãy chọn nó để cấp quyền lại tại ngân hàng. Các tài khoản đã liên kết được giữ lại."
+            "body": "Sự đồng ý của bạn có hiệu lực trong thời gian giới hạn, tối đa 180 ngày. Phần này của thẻ cho biết ngày quyền truy cập còn hiệu lực. Trong 7 ngày cuối, nó hiển thị **Sắp hết hạn**. Khi đó hãy chọn **Gia hạn sự đồng ý** để cấp quyền lại tại ngân hàng. Các tài khoản bạn đã liên kết vẫn được giữ. Khi sự đồng ý hết hạn, đồng bộ sẽ dừng cho đến khi bạn gia hạn.",
+            "fallbackBody": "Chưa có ngân hàng nào được kết nối, nên chưa có thẻ để hiển thị. Khi bạn kết nối một ngân hàng, thẻ của ngân hàng đó cho biết ngày quyền truy cập còn hiệu lực. Sự đồng ý của bạn có hiệu lực tối đa 180 ngày. Khi gần hết hạn, thẻ hiển thị **Sắp hết hạn** và **Gia hạn sự đồng ý**. Hãy chọn nút đó để cấp quyền lại tại ngân hàng. Các tài khoản bạn đã liên kết vẫn được giữ."
           },
           "notifications": {
-            "title": "Nhắc nhở và kết quả đồng bộ",
-            "body": "Monize báo cho bạn trước khi sự đồng ý kết thúc, và khi nó đã kết thúc. Monize cũng cho biết lần đồng bộ hằng ngày diễn ra thế nào: có giao dịch mới, không có gì mới hoặc bị lỗi. Trong bảng này, **Kết nối ngân hàng** chứa các nhắc nhở về sự đồng ý. **Kết quả đồng bộ ngân hàng** chứa kết quả đồng bộ. Hãy chọn nơi gửi từng loại. Trên mỗi thẻ ngân hàng, **Thông báo sau lần đồng bộ hằng ngày** đặt những lần đồng bộ thành công nào sẽ báo cho bạn."
+            "title": "Nhắc nhở trước khi sự đồng ý hết hạn",
+            "body": "Hàng này là **Kết nối ngân hàng**. Monize báo cho bạn trước khi sự đồng ý hết hạn và khi nó đã hết hạn. Hãy chọn nơi nhận từng lời nhắc."
+          },
+          "notificationsSync": {
+            "title": "Kết quả của lần đồng bộ hằng ngày",
+            "body": "Hàng này là **Kết quả đồng bộ ngân hàng**. Monize cho bạn biết lần đồng bộ hằng ngày diễn ra thế nào: có giao dịch mới, không có gì mới hoặc bị lỗi. Hãy chọn nơi nhận. Trên mỗi thẻ ngân hàng, **Thông báo sau lần đồng bộ hằng ngày** đặt những lần đồng bộ thành công nào sẽ gửi thông báo cho bạn."
           }
         }
       }

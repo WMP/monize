@@ -435,9 +435,27 @@
             "title": "Importeer transacties van je bank",
             "body": "Banksynchronisatie leest de geboekte transacties van je bankrekeningen via Open Banking. Het importeert ze in je Monize-rekeningen. De toegang is alleen-lezen. Je meldt je aan bij je eigen bank en Monize ziet je bankwachtwoord nooit. Deze rondleiding laat zien waar je het instelt."
           },
+          "openSettings": {
+            "title": "Open Instellingen",
+            "body": "Banksynchronisatie stel je in bij Instellingen. De knop **Instellingen** staat in de bovenbalk. De volgende stap opent hem voor je.",
+            "fallbackBody": "Banksynchronisatie stel je in bij Instellingen. Open **Instellingen** via het menu. De volgende stap opent het voor je."
+          },
+          "settingsHub": {
+            "title": "Vind Banksynchronisatie",
+            "body": "Instellingen heeft een kaart voor elk onderdeel. Kies de kaart **Banksynchronisatie**. Die opent de pagina voor deze functie.",
+            "fallbackBody": "Instellingen heeft een kaart met de naam **Banksynchronisatie**. Kies die om de pagina voor deze functie te openen."
+          },
+          "helpWhat": {
+            "title": "Enable Banking is een website",
+            "body": "Monize leest je bank via Enable Banking. Het is een externe dienst op het web, geen programma op je computer. Je maakt een gratis account op de website. Daar registreer je één keer een applicatie. De applicatie geeft je de sleutels die Monize nodig heeft."
+          },
+          "helpSteps": {
+            "title": "Registreer op de website van Enable Banking",
+            "body": "Volg deze stappen op de website van Enable Banking, niet in Monize. Kopieer de waarden van hier naar het formulier daar. Daarbij hoort de **Omleidings-URL**. De privésleutel wordt als bestand opgeslagen. Houd het geheim."
+          },
           "credentials": {
-            "title": "Je Enable Banking-applicatie",
-            "body": "Monize bereikt je bank via je eigen Enable Banking-applicatie. Registreer er een in het Enable Banking-controlepaneel. Kies daarna **Inloggegevens instellen** en voer het applicatie-ID en de privésleutel in. Registreer ook de hier getoonde **Omleidings-URL** in het controlepaneel. **Verbinding testen** controleert of het werkt. **Hulp bij instellen tonen** legt elke stap uit."
+            "title": "Voer je sleutels in bij Monize",
+            "body": "Als de applicatie klaar is, kies je **Inloggegevens instellen**. Voer de applicatie-ID en de privésleutel in. De **Omleidings-URL** die hier staat, moet op de website voor de applicatie zijn geregistreerd. **Verbinding testen** controleert of alles werkt. **Hulp bij instellen tonen** haalt de stappen terug."
           },
           "connect": {
             "title": "Een bank koppelen",
@@ -459,12 +477,16 @@
           },
           "consent": {
             "title": "Toestemming en hoe je die vernieuwt",
-            "body": "Je toestemming duurt beperkte tijd, tot 180 dagen. De kaart toont de datum tot wanneer de toegang geldig is. In de laatste 7 dagen toont de kaart **Verloopt binnenkort**. Kies **Toestemming verlengen** om opnieuw toestemming te geven bij je bank. De gekoppelde rekeningen blijven behouden. Als de toestemming eindigt, stopt de synchronisatie tot je haar vernieuwt.",
-            "fallbackBody": "Zodra een bank is gekoppeld, toont de kaart de datum tot wanneer de toegang geldig is. Je toestemming duurt tot 180 dagen. Als het einde nadert, verschijnt hier **Toestemming verlengen**. Kies dit om opnieuw toestemming te geven bij je bank. De gekoppelde rekeningen blijven behouden."
+            "body": "Je toestemming duurt beperkte tijd, tot 180 dagen. Dit deel van de kaart toont de datum tot wanneer de toegang geldig is. In de laatste 7 dagen toont het **Verloopt binnenkort**. Kies dan **Toestemming verlengen** om opnieuw toestemming te geven bij je bank. De gekoppelde rekeningen blijven behouden. Als de toestemming afloopt, stopt de synchronisatie tot je haar verlengt.",
+            "fallbackBody": "Er is nog geen bank gekoppeld, dus er is geen kaart om te tonen. Zodra een bank is gekoppeld, toont de kaart de datum tot wanneer de toegang geldig is. Je toestemming duurt tot 180 dagen. Als het einde nadert, toont de kaart **Verloopt binnenkort** en **Toestemming verlengen**. Kies die knop om opnieuw toestemming te geven bij je bank. De gekoppelde rekeningen blijven behouden."
           },
           "notifications": {
-            "title": "Herinneringen en synchronisatieresultaten",
-            "body": "Monize waarschuwt je voordat de toestemming eindigt en wanneer die is geëindigd. Het meldt ook hoe de dagelijkse synchronisatie ging: nieuwe transacties, niets nieuws of een mislukking. In deze tabel bevat **Bankkoppelingen** de herinneringen over de toestemming. **Resultaten van banksynchronisatie** bevat de uitkomsten van de synchronisatie. Kies waar elk wordt bezorgd. Op elke bankkaart bepaalt **Melding na de dagelijkse synchronisatie** welke geslaagde synchronisaties je een melding geven."
+            "title": "Herinneringen voor het einde van de toestemming",
+            "body": "Deze rij is **Bankkoppelingen**. Monize waarschuwt je voordat je toestemming afloopt en als ze is afgelopen. Kies waar elke herinnering wordt bezorgd."
+          },
+          "notificationsSync": {
+            "title": "Resultaten van de dagelijkse synchronisatie",
+            "body": "Deze rij is **Resultaten van banksynchronisatie**. Monize vertelt je hoe de dagelijkse synchronisatie ging: nieuwe transacties, niets nieuws of een fout. Kies waar het wordt bezorgd. Op elke bankkaart bepaalt **Melding na de dagelijkse synchronisatie** welke geslaagde synchronisaties een melding geven."
           }
         }
       }

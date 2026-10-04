@@ -435,9 +435,27 @@
             "title": "Importez les transactions de votre banque",
             "body": "La synchronisation bancaire lit les transactions comptabilisées de vos comptes bancaires via Open Banking. Elle les importe dans vos comptes Monize. L’accès est en lecture seule. Vous vous connectez à votre propre banque, et Monize ne voit jamais votre mot de passe bancaire. Cette visite montre où la configurer."
           },
+          "openSettings": {
+            "title": "Ouvrez les paramètres",
+            "body": "La synchronisation bancaire se configure dans les paramètres. Le bouton **Paramètres** se trouve dans la barre du haut. L'étape suivante l'ouvre pour vous.",
+            "fallbackBody": "La synchronisation bancaire se configure dans les paramètres. Ouvrez **Paramètres** depuis le menu. L'étape suivante l'ouvre pour vous."
+          },
+          "settingsHub": {
+            "title": "Trouvez la synchronisation bancaire",
+            "body": "Les paramètres ont une carte pour chaque domaine. Choisissez la carte **Synchronisation bancaire**. Elle ouvre la page de cette fonction.",
+            "fallbackBody": "Les paramètres ont une carte nommée **Synchronisation bancaire**. Choisissez-la pour ouvrir la page de cette fonction."
+          },
+          "helpWhat": {
+            "title": "Enable Banking est un site web",
+            "body": "Monize lit votre banque grâce à Enable Banking. C'est un service externe sur le web, pas un programme installé sur votre ordinateur. Vous créez un compte gratuit sur son site web. Vous y enregistrez une application, une seule fois. L'application vous donne les clés dont Monize a besoin."
+          },
+          "helpSteps": {
+            "title": "Inscrivez-vous sur le site web d'Enable Banking",
+            "body": "Suivez ces étapes sur le site web d'Enable Banking, pas dans Monize. Copiez les valeurs d'ici dans son formulaire. Elles incluent l'**URL de redirection**. La clé privée est enregistrée dans un fichier. Gardez-le secret."
+          },
           "credentials": {
-            "title": "Votre application Enable Banking",
-            "body": "Monize accède à votre banque grâce à votre propre application Enable Banking. Enregistrez-en une dans le panneau de contrôle d’Enable Banking. Choisissez ensuite **Configurer les identifiants** et saisissez l’identifiant de l’application et la clé privée. Enregistrez aussi dans le panneau de contrôle l’**URL de redirection** affichée ici. **Tester la connexion** vérifie que tout fonctionne. **Afficher l'aide à la configuration** explique chaque étape."
+            "title": "Saisissez vos clés dans Monize",
+            "body": "Quand l'application est prête, choisissez **Configurer les identifiants**. Saisissez son ID d'application et sa clé privée. L'**URL de redirection** affichée ici doit être enregistrée pour l'application sur le site web. **Tester la connexion** vérifie que tout fonctionne. **Afficher l'aide à la configuration** ramène les étapes."
           },
           "connect": {
             "title": "Connecter une banque",
@@ -459,12 +477,16 @@
           },
           "consent": {
             "title": "Le consentement et son renouvellement",
-            "body": "Votre consentement dure un temps limité, jusqu’à 180 jours. La carte indique la date jusqu’à laquelle l’accès est valable. Pendant les 7 derniers jours, elle affiche **Expire bientôt**. Choisissez **Renouveler le consentement** pour autoriser de nouveau auprès de votre banque. Les comptes liés sont conservés. Quand le consentement prend fin, la synchronisation s’arrête jusqu’au renouvellement.",
-            "fallbackBody": "Quand une banque est connectée, sa carte indique la date jusqu’à laquelle l’accès est valable. Votre consentement dure jusqu’à 180 jours. Quand la fin approche, **Renouveler le consentement** apparaît ici. Choisissez-le pour autoriser de nouveau auprès de votre banque. Les comptes liés sont conservés."
+            "body": "Votre consentement dure un temps limité, jusqu'à 180 jours. Cette partie de la carte indique la date jusqu'à laquelle l'accès est valable. Pendant les 7 derniers jours, elle affiche **Expire bientôt**. Choisissez alors **Renouveler le consentement** pour autoriser de nouveau auprès de votre banque. Les comptes que vous avez liés sont conservés. Quand le consentement prend fin, la synchronisation s'arrête jusqu'à ce que vous le renouveliez.",
+            "fallbackBody": "Aucune banque n'est encore connectée, il n'y a donc pas de carte à montrer. Une fois une banque connectée, sa carte indique la date jusqu'à laquelle l'accès est valable. Votre consentement dure jusqu'à 180 jours. Quand la fin approche, la carte affiche **Expire bientôt** et **Renouveler le consentement**. Choisissez-le pour autoriser de nouveau auprès de votre banque. Les comptes que vous avez liés sont conservés."
           },
           "notifications": {
-            "title": "Rappels et résultats de synchronisation",
-            "body": "Monize vous prévient avant la fin du consentement, et quand il est terminé. Il vous dit aussi comment s’est passée la synchronisation quotidienne : nouvelles transactions, rien de nouveau ou un échec. Dans ce tableau, **Connexions bancaires** contient les rappels de consentement. **Résultats de la synchronisation bancaire** contient les résultats de synchronisation. Choisissez où chacun est envoyé. Sur chaque carte de banque, **Notifier après la synchronisation quotidienne** définit quelles synchronisations réussies vous notifient."
+            "title": "Rappels avant la fin du consentement",
+            "body": "Cette ligne s'appelle **Connexions bancaires**. Monize vous prévient avant la fin de votre consentement, et quand il est terminé. Choisissez où chaque rappel est envoyé."
+          },
+          "notificationsSync": {
+            "title": "Résultats de la synchronisation quotidienne",
+            "body": "Cette ligne s'appelle **Résultats de la synchronisation bancaire**. Monize vous dit comment la synchronisation quotidienne s'est passée : nouvelles transactions, rien de nouveau ou un échec. Choisissez où le message est envoyé. Sur chaque carte de banque, **Notifier après la synchronisation quotidienne** définit quelles synchronisations réussies vous notifient."
           }
         }
       }

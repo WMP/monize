@@ -435,9 +435,27 @@
             "title": "Bankanızdan işlemleri içe aktarın",
             "body": "Banka senkronizasyonu, banka hesaplarınızın kesinleşmiş işlemlerini Open Banking üzerinden okur. Bunları Monize hesaplarınıza aktarır. Erişim salt okunurdur. Kendi bankanızda oturum açarsınız ve Monize banka şifrenizi asla görmez. Bu tur, nerede kurulacağını gösterir."
           },
+          "openSettings": {
+            "title": "Ayarlar'ı açın",
+            "body": "Banka senkronizasyonu Ayarlar'da kurulur. **Ayarlar** düğmesi üst çubukta yer alır. Sonraki adım onu sizin için açar.",
+            "fallbackBody": "Banka senkronizasyonu Ayarlar'da kurulur. Menüden **Ayarlar** bölümünü açın. Sonraki adım onu sizin için açar."
+          },
+          "settingsHub": {
+            "title": "Banka senkronizasyonunu bulun",
+            "body": "Ayarlar'da her alan için bir kart vardır. **Banka Senkronizasyonu** kartını seçin. Bu kart, bu özelliğin sayfasını açar.",
+            "fallbackBody": "Ayarlar'da **Banka Senkronizasyonu** adlı bir kart vardır. Bu özelliğin sayfasını açmak için onu seçin."
+          },
+          "helpWhat": {
+            "title": "Enable Banking bir web sitesidir",
+            "body": "Monize bankanızı Enable Banking üzerinden okur. Bu, internette dışarıdaki bir hizmettir; bilgisayarınızdaki bir program değildir. Sitesinde ücretsiz bir hesap açarsınız. Orada bir kez bir uygulama kaydedersiniz. Uygulama size Monize'un ihtiyaç duyduğu anahtarları verir."
+          },
+          "helpSteps": {
+            "title": "Enable Banking sitesine kaydolun",
+            "body": "Bu adımları Monize'da değil, Enable Banking web sitesinde izleyin. Buradaki değerleri sitedeki forma kopyalayın. Bunların arasında **Yönlendirme URL'si** da vardır. Özel anahtar bir dosya olarak kaydedilir. Onu gizli tutun."
+          },
           "credentials": {
-            "title": "Enable Banking uygulamanız",
-            "body": "Monize, bankanıza kendi Enable Banking uygulamanız üzerinden ulaşır. Enable Banking kontrol panelinde bir uygulama kaydedin. Sonra **Kimlik bilgilerini ayarla** seçeneğini seçin ve uygulama kimliğini ve özel anahtarı girin. Burada gösterilen **Yönlendirme URL'si** adresini de kontrol panelinde kaydedin. **Bağlantıyı test et** her şeyin çalıştığını denetler. **Kurulum yardımını göster** her adımı açıklar."
+            "title": "Anahtarlarınızı Monize'a girin",
+            "body": "Uygulama hazır olunca **Kimlik bilgilerini ayarla** seçeneğini seçin. Uygulama kimliğini ve özel anahtarı girin. Burada gösterilen **Yönlendirme URL'si**, sitede uygulama için kayıtlı olmalıdır. **Bağlantıyı test et** her şeyin çalışıp çalışmadığını denetler. **Kurulum yardımını göster** adımları geri getirir."
           },
           "connect": {
             "title": "Banka bağlayın",
@@ -459,12 +477,16 @@
           },
           "consent": {
             "title": "İzin ve yenileme",
-            "body": "İzniniz sınırlı bir süre geçerlidir, en fazla 180 gün. Kart, erişimin geçerli olduğu tarihi gösterir. Son 7 günde **Yakında sona eriyor** görünür. Bankanızda yeniden yetki vermek için **Onayı yenile** seçeneğini seçin. Bağladığınız hesaplar korunur. İzin bitince, siz yenileyene kadar senkronizasyon durur.",
-            "fallbackBody": "Bir banka bağlandığında kartı, erişimin geçerli olduğu tarihi gösterir. İzniniz en fazla 180 gün sürer. Bitiş yaklaşınca burada **Onayı yenile** görünür. Bankanızda yeniden yetki vermek için onu seçin. Bağladığınız hesaplar korunur."
+            "body": "İzniniz sınırlı bir süre geçerlidir, en fazla 180 gün. Kartın bu bölümü, erişimin geçerli olduğu tarihi gösterir. Son 7 günde **Yakında sona eriyor** yazar. O zaman bankanızda yeniden yetki vermek için **Onayı yenile** seçeneğini seçin. Bağladığınız hesaplar korunur. İzin sona erince, siz yenileyene kadar senkronizasyon durur.",
+            "fallbackBody": "Henüz bağlı bir banka yok, bu yüzden gösterilecek kart yok. Bir banka bağlandığında kartı, erişimin geçerli olduğu tarihi gösterir. İzniniz en fazla 180 gün geçerlidir. Sona yaklaşıldığında kart **Yakında sona eriyor** ve **Onayı yenile** gösterir. Bankanızda yeniden yetki vermek için bu düğmeyi seçin. Bağladığınız hesaplar korunur."
           },
           "notifications": {
-            "title": "Hatırlatmalar ve senkronizasyon sonuçları",
-            "body": "Monize, izin bitmeden önce ve bittiğinde sizi bilgilendirir. Günlük senkronizasyonun nasıl geçtiğini de söyler: yeni işlemler, yeni bir şey yok veya bir hata. Bu tabloda **Banka bağlantıları** izin hatırlatmalarını içerir. **Banka senkronizasyonu sonuçları** senkronizasyon sonuçlarını içerir. Her birinin nereye iletileceğini seçin. Her banka kartında **Günlük senkronizasyondan sonra bildir**, hangi başarılı senkronizasyonların sizi bilgilendireceğini belirler."
+            "title": "İzin bitmeden önce hatırlatmalar",
+            "body": "Bu satır **Banka bağlantıları** satırıdır. Monize, izniniz bitmeden önce ve bittiğinde sizi bilgilendirir. Her hatırlatmanın nereye iletileceğini seçin."
+          },
+          "notificationsSync": {
+            "title": "Günlük senkronizasyonun sonuçları",
+            "body": "Bu satır **Banka senkronizasyonu sonuçları** satırıdır. Monize, günlük senkronizasyonun nasıl geçtiğini söyler: yeni işlemler, yeni bir şey yok veya bir hata. Nereye iletileceğini seçin. Her banka kartında **Günlük senkronizasyondan sonra bildir** ayarı, hangi başarılı senkronizasyonların size bildirim göndereceğini belirler."
           }
         }
       }

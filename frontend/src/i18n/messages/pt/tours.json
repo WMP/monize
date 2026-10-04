@@ -435,9 +435,27 @@
             "title": "Importe transações do seu banco",
             "body": "A sincronização bancária lê as transações contabilizadas das suas contas bancárias através do Open Banking. Importa-as para as suas contas Monize. O acesso é só de leitura. Inicia sessão no seu próprio banco e o Monize nunca vê a sua palavra-passe bancária. Esta visita mostra onde a configurar."
           },
+          "openSettings": {
+            "title": "Abra as Definições",
+            "body": "A sincronização bancária configura-se nas Definições. O botão **Definições** está na barra superior. O passo seguinte abre-o por si.",
+            "fallbackBody": "A sincronização bancária configura-se nas Definições. Abra **Definições** no menu. O passo seguinte abre-o por si."
+          },
+          "settingsHub": {
+            "title": "Encontre a sincronização bancária",
+            "body": "As Definições têm um cartão para cada área. Escolha o cartão **Sincronização Bancária**. Abre a página desta funcionalidade.",
+            "fallbackBody": "As Definições têm um cartão chamado **Sincronização Bancária**. Escolha-o para abrir a página desta funcionalidade."
+          },
+          "helpWhat": {
+            "title": "O Enable Banking é um site",
+            "body": "O Monize lê o seu banco através do Enable Banking. É um serviço externo na web, não um programa no seu computador. Cria uma conta gratuita no site. Aí regista uma aplicação, uma única vez. A aplicação dá-lhe as chaves de que o Monize precisa."
+          },
+          "helpSteps": {
+            "title": "Registe-se no site do Enable Banking",
+            "body": "Siga estes passos no site do Enable Banking, não no Monize. Copie os valores daqui para o formulário do site. Entre eles está o **URL de redirecionamento**. A chave privada é guardada como um ficheiro. Mantenha-o secreto."
+          },
           "credentials": {
-            "title": "A sua aplicação Enable Banking",
-            "body": "O Monize acede ao seu banco através da sua própria aplicação Enable Banking. Registe uma no painel de controlo do Enable Banking. Depois escolha **Configurar credenciais** e introduza o ID da aplicação e a chave privada. Registe também no painel de controlo o **URL de redirecionamento** mostrado aqui. **Testar ligação** verifica se funciona. **Mostrar ajuda de configuração** explica cada passo."
+            "title": "Introduza as chaves no Monize",
+            "body": "Quando a aplicação estiver pronta, escolha **Configurar credenciais**. Introduza o ID da aplicação e a chave privada. O **URL de redirecionamento** mostrado aqui tem de estar registado para a aplicação no site. **Testar ligação** verifica se tudo funciona. **Mostrar ajuda de configuração** traz os passos de volta."
           },
           "connect": {
             "title": "Ligar um banco",
@@ -459,12 +477,16 @@
           },
           "consent": {
             "title": "O consentimento e como o renovar",
-            "body": "O seu consentimento dura um tempo limitado, até 180 dias. O cartão mostra a data até à qual o acesso é válido. Nos últimos 7 dias mostra **Expira em breve**. Escolha **Renovar consentimento** para autorizar de novo no seu banco. As contas associadas ficam. Quando o consentimento termina, a sincronização para até o renovar.",
-            "fallbackBody": "Quando um banco está ligado, o seu cartão mostra a data até à qual o acesso é válido. O seu consentimento dura até 180 dias. Quando o fim se aproxima, aparece aqui **Renovar consentimento**. Escolha-o para autorizar de novo no seu banco. As contas associadas ficam."
+            "body": "O seu consentimento dura um tempo limitado, até 180 dias. Esta parte do cartão mostra a data até à qual o acesso é válido. Nos últimos 7 dias mostra **Expira em breve**. Escolha então **Renovar consentimento** para autorizar de novo no seu banco. As contas que associou são mantidas. Quando o consentimento termina, a sincronização pára até o renovar.",
+            "fallbackBody": "Ainda não há nenhum banco ligado, por isso não há cartão para mostrar. Quando ligar um banco, o seu cartão mostra a data até à qual o acesso é válido. O seu consentimento dura até 180 dias. Quando o fim se aproxima, o cartão mostra **Expira em breve** e **Renovar consentimento**. Escolha-o para autorizar de novo no seu banco. As contas que associou são mantidas."
           },
           "notifications": {
-            "title": "Lembretes e resultados da sincronização",
-            "body": "O Monize avisa-o antes de o consentimento terminar e quando terminou. Diz-lhe também como correu a sincronização diária: transações novas, nada de novo ou uma falha. Nesta tabela, **Ligações bancárias** contém os lembretes do consentimento. **Resultados da sincronização bancária** contém os resultados da sincronização. Escolha onde cada um é entregue. Em cada cartão de banco, **Notificar após a sincronização diária** define que sincronizações bem-sucedidas o avisam."
+            "title": "Lembretes antes de o consentimento terminar",
+            "body": "Esta linha é **Ligações bancárias**. O Monize avisa-o antes de o seu consentimento terminar e quando já terminou. Escolha onde cada lembrete é entregue."
+          },
+          "notificationsSync": {
+            "title": "Resultados da sincronização diária",
+            "body": "Esta linha é **Resultados da sincronização bancária**. O Monize diz-lhe como correu a sincronização diária: novas transações, nada de novo ou uma falha. Escolha onde é entregue. Em cada cartão de banco, **Notificar após a sincronização diária** define que sincronizações bem-sucedidas o notificam."
           }
         }
       }

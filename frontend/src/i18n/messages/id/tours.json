@@ -435,9 +435,27 @@
             "title": "Impor transaksi dari bank Anda",
             "body": "Sinkronisasi bank membaca transaksi terbukukan dari rekening bank Anda melalui Open Banking. Transaksi itu diimpor ke akun Monize Anda. Aksesnya hanya-baca. Anda masuk di bank Anda sendiri, dan Monize tidak pernah melihat kata sandi bank Anda. Panduan ini menunjukkan tempat menyiapkannya."
           },
+          "openSettings": {
+            "title": "Buka Pengaturan",
+            "body": "Sinkronisasi bank disiapkan di Pengaturan. Tombol **Pengaturan** ada di bilah atas. Langkah berikutnya membukanya untuk Anda.",
+            "fallbackBody": "Sinkronisasi bank disiapkan di Pengaturan. Buka **Pengaturan** dari menu. Langkah berikutnya membukanya untuk Anda."
+          },
+          "settingsHub": {
+            "title": "Temukan Sinkronisasi Bank",
+            "body": "Pengaturan memiliki satu kartu untuk setiap area. Pilih kartu **Sinkronisasi Bank**. Kartu itu membuka halaman untuk fitur ini.",
+            "fallbackBody": "Pengaturan memiliki kartu bernama **Sinkronisasi Bank**. Pilih kartu itu untuk membuka halaman fitur ini."
+          },
+          "helpWhat": {
+            "title": "Enable Banking adalah situs web",
+            "body": "Monize membaca bank Anda melalui Enable Banking. Ini layanan eksternal di web, bukan program di komputer Anda. Anda membuat akun gratis di situs webnya. Di sana Anda mendaftarkan satu aplikasi, cukup sekali. Aplikasi itu memberi Anda kunci yang dibutuhkan Monize."
+          },
+          "helpSteps": {
+            "title": "Daftar di situs web Enable Banking",
+            "body": "Ikuti langkah-langkah ini di situs web Enable Banking, bukan di Monize. Salin nilai dari sini ke formulir di sana. Salah satunya adalah **URL Pengalihan**. Kunci privat disimpan sebagai berkas. Jaga kerahasiaannya."
+          },
           "credentials": {
-            "title": "Aplikasi Enable Banking Anda",
-            "body": "Monize terhubung ke bank Anda melalui aplikasi Enable Banking milik Anda sendiri. Daftarkan satu di panel kontrol Enable Banking. Lalu pilih **Siapkan kredensial** dan masukkan ID aplikasi serta kunci privatnya. Daftarkan juga **URL Pengalihan** yang ditampilkan di sini di panel kontrol. **Uji koneksi** memeriksa apakah semuanya berfungsi. **Tampilkan bantuan penyiapan** menjelaskan setiap langkah."
+            "title": "Masukkan kunci Anda di Monize",
+            "body": "Saat aplikasi siap, pilih **Siapkan kredensial**. Masukkan ID aplikasi dan kunci privatnya. **URL Pengalihan** yang ditampilkan di sini harus didaftarkan untuk aplikasi di situs web. **Uji koneksi** memeriksa apakah semuanya berfungsi. **Tampilkan bantuan penyiapan** memunculkan kembali langkah-langkahnya."
           },
           "connect": {
             "title": "Hubungkan bank",
@@ -459,12 +477,16 @@
           },
           "consent": {
             "title": "Persetujuan dan cara memperbaruinya",
-            "body": "Persetujuan Anda berlaku untuk waktu terbatas, hingga 180 hari. Kartu menampilkan tanggal akses berlaku. Dalam 7 hari terakhir, kartu menampilkan **Segera kedaluwarsa**. Pilih **Perbarui persetujuan** untuk memberi otorisasi lagi di bank Anda. Rekening yang sudah tertaut tetap ada. Saat persetujuan berakhir, sinkronisasi berhenti sampai Anda memperbaruinya.",
-            "fallbackBody": "Setelah bank terhubung, kartunya menampilkan tanggal akses berlaku. Persetujuan Anda berlaku hingga 180 hari. Saat akhirnya mendekat, **Perbarui persetujuan** muncul di sini. Pilih untuk memberi otorisasi lagi di bank Anda. Rekening yang sudah tertaut tetap ada."
+            "body": "Persetujuan Anda berlaku untuk waktu terbatas, hingga 180 hari. Bagian kartu ini menampilkan tanggal akses berlaku. Pada 7 hari terakhir, bagian ini menampilkan **Segera kedaluwarsa**. Saat itu pilih **Perbarui persetujuan** untuk memberi otorisasi lagi di bank Anda. Rekening yang sudah ditautkan tetap tersimpan. Saat persetujuan berakhir, sinkronisasi berhenti sampai Anda memperbaruinya.",
+            "fallbackBody": "Belum ada bank yang terhubung, jadi belum ada kartu untuk ditampilkan. Setelah bank terhubung, kartunya menampilkan tanggal akses berlaku. Persetujuan Anda berlaku hingga 180 hari. Saat akhirnya mendekat, kartu menampilkan **Segera kedaluwarsa** dan **Perbarui persetujuan**. Pilih tombol itu untuk memberi otorisasi lagi di bank Anda. Rekening yang sudah ditautkan tetap tersimpan."
           },
           "notifications": {
-            "title": "Pengingat dan hasil sinkronisasi",
-            "body": "Monize memberi tahu Anda sebelum persetujuan berakhir, dan saat sudah berakhir. Monize juga memberi tahu bagaimana sinkronisasi harian berjalan: transaksi baru, tidak ada yang baru, atau gagal. Dalam tabel ini, **Koneksi bank** berisi pengingat persetujuan. **Hasil sinkronisasi bank** berisi hasil sinkronisasi. Pilih tempat pengiriman masing-masing. Pada setiap kartu bank, **Beri tahu setelah sinkronisasi harian** menentukan sinkronisasi berhasil mana yang memberi tahu Anda."
+            "title": "Pengingat sebelum persetujuan berakhir",
+            "body": "Baris ini adalah **Koneksi bank**. Monize memberi tahu Anda sebelum persetujuan berakhir, dan saat sudah berakhir. Pilih ke mana setiap pengingat dikirim."
+          },
+          "notificationsSync": {
+            "title": "Hasil sinkronisasi harian",
+            "body": "Baris ini adalah **Hasil sinkronisasi bank**. Monize memberi tahu Anda bagaimana sinkronisasi harian berjalan: transaksi baru, tidak ada yang baru, atau gagal. Pilih ke mana pemberitahuan dikirim. Pada setiap kartu bank, **Beri tahu setelah sinkronisasi harian** menentukan sinkronisasi berhasil mana yang memberi Anda pemberitahuan."
           }
         }
       }

@@ -435,9 +435,27 @@
             "title": "Importuj transakcje z banku",
             "body": "Synchronizacja z bankiem odczytuje zaksięgowane transakcje z Twoich rachunków bankowych przez Open Banking. Importuje je do Twoich kont w Monize. Dostęp jest tylko do odczytu. Logujesz się we własnym banku, a Monize nigdy nie widzi Twojego hasła bankowego. Ten przewodnik pokazuje, gdzie ją skonfigurować."
           },
+          "openSettings": {
+            "title": "Otwórz Ustawienia",
+            "body": "Synchronizację bankową konfiguruje się w Ustawieniach. Przycisk **Ustawienia** jest na górnym pasku. Następny krok otworzy go za Ciebie.",
+            "fallbackBody": "Synchronizację bankową konfiguruje się w Ustawieniach. Otwórz **Ustawienia** z menu. Następny krok otworzy je za Ciebie."
+          },
+          "settingsHub": {
+            "title": "Znajdź synchronizację bankową",
+            "body": "Ustawienia mają kartę dla każdego obszaru. Wybierz kartę **Synchronizacja bankowa**. Otwiera ona stronę tej funkcji.",
+            "fallbackBody": "Ustawienia mają kartę o nazwie **Synchronizacja bankowa**. Wybierz ją, aby otworzyć stronę tej funkcji."
+          },
+          "helpWhat": {
+            "title": "Enable Banking to strona internetowa",
+            "body": "Monize odczytuje Twój bank przez Enable Banking. To zewnętrzna usługa w internecie, a nie program na Twoim komputerze. Zakładasz darmowe konto na jej stronie internetowej. Rejestrujesz tam aplikację, tylko raz. Aplikacja daje Ci klucze, których potrzebuje Monize."
+          },
+          "helpSteps": {
+            "title": "Zarejestruj się na stronie Enable Banking",
+            "body": "Wykonaj te kroki na stronie internetowej Enable Banking, a nie w Monize. Skopiuj wartości stąd do jej formularza. Należy do nich **Adres przekierowania**. Klucz prywatny zapisuje się jako plik. Zachowaj go w tajemnicy."
+          },
           "credentials": {
-            "title": "Twoja aplikacja Enable Banking",
-            "body": "Monize łączy się z Twoim bankiem przez Twoją własną aplikację Enable Banking. Zarejestruj ją w panelu sterowania Enable Banking. Następnie wybierz **Skonfiguruj dane uwierzytelniające** i wpisz identyfikator aplikacji oraz klucz prywatny. W panelu sterowania zarejestruj też **Adres przekierowania** pokazany tutaj. **Testuj połączenie** sprawdza, czy to działa. **Pokaż pomoc w konfiguracji** wyjaśnia każdy krok."
+            "title": "Wpisz klucze w Monize",
+            "body": "Gdy aplikacja jest gotowa, wybierz **Skonfiguruj dane uwierzytelniające**. Wpisz jej identyfikator oraz klucz prywatny. **Adres przekierowania** pokazany tutaj musi być zarejestrowany dla aplikacji na stronie internetowej. **Testuj połączenie** sprawdza, czy wszystko działa. **Pokaż pomoc w konfiguracji** przywraca kroki."
           },
           "connect": {
             "title": "Połącz bank",
@@ -459,12 +477,16 @@
           },
           "consent": {
             "title": "Zgoda i jej odnowienie",
-            "body": "Twoja zgoda obowiązuje ograniczony czas, do 180 dni. Karta pokazuje datę, do której dostęp jest ważny. W ostatnich 7 dniach pokazuje **Wkrótce wygasa**. Wybierz **Odnów zgodę**, aby ponownie autoryzować w banku. Powiązane konta zostają. Gdy zgoda wygaśnie, synchronizacja się zatrzyma, dopóki jej nie odnowisz.",
-            "fallbackBody": "Gdy bank jest połączony, jego karta pokazuje datę, do której dostęp jest ważny. Twoja zgoda obowiązuje do 180 dni. Gdy koniec się zbliża, pojawia się tu **Odnów zgodę**. Wybierz go, aby ponownie autoryzować w banku. Powiązane konta zostają."
+            "body": "Twoja zgoda obowiązuje ograniczony czas, do 180 dni. Ta część karty pokazuje datę, do której dostęp jest ważny. W ostatnich 7 dniach pokazuje **Wkrótce wygasa**. Wtedy wybierz **Odnów zgodę**, aby ponownie autoryzować w banku. Powiązane konta zostają. Gdy zgoda wygaśnie, synchronizacja się zatrzyma, dopóki jej nie odnowisz.",
+            "fallbackBody": "Nie ma jeszcze połączonego banku, więc nie ma karty do pokazania. Gdy bank zostanie połączony, jego karta pokaże datę, do której dostęp jest ważny. Twoja zgoda obowiązuje do 180 dni. Gdy koniec się zbliża, karta pokazuje **Wkrótce wygasa** i **Odnów zgodę**. Wybierz ten przycisk, aby ponownie autoryzować w banku. Powiązane konta zostają."
           },
           "notifications": {
-            "title": "Przypomnienia i wyniki synchronizacji",
-            "body": "Monize powiadamia Cię przed końcem zgody i gdy już wygasła. Mówi też, jak poszła codzienna synchronizacja: nowe transakcje, nic nowego lub błąd. W tej tabeli **Połączenia bankowe** zawiera przypomnienia o zgodzie. **Wyniki synchronizacji bankowej** zawiera wyniki synchronizacji. Wybierz, gdzie ma trafiać każde z nich. Na każdej karcie banku **Powiadom po codziennej synchronizacji** ustawia, które udane synchronizacje wysyłają powiadomienie."
+            "title": "Przypomnienia przed końcem zgody",
+            "body": "Ten wiersz to **Połączenia bankowe**. Monize powiadamia Cię przed końcem zgody i gdy już wygasła. Wybierz, gdzie ma trafiać każde przypomnienie."
+          },
+          "notificationsSync": {
+            "title": "Wyniki codziennej synchronizacji",
+            "body": "Ten wiersz to **Wyniki synchronizacji bankowej**. Monize mówi, jak poszła codzienna synchronizacja: nowe transakcje, nic nowego lub błąd. Wybierz, gdzie ma trafiać. Na każdej karcie banku **Powiadom po codziennej synchronizacji** ustawia, które udane synchronizacje wysyłają powiadomienie."
           }
         }
       }
