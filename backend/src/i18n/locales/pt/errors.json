@@ -20,6 +20,17 @@
     "sameSign": "Os valores de \"{{ param }}\" e \"{{ other }}\" têm de ter o mesmo sinal",
     "onOrBefore": "O valor de \"{{ param }}\" tem de ser igual ou anterior a \"{{ other }}\""
   },
+  "attachments": {
+    "notFound": "Anexo não encontrado",
+    "storageUnavailable": "O ficheiro deste anexo está no armazenamento \"{{ provider }}\", ao qual este servidor não está configurado para acessar",
+    "transactionNotFound": "Transação não encontrada",
+    "empty": "O ficheiro carregado está vazio",
+    "fileTooLarge": "O ficheiro excede o tamanho máximo de {{ max }} bytes",
+    "unsupportedType": "Tipo de ficheiro não suportado. Tipos permitidos: {{ types }}",
+    "tooMany": "Esta transação já tem o máximo de {{ max }} anexos",
+    "swept": "O carregamento demorou demasiado e o respetivo armazenamento foi libertado. Tente novamente.",
+    "pairRequiresImages": "Um documento digitalizado e o seu original têm de ser ambos imagens"
+  },
   "accounts": {
     "accountWithIdNotFound": "Conta com ID {{ id }} não encontrada",
     "notInvestmentPair": "Esta conta não faz parte de um par de conta de investimento",
@@ -131,7 +142,10 @@
     "transferNotSupported": "Uma transferência não pode ser revista por proposta. Rejeite antes o pedido.",
     "splitDifference": "As linhas da divisão somam {{ sum }} mas a transação é {{ amount }}: {{ difference }} não está atribuído. Faça as linhas somar o valor da transação; um restante como custos de envio precisa da sua própria linha, ou é indicado ao utilizador em vez de atribuído.",
     "noTransaction": "Este pedido de revisão de IA não é sobre uma transação.",
-    "parserDraftNotSubmittable": "Um pedido de rascunho de analisador é respondido com a ferramenta email_receipt_parsers (test e depois save_draft com este requestId), não com uma proposta de transação."
+    "parserDraftNotSubmittable": "Um pedido de rascunho de analisador é respondido com a ferramenta email_receipt_parsers (test e depois save_draft com este requestId), não com uma proposta de transação.",
+    "tagNamesInvalid": "Uma proposta pode adicionar até {{ max }} etiquetas, cada uma com 1 a {{ length }} carateres, sem carateres de controlo.",
+    "noApprovableProposal": "Este pedido não tem aqui nenhuma proposta para aprovar.",
+    "approveFailed": "Não foi possível aprovar esta proposta. Tente aprová-la em separado."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Demasiadas tentativas de verificação. Inicie sessão novamente.",
@@ -229,14 +243,14 @@
     "backupPasswordBreached": "Esta palavra-passe foi encontrada numa fuga de dados. Escolha uma palavra-passe diferente.",
     "restoreBodyMustBeFile": "O corpo do pedido deve ser um ficheiro de cópia de segurança",
     "reauthUnavailable": "Conclua a definição da palavra-passe da sua conta antes de restaurar uma cópia de segurança.",
-    "supportPasswordRequired": "Um backup de suporte tem de ser cifrado: indique uma palavra-passe.",
     "passwordHeaderNotBase64": "O cabeçalho {header} tem de estar codificado em base64.",
+    "folderOutsideAllowedRoots": "A pasta de backups \"{path}\" está fora das raízes permitidas ({roots}). Defina BACKUP_ALLOWED_ROOTS para a permitir.",
     "decompressTooLarge": "A cópia de segurança é demasiado grande para restaurar: ao descomprimir excede o limite de {limit} bytes desta instalação. Esse limite é derivado da memória do contentor e de um custo medido por byte, pelo que aumentá-lo isoladamente descreve um restauro que o processo não consegue terminar -- aumente o limite de memória do contentor (Kubernetes: backend.resources.limits.memory).",
     "exportTooLarge": "Este backup é demasiado grande para ser produzido de uma só vez (acima de {limit} bytes na tabela \"{table}\"). Os backups automáticos e de suporte têm de ser mantidos em memória; transfira um backup manual, que transmite, ou aumente BACKUP_EXPORT_BUFFER_LIMIT.",
+    "supportPasswordRequired": "Um backup de suporte tem de ser cifrado: indique uma palavra-passe.",
     "supportExportTooLarge": "Este backup de suporte teria {{ size }} MiB de JSON, acima do limite de {{ limit }} MiB. Restrinja-o com uma seleção de contas ou um intervalo de datas, ou aumente BACKUP_EXPORT_BUFFER_LIMIT.",
-    "folderUnusable": "A pasta \"{{ path }}\" não pode ser usada como diretório ({{ reason }}).",
-    "folderOutsideAllowedRoots": "A pasta de backups \"{path}\" está fora das raízes permitidas ({roots}). Defina BACKUP_ALLOWED_ROOTS para a permitir.",
     "noBackupStorage": "Esta instalação não tem armazenamento de backups gravável: {{ safePath }} não existe e não pode ser criado ({{ reason }}). Monte um volume nesse local (Docker: bind mount ou volume com nome; Kubernetes: defina backend.persistence.backups no chart Helm) e tente novamente.",
+    "folderUnusable": "A pasta \"{{ path }}\" não pode ser usada como diretório ({{ reason }}).",
     "restoreNoMemoryHeadroom": "Esta instalação não tem margem de memória para uma restauração: o pico estimado de uma restauração não cabe no contentor. Aumente o limite de memória do contentor ou reduza BACKUP_RESTORE_EXPANDED_LIMIT.",
     "restoreQueueFull": "Demasiados restauros estão já à espera da capacidade de restauro desta instalação. Tente novamente dentro de um momento.",
     "restoreQueueWaitTimeout": "Tempo esgotado à espera da capacidade de restauro: outro restauro ainda está em curso. Tente novamente dentro de um momento.",
@@ -289,12 +303,12 @@
   },
   "currencies": {
     "alreadyInList": "A moeda \"{{ code }}\" já está na sua lista",
+    "alreadyInListInactive": "A moeda \"{{ code }}\" já está na sua lista, mas está atualmente inativa. Reative-a para a utilizar.",
     "notFound": "Moeda \"{{ code }}\" não encontrada",
     "cannotModifySystem": "Não é possível modificar metadados de moeda do sistema",
     "cannotModifyOther": "Não é possível modificar a moeda de outro utilizador",
     "inUse": "A moeda \"{{ code }}\" está em uso pelas suas contas, títulos ou outros registos. Desative-a em vez disso.",
     "invalidRateDate": "date deve estar no formato AAAA-MM-DD",
-    "alreadyInListInactive": "A moeda \"{{ code }}\" já está na sua lista, mas está atualmente inativa. Reative-a para a utilizar.",
     "sameCurrencyHistory": "{{ code }} é a sua moeda predefinida; não tem histórico de taxa de câmbio",
     "rateProviderUnavailable": "O fornecedor de taxas de câmbio não respondeu. Tente novamente mais tarde."
   },
@@ -496,7 +510,6 @@
     "loanLedgerUnreadable": "Não foi possível calcular este pagamento do empréstimo porque não foi possível ler o saldo do seu livro-razão. Tente novamente."
   },
   "securities": {
-    "exchangeRateUnavailable": "Não foi possível determinar uma taxa de câmbio para {{ from }} -> {{ to }} na data da transação. Forneça um exchangeRate explícito para que o lançamento na conta de caixa fique correto.",
     "accountMustBeInvestment": "A conta deve ser do tipo INVESTMENT",
     "transferPairSameRow": "As duas pernas de uma transferência não podem ser a mesma transação",
     "transferPairNotFound": "Uma das duas transações já não existe",
@@ -510,8 +523,14 @@
     "transferPairOutsidePortfolio": "Ambas as pernas têm de estar em contas de investimento desta carteira",
     "providerCurrencyMismatch": "Atualização de preço recusada para {{ symbol }}: o {{ provider }} cota-o em {{ reported }}, mas o título está registado em {{ configured }}. Corrija a moeda, o símbolo ou a bolsa do título e atualize novamente.",
     "securityIdRequired": "O ID do título é obrigatório para transações de {{ action }}",
+    "exchangeRateUnavailable": "Não foi possível determinar uma taxa de câmbio para {{ from }} -> {{ to }} na data da transação. Forneça um exchangeRate explícito para que o lançamento na conta de caixa fique correto.",
     "splitRatioRequired": "O rácio de desdobramento (quantidade) deve ser maior que zero",
     "acquisitionPriceRequired": "É necessário um preço por unidade superior a zero para transações {{ action }}. Utilize ADD_SHARES para participações adquiridas sem um custo conhecido.",
+    "ambiguousSecurity": "\"{{ query }}\" corresponde a vários títulos: {{ list }}. Utilize o símbolo exato.",
+    "allocationExceedsTotal": "As percentagens de alocação somam mais de 100%.",
+    "assetOptionNameRequired": "É necessário um nome de classe de ativos.",
+    "invalidTagKey": "É necessária uma chave de etiqueta (1-100 caracteres)",
+    "securityNotFoundByQuery": "Nenhum título corresponde a \"{{ query }}\". Adicione o título primeiro ou verifique o símbolo.",
     "cannotHoldSecurities": "{{ label }} não pode deter títulos",
     "sourceDestMustDiffer": "As contas de origem e destino devem ser diferentes",
     "bothAccountsMustBeInvestment": "Ambas as contas devem ser do tipo INVESTMENT",
@@ -537,6 +556,10 @@
     "limitMax200": "limit não deve exceder 200",
     "invalidAction": "Ação inválida: {{ action }}. Deve ser uma de: {{ validActions }}",
     "symbolAlreadyExists": "Já existe um título com o símbolo {{ symbol }}",
+    "lookupQueryRequired": "Forneça um símbolo de cotação ou o nome de um título para pesquisar.",
+    "lookupNotFound": "Nenhum título encontrado correspondente a \"{{ query }}\". Verifique o símbolo ou o nome, ou especifique uma bolsa.",
+    "lookupAmbiguous": "\"{{ query }}\" corresponde a vários títulos: {{ list }}. Execute novamente especificando uma bolsa.",
+    "lookupNoCurrency": "Não foi possível determinar a moeda de \"{{ symbol }}\". Adicione o título manualmente.",
     "notFoundById": "Título com ID {{ id }} não encontrado",
     "notFoundBySymbol": "Título com símbolo {{ symbol }} não encontrado",
     "cannotDeactivateWithHoldings": "Não é possível desativar o título com posições ativas. Venda todas as ações primeiro.",
@@ -553,21 +576,12 @@
     "invalidUuid": "UUID de {{ label }} inválido: {{ id }}",
     "symbolLength": "O símbolo deve ter entre 1 e 20 caracteres",
     "symbolCharacters": "O símbolo deve conter apenas letras, dígitos, pontos ou hífenes",
-    "ambiguousSecurity": "\"{{ query }}\" corresponde a vários títulos: {{ list }}. Utilize o símbolo exato.",
-    "securityNotFoundByQuery": "Nenhum título corresponde a \"{{ query }}\". Adicione o título primeiro ou verifique o símbolo.",
-    "lookupQueryRequired": "Forneça um símbolo de cotação ou o nome de um título para pesquisar.",
-    "lookupNotFound": "Nenhum título encontrado correspondente a \"{{ query }}\". Verifique o símbolo ou o nome, ou especifique uma bolsa.",
-    "lookupAmbiguous": "\"{{ query }}\" corresponde a vários títulos: {{ list }}. Execute novamente especificando uma bolsa.",
-    "lookupNoCurrency": "Não foi possível determinar a moeda de \"{{ symbol }}\". Adicione o título manualmente.",
     "noUpdateFields": "Indique pelo menos um campo para alterar.",
-    "allocationExceedsTotal": "As percentagens de alocação somam mais de 100%.",
-    "invalidTagKey": "É necessária uma chave de etiqueta (1-100 caracteres)",
-    "assetOptionNameRequired": "É necessário um nome de classe de ativos.",
     "documentNotFound": "Documento não encontrado",
-    "embeddedSplitAmountMismatch": "Esta parcela regista {{ amount }}, mas {{ action }} {{ quantity }} @ {{ price }} converte-se em {{ expected }} à taxa de {{ rate }}. Use esse montante, ou indique a taxa de câmbio que pretendia.",
     "selectionNotFound": "Um ou mais dos títulos selecionados não foram encontrados",
     "comparisonSelectionEmpty": "Selecione pelo menos um título ou índice de mercado para comparar",
-    "exchangeRateNotPositive": "A taxa de câmbio deve ser maior do que zero"
+    "exchangeRateNotPositive": "A taxa de câmbio deve ser maior do que zero",
+    "embeddedSplitAmountMismatch": "Esta parcela regista {{ amount }}, mas {{ action }} {{ quantity }} @ {{ price }} converte-se em {{ expected }} à taxa de {{ rate }}. Use esse montante, ou indique a taxa de câmbio que pretendia."
   },
   "tags": {
     "notFound": "Etiqueta com ID {{ id }} não encontrada",
@@ -680,17 +694,6 @@
     "recalculateMortgageOnly": "O recálculo da prestação só está disponível para contas de crédito habitação",
     "insufficientData": "Não há pagamentos suficientes com detalhes de juros para detetar alterações de taxa",
     "frequencyMismatch": "As datas de pagamento não correspondem à frequência de pagamento da conta; as taxas inferidas podem ser menos precisas"
-  },
-  "attachments": {
-    "notFound": "Anexo não encontrado",
-    "storageUnavailable": "O ficheiro deste anexo está no armazenamento \"{{ provider }}\", ao qual este servidor não está configurado para acessar",
-    "transactionNotFound": "Transação não encontrada",
-    "empty": "O ficheiro carregado está vazio",
-    "fileTooLarge": "O ficheiro excede o tamanho máximo de {{ max }} bytes",
-    "unsupportedType": "Tipo de ficheiro não suportado. Tipos permitidos: {{ types }}",
-    "tooMany": "Esta transação já tem o máximo de {{ max }} anexos",
-    "swept": "O carregamento demorou demasiado e o respetivo armazenamento foi libertado. Tente novamente.",
-    "pairRequiresImages": "Um documento digitalizado e o seu original têm de ser ambos imagens"
   },
   "strategies": {
     "accountNotFound": "Conta não encontrada",

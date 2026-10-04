@@ -359,7 +359,12 @@
       },
       "channelNotApplicable": "No aplicable a este tipo de notificación",
       "emailToggleLabel": "Correo (informe) para {category}",
+      "emailNotificationToggleLabel": "Correo de alerta para {category}",
+      "pushToggleLabel": "Push para {category}",
+      "unifiedpushToggleLabel": "UnifiedPush para {category}",
       "saveFailed": "No se pudo guardar ese ajuste",
+      "emailUnavailable": "Activa arriba las notificaciones por correo para enviarlas por correo.",
+      "pushUnavailable": "No hay ningún dispositivo registrado para push, así que este canal no puede entregar nada.",
       "throttle": {
         "label": "Espera",
         "ariaLabel": "Tiempo de espera para {category}",
@@ -374,11 +379,6 @@
           "1440": "24 horas"
         }
       },
-      "emailNotificationToggleLabel": "Correo de alerta para {category}",
-      "pushToggleLabel": "Push para {category}",
-      "unifiedpushToggleLabel": "UnifiedPush para {category}",
-      "emailUnavailable": "Activa arriba las notificaciones por correo para enviarlas por correo.",
-      "pushUnavailable": "No hay ningún dispositivo registrado para push, así que este canal no puede entregar nada.",
       "pushEnableHint": "Este navegador no está registrado para notificaciones push."
     }
   },
@@ -753,8 +753,8 @@
       },
       "toasts": {
         "success": "Copia de seguridad descargada correctamente",
-        "incomplete": "Copia de seguridad descargada, pero está INCOMPLETA: {unusable} de {total} archivo(s) adjunto(s) no se pudieron guardar intactos ({missing} ausentes, {inconsistent} no pasaron la comprobación de integridad). No trate este archivo como una copia completa: corrija el almacenamiento de adjuntos y vuelva a exportar.",
-        "failed": "Error al crear la copia de seguridad"
+        "failed": "Error al crear la copia de seguridad",
+        "incomplete": "Copia de seguridad descargada, pero está INCOMPLETA: {unusable} de {total} archivo(s) adjunto(s) no se pudieron guardar intactos ({missing} ausentes, {inconsistent} no pasaron la comprobación de integridad). No trate este archivo como una copia completa: corrija el almacenamiento de adjuntos y vuelva a exportar."
       }
     },
     "restore": {
@@ -784,9 +784,9 @@
       "title": "Restauración completa",
       "description": "Tus datos han sido restaurados correctamente. Aquí tienes un resumen de lo que se restauró:",
       "totalRecords": "Total de registros",
-      "doneButton": "Listo",
       "skippedAttachments": "{count, plural, one {# archivo adjunto no se restauró} other {# archivos adjuntos no se restauraron}}: la copia no contenía bytes utilizables para ellos — faltaban o no pasaron su suma de comprobación al exportarla, o el fichero es anterior a las copias autocontenidas. Exporte una copia nueva cuando el almacenamiento de adjuntos esté correcto.",
-      "unusableAiProviderKeys": "{count, plural, one {Se restauró # proveedor de IA sin una clave de API utilizable} other {Se restauraron # proveedores de IA sin claves de API utilizables}}: la copia de seguridad se creó antes de que las claves de proveedor viajaran en ella, así que la clave guardada pertenece al servidor que generó el archivo, o este servidor no tiene configurada ninguna clave de cifrado con la que almacenarla. Abre Ajustes → Proveedores de IA e introduce de nuevo la clave de API."
+      "unusableAiProviderKeys": "{count, plural, one {Se restauró # proveedor de IA sin una clave de API utilizable} other {Se restauraron # proveedores de IA sin claves de API utilizables}}: la copia de seguridad se creó antes de que las claves de proveedor viajaran en ella, así que la clave guardada pertenece al servidor que generó el archivo, o este servidor no tiene configurada ninguna clave de cifrado con la que almacenarla. Abre Ajustes → Proveedores de IA e introduce de nuevo la clave de API.",
+      "doneButton": "Listo"
     },
     "storedBackups": {
       "heading": "Copias de seguridad automáticas",
@@ -993,7 +993,7 @@
     },
     "emailReceiptsCard": {
       "title": "Recibos por correo",
-      "description": "Conecta un buzón para las confirmaciones de pedido y gestiona los analizadores que las leen."
+      "description": "Conecta un buzón para las confirmaciones de pedido y gestiona los perfiles que las leen."
     },
     "delegateSecurityError": "No se pueden cargar tu configuración de seguridad.",
     "toasts": {

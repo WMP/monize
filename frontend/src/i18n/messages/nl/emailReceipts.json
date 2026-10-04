@@ -1,17 +1,11 @@
 {
   "settingsPage": {
-    "backLink": "Terug naar instellingen",
-    "title": "E-mailbonnen",
-    "subtitle": "Lees bestelbevestigingen uit een mailbox en zet ze om in gespecificeerde transacties",
-    "receiptsLink": "Opgeslagen e-mails openen",
-    "demoRestricted": {
-      "heading": "Beperkt in demomodus",
-      "body": "Een mailbox koppelen is uitgeschakeld in de demomodus."
-    }
+    "redirecting": "De pagina E-mailbonnen wordt geopend...",
+    "redirectLink": "Naar de mailboxinstellingen"
   },
   "page": {
     "title": "E-mailbonnen",
-    "subtitle": "De bestelbevestigingen die uit je mailbox zijn gelezen, en wat er met elk ervan is gebeurd"
+    "subtitle": "Lees bestelbevestigingen uit een mailbox en zet ze om in gespecificeerde transacties: wat is gekoppeld, wat er met elke e-mail is gebeurd en wat op jou wacht"
   },
   "mailbox": {
     "heading": "Mailbox",
@@ -99,7 +93,9 @@
         "automatic": "Bij het ophalen vraagt de AI naar een gekoppelde bon die geen enkele goedgekeurde parser volledig kon lezen, en stelt hij een parser op voor een afzender die er geen heeft."
       },
       "autoApplyLabel": "Voorstellen automatisch toepassen",
-      "autoApplyHelp": "Standaard uit. Een voorstel wordt alleen zonder te vragen toegepast als dit allemaal geldt: een goedgekeurde parser heeft de hele e-mail gelezen, de transactie is gevonden via het ordernummer of via het exacte bedrag en de begunstigde met maar één kandidaat, en het voorstel klopt tot op de cent. Al het andere wacht op jouw goedkeuring."
+      "autoApplyHelp": "Standaard uit. Een voorstel wordt alleen zonder te vragen toegepast als dit allemaal geldt: een goedgekeurd profiel heeft de hele e-mail gelezen, de transactie is gevonden via een ordernummer, een referentie of via het exacte bedrag en de begunstigde met maar één kandidaat, en het voorstel klopt tot op de cent. Al het andere wacht op jouw goedkeuring.",
+      "profileLimitLabel": "Voorstellen van profielen meetellen voor de dagelijkse AI-limiet",
+      "profileLimitHelp": "Standaard aan: een wijziging die een profiel uit een e-mail voorstelt, telt mee voor de dagelijkse limiet van door AI voorgestelde wijzigingen, zoals elk ander AI-voorstel. Zet dit uit als een grote groep opgeslagen e-mails de limiet anders zou opmaken. Alleen voorstellen van profielen zijn uitgezonderd; elk voorstel wacht nog steeds op jouw goedkeuring."
     },
     "status": {
       "lastPolled": "Laatst opgehaald",
@@ -121,8 +117,8 @@
     }
   },
   "parsers": {
-    "heading": "Parsers",
-    "description": "Een parser leest de bestelbevestigingen van één afzender met patronen die je zelf schrijft of controleert. Eenmaal goedgekeurd werkt hij zonder de AI.",
+    "heading": "Profielen",
+    "description": "Een profiel leest de bestelbevestigingen van één afzender met patronen die je zelf schrijft of controleert en bepaalt hoe de banktransactie wordt gevonden. Eenmaal goedgekeurd werkt het zonder de AI.",
     "newButton": "Nieuwe parser",
     "loading": "Parsers laden",
     "error": {
@@ -174,6 +170,12 @@
       "copy": "Kopiëren",
       "copied": "JSON gekopieerd",
       "copyFailed": "De JSON kon niet worden gekopieerd"
+    },
+    "processOffer": {
+      "title": "De opgeslagen e-mails nu verwerken?",
+      "message": "{count, plural, one {De # opgeslagen e-mail} other {De # opgeslagen e-mails}} van {domains} nu verwerken? Elke e-mail wordt opnieuw gelezen met dit profiel; wat die voorstelt, wacht in het controlepostvak, tenzij automatisch toepassen aan staat.",
+      "confirm": "Nu verwerken",
+      "later": "Niet nu"
     }
   },
   "editor": {
@@ -249,6 +251,44 @@
       "label": "Parserdefinitie (JSON)",
       "help": "Dezelfde definitie die het formulier opbouwt. De server controleert haar bij het opslaan en de test hieronder leest haar zoals ze nu is.",
       "parseError": "Dit is geen geldige JSON of geen JSON-object. Herstel dit om de parser op te slaan of te testen."
+    },
+    "matching": {
+      "heading": "Koppeling",
+      "help": "Hoe de banktransactie wordt gevonden die een e-mail heeft betaald. De strategieën worden op volgorde geprobeerd: de eerste die precies één transactie overhoudt, beslist, meerdere transacties zijn dubbelzinnig en geen enkele gaat door naar de volgende.",
+      "referenceLabel": "Referentiepatronen",
+      "referenceHint": "De identificatie die de webwinkel of betaalprovider in de bankverrichting zet, zoals een afschrifttekst of een omschrijving van de overschrijving. Moet {capture} vastleggen.",
+      "strategiesLabel": "Strategieën, in de volgorde waarin ze worden geprobeerd",
+      "strategiesHelp": "Ordernummer en referentie zoeken de waarde in de omschrijving, de begunstigde of het referentienummer van de transactie. Bedrag en begunstigde heeft het bedrag nodig plus een aanwijzing voor de begunstigde. Bedrag en datum heeft alleen het bedrag nodig, binnen het venster. Minstens één strategie moet aan blijven.",
+      "strategyPosition": "{position}. {name}",
+      "moveUp": "{name} eerder zetten",
+      "moveDown": "{name} later zetten",
+      "strategies": {
+        "reference": "Referentie",
+        "orderId": "Ordernummer",
+        "amount_payee": "Bedrag en begunstigde",
+        "amount_date": "Bedrag en datum"
+      },
+      "referenceNeeded": "De referentiestrategie staat aan, maar er zijn geen referentiepatronen, dus er wordt niets gevonden.",
+      "referenceInLabel": "Zoek de referentie en het ordernummer in",
+      "referenceInHint": "Waarden korter dan 4 tekens worden nooit gezocht.",
+      "referenceIn": {
+        "description": "Omschrijving",
+        "payee": "Naam van de begunstigde",
+        "referenceNumber": "Referentienummer"
+      },
+      "daysBeforeLabel": "Dagen vóór de aankoop",
+      "daysAfterLabel": "Dagen na de aankoop",
+      "daysHint": "Het venster rond de aankoopdatum. Standaard {default}, maximaal {max}.",
+      "toleranceLabel": "Bedragtolerantie",
+      "toleranceHint": "Hoeveel het bankbedrag mag afwijken van het totaal van de e-mail. Standaard 0, maximaal {max}."
+    },
+    "proposal": {
+      "heading": "Voorstel",
+      "tagLabel": "Een label toevoegen aan de transacties die dit profiel categoriseert",
+      "tagHelp": "Het label wordt aangemaakt als je er geen met die naam hebt. Het staat in het voorstel en er wordt niets geschreven totdat je het goedkeurt.",
+      "tagNameLabel": "Labelnaam",
+      "aiCategoriesLabel": "De AI de categorie laten kiezen van artikelen waar geen regel bij past",
+      "aiCategoriesHelp": "Als een artikel bij geen enkele categorieregel past en er geen standaardcategorie is, wordt de AI om de categorie gevraagd uit je categorielijst. De keuze wordt in het voorstel als die van de AI aangemerkt. Als dit uit staat, wordt de AI nooit gevraagd."
     }
   },
   "problems": {
@@ -294,7 +334,16 @@
       "single": "Enkel artikel",
       "singleName": "Naam van het enkele artikel",
       "joinWrapped": "Afgebroken regels samenvoegen",
-      "ruleField": "field"
+      "ruleField": "field",
+      "reference": "Referentiepatronen",
+      "match": "Het gedeelte Koppeling",
+      "matchBy": "Koppelingsstrategieën",
+      "matchReferenceIn": "Velden waarin naar de referentie wordt gezocht",
+      "matchDaysBefore": "Dagen vóór de aankoop",
+      "matchDaysAfter": "Dagen na de aankoop",
+      "matchTolerance": "Bedragtolerantie",
+      "tag": "Label",
+      "aiCategories": "AI-categorieën"
     },
     "codes": {
       "not_object": "is geen geldige definitie",
@@ -319,7 +368,11 @@
       "record_name_missing": "moet {capture} vastleggen in een van zijn stappen",
       "items_single_conflict": "heeft een enkel artikel naast patronen of een record. Gebruik er één van.",
       "join_wrapped_needs_patterns": "werkt alleen met artikelpatronen",
-      "invalid_value": "heeft een waarde die dit veld niet accepteert"
+      "invalid_value": "heeft een waarde die dit veld niet accepteert",
+      "duplicate_entry": "noemt hetzelfde item twee keer",
+      "reference_field_missing": "heeft referentiepatronen nodig (de referentiestrategie staat aan)",
+      "out_of_range_days": "moet een geheel getal van 0 tot {max} zijn",
+      "out_of_range_tolerance": "moet een bedrag van 0,00 tot {max} zijn"
     }
   },
   "test": {
@@ -338,7 +391,9 @@
       "order_id": "ordernummer",
       "amount_payee": "bedrag en begunstigde",
       "amount_only": "bedrag",
-      "manual": "jouw keuze"
+      "manual": "jouw keuze",
+      "reference": "referentie",
+      "amount_date": "bedrag en datum"
     },
     "noPayee": "geen begunstigde",
     "ambiguous": "{count, plural, one {# transactie past} other {# transacties passen}} even goed, dus er zou er geen worden gekoppeld totdat je er een kiest.",
@@ -362,13 +417,30 @@
         "payee": "Verkoper",
         "requireLine": "Vereiste regel",
         "skipIfLine": "Overslaanregel",
-        "waitIfLine": "Wachtregel"
+        "waitIfLine": "Wachtregel",
+        "reference": "Referentie"
       },
       "entryLine": "vermelding {entry} ({pattern}), regel {line}: {text}",
       "entrySubject": "vermelding {entry} ({pattern}), het onderwerp: {text}",
       "labelled": "vermelding {entry}, label {label} op regel {labelLine} ({labelText}), waarde {pattern} op regel {line}: {text}",
       "item": "Artikel {number}",
       "itemLine": "{pattern}, regel {line}: {text}"
+    },
+    "trace": {
+      "heading": "Waar de koppelfunctie naar keek",
+      "window": "Transacties van {from} tot {to} ({before} dagen vóór, {after} dagen na de aankoop): {considered, plural, one {# bekeken} other {# bekeken}}.",
+      "tolerance": "Het bedrag mag {amount} afwijken.",
+      "attempt": "{position}. {name}",
+      "kept": "{count, plural, =0 {hield er geen over} one {hield # transactie over} other {hield # transacties over}}",
+      "decided": "Besloten",
+      "transaction": "{date}, {amount}, {payee}",
+      "noPayee": "geen begunstigde",
+      "strategies": {
+        "reference": "Referentie",
+        "orderId": "Ordernummer",
+        "amount_payee": "Bedrag en begunstigde",
+        "amount_date": "Bedrag en datum"
+      }
     }
   },
   "parsed": {
@@ -400,7 +472,9 @@
     "readByAi": "Gelezen door de AI",
     "readFromStructuredData": "Gelezen uit gestructureerde gegevens",
     "paid": "Betaald",
-    "payee": "Verkoper"
+    "payee": "Verkoper",
+    "reference": "Referentie",
+    "categoryByAi": "AI"
   },
   "state": {
     "pending": "Wacht om gelezen te worden",
@@ -422,7 +496,7 @@
     "loading": "E-mails laden",
     "links": {
       "reviewInbox": "Het AI-controlepostvak openen",
-      "settings": "Mailbox- en parserinstellingen"
+      "settings": "Mailboxinstellingen"
     },
     "filter": {
       "label": "Filteren op status",
@@ -532,7 +606,9 @@
       "order_id": "Ordernummer",
       "amount_payee": "Bedrag en begunstigde",
       "amount_only": "Bedrag",
-      "manual": "Jouw keuze"
+      "manual": "Jouw keuze",
+      "reference": "Referentie",
+      "amount_date": "Bedrag en datum"
     },
     "transaction": "Transactie",
     "transactionSummary": "{date}, {amount}, {payee}",
@@ -674,5 +750,119 @@
     "inboxLink": "Het AI-controlepostvak openen",
     "opened": "De chat is geopend met de e-mail als bijlage. Lees het bericht en druk op Verzenden.",
     "chatPrompt": "Herken de producten, aantallen en prijzen in de bijgevoegde bestel-e-mail en splits mijn transactie van {date} ({payee}, {amount}) per product, met een categorie voor elk. Neem AI-controleverzoek {requestId} over en dien je voorstel ervoor in."
+  },
+  "hub": {
+    "tabs": {
+      "ariaLabel": "Onderdelen van e-mailbonnen",
+      "overview": "Overzicht",
+      "emails": "E-mails",
+      "profiles": "Profielen",
+      "mailbox": "Mailbox"
+    },
+    "demoRestricted": {
+      "heading": "Beperkt in demomodus",
+      "body": "Een mailbox koppelen en profielen schrijven zijn uitgeschakeld in de demomodus."
+    }
+  },
+  "process": {
+    "button": "Alles verwerken",
+    "buttonCount": "Alles verwerken ({count})",
+    "dialog": {
+      "title": "{count, plural, one {# opgeslagen e-mail verwerken?} other {# opgeslagen e-mails verwerken?}}",
+      "message": "Elke opgeslagen e-mail die nog niet is gelezen of die een nieuw profiel of een nieuwe transactie kan veranderen, wordt opnieuw gelezen. Wat die voorstelt, wacht in het controlepostvak, tenzij automatisch toepassen aan staat.",
+      "messageDomain": "Elke opgeslagen e-mail van {domain} die nog niet is gelezen of die een nieuw profiel of een nieuwe transactie kan veranderen, wordt opnieuw gelezen. Wat die voorstelt, wacht in het controlepostvak, tenzij automatisch toepassen aan staat.",
+      "confirm": "Verwerken"
+    },
+    "starting": "Starten...",
+    "progress": "{processed, plural, one {# e-mail verwerkt} other {# e-mails verwerkt}}, nog {remaining} te gaan.",
+    "cancel": "Annuleren",
+    "cancelling": "Annuleren...",
+    "summary": "{count, plural, one {# e-mail verwerkt.} other {# e-mails verwerkt.}}",
+    "cancelledSummary": "Geannuleerd na {count, plural, one {# e-mail.} other {# e-mails.}}",
+    "outcomes": "Ze eindigden als volgt: {outcomes}.",
+    "passedOver": "{count, plural, one {# e-mail gaf een fout en is overgeslagen.} other {# e-mails gaven een fout en zijn overgeslagen.}}",
+    "failed": "De verwerking is gestopt omdat een verzoek is mislukt.",
+    "failedWithReason": "De verwerking is gestopt: {reason}",
+    "outcome": "{count} {state}",
+    "close": "Sluiten"
+  },
+  "overview": {
+    "loading": "Het overzicht wordt geladen...",
+    "error": {
+      "title": "Het overzicht kon niet worden geladen",
+      "body": "Het verzoek is mislukt, dus niets hier mag als leeg worden beschouwd. Probeer het opnieuw.",
+      "retry": "Opnieuw proberen"
+    },
+    "mailbox": {
+      "title": "Mailbox",
+      "none": "Er is nog geen mailbox gekoppeld.",
+      "connect": "Een mailbox koppelen",
+      "manage": "De mailboxinstellingen openen",
+      "state": {
+        "notConnected": "Niet gekoppeld",
+        "failing": "De laatste poging om op te halen is mislukt",
+        "off": "Ophalen staat uit",
+        "polling": "Wordt opgehaald"
+      },
+      "auth": {
+        "password": "Inloggen met wachtwoord",
+        "oauth2": "Inloggen via een provider"
+      },
+      "lastSuccess": "Laatst succesvol opgehaald {when}",
+      "neverPolled": "Nog niet succesvol opgehaald.",
+      "lastError": "Laatste fout: {error}"
+    },
+    "emails": {
+      "title": "E-mails",
+      "stored": "opgeslagen",
+      "processable": "{count, plural, one {# e-mail kan opnieuw worden verwerkt} other {# e-mails kunnen opnieuw worden verwerkt}}.",
+      "open": "De e-mails openen"
+    },
+    "proposals": {
+      "title": "Voorstellen",
+      "waiting": "wachten op jouw goedkeuring",
+      "review": "De voorstellen bekijken",
+      "open": "Het AI-controlepostvak openen"
+    },
+    "profiles": {
+      "title": "Profielen",
+      "approved": "goedgekeurd",
+      "drafts": "{count, plural, one {# concept wacht op jouw goedkeuring} other {# concepten wachten op jouw goedkeuring}}.",
+      "manage": "De profielen openen"
+    },
+    "uncovered": {
+      "title": "Afzenders zonder profiel",
+      "help": "Deze afzenders stuurden e-mails die geen enkel profiel leest. Maak een profiel voor een van hen of vraag de assistent het op te stellen.",
+      "none": "Elke afzender van de opgeslagen e-mails wordt gedekt door een profiel.",
+      "row": "{domain} ({count, plural, one {# e-mail} other {# e-mails}})",
+      "show": "De e-mails tonen"
+    }
+  },
+  "wizard": {
+    "heading": "Aan de slag met e-mailbonnen",
+    "intro": "Vier stappen van niets tot je eerste voorstel.",
+    "done": "(klaar)",
+    "steps": {
+      "mailbox": {
+        "title": "Een mailbox koppelen",
+        "body": "Gebruik een aparte mailbox die je bestelbevestigingen ontvangt. Monize leest hem alleen.",
+        "action": "Een mailbox koppelen"
+      },
+      "emails": {
+        "title": "De e-mails ophalen",
+        "body": "E-mails worden gelezen wanneer de mailbox wordt opgehaald. Haal hem op via de mailboxinstellingen om de eerste te zien.",
+        "action": "De e-mails openen"
+      },
+      "profile": {
+        "title": "Een profiel voor een afzender maken",
+        "body": "Een profiel vertelt Monize hoe de bestelbevestigingen van één afzender gelezen worden. Schrijf er een of stel het op uit een opgeslagen e-mail.",
+        "action": "De profielen openen"
+      },
+      "review": {
+        "title": "De voorstellen bekijken",
+        "body": "Elke e-mail wordt een voorstel voor een transactie. Er wordt niets gewijzigd totdat je het goedkeurt.",
+        "action": "Het AI-controlepostvak openen"
+      }
+    }
   }
 }

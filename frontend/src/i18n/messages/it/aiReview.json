@@ -13,6 +13,12 @@
     "rejected": "Rifiutata",
     "expired": "Scaduta"
   },
+  "kindFilter": {
+    "label": "Filtra per tipo",
+    "all": "Tutte",
+    "email_receipt": "Ricevute via email",
+    "transaction_review": "Regole"
+  },
   "status": {
     "pending": "In attesa",
     "claimed": "In revisione",
@@ -47,6 +53,23 @@
   },
   "proposal": {
     "errorTitle": "Questa proposta non può più essere applicata"
+  },
+  "bulk": {
+    "selectRow": "Seleziona {name}",
+    "selectAll": "Seleziona tutte le richieste approvabili mostrate",
+    "approveSelected": "Approva le selezionate ({count})",
+    "approveAllShown": "Approva tutte quelle mostrate ({count})",
+    "summary": "{approved, plural, one {# proposta applicata} other {# proposte applicate}}, {failed, plural, one {# non applicata} other {# non applicate}}.",
+    "closeSummary": "Chiudi",
+    "failure": "{name}: {reason}",
+    "noReason": "Non è stato indicato alcun motivo",
+    "unknownRequest": "Una richiesta",
+    "failed": "Impossibile applicare le proposte",
+    "dialog": {
+      "title": "{count, plural, one {Applicare # proposta?} other {Applicare # proposte?}}",
+      "message": "Ogni proposta viene verificata rispetto alla sua transazione così com'è ora e applicata separatamente. Quella che non è più adatta viene saltata e segnalata, mentre le altre vengono comunque applicate. Controlla le proposte prima di approvarle.",
+      "confirm": "{count, plural, one {Applica # proposta} other {Applica # proposte}}"
+    }
   },
   "dismissDialog": {
     "title": "Ignorare questa richiesta?",

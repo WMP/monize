@@ -359,7 +359,12 @@
       },
       "channelNotApplicable": "Não aplicável a este tipo de notificação",
       "emailToggleLabel": "Email (relatório) para {category}",
+      "emailNotificationToggleLabel": "E-mail de alerta para {category}",
+      "pushToggleLabel": "Push para {category}",
+      "unifiedpushToggleLabel": "UnifiedPush para {category}",
       "saveFailed": "Não foi possível salvar essa configuração",
+      "emailUnavailable": "Ative acima as notificações por e-mail para enviá-las por e-mail.",
+      "pushUnavailable": "Nenhum dispositivo está registrado para push, então este canal não consegue entregar nada.",
       "throttle": {
         "label": "Intervalo",
         "ariaLabel": "Intervalo para {category}",
@@ -374,11 +379,6 @@
           "1440": "24 horas"
         }
       },
-      "emailNotificationToggleLabel": "E-mail de alerta para {category}",
-      "pushToggleLabel": "Push para {category}",
-      "unifiedpushToggleLabel": "UnifiedPush para {category}",
-      "emailUnavailable": "Ative acima as notificações por e-mail para enviá-las por e-mail.",
-      "pushUnavailable": "Nenhum dispositivo está registrado para push, então este canal não consegue entregar nada.",
       "pushEnableHint": "Este navegador não está registrado para notificações push."
     }
   },
@@ -753,8 +753,8 @@
       },
       "toasts": {
         "success": "Backup baixado com sucesso",
-        "incomplete": "Backup baixado, mas está INCOMPLETO: {unusable} de {total} anexo(s) não puderam ser salvos intactos ({missing} ausentes, {inconsistent} falharam na verificação de integridade). Não trate este arquivo como um backup completo — corrija o armazenamento de anexos e exporte novamente.",
-        "failed": "Falha ao criar o backup"
+        "failed": "Falha ao criar o backup",
+        "incomplete": "Backup baixado, mas está INCOMPLETO: {unusable} de {total} anexo(s) não puderam ser salvos intactos ({missing} ausentes, {inconsistent} falharam na verificação de integridade). Não trate este arquivo como um backup completo — corrija o armazenamento de anexos e exporte novamente."
       }
     },
     "restore": {
@@ -784,9 +784,9 @@
       "title": "Restauração Concluída",
       "description": "Seus dados foram restaurados com sucesso. Aqui está um resumo do que foi restaurado:",
       "totalRecords": "Total de registros",
-      "doneButton": "Concluído",
       "skippedAttachments": "{count, plural, one {# anexo não foi restaurado} other {# anexos não foram restaurados}}: o backup não continha bytes utilizáveis para eles — estavam ausentes ou falharam na soma de verificação na exportação, ou o arquivo é anterior aos backups autossuficientes. Exporte um backup novo quando o armazenamento de anexos estiver saudável.",
-      "unusableAiProviderKeys": "{count, plural, one {# provedor de IA foi restaurado sem uma chave de API utilizável} other {# provedores de IA foram restaurados sem chaves de API utilizáveis}}: o backup foi criado antes de as chaves dos provedores viajarem nele, então a chave armazenada pertence ao servidor que gerou o arquivo, ou este servidor não tem nenhuma chave de criptografia configurada para guardá-la. Abra Configurações → Provedores de IA e digite a chave de API novamente."
+      "unusableAiProviderKeys": "{count, plural, one {# provedor de IA foi restaurado sem uma chave de API utilizável} other {# provedores de IA foram restaurados sem chaves de API utilizáveis}}: o backup foi criado antes de as chaves dos provedores viajarem nele, então a chave armazenada pertence ao servidor que gerou o arquivo, ou este servidor não tem nenhuma chave de criptografia configurada para guardá-la. Abra Configurações → Provedores de IA e digite a chave de API novamente.",
+      "doneButton": "Concluído"
     },
     "storedBackups": {
       "heading": "Backups automáticos",
@@ -993,7 +993,7 @@
     },
     "emailReceiptsCard": {
       "title": "Recibos por e-mail",
-      "description": "Conecte uma caixa de e-mail para confirmações de pedido e gerencie os analisadores que as leem."
+      "description": "Conecte uma caixa de e-mail para confirmações de pedido e gerencie os perfis que as leem."
     },
     "delegateSecurityError": "Não foi possível carregar suas configurações de segurança.",
     "toasts": {

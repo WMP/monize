@@ -20,6 +20,17 @@
     "sameSign": "Les valeurs de \"{{ param }}\" et \"{{ other }}\" doivent avoir le même signe",
     "onOrBefore": "La valeur de \"{{ param }}\" doit être antérieure ou égale à \"{{ other }}\""
   },
+  "attachments": {
+    "notFound": "Pièce jointe introuvable",
+    "storageUnavailable": "Le fichier de cette pièce jointe se trouve dans le stockage \"{{ provider }}\", auquel ce serveur n'est pas configuré pour accéder",
+    "transactionNotFound": "Transaction introuvable",
+    "empty": "Le fichier téléversé est vide",
+    "fileTooLarge": "Le fichier dépasse la taille maximale de {{ max }} octets",
+    "unsupportedType": "Type de fichier non pris en charge. Types autorisés : {{ types }}",
+    "tooMany": "Cette transaction a déjà le maximum de {{ max }} pièces jointes",
+    "swept": "Le téléversement a pris trop de temps et son stockage a été récupéré. Veuillez réessayer.",
+    "pairRequiresImages": "Un document numérisé et son original doivent tous deux être des images"
+  },
   "accounts": {
     "accountWithIdNotFound": "Compte avec l'ID {{ id }} introuvable",
     "notInvestmentPair": "Ce compte ne fait pas partie d'une paire de comptes d'investissement",
@@ -131,7 +142,10 @@
     "transferNotSupported": "Un virement ne peut pas être revu par proposition. Rejetez plutôt la demande.",
     "splitDifference": "Les lignes de ventilation totalisent {{ sum }} alors que la transaction est de {{ amount }} : {{ difference }} n'est pas affecté. Faites correspondre les lignes à la transaction ; un reliquat tel que des frais de livraison nécessite sa propre ligne, ou est signalé à l'utilisateur au lieu d'être affecté.",
     "noTransaction": "Cette demande de revue IA ne concerne pas une transaction.",
-    "parserDraftNotSubmittable": "Une demande de brouillon d'analyseur reçoit sa réponse avec l'outil email_receipt_parsers (test, puis save_draft avec ce requestId), pas avec une proposition de transaction."
+    "parserDraftNotSubmittable": "Une demande de brouillon d'analyseur reçoit sa réponse avec l'outil email_receipt_parsers (test, puis save_draft avec ce requestId), pas avec une proposition de transaction.",
+    "tagNamesInvalid": "Une proposition peut ajouter jusqu'à {{ max }} étiquettes de 1 à {{ length }} caractères chacune, sans caractères de contrôle.",
+    "noApprovableProposal": "Cette demande n'a ici aucune proposition à approuver.",
+    "approveFailed": "Cette proposition n'a pas pu être approuvée. Essayez de l'approuver seule."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Trop de tentatives de vérification. Veuillez vous reconnecter.",
@@ -229,14 +243,14 @@
     "backupPasswordBreached": "Ce mot de passe a été trouvé dans une fuite de données. Veuillez choisir un mot de passe différent.",
     "restoreBodyMustBeFile": "Le corps de la requête doit être un fichier de sauvegarde",
     "reauthUnavailable": "Terminez la configuration du mot de passe de votre compte avant de restaurer une sauvegarde.",
-    "supportPasswordRequired": "Une sauvegarde de support doit être chiffrée : fournissez un mot de passe.",
     "passwordHeaderNotBase64": "L'en-tête {header} doit être encodé en base64.",
+    "folderOutsideAllowedRoots": "Le dossier de sauvegarde \"{path}\" se trouve en dehors des racines autorisées ({roots}). Définissez BACKUP_ALLOWED_ROOTS pour l'autoriser.",
     "decompressTooLarge": "La sauvegarde est trop volumineuse pour être restaurée : décompressée, elle dépasse la limite de {limit} octets de ce déploiement. Ce plafond est dérivé de la mémoire du conteneur et d'un coût mesuré par octet ; l'augmenter seul décrit une restauration que le processus ne peut pas terminer -- augmentez plutôt la limite de mémoire du conteneur (Kubernetes : backend.resources.limits.memory).",
     "exportTooLarge": "Cette sauvegarde est trop volumineuse pour être produite d'un seul bloc (au-delà de {limit} octets à la table \"{table}\"). Les sauvegardes automatiques et de support doivent être conservées en mémoire ; téléchargez une sauvegarde manuelle, qui diffuse, ou augmentez BACKUP_EXPORT_BUFFER_LIMIT.",
+    "supportPasswordRequired": "Une sauvegarde de support doit être chiffrée : fournissez un mot de passe.",
     "supportExportTooLarge": "Cette sauvegarde de support représenterait {{ size }} Mio de JSON, au-delà de la limite de {{ limit }} Mio. Restreignez-la avec une sélection de comptes ou une plage de dates, ou augmentez BACKUP_EXPORT_BUFFER_LIMIT.",
-    "folderUnusable": "Le dossier \"{{ path }}\" ne peut pas être utilisé comme répertoire ({{ reason }}).",
-    "folderOutsideAllowedRoots": "Le dossier de sauvegarde \"{path}\" se trouve en dehors des racines autorisées ({roots}). Définissez BACKUP_ALLOWED_ROOTS pour l'autoriser.",
     "noBackupStorage": "Cette installation n'a aucun stockage de sauvegarde inscriptible : {{ safePath }} n'existe pas et ne peut pas être créé ({{ reason }}). Montez-y un volume (Docker : bind mount ou volume nommé ; Kubernetes : définissez backend.persistence.backups dans le chart Helm) puis réessayez.",
+    "folderUnusable": "Le dossier \"{{ path }}\" ne peut pas être utilisé comme répertoire ({{ reason }}).",
     "restoreNoMemoryHeadroom": "Cette installation n'a pas de marge mémoire pour une restauration : le pic modélisé d'une restauration ne tient pas dans le conteneur. Augmentez la limite mémoire du conteneur ou réduisez BACKUP_RESTORE_EXPANDED_LIMIT.",
     "restoreQueueFull": "Trop de restaurations attendent déjà la capacité de restauration de ce déploiement. Réessayez dans un instant.",
     "restoreQueueWaitTimeout": "Délai dépassé en attendant la capacité de restauration : une autre restauration est encore en cours. Réessayez dans un instant.",
@@ -289,12 +303,12 @@
   },
   "currencies": {
     "alreadyInList": "La devise « {{ code }} » est déjà dans votre liste",
+    "alreadyInListInactive": "La devise « {{ code }} » est déjà dans votre liste, mais est actuellement inactive. Réactivez-la pour l'utiliser.",
     "notFound": "Devise « {{ code }} » introuvable",
     "cannotModifySystem": "Impossible de modifier les métadonnées de devise système",
     "cannotModifyOther": "Impossible de modifier la devise d'un autre utilisateur",
     "inUse": "La devise « {{ code }} » est utilisée par vos comptes, titres ou autres enregistrements. Désactivez-la à la place.",
     "invalidRateDate": "date doit être au format AAAA-MM-JJ",
-    "alreadyInListInactive": "La devise « {{ code }} » est déjà dans votre liste, mais est actuellement inactive. Réactivez-la pour l'utiliser.",
     "sameCurrencyHistory": "{{ code }} est votre devise par défaut ; elle n'a pas d'historique de taux de change",
     "rateProviderUnavailable": "Le fournisseur de taux de change n'a pas répondu. Veuillez réessayer plus tard."
   },
@@ -496,7 +510,6 @@
     "loanLedgerUnreadable": "Ce paiement de prêt n'a pas pu être calculé car le solde de son grand livre n'a pas pu être lu. Réessayez."
   },
   "securities": {
-    "exchangeRateUnavailable": "Impossible de déterminer un taux de change pour {{ from }} -> {{ to }} à la date de la transaction. Fournissez un exchangeRate explicite afin que l'écriture sur le compte d'espèces soit correcte.",
     "accountMustBeInvestment": "Le compte doit être de type INVESTMENT",
     "transferPairSameRow": "Les deux volets d'un transfert ne peuvent pas être la même transaction",
     "transferPairNotFound": "L'une des deux transactions n'existe plus",
@@ -510,8 +523,14 @@
     "transferPairOutsidePortfolio": "Les deux volets doivent être sur des comptes de placement de ce portefeuille",
     "providerCurrencyMismatch": "Mise à jour du prix refusée pour {{ symbol }} : {{ provider }} le cote en {{ reported }}, mais le titre est enregistré en {{ configured }}. Corrigez la devise, le symbole ou la place boursière du titre, puis actualisez.",
     "securityIdRequired": "L'ID de titre est requis pour les transactions {{ action }}",
+    "exchangeRateUnavailable": "Impossible de déterminer un taux de change pour {{ from }} -> {{ to }} à la date de la transaction. Fournissez un exchangeRate explicite afin que l'écriture sur le compte d'espèces soit correcte.",
     "splitRatioRequired": "Le ratio de fractionnement (quantité) doit être supérieur à zéro",
     "acquisitionPriceRequired": "Un prix par part supérieur à zéro est requis pour les transactions {{ action }}. Utilisez ADD_SHARES pour les parts acquises sans coût connu.",
+    "ambiguousSecurity": "\"{{ query }}\" correspond à plusieurs titres : {{ list }}. Utilisez le symbole exact.",
+    "allocationExceedsTotal": "Les pourcentages de répartition dépassent 100 %.",
+    "assetOptionNameRequired": "Un nom de classe d'actifs est requis.",
+    "invalidTagKey": "Une clé d'étiquette (1 à 100 caractères) est requise",
+    "securityNotFoundByQuery": "Aucun titre ne correspond à \"{{ query }}\". Ajoutez d'abord le titre ou vérifiez le symbole.",
     "cannotHoldSecurities": "{{ label }} ne peut pas détenir de titres",
     "sourceDestMustDiffer": "Les comptes source et destination doivent être différents",
     "bothAccountsMustBeInvestment": "Les deux comptes doivent être de type INVESTMENT",
@@ -537,6 +556,10 @@
     "limitMax200": "limit ne doit pas dépasser 200",
     "invalidAction": "Action invalide : {{ action }}. Doit être l'une des suivantes : {{ validActions }}",
     "symbolAlreadyExists": "Un titre avec le symbole {{ symbol }} existe déjà",
+    "lookupQueryRequired": "Indiquez un symbole boursier ou le nom d'un titre à rechercher.",
+    "lookupNotFound": "Aucun titre ne correspond à « {{ query }} ». Vérifiez le symbole ou le nom, ou précisez une place boursière.",
+    "lookupAmbiguous": "« {{ query }} » correspond à plusieurs titres : {{ list }}. Relancez la recherche en précisant une place boursière.",
+    "lookupNoCurrency": "Impossible de déterminer la devise de « {{ symbol }} ». Ajoutez le titre manuellement à la place.",
     "notFoundById": "Titre avec l'ID {{ id }} introuvable",
     "notFoundBySymbol": "Titre avec le symbole {{ symbol }} introuvable",
     "cannotDeactivateWithHoldings": "Impossible de désactiver un titre avec des positions actives. Vendez d'abord toutes les actions.",
@@ -553,21 +576,12 @@
     "invalidUuid": "UUID {{ label }} invalide : {{ id }}",
     "symbolLength": "Le symbole doit comporter entre 1 et 20 caractères",
     "symbolCharacters": "Le symbole ne doit contenir que des lettres, chiffres, points ou tirets",
-    "ambiguousSecurity": "\"{{ query }}\" correspond à plusieurs titres : {{ list }}. Utilisez le symbole exact.",
-    "securityNotFoundByQuery": "Aucun titre ne correspond à \"{{ query }}\". Ajoutez d'abord le titre ou vérifiez le symbole.",
-    "lookupQueryRequired": "Indiquez un symbole boursier ou le nom d'un titre à rechercher.",
-    "lookupNotFound": "Aucun titre ne correspond à « {{ query }} ». Vérifiez le symbole ou le nom, ou précisez une place boursière.",
-    "lookupAmbiguous": "« {{ query }} » correspond à plusieurs titres : {{ list }}. Relancez la recherche en précisant une place boursière.",
-    "lookupNoCurrency": "Impossible de déterminer la devise de « {{ symbol }} ». Ajoutez le titre manuellement à la place.",
     "noUpdateFields": "Indiquez au moins un champ à modifier.",
-    "allocationExceedsTotal": "Les pourcentages de répartition dépassent 100 %.",
-    "invalidTagKey": "Une clé d'étiquette (1 à 100 caractères) est requise",
-    "assetOptionNameRequired": "Un nom de classe d'actifs est requis.",
     "documentNotFound": "Document introuvable",
-    "embeddedSplitAmountMismatch": "Cette répartition enregistre {{ amount }}, mais {{ action }} {{ quantity }} @ {{ price }} se convertit en {{ expected }} au taux de {{ rate }}. Utilisez ce montant, ou indiquez le taux de change voulu.",
     "selectionNotFound": "Un ou plusieurs des titres sélectionnés sont introuvables",
     "comparisonSelectionEmpty": "Sélectionnez au moins un titre ou un indice de marché à comparer",
-    "exchangeRateNotPositive": "Le taux de change doit être supérieur à zéro"
+    "exchangeRateNotPositive": "Le taux de change doit être supérieur à zéro",
+    "embeddedSplitAmountMismatch": "Cette répartition enregistre {{ amount }}, mais {{ action }} {{ quantity }} @ {{ price }} se convertit en {{ expected }} au taux de {{ rate }}. Utilisez ce montant, ou indiquez le taux de change voulu."
   },
   "tags": {
     "notFound": "Étiquette avec l'ID {{ id }} introuvable",
@@ -680,17 +694,6 @@
     "recalculateMortgageOnly": "Le recalcul du versement n'est disponible que pour les comptes de prêt hypothécaire",
     "insufficientData": "Pas assez de paiements avec des détails d'intérêts pour détecter les changements de taux",
     "frequencyMismatch": "Les dates de paiement ne correspondent pas à la fréquence de paiement du compte ; les taux déduits peuvent être moins précis"
-  },
-  "attachments": {
-    "notFound": "Pièce jointe introuvable",
-    "storageUnavailable": "Le fichier de cette pièce jointe se trouve dans le stockage \"{{ provider }}\", auquel ce serveur n'est pas configuré pour accéder",
-    "transactionNotFound": "Transaction introuvable",
-    "empty": "Le fichier téléversé est vide",
-    "fileTooLarge": "Le fichier dépasse la taille maximale de {{ max }} octets",
-    "unsupportedType": "Type de fichier non pris en charge. Types autorisés : {{ types }}",
-    "tooMany": "Cette transaction a déjà le maximum de {{ max }} pièces jointes",
-    "swept": "Le téléversement a pris trop de temps et son stockage a été récupéré. Veuillez réessayer.",
-    "pairRequiresImages": "Un document numérisé et son original doivent tous deux être des images"
   },
   "strategies": {
     "accountNotFound": "Compte introuvable",

@@ -359,7 +359,12 @@
       },
       "channelNotApplicable": "Nie dotyczy tego typu powiadomienia",
       "emailToggleLabel": "E-mail (raport) dla: {category}",
+      "emailNotificationToggleLabel": "E-mail alertowy dla: {category}",
+      "pushToggleLabel": "Push dla: {category}",
+      "unifiedpushToggleLabel": "UnifiedPush dla {category}",
       "saveFailed": "Nie udało się zapisać tego ustawienia",
+      "emailUnavailable": "Włącz powyżej powiadomienia e-mail, aby wysyłać je e-mailem.",
+      "pushUnavailable": "Żadne urządzenie nie jest zarejestrowane do powiadomień push, więc ten kanał nic nie dostarczy.",
       "throttle": {
         "label": "Odstęp",
         "ariaLabel": "Odstęp dla: {category}",
@@ -374,11 +379,6 @@
           "1440": "24 godziny"
         }
       },
-      "emailNotificationToggleLabel": "E-mail alertowy dla: {category}",
-      "pushToggleLabel": "Push dla: {category}",
-      "unifiedpushToggleLabel": "UnifiedPush dla {category}",
-      "emailUnavailable": "Włącz powyżej powiadomienia e-mail, aby wysyłać je e-mailem.",
-      "pushUnavailable": "Żadne urządzenie nie jest zarejestrowane do powiadomień push, więc ten kanał nic nie dostarczy.",
       "pushEnableHint": "Ta przeglądarka nie jest zarejestrowana do powiadomień push."
     }
   },
@@ -753,8 +753,8 @@
       },
       "toasts": {
         "success": "Pobrano kopię zapasową",
-        "incomplete": "Kopia zapasowa została pobrana, ale jest NIEKOMPLETNA: {unusable} z {total} załącznik(ów) nie udało się zapisać w nienaruszonym stanie ({missing} brakuje, {inconsistent} nie przeszło kontroli integralności). Nie traktuj tego pliku jako pełnej kopii zapasowej — napraw magazyn załączników i wyeksportuj ponownie.",
-        "failed": "Nie udało się utworzyć kopii zapasowej"
+        "failed": "Nie udało się utworzyć kopii zapasowej",
+        "incomplete": "Kopia zapasowa została pobrana, ale jest NIEKOMPLETNA: {unusable} z {total} załącznik(ów) nie udało się zapisać w nienaruszonym stanie ({missing} brakuje, {inconsistent} nie przeszło kontroli integralności). Nie traktuj tego pliku jako pełnej kopii zapasowej — napraw magazyn załączników i wyeksportuj ponownie."
       }
     },
     "restore": {
@@ -784,9 +784,9 @@
       "title": "Przywracanie zakończone",
       "description": "Twoje dane zostały pomyślnie przywrócone. Oto podsumowanie tego, co przywrócono:",
       "totalRecords": "Łączna liczba rekordów",
-      "doneButton": "Gotowe",
       "skippedAttachments": "{count, plural, one {# załącznik nie został przywrócony} few {# załączniki nie zostały przywrócone} many {# załączników nie zostało przywróconych} other {# załącznika nie zostało przywróconych}}: kopia nie zawierała dla nich użytecznych bajtów — w chwili eksportu brakowało ich albo nie przeszły kontroli sumy, albo plik pochodzi z czasów przed samowystarczalnymi kopiami. Wyeksportuj nową kopię, gdy magazyn załączników będzie sprawny.",
-      "unusableAiProviderKeys": "{count, plural, one {# dostawca AI został przywrócony bez działającego klucza API} few {# dostawców AI zostało przywróconych bez działających kluczy API} many {# dostawców AI zostało przywróconych bez działających kluczy API} other {# dostawcy AI zostało przywróconych bez działających kluczy API}}: kopia zapasowa powstała, zanim klucze dostawców zaczęły w niej podróżować, więc zapisany klucz należy do serwera, który utworzył plik, albo ten serwer nie ma skonfigurowanego klucza szyfrującego, pod którym mógłby go zapisać. Otwórz Ustawienia → Dostawcy AI i wprowadź klucz API ponownie."
+      "unusableAiProviderKeys": "{count, plural, one {# dostawca AI został przywrócony bez działającego klucza API} few {# dostawców AI zostało przywróconych bez działających kluczy API} many {# dostawców AI zostało przywróconych bez działających kluczy API} other {# dostawcy AI zostało przywróconych bez działających kluczy API}}: kopia zapasowa powstała, zanim klucze dostawców zaczęły w niej podróżować, więc zapisany klucz należy do serwera, który utworzył plik, albo ten serwer nie ma skonfigurowanego klucza szyfrującego, pod którym mógłby go zapisać. Otwórz Ustawienia → Dostawcy AI i wprowadź klucz API ponownie.",
+      "doneButton": "Gotowe"
     },
     "storedBackups": {
       "heading": "Kopie automatyczne",
@@ -993,7 +993,7 @@
     },
     "emailReceiptsCard": {
       "title": "Paragony z e-maili",
-      "description": "Połącz skrzynkę pocztową z potwierdzeniami zamówień i zarządzaj parserami, które je odczytują."
+      "description": "Połącz skrzynkę pocztową z potwierdzeniami zamówień i zarządzaj profilami, które je odczytują."
     },
     "delegateSecurityError": "Nie można wczytać Twoich ustawień bezpieczeństwa.",
     "toasts": {
