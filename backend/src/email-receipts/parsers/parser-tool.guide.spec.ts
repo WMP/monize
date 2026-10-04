@@ -191,6 +191,10 @@ describe("the language guide the categories operation returns", () => {
       "item_amount_missing",
       "trace",
       "outcome",
+      "source",
+      "html",
+      "no_html",
+      "schema.org",
     ]) {
       expect(guide).toContain(word);
     }
@@ -260,5 +264,17 @@ describe("the language guide the categories operation returns", () => {
       },
     };
     expect(validateReceiptParserDefinition(record).ok).toBe(true);
+    for (const source of ["text", "html"]) {
+      expect(validateReceiptParserDefinition({ version: 2, source }).ok).toBe(
+        true,
+      );
+    }
+  });
+
+  it("says what each source reads and that both refer to the trace's lines", () => {
+    expect(guide).toMatch(/"source": "text" \(default\) or "html"/);
+    expect(guide).toMatch(/EVERY table cell/);
+    expect(guide).toMatch(/\[image: alt\]/);
+    expect(guide).toMatch(/trace numbers the lines of that source/);
   });
 });

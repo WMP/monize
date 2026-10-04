@@ -114,6 +114,7 @@ export function ParsedReceiptView({ parsed, currencyCode, categoryLabels }: Pars
           <span className="text-gray-700 dark:text-gray-300">{t(`reasons.${parsed.reason}`)}</span>
         )}
         {parsed.source === 'ai' && <Badge variant="blue">{t('readByAi')}</Badge>}
+        {parsed.source === 'schema_org' && <Badge variant="blue">{t('readFromStructuredData')}</Badge>}
       </div>
     </div>
   );

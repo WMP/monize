@@ -7,6 +7,7 @@ import {
   looksLikeHtml,
   canRecognizeWithAi,
   isReceiptActionable,
+  normalizeDomainFilter,
   readParsedReceipt,
   senderDomain,
   shownReceiptState,
@@ -123,6 +124,7 @@ describe('readParsedReceipt source', () => {
   it('keeps who read the email, and leaves it absent when the server did not say', () => {
     expect(readParsedReceipt({ source: 'ai', items: [] })?.source).toBe('ai');
     expect(readParsedReceipt({ source: 'parser', items: [] })?.source).toBe('parser');
+    expect(readParsedReceipt({ source: 'schema_org', items: [] })?.source).toBe('schema_org');
     expect(readParsedReceipt({ items: [] })).not.toHaveProperty('source');
     expect(readParsedReceipt({ source: 'robot', items: [] })).not.toHaveProperty('source');
   });
@@ -212,4 +214,18 @@ describe('dominantSenderDomain', () => {
     expect(dominantSenderDomain([{ fromDomain: '', fromAddress: '' }])).toBe('');
     expect(dominantSenderDomain([])).toBe('');
   });
+});
+
+describe('normalizeDomainFilter', () => {
+  it('trims and lower-cases a host name, and drops a leading @ and a trailing dot', () => {
+    expect(normalizeDomainFilter('shop.example.com')).toBe('shop.example.com');
+    expect(normalizeDomainFilter('  @Shop.Example.COM. ')).toBe('shop.example.com');
+  });
+
+  it.each([null, undefined, '', '   ', 'nodots', 'a b.example.com', 'a%.example.com', 'a_b.example.com', 'x.com/y', '<script>.com', `${'a'.repeat(250)}.com`])(
+    'is no filter for %j',
+    (raw) => {
+      expect(normalizeDomainFilter(raw as string | null | undefined)).toBe('');
+    },
+  );
 });

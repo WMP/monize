@@ -1,9 +1,10 @@
-import { Module } from "@nestjs/common";
+import { Module, forwardRef } from "@nestjs/common";
 import { AiModule } from "../ai/ai.module";
 import { AiReviewModule } from "../ai-review/ai-review.module";
 import { AiReviewQueueModule } from "../ai-review/ai-review-queue.module";
 import { SingleUseTokenModule } from "../auth/single-use-token.module";
 import { EncryptionModule } from "../common/encryption/encryption.module";
+import { PayeesModule } from "../payees/payees.module";
 import { TransactionsModule } from "../transactions/transactions.module";
 import { EmailReceiptAiService } from "./ai/email-receipt-ai.service";
 import {
@@ -54,6 +55,9 @@ import { EmailReceiptsService } from "./receipts/email-receipts.service";
     AiReviewModule,
     AiReviewQueueModule,
     TransactionsModule,
+    // The payee lookup of a schema.org order's seller (never created); a
+    // `forwardRef` for the same reason the parsers module's edge is one.
+    forwardRef(() => PayeesModule),
     // The parsers service and the shared `email_receipt_parsers` tool logic.
     EmailReceiptParsersModule,
   ],

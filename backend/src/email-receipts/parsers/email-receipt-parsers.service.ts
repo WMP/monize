@@ -17,8 +17,9 @@ import {
 } from "../matching/match-receipt";
 import { effectiveReceiptDate } from "../imap/forwarded-receipt";
 import { loadReceiptCandidates } from "../pipeline/receipt-candidates";
+import { ReceiptSourceLines } from "../pipeline/receipt-source-lines";
 import {
-  parseReceiptTraced,
+  parseReceiptLinesTraced,
   type ReceiptOutcome,
 } from "../parsing/parse-receipt";
 import type {
@@ -376,10 +377,12 @@ export class EmailReceiptParsersService {
           ),
         );
       }
-      const { parsed, trace, outcome } = parseReceiptTraced(
+      // The lines of the source the definition chose (`text` or `html`); the
+      // trace's line numbers refer to them. `no_html`: it reads HTML, the email has none.
+      const { parsed, trace, outcome } = parseReceiptLinesTraced(
         definition,
         receipt.subject,
-        receipt.bodyText,
+        new ReceiptSourceLines(receipt).forSource(definition.source),
         payee?.defaultCategoryId ?? null,
       );
       // Centred on the day the shop sent the order when a forward carried it.

@@ -7,9 +7,12 @@ import { DataSource, EntityManager } from "typeorm";
 import { returnedRows } from "../../common/db/query-result";
 import { withScopedDb } from "../../common/db/scoped-db";
 import { tr } from "../../i18n/translate";
+import { escapeLikePattern } from "../../transactions/transaction-search.util";
 import { EmailReceipt } from "../entities/email-receipt.entity";
 import type { EmailReceiptStatus } from "../entities/email-receipt.entity";
+import { orderFromStructuredData } from "../parsing/schema-org-order";
 import { EmailReceiptPipelineService } from "../pipeline/email-receipt-pipeline.service";
+import { ReceiptSourceLines } from "../pipeline/receipt-source-lines";
 import {
   closeReceiptRequests,
   currentReceiptRequestStatus,
@@ -23,8 +26,12 @@ import type {
   EmailReceiptCandidateSummary,
   EmailReceiptDetail,
   EmailReceiptDisplayState,
+  EmailReceiptDomainCount,
   EmailReceiptListItem,
 } from "./email-receipt.view";
+
+/** At most this many sender domains are listed for the filter. */
+export const EMAIL_RECEIPTS_MAX_DOMAINS = 200;
 
 /** The request a receipt points at, as far as the derived state needs it. */
 export interface ReceiptRequestFacts {
@@ -168,10 +175,44 @@ export class EmailReceiptsService {
     private readonly pipeline: EmailReceiptPipelineService,
   ) {}
 
-  /** The user's emails, newest first, without their text. */
+  /**
+   * The sender domains of the user's emails (the shop's, after forward
+   * detection), each with its count: most emails first, then by name, at most
+   * 200. What the receipts page's domain filter offers.
+   */
+  async listDomains(userId: string): Promise<EmailReceiptDomainCount[]> {
+    const rows = await withScopedDb(this.dataSource, async (m) =>
+      returnedRows<{ domain: string; count: string | number }>(
+        await m.query(
+          `SELECT r.from_domain AS domain, COUNT(*)::int AS count
+             FROM email_receipts r
+            WHERE r.user_id = $1
+              AND r.from_domain <> ''
+            GROUP BY r.from_domain
+            ORDER BY count DESC, r.from_domain ASC
+            LIMIT $2`,
+          [userId, EMAIL_RECEIPTS_MAX_DOMAINS],
+        ),
+      ),
+    );
+    return rows.map((row) => ({
+      domain: row.domain,
+      count: Number(row.count),
+    }));
+  }
+
+  /**
+   * The user's emails, newest first, without their text. `domain` keeps the
+   * emails from exactly that sender domain or one of its sub-domains; it
+   * combines with `status`.
+   */
   async list(
     userId: string,
-    options: { status?: EmailReceiptStatus; limit?: number } = {},
+    options: {
+      status?: EmailReceiptStatus;
+      domain?: string;
+      limit?: number;
+    } = {},
   ): Promise<EmailReceiptListItem[]> {
     const limit = Math.min(
       Math.max(
@@ -180,6 +221,7 @@ export class EmailReceiptsService {
       ),
       EMAIL_RECEIPTS_MAX_LIST_LIMIT,
     );
+    const domain = options.domain?.trim().toLowerCase() || null;
     const rows = await withScopedDb(this.dataSource, async (m) =>
       returnedRows<ItemRow>(
         await m.query(
@@ -187,9 +229,18 @@ export class EmailReceiptsService {
              ${ITEM_JOINS}
             WHERE r.user_id = $1
               AND ($2::varchar IS NULL OR r.status = $2::varchar)
+              AND ($3::varchar IS NULL
+                   OR r.from_domain = $3::varchar
+                   OR r.from_domain LIKE $4::varchar ESCAPE '\\')
             ORDER BY r.received_at DESC, r.id DESC
-            LIMIT $3`,
-          [userId, options.status ?? null, limit],
+            LIMIT $5`,
+          [
+            userId,
+            options.status ?? null,
+            domain,
+            domain === null ? null : `%.${escapeLikePattern(domain)}`,
+            limit,
+          ],
         ),
       ),
     );
@@ -317,10 +368,18 @@ export class EmailReceiptsService {
     );
     const row = rows[0];
     if (!row) return null;
+    const sources = new ReceiptSourceLines({
+      bodyText: row.body_text,
+      bodyHtml: row.body_html,
+    });
+    const structured = sources.structured();
     return {
       ...toListItem(row),
       bodyText: row.body_text,
       bodyHtml: row.body_html,
+      lines: { text: sources.text(), html: sources.html() },
+      structuredOrder:
+        structured === null ? null : orderFromStructuredData(structured),
       parsed: row.parsed,
       candidates: await this.readCandidates(
         m,

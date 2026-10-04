@@ -160,6 +160,105 @@ describe('EmailReceiptDetailDialog', () => {
     });
   });
 
+  describe('the lines a parser reads', () => {
+    it('offers a Lines view with the text lines and a source switch to the HTML lines', async () => {
+      api.get.mockResolvedValue(
+        makeDetail({
+          bodyText: 'Order number: A-1\nWidget 12,00',
+          bodyHtml: '<table><tr><td>Widget</td><td>12,00</td></tr></table>',
+          lines: { text: ['Order number: A-1', 'Widget 12,00'], html: ['Widget', '12,00'] },
+        }),
+      );
+      await renderDialog();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Lines' }));
+      });
+      expect(screen.getByRole('button', { name: 'Lines' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.queryByTitle('The email as its sender formatted it')).not.toBeInTheDocument();
+      const items = within(screen.getByRole('list', { name: 'Numbered lines of the email' })).getAllByRole('listitem');
+      expect(items.map((item) => item.textContent)).toEqual(['1Order number: A-1', '2Widget 12,00']);
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('group', { name: 'Lines source' }).querySelectorAll('button')[1]);
+      });
+      const htmlItems = within(screen.getByRole('list', { name: 'Numbered lines of the email' })).getAllByRole('listitem');
+      expect(htmlItems.map((item) => item.textContent)).toEqual(['1Widget', '212,00']);
+    });
+
+    it('offers the Lines view for an email with no HTML too, with the HTML source unavailable', async () => {
+      api.get.mockResolvedValue(makeDetail());
+      await renderDialog();
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Lines' }));
+      });
+      expect(within(screen.getByRole('group', { name: 'Lines source' })).getByRole('button', { name: 'HTML' })).toBeDisabled();
+      expect(screen.getByText('This email has no HTML part, so a parser that reads HTML cannot read it.')).toBeInTheDocument();
+    });
+
+    it('still shows the body when the server sent no lines (an older server)', async () => {
+      const detail = makeDetail();
+      api.get.mockResolvedValue({ ...detail, lines: undefined });
+      await renderDialog();
+      expect(screen.queryByRole('button', { name: 'Lines' })).not.toBeInTheDocument();
+      expect(screen.getByLabelText('Text of the email')).toBeInTheDocument();
+    });
+  });
+
+  describe('structured data (schema.org)', () => {
+    it('says not found when the email carries no order', async () => {
+      await renderDialog();
+      expect(screen.getByRole('heading', { name: 'Structured data (schema.org)' })).toBeInTheDocument();
+      expect(screen.getByText('Not found')).toBeInTheDocument();
+    });
+
+    it('shows the order found, with its lines', async () => {
+      api.get.mockResolvedValue(
+        makeDetail({
+          structuredOrder: {
+            orderNumber: 'EX-9',
+            seller: 'Example Shop',
+            currency: 'USD',
+            orderDate: null,
+            total: 150_000,
+            discount: null,
+            items: [{ name: 'Widget', qty: 1, unitPrice: 150_000, amount: 150_000 }],
+          },
+        }),
+      );
+      await renderDialog();
+      expect(screen.getByText('Found')).toBeInTheDocument();
+      expect(screen.getByText('EX-9')).toBeInTheDocument();
+      expect(screen.getByText('Example Shop')).toBeInTheDocument();
+      expect(screen.getByText('Widget')).toBeInTheDocument();
+    });
+
+    it('names structured data as the reader, with the badge and the reason, when a receipt was read from it', async () => {
+      api.get.mockResolvedValue(
+        makeDetail({
+          status: 'review',
+          displayState: 'proposed',
+          statusReason: 'schema_org',
+          parsed: { ...PARSED_RECEIPT, complete: true, reason: null, source: 'schema_org' },
+        }),
+      );
+      await renderDialog();
+      expect(screen.getByText('Read from structured data')).toBeInTheDocument();
+      expect(
+        screen.getByText('No parser was needed: the order was read from the structured data (schema.org) in the email.'),
+      ).toBeInTheDocument();
+      // The Parser row says where the reading came from instead of "None".
+      expect(screen.queryByText('None')).not.toBeInTheDocument();
+      expect(screen.getAllByText('Structured data').length).toBeGreaterThan(0);
+    });
+
+    it('explains a parse that failed for want of an HTML part', async () => {
+      api.get.mockResolvedValue(makeDetail({ status: 'parse_failed', statusReason: 'no_html', parserName: 'Shop HTML' }));
+      await renderDialog();
+      expect(screen.getByText('This parser reads the HTML part of the email, and this email has none.')).toBeInTheDocument();
+    });
+  });
+
   describe('a forwarded email', () => {
     it('says who forwarded it and when the shop sent it, beside the day it arrived', async () => {
       api.get.mockResolvedValue(

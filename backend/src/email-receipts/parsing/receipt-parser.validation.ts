@@ -14,6 +14,7 @@ import {
   MAX_SKIP_LINES,
   MAX_STEP_ALTERNATIVES,
   MIN_LABEL_WITHIN,
+  RECEIPT_LINES_SOURCES,
   RECEIPT_PARSER_VERSION,
   ReceiptBlockItemsDefinition,
   ReceiptCategoryRule,
@@ -21,6 +22,7 @@ import {
   ReceiptFieldEntry,
   ReceiptItemsDefinition,
   ReceiptLabelledPattern,
+  ReceiptLinesSource,
   ReceiptParserDefinition,
   ReceiptRecordStep,
   ReceiptSingleItemsDefinition,
@@ -48,7 +50,8 @@ export interface ReceiptParserValidationError {
    * `capture_missing`, `capture_conflict`, `invalid_uuid`, `out_of_range`
    * (`within`), `items_patterns_and_record`, `items_shape_missing`,
    * `items_single_conflict`, `skip_lines_need_record`,
-   * `join_wrapped_needs_patterns`, `record_name_missing`, `invalid_value`.
+   * `join_wrapped_needs_patterns`, `record_name_missing`, `invalid_value` (a
+   * category rule `field` or the top-level `source`).
    */
   code: string;
 }
@@ -92,6 +95,7 @@ const RECORD_STEP_CAPTURES: FieldCaptures = {
 
 const TOP_LEVEL_KEYS: readonly string[] = [
   "version",
+  "source",
   "orderId",
   "total",
   "paid",
@@ -651,6 +655,14 @@ export function validateReceiptParserDefinition(
   }
 
   const out: Record<string, unknown> = { version: RECEIPT_PARSER_VERSION };
+  if (input.source !== undefined) {
+    // Anything that is not one of the two sources is the same refusal, whatever its type.
+    if (RECEIPT_LINES_SOURCES.includes(input.source as ReceiptLinesSource)) {
+      out.source = input.source;
+    } else {
+      errors.add("source", "invalid_value");
+    }
+  }
   const fields: [
     "orderId" | "total" | "paid" | "shipping" | "discount" | "payee",
     FieldCaptures,

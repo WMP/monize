@@ -72,6 +72,7 @@ export function describeProblemPath(path: string, t: Translator): string {
     const part = rule[2] === 'match' ? 'fields.rulePattern' : rule[2] === 'field' ? 'fields.ruleField' : 'fields.ruleCategory';
     return t('paths.rule', { rule: Number(rule[1]) + 1, part: t(part) });
   }
+  if (path === 'source') return t('fields.source');
   if (path === 'categoryRules') return t('fields.categoryRules');
   if (path === 'defaultCategoryId') return t('fields.defaultCategory');
   if (path === 'shippingCategoryId') return t('fields.shippingCategory');

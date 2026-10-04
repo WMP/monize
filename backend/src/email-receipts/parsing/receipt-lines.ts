@@ -20,9 +20,14 @@ import {
 const INVISIBLE =
   /\u034F|[\u00AD\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFEFF]/g;
 
+/** Invisible characters dropped and every whitespace run (NBSP included) folded to one space; not trimmed, not cut. */
+export function foldWhitespace(text: string): string {
+  return text.replace(INVISIBLE, "").replace(/\s+/g, " ");
+}
+
 /** Invisible characters dropped, whitespace (NBSP included) folded to one space; trimmed; cut to the line bound. */
 export function normalizeLine(line: string): string {
-  const folded = line.replace(INVISIBLE, "").replace(/\s+/g, " ").trim();
+  const folded = foldWhitespace(line).trim();
   return folded.length > MAX_LINE_LENGTH
     ? folded.slice(0, MAX_LINE_LENGTH).trimEnd()
     : folded;

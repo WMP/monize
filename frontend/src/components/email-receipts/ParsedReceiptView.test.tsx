@@ -89,4 +89,15 @@ describe('ParsedReceiptView', () => {
     rerender(<ParsedReceiptView parsed={parsed} currencyCode="USD" categoryLabels={labels} />);
     expect(screen.queryByText('Read by the AI')).not.toBeInTheDocument();
   });
+
+  it('says when the email\'s own structured data was read, and not "Read by the AI"', () => {
+    const { rerender } = render(
+      <ParsedReceiptView parsed={{ ...parsed, source: 'schema_org' }} currencyCode="USD" categoryLabels={labels} />,
+    );
+    expect(screen.getByText('Read from structured data')).toBeInTheDocument();
+    expect(screen.queryByText('Read by the AI')).not.toBeInTheDocument();
+
+    rerender(<ParsedReceiptView parsed={{ ...parsed, source: 'parser' }} currencyCode="USD" categoryLabels={labels} />);
+    expect(screen.queryByText('Read from structured data')).not.toBeInTheDocument();
+  });
 });

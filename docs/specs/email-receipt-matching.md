@@ -290,6 +290,8 @@ completeness table of section 4. What version 2 adds is HOW a value is found.
   otherwise it is dropped and the reason is `item_amount_missing`.
 - **Payee and category rule fields.** `payee` entries read the merchant;
   `categoryRules[].field` is `item` (default), `payee` or `line`.
+- **Lines source.** `source` (`text` by default, or `html`) chooses the lines
+  every pattern, guard and trace number refers to; section 7c.
 - **Line guards.** `requireLine` (the next parser for the sender is tried when
   no line matches; `no_parser` when none is left), `skipIfLine` (`ignored`,
   `status_reason` `skip_line`), `waitIfLine` (`unmatched`, `status_reason`
@@ -306,11 +308,95 @@ Worked example (Amazon): the mail names the product in `[image: ...]`, the
 quantity `Ilość: 3`, the unit price `4799zł` (dropped by `skipLines: ["*zł"]`)
 and `Suma 143.97zł`. One item of quantity 3 takes the total, 143,97: complete.
 
+## 7c. Lines source and structured data
+
+### Lines source
+
+`ReceiptParserDefinition.source` is `"text"` (the default) or `"html"`
+(anything else: `invalid_value` at `source`). Every pattern, guard and trace
+line number of the definition refers to the lines of its source
+(`ReceiptSourceLines.forSource`): `text` is `body_text` split on line breaks;
+`html` is `htmlToReceiptLines(body_html)` (design 5.1, "Lines source"). Both go
+through `normalizeLine`, are cut to 500 characters a line and 2,000 lines, and
+number from 1 separately. A definition that reads `html` for an email with no
+`body_html` reads nothing: the pipeline's `parse_failed` with `status_reason`
+`no_html` (a parser of the sender that reads the text still applies first), the
+test operation's `outcome` `no_html` with an empty reading.
+
+### Structured data (schema.org `Order` and `Invoice`)
+
+`extractSchemaOrgOrder(html)` reads the JSON-LD scripts (at most 50, 100 KB
+each; invalid JSON ignored; depth 20, 2,000 nodes; objects, arrays and
+`@graph` walked) and the microdata items (`itemscope`, `itemtype`, `itemprop`
+nesting; depth 10, 200 items, 2,000 properties) of the HTML part, and keeps
+the nodes whose `@type` / `itemtype` is `Order` or `Invoice` (a string or a
+list, with or without the schema.org prefix; `OrderItem`, `OrderAction` and
+every other type are ignored). JSON-LD readings come first, then microdata; the
+first reading with a total and at least one item wins, else the first with any
+content (shown on the email, used by nothing).
+
+| `SchemaOrgOrder` field | Read from (first present) |
+|---|---|
+| `orderNumber` | `orderNumber`, `confirmationNumber` (text or number, at most 100 characters) |
+| `seller` | `seller.name`, `merchant.name`, `provider.name`, `broker.name` (or the value as text) |
+| `currency` | `priceCurrency` of the order, `totalPaymentDue`, `priceSpecification` or an offer; three letters, upper-case; display only |
+| `orderDate` | `orderDate` as written; display only |
+| `total` | `price`, `totalPrice`, `totalPaymentDue` (`.price`, else `.value`), `priceSpecification` (`.price`, else `.value`) |
+| `discount` | `discount` |
+| `items` (at most 100) | `acceptedOffer[]` when it yields any, else `orderedItem[]` |
+| item `name` | `itemOffered.name`, `orderedItem.name` (a text value too), else the entry's own `name` |
+| item `unitPrice` | the entry's `price` or `priceSpecification`, else the product's `price`, else its first `offers` entry's |
+| item `qty` | `eligibleQuantity.value` (an offer) or `orderQuantity` (an order item): a whole number 1 to 9999, else 1 |
+| item `amount` | `unitPrice * qty`; null when there is no unit price |
+
+An amount in the markup is a machine number: a JSON number is converted once with
+`Math.round(n * 10000)`; a string must be digits with an optional `.` and
+digits (a fifth fraction digit rounds half up) and is converted without a
+float. A negative, non-finite, huge, comma-decimal, symbol-bearing or
+otherwise unreadable value is null: the Polish receipt grammar of section 2 is
+NOT used here. Nothing is defaulted to `0` or `1`.
+
+`schemaOrgToParsedReceipt(order, categoryId)` builds the `ParsedReceipt`
+(`source: "schema_org"`): `orderId` = `orderNumber`, `total`, `payee` =
+`seller`, `discount`, `paid` and `shipping` null, items from the order with
+`categoryId` (and the discount line's category) = the default category of the
+payee the seller resolves to through `PayeesService.resolveByName` (never
+created; none: null). The only line without a unit price takes the order total
+(as a parser's item does); with several lines, one without a price is
+`item_amount_missing`. `complete` and `reason` come from `completeness` of
+section 4, so an order whose lines plus its (unread) shipping make the total is
+`items_unbalanced`, and a seller with no payee or no default category is
+`items_uncategorized`: both are description-only proposals that say why.
+
+Precedence for one email, in the pipeline:
+
+| # | Condition | Reader | Outcome states |
+|---|---|---|---|
+| 1 | An approved parser applies and its reading has a `total` or a `paid` | the parser | as sections 3 to 5 |
+| 2 | No parser applies, or the parser's reading has neither `total` nor `paid`, and the order states a total and at least one line | structured data | matched, proposed; `status_reason` `schema_org` unless the outcome has a reason of its own |
+| 3 | Otherwise | none | `no_parser`, or the parser's `parse_failed` |
+
+A structured reading never auto-applies (section 7 requires an approved
+parser's complete reading). The match signal P compares the seller with the
+transaction's payee name (`normalizePayeeName`), as for a gateway's merchant;
+its proposal's summary is labelled by the sender's domain, as an AI reading's is.
+A parser's `test` operation tests the parser only and is unchanged; the email's
+detail shows what the markup says (`structuredOrder`, in 1/10000 units).
+
+Inline-forwarded mail usually has lost the original's markup: a mail client
+builds the forward as a new message and drops `<script>` and microdata; mail
+auto-forwarded by a filter keeps the original body (Gmail does), so the
+markup is read from that.
+
 ## 8. Test matrix
 
 | Case | Suite |
 |---|---|
 | Every row of the amount table | `parsing/receipt-amount.spec.ts` |
+| The lines of an HTML body: blocks and cells, nested tables, wrapped names, links, images, entities, NBSP, hidden elements, malformed and hostile input | `imap/html-lines.util.spec.ts` |
+| The `source` key: accepted values, `invalid_value` for anything else; the lines a definition reads; `no_html` | `parsing/receipt-parser.validation.spec.ts`, `pipeline/receipt-source-lines.spec.ts`, `pipeline/email-receipt-pipeline.service.spec.ts`, `parsers/*.spec.ts` |
+| Structured data: the field mapping table, machine amounts, Invoice, `@graph`, type forms, microdata, caps, other types ignored | `parsing/schema-org-order.spec.ts` |
+| Precedence: the parser wins; schema.org with no parser; with a parser that read no total; not used without a total or a line; never auto-applied | `pipeline/email-receipt-pipeline.service.spec.ts`, `test/integration/email-receipts-pipeline.integration.spec.ts` |
 | Item section bounds, `price * qty`, 100-item cap, 500-character lines | `parsing/parse-receipt.spec.ts` |
 | Priority by array order (an earlier entry wins wherever it sits; subject before body per entry) | `parsing/parse-receipt.spec.ts`, `parsing/parse-receipt.labelled.spec.ts` |
 | Labelled entries: the value under the label; `within` exactly and `within` + 1; the next label line when a window held nothing; whole-line, case-insensitive label; blank lines do not use up the window | `parsing/parse-receipt.labelled.spec.ts` |

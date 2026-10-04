@@ -1,5 +1,6 @@
 import apiClient from './api';
 import type {
+  EmailReceiptDomainCount,
   CreateEmailReceiptParserPayload,
   EmailReceiptAskAiResult,
   EmailReceiptDetail,
@@ -101,11 +102,18 @@ export const emailReceiptsApi = {
   },
 
   receipts: {
-    list: async (status?: EmailReceiptStatus, limit?: number): Promise<EmailReceiptListItem[]> => {
-      const params = { ...(status ? { status } : {}), ...(limit ? { limit } : {}) };
+    /** `domain` keeps the emails from that sender domain or one of its sub-domains; it combines with `status`. */
+    list: async (status?: EmailReceiptStatus, limit?: number, domain?: string): Promise<EmailReceiptListItem[]> => {
+      const params = { ...(status ? { status } : {}), ...(domain ? { domain } : {}), ...(limit ? { limit } : {}) };
       const response = await apiClient.get<EmailReceiptListItem[]>(RECEIPTS, {
         params: Object.keys(params).length > 0 ? params : undefined,
       });
+      return response.data;
+    },
+
+    /** The sender domains of the stored emails with their counts, most first (at most 200). */
+    listDomains: async (): Promise<EmailReceiptDomainCount[]> => {
+      const response = await apiClient.get<EmailReceiptDomainCount[]>(`${RECEIPTS}/domains`);
       return response.data;
     },
 

@@ -5,7 +5,7 @@ import { join, relative } from "path";
  * INV-RECEIPT-001, the mailbox is read and never written, held by a scan of the
  * source rather than by convention: the IMAP client module exposes no flag,
  * move, copy, delete or append call, and nothing under `email-receipts/` calls
- * one. The two third-party libraries are each confined to one file, so there is
+ * one. The third-party libraries are each confined to one file, so there is
  * exactly one place to read to know what is done with a mailbox and with mail.
  */
 
@@ -58,6 +58,7 @@ describe("email receipts never write to a mailbox (INV-RECEIPT-001)", () => {
     const names = files.map(rel);
     expect(names).toContain("email-receipts/imap/imap-mailbox-client.ts");
     expect(names).toContain("email-receipts/imap/mail-text.util.ts");
+    expect(names).toContain("email-receipts/imap/html-lines.util.ts");
   });
 
   it("calls no flag, move, copy, delete, append or expunge method anywhere under email-receipts", () => {
@@ -115,6 +116,12 @@ describe("the third-party mail libraries are confined to one file each", () => {
   it("imports mailparser only in mail-text.util.ts", () => {
     expect(importing("mailparser")).toEqual([
       "email-receipts/imap/mail-text.util.ts",
+    ]);
+  });
+
+  it("imports htmlparser2 only in html-lines.util.ts", () => {
+    expect(importing("htmlparser2")).toEqual([
+      "email-receipts/imap/html-lines.util.ts",
     ]);
   });
 });

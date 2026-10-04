@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsIn,
   IsInt,
@@ -9,6 +9,10 @@ import {
   Min,
   ValidateIf,
 } from "class-validator";
+import {
+  IsReceiptDomain,
+  normalizeReceiptDomain,
+} from "../../parsers/dto/receipt-domain.validator";
 import {
   EMAIL_RECEIPT_STATUSES,
   EmailReceiptStatus,
@@ -23,6 +27,16 @@ export class ListEmailReceiptsDto {
   @IsOptional()
   @IsIn(EMAIL_RECEIPT_STATUSES)
   status?: EmailReceiptStatus;
+
+  @ApiPropertyOptional({
+    description:
+      "A sender domain: emails from exactly this domain or one of its sub-domains. Lower-cased and trimmed.",
+    example: "shop.example.com",
+  })
+  @IsOptional()
+  @Transform(({ value }) => normalizeReceiptDomain(value))
+  @IsReceiptDomain()
+  domain?: string;
 
   @ApiPropertyOptional({
     minimum: 1,

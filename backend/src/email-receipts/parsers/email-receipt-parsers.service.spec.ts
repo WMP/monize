@@ -618,6 +618,96 @@ describe("EmailReceiptParsersService.test", () => {
     }
   });
 
+  describe("the lines source", () => {
+    const html =
+      "<table><tr><td>Order number:</td><td>HTML-7777</td></tr>" +
+      "<tr><td>Wrapped product name that the text splits</td><td>12,00 zł</td></tr>" +
+      "<tr><td>Razem</td><td>12,00 zł</td></tr></table>";
+    const htmlDefinition = (source?: string) => ({
+      version: 2,
+      ...(source === undefined ? {} : { source }),
+      orderId: [{ label: "Order number:", value: "{orderid}" }],
+      total: [{ label: "Razem", value: "{amount} zł" }],
+    });
+
+    it("reads the HTML lines for source html, and the trace numbers those lines", async () => {
+      const { service, manager, receiptRepo } = setup();
+      receiptRepo.findOne.mockResolvedValue(
+        Object.assign(new EmailReceipt(), receipt, { bodyHtml: html }),
+      );
+      manager.query.mockResolvedValue([]);
+      const result = await service.test(
+        USER,
+        testDto({ definition: htmlDefinition("html") }),
+      );
+      expect(result.outcome).toBe("read");
+      expect(result.parsed).toMatchObject({
+        orderId: "HTML-7777",
+        total: 120000,
+      });
+      expect(result.trace.total?.labelLine).toEqual({
+        line: 5,
+        text: "Razem",
+      });
+      expect(result.trace.total?.line).toEqual({ line: 6, text: "12,00 zł" });
+    });
+
+    it("reads the text for source text and for none, even when the email has HTML", async () => {
+      const { service, manager, receiptRepo } = setup();
+      receiptRepo.findOne.mockResolvedValue(
+        Object.assign(new EmailReceipt(), receipt, { bodyHtml: html }),
+      );
+      manager.query.mockResolvedValue([]);
+      for (const source of [undefined, "text"]) {
+        const result = await service.test(
+          USER,
+          testDto({
+            definition: {
+              version: 2,
+              ...(source === undefined ? {} : { source }),
+              total: ["Order total: {amount}"],
+            },
+          }),
+        );
+        expect(result.parsed.total).toBe(379700);
+        expect(result.trace.total?.line).toEqual({
+          line: 2,
+          text: "Order total: 37.97",
+        });
+      }
+    });
+
+    it("says no_html, and reads nothing, for source html on an email with no HTML part", async () => {
+      const { service, manager, receiptRepo } = setup();
+      receiptRepo.findOne.mockResolvedValue(
+        Object.assign(new EmailReceipt(), receipt, { bodyHtml: null }),
+      );
+      manager.query.mockResolvedValue([]);
+      const result = await service.test(
+        USER,
+        testDto({ definition: htmlDefinition("html") }),
+      );
+      expect(result.outcome).toBe("no_html");
+      expect(result.parsed).toMatchObject({
+        total: null,
+        complete: false,
+        reason: "no_total",
+      });
+      expect(result.trace.total).toBeNull();
+      expect(result.trace.items).toEqual([]);
+    });
+
+    it("refuses an unknown source with the validator's code, before any read", async () => {
+      const { service, manager } = setup();
+      const error = await service
+        .test(USER, testDto({ definition: htmlDefinition("pdf") }))
+        .catch((e) => e);
+      expect(error).toBeInstanceOf(BadRequestException);
+      expect(error.message).toContain("source");
+      expect(manager.getRepository).not.toHaveBeenCalled();
+    });
+  });
+
   it("uses the payee's default category as the fallback and as a match signal", async () => {
     const { service, manager, receiptRepo, payeeRepo } = setup();
     receiptRepo.findOne.mockResolvedValue(

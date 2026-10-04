@@ -185,6 +185,8 @@ describe("the two user messages", () => {
       '"requireLine"',
       '"skipIfLine"',
       '"waitIfLine"',
+      '"source"',
+      "TEXT rendering",
       "{*}",
       "gross",
     ]) {

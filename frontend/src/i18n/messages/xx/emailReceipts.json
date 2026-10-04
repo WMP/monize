@@ -202,6 +202,12 @@
     "conflict": "[XX-This parser was changed elsewhere since you opened it. Reload it to see the current version. Your edits here are not saved.-XX]",
     "conflictReload": "[XX-Reload the parser-XX]",
     "patterns": {
+      "sourceLabel": "[XX-Lines source-XX]",
+      "sourceHint": "[XX-Which rendering of the email the patterns below are matched against. Text is the text part of the email, one line per line break. HTML reads the HTML part: every block and every table cell becomes its own line, so a product name that the text splits over several lines stays whole. The email's Lines view shows exactly what each source gives.-XX]",
+      "sourceOptions": {
+        "text": "[XX-Text-XX]",
+        "html": "[XX-HTML-XX]"
+      },
       "globHelp": "[XX-Each pattern is matched against one whole line of the email, ignoring case. Use {star} for any text and a name in braces, such as {capture}, to capture a value. Each field takes up to {max} patterns, one per line.-XX]",
       "orderIdLabel": "[XX-Order number patterns-XX]",
       "orderIdHint": "[XX-Must capture {capture}. Example: Order number: {capture}-XX]",
@@ -284,6 +290,7 @@
       "requireLine": "[XX-Required lines-XX]",
       "skipIfLine": "[XX-Lines that skip the email-XX]",
       "waitIfLine": "[XX-Lines that hold the email-XX]",
+      "source": "[XX-Lines source-XX]",
       "single": "[XX-Single item-XX]",
       "singleName": "[XX-Single item name-XX]",
       "joinWrapped": "[XX-Join wrapped lines-XX]",
@@ -340,7 +347,8 @@
     "outcome": {
       "not_applicable": "[XX-This parser would not read this email: none of its required lines is in it, so the next parser for the sender would be tried.-XX]",
       "skip_line": "[XX-This parser would set this email aside: a line it skips on is in it.-XX]",
-      "wait_line": "[XX-This parser would hold this email: a line says the order is not final, so it is read again later.-XX]"
+      "wait_line": "[XX-This parser would hold this email: a line says the order is not final, so it is read again later.-XX]",
+      "no_html": "[XX-This parser reads the HTML part of the email, and this email has none, so it would be marked as unreadable (no HTML).-XX]"
     },
     "matchedBy": {
       "heading": "[XX-Matched by-XX]",
@@ -390,6 +398,7 @@
       "item_amount_missing": "[XX-An item has no amount, and the email has no single total to give it.-XX]"
     },
     "readByAi": "[XX-Read by the AI-XX]",
+    "readFromStructuredData": "[XX-Read from structured data-XX]",
     "paid": "[XX-Paid-XX]",
     "payee": "[XX-Merchant-XX]"
   },
@@ -427,6 +436,12 @@
       "review_conflict": "[XX-Another request is open-XX]",
       "review": "[XX-In review-XX]",
       "ignored": "[XX-Ignored-XX]"
+    },
+    "domainFilter": {
+      "label": "[XX-Sender domain-XX]",
+      "all": "[XX-All senders-XX]",
+      "option": "[XX-{domain} ({count})-XX]",
+      "help": "[XX-Showing emails from {domain} and its sub-domains. Select several of them to draft one parser for the sender.-XX]"
     },
     "columns": {
       "select": "[XX-Select-XX]",
@@ -511,6 +526,7 @@
     "state": "[XX-State-XX]",
     "parser": "[XX-Parser-XX]",
     "noParser": "[XX-None-XX]",
+    "structuredSource": "[XX-Structured data-XX]",
     "matchedBy": "[XX-Matched by-XX]",
     "matchKinds": {
       "order_id": "[XX-Order number-XX]",
@@ -539,6 +555,8 @@
       "proposal_refused": "[XX-The proposal was refused, so nothing was proposed.-XX]",
       "skip_line": "[XX-A line this parser skips on was found, so the email was ignored.-XX]",
       "wait_line": "[XX-A line says the order is not final yet, so the email will be read again later.-XX]",
+      "no_html": "[XX-This parser reads the HTML part of the email, and this email has none.-XX]",
+      "schema_org": "[XX-No parser was needed: the order was read from the structured data (schema.org) in the email.-XX]",
       "item_amount_missing": "[XX-An item has no amount, and the email has no single total to give it.-XX]"
     },
     "reasonUnknown": "[XX-Reason: {reason}-XX]",
@@ -556,10 +574,34 @@
     "bodyView": {
       "label": "[XX-Show the email as-XX]",
       "html": "[XX-HTML-XX]",
-      "text": "[XX-Text-XX]"
+      "text": "[XX-Text-XX]",
+      "lines": "[XX-Lines-XX]"
     },
     "remoteImagesNote": "[XX-Remote images are not loaded.-XX]",
-    "htmlFrameTitle": "[XX-The email as its sender formatted it-XX]"
+    "htmlFrameTitle": "[XX-The email as its sender formatted it-XX]",
+    "structured": {
+      "heading": "[XX-Structured data (schema.org)-XX]",
+      "help": "[XX-An order or invoice that the email carries as markup for mail clients. It is read only when no parser applies or the parser finds no total.-XX]",
+      "found": "[XX-Found-XX]",
+      "notFound": "[XX-Not found-XX]",
+      "notFoundHelp": "[XX-The email carries no order markup, or it states no total and no line items.-XX]",
+      "seller": "[XX-Seller-XX]",
+      "currency": "[XX-Currency-XX]",
+      "orderDate": "[XX-Order date-XX]",
+      "unitPrice": "[XX-Unit price-XX]"
+    },
+    "lines": {
+      "help": "[XX-The lines a parser's patterns are matched against, numbered as a test's \"Matched by\" list numbers them.-XX]",
+      "sourceLabel": "[XX-Lines source-XX]",
+      "sources": {
+        "text": "[XX-Text-XX]",
+        "html": "[XX-HTML-XX]"
+      },
+      "noHtml": "[XX-This email has no HTML part, so a parser that reads HTML cannot read it.-XX]",
+      "capped": "[XX-Only the first {max} lines are read.-XX]",
+      "empty": "[XX-No lines.-XX]",
+      "listLabel": "[XX-Numbered lines of the email-XX]"
+    }
   },
   "picker": {
     "heading": "[XX-Choose the transaction-XX]",

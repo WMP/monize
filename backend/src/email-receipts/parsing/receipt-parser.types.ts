@@ -112,6 +112,18 @@ export interface ReceiptSingleItemsDefinition {
 export type ReceiptCategoryRuleField = "item" | "payee" | "line";
 
 /**
+ * Which rendering of the email a parser reads its lines from: the stored text
+ * (`"text"`, the default) or the lines of the HTML part (`"html"`, one line per
+ * block element and per table cell; `imap/html-lines.util.ts`). Every pattern,
+ * guard and trace line number refers to the chosen source.
+ */
+export type ReceiptLinesSource = "text" | "html";
+export const RECEIPT_LINES_SOURCES: readonly ReceiptLinesSource[] = [
+  "text",
+  "html",
+];
+
+/**
  * A per-merchant parser (the `definition` jsonb of `email_receipt_parsers`).
  * A field's entries are tried in array order; an entry is a line pattern or a
  * labelled `{label, value, within}`; items are one per line (`patterns`) or a
@@ -119,6 +131,8 @@ export type ReceiptCategoryRuleField = "item" | "payee" | "line";
  */
 export interface ReceiptParserDefinition {
   version: 2;
+  /** The lines the parser reads: the email's text (default) or its HTML part. */
+  source?: ReceiptLinesSource;
   orderId?: ReceiptFieldEntry[];
   total?: ReceiptFieldEntry[];
   /** The amount actually paid (after a discount); `total` is then the list price. */
@@ -184,11 +198,12 @@ export interface ParsedReceipt {
   reason: ParsedReceiptReason | null;
   /**
    * Who read the email: a saved parser (absent, as every receipt stored before
-   * this field existed) or the AI (`"ai"`, spec "AI extraction"). It changes
+   * this field existed), the AI (`"ai"`, spec "AI extraction") or the email's
+   * own structured data (`"schema_org"`, spec "Structured data"). It changes
    * nothing about the completeness rules or the proposal; it tells the reader
    * where the figures came from.
    */
-  source?: "parser" | "ai";
+  source?: "parser" | "ai" | "schema_org";
 }
 
 /** A line a trace points at: its 1-based number among the email's lines (0 is the subject) and its text. */
