@@ -966,7 +966,7 @@ describe("email receipts pipeline (integration)", () => {
       await insertReceipt("b.example.com");
       await insertReceipt("a.example.com");
       await insertReceipt("a.example.com");
-      await insertReceipt("c.example.com");
+      await insertReceipt("c.example.com", "review");
       const [bobBox] = await db.query(
         `INSERT INTO email_receipt_mailboxes
            (user_id, host, port, security, username, password_enc, enabled, ai_mode, auto_apply)
@@ -976,12 +976,13 @@ describe("email receipts pipeline (integration)", () => {
       );
       await insertReceipt("bobs.example.com", "no_parser", bobId, bobBox.id);
       expect(await asAlice(() => receipts.listDomains(aliceId))).toEqual([
-        { domain: "a.example.com", count: 2 },
-        { domain: "b.example.com", count: 1 },
-        { domain: "c.example.com", count: 1 },
+        { domain: "a.example.com", count: 2, processable: 2 },
+        { domain: "b.example.com", count: 1, processable: 1 },
+        // a `review` email stands behind a proposal: bulk processing leaves it alone
+        { domain: "c.example.com", count: 1, processable: 0 },
       ]);
       expect(await asBob(() => receipts.listDomains(bobId))).toEqual([
-        { domain: "bobs.example.com", count: 1 },
+        { domain: "bobs.example.com", count: 1, processable: 1 },
       ]);
       expect(
         await asBob(() => receipts.list(bobId, { domain: "a.example.com" })),

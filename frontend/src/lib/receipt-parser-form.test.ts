@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   blankCategoryRule,
+  buildMatchDefinition,
   buildParserDefinition,
   buildParserPayload,
   definitionToFormFields,
@@ -13,6 +14,8 @@ import {
   splitDomains,
   splitLines,
   splitWords,
+  toleranceFromString,
+  toleranceToString,
 } from './receipt-parser-form';
 import type { EmailReceiptParser } from '@/types/email-receipts';
 
@@ -339,5 +342,129 @@ describe('the lines source', () => {
   it('carries the source into a parser form', () => {
     const parser = { definition: { version: 2, source: 'html' }, name: 'x', payeeId: null, fromDomains: [], subjectContains: [] } as unknown as EmailReceiptParser;
     expect(parserToForm(parser).source).toBe('html');
+  });
+});
+
+describe('tolerance text', () => {
+  it.each([
+    [0.5, '0.50'],
+    [5, '5.00'],
+    [0.07, '0.07'],
+    [1.25, '1.25'],
+  ])('writes %s as %s in integer cents', (value, text) => {
+    expect(toleranceToString(value)).toBe(text);
+  });
+
+  it.each([[null], [0], [-1], [Number.NaN], [Number.POSITIVE_INFINITY]])('leaves the key out for %s', (value) => {
+    expect(toleranceToString(value)).toBeNull();
+  });
+
+  it.each([
+    ['0.50', 0.5],
+    ['5', 5],
+    ['2.5', 2.5],
+    ['0.07', 0.07],
+  ])('reads %s as %s', (text, value) => {
+    expect(toleranceFromString(text)).toBe(value);
+  });
+
+  it.each([[''], ['-1'], ['1.234'], ['1e2'], ['abc'], ['1.'], ['.5'], ['1000']])('refuses %j, which the form cannot hold', (text) => {
+    expect(toleranceFromString(text)).toBeNull();
+  });
+});
+
+describe('the matching section', () => {
+  it('sends nothing for a form that changes nothing, so an old profile keeps its matching', () => {
+    expect(buildMatchDefinition(emptyParserForm())).toBeNull();
+    expect(buildParserDefinition(emptyParserForm({ total: 'Total {amount}' }))).toEqual({ version: 2, total: ['Total {amount}'] });
+  });
+
+  it('writes only what differs from the default', () => {
+    const form = emptyParserForm({
+      reference: 'Ref {reference}',
+      matchBy: ['reference', 'amount_payee'],
+      matchReferenceIn: ['description'],
+      matchDaysBefore: 0,
+      matchDaysAfter: 30,
+      matchTolerance: 0.5,
+    });
+    expect(buildParserDefinition(form)).toEqual({
+      version: 2,
+      reference: ['Ref {reference}'],
+      match: {
+        by: ['reference', 'amount_payee'],
+        referenceIn: ['description'],
+        daysBefore: 0,
+        daysAfter: 30,
+        amountTolerance: '0.50',
+      },
+    });
+  });
+
+  it('keeps a window of zero days, which is not "unset"', () => {
+    expect(buildMatchDefinition(emptyParserForm({ matchDaysBefore: 0 }))).toEqual({ daysBefore: 0 });
+  });
+
+  it('reads a stored definition back into the same form fields', () => {
+    const definition = {
+      version: 2,
+      reference: ['Ref {reference}'],
+      match: { by: ['reference', 'orderId'], daysBefore: 1, amountTolerance: '1.50' },
+      tag: 'Shop',
+      aiCategories: true,
+    };
+    const fields = definitionToFormFields(definition);
+    expect(fields).toMatchObject({
+      reference: 'Ref {reference}',
+      matchBy: ['reference', 'orderId'],
+      matchDaysBefore: 1,
+      matchDaysAfter: null,
+      matchTolerance: 1.5,
+      tagEnabled: true,
+      tagName: 'Shop',
+      aiCategories: true,
+    });
+    expect(buildParserDefinition({ ...emptyParserForm(), ...fields })).toEqual(definition);
+  });
+
+  it('falls back to the defaults for a list that is not a choice of the closed set', () => {
+    const fields = definitionToFormFields({ match: { by: ['nonsense'], referenceIn: [] } });
+    expect(fields.matchBy).toEqual(['orderId', 'amount_payee', 'amount_date']);
+    expect(fields.matchReferenceIn).toEqual(['description', 'payee', 'referenceNumber']);
+  });
+
+  it.each([
+    [{ match: { by: ['reference'] } }, true],
+    [{ match: { by: [] } }, false],
+    [{ match: { by: ['reference', 'reference'] } }, false],
+    [{ match: { by: ['made_up'] } }, false],
+    [{ match: { referenceIn: ['description', 'description'] } }, false],
+    [{ match: { daysBefore: 61 } }, false],
+    [{ match: { daysAfter: 90 } }, true],
+    [{ match: { daysAfter: 91 } }, false],
+    [{ match: { daysBefore: 1.5 } }, false],
+    [{ match: { amountTolerance: '5.00' } }, true],
+    [{ match: { amountTolerance: '5.01' } }, false],
+    [{ match: { amountTolerance: 0.5 } }, false],
+    [{ match: { extra: 1 } }, false],
+    [{ match: 'x' }, false],
+    [{ tag: 'Shop' }, true],
+    [{ tag: 5 }, false],
+    [{ aiCategories: true }, true],
+    [{ aiCategories: 'yes' }, false],
+    [{ reference: ['Ref {reference}'] }, true],
+    [{ reference: 'Ref' }, false],
+  ])('says whether the form can hold %j: %s', (definition, expected) => {
+    expect(formCanRepresent({ version: 2, ...definition })).toBe(expected);
+  });
+
+  it('gives a tag switched on with no name the profile\'s own name', () => {
+    expect(buildParserDefinition(emptyParserForm({ name: 'Allegro', tagEnabled: true }))).toMatchObject({ tag: 'Allegro' });
+    expect(buildParserDefinition(emptyParserForm({ name: 'Allegro', tagEnabled: false, tagName: 'X' }))).not.toHaveProperty('tag');
+  });
+
+  it('writes aiCategories only when it is on', () => {
+    expect(buildParserDefinition(emptyParserForm({ aiCategories: true }))).toMatchObject({ aiCategories: true });
+    expect(buildParserDefinition(emptyParserForm())).not.toHaveProperty('aiCategories');
   });
 });

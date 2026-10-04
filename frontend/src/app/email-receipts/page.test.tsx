@@ -11,7 +11,18 @@ vi.mock('@/lib/logger', () => ({
 }));
 vi.mock('@/lib/email-receipts-api', () => ({
   emailReceiptsApi: {
-    receipts: { list: vi.fn().mockResolvedValue([]) },
+    receipts: {
+      list: vi.fn().mockResolvedValue([]),
+      listDomains: vi.fn().mockResolvedValue([]),
+      overview: vi.fn().mockResolvedValue({
+        mailbox: null,
+        emailsByStatus: {},
+        processable: 0,
+        proposalsToApprove: 0,
+        parsers: { approved: 0, draft: 0 },
+        domainsWithoutProfile: [],
+      }),
+    },
     mailbox: { get: vi.fn().mockResolvedValue(null) },
   },
 }));
@@ -26,24 +37,42 @@ vi.mock('@/lib/categories', async (importOriginal) => ({
 
 const replace = vi.hoisted(() => vi.fn());
 let actingAsUserId: string | null = null;
+let search = '';
 
 vi.mock('next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('next/navigation')>()),
   useRouter: () => ({ replace, push: vi.fn() }),
   usePathname: () => '/email-receipts',
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(search),
 }));
 vi.mock('@/store/authStore', () => ({
   useAuthStore: (selector: (state: unknown) => unknown) => selector({ actingAsUserId }),
 }));
 
+vi.mock('@/hooks/useDemoMode', () => ({ useDemoMode: () => false }));
+
 describe('EmailReceiptsPage', () => {
-  it('renders the receipts under their heading, with a way to the review inbox', async () => {
+  beforeEach(() => {
+    search = '';
+  });
+
+  it('opens on the Overview of the hub, with its four tabs', async () => {
     await act(async () => {
       render(<EmailReceiptsPage />);
     });
     await act(async () => {});
     expect(screen.getByRole('heading', { level: 1, name: 'Email Receipts' })).toBeInTheDocument();
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Overview', 'Emails', 'Profiles', 'Mailbox']);
+    expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('heading', { name: 'Get started with email receipts' })).toBeInTheDocument();
+  });
+
+  it('renders the receipts on the Emails tab, with a way to the review inbox', async () => {
+    search = 'tab=emails';
+    await act(async () => {
+      render(<EmailReceiptsPage />);
+    });
+    await act(async () => {});
     expect(screen.getByRole('link', { name: 'Open the AI review inbox' })).toHaveAttribute('href', '/ai-reviews');
     expect(screen.getByText('No emails')).toBeInTheDocument();
   });

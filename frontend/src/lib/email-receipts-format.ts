@@ -2,6 +2,7 @@ import {
   EMAIL_RECEIPT_DISPLAY_STATES,
   EMAIL_RECEIPT_STATUSES,
   PARSED_RECEIPT_REASONS,
+  type EmailReceiptDomainCount,
   type EmailReceiptListItem,
   type ParsedReceipt,
   type ParsedReceiptItem,
@@ -39,6 +40,7 @@ function readItem(value: unknown): ParsedReceiptItem | null {
     qty: typeof value.qty === 'number' && Number.isFinite(value.qty) ? value.qty : 1,
     amount,
     categoryId: readText(value.categoryId),
+    ...(value.categorySource === 'ai' ? { categorySource: 'ai' as const } : {}),
   };
 }
 
@@ -56,6 +58,7 @@ export function readParsedReceipt(value: unknown): ParsedReceipt | null {
     total: readAmount(value.total),
     paid: readAmount(value.paid),
     payee: readText(value.payee),
+    reference: readText(value.reference),
     shipping: readAmount(value.shipping),
     discount: readAmount(value.discount),
     items: Array.isArray(value.items)
@@ -225,4 +228,20 @@ const DOMAIN_FILTER = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z
 export function normalizeDomainFilter(raw: string | null | undefined): string {
   const domain = (raw ?? '').trim().toLowerCase().replace(/^@+/, '').replace(/\.+$/, '');
   return domain.length <= 253 && DOMAIN_FILTER.test(domain) ? domain : '';
+}
+
+/**
+ * How many stored emails "Process all" would run for these sender domains: the
+ * `processable` of every sender domain that is one of them or a sub-domain of one
+ * (the same reach a domain filter has). A server that predates `processable` is
+ * read as "all of them", never as zero.
+ */
+export function processableForDomains(
+  domains: ReadonlyArray<Pick<EmailReceiptDomainCount, 'domain' | 'count' | 'processable'>>,
+  fromDomains: readonly string[],
+): number {
+  const wanted = fromDomains.map((domain) => domain.trim().toLowerCase()).filter((domain) => domain !== '');
+  return domains
+    .filter((entry) => wanted.some((domain) => entry.domain === domain || entry.domain.endsWith(`.${domain}`)))
+    .reduce((sum, entry) => sum + (entry.processable ?? entry.count), 0);
 }

@@ -113,6 +113,19 @@ describe('emailReceiptsApi', () => {
       expect(client.get).toHaveBeenLastCalledWith('/email-receipts/domains');
     });
 
+    it('reads the overview and processes in bulk with the run\'s own request', async () => {
+      client.get.mockResolvedValue({ data: { processable: 4 } });
+      await expect(emailReceiptsApi.receipts.overview()).resolves.toEqual({ processable: 4 });
+      expect(client.get).toHaveBeenLastCalledWith('/email-receipts/overview');
+
+      const answer = { processed: 2, byOutcome: { review: 2 }, failed: 0, remaining: 0, since: 'T' };
+      client.post.mockResolvedValue({ data: answer });
+      await expect(emailReceiptsApi.receipts.processBatch()).resolves.toEqual(answer);
+      expect(client.post).toHaveBeenLastCalledWith('/email-receipts/process-batch', {});
+      await emailReceiptsApi.receipts.processBatch({ domain: 'shop.example.com', since: 'T' });
+      expect(client.post).toHaveBeenLastCalledWith('/email-receipts/process-batch', { domain: 'shop.example.com', since: 'T' });
+    });
+
     it('addresses one email by id', async () => {
       client.get.mockResolvedValue({ data: { id: 'r-1' } });
       await emailReceiptsApi.receipts.get('r-1');

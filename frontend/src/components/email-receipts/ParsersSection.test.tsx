@@ -13,6 +13,8 @@ const api = vi.hoisted(() => ({
   update: vi.fn(),
   test: vi.fn(),
   receiptsList: vi.fn(),
+  listDomains: vi.fn(),
+  processBatch: vi.fn(),
 }));
 const payeesApi = vi.hoisted(() => ({ getAll: vi.fn() }));
 const categoriesApi = vi.hoisted(() => ({ getAll: vi.fn() }));
@@ -20,7 +22,7 @@ const categoriesApi = vi.hoisted(() => ({ getAll: vi.fn() }));
 vi.mock('@/lib/email-receipts-api', () => ({
   emailReceiptsApi: {
     parsers: { list: api.list, approve: api.approve, remove: api.remove, create: api.create, update: api.update, test: api.test },
-    receipts: { list: api.receiptsList },
+    receipts: { list: api.receiptsList, listDomains: api.listDomains, processBatch: api.processBatch },
   },
 }));
 vi.mock('@/lib/payees', async (importOriginal) => ({
@@ -61,6 +63,7 @@ describe('ParsersSection', () => {
     vi.clearAllMocks();
     api.list.mockResolvedValue([approved, draft]);
     api.receiptsList.mockResolvedValue([]);
+    api.listDomains.mockResolvedValue([]);
     payeesApi.getAll.mockResolvedValue([{ id: 'payee-1', name: 'Allegro' }]);
     categoriesApi.getAll.mockResolvedValue([]);
   });
@@ -153,6 +156,61 @@ describe('ParsersSection', () => {
       await renderSection();
       await click(within(screen.getByRole('row', { name: /Amazon draft/ })).getByRole('button', { name: 'Approve' }));
       expect(toast.error).toHaveBeenCalledWith('Not valid');
+    });
+  });
+
+  describe('processing the stored emails after an approval', () => {
+    const approveDraft = async () => {
+      api.approve.mockResolvedValue({ ...draft, status: 'approved', revision: 6 });
+      await renderSection();
+      await click(within(screen.getByRole('row', { name: /Amazon draft/ })).getByRole('button', { name: /Approve/ }));
+    };
+
+    it('asks to process the stored emails of the profile\'s senders when some are waiting', async () => {
+      api.listDomains.mockResolvedValue([
+        { domain: 'amazon.com', count: 9, processable: 4 },
+        { domain: 'mail.amazon.com', count: 3, processable: 3 },
+        { domain: 'other.example', count: 5, processable: 5 },
+      ]);
+      await approveDraft();
+      const dialog = screen.getByRole('dialog');
+      expect(dialog).toHaveTextContent('Process the 7 stored emails from amazon.com now?');
+    });
+
+    it('runs the bulk call for each sender domain when confirmed, and says where the emails ended', async () => {
+      api.listDomains.mockResolvedValue([{ domain: 'amazon.com', count: 2, processable: 2 }]);
+      api.processBatch.mockResolvedValue({
+        processed: 2,
+        byOutcome: { review: 2 },
+        failed: 0,
+        remaining: 0,
+        since: '2026-10-04T10:00:00.000000Z',
+      });
+      await approveDraft();
+      await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Process now' }));
+      expect(api.processBatch).toHaveBeenCalledWith({ domain: 'amazon.com' });
+      expect(screen.getByRole('status')).toHaveTextContent('2 emails processed.');
+    });
+
+    it('does nothing when the person says not now', async () => {
+      api.listDomains.mockResolvedValue([{ domain: 'amazon.com', count: 2, processable: 2 }]);
+      await approveDraft();
+      await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Not now' }));
+      expect(api.processBatch).not.toHaveBeenCalled();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('does not ask when no stored email of those senders can be processed', async () => {
+      api.listDomains.mockResolvedValue([{ domain: 'amazon.com', count: 2, processable: 0 }]);
+      await approveDraft();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('does not ask, and does not fail, when the counts could not be read', async () => {
+      api.listDomains.mockRejectedValue(new Error('down'));
+      await approveDraft();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(toast.success).toHaveBeenCalledWith('Parser approved');
     });
   });
 

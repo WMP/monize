@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { DocumentTextIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { ParserEditorDialog } from '@/components/email-receipts/ParserEditorDialog';
 import { ParserJsonDialog } from '@/components/email-receipts/ParserJsonDialog';
+import { ProcessStatus } from '@/components/email-receipts/ProcessStatus';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -15,8 +16,10 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { RowActions, type RowAction } from '@/components/ui/row-actions';
 import { TABLE_BODY_CLASS, TABLE_CLASS, Td, Th } from '@/components/ui/Table';
+import { useProcessStoredEmails } from '@/hooks/useProcessStoredEmails';
 import { useReceiptParserLookups } from '@/hooks/useReceiptParserLookups';
 import { emailReceiptsApi } from '@/lib/email-receipts-api';
+import { processableForDomains } from '@/lib/email-receipts-format';
 import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
 import type { EmailReceiptParser } from '@/types/email-receipts';
@@ -29,10 +32,12 @@ type EditorTarget = { kind: 'closed' } | { kind: 'new' } | { kind: 'edit'; parse
 const isConflict = (error: unknown): boolean => error instanceof AxiosError && error.response?.status === 409;
 
 /**
- * The parsers half of `/settings/email-receipts`: the list, and the dialog that
+ * The profiles tab of `/email-receipts`: the list, and the dialog that
  * creates and edits one. `parsers === null` is loading or failed, never an
  * empty list. A draft (written by the AI from one sample email) reads nothing
- * until a person approves it, so the list says which ones are waiting.
+ * until a person approves it, so the list says which ones are waiting. Approving one
+ * asks whether to run the stored emails of its sender domains through it now, so
+ * emails that arrived before the profile do not wait for a manual reprocess.
  */
 export function ParsersSection() {
   const t = useTranslations('emailReceipts.parsers');
@@ -44,6 +49,9 @@ export function ParsersSection() {
   const [jsonTarget, setJsonTarget] = useState<EmailReceiptParser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EmailReceiptParser | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // The approved profile and how many stored emails of its senders could be processed now.
+  const [processOffer, setProcessOffer] = useState<{ parser: EmailReceiptParser; count: number } | null>(null);
+  const { state: processState, run: runProcess, cancel: cancelProcess, dismiss: dismissProcess } = useProcessStoredEmails();
   // Only the newest load may write the list (a reload after a 409 must not be
   // overwritten by a slower answer to an earlier request).
   const latestLoad = useRef(0);
@@ -71,12 +79,29 @@ export function ParsersSection() {
     [lookups],
   );
 
+  /** Offer to process the stored emails the approved profile now covers; no offer when none, or when the count is unknown. */
+  const offerProcessing = async (parser: EmailReceiptParser) => {
+    try {
+      const count = processableForDomains(await emailReceiptsApi.receipts.listDomains(), parser.fromDomains);
+      if (count > 0) setProcessOffer({ parser, count });
+    } catch (error) {
+      logger.error(error);
+    }
+  };
+
+  const confirmProcess = () => {
+    const offer = processOffer;
+    setProcessOffer(null);
+    if (offer) void runProcess(offer.parser.fromDomains);
+  };
+
   const handleApprove = async (parser: EmailReceiptParser) => {
     setBusyId(parser.id);
     try {
       const approved = await emailReceiptsApi.parsers.approve(parser.id, parser.revision);
       setParsers((prev) => prev && prev.map((p) => (p.id === approved.id ? approved : p)));
       toast.success(t('toasts.approved'));
+      void offerProcessing(approved);
     } catch (error) {
       if (isConflict(error)) {
         toast.error(t('toasts.changedElsewhere'));
@@ -242,6 +267,11 @@ export function ParsersSection() {
           {t('newButton')}
         </Button>
       </div>
+      {processState.status !== 'idle' && (
+        <div className="mb-3">
+          <ProcessStatus state={processState} onCancel={cancelProcess} onDismiss={dismissProcess} />
+        </div>
+      )}
       <Card className="overflow-hidden">{body}</Card>
 
       {editor.kind !== 'closed' && (
@@ -256,6 +286,20 @@ export function ParsersSection() {
       )}
 
       {jsonTarget !== null && <ParserJsonDialog parser={jsonTarget} onClose={() => setJsonTarget(null)} />}
+
+      <ConfirmDialog
+        isOpen={processOffer !== null}
+        title={t('processOffer.title')}
+        message={t('processOffer.message', {
+          count: processOffer?.count ?? 0,
+          domains: processOffer?.parser.fromDomains.join(', ') ?? '',
+        })}
+        confirmLabel={t('processOffer.confirm')}
+        cancelLabel={t('processOffer.later')}
+        variant="info"
+        onConfirm={confirmProcess}
+        onCancel={() => setProcessOffer(null)}
+      />
 
       <ConfirmDialog
         isOpen={deleteTarget !== null}

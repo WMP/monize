@@ -209,6 +209,10 @@ describe("email receipts module RLS identity smoke (real withScopedDb)", () => {
       { submit: jest.fn() } as never,
       { confirm: jest.fn() } as never,
       { resolveByName: jest.fn() } as never,
+      {
+        canAnswerNow: jest.fn(async () => false),
+        categorize: jest.fn(),
+      } as never,
     );
     service = new EmailReceiptPollService(
       dataSource as never,

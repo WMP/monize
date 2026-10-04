@@ -4,6 +4,10 @@ import {
   receiptCandidateWindow,
   type ReceiptMatchCandidate,
 } from "../matching/match-receipt";
+import {
+  DEFAULT_MATCH_CONFIG,
+  type ResolvedMatchConfig,
+} from "../parsing/receipt-match-config";
 
 /** Spec section 3: at most this many candidates, newest first. */
 export const RECEIPT_CANDIDATE_LIMIT = 200;
@@ -47,8 +51,12 @@ export async function loadReceiptCandidates(
   userId: string,
   purchaseDate: string,
   ownReceiptId: string | null,
+  config: Pick<
+    ResolvedMatchConfig,
+    "daysBefore" | "daysAfter"
+  > = DEFAULT_MATCH_CONFIG,
 ): Promise<ReceiptMatchCandidate[]> {
-  const window = receiptCandidateWindow(purchaseDate);
+  const window = receiptCandidateWindow(purchaseDate, config);
   const rows: CandidateRow[] = await m.query(
     `SELECT t.id,
             TO_CHAR(t.transaction_date, 'YYYY-MM-DD') AS transaction_date,

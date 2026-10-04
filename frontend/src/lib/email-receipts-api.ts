@@ -13,7 +13,10 @@ import type {
   EmailReceiptParser,
   EmailReceiptParserTestResult,
   EmailReceiptPollResult,
+  EmailReceiptsOverview,
   EmailReceiptStatus,
+  ProcessEmailReceiptsPayload,
+  ProcessEmailReceiptsResult,
   TestEmailReceiptMailboxPayload,
   TestEmailReceiptParserPayload,
   UpdateEmailReceiptMailboxSettingsPayload,
@@ -114,6 +117,22 @@ export const emailReceiptsApi = {
     /** The sender domains of the stored emails with their counts, most first (at most 200). */
     listDomains: async (): Promise<EmailReceiptDomainCount[]> => {
       const response = await apiClient.get<EmailReceiptDomainCount[]>(`${RECEIPTS}/domains`);
+      return response.data;
+    },
+
+    /** What the hub's Overview cards show: one request, counts and names only. */
+    overview: async (): Promise<EmailReceiptsOverview> => {
+      const response = await apiClient.get<EmailReceiptsOverview>(`${RECEIPTS}/overview`);
+      return response.data;
+    },
+
+    /**
+     * Run the pipeline over up to `limit` stored emails (oldest first, one after
+     * the other) and answer where they ended and how many are left. Send the
+     * answer's `since` back to continue the same run; `remaining` 0 ends it.
+     */
+    processBatch: async (payload: ProcessEmailReceiptsPayload = {}): Promise<ProcessEmailReceiptsResult> => {
+      const response = await apiClient.post<ProcessEmailReceiptsResult>(`${RECEIPTS}/process-batch`, payload);
       return response.data;
     },
 

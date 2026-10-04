@@ -10,7 +10,7 @@ import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import type { ProposalCardState } from '@/hooks/useAiReviewInbox';
 import type { PendingAction } from '@/types/ai';
-import type { AiReviewItem, AiReviewStatus } from '@/types/ai-review';
+import { isApprovable, reviewItemLabel, type AiReviewItem, type AiReviewStatus } from '@/types/ai-review';
 
 /** Requests still open: the person may dismiss them. */
 const DISMISSIBLE: readonly AiReviewStatus[] = ['pending', 'claimed', 'proposed'];
@@ -31,6 +31,10 @@ export interface AiReviewRowProps {
   item: AiReviewItem;
   card?: ProposalCardState;
   dismissing: boolean;
+  /** Whether the list offers a selection (a column of checkboxes); an unapprovable row gets an empty cell. */
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelected?: (item: AiReviewItem) => void;
   onApprove: (item: AiReviewItem, action: Omit<PendingAction, 'status'>) => void;
   onDismiss: (item: AiReviewItem) => void;
 }
@@ -46,7 +50,16 @@ export interface AiReviewRowProps {
  * where the draft is tested and approved. There is no card: approving the parser
  * there marks this request applied.
  */
-export function AiReviewRow({ item, card, dismissing, onApprove, onDismiss }: AiReviewRowProps) {
+export function AiReviewRow({
+  item,
+  card,
+  dismissing,
+  selectable = false,
+  selected = false,
+  onToggleSelected,
+  onApprove,
+  onDismiss,
+}: AiReviewRowProps) {
   const t = useTranslations('aiReview');
   const { formatDate } = useDateFormat();
   const { formatCurrency } = useNumberFormat();
@@ -55,11 +68,25 @@ export function AiReviewRow({ item, card, dismissing, onApprove, onDismiss }: Ai
   const action = proposal && 'action' in proposal ? proposal.action : null;
   const proposalError = proposal && 'error' in proposal ? proposal.error : null;
   const showCard = action !== null && (item.status === 'proposed' || card?.status === 'confirmed');
+  const rowName = reviewItemLabel(item) ?? t('row.noPayee');
   const canDismiss = DISMISSIBLE.includes(item.status) && !showCard && proposalError === null;
 
   return (
     <>
       <tr>
+        {selectable && (
+          <Td className={`${CELL} w-10`}>
+            {isApprovable(item) && (
+              <input
+                type="checkbox"
+                checked={selected}
+                onChange={() => onToggleSelected?.(item)}
+                aria-label={t('bulk.selectRow', { name: rowName })}
+                className="h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus-visible:ring-blue-500 dark:border-gray-600"
+              />
+            )}
+          </Td>
+        )}
         <Td className={`${CELL} whitespace-nowrap`}>
           {transaction ? formatDate(transaction.date) : parserDraft ? formatDate(new Date(item.createdAt)) : ''}
         </Td>
@@ -75,7 +102,7 @@ export function AiReviewRow({ item, card, dismissing, onApprove, onDismiss }: Ai
           </div>
           <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
             {parserDraft ? (
-              <Link href="/email-receipts" className="text-blue-600 hover:underline dark:text-blue-400">
+              <Link href="/email-receipts?tab=emails" className="text-blue-600 hover:underline dark:text-blue-400">
                 {t('row.viewEmailReceipts')}
               </Link>
             ) : item.kind === 'email_receipt' ? (
@@ -83,7 +110,7 @@ export function AiReviewRow({ item, card, dismissing, onApprove, onDismiss }: Ai
                 {item.emailReceipt
                   ? t('row.emailReceipt', { subject: item.emailReceipt.subject, sender: item.emailReceipt.fromAddress })
                   : t('row.emailReceiptMissing')}{' '}
-                <Link href="/email-receipts" className="text-blue-600 hover:underline dark:text-blue-400">
+                <Link href="/email-receipts?tab=emails" className="text-blue-600 hover:underline dark:text-blue-400">
                   {t('row.viewEmailReceipts')}
                 </Link>
               </>
@@ -112,7 +139,7 @@ export function AiReviewRow({ item, card, dismissing, onApprove, onDismiss }: Ai
             <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
               {t.rich('row.parserDraftReady', {
                 link: (chunks) => (
-                  <Link href="/settings/email-receipts" className="text-blue-600 hover:underline dark:text-blue-400">
+                  <Link href="/email-receipts?tab=profiles" className="text-blue-600 hover:underline dark:text-blue-400">
                     {chunks}
                   </Link>
                 ),
@@ -152,7 +179,7 @@ export function AiReviewRow({ item, card, dismissing, onApprove, onDismiss }: Ai
       </tr>
       {(showCard || proposalError !== null) && (
         <tr>
-          <Td colSpan={4} className="px-2 pb-4 pt-0 sm:px-4">
+          <Td colSpan={selectable ? 5 : 4} className="px-2 pb-4 pt-0 sm:px-4">
             {showCard && action && (
               <TransactionConfirmationCard
                 action={{ ...action, status: card?.status ?? 'pending', errorMessage: card?.errorMessage, resultId: card?.resultId }}

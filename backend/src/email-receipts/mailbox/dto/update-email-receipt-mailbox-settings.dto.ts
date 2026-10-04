@@ -59,4 +59,12 @@ export class UpdateEmailReceiptMailboxSettingsDto {
   @IsOptional()
   @IsBoolean()
   autoApply?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      "Whether a confirmed proposal a saved parser profile built counts toward the daily AI write limit. A proposal an AI or an agent built always counts.",
+  })
+  @IsOptional()
+  @IsBoolean()
+  profileProposalsCountTowardAiLimit?: boolean;
 }

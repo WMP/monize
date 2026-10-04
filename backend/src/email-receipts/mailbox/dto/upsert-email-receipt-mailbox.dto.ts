@@ -128,6 +128,14 @@ export class UpsertEmailReceiptMailboxDto {
   })
   @IsBoolean()
   autoApply: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      "Whether a confirmed proposal a saved parser profile built counts toward the daily AI write limit (default true). Omit to keep the stored value.",
+  })
+  @IsOptional()
+  @IsBoolean()
+  profileProposalsCountTowardAiLimit?: boolean;
 }
 
 /**

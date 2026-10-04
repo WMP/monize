@@ -2,6 +2,8 @@ import {
   MAX_CATEGORY_RULES,
   MAX_PATTERN_LENGTH,
   MAX_PATTERNS_PER_FIELD,
+  RECEIPT_MATCH_STRATEGIES,
+  RECEIPT_MATCH_TEXT_FIELDS,
   RECEIPT_PARSER_VERSION,
 } from "../parsing/receipt-parser.types";
 import {
@@ -198,6 +200,53 @@ describe("the language guide the categories operation returns", () => {
     ]) {
       expect(guide).toContain(word);
     }
+  });
+
+  it("teaches the matching keys: reference, match and its keys, every strategy and field, tag, aiCategories", () => {
+    for (const word of [
+      "reference",
+      "{reference}",
+      "match",
+      "by",
+      "referenceIn",
+      "daysBefore",
+      "daysAfter",
+      "amountTolerance",
+      "amount_payee",
+      "amount_date",
+      "description",
+      "referenceNumber",
+      "tag",
+      "aiCategories",
+    ]) {
+      expect(guide).toContain(word);
+    }
+    for (const strategy of RECEIPT_MATCH_STRATEGIES) {
+      expect(guide).toContain(`"${strategy}"`);
+    }
+    for (const field of RECEIPT_MATCH_TEXT_FIELDS) {
+      expect(guide).toContain(field);
+    }
+    expect(guide).toContain("daysBefore 0-60");
+    expect(guide).toContain("daysAfter 0-90");
+    expect(guide).toContain('"0.00" to "5.00"');
+  });
+
+  it("describes a profile with every matching key as one the validator accepts", () => {
+    const definition = {
+      version: 2,
+      reference: ["Payment id: {reference}"],
+      match: {
+        by: ["reference", "orderId", "amount_payee", "amount_date"],
+        referenceIn: ["description", "payee", "referenceNumber"],
+        daysBefore: 60,
+        daysAfter: 90,
+        amountTolerance: "5.00",
+      },
+      tag: "Allegro",
+      aiCategories: true,
+    };
+    expect(validateReceiptParserDefinition(definition).ok).toBe(true);
   });
 
   it("states the arithmetic: gross, net, and which of total and paid must equal which", () => {

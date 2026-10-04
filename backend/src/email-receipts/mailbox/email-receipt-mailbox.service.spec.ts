@@ -51,6 +51,7 @@ function stored(over: Partial<EmailReceiptMailbox> = {}): EmailReceiptMailbox {
     enabled: true,
     aiMode: "off",
     autoApply: false,
+    profileProposalsCountTowardAiLimit: true,
     uidValidity: "77",
     lastUid: "40",
     lastPolledAt: new Date("2026-09-29T10:00:00Z"),
@@ -253,6 +254,46 @@ describe("EmailReceiptMailboxService.upsert", () => {
     expect(saved.folder).toBe("INBOX");
     expect(JSON.stringify(view)).not.toContain(PASSWORD);
     expect(view.passwordSet).toBe(true);
+  });
+
+  it("creates a mailbox whose profile proposals count toward the AI limit, unless the form says otherwise", async () => {
+    const { service, mailboxRepo } = setup();
+    mailboxRepo.findOne.mockResolvedValue(null);
+
+    await service.upsert(USER, dto({ password: PASSWORD }));
+    expect(
+      mailboxRepo.save.mock.calls[0][0].profileProposalsCountTowardAiLimit,
+    ).toBe(true);
+
+    await service.upsert(
+      USER,
+      dto({
+        password: PASSWORD,
+        profileProposalsCountTowardAiLimit: false,
+      }),
+    );
+    expect(
+      mailboxRepo.save.mock.calls[1][0].profileProposalsCountTowardAiLimit,
+    ).toBe(false);
+  });
+
+  it("changes the switch on a full save only when it is sent: a form that omits it keeps the stored one", async () => {
+    const { service, mailboxRepo } = setup();
+    mailboxRepo.findOne.mockResolvedValue(stored());
+    mailboxRepo.findOneByOrFail.mockResolvedValue(stored());
+
+    await service.upsert(USER, dto());
+    await service.upsert(
+      USER,
+      dto({ profileProposalsCountTowardAiLimit: false }),
+    );
+
+    expect(mailboxRepo.update.mock.calls[0][1]).not.toHaveProperty(
+      "profileProposalsCountTowardAiLimit",
+    );
+    expect(mailboxRepo.update.mock.calls[1][1]).toMatchObject({
+      profileProposalsCountTowardAiLimit: false,
+    });
   });
 
   it("refuses a first save without a password, and writes nothing", async () => {
@@ -499,6 +540,21 @@ describe("EmailReceiptMailboxService.updateSettings", () => {
     expect(where).toEqual({ id: "mb-1", userId: USER });
     expect(patch).toEqual({ enabled: false, aiMode: "automatic" });
     expect(view).toMatchObject({ authMethod: "oauth2", enabled: false });
+  });
+
+  it("changes the switch for profile proposals and the AI limit on its own, and shows it in the view", async () => {
+    const { service, mailboxRepo, storedQuery } = setup();
+    mailboxRepo.findOne.mockResolvedValue(stored());
+    storedQuery.result = stored({ profileProposalsCountTowardAiLimit: false });
+
+    const view = await service.updateSettings(USER, {
+      profileProposalsCountTowardAiLimit: false,
+    } as never);
+
+    expect(mailboxRepo.update.mock.calls[0][1]).toEqual({
+      profileProposalsCountTowardAiLimit: false,
+    });
+    expect(view.profileProposalsCountTowardAiLimit).toBe(false);
   });
 
   it("resets the cursor and the old error when the folder changes, and only then", async () => {

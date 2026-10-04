@@ -11,7 +11,14 @@ import { clearAllCache } from '@/lib/apiCache';
 import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
 import type { PendingAction } from '@/types/ai';
-import type { AiReviewFilter, AiReviewItem } from '@/types/ai-review';
+import {
+  AI_REVIEW_APPROVE_BATCH_MAX,
+  isApprovable,
+  type AiReviewApproveBatchItemResult,
+  type AiReviewFilter,
+  type AiReviewItem,
+  type AiReviewKindFilter,
+} from '@/types/ai-review';
 
 const logger = createLogger('AiReviewInbox');
 
@@ -22,16 +29,33 @@ export interface ProposalCardState {
   resultId?: string;
 }
 
+/** What a bulk approval did, kept until the person closes the summary. */
+export interface BatchSummary {
+  approved: number;
+  failed: number;
+  /** The requests that were not approved, with the reason each gave. */
+  failures: AiReviewApproveBatchItemResult[];
+}
+
 const isConflict = (error: unknown) => error instanceof AxiosError && error.response?.status === 409;
+
+/** The requests a kind filter shows. A parser draft has no card, so it is under "all" only. */
+export function itemsOfKind(items: readonly AiReviewItem[], kind: AiReviewKindFilter): AiReviewItem[] {
+  return kind === 'all' ? [...items] : items.filter((item) => item.kind === kind);
+}
 
 /**
  * The inbox's data and its two writes. `items === null` means not loaded (or
  * loading a new filter); it never stands in for an empty list, and a failed
  * load is `loadFailed`, never `[]`.
  */
-export function useAiReviewInbox() {
+export function useAiReviewInbox(initialKind: AiReviewKindFilter = 'all') {
   const t = useTranslations('aiReview');
   const [filter, setFilterState] = useState<AiReviewFilter>('open');
+  const [kind, setKindState] = useState<AiReviewKindFilter>(initialKind);
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
+  const [batching, setBatching] = useState(false);
+  const [summary, setSummary] = useState<BatchSummary | null>(null);
   const [items, setItems] = useState<AiReviewItem[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [cards, setCards] = useState<Record<string, ProposalCardState>>({});
@@ -65,8 +89,32 @@ export function useAiReviewInbox() {
     setItems(null);
     setLoadFailed(false);
     setCards({});
+    setSelectedIds(new Set());
     setFilterState(next);
   };
+
+  // The kind filter narrows the list already loaded; a selection never outlives it.
+  const setKind = (next: AiReviewKindFilter) => {
+    if (next === kind) return;
+    setSelectedIds(new Set());
+    setKindState(next);
+  };
+
+  // What is shown, and which of it can be approved. A selection counts only what is still on screen
+  // and still approvable: a row a reload dropped, or one that was applied, is not selected.
+  const shownItems = items === null ? null : itemsOfKind(items, kind);
+  const approvable = (shownItems ?? []).filter(isApprovable);
+  const selected = approvable.filter((item) => selectedIds.has(item.id));
+
+  const toggleSelected = (id: string) =>
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const clearSelection = () => setSelectedIds(new Set());
 
   const retry = () => {
     setItems(null);
@@ -112,6 +160,44 @@ export function useAiReviewInbox() {
     }
   };
 
+  /**
+   * Approve these requests through the server's bulk route, which rebuilds each
+   * card against its transaction as it is now and commits it through the same
+   * confirm a single approval uses, one transaction per request. At most 100 go in
+   * one call, so a longer list is sent in chunks, in order. The list is read again
+   * afterwards whatever happened: some of it changed.
+   */
+  const approveBatch = async (requests: readonly AiReviewItem[]) => {
+    if (requests.length === 0 || batching) return;
+    setBatching(true);
+    setSummary(null);
+    const results: AiReviewApproveBatchItemResult[] = [];
+    try {
+      for (let at = 0; at < requests.length; at += AI_REVIEW_APPROVE_BATCH_MAX) {
+        const chunk = requests.slice(at, at + AI_REVIEW_APPROVE_BATCH_MAX).map((request) => request.id);
+        const answer = await aiReviewApi.approveBatch(chunk);
+        results.push(...answer.results);
+      }
+    } catch (error) {
+      logger.error(error);
+      toast.error(getErrorMessage(error, t('bulk.failed')));
+    } finally {
+      const approved = results.filter((result) => result.ok).length;
+      if (approved > 0) {
+        // The writes landed: drop every cached read they may have changed, as a single approval does.
+        clearAllCache();
+        notifyAiAction();
+      }
+      if (results.length > 0) {
+        setSummary({ approved, failed: results.length - approved, failures: results.filter((result) => !result.ok) });
+      }
+      setSelectedIds(new Set());
+      setCards({});
+      await load();
+      setBatching(false);
+    }
+  };
+
   const dismiss = async (item: AiReviewItem) => {
     setDismissing((prev) => new Set(prev).add(item.id));
     try {
@@ -134,5 +220,26 @@ export function useAiReviewInbox() {
     }
   };
 
-  return { filter, setFilter, items, loadFailed, retry, cards, dismissing, approve, dismiss };
+  return {
+    filter,
+    setFilter,
+    kind,
+    setKind,
+    items,
+    shownItems,
+    approvable,
+    selected,
+    toggleSelected,
+    clearSelection,
+    batching,
+    summary,
+    clearSummary: () => setSummary(null),
+    approveBatch,
+    loadFailed,
+    retry,
+    cards,
+    dismissing,
+    approve,
+    dismiss,
+  };
 }

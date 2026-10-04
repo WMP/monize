@@ -1,6 +1,7 @@
-import type {
-  AiReviewProposalInput,
-  AiReviewSplitLine,
+import {
+  AI_REVIEW_MAX_TAG_NAME_LENGTH,
+  type AiReviewProposalInput,
+  type AiReviewSplitLine,
 } from "../../ai-review/ai-review-work.types";
 import { roundMoney, sumMoney } from "../../common/round.util";
 import { stripHtml } from "../../common/sanitization.util";
@@ -52,6 +53,12 @@ export interface ReceiptProposalContext {
   payeeName: string | null;
   /** Category id to name, for every category the proposal may use. */
   categoryNames: ReadonlyMap<string, string>;
+  /**
+   * The tag the profile adds to a transaction it categorised (`definition.tag`):
+   * on an itemized or one-category proposal only, never on a description-only
+   * one. Null or absent: none.
+   */
+  tagName?: string | null;
 }
 
 export interface ReceiptProposal {
@@ -69,6 +76,8 @@ interface ReceiptLine {
   /** +1 for a line with the transaction's sign, -1 for the opposite (a discount). */
   direction: 1 | -1;
   memo?: string;
+  /** `"ai"` when the AI chose the item's category. */
+  categorySource?: "ai";
 }
 
 /** Text that came from an email: angle brackets stripped, whitespace folded. */
@@ -141,6 +150,7 @@ function receiptLines(parsed: ParsedReceipt): ReceiptLine[] {
     units: item.amount,
     direction: 1,
     memo: itemMemo(item),
+    ...(item.categorySource === "ai" ? { categorySource: "ai" as const } : {}),
   }));
   if ((parsed.shipping ?? 0) > 0) {
     lines.push({
@@ -240,9 +250,20 @@ export function buildReceiptProposal(
     names.push(name);
   }
 
+  const tag = clean(ctx.tagName ?? "");
+  const tags: AiReviewProposalInput =
+    tag === "" ? {} : { tagNames: [cut(tag, AI_REVIEW_MAX_TAG_NAME_LENGTH)] };
+
   if (lines.length === 1) {
     return {
-      input: { categoryName: names[0], ...common },
+      input: {
+        categoryName: names[0],
+        ...(lines[0].categorySource === "ai"
+          ? { categorySource: "ai" as const }
+          : {}),
+        ...common,
+        ...tags,
+      },
       kind: "single_category",
       reason: null,
     };
@@ -253,6 +274,7 @@ export function buildReceiptProposal(
     categoryName: names[index],
     amount: roundMoney((sign * line.direction * line.units) / MONEY_UNITS),
     ...(line.memo ? { memo: line.memo } : {}),
+    ...(line.categorySource === "ai" ? { categorySource: "ai" as const } : {}),
   }));
   const splitTotal = sumMoney(splits.map((split) => split.amount));
   if (
@@ -262,5 +284,9 @@ export function buildReceiptProposal(
     // and no `paid` says what the bank was charged after the discount.
     return descriptionOnly("amount_differs");
   }
-  return { input: { splits, ...common }, kind: "itemized", reason: null };
+  return {
+    input: { splits, ...common, ...tags },
+    kind: "itemized",
+    reason: null,
+  };
 }

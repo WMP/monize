@@ -103,7 +103,10 @@ export function TransactionConfirmationCard({
       preview.splits.forEach((split, i) => {
         const label =
           i === 0 ? t('confirmAction.splits') : '';
-        const category = split.categoryName || none;
+        // A category the AI chose is said beside it, so it is read as a suggestion.
+        const category =
+          (split.categoryName || none) +
+          (split.categorySource === 'ai' ? ` (${t('confirmAction.aiCategory')})` : '');
         rows.push({
           label,
           value: split.memo
@@ -114,13 +117,25 @@ export function TransactionConfirmationCard({
     } else {
       rows.push({
         label: t('confirmAction.category'),
-        value: preview.categoryName || none,
+        value:
+          (preview.categoryName || none) +
+          (preview.categoryName && preview.categorySource === 'ai' ? ` (${t('confirmAction.aiCategory')})` : ''),
       });
     }
     if (preview.description)
       rows.push({
         label: t('confirmAction.description'),
         value: preview.description,
+      });
+    // Tags the approval adds (the transaction keeps its own); a name the user has no tag for yet is marked new.
+    if (preview.tagNames && preview.tagNames.length > 0)
+      rows.push({
+        label: t('confirmAction.tags'),
+        value: preview.tagNames
+          .map((name) =>
+            preview.newTagNames?.includes(name) ? `${name} ${t('confirmAction.newTag')}` : name,
+          )
+          .join(', '),
       });
     // Files the approval will save as transaction attachments.
     if (preview.attachments && preview.attachments.length > 0) {
