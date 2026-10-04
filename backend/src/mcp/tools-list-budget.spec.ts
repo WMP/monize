@@ -69,6 +69,14 @@ import { McpServerService } from "./mcp-server.service";
 // regain the true|false, unsigned absAmount and capture-name guidance the
 // rewrite dropped. 4,647 -> 4,904 bytes measured (+257); cap 4,660 -> 4,910;
 // total 59,170 -> 59,420 (59,413 measured).
+//
+// Added, as a reviewed decision (email-receipts, "draft a parser with AI"): the
+// tool `email_receipt_parsers` (2,606 bytes: three operations and the compact
+// parser language a model must be told to write and test a parser from stored
+// order emails; its input and output schemas declare only what a model reasons
+// about). Total 59,420 -> 62,040 = the new tool plus a 14-byte margin; NO
+// existing cap moved, and `ai_review_requests` did not grow to describe the new
+// request kind (its claim result carries that guidance).
 const TOOL_BYTE_BUDGET: Record<string, number> = {
   list_accounts: 2500,
   list_transactions: 3550,
@@ -89,12 +97,13 @@ const TOOL_BYTE_BUDGET: Record<string, number> = {
   get_budget_status: 2550,
   manage_transaction_rules: 4910,
   ai_review_requests: 3050,
+  email_receipt_parsers: 2620,
   get_next_prompt: 1400,
   post_response: 1050,
   report_progress: 1250,
 };
 
-const TOTAL_BYTE_BUDGET = 59_420;
+const TOTAL_BYTE_BUDGET = 62_040;
 const INSTRUCTIONS_BYTE_BUDGET = 2_600;
 
 /**
@@ -123,6 +132,7 @@ const EXPECTED_TOOL_ORDER = [
   "get_budget_status",
   "manage_transaction_rules",
   "ai_review_requests",
+  "email_receipt_parsers",
   "get_next_prompt",
   "post_response",
   "report_progress",
@@ -334,6 +344,7 @@ describe("tools/list payload budget", () => {
     // provider doubles are enough to read them back off the server.
     const noopProvider = { register: () => {} } as any;
     const service = new McpServerService(
+      noopProvider,
       noopProvider,
       noopProvider,
       noopProvider,
