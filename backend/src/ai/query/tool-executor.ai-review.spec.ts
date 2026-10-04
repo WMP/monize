@@ -3,6 +3,7 @@ import { ConflictException } from "@nestjs/common";
 import { ToolExecutorService } from "./tool-executor.service";
 import { FINANCIAL_TOOLS } from "./tool-definitions";
 import { AiReviewWorkService } from "../../ai-review/ai-review-work.service";
+import { EmailReceiptParserToolsService } from "../../email-receipts/parsers/email-receipt-parser-tools.service";
 import { ASSISTANT_CLAIM_KEY } from "../../ai-review/ai-review-work.types";
 import { AiActionBuilderService } from "../actions/ai-action-builder.service";
 import { AccountsService } from "../../accounts/accounts.service";
@@ -42,6 +43,7 @@ const request = (over: Record<string, unknown> = {}) => ({
 describe("ToolExecutorService ai_review_requests", () => {
   let service: ToolExecutorService;
   let work: Record<string, jest.Mock>;
+  const parserTools = {};
 
   beforeEach(async () => {
     work = {
@@ -80,6 +82,7 @@ describe("ToolExecutorService ai_review_requests", () => {
       providers: [
         ToolExecutorService,
         { provide: AiReviewWorkService, useValue: work },
+        { provide: EmailReceiptParserToolsService, useValue: parserTools },
         ...unused,
       ],
     }).compile();
@@ -150,6 +153,48 @@ describe("ToolExecutorService ai_review_requests", () => {
       request: { id: REQ },
       emailReceipt: { text: "Widget 12.00" },
     });
+  });
+
+  it("hands the assistant the emails of a parser draft request and tells it which tool answers", async () => {
+    work.claim.mockResolvedValue({
+      request: request({
+        kind: "email_parser_draft",
+        transactionId: null,
+        emailReceiptIds: ["r1", "r2"],
+        parserDomain: "shop.example.com",
+      }),
+      emailReceipts: [
+        {
+          id: "r1",
+          fromAddress: "orders@shop.example.com",
+          subject: "Order 1",
+          effectiveDate: "2026-08-10T10:15:00.000Z",
+          text: "Widget 12.00",
+        },
+      ],
+    });
+
+    const result = await service.execute(USER, "ai_review_requests", {
+      operation: "claim",
+      requestId: REQ,
+    });
+
+    expect(result.data).toMatchObject({
+      request: { kind: "email_parser_draft" },
+      emailReceipts: [{ id: "r1", text: "Widget 12.00" }],
+      message: expect.stringContaining("email_receipt_parsers"),
+    });
+    expect(result.data).not.toHaveProperty("transaction");
+    expect((result.data as { message: string }).message).toContain(
+      "save_draft",
+    );
+  });
+
+  it("documents the parser draft kind in the tool definition", () => {
+    const definition = FINANCIAL_TOOLS.find(
+      (tool) => tool.name === "ai_review_requests",
+    );
+    expect(definition?.description).toContain("email_parser_draft");
   });
 
   it("refuses a requestId that is not a UUID on claim", async () => {

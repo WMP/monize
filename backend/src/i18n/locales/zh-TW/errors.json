@@ -20,6 +20,17 @@
     "sameSign": "\"{{ param }}\" 與 \"{{ other }}\" 的值必須符號相同",
     "onOrBefore": "\"{{ param }}\" 的值必須早於或等於 \"{{ other }}\""
   },
+  "attachments": {
+    "notFound": "找不到附件",
+    "storageUnavailable": "此附件的檔案存放在 \"{{ provider }}\" 儲存後端，而此伺服器未設定為存取該後端",
+    "transactionNotFound": "找不到交易",
+    "empty": "上傳的檔案為空",
+    "fileTooLarge": "檔案超過最大大小 {{ max }} 位元組",
+    "unsupportedType": "不支援的檔案類型。允許的類型：{{ types }}",
+    "tooMany": "此交易已達到最多 {{ max }} 個附件的上限",
+    "swept": "上傳耗時過長，其儲存空間已被回收。請重試。",
+    "pairRequiresImages": "掃描的文件及其原圖都必須是圖片"
+  },
   "accounts": {
     "accountWithIdNotFound": "找不到 ID 為 {{ id }} 的科目",
     "notInvestmentPair": "此科目不是投資科目對的一部分",
@@ -130,7 +141,9 @@
     "nothingProposed": "提案至少需要一項變更：splits、categoryName、payeeName 或 description。",
     "splitsAndCategory": "請傳送 splits 或 categoryName，不要同時傳送：拆分交易沒有單一分類。",
     "transferNotSupported": "轉帳無法透過提案進行審核。請改為拒絕該請求。",
-    "splitDifference": "拆分行合計為 {{ sum }}，但交易金額為 {{ amount }}：{{ difference }} 尚未分配。請讓各行合計等於交易金額；運費等餘額需要單獨一行，或告知使用者而不是自行分配。"
+    "splitDifference": "拆分行合計為 {{ sum }}，但交易金額為 {{ amount }}：{{ difference }} 尚未分配。請讓各行合計等於交易金額；運費等餘額需要單獨一行，或告知使用者而不是自行分配。",
+    "noTransaction": "此 AI 審核請求與交易無關。",
+    "parserDraftNotSubmittable": "解析器草稿請求應使用 email_receipt_parsers 工具回覆（先測試，再用此 requestId 執行 save_draft），而不是提交交易提案。"
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "驗證嘗試次數過多。請重新登入。",
@@ -228,14 +241,14 @@
     "backupPasswordBreached": "此密碼已出現在資料外洩事件中。請選擇其他密碼。",
     "restoreBodyMustBeFile": "請求主體必須是備份檔案",
     "reauthUnavailable": "請先完成帳戶密碼設定，再還原備份。",
-    "supportPasswordRequired": "支援用備份必須加密：請提供密碼。",
     "passwordHeaderNotBase64": "{header} 標頭必須使用 base64 編碼。",
+    "folderOutsideAllowedRoots": "備份資料夾 \"{path}\" 位於允許的根目錄（{roots}）之外。請設定 BACKUP_ALLOWED_ROOTS 以允許它。",
     "decompressTooLarge": "備份過大，無法還原：解壓後超過此部署的 {limit} 位元組上限。該上限由容器記憶體與實測的每位元組開銷推導而來，因此單獨提高上限只會描述一次程序無法完成的還原 —— 請改為提高容器的記憶體上限（Kubernetes：backend.resources.limits.memory）。",
     "exportTooLarge": "此備份過大，無法一次生成（在表 \"{table}\" 處超出 {limit} 位元組）。自動備份與支援用備份必須保存在記憶體中；請下載採用串流的手動備份，或提高 BACKUP_EXPORT_BUFFER_LIMIT。",
+    "supportPasswordRequired": "支援用備份必須加密：請提供密碼。",
     "supportExportTooLarge": "此支援用備份將有 {{ size }} MiB 的 JSON，超過 {{ limit }} MiB 上限。請透過選擇帳戶或日期範圍縮小範圍，或提高 BACKUP_EXPORT_BUFFER_LIMIT。",
-    "folderUnusable": "資料夾 \"{{ path }}\" 無法作為目錄使用（{{ reason }}）。",
-    "folderOutsideAllowedRoots": "備份資料夾 \"{path}\" 位於允許的根目錄（{roots}）之外。請設定 BACKUP_ALLOWED_ROOTS 以允許它。",
     "noBackupStorage": "此部署沒有可寫入的備份儲存空間：{{ safePath }} 不存在且無法建立（{{ reason }}）。請在該位置掛載卷（Docker：繫結掛載或具名卷；Kubernetes：在 Helm chart 中設定 backend.persistence.backups），然後重試。",
+    "folderUnusable": "資料夾 \"{{ path }}\" 無法作為目錄使用（{{ reason }}）。",
     "restoreNoMemoryHeadroom": "此部署沒有用於還原的記憶體餘量：單次還原的估計峰值無法容納於容器內。請提高容器記憶體上限，或降低 BACKUP_RESTORE_EXPANDED_LIMIT。",
     "restoreQueueFull": "已有太多還原作業在等待此部署的還原處理能力。請稍後再試。",
     "restoreQueueWaitTimeout": "等待還原處理能力逾時：另一個還原作業仍在進行。請稍後再試。",
@@ -288,12 +301,12 @@
   },
   "currencies": {
     "alreadyInList": "貨幣「{{ code }}」已在您的清單中",
+    "alreadyInListInactive": "貨幣「{{ code }}」已在您的清單中，但目前處於未啟用狀態。請重新啟用後使用。",
     "notFound": "找不到貨幣「{{ code }}」",
     "cannotModifySystem": "無法修改系統貨幣中繼資料",
     "cannotModifyOther": "無法修改其他使用者的貨幣",
     "inUse": "貨幣「{{ code }}」正在您的科目、證券或其他記錄中使用。請改為停用它。",
     "invalidRateDate": "date 必須為 YYYY-MM-DD 格式",
-    "alreadyInListInactive": "貨幣「{{ code }}」已在您的清單中，但目前處於未啟用狀態。請重新啟用後使用。",
     "sameCurrencyHistory": "{{ code }} 是您的預設貨幣，因此沒有匯率歷史",
     "rateProviderUnavailable": "匯率提供方未回應，請稍後再試。"
   },
@@ -348,7 +361,6 @@
     "openRequestExists": "此交易已有另一個審核請求處於開啟狀態。請先完成或關閉它。",
     "receiptNotFound": "找不到郵件 {{ id }}",
     "aiOff": "此信箱已關閉 AI。請先在信箱設定中變更 AI 模式。",
-    "pollMailboxDisabled": "此信箱已關閉。請在信箱設定中開啟後再擷取郵件。",
     "pollBusy": "此信箱正在讀取中。請一分鐘後重試。",
     "parserPayeeNotFound": "找不到此解析器的收款方。",
     "parserNotFound": "找不到收據解析器 {{ id }}",
@@ -370,7 +382,10 @@
     "oauthReconnectRequired": "信箱的登入授權已被撤銷或已過期。請在信箱設定中重新連接信箱。",
     "oauthTokenUnreadable": "無法在此伺服器上讀取已儲存的登入資訊。請在信箱設定中重新連接信箱。",
     "notOAuthMailbox": "此信箱不使用 Google 或 Microsoft 登入。",
-    "settingsEmpty": "請至少傳送一項要變更的設定。"
+    "settingsEmpty": "請至少傳送一項要變更的設定。",
+    "parserToolReceiptCount": "請指定 1 至 5 封郵件來測試解析器。",
+    "parserToolInvalidSender": "草稿需要名稱，以及一到十個寄件者網域，例如 shop.example.com。",
+    "parserDraftRequestNotClaimed": "此解析器草稿請求不是由您認領的。請先用 ai_review_requests 認領，或不帶 requestId 儲存草稿。"
   },
   "emergencyAccess": {
     "smtpNotConfigured": "未設定電子郵件。在設定 SMTP 之前，無法啟用緊急存取。",
@@ -493,7 +508,6 @@
     "loanLedgerUnreadable": "無法計算此貸款還款，因為無法讀取其帳簿餘額。請重試。"
   },
   "securities": {
-    "exchangeRateUnavailable": "無法確定交易日 {{ from }} -> {{ to }} 的匯率。請提供明確的 exchangeRate，以便現金帳戶的記帳正確。",
     "accountMustBeInvestment": "科目類型必須為 INVESTMENT",
     "transferPairSameRow": "一筆轉移的兩筆記錄不能是同一筆交易",
     "transferPairNotFound": "兩筆交易其中之一已不存在",
@@ -507,8 +521,14 @@
     "transferPairOutsidePortfolio": "兩筆記錄都必須位於本投資組合的投資帳戶中",
     "providerCurrencyMismatch": "拒絕更新 {{ symbol }} 的價格：{{ provider }} 以 {{ reported }} 報價，但該證券登記的貨幣為 {{ configured }}。請更正該證券的貨幣、代碼或交易所，然後重新整理。",
     "securityIdRequired": "{{ action }} 交易需要證券 ID",
+    "exchangeRateUnavailable": "無法確定交易日 {{ from }} -> {{ to }} 的匯率。請提供明確的 exchangeRate，以便現金帳戶的記帳正確。",
     "splitRatioRequired": "分割比例（數量）必須大於零",
     "acquisitionPriceRequired": "{{ action }} 交易需要填寫每股價格，且必須大於零。對於成本未知的股份，請使用 ADD_SHARES。",
+    "ambiguousSecurity": "\"{{ query }}\" 符合多個證券：{{ list }}。請使用準確的股票代碼。",
+    "allocationExceedsTotal": "配置百分比總和超過 100%。",
+    "assetOptionNameRequired": "需要填寫資產類別名稱。",
+    "invalidTagKey": "需要標籤鍵（1-100 個字元）",
+    "securityNotFoundByQuery": "沒有證券符合 \"{{ query }}\"。請先新增該證券或檢查股票代碼。",
     "cannotHoldSecurities": "{{ label }} 無法持有證券",
     "sourceDestMustDiffer": "來源和目的科目必須不同",
     "bothAccountsMustBeInvestment": "兩個科目的類型都必須為 INVESTMENT",
@@ -534,6 +554,10 @@
     "limitMax200": "limit 不得超過 200",
     "invalidAction": "無效的操作：{{ action }}。必須為以下之一：{{ validActions }}",
     "symbolAlreadyExists": "代碼為 {{ symbol }} 的證券已存在",
+    "lookupQueryRequired": "請輸入要查詢的股票代碼或證券名稱。",
+    "lookupNotFound": "找不到與「{{ query }}」相符的證券。請檢查代碼或名稱，或指定一個交易所。",
+    "lookupAmbiguous": "「{{ query }}」符合多個證券：{{ list }}。請指定交易所後重新執行。",
+    "lookupNoCurrency": "無法確定「{{ symbol }}」的貨幣。請改為手動新增該證券。",
     "notFoundById": "找不到 ID 為 {{ id }} 的證券",
     "notFoundBySymbol": "找不到代碼為 {{ symbol }} 的證券",
     "cannotDeactivateWithHoldings": "無法停用有有效持倉的證券。請先賣出所有股份。",
@@ -550,21 +574,12 @@
     "invalidUuid": "無效的 {{ label }} UUID：{{ id }}",
     "symbolLength": "代碼必須介於 1 到 20 個字元之間",
     "symbolCharacters": "代碼只能包含字母、數字、點或連字號",
-    "ambiguousSecurity": "\"{{ query }}\" 符合多個證券：{{ list }}。請使用準確的股票代碼。",
-    "securityNotFoundByQuery": "沒有證券符合 \"{{ query }}\"。請先新增該證券或檢查股票代碼。",
-    "lookupQueryRequired": "請輸入要查詢的股票代碼或證券名稱。",
-    "lookupNotFound": "找不到與「{{ query }}」相符的證券。請檢查代碼或名稱，或指定一個交易所。",
-    "lookupAmbiguous": "「{{ query }}」符合多個證券：{{ list }}。請指定交易所後重新執行。",
-    "lookupNoCurrency": "無法確定「{{ symbol }}」的貨幣。請改為手動新增該證券。",
     "noUpdateFields": "請至少提供一個要變更的欄位。",
-    "allocationExceedsTotal": "配置百分比總和超過 100%。",
-    "invalidTagKey": "需要標籤鍵（1-100 個字元）",
-    "assetOptionNameRequired": "需要填寫資產類別名稱。",
     "documentNotFound": "找不到該文件",
-    "embeddedSplitAmountMismatch": "此分割記錄了 {{ amount }}，但 {{ action }} {{ quantity }} @ {{ price }} 按 {{ rate }} 的匯率換算應為 {{ expected }}。請使用該金額，或說明您想使用的匯率。",
     "selectionNotFound": "找不到所選證券中的一檔或多檔",
     "comparisonSelectionEmpty": "請至少選擇一檔證券或一個市場指數進行比較",
-    "exchangeRateNotPositive": "匯率必須大於零"
+    "exchangeRateNotPositive": "匯率必須大於零",
+    "embeddedSplitAmountMismatch": "此分割記錄了 {{ amount }}，但 {{ action }} {{ quantity }} @ {{ price }} 按 {{ rate }} 的匯率換算應為 {{ expected }}。請使用該金額，或說明您想使用的匯率。"
   },
   "tags": {
     "notFound": "找不到 ID 為 {{ id }} 的標籤",
@@ -682,17 +697,6 @@
     "recalculateMortgageOnly": "還款額重新計算僅適用於抵押貸款科目",
     "insufficientData": "具利息明細的還款不足，無法偵測利率變更",
     "frequencyMismatch": "還款日期與科目的還款頻率不符；推算的利率可能較不準確"
-  },
-  "attachments": {
-    "notFound": "找不到附件",
-    "storageUnavailable": "此附件的檔案存放在 \"{{ provider }}\" 儲存後端，而此伺服器未設定為存取該後端",
-    "transactionNotFound": "找不到交易",
-    "empty": "上傳的檔案為空",
-    "fileTooLarge": "檔案超過最大大小 {{ max }} 位元組",
-    "unsupportedType": "不支援的檔案類型。允許的類型：{{ types }}",
-    "tooMany": "此交易已達到最多 {{ max }} 個附件的上限",
-    "swept": "上傳耗時過長，其儲存空間已被回收。請重試。",
-    "pairRequiresImages": "掃描的文件及其原圖都必須是圖片"
   },
   "strategies": {
     "accountNotFound": "找不到帳戶",

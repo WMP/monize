@@ -39,6 +39,19 @@ export interface EmailReceiptListItem {
   fromDomain: string;
   subject: string;
   receivedAt: string;
+  /**
+   * The mailbox's own From when the email was a forward of an order
+   * confirmation (`fromAddress`, `fromDomain` and `subject` are then the
+   * shop's), else null.
+   */
+  forwardedBy: string | null;
+  /** When the shop sent the order, read from a forwarded header block; else null. */
+  originalSentAt: string | null;
+  /**
+   * The day the match window is centred on: `originalSentAt` when known, else
+   * `receivedAt` (an ISO timestamp either way).
+   */
+  effectiveDate: string;
   status: EmailReceiptStatus;
   statusReason: string | null;
   matchKind: EmailReceiptMatchKind | null;
@@ -55,6 +68,12 @@ export interface EmailReceiptListItem {
 /** One stored email with its text, what the parser read and the candidates. */
 export interface EmailReceiptDetail extends EmailReceiptListItem {
   bodyText: string;
+  /**
+   * The HTML part as the sender wrote it, for display in a sandboxed frame that
+   * runs nothing and loads nothing; null when the email has none. Only the
+   * detail carries it, never the list.
+   */
+  bodyHtml: string | null;
   parsed: Record<string, unknown> | null;
   candidates: EmailReceiptCandidateSummary[];
 }

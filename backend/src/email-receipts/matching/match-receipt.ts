@@ -8,7 +8,10 @@ import type { ParsedReceipt } from "../parsing/receipt-parser.types";
  * spec's, row for row.
  */
 
-/** A candidate is dated this many days before the email was received... */
+/**
+ * The window is centred on the PURCHASE date: the day the shop sent the order
+ * (the original date of a forwarded email) or, when none is known, the day the
+ * email arrived. A candidate is dated this many days before it... */
 export const RECEIPT_MATCH_DAYS_BEFORE = 3;
 /** ...or this many days after (the bank posts later than the shop mails). */
 export const RECEIPT_MATCH_DAYS_AFTER = 14;
@@ -40,13 +43,13 @@ export type ReceiptMatchResult =
   | { kind: "unmatched" };
 
 /** The inclusive date range in which a transaction can be the one an email paid for. */
-export function receiptCandidateWindow(receivedDate: string): {
+export function receiptCandidateWindow(purchaseDate: string): {
   from: string;
   to: string;
 } {
   return {
-    from: addDaysYMD(receivedDate, -RECEIPT_MATCH_DAYS_BEFORE),
-    to: addDaysYMD(receivedDate, RECEIPT_MATCH_DAYS_AFTER),
+    from: addDaysYMD(purchaseDate, -RECEIPT_MATCH_DAYS_BEFORE),
+    to: addDaysYMD(purchaseDate, RECEIPT_MATCH_DAYS_AFTER),
   };
 }
 
@@ -64,13 +67,13 @@ function daysApart(a: string, b: string): number {
 /** At most 10 ids, the closest date to the received date first, ties by id. */
 function closestIds(
   set: readonly ReceiptMatchCandidate[],
-  receivedDate: string,
+  purchaseDate: string,
 ): string[] {
   return [...set]
     .sort(
       (x, y) =>
-        daysApart(x.transactionDate, receivedDate) -
-          daysApart(y.transactionDate, receivedDate) ||
+        daysApart(x.transactionDate, purchaseDate) -
+          daysApart(y.transactionDate, purchaseDate) ||
         (x.id < y.id ? -1 : x.id > y.id ? 1 : 0),
     )
     .slice(0, MAX_STORED_CANDIDATES)
@@ -96,15 +99,15 @@ function mentionsOrderId(
  * the parsed total exactly; false when no total was parsed) and P (its payee is
  * the parser's payee). One O candidate wins; else one A-and-P candidate; else
  * one A candidate; two or more at any step are ambiguous (that step's set).
- * A candidate outside the window around `receivedDate` is ignored.
+ * A candidate outside the window around `purchaseDate` is ignored.
  */
 export function matchReceipt(
   parsed: Pick<ParsedReceipt, "orderId" | "total">,
-  receivedDate: string,
+  purchaseDate: string,
   candidates: readonly ReceiptMatchCandidate[],
   parserPayeeId: string | null,
 ): ReceiptMatchResult {
-  const window = receiptCandidateWindow(receivedDate);
+  const window = receiptCandidateWindow(purchaseDate);
   const inWindow = candidates.filter(
     (candidate) =>
       candidate.transactionDate >= window.from &&
@@ -122,7 +125,7 @@ export function matchReceipt(
   if (withOrderId.length > 1) {
     return {
       kind: "ambiguous",
-      candidateIds: closestIds(withOrderId, receivedDate),
+      candidateIds: closestIds(withOrderId, purchaseDate),
     };
   }
 
@@ -144,7 +147,7 @@ export function matchReceipt(
   if (withAmountAndPayee.length > 1) {
     return {
       kind: "ambiguous",
-      candidateIds: closestIds(withAmountAndPayee, receivedDate),
+      candidateIds: closestIds(withAmountAndPayee, purchaseDate),
     };
   }
   if (withAmount.length === 1) {
@@ -153,7 +156,7 @@ export function matchReceipt(
   if (withAmount.length > 1) {
     return {
       kind: "ambiguous",
-      candidateIds: closestIds(withAmount, receivedDate),
+      candidateIds: closestIds(withAmount, purchaseDate),
     };
   }
   return { kind: "unmatched" };

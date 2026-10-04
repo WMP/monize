@@ -5648,6 +5648,9 @@ Enforcement         The proposal is AiReviewProposalInput (splits, category,
                     card; confirm marks the request applied in the write's own
                     transaction (markApplied). The auto-apply gate is a pure
                     function with a table test (email-receipt-pipeline.service.spec.ts).
+                    A parser draft (kind email_parser_draft) never reaches a
+                    transaction: submit refuses the kind, and the only write is a
+                    disabled parser through EmailReceiptParserToolsService.
 Concurrency scope   transaction row
 Retry semantics     a second confirm of the same card is refused by the
                     single-use claim and by markApplied

@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "Kotak masuk peninjauan AI",
-    "subtitle": "Transaksi yang diminta aturan untuk ditinjau AI, dan perubahan yang diusulkan asisten untuk Anda setujui."
+    "subtitle": "Transaksi yang diminta aturan untuk ditinjau AI, pengurai yang diminta untuk dibuatkan drafnya oleh asisten, dan perubahan yang diusulkan asisten untuk Anda setujui."
   },
   "filter": {
     "label": "Filter menurut status",
@@ -34,11 +34,13 @@
     "manualRequest": "Diminta secara manual",
     "emailReceipt": "Struk surel: {subject} dari {sender}",
     "emailReceiptMissing": "Struk surel (surel telah dihapus)",
+    "parserDraft": "Draf pengurai dari {count, plural, one {# surel} other {# surel}} ({domain})",
     "viewEmailReceipts": "Lihat struk surel",
     "agentNote": "Catatan dari asisten: {reason}",
     "dates": "Dibuat {created}, kedaluwarsa {expires}",
     "viewTransaction": "Lihat transaksi",
-    "waitingForAgent": "Menunggu agen AI. <link>Hubungkan penyedia AI di Pengaturan</link>, atau biarkan klien MCP mengambilnya."
+    "waitingForAgent": "Menunggu agen AI. <link>Hubungkan penyedia AI di Pengaturan</link>, atau biarkan klien MCP mengambilnya.",
+    "parserDraftReady": "Draf pengurai siap. <link>Uji dan setujui di pengaturan pengurai</link>."
   },
   "actions": {
     "dismiss": "Abaikan"
@@ -48,7 +50,7 @@
   },
   "dismissDialog": {
     "title": "Abaikan permintaan ini?",
-    "message": "Tidak ada lagi yang akan diminta meninjau transaksi ini. Transaksinya sendiri tidak berubah.",
+    "message": "Tidak ada lagi yang akan diminta menangani permintaan ini. Hal yang menjadi pokok permintaan tidak berubah.",
     "confirm": "Abaikan permintaan"
   },
   "loading": "Memuat permintaan peninjauan...",

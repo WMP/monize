@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
+import { DateInput } from '@/components/ui/DateInput';
 import { Input } from '@/components/ui/Input';
 import { LinkifiedText } from '@/components/ui/LinkifiedText';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -15,7 +16,7 @@ import type { Transaction } from '@/types/transaction';
 
 const logger = createLogger('ReceiptTransactionPicker');
 
-/** The matcher's own window around the day the email arrived (`match-receipt.ts`). */
+/** The matcher's own window around the purchase day (`match-receipt.ts`): the default range. */
 export const RECEIPT_PICK_DAYS_BEFORE = 3;
 export const RECEIPT_PICK_DAYS_AFTER = 14;
 /** One bounded page; a longer list is narrowed with the search box, not paged. */
@@ -29,8 +30,12 @@ interface Answer {
 }
 
 interface ReceiptTransactionPickerProps {
-  /** The email's `receivedAt` (an ISO timestamp); its UTC day is the matcher's `receivedDate`. */
-  receivedAt: string;
+  /**
+   * The email's `effectiveDate` (an ISO timestamp): the day the shop sent the
+   * order when a forward carried it, else the day the email arrived. Its UTC day
+   * is the matcher's purchase date and centres the DEFAULT range.
+   */
+  effectiveDate: string;
   /** The transaction being linked right now, if any; every Link button waits while one is. */
   linkingId: string | null;
   onLink: (transactionId: string) => void;
@@ -44,27 +49,35 @@ interface ReceiptTransactionPickerProps {
 }
 
 /**
- * "Choose transaction": the user's transactions in the window the matcher
- * searches (3 days before the email to 14 after), for an email the matcher could
- * not tie to one. Optional text search narrows the page.
+ * "Choose transaction": the user's transactions in a date range, for an email the
+ * matcher could not tie to one. The range starts as the window the matcher
+ * searches (3 days before the purchase day to 14 after) and the From and To dates
+ * are the person's to change, because the bank may have posted the charge well
+ * outside it; the server accepts any of the user's linkable transactions whatever
+ * its date. Optional text search narrows the page.
  *
  * The list belongs to the request that produced it (`Answer.key`): a slow answer
- * for an earlier search is never drawn under a newer one, and while the new one
- * loads the old rows are not offered. A transfer or a voided transaction is not
- * offered at all, since the server refuses to link either; a failed read is an
- * error, never "no transactions".
+ * for an earlier range or search is never drawn under a newer one, and while the
+ * new one loads the old rows are not offered. A transfer or a voided transaction
+ * is not offered at all, since the server refuses to link either; a failed read is
+ * an error, never "no transactions". A range whose From is after its To asks
+ * nothing and says so.
  *
- * The window is calendar arithmetic on the `YYYY-MM-DD` day (`shiftDate`), never
- * a `Date` built from it.
+ * The default window is calendar arithmetic on the `YYYY-MM-DD` day
+ * (`shiftDate`), never a `Date` built from it.
  */
-export function ReceiptTransactionPicker({ receivedAt, linkingId, onLink, mode = 'link' }: ReceiptTransactionPickerProps) {
+export function ReceiptTransactionPicker({ effectiveDate, linkingId, onLink, mode = 'link' }: ReceiptTransactionPickerProps) {
   const t = useTranslations('emailReceipts.picker');
   const { formatDate } = useDateFormat();
   const { formatCurrency } = useNumberFormat();
 
-  const receivedDate = receivedAt.slice(0, 10);
-  const from = shiftDate(receivedDate, -RECEIPT_PICK_DAYS_BEFORE);
-  const to = shiftDate(receivedDate, RECEIPT_PICK_DAYS_AFTER);
+  const purchaseDate = effectiveDate.slice(0, 10);
+  // The range is the person's to edit; it starts as the matcher's window. A
+  // cleared or half-typed date is '' and asks nothing until it is a date again.
+  const [from, setFrom] = useState(() => shiftDate(purchaseDate, -RECEIPT_PICK_DAYS_BEFORE));
+  const [to, setTo] = useState(() => shiftDate(purchaseDate, RECEIPT_PICK_DAYS_AFTER));
+  const rangeReady = from !== '' && to !== '' && from <= to;
+  const rangeReversed = from !== '' && to !== '' && from > to;
 
   const [draft, setDraft] = useState('');
   const [search, setSearch] = useState('');
@@ -75,6 +88,7 @@ export function ReceiptTransactionPicker({ receivedAt, linkingId, onLink, mode =
   const key = `${from}|${to}|${search}|${attempt}`;
 
   useEffect(() => {
+    if (!rangeReady) return;
     let cancelled = false;
     transactionsApi
       .getAll({
@@ -94,9 +108,9 @@ export function ReceiptTransactionPicker({ receivedAt, linkingId, onLink, mode =
     return () => {
       cancelled = true;
     };
-  }, [from, to, search, key]);
+  }, [from, to, search, key, rangeReady]);
 
-  const current = answer !== null && answer.key === key ? answer : null;
+  const current = rangeReady && answer !== null && answer.key === key ? answer : null;
   const linkable = useMemo(
     () => (current?.rows ?? []).filter((row) => !row.isTransfer && !row.isVoid),
     [current],
@@ -107,9 +121,22 @@ export function ReceiptTransactionPicker({ receivedAt, linkingId, onLink, mode =
       <h3 id="receipt-picker-heading" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
         {t(mode === 'ai' ? 'ai.heading' : 'heading')}
       </h3>
-      <p className="text-xs text-gray-500 dark:text-gray-400">
-        {t(mode === 'ai' ? 'ai.help' : 'help', { from: formatDate(from), to: formatDate(to) })}
-      </p>
+      <p className="text-xs text-gray-500 dark:text-gray-400">{t(mode === 'ai' ? 'ai.help' : 'help')}</p>
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <DateInput
+          id="receipt-picker-from"
+          label={t('fromLabel')}
+          value={from}
+          onDateChange={(date) => setFrom(date)}
+        />
+        <DateInput
+          id="receipt-picker-to"
+          label={t('toLabel')}
+          value={to}
+          onDateChange={(date) => setTo(date)}
+        />
+      </div>
 
       <form
         className="flex flex-col gap-2 sm:flex-row sm:items-end"
@@ -134,7 +161,13 @@ export function ReceiptTransactionPicker({ receivedAt, linkingId, onLink, mode =
         </Button>
       </form>
 
-      {current === null ? (
+      {rangeReversed ? (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          {t('rangeReversed')}
+        </p>
+      ) : !rangeReady ? (
+        <p className="text-sm text-gray-500 dark:text-gray-400">{t('rangeIncomplete')}</p>
+      ) : current === null ? (
         <LoadingSpinner text={t('loading')} />
       ) : current.rows === null ? (
         <div role="alert" className="space-y-2">

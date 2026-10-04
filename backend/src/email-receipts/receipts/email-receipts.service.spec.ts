@@ -22,6 +22,8 @@ const row = (over: Record<string, unknown> = {}) => ({
   from_domain: "shop.example.com",
   subject: "Your order",
   received_at: new Date("2026-09-10T10:00:00Z"),
+  forwarded_by: null,
+  original_sent_at: null,
   created_at: new Date("2026-09-10T10:05:00Z"),
   status: "review",
   status_reason: null,
@@ -131,6 +133,9 @@ describe("EmailReceiptsService.list", () => {
       fromDomain: "shop.example.com",
       subject: "Your order",
       receivedAt: "2026-09-10T10:00:00.000Z",
+      forwardedBy: null,
+      originalSentAt: null,
+      effectiveDate: "2026-09-10T10:00:00.000Z",
       status: "review",
       statusReason: null,
       matchKind: "order_id",
@@ -154,6 +159,34 @@ describe("EmailReceiptsService.list", () => {
       receivedAt: "2026-09-09T10:00:00.000Z",
     });
     expect(Object.keys(items[0])).not.toContain("bodyText");
+    expect(Object.keys(items[0])).not.toContain("bodyHtml");
+  });
+
+  it("never selects the HTML part for the list", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([]);
+    await service.list(USER);
+    expect(manager.query.mock.calls[0][0]).not.toContain("body_html");
+  });
+
+  it("says who forwarded an email and dates it by the shop's day, not the forward's", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([
+      row({
+        forwarded_by: "alice.example@gmail.example.com",
+        original_sent_at: new Date("2026-08-10T08:15:00Z"),
+        received_at: new Date("2026-09-10T10:00:00Z"),
+      }),
+    ]);
+
+    const [item] = await service.list(USER);
+
+    expect(item).toMatchObject({
+      forwardedBy: "alice.example@gmail.example.com",
+      originalSentAt: "2026-08-10T08:15:00.000Z",
+      receivedAt: "2026-09-10T10:00:00.000Z",
+      effectiveDate: "2026-08-10T08:15:00.000Z",
+    });
   });
 
   it("scopes by the JWT user only and clamps the limit", async () => {
@@ -188,6 +221,7 @@ describe("EmailReceiptsService.get", () => {
         {
           ...row({ status: "ambiguous", ai_review_request_id: null }),
           body_text: "Order total: 9.99",
+          body_html: "<p>Order total: <b>9.99</b></p>",
           parsed: { total: 99900 },
           candidate_transaction_ids: ["t2", "t1", "gone"],
         },
@@ -214,6 +248,8 @@ describe("EmailReceiptsService.get", () => {
     const detail = await service.get(USER, ID);
 
     expect(detail.bodyText).toBe("Order total: 9.99");
+    expect(detail.bodyHtml).toBe("<p>Order total: <b>9.99</b></p>");
+    expect(manager.query.mock.calls[0][0]).toContain("r.body_html");
     expect(detail.parsed).toEqual({ total: 99900 });
     expect(detail.candidates.map((c) => c.id)).toEqual(["t2", "t1"]);
     expect(detail.candidates[0]).toMatchObject({
@@ -224,6 +260,21 @@ describe("EmailReceiptsService.get", () => {
       USER,
       ["t2", "t1", "gone"],
     ]);
+  });
+
+  it("has no bodyHtml for an email with no HTML part", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValueOnce([
+      {
+        ...row(),
+        body_text: "x",
+        body_html: null,
+        parsed: null,
+        candidate_transaction_ids: [],
+      },
+    ]);
+
+    expect((await service.get(USER, ID)).bodyHtml).toBeNull();
   });
 
   it("does not look for candidates when there are none", async () => {

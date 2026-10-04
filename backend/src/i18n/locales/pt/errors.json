@@ -130,7 +130,9 @@
     "nothingProposed": "Uma proposta precisa de pelo menos uma alteração: splits, categoryName, payeeName ou description.",
     "splitsAndCategory": "Envie splits ou categoryName, não ambos: uma transação dividida não tem uma única categoria.",
     "transferNotSupported": "Uma transferência não pode ser revista por proposta. Rejeite antes o pedido.",
-    "splitDifference": "As linhas da divisão somam {{ sum }} mas a transação é {{ amount }}: {{ difference }} não está atribuído. Faça as linhas somar o valor da transação; um restante como custos de envio precisa da sua própria linha, ou é indicado ao utilizador em vez de atribuído."
+    "splitDifference": "As linhas da divisão somam {{ sum }} mas a transação é {{ amount }}: {{ difference }} não está atribuído. Faça as linhas somar o valor da transação; um restante como custos de envio precisa da sua própria linha, ou é indicado ao utilizador em vez de atribuído.",
+    "noTransaction": "Este pedido de revisão de IA não é sobre uma transação.",
+    "parserDraftNotSubmittable": "Um pedido de rascunho de analisador é respondido com a ferramenta email_receipt_parsers (test e depois save_draft com este requestId), não com uma proposta de transação."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Demasiadas tentativas de verificação. Inicie sessão novamente.",
@@ -348,7 +350,6 @@
     "openRequestExists": "Já existe outro pedido de revisão aberto para esta transação. Conclua-o ou descarte-o primeiro.",
     "receiptNotFound": "E-mail {{ id }} não encontrado",
     "aiOff": "A IA está desativada para esta caixa de correio. Altere primeiro o modo de IA nas definições da caixa de correio.",
-    "pollMailboxDisabled": "A caixa de correio está desativada. Ative-a nas definições da caixa de correio para a consultar.",
     "pollBusy": "A caixa de correio está a ser lida neste momento. Tente novamente dentro de um minuto.",
     "parserPayeeNotFound": "O beneficiário deste analisador não foi encontrado.",
     "parserNotFound": "Analisador de recibos {{ id }} não encontrado",
@@ -370,7 +371,10 @@
     "oauthReconnectRequired": "O início de sessão da caixa de correio foi revogado ou expirou. Volte a ligar a caixa de correio nas respetivas definições.",
     "oauthTokenUnreadable": "O início de sessão guardado não pode ser lido neste servidor. Volte a ligar a caixa de correio nas respetivas definições.",
     "notOAuthMailbox": "Esta caixa de correio não inicia sessão com Google nem Microsoft.",
-    "settingsEmpty": "Envie pelo menos uma definição a alterar."
+    "settingsEmpty": "Envie pelo menos uma definição a alterar.",
+    "parserToolReceiptCount": "Indique de 1 a 5 e-mails para testar o analisador.",
+    "parserToolInvalidSender": "Um rascunho precisa de um nome e de um a dez domínios de remetente, como shop.example.com.",
+    "parserDraftRequestNotClaimed": "Este pedido de rascunho de analisador não foi reclamado por si. Reclame-o primeiro com ai_review_requests ou guarde o rascunho sem requestId."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "O e-mail não está configurado. O acesso de emergência não pode ser ativado até que o SMTP seja configurado.",

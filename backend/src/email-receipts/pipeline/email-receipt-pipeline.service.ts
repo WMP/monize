@@ -32,6 +32,12 @@ import {
   type EmailReceiptMatchKind,
   type EmailReceiptStatus,
 } from "../entities/email-receipt.entity";
+import {
+  effectiveReceiptDate,
+  resolveForwardedIdentity,
+  sameIdentity,
+  type ReceiptIdentity,
+} from "../imap/forwarded-receipt";
 import { matchReceipt } from "../matching/match-receipt";
 import { parseReceipt } from "../parsing/parse-receipt";
 import type { ParsedReceipt } from "../parsing/receipt-parser.types";
@@ -252,6 +258,7 @@ export class EmailReceiptPipelineService {
       return { result: unchanged(receipt), autoApply: null };
     }
     this.refuseUnprocessable(receipt, requestStatus, options);
+    await this.healForwardedIdentity(m, userId, receipt);
 
     const link = options.link
       ? await loadLinkableTransaction(m, userId, options.link.transactionId)
@@ -331,16 +338,20 @@ export class EmailReceiptPipelineService {
       transaction = link;
       matchKind = "manual";
     } else {
-      const receivedDate = receipt.receivedAt.toISOString().slice(0, 10);
+      // The window is centred on the day the shop sent the order when a forward
+      // carried it, else on the day the email arrived (spec section 3).
+      const purchaseDate = effectiveReceiptDate(receipt)
+        .toISOString()
+        .slice(0, 10);
       const candidates = await loadReceiptCandidates(
         m,
         userId,
-        receivedDate,
+        purchaseDate,
         receipt.id,
       );
       const match = matchReceipt(
         parsed,
-        receivedDate,
+        purchaseDate,
         candidates,
         parser.payeeId,
       );
@@ -552,6 +563,46 @@ export class EmailReceiptPipelineService {
       });
       return { kind: "refused" };
     }
+  }
+
+  /**
+   * A forwarded email whose sender, subject and date are still the forwarder's
+   * (stored before forwards were understood, or by a detector that has since
+   * improved) is read again from its stored text, under the receipt's row lock,
+   * and the identity columns are brought up to date before the parser is chosen.
+   * Idempotent: an email already healed, or one that is no forward, is left as
+   * it is and nothing is written. `receipt` is updated in place so the rest of
+   * the transaction sees the healed row.
+   */
+  private async healForwardedIdentity(
+    m: EntityManager,
+    userId: string,
+    receipt: EmailReceipt,
+  ): Promise<void> {
+    const current: ReceiptIdentity = {
+      fromAddress: receipt.fromAddress,
+      fromDomain: receipt.fromDomain,
+      subject: receipt.subject,
+      forwardedBy: receipt.forwardedBy ?? null,
+      originalSentAt: receipt.originalSentAt ?? null,
+    };
+    const healed = resolveForwardedIdentity(
+      current,
+      receipt.bodyText,
+      receipt.receivedAt,
+    );
+    if (healed === null || sameIdentity(current, healed)) return;
+    await m.getRepository(EmailReceipt).update(
+      { id: receipt.id, userId },
+      {
+        fromAddress: healed.fromAddress,
+        fromDomain: healed.fromDomain,
+        subject: healed.subject,
+        forwardedBy: healed.forwardedBy,
+        originalSentAt: healed.originalSentAt,
+      },
+    );
+    Object.assign(receipt, healed);
   }
 
   /** The refusals that stop a person's command before anything is written. */

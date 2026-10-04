@@ -20,6 +20,17 @@
     "sameSign": "\"{{ param }}\" ve \"{{ other }}\" değerleri aynı işarete sahip olmalıdır",
     "onOrBefore": "\"{{ param }}\" değeri \"{{ other }}\" ile aynı ya da ondan önce olmalıdır"
   },
+  "attachments": {
+    "notFound": "Ek bulunamadı",
+    "storageUnavailable": "Bu ekin dosyası \"{{ provider }}\" depolama arka ucunda tutuluyor ve bu sunucu ona erişecek şekilde yapılandırılmamış",
+    "transactionNotFound": "İşlem bulunamadı",
+    "empty": "Yüklenen dosya boş",
+    "fileTooLarge": "Dosya, {{ max }} baytlık maksimum boyutu aşıyor",
+    "unsupportedType": "Desteklenmeyen dosya türü. İzin verilen türler: {{ types }}",
+    "tooMany": "Bu işlemde zaten en fazla {{ max }} ek var",
+    "swept": "Yükleme çok uzun sürdü ve depolama alanı geri alındı. Lütfen tekrar deneyin.",
+    "pairRequiresImages": "Taranan bir belge ve orijinali ikisi de görsel olmalıdır"
+  },
   "accounts": {
     "accountWithIdNotFound": "{{ id }} kimliğine sahip hesap bulunamadı",
     "notInvestmentPair": "Bu hesap bir yatırım hesabı çiftinin parçası değil",
@@ -130,7 +141,9 @@
     "nothingProposed": "Bir öneri en az bir değişiklik içermelidir: splits, categoryName, payeeName veya description.",
     "splitsAndCategory": "splits veya categoryName gönderin, ikisini birden değil: bölünmüş bir işlemin tek bir kategorisi yoktur.",
     "transferNotSupported": "Bir transfer öneriyle incelenemez. Bunun yerine isteği reddedin.",
-    "splitDifference": "Bölme satırlarının toplamı {{ sum }} ancak işlem tutarı {{ amount }}: {{ difference }} atanmadı. Satırların toplamını işlem tutarına eşitleyin; teslimat ücreti gibi bir artık kendi satırına ihtiyaç duyar veya atanmak yerine kullanıcıya bildirilir."
+    "splitDifference": "Bölme satırlarının toplamı {{ sum }} ancak işlem tutarı {{ amount }}: {{ difference }} atanmadı. Satırların toplamını işlem tutarına eşitleyin; teslimat ücreti gibi bir artık kendi satırına ihtiyaç duyar veya atanmak yerine kullanıcıya bildirilir.",
+    "noTransaction": "Bu yapay zekâ inceleme isteği bir işlemle ilgili değil.",
+    "parserDraftNotSubmittable": "Bir ayrıştırıcı taslağı isteği işlem önerisiyle değil, email_receipt_parsers aracıyla yanıtlanır (önce test edin, sonra bu requestId ile save_draft)."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Çok fazla doğrulama denemesi. Lütfen tekrar giriş yapın.",
@@ -228,14 +241,14 @@
     "backupPasswordBreached": "Bu şifre bir veri ihlalinde bulundu. Lütfen farklı bir şifre seçin.",
     "restoreBodyMustBeFile": "İstek gövdesi bir yedek dosyası olmalıdır",
     "reauthUnavailable": "Bir yedeği geri yüklemeden önce hesap şifrenizi ayarlamayı tamamlayın.",
-    "supportPasswordRequired": "Destek yedeği şifrelenmiş olmalıdır: bir parola girin.",
     "passwordHeaderNotBase64": "{header} başlığı base64 ile kodlanmış olmalıdır.",
+    "folderOutsideAllowedRoots": "Yedek klasörü \"{path}\" izin verilen kök dizinlerin ({roots}) dışında. İzin vermek için BACKUP_ALLOWED_ROOTS ayarlayın.",
     "decompressTooLarge": "Yedek geri yüklenmek için çok büyük: açıldığında bu kurulumun {limit} bayt sınırını aşıyor. Bu üst sınır, kapsayıcının belleğinden ve bayt başına ölçülmüş bir maliyetten türetilir; dolayısıyla yalnızca sınırı yükseltmek, sürecin tamamlayamayacağı bir geri yüklemeyi varsayar -- bunun yerine kapsayıcının bellek sınırını yükseltin (Kubernetes: backend.resources.limits.memory).",
     "exportTooLarge": "Bu yedek tek parçada üretilemeyecek kadar büyük (\"{table}\" tablosunda {limit} baytı aşıyor). Otomatik ve destek yedekleri bellekte tutulmak zorundadır; akış yapan bir elle yedek indirin veya BACKUP_EXPORT_BUFFER_LIMIT değerini yükseltin.",
+    "supportPasswordRequired": "Destek yedeği şifrelenmiş olmalıdır: bir parola girin.",
     "supportExportTooLarge": "Bu destek yedeği {{ size }} MiB JSON olurdu ve {{ limit }} MiB sınırının üzerindedir. Hesap seçimi veya tarih aralığıyla daraltın ya da BACKUP_EXPORT_BUFFER_LIMIT değerini yükseltin.",
-    "folderUnusable": "\"{{ path }}\" klasörü dizin olarak kullanılamıyor ({{ reason }}).",
-    "folderOutsideAllowedRoots": "Yedek klasörü \"{path}\" izin verilen kök dizinlerin ({roots}) dışında. İzin vermek için BACKUP_ALLOWED_ROOTS ayarlayın.",
     "noBackupStorage": "Bu kurulumda yazılabilir yedek deposu yok: {{ safePath }} mevcut değil ve oluşturulamıyor ({{ reason }}). Oraya bir birim bağlayın (Docker: bind mount veya adlandırılmış birim; Kubernetes: Helm grafiğinde backend.persistence.backups ayarlayın) ve yeniden deneyin.",
+    "folderUnusable": "\"{{ path }}\" klasörü dizin olarak kullanılamıyor ({{ reason }}).",
     "restoreNoMemoryHeadroom": "Bu kurulumda geri yükleme için bellek payı yok: bir geri yüklemenin modellenen tepe kullanımı kapsayıcıya sığmıyor. Kapsayıcının bellek sınırını yükseltin veya BACKUP_RESTORE_EXPANDED_LIMIT değerini düşürün.",
     "restoreQueueFull": "Bu kurulumun geri yükleme kapasitesi için zaten çok fazla geri yükleme bekliyor. Birazdan yeniden deneyin.",
     "restoreQueueWaitTimeout": "Geri yükleme kapasitesi beklenirken zaman aşımı: başka bir geri yükleme hâlâ sürüyor. Birazdan yeniden deneyin.",
@@ -288,12 +301,12 @@
   },
   "currencies": {
     "alreadyInList": "\"{{ code }}\" para birimi zaten listenizde mevcut",
+    "alreadyInListInactive": "\"{{ code }}\" para birimi zaten listenizde mevcut ancak şu anda etkin değil. Kullanmak için yeniden etkinleştirin.",
     "notFound": "\"{{ code }}\" para birimi bulunamadı",
     "cannotModifySystem": "Sistem para birimi meta verileri değiştirilemez",
     "cannotModifyOther": "Başka bir kullanıcının para birimi değiştirilemez",
     "inUse": "\"{{ code }}\" para birimi hesaplarınız, menkul kıymetleriniz veya diğer kayıtlarınız tarafından kullanılıyor. Bunun yerine devre dışı bırakın.",
     "invalidRateDate": "date, YYYY-AA-GG biçiminde olmalıdır",
-    "alreadyInListInactive": "\"{{ code }}\" para birimi zaten listenizde mevcut ancak şu anda etkin değil. Kullanmak için yeniden etkinleştirin.",
     "sameCurrencyHistory": "{{ code }} varsayılan para biriminizdir; döviz kuru geçmişi yoktur",
     "rateProviderUnavailable": "Döviz kuru sağlayıcısı yanıt vermedi. Lütfen daha sonra tekrar deneyin."
   },
@@ -348,7 +361,6 @@
     "openRequestExists": "Bu işlem için zaten başka bir inceleme isteği açık. Önce onu tamamlayın veya reddedin.",
     "receiptNotFound": "{{ id }} kimlikli e-posta bulunamadı",
     "aiOff": "Yapay zekâ bu posta kutusu için kapalı. Önce posta kutusu ayarlarında yapay zekâ modunu değiştirin.",
-    "pollMailboxDisabled": "Posta kutusu kapalı. Sorgulamak için posta kutusu ayarlarında açın.",
     "pollBusy": "Posta kutusu şu anda okunuyor. Bir dakika sonra yeniden deneyin.",
     "parserPayeeNotFound": "Bu ayrıştırıcının alacaklısı bulunamadı.",
     "parserNotFound": "{{ id }} kimlikli makbuz ayrıştırıcısı bulunamadı",
@@ -370,7 +382,10 @@
     "oauthReconnectRequired": "Posta kutusunun oturum açma yetkisi iptal edildi veya süresi doldu. Posta kutusunu posta kutusu ayarlarından yeniden bağlayın.",
     "oauthTokenUnreadable": "Kayıtlı oturum açma bilgisi bu sunucuda okunamıyor. Posta kutusunu posta kutusu ayarlarından yeniden bağlayın.",
     "notOAuthMailbox": "Bu posta kutusu Google veya Microsoft ile oturum açmıyor.",
-    "settingsEmpty": "Değiştirmek için en az bir ayar gönderin."
+    "settingsEmpty": "Değiştirmek için en az bir ayar gönderin.",
+    "parserToolReceiptCount": "Ayrıştırıcıyı denemek için 1 ile 5 arasında e-posta belirtin.",
+    "parserToolInvalidSender": "Bir taslak için bir ad ve shop.example.com gibi bir ila on gönderen alan adı gerekir.",
+    "parserDraftRequestNotClaimed": "Bu ayrıştırıcı taslağı isteğini siz üstlenmediniz. Önce ai_review_requests ile üstlenin veya taslağı requestId olmadan kaydedin."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "E-posta yapılandırılmamış. SMTP kurulana kadar acil erişim etkinleştirilemiyor.",
@@ -493,7 +508,6 @@
     "loanLedgerUnreadable": "Defter bakiyesi okunamadığı için bu kredi ödemesi hesaplanamadı. Tekrar deneyin."
   },
   "securities": {
-    "exchangeRateUnavailable": "İşlem tarihinde {{ from }} -> {{ to }} için bir döviz kuru belirlenemedi. Nakit hesabına kaydın doğru olması için açık bir exchangeRate girin.",
     "accountMustBeInvestment": "Hesap YATIRİM türünde olmalıdır",
     "transferPairSameRow": "Bir transferin iki bacağı aynı işlem olamaz",
     "transferPairNotFound": "İki işlemden biri artık mevcut değil",
@@ -507,8 +521,14 @@
     "transferPairOutsidePortfolio": "Her iki bacak da bu portföyün yatırım hesaplarında olmalıdır",
     "providerCurrencyMismatch": "{{ symbol }} için fiyat güncellemesi reddedildi: {{ provider }} bunu {{ reported }} cinsinden bildiriyor, ancak menkul kıymet {{ configured }} cinsinden kayıtlı. Menkul kıymetin para birimini, sembolünü veya borsasını düzeltip yeniden yenileyin.",
     "securityIdRequired": "{{ action }} işlemleri için menkul kıymet kimliği gereklidir",
+    "exchangeRateUnavailable": "İşlem tarihinde {{ from }} -> {{ to }} için bir döviz kuru belirlenemedi. Nakit hesabına kaydın doğru olması için açık bir exchangeRate girin.",
     "splitRatioRequired": "Bölünme oranı (miktar) sıfırdan büyük olmalıdır",
     "acquisitionPriceRequired": "{{ action }} işlemleri için sıfırdan büyük bir birim fiyat gereklidir. Maliyeti bilinmeyen paylar için ADD_SHARES kullanın.",
+    "ambiguousSecurity": "\"{{ query }}\" birden fazla menkul kıymetle eşleşiyor: {{ list }}. Tam ticker sembolünü kullanın.",
+    "allocationExceedsTotal": "Tahsis yüzdeleri toplamı %100'ü aşıyor.",
+    "assetOptionNameRequired": "Varlık sınıfı adı gerekli.",
+    "invalidTagKey": "Bir etiket anahtarı (1-100 karakter) gereklidir",
+    "securityNotFoundByQuery": "\"{{ query }}\" ile eşleşen menkul kıymet yok. Önce menkul kıymeti ekleyin veya ticker sembolünü kontrol edin.",
     "cannotHoldSecurities": "{{ label }} menkul kıymet tutamaz",
     "sourceDestMustDiffer": "Kaynak ve hedef hesaplar farklı olmalıdır",
     "bothAccountsMustBeInvestment": "Her iki hesap da YATIRİM türünde olmalıdır",
@@ -534,6 +554,10 @@
     "limitMax200": "limit 200'ü geçemez",
     "invalidAction": "Geçersiz eylem: {{ action }}. Şunlardan biri olmalıdır: {{ validActions }}",
     "symbolAlreadyExists": "{{ symbol }} sembolüne sahip menkul kıymet zaten mevcut",
+    "lookupQueryRequired": "Aranacak bir hisse sembolü veya menkul kıymet adı girin.",
+    "lookupNotFound": "\"{{ query }}\" ile eşleşen menkul kıymet bulunamadı. Sembolü veya adı kontrol edin ya da bir borsa belirtin.",
+    "lookupAmbiguous": "\"{{ query }}\" birden fazla menkul kıymetle eşleşiyor: {{ list }}. Bir borsa belirterek yeniden çalıştırın.",
+    "lookupNoCurrency": "\"{{ symbol }}\" için para birimi belirlenemedi. Bunun yerine menkul kıymeti elle ekleyin.",
     "notFoundById": "{{ id }} kimliğine sahip menkul kıymet bulunamadı",
     "notFoundBySymbol": "{{ symbol }} sembolüne sahip menkul kıymet bulunamadı",
     "cannotDeactivateWithHoldings": "Aktif pozisyonları olan menkul kıymet devre dışı bırakılamaz. Lütfen önce tüm hisseleri satın.",
@@ -550,21 +574,12 @@
     "invalidUuid": "Geçersiz {{ label }} UUID'si: {{ id }}",
     "symbolLength": "Sembol 1 ile 20 karakter arasında olmalıdır",
     "symbolCharacters": "Sembol yalnızca harf, rakam, nokta veya tire içerebilir",
-    "ambiguousSecurity": "\"{{ query }}\" birden fazla menkul kıymetle eşleşiyor: {{ list }}. Tam ticker sembolünü kullanın.",
-    "securityNotFoundByQuery": "\"{{ query }}\" ile eşleşen menkul kıymet yok. Önce menkul kıymeti ekleyin veya ticker sembolünü kontrol edin.",
-    "lookupQueryRequired": "Aranacak bir hisse sembolü veya menkul kıymet adı girin.",
-    "lookupNotFound": "\"{{ query }}\" ile eşleşen menkul kıymet bulunamadı. Sembolü veya adı kontrol edin ya da bir borsa belirtin.",
-    "lookupAmbiguous": "\"{{ query }}\" birden fazla menkul kıymetle eşleşiyor: {{ list }}. Bir borsa belirterek yeniden çalıştırın.",
-    "lookupNoCurrency": "\"{{ symbol }}\" için para birimi belirlenemedi. Bunun yerine menkul kıymeti elle ekleyin.",
     "noUpdateFields": "Değiştirmek için en az bir alan girin.",
-    "allocationExceedsTotal": "Tahsis yüzdeleri toplamı %100'ü aşıyor.",
-    "invalidTagKey": "Bir etiket anahtarı (1-100 karakter) gereklidir",
-    "assetOptionNameRequired": "Varlık sınıfı adı gerekli.",
     "documentNotFound": "Belge bulunamadı",
-    "embeddedSplitAmountMismatch": "Bu bölünme {{ amount }} kaydediyor, ancak {{ action }} {{ quantity }} @ {{ price }} işlemi {{ rate }} kuruyla {{ expected }} eder. Bu tutarı kullanın veya kastettiğiniz döviz kurunu belirtin.",
     "selectionNotFound": "Seçilen menkul kıymetlerden biri veya birkaçı bulunamadı",
     "comparisonSelectionEmpty": "Karşılaştırmak için en az bir menkul kıymet veya piyasa endeksi seçin",
-    "exchangeRateNotPositive": "Döviz kuru sıfırdan büyük olmalıdır"
+    "exchangeRateNotPositive": "Döviz kuru sıfırdan büyük olmalıdır",
+    "embeddedSplitAmountMismatch": "Bu bölünme {{ amount }} kaydediyor, ancak {{ action }} {{ quantity }} @ {{ price }} işlemi {{ rate }} kuruyla {{ expected }} eder. Bu tutarı kullanın veya kastettiğiniz döviz kurunu belirtin."
   },
   "tags": {
     "notFound": "{{ id }} kimliğine sahip etiket bulunamadı",
@@ -682,17 +697,6 @@
     "recalculateMortgageOnly": "Taksit yeniden hesaplaması yalnızca ipotek hesapları için kullanılabilir",
     "insufficientData": "Faiz değişikliklerini algılamak için faiz ayrıntıları olan yeterli ödeme yok",
     "frequencyMismatch": "Ödeme tarihleri hesabın ödeme sıklığıyla eşleşmiyor; çıkarsanan oranlar daha az doğru olabilir"
-  },
-  "attachments": {
-    "notFound": "Ek bulunamadı",
-    "storageUnavailable": "Bu ekin dosyası \"{{ provider }}\" depolama arka ucunda tutuluyor ve bu sunucu ona erişecek şekilde yapılandırılmamış",
-    "transactionNotFound": "İşlem bulunamadı",
-    "empty": "Yüklenen dosya boş",
-    "fileTooLarge": "Dosya, {{ max }} baytlık maksimum boyutu aşıyor",
-    "unsupportedType": "Desteklenmeyen dosya türü. İzin verilen türler: {{ types }}",
-    "tooMany": "Bu işlemde zaten en fazla {{ max }} ek var",
-    "swept": "Yükleme çok uzun sürdü ve depolama alanı geri alındı. Lütfen tekrar deneyin.",
-    "pairRequiresImages": "Taranan bir belge ve orijinali ikisi de görsel olmalıdır"
   },
   "strategies": {
     "accountNotFound": "Hesap bulunamadı",

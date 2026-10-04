@@ -20,6 +20,17 @@
     "sameSign": "Nilai \"{{ param }}\" dan \"{{ other }}\" harus bertanda sama",
     "onOrBefore": "Nilai \"{{ param }}\" harus pada atau sebelum \"{{ other }}\""
   },
+  "attachments": {
+    "notFound": "Lampiran tidak ditemukan",
+    "storageUnavailable": "Berkas lampiran ini berada di penyimpanan \"{{ provider }}\", yang tidak dapat dijangkau oleh server ini",
+    "transactionNotFound": "Transaksi tidak ditemukan",
+    "empty": "File yang diunggah kosong",
+    "fileTooLarge": "File melebihi ukuran maksimum {{ max }} byte",
+    "unsupportedType": "Jenis file tidak didukung. Jenis yang diizinkan: {{ types }}",
+    "tooMany": "Transaksi ini sudah memiliki maksimum {{ max }} lampiran",
+    "swept": "Unggahan memakan waktu terlalu lama dan penyimpanannya telah dibebaskan. Silakan coba lagi.",
+    "pairRequiresImages": "Dokumen yang dipindai dan aslinya harus sama-sama berupa gambar"
+  },
   "accounts": {
     "accountWithIdNotFound": "Akun dengan ID {{ id }} tidak ditemukan",
     "notInvestmentPair": "Akun ini bukan bagian dari pasangan akun investasi",
@@ -130,7 +141,9 @@
     "nothingProposed": "Usulan memerlukan setidaknya satu perubahan: splits, categoryName, payeeName, atau description.",
     "splitsAndCategory": "Kirim splits atau categoryName, bukan keduanya: transaksi terpisah tidak memiliki satu kategori.",
     "transferNotSupported": "Transfer tidak dapat ditinjau melalui usulan. Tolak permintaan tersebut sebagai gantinya.",
-    "splitDifference": "Baris pemisahan berjumlah {{ sum }} tetapi transaksinya {{ amount }}: {{ difference }} belum dialokasikan. Buat baris sesuai jumlah transaksi; sisa seperti biaya pengiriman perlu barisnya sendiri, atau disebutkan kepada pengguna alih-alih dialokasikan."
+    "splitDifference": "Baris pemisahan berjumlah {{ sum }} tetapi transaksinya {{ amount }}: {{ difference }} belum dialokasikan. Buat baris sesuai jumlah transaksi; sisa seperti biaya pengiriman perlu barisnya sendiri, atau disebutkan kepada pengguna alih-alih dialokasikan.",
+    "noTransaction": "Permintaan tinjauan AI ini tidak terkait dengan transaksi.",
+    "parserDraftNotSubmittable": "Permintaan draf parser dijawab dengan alat email_receipt_parsers (uji dulu, lalu save_draft dengan requestId ini), bukan dengan usulan transaksi."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Terlalu banyak percobaan verifikasi. Silakan masuk lagi.",
@@ -228,14 +241,14 @@
     "backupPasswordBreached": "Kata sandi ini ditemukan dalam kebocoran data. Pilih kata sandi yang berbeda.",
     "restoreBodyMustBeFile": "Isi permintaan harus berupa file cadangan",
     "reauthUnavailable": "Selesaikan pengaturan kata sandi akun Anda sebelum memulihkan cadangan.",
-    "supportPasswordRequired": "Backup dukungan harus dienkripsi: masukkan kata sandi.",
     "passwordHeaderNotBase64": "Header {header} harus dikodekan base64.",
+    "folderOutsideAllowedRoots": "Folder backup \"{path}\" berada di luar root yang diizinkan ({roots}). Setel BACKUP_ALLOWED_ROOTS untuk mengizinkannya.",
     "decompressTooLarge": "Cadangan terlalu besar untuk dipulihkan: setelah diekstrak melebihi batas {limit} byte pada instalasi ini. Batas itu diturunkan dari memori kontainer dan biaya terukur per byte, jadi menaikkannya saja menggambarkan pemulihan yang tidak dapat diselesaikan prosesnya -- naikkan batas memori kontainer (Kubernetes: backend.resources.limits.memory).",
     "exportTooLarge": "Backup ini terlalu besar untuk dibuat sekaligus (melewati {limit} byte pada tabel \"{table}\"). Backup otomatis dan dukungan harus disimpan di memori; unduh backup manual yang melakukan streaming, atau naikkan BACKUP_EXPORT_BUFFER_LIMIT.",
+    "supportPasswordRequired": "Backup dukungan harus dienkripsi: masukkan kata sandi.",
     "supportExportTooLarge": "Backup dukungan ini akan berukuran {{ size }} MiB JSON, di atas batas {{ limit }} MiB. Persempit dengan pemilihan akun atau rentang tanggal, atau naikkan BACKUP_EXPORT_BUFFER_LIMIT.",
-    "folderUnusable": "Folder \"{{ path }}\" tidak dapat digunakan sebagai direktori ({{ reason }}).",
-    "folderOutsideAllowedRoots": "Folder backup \"{path}\" berada di luar root yang diizinkan ({roots}). Setel BACKUP_ALLOWED_ROOTS untuk mengizinkannya.",
     "noBackupStorage": "Deployment ini tidak memiliki penyimpanan backup yang dapat ditulisi: {{ safePath }} tidak ada dan tidak dapat dibuat ({{ reason }}). Pasang volume di sana (Docker: bind mount atau named volume; Kubernetes: setel backend.persistence.backups di chart Helm) lalu coba lagi.",
+    "folderUnusable": "Folder \"{{ path }}\" tidak dapat digunakan sebagai direktori ({{ reason }}).",
     "restoreNoMemoryHeadroom": "Deployment ini tidak memiliki ruang memori untuk pemulihan: puncak yang dimodelkan untuk satu pemulihan tidak muat dalam kontainer. Naikkan batas memori kontainer atau turunkan BACKUP_RESTORE_EXPANDED_LIMIT.",
     "restoreQueueFull": "Terlalu banyak pemulihan yang sudah menunggu kapasitas pemulihan pada instalasi ini. Coba lagi sebentar.",
     "restoreQueueWaitTimeout": "Waktu tunggu kapasitas pemulihan habis: pemulihan lain masih berjalan. Coba lagi sebentar.",
@@ -288,12 +301,12 @@
   },
   "currencies": {
     "alreadyInList": "Mata uang \"{{ code }}\" sudah ada dalam daftar Anda",
+    "alreadyInListInactive": "Mata uang \"{{ code }}\" sudah ada dalam daftar Anda, tetapi saat ini tidak aktif. Aktifkan kembali untuk menggunakannya.",
     "notFound": "Mata uang \"{{ code }}\" tidak ditemukan",
     "cannotModifySystem": "Tidak dapat mengubah metadata mata uang sistem",
     "cannotModifyOther": "Tidak dapat mengubah mata uang pengguna lain",
     "inUse": "Mata uang \"{{ code }}\" sedang digunakan oleh akun, sekuritas, atau catatan lain Anda. Nonaktifkan saja.",
     "invalidRateDate": "date harus dalam format YYYY-MM-DD",
-    "alreadyInListInactive": "Mata uang \"{{ code }}\" sudah ada dalam daftar Anda, tetapi saat ini tidak aktif. Aktifkan kembali untuk menggunakannya.",
     "sameCurrencyHistory": "{{ code }} adalah mata uang bawaan Anda; tidak ada riwayat kurs untuknya",
     "rateProviderUnavailable": "Penyedia kurs tukar tidak merespons. Silakan coba lagi nanti."
   },
@@ -348,7 +361,6 @@
     "openRequestExists": "Permintaan tinjauan lain sudah terbuka untuk transaksi ini. Selesaikan atau tutup terlebih dahulu.",
     "receiptNotFound": "Email {{ id }} tidak ditemukan",
     "aiOff": "AI dimatikan untuk kotak surat ini. Ubah dulu mode AI di pengaturan kotak surat.",
-    "pollMailboxDisabled": "Kotak surat dinonaktifkan. Aktifkan di pengaturan kotak surat untuk memeriksanya.",
     "pollBusy": "Kotak surat sedang dibaca. Coba lagi dalam semenit.",
     "parserPayeeNotFound": "Penerima pembayaran untuk parser ini tidak ditemukan.",
     "parserNotFound": "Parser struk {{ id }} tidak ditemukan",
@@ -370,7 +382,10 @@
     "oauthReconnectRequired": "Login kotak surat telah dicabut atau kedaluwarsa. Hubungkan kembali kotak surat di pengaturan kotak surat.",
     "oauthTokenUnreadable": "Login yang tersimpan tidak dapat dibaca di server ini. Hubungkan kembali kotak surat di pengaturan kotak surat.",
     "notOAuthMailbox": "Kotak surat ini tidak login dengan Google atau Microsoft.",
-    "settingsEmpty": "Kirim setidaknya satu pengaturan untuk diubah."
+    "settingsEmpty": "Kirim setidaknya satu pengaturan untuk diubah.",
+    "parserToolReceiptCount": "Sebutkan 1 sampai 5 surel untuk menguji parser.",
+    "parserToolInvalidSender": "Draf memerlukan nama dan satu sampai sepuluh domain pengirim seperti shop.example.com.",
+    "parserDraftRequestNotClaimed": "Permintaan draf parser ini tidak Anda ambil. Ambil dulu dengan ai_review_requests, atau simpan draf tanpa requestId."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "Email belum dikonfigurasi. Akses darurat tidak dapat diaktifkan hingga SMTP dikonfigurasi.",
@@ -493,7 +508,6 @@
     "loanLedgerUnreadable": "Pembayaran pinjaman ini tidak dapat dihitung karena saldo buku besarnya tidak dapat dibaca. Coba lagi."
   },
   "securities": {
-    "exchangeRateUnavailable": "Tidak dapat menentukan nilai tukar untuk {{ from }} -> {{ to }} pada tanggal transaksi. Berikan exchangeRate eksplisit agar pencatatan ke akun kas benar.",
     "accountMustBeInvestment": "Akun harus bertipe INVESTMENT",
     "transferPairSameRow": "Dua sisi satu transfer tidak boleh merupakan transaksi yang sama",
     "transferPairNotFound": "Salah satu dari kedua transaksi itu sudah tidak ada",
@@ -507,8 +521,14 @@
     "transferPairOutsidePortfolio": "Kedua sisi harus berada pada akun investasi portofolio ini",
     "providerCurrencyMismatch": "Pembaruan harga ditolak untuk {{ symbol }}: {{ provider }} mengutipnya dalam {{ reported }}, tetapi sekuritas ini tercatat dalam {{ configured }}. Perbaiki mata uang, simbol, atau bursa sekuritas ini, lalu segarkan kembali.",
     "securityIdRequired": "ID sekuritas diperlukan untuk transaksi {{ action }}",
+    "exchangeRateUnavailable": "Tidak dapat menentukan nilai tukar untuk {{ from }} -> {{ to }} pada tanggal transaksi. Berikan exchangeRate eksplisit agar pencatatan ke akun kas benar.",
     "splitRatioRequired": "Rasio pemecahan (kuantitas) harus lebih dari nol",
     "acquisitionPriceRequired": "Harga per lembar wajib diisi dan harus lebih besar dari nol untuk transaksi {{ action }}. Gunakan ADD_SHARES untuk saham yang diperoleh tanpa biaya yang diketahui.",
+    "ambiguousSecurity": "\"{{ query }}\" cocok dengan beberapa sekuritas: {{ list }}. Gunakan simbol ticker yang tepat.",
+    "allocationExceedsTotal": "Persentase alokasi berjumlah lebih dari 100%.",
+    "assetOptionNameRequired": "Nama kelas aset wajib diisi.",
+    "invalidTagKey": "Kunci tag (1-100 karakter) diperlukan",
+    "securityNotFoundByQuery": "Tidak ada sekuritas yang cocok dengan \"{{ query }}\". Tambahkan sekuritas terlebih dahulu atau periksa simbol ticker.",
     "cannotHoldSecurities": "{{ label }} tidak dapat menyimpan sekuritas",
     "sourceDestMustDiffer": "Akun sumber dan tujuan harus berbeda",
     "bothAccountsMustBeInvestment": "Kedua akun harus bertipe INVESTMENT",
@@ -534,6 +554,10 @@
     "limitMax200": "limit tidak boleh melebihi 200",
     "invalidAction": "Tindakan tidak valid: {{ action }}. Harus salah satu dari: {{ validActions }}",
     "symbolAlreadyExists": "Sekuritas dengan simbol {{ symbol }} sudah ada",
+    "lookupQueryRequired": "Masukkan simbol ticker atau nama sekuritas untuk dicari.",
+    "lookupNotFound": "Tidak ada sekuritas yang cocok dengan \"{{ query }}\". Periksa simbol atau nama, atau tentukan bursa.",
+    "lookupAmbiguous": "\"{{ query }}\" cocok dengan beberapa sekuritas: {{ list }}. Jalankan lagi dengan menentukan bursa.",
+    "lookupNoCurrency": "Tidak dapat menentukan mata uang untuk \"{{ symbol }}\". Tambahkan sekuritas secara manual sebagai gantinya.",
     "notFoundById": "Sekuritas dengan ID {{ id }} tidak ditemukan",
     "notFoundBySymbol": "Sekuritas dengan simbol {{ symbol }} tidak ditemukan",
     "cannotDeactivateWithHoldings": "Tidak dapat menonaktifkan sekuritas yang masih memiliki kepemilikan aktif. Jual semua saham terlebih dahulu.",
@@ -550,21 +574,12 @@
     "invalidUuid": "UUID {{ label }} tidak valid: {{ id }}",
     "symbolLength": "Simbol harus antara 1 dan 20 karakter",
     "symbolCharacters": "Simbol hanya boleh mengandung huruf, angka, titik, atau tanda hubung",
-    "ambiguousSecurity": "\"{{ query }}\" cocok dengan beberapa sekuritas: {{ list }}. Gunakan simbol ticker yang tepat.",
-    "securityNotFoundByQuery": "Tidak ada sekuritas yang cocok dengan \"{{ query }}\". Tambahkan sekuritas terlebih dahulu atau periksa simbol ticker.",
-    "lookupQueryRequired": "Masukkan simbol ticker atau nama sekuritas untuk dicari.",
-    "lookupNotFound": "Tidak ada sekuritas yang cocok dengan \"{{ query }}\". Periksa simbol atau nama, atau tentukan bursa.",
-    "lookupAmbiguous": "\"{{ query }}\" cocok dengan beberapa sekuritas: {{ list }}. Jalankan lagi dengan menentukan bursa.",
-    "lookupNoCurrency": "Tidak dapat menentukan mata uang untuk \"{{ symbol }}\". Tambahkan sekuritas secara manual sebagai gantinya.",
     "noUpdateFields": "Berikan setidaknya satu kolom untuk diubah.",
-    "allocationExceedsTotal": "Persentase alokasi berjumlah lebih dari 100%.",
-    "invalidTagKey": "Kunci tag (1-100 karakter) diperlukan",
-    "assetOptionNameRequired": "Nama kelas aset wajib diisi.",
     "documentNotFound": "Dokumen tidak ditemukan",
-    "embeddedSplitAmountMismatch": "Pembagian ini mencatat {{ amount }}, tetapi {{ action }} {{ quantity }} @ {{ price }} dikonversi menjadi {{ expected }} dengan kurs {{ rate }}. Gunakan jumlah itu, atau nyatakan nilai tukar yang Anda maksud.",
     "selectionNotFound": "Satu atau beberapa efek yang dipilih tidak ditemukan",
     "comparisonSelectionEmpty": "Pilih setidaknya satu efek atau indeks pasar untuk dibandingkan",
-    "exchangeRateNotPositive": "Nilai tukar harus lebih besar dari nol"
+    "exchangeRateNotPositive": "Nilai tukar harus lebih besar dari nol",
+    "embeddedSplitAmountMismatch": "Pembagian ini mencatat {{ amount }}, tetapi {{ action }} {{ quantity }} @ {{ price }} dikonversi menjadi {{ expected }} dengan kurs {{ rate }}. Gunakan jumlah itu, atau nyatakan nilai tukar yang Anda maksud."
   },
   "tags": {
     "notFound": "Tag dengan ID {{ id }} tidak ditemukan",
@@ -682,17 +697,6 @@
     "recalculateMortgageOnly": "Penghitungan ulang angsuran hanya tersedia untuk akun hipotek",
     "insufficientData": "Tidak cukup pembayaran dengan rincian bunga untuk mendeteksi perubahan suku bunga",
     "frequencyMismatch": "Tanggal pembayaran tidak sesuai dengan frekuensi pembayaran akun; suku bunga yang diperkirakan mungkin kurang akurat"
-  },
-  "attachments": {
-    "notFound": "Lampiran tidak ditemukan",
-    "storageUnavailable": "Berkas lampiran ini berada di penyimpanan \"{{ provider }}\", yang tidak dapat dijangkau oleh server ini",
-    "transactionNotFound": "Transaksi tidak ditemukan",
-    "empty": "File yang diunggah kosong",
-    "fileTooLarge": "File melebihi ukuran maksimum {{ max }} byte",
-    "unsupportedType": "Jenis file tidak didukung. Jenis yang diizinkan: {{ types }}",
-    "tooMany": "Transaksi ini sudah memiliki maksimum {{ max }} lampiran",
-    "swept": "Unggahan memakan waktu terlalu lama dan penyimpanannya telah dibebaskan. Silakan coba lagi.",
-    "pairRequiresImages": "Dokumen yang dipindai dan aslinya harus sama-sama berupa gambar"
   },
   "strategies": {
     "accountNotFound": "Akun tidak ditemukan",

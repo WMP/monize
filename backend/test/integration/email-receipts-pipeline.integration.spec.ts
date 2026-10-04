@@ -7,6 +7,7 @@ import { AiActionsService } from "@/ai/actions/ai-actions.service";
 import { AiModule } from "@/ai/ai.module";
 import { AiService } from "@/ai/ai.service";
 import { AiReviewModule } from "@/ai-review/ai-review.module";
+import { AiReviewRequestsService } from "@/ai-review/ai-review-requests.service";
 import { AiReviewWorkService } from "@/ai-review/ai-review-work.service";
 import { ASSISTANT_CLAIM_KEY } from "@/ai-review/ai-review-work.types";
 import { AiReviewQueueModule } from "@/ai-review/ai-review-queue.module";
@@ -22,6 +23,7 @@ import {
 } from "@/email-receipts/imap/imap-mailbox-client";
 import { EmailReceiptAiService } from "@/email-receipts/ai/email-receipt-ai.service";
 import { RECEIPT_AUTOMATIC_AI_INSTRUCTION } from "@/email-receipts/pipeline/email-receipt-pipeline.service";
+import { EmailReceiptParserToolsService } from "@/email-receipts/parsers/email-receipt-parser-tools.service";
 import { EmailReceiptParsersService } from "@/email-receipts/parsers/email-receipt-parsers.service";
 import { EmailReceiptPollService } from "@/email-receipts/poll/email-receipt-poll.service";
 import { EmailReceiptsService } from "@/email-receipts/receipts/email-receipts.service";
@@ -71,6 +73,7 @@ describe("email receipts pipeline (integration)", () => {
   let receiptAi: EmailReceiptAiService;
   let work: AiReviewWorkService;
   let parsers: EmailReceiptParsersService;
+  let parserTools: EmailReceiptParserToolsService;
   let transactions: TransactionsService;
   let actions: AiActionsService;
   let imap: ImapMailboxClient;
@@ -196,6 +199,7 @@ describe("email receipts pipeline (integration)", () => {
     receiptAi = module.get(EmailReceiptAiService);
     work = module.get(AiReviewWorkService);
     parsers = module.get(EmailReceiptParsersService);
+    parserTools = module.get(EmailReceiptParserToolsService);
     transactions = module.get(TransactionsService);
     actions = module.get(AiActionsService);
     imap = module.get(ImapMailboxClient);
@@ -828,6 +832,643 @@ describe("email receipts pipeline (integration)", () => {
         transaction_id: null,
       });
       expect(await requestRows()).toHaveLength(1);
+    });
+  });
+
+  describe("an HTML part", () => {
+    const multipart = (uid: string) =>
+      Buffer.from(
+        [
+          "From: Shop <orders@shop.example.com>",
+          "To: receipts@example.com",
+          "Subject: Your order ABCD1234",
+          "Date: Thu, 10 Sep 2026 10:00:00 +0000",
+          `Message-ID: <h${uid}@shop.example.com>`,
+          'Content-Type: multipart/alternative; boundary="B1"',
+          "",
+          "--B1",
+          "Content-Type: text/plain; charset=utf-8",
+          "",
+          "Order total: 15.00",
+          "--B1",
+          "Content-Type: text/html; charset=utf-8",
+          "",
+          '<p>Order total: <b>15.00</b></p><img src="https://tracker.example/p.gif">',
+          "--B1--",
+          "",
+        ].join("\r\n"),
+      );
+
+    it("is stored with the email, shown by the detail only, and never by the list", async () => {
+      jest.spyOn(imap, "fetchSince").mockResolvedValueOnce({
+        uidValidity: "1001",
+        messages: [
+          {
+            uid: "41",
+            source: multipart("41"),
+            internalDate: new Date("2026-09-10T10:00:01Z"),
+            size: 500,
+          },
+        ],
+        skipped: [],
+        highestUid: "41",
+      });
+
+      await pollAlice();
+
+      const [row] = await receiptRows();
+      expect(row.body_text).toContain("Order total: 15.00");
+      expect(row.body_html).toContain("<b>15.00</b>");
+      const [item] = await asAlice(() => receipts.list(aliceId));
+      expect(item).not.toHaveProperty("bodyHtml");
+      expect(item).not.toHaveProperty("bodyText");
+      const detail = await asAlice(() => receipts.get(aliceId, row.id));
+      expect(detail.bodyHtml).toContain("<b>15.00</b>");
+      expect(detail.bodyText).toContain("Order total: 15.00");
+      // another user never reads it
+      await expect(
+        asBob(() => receipts.get(bobId, row.id)),
+      ).rejects.toMatchObject({ status: 404 });
+    });
+
+    it("is null for a plain text email", async () => {
+      jest.spyOn(imap, "fetchSince").mockResolvedValueOnce(serverReturns("41"));
+      await pollAlice();
+      const [row] = await receiptRows();
+      expect(row.body_html).toBeNull();
+      expect(
+        (await asAlice(() => receipts.get(aliceId, row.id))).bodyHtml,
+      ).toBeNull();
+    });
+  });
+
+  describe("a forwarded order confirmation", () => {
+    /** Forwarded from the user's own Gmail 31 days after the purchase. */
+    const forwarded = (uid: string) =>
+      Buffer.from(
+        [
+          "From: Alice Example <alice.example@gmail.example.com>",
+          "To: receipts@example.com",
+          "Subject: Fwd: Your order ABCD1234",
+          "Date: Thu, 10 Sep 2026 10:00:00 +0000",
+          `Message-ID: <f${uid}@gmail.example.com>`,
+          "Content-Type: text/plain; charset=utf-8",
+          "",
+          "---------- Forwarded message ---------",
+          "From: Example Shop <orders@shop.example.com>",
+          "Date: Mon, Aug 10, 2026 at 10:15 AM",
+          "Subject: Your order ABCD1234",
+          "To: <alice.example@gmail.example.com>",
+          "",
+          "Order number: ABCD1234",
+          "Items",
+          "Widget 12.00",
+          "Subtotal 12.00",
+          "Shipping: 3.00",
+          "Order total: 15.00",
+          "",
+        ].join("\r\n"),
+      );
+    const serverForwards = (uid: string): FetchSinceResult => ({
+      uidValidity: "1001",
+      messages: [
+        {
+          uid,
+          source: forwarded(uid),
+          internalDate: new Date("2026-09-10T10:00:01Z"),
+          size: 600,
+        },
+      ],
+      skipped: [],
+      highestUid: uid,
+    });
+    let purchaseTxId: string;
+
+    beforeEach(async () => {
+      // The bank charge of the PURCHASE day (Aug 12), a month before the forward.
+      purchaseTxId = (
+        await asAlice(() =>
+          transactions.create(aliceId, {
+            accountId,
+            transactionDate: "2026-08-12",
+            amount: -15,
+            currencyCode: "USD",
+            description: "CARD PURCHASE ORDER ABCD1234",
+          } as never),
+        )
+      ).id;
+    });
+
+    it("is stored under the shop and the purchase day, read by the shop's parser and matched to the purchase-day transaction", async () => {
+      await createParser();
+      jest
+        .spyOn(imap, "fetchSince")
+        .mockResolvedValueOnce(serverForwards("41"));
+
+      const outcome = await pollAlice();
+
+      expect(outcome).toMatchObject({ ok: true, fetched: 1, processed: 1 });
+      const [row] = await receiptRows();
+      expect(row).toMatchObject({
+        from_address: "orders@shop.example.com",
+        from_domain: "shop.example.com",
+        subject: "Your order ABCD1234",
+        forwarded_by: "alice.example@gmail.example.com",
+        // the parser of shop.example.com read it, not "gmail.example.com"
+        status: "review",
+        transaction_id: purchaseTxId,
+        match_kind: "order_id",
+      });
+      expect(new Date(row.original_sent_at).toISOString()).toBe(
+        "2026-08-10T10:15:00.000Z",
+      );
+      // the day the forward arrived is kept as it was
+      expect(new Date(row.received_at).toISOString()).toBe(
+        "2026-09-10T10:00:00.000Z",
+      );
+      const [item] = await asAlice(() => receipts.list(aliceId));
+      expect(item).toMatchObject({
+        forwardedBy: "alice.example@gmail.example.com",
+        originalSentAt: "2026-08-10T10:15:00.000Z",
+        effectiveDate: "2026-08-10T10:15:00.000Z",
+        receivedAt: "2026-09-10T10:00:00.000Z",
+        fromAddress: "orders@shop.example.com",
+      });
+    });
+
+    it("would have matched nothing around the forward's own day: the window follows the purchase", async () => {
+      // A transaction of the FORWARD's week and none of the purchase's.
+      await db.query(`DELETE FROM transactions WHERE id = $1`, [purchaseTxId]);
+      await createParser();
+      jest
+        .spyOn(imap, "fetchSince")
+        .mockResolvedValueOnce(serverForwards("41"));
+
+      await pollAlice();
+
+      // txId (Sep 11) is outside Aug 7 to Aug 24
+      expect((await receiptRows())[0]).toMatchObject({
+        status: "unmatched",
+        transaction_id: null,
+      });
+    });
+
+    it("heals an email stored before forwards were understood, when it is reprocessed", async () => {
+      await createParser();
+      const [legacy] = await db.query(
+        `INSERT INTO email_receipts
+           (user_id, mailbox_id, uid_validity, uid, from_address, from_domain,
+            subject, received_at, body_text, status)
+         VALUES ($1, $2, 1001, 7, 'alice.example@gmail.example.com',
+                 'gmail.example.com', 'Fwd: Your order ABCD1234',
+                 '2026-09-10T10:00:00Z', $3, 'no_parser') RETURNING id`,
+        [
+          aliceId,
+          mailboxId,
+          [
+            "---------- Forwarded message ---------",
+            "From: Example Shop <orders@shop.example.com>",
+            "Date: Mon, Aug 10, 2026 at 10:15 AM",
+            "Subject: Your order ABCD1234",
+            "",
+            "Order number: ABCD1234",
+            "Items",
+            "Widget 12.00",
+            "Subtotal 12.00",
+            "Shipping: 3.00",
+            "Order total: 15.00",
+          ].join("\n"),
+        ],
+      );
+
+      const detail = await asAlice(() =>
+        receipts.reprocess(aliceId, legacy.id),
+      );
+
+      expect(detail).toMatchObject({
+        status: "review",
+        fromAddress: "orders@shop.example.com",
+        fromDomain: "shop.example.com",
+        subject: "Your order ABCD1234",
+        forwardedBy: "alice.example@gmail.example.com",
+        originalSentAt: "2026-08-10T10:15:00.000Z",
+        effectiveDate: "2026-08-10T10:15:00.000Z",
+      });
+      // a second reprocess changes nothing about who forwarded it
+      const again = await asAlice(() => receipts.reprocess(aliceId, legacy.id));
+      expect(again.forwardedBy).toBe("alice.example@gmail.example.com");
+      expect(again.fromAddress).toBe("orders@shop.example.com");
+    });
+  });
+
+  describe("choosing a transaction by hand, whatever its date", () => {
+    it("links a transaction months away from the email, and still refuses another user's", async () => {
+      await createParser();
+      jest.spyOn(imap, "fetchSince").mockResolvedValueOnce(serverReturns("41"));
+      await pollAlice();
+      const [row] = await receiptRows();
+      const farTx = (
+        await asAlice(() =>
+          transactions.create(aliceId, {
+            accountId,
+            transactionDate: "2026-02-03",
+            amount: -15,
+            currencyCode: "USD",
+            description: "A purchase seven months before the email",
+          } as never),
+        )
+      ).id;
+
+      const linked = await asAlice(() => receipts.link(aliceId, row.id, farTx));
+
+      expect(linked).toMatchObject({
+        status: "review",
+        matchKind: "manual",
+        transaction: { id: farTx, date: "2026-02-03" },
+      });
+      const bobAccount = (
+        await createTestAccount(db, bobId, {
+          name: "Bob checking",
+          currencyCode: "USD",
+          openingBalance: 100,
+          currentBalance: 100,
+        })
+      ).id;
+      const [bobTx] = await db.query(
+        `INSERT INTO transactions (user_id, account_id, transaction_date, amount, currency_code, status)
+         VALUES ($1, $2, '2026-09-11', -15, 'USD', 'UNRECONCILED') RETURNING id`,
+        [bobId, bobAccount],
+      );
+      await expect(
+        asAlice(() => receipts.link(aliceId, row.id, bobTx.id)),
+      ).rejects.toMatchObject({ status: 404 });
+    });
+
+    it("asks the AI about a transaction months away from the email", async () => {
+      jest.spyOn(imap, "fetchSince").mockResolvedValueOnce(serverReturns("41"));
+      await pollAlice();
+      const [row] = await receiptRows();
+      const farTx = (
+        await asAlice(() =>
+          transactions.create(aliceId, {
+            accountId,
+            transactionDate: "2026-01-05",
+            amount: -15,
+            currencyCode: "USD",
+          } as never),
+        )
+      ).id;
+
+      const asked = await asAlice(() =>
+        receiptAi.askAi(aliceId, row.id, farTx),
+      );
+
+      expect(asked).toMatchObject({ ok: true, transactionId: farTx });
+    });
+  });
+
+  describe("drafting a parser with AI through the chat", () => {
+    const DEFINITION = {
+      version: 1,
+      orderId: ["Order number: {orderid}"],
+      total: ["Order total: {amount}"],
+      shipping: ["Shipping: {amount}"],
+      items: {
+        startAfter: "Items",
+        stopAt: "Subtotal",
+        patterns: ["{name} {amount}"],
+      },
+    };
+
+    /** Two unread emails of one shop, stored by the poll. */
+    async function twoShopEmails(): Promise<string[]> {
+      jest.spyOn(imap, "fetchSince").mockResolvedValueOnce({
+        uidValidity: "1001",
+        messages: ["41", "42"].map((uid) => ({
+          uid,
+          source: rfc822(uid),
+          internalDate: new Date("2026-09-10T10:00:01Z"),
+          size: 500,
+        })),
+        skipped: [],
+        highestUid: "42",
+      });
+      await pollAlice();
+      return (await receiptRows()).map((r: { id: string }) => r.id);
+    }
+
+    it("queues one pending request; the assistant claims it by id, tests, saves a DRAFT, the user approves it and the request is applied", async () => {
+      const [r1, r2] = await twoShopEmails();
+
+      // 1. the receipts page queues the request; no provider is called
+      const queued = await asAlice(() =>
+        parsers.requestAiDraft(aliceId, [r1, r2]),
+      );
+      expect(queued.ok).toBe(true);
+      let [request] = await requestRows();
+      expect(request).toMatchObject({
+        id: queued.requestId,
+        kind: "email_parser_draft",
+        status: "pending",
+        transaction_id: null,
+        rule_id: null,
+        parser_domain: "shop.example.com",
+        email_receipt_ids: [r1, r2],
+      });
+
+      // 2. the assistant claims it BY ID and is handed the emails, not a transaction
+      const claimed = await asAlice(() =>
+        work.claim(aliceId, ASSISTANT_CLAIM_KEY, queued.requestId),
+      );
+      expect(claimed.request).toMatchObject({
+        id: queued.requestId,
+        kind: "email_parser_draft",
+        status: "claimed",
+        claimedByYou: true,
+        transactionId: null,
+      });
+      expect(claimed.transaction).toBeUndefined();
+      expect(claimed.emailReceipts?.map((e) => e.id)).toEqual([r1, r2]);
+      expect(claimed.emailReceipts?.[0].text).toContain("Order total: 15.00");
+      // nobody else can take it any more
+      await expect(
+        asAlice(() => work.claim(aliceId, "an-mcp-client", queued.requestId)),
+      ).resolves.toEqual({ request: null });
+
+      // 3. test: reads, writes nothing
+      const before = (await db.query(`SELECT 1 FROM email_receipt_parsers`))
+        .length;
+      const tested = await asAlice(() =>
+        parserTools.testDefinition(aliceId, {
+          definition: DEFINITION,
+          receiptIds: [r1, r2],
+        }),
+      );
+      expect(tested.valid).toBe(true);
+      expect(tested.emails).toHaveLength(2);
+      expect(tested.emails[0].parsed).toMatchObject({
+        orderId: "ABCD1234",
+        total: 15,
+        shipping: 3,
+      });
+      // items have no category yet: the parse is honest about it
+      expect(tested.emails[0].parsed).toMatchObject({
+        complete: false,
+        reason: "items_uncategorized",
+      });
+      expect(
+        (await db.query(`SELECT 1 FROM email_receipt_parsers`)).length,
+      ).toBe(before);
+
+      // 4. save a draft, with the categories from the tool
+      const categories = await asAlice(() =>
+        parserTools.listCategories(aliceId),
+      );
+      expect(categories.categories.map((c) => c.id)).toEqual(
+        expect.arrayContaining([booksId, shippingId]),
+      );
+      const saved = await asAlice(() =>
+        parserTools.saveDraft(aliceId, ASSISTANT_CLAIM_KEY, {
+          requestId: queued.requestId,
+          name: "Example Shop",
+          fromDomains: ["shop.example.com"],
+          definition: {
+            ...DEFINITION,
+            defaultCategoryId: booksId,
+            shippingCategoryId: shippingId,
+          },
+        }),
+      );
+      expect(saved).toMatchObject({ status: "draft", requestProposed: true });
+      const [parserRow] = await db.query(
+        `SELECT status, source, approved_at FROM email_receipt_parsers WHERE id = $1`,
+        [saved.parserId],
+      );
+      expect(parserRow).toEqual({
+        status: "draft",
+        source: "ai",
+        approved_at: null,
+      });
+      [request] = await requestRows();
+      expect(request.status).toBe("proposed");
+      expect(request.proposal).toMatchObject({ parserId: saved.parserId });
+
+      // a draft reads nothing: reprocessing still finds no parser
+      const stillNone = await asAlice(() => receipts.reprocess(aliceId, r1));
+      expect(stillNone.status).toBe("no_parser");
+      // and nothing touched the ledger
+      expect(await splitCount()).toBe(0);
+
+      // 5. the inbox shows it as a ready draft
+      const [item] = await asAlice(() => work.listInbox(aliceId));
+      expect(item).toMatchObject({
+        id: queued.requestId,
+        kind: "email_parser_draft",
+        status: "proposed",
+        transactionId: null,
+        transaction: null,
+        parserDraft: {
+          domain: "shop.example.com",
+          emailCount: 2,
+          parserId: saved.parserId,
+        },
+      });
+
+      // 6. the user approves the parser: the request is applied in the same transaction
+      await asAlice(() => parsers.approve(aliceId, saved.parserId));
+      [request] = await requestRows();
+      expect(request.status).toBe("applied");
+      const [approved] = await db.query(
+        `SELECT status FROM email_receipt_parsers WHERE id = $1`,
+        [saved.parserId],
+      );
+      expect(approved.status).toBe("approved");
+
+      // 7. and now the parser reads the email
+      const read = await asAlice(() => receipts.reprocess(aliceId, r1));
+      expect(read.status).toBe("review");
+      expect(read.parserName).toBe("Example Shop");
+    });
+
+    it("deleting the draft dismisses the request that proposed it", async () => {
+      const [r1] = await twoShopEmails();
+      const { requestId } = await asAlice(() =>
+        parsers.requestAiDraft(aliceId, [r1]),
+      );
+      await asAlice(() => work.claim(aliceId, ASSISTANT_CLAIM_KEY, requestId));
+      const saved = await asAlice(() =>
+        parserTools.saveDraft(aliceId, ASSISTANT_CLAIM_KEY, {
+          requestId,
+          name: "Example Shop",
+          fromDomains: ["shop.example.com"],
+          definition: DEFINITION,
+        }),
+      );
+
+      await asAlice(() => parsers.remove(aliceId, saved.parserId));
+
+      expect((await requestRows())[0].status).toBe("rejected");
+    });
+
+    it("refuses a draft for a request the caller did not claim, writing no parser", async () => {
+      const [r1] = await twoShopEmails();
+      const { requestId } = await asAlice(() =>
+        parsers.requestAiDraft(aliceId, [r1]),
+      );
+      const save = (caller: string) =>
+        asAlice(() =>
+          parserTools.saveDraft(aliceId, caller, {
+            requestId,
+            name: "Example Shop",
+            fromDomains: ["shop.example.com"],
+            definition: DEFINITION,
+          }),
+        );
+
+      // pending, nobody claimed it
+      await expect(save(ASSISTANT_CLAIM_KEY)).rejects.toMatchObject({
+        status: 409,
+      });
+      // claimed by the assistant, answered by another caller
+      await asAlice(() => work.claim(aliceId, ASSISTANT_CLAIM_KEY, requestId));
+      await expect(save("an-mcp-client")).rejects.toMatchObject({
+        status: 409,
+      });
+      expect(
+        await db.query(`SELECT 1 FROM email_receipt_parsers`),
+      ).toHaveLength(0);
+      expect((await requestRows())[0].status).toBe("claimed");
+    });
+
+    it("keeps one open request per sender: asking again replaces it", async () => {
+      const [r1, r2] = await twoShopEmails();
+      const first = await asAlice(() => parsers.requestAiDraft(aliceId, [r1]));
+      const second = await asAlice(() =>
+        parsers.requestAiDraft(aliceId, [r1, r2]),
+      );
+
+      expect(second.requestId).not.toBe(first.requestId);
+      const rows = await requestRows();
+      expect(rows.map((r: { status: string }) => r.status)).toEqual([
+        "rejected",
+        "pending",
+      ]);
+      expect(rows[1].email_receipt_ids).toEqual([r1, r2]);
+      // the closed request can no longer be claimed
+      await expect(
+        asAlice(() =>
+          work.claim(aliceId, ASSISTANT_CLAIM_KEY, first.requestId),
+        ),
+      ).resolves.toEqual({ request: null });
+    });
+
+    it("an expired request does not hold the slot", async () => {
+      const [r1] = await twoShopEmails();
+      const first = await asAlice(() => parsers.requestAiDraft(aliceId, [r1]));
+      await db.query(
+        `UPDATE ai_review_requests SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 hour' WHERE id = $1`,
+        [first.requestId],
+      );
+
+      const second = await asAlice(() => parsers.requestAiDraft(aliceId, [r1]));
+
+      const rows = await requestRows();
+      expect(
+        rows.find((r: { id: string }) => r.id === first.requestId).status,
+      ).toBe("expired");
+      expect(
+        rows.find((r: { id: string }) => r.id === second.requestId).status,
+      ).toBe("pending");
+    });
+
+    it("refuses another user's emails, a skipped one and an unknown one, queueing nothing", async () => {
+      const [r1] = await twoShopEmails();
+      await db.query(
+        `INSERT INTO email_receipts
+           (user_id, mailbox_id, uid_validity, uid, from_address, from_domain,
+            subject, received_at, body_text, status, status_reason)
+         VALUES ($1, $2, 1001, 90, '', '', '', '2026-09-10T10:00:00Z', '', 'skipped', 'too_large')`,
+        [aliceId, mailboxId],
+      );
+      const [skipped] = await db.query(
+        `SELECT id FROM email_receipts WHERE uid = 90`,
+      );
+
+      await expect(
+        asBob(() => parsers.requestAiDraft(bobId, [r1])),
+      ).rejects.toMatchObject({ status: 404 });
+      await expect(
+        asAlice(() => parsers.requestAiDraft(aliceId, [r1, skipped.id])),
+      ).rejects.toMatchObject({ status: 409 });
+      await expect(
+        asAlice(() =>
+          parsers.requestAiDraft(aliceId, [
+            "00000000-0000-4000-8000-000000000999",
+          ]),
+        ),
+      ).rejects.toMatchObject({ status: 404 });
+      expect(await requestRows()).toHaveLength(0);
+    });
+
+    it("another user cannot claim it by id, save a draft for it, test on its emails or see it in the inbox", async () => {
+      const [r1] = await twoShopEmails();
+      const { requestId } = await asAlice(() =>
+        parsers.requestAiDraft(aliceId, [r1]),
+      );
+
+      await expect(
+        asBob(() => work.claim(bobId, ASSISTANT_CLAIM_KEY, requestId)),
+      ).resolves.toEqual({ request: null });
+      await expect(
+        asBob(() =>
+          parserTools.saveDraft(bobId, ASSISTANT_CLAIM_KEY, {
+            requestId,
+            name: "Stolen",
+            fromDomains: ["shop.example.com"],
+            definition: DEFINITION,
+          }),
+        ),
+      ).rejects.toMatchObject({ status: 404 });
+      await expect(
+        asBob(() =>
+          parserTools.testDefinition(bobId, {
+            definition: DEFINITION,
+            receiptIds: [r1],
+          }),
+        ),
+      ).rejects.toMatchObject({ status: 404 });
+      expect(await asBob(() => work.listInbox(bobId))).toEqual([]);
+      expect((await requestRows())[0].status).toBe("pending");
+    });
+
+    it("the rest of the queue still works beside it: a transaction request is listed, claimed and expired with it", async () => {
+      const [r1] = await twoShopEmails();
+      const draft = await asAlice(() => parsers.requestAiDraft(aliceId, [r1]));
+      const receipt = (await receiptRows())[0];
+      await asAlice(() => receiptAi.askAi(aliceId, receipt.id, txId));
+
+      const list = await asAlice(() => work.list(aliceId, ASSISTANT_CLAIM_KEY));
+      expect(list.requests.map((r) => r.kind).sort()).toEqual([
+        "email_parser_draft",
+        "email_receipt",
+      ]);
+      // the inbox lists both without trouble, each in its own shape
+      const inbox = await asAlice(() => work.listInbox(aliceId));
+      expect(inbox).toHaveLength(2);
+      expect(
+        inbox.find((i) => i.id === draft.requestId)?.transaction,
+      ).toBeNull();
+      expect(
+        inbox.find((i) => i.kind === "email_receipt")?.transaction?.id,
+      ).toBe(txId);
+      // the sweep treats them alike
+      await db.query(
+        `UPDATE ai_review_requests SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 minute'`,
+      );
+      await asAlice(() => module.get(AiReviewRequestsService).expireStale());
+      expect(
+        (await requestRows()).map((r: { status: string }) => r.status),
+      ).toEqual(["expired", "expired"]);
     });
   });
 });

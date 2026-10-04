@@ -397,7 +397,8 @@ export class EmailReceiptAiService {
     if (
       !request ||
       request.kind !== "email_receipt" ||
-      !request.emailReceiptId
+      !request.emailReceiptId ||
+      request.transactionId === null
     ) {
       return fail("not_a_receipt_request");
     }
@@ -438,7 +439,7 @@ export class EmailReceiptAiService {
     try {
       const transaction = await this.transactions.findOne(
         userId,
-        claimed.transactionId,
+        request.transactionId,
       );
       if (transaction.isTransfer) {
         return giveBack(

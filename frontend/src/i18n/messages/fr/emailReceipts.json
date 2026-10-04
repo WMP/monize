@@ -85,17 +85,17 @@
       "folderLabel": "Dossier",
       "folderHelp": "Le dossier à lire. Il est ouvert en lecture seule.",
       "enabledLabel": "Lire la boîte mail automatiquement",
-      "enabledHelp": "Si cette option est activée, la boîte mail est relevée toutes les 15 minutes. Vous pouvez toujours utiliser Relever maintenant.",
+      "enabledHelp": "Ne contrôle que la lecture automatique : lorsque cette option est activée, Monize relève la boîte mail toutes les 15 minutes. La désactiver ne déconnecte pas la boîte mail, et Relever maintenant la relève qu'elle soit activée ou non.",
       "aiModeLabel": "Mode IA",
-      "aiModeHelp": "Indique si le fournisseur d'IA que vous avez configuré peut être utilisé sur les reçus. Une réponse de l'IA est toujours une proposition ou un brouillon que vous approuvez.",
+      "aiModeHelp": "Indique si la relève peut utiliser sur les reçus le fournisseur d'IA que vous avez configuré. Reconnaître avec l'IA et Rédiger un analyseur avec l'IA sollicitent l'assistant dans le chat quel que soit le mode, et une réponse de l'IA est toujours une proposition ou un brouillon que vous approuvez.",
       "aiModes": {
         "off": "Désactivé",
         "on_demand": "À la demande",
         "automatic": "Automatique"
       },
       "aiModeDescriptions": {
-        "off": "L'IA n'est jamais sollicitée pour les reçus.",
-        "on_demand": "L'IA n'est sollicitée que lorsque vous appuyez sur Reconnaître avec l'IA ou Rédiger un analyseur avec l'IA.",
+        "off": "La relève ne sollicite jamais l'IA pour les reçus.",
+        "on_demand": "La relève ne sollicite jamais l'IA. Vous sollicitez vous-même l'assistant avec Reconnaître avec l'IA ou Rédiger un analyseur avec l'IA.",
         "automatic": "La relève interroge l'IA sur un reçu associé qu'aucun analyseur approuvé n'a pu lire entièrement, et rédige un analyseur pour un expéditeur qui n'en a pas."
       },
       "autoApplyLabel": "Appliquer les propositions automatiquement",
@@ -109,6 +109,7 @@
       "lastErrorAt": "Dernière erreur ({at}) : {error}",
       "pollNow": "Relever maintenant",
       "pollResult": "Relève terminée : {fetched, plural, one {# e-mail enregistré} other {# e-mails enregistrés}}, {skipped} omis, {processed} traités.",
+      "pollResultLink": "Voir les e-mails enregistrés",
       "pollFailed": "La relève a échoué",
       "deleteButton": "Supprimer la boîte mail",
       "deleteDialog": {
@@ -176,7 +177,7 @@
       "retry": "Réessayer"
     },
     "draftNote": "Cet analyseur est un brouillon. Il ne lit rien tant que vous ne l'avez pas approuvé.",
-    "draftAiNote": "L'IA a rédigé cet analyseur à partir d'un e-mail d'exemple. Vérifiez chaque motif avec vos e-mails, puis approuvez-le depuis la liste. Il ne lit rien tant que vous ne l'avez pas fait.",
+    "draftAiNote": "L'IA a rédigé cet analyseur à partir de vos e-mails d'exemple. Testez-le sur chacun d'eux et vérifiez chaque motif, puis approuvez-le depuis la liste. Il ne lit rien tant que vous ne l'avez pas fait.",
     "identityHeading": "Les e-mails qu'il lit",
     "nameLabel": "Nom",
     "payeeLabel": "Bénéficiaire",
@@ -349,6 +350,7 @@
       "ignored": "Ignoré"
     },
     "columns": {
+      "select": "Sélectionner",
       "received": "Reçu",
       "email": "E-mail",
       "transaction": "Transaction",
@@ -383,15 +385,10 @@
     "toasts": {
       "reprocessed": "E-mail retraité",
       "reprocessFailed": "Impossible de retraiter l'e-mail",
-      "draftFailed": "Impossible de rédiger un analyseur",
       "ignored": "E-mail ignoré",
       "ignoreFailed": "Impossible d'ignorer l'e-mail",
       "deleted": "E-mail supprimé",
       "deleteFailed": "Impossible de supprimer l'e-mail"
-    },
-    "notices": {
-      "draftCreated": "L'IA a rédigé l'analyseur {name}. Il ne lit rien tant que vous ne l'avez pas vérifié et approuvé.",
-      "draftLink": "Le vérifier dans les paramètres des analyseurs"
     },
     "ignoreDialog": {
       "title": "Ignorer cet e-mail ?",
@@ -401,6 +398,22 @@
     "deleteDialog": {
       "title": "Supprimer cet e-mail ?",
       "message": "L'e-mail enregistré {subject} sera supprimé et sa demande de révision ouverte écartée. Le message dans la boîte mail n'est pas touché, et une relève ultérieure ne le récupérera pas de nouveau."
+    },
+    "selection": {
+      "label": "E-mails sélectionnés",
+      "select": "Sélectionner {subject}",
+      "count": "{count, plural, one {# e-mail sélectionné} other {# e-mails sélectionnés}} (au plus {max})",
+      "draftButton": "Rédiger un analyseur avec l'IA ({count})",
+      "clear": "Effacer la sélection",
+      "differentSenders": "Les e-mails sélectionnés viennent d'expéditeurs différents ({domains}). Un analyseur lit les e-mails d'un seul expéditeur : sélectionnez des e-mails d'un même expéditeur."
+    },
+    "draft": {
+      "failed": "Impossible de lancer la rédaction d'un analyseur",
+      "queued": "En file d'attente : la demande attend un agent dans la boîte de révision par l'IA. Aucun assistant n'est disponible pour répondre maintenant.",
+      "handoffFailed": "La demande est en file d'attente, mais les e-mails n'ont pas pu être ouverts dans le chat. Elle attend un agent dans la boîte de révision par l'IA.",
+      "inboxLink": "Ouvrir la boîte de révision par l'IA",
+      "opened": "Le chat est ouvert avec les e-mails joints. Lisez le message et appuyez sur Envoyer.",
+      "chatPrompt": "Crée un analyseur de reçus par e-mail pour {count, plural, one {cet e-mail de commande} other {ces # e-mails de commande}} de {domain}. Prends en charge la demande de revue IA {requestId}, teste ton analyseur sur chaque e-mail joint avec l'outil email_receipt_parsers, corrige-le jusqu'à ce que chacun soit lu entièrement, puis enregistre-le comme brouillon pour la demande {requestId}."
     }
   },
   "detail": {
@@ -413,6 +426,8 @@
     },
     "from": "De",
     "received": "Reçu",
+    "forwardedBy": "Transféré par",
+    "originalSent": "Envoyé par la boutique",
     "subject": "Objet",
     "state": "Statut",
     "parser": "Analyseur",
@@ -453,28 +468,39 @@
     "linkButton": "Associer à cette transaction",
     "linked": "E-mail associé à la transaction",
     "linkFailed": "Impossible d'associer l'e-mail",
-    "textHeading": "Texte de l'e-mail",
+    "bodyHeading": "E-mail",
     "textLabel": "Texte de l'e-mail",
-    "noText": "L'e-mail ne contient aucun texte."
+    "noText": "L'e-mail ne contient aucun texte.",
+    "bodyView": {
+      "label": "Afficher l'e-mail en",
+      "html": "HTML",
+      "text": "Texte"
+    },
+    "remoteImagesNote": "Les images distantes ne sont pas chargées.",
+    "htmlFrameTitle": "L'e-mail tel que son expéditeur l'a mis en forme"
   },
   "picker": {
     "heading": "Choisir la transaction",
-    "help": "Aucune transaction n'a été associée automatiquement. Voici vos transactions du {from} au {to}, les jours autour de l'e-mail. Choisissez celle qu'il a réglée.",
+    "help": "Aucune transaction n'a été associée automatiquement. Voici vos transactions de la plage de dates ci-dessous, qui commence par les jours autour de l'achat. Choisissez celle qu'il a réglée, ou modifiez les dates pour chercher plus loin.",
+    "fromLabel": "Du",
+    "toLabel": "Au",
     "searchLabel": "Rechercher",
     "searchPlaceholder": "Bénéficiaire, description ou montant",
     "searchButton": "Rechercher",
     "loading": "Chargement des transactions",
     "error": "Impossible de charger les transactions.",
     "retry": "Réessayer",
-    "empty": "Vous n'avez aucune transaction à associer sur cette période.",
-    "emptySearch": "Aucune transaction de cette période ne correspond à la recherche.",
+    "empty": "Vous n'avez aucune transaction à associer sur cette période. Vous pouvez élargir les dates ci-dessus pour chercher plus loin.",
+    "emptySearch": "Aucune transaction de cette période ne correspond à la recherche. Vous pouvez élargir les dates ci-dessus.",
+    "rangeReversed": "La date de début est postérieure à la date de fin.",
+    "rangeIncomplete": "Saisissez les deux dates pour lister les transactions.",
     "row": "{date}, {amount}, {payee}",
     "noPayee": "aucun bénéficiaire",
     "linkButton": "Associer",
     "hasMore": "Seules les {count} premières sont affichées. Utilisez la recherche pour affiner la liste.",
     "ai": {
       "heading": "Choisir la transaction pour l'IA",
-      "help": "Voici vos transactions du {from} au {to}, les jours autour de l'e-mail. Choisissez celle que l'IA doit répartir selon les produits de l'e-mail.",
+      "help": "Voici vos transactions de la plage de dates ci-dessous, qui commence par les jours autour de l'achat. Choisissez celle que l'IA doit répartir selon les produits de l'e-mail, ou modifiez les dates pour chercher plus loin.",
       "linkButton": "Utiliser cette transaction"
     }
   },

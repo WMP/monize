@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
+  canDraftParser,
+  distinctSenderDomains,
+  dominantSenderDomain,
   fromReceiptUnits,
+  looksLikeHtml,
   canRecognizeWithAi,
   isReceiptActionable,
   readParsedReceipt,
@@ -121,5 +125,91 @@ describe('readParsedReceipt source', () => {
     expect(readParsedReceipt({ source: 'parser', items: [] })?.source).toBe('parser');
     expect(readParsedReceipt({ items: [] })).not.toHaveProperty('source');
     expect(readParsedReceipt({ source: 'robot', items: [] })).not.toHaveProperty('source');
+  });
+});
+
+describe('canDraftParser', () => {
+  it.each([
+    ['no_parser', null, true],
+    ['parse_failed', null, true],
+    ['unmatched', null, false],
+    ['ambiguous', null, false],
+    ['skipped', null, false],
+    ['ignored', null, false],
+    ['pending', null, false],
+    ['review', 'proposed', false],
+    ['review', 'dismissed', false],
+  ] as const)('%s (%s) is %s', (status, displayState, expected) => {
+    expect(canDraftParser({ status, displayState })).toBe(expected);
+  });
+});
+
+describe('distinctSenderDomains', () => {
+  it('lists each domain once, in the order they first appear', () => {
+    expect(
+      distinctSenderDomains([
+        { fromDomain: 'shop.example.com', fromAddress: 'a@shop.example.com' },
+        { fromDomain: 'other.example.org', fromAddress: 'b@other.example.org' },
+        { fromDomain: 'shop.example.com', fromAddress: 'c@shop.example.com' },
+      ]),
+    ).toEqual(['shop.example.com', 'other.example.org']);
+  });
+
+  it('reads the address when the domain column is empty, and leaves out an email with neither', () => {
+    expect(
+      distinctSenderDomains([
+        { fromDomain: '', fromAddress: 'a@shop.example.com' },
+        { fromDomain: '', fromAddress: '' },
+      ]),
+    ).toEqual(['shop.example.com']);
+  });
+
+  it('is empty for no emails', () => {
+    expect(distinctSenderDomains([])).toEqual([]);
+  });
+});
+
+describe('looksLikeHtml', () => {
+  it.each([
+    ['<html><body>Hello</body></html>'],
+    ['  \n<!DOCTYPE html><p>x</p>'],
+    ['<HTML>'],
+    ['<p>One</p><p>Two</p><br><b>Three</b>'],
+    ['Order <b>12</b> and <i>13</i> from <a href="https://shop.example.com">shop</a>'],
+  ])('takes %j for HTML', (text) => {
+    expect(looksLikeHtml(text)).toBe(true);
+  });
+
+  it.each([
+    ['Order total: 15.00'],
+    ['Widget 12.00 < 13.00 and 14.00 > 12.00'],
+    ['Only one <b>tag</b>'],
+    ['Reply to <a@example.com>, <b@example.com>, <c@example.com>, <d@example.com>, <e@example.com> or <f@example.com>'],
+    [''],
+    ['<<<<<<<<<<<<<<<<<<<<<<<<'],
+    ['a < b > c < d > e'],
+  ])('does not take %j for HTML', (text) => {
+    expect(looksLikeHtml(text)).toBe(false);
+  });
+
+  it('is linear on a hostile text of angle brackets', () => {
+    const started = Date.now();
+    expect(looksLikeHtml('<a'.repeat(500_000))).toBe(false);
+    expect(looksLikeHtml(`<${'x'.repeat(400_000)}`)).toBe(false);
+    expect(Date.now() - started).toBeLessThan(2_000);
+  });
+});
+
+describe('dominantSenderDomain', () => {
+  const r = (fromDomain: string) => ({ fromDomain, fromAddress: `x@${fromDomain}` });
+
+  it('is the most common domain, the first named winning a tie', () => {
+    expect(dominantSenderDomain([r('a.example.com'), r('b.example.com'), r('b.example.com')])).toBe('b.example.com');
+    expect(dominantSenderDomain([r('a.example.com'), r('b.example.com')])).toBe('a.example.com');
+  });
+
+  it('is empty when no email has a domain', () => {
+    expect(dominantSenderDomain([{ fromDomain: '', fromAddress: '' }])).toBe('');
+    expect(dominantSenderDomain([])).toBe('');
   });
 });

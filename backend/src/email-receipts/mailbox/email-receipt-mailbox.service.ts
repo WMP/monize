@@ -273,9 +273,10 @@ export class EmailReceiptMailboxService {
 
   /**
    * Delete the user's mailbox. Its stored emails go with it (the foreign key
-   * cascades), and any open review request raised for one of them is rejected
-   * in the same transaction, so nothing is left in the inbox pointing at an
-   * email that no longer exists.
+   * cascades), and any open review request raised for one of them (a receipt's
+   * proposal, or a request to draft a parser from them) is rejected in the same
+   * transaction, so nothing is left in the inbox pointing at an email that no
+   * longer exists. A draft parser an agent already saved stays: it is the user's.
    */
   async remove(userId: string): Promise<void> {
     await withScopedDb(this.dataSource, async (m) => {
@@ -288,7 +289,7 @@ export class EmailReceiptMailboxService {
         `UPDATE ai_review_requests
             SET status = 'rejected'
           WHERE user_id = $1
-            AND kind = 'email_receipt'
+            AND kind IN ('email_receipt', 'email_parser_draft')
             AND status IN ('pending', 'claimed', 'proposed')`,
         [userId],
       );

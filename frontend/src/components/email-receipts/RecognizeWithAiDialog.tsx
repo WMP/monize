@@ -13,6 +13,7 @@ import { Modal } from '@/components/ui/Modal';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { stageChatHandoff } from '@/lib/ai-chat-handoff';
+import { assistantCanAnswerNow } from '@/lib/assistant-ready';
 import { emailReceiptsApi } from '@/lib/email-receipts-api';
 import { buildReceiptAttachment } from '@/lib/email-receipt-chat';
 import { getErrorMessage } from '@/lib/errors';
@@ -34,8 +35,6 @@ type Candidates = { status: 'loading' } | { status: 'error' } | { status: 'ready
 
 interface RecognizeWithAiDialogProps {
   receipt: EmailReceiptListItem;
-  /** An AI provider can answer in the chat (`useAiConfigured`); otherwise the request just waits in the inbox. */
-  assistantReady: boolean;
   onClose: () => void;
   /** The request was queued (the email is now in review): the list behind the dialog reloads. */
   onChanged: () => void;
@@ -49,15 +48,16 @@ interface RecognizeWithAiDialogProps {
  * The hand-off is STAGED, never sent: the chat opens with the order email as a
  * text attachment and the message already typed in the composer, and the user
  * reads it and presses Send (INV-SHARE-002's contract: nothing is asked of the
- * assistant on arrival). With no provider that can answer, the request just waits
- * in the AI review inbox for an agent, and the dialog says so.
+ * assistant on arrival). When the assistant cannot answer NOW (no provider, or the
+ * user's MCP relay agent is not connected: `assistantCanAnswerNow`), the request
+ * just waits in the AI review inbox for an agent, and the dialog says so.
  *
  * An email with a transaction asks for confirmation first (with a way to choose
  * another); an ambiguous one lists its candidates before the full picker; any
  * other opens the picker. The server refuses a transfer, a void or an investment
  * row, and the error is shown here.
  */
-export function RecognizeWithAiDialog({ receipt, assistantReady, onClose, onChanged }: RecognizeWithAiDialogProps) {
+export function RecognizeWithAiDialog({ receipt, onClose, onChanged }: RecognizeWithAiDialogProps) {
   const t = useTranslations('emailReceipts.recognize');
   const tc = useTranslations('common');
   const router = useRouter();
@@ -110,7 +110,10 @@ export function RecognizeWithAiDialog({ receipt, assistantReady, onClose, onChan
     }
     // The email is in review now, whatever happens to the hand-off.
     onChanged();
-    if (!assistantReady) {
+    // The request exists already, so "the assistant cannot answer now" (no
+    // provider, or the user's MCP relay agent is not connected) is the queued
+    // outcome, not a failure: it waits in the inbox for an agent.
+    if (!(await assistantCanAnswerNow())) {
       setPhase({ kind: 'queued', handoffFailed: false });
       return;
     }
@@ -230,7 +233,7 @@ export function RecognizeWithAiDialog({ receipt, assistantReady, onClose, onChan
         <div className="space-y-3">
           <ReceiptTransactionPicker
             mode="ai"
-            receivedAt={receipt.receivedAt}
+            effectiveDate={receipt.effectiveDate}
             linkingId={phase.kind === 'running' ? (phase.transactionId ?? null) : null}
             onLink={(transactionId) => void run(transactionId)}
           />

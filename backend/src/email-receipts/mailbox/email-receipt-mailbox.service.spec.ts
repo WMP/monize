@@ -551,7 +551,8 @@ describe("EmailReceiptMailboxService.remove", () => {
     expect(mailboxRepo.delete).toHaveBeenCalledWith({ userId: USER });
     const [sql, params] = manager.query.mock.calls[0];
     expect(sql).toMatch(/UPDATE ai_review_requests\s+SET status = 'rejected'/);
-    expect(sql).toMatch(/kind = 'email_receipt'/);
+    // a receipt's proposal and a request to draft a parser from its emails
+    expect(sql).toMatch(/kind IN \('email_receipt', 'email_parser_draft'\)/);
     expect(params).toEqual([USER]);
   });
 

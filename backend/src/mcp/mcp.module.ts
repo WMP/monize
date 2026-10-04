@@ -18,6 +18,7 @@ import { CurrenciesModule } from "../currencies/currencies.module";
 import { AiModule } from "../ai/ai.module";
 import { TransactionRulesModule } from "../transaction-rules/transaction-rules.module";
 import { AiReviewQueueModule } from "../ai-review/ai-review-queue.module";
+import { EmailReceiptParsersModule } from "../email-receipts/parsers/email-receipt-parsers.module";
 
 import { McpServerService } from "./mcp-server.service";
 import { McpHttpController } from "./mcp-http.controller";
@@ -36,6 +37,7 @@ import { McpBudgetsTools } from "./tools/budgets.tool";
 import { McpRelayTools } from "./tools/relay.tool";
 import { McpRulesTools } from "./tools/rules.tool";
 import { McpAiReviewTools } from "./tools/ai-review.tool";
+import { McpEmailReceiptParserTools } from "./tools/email-receipt-parsers.tool";
 
 import { McpAccountListResource } from "./resources/account-list.resource";
 import { McpCategoryTreeResource } from "./resources/category-tree.resource";
@@ -77,6 +79,9 @@ import { McpSpendingAnalysisPrompt } from "./prompts/spending-analysis.prompt";
     forwardRef(() => AiModule),
     // ai_review_requests: the queue's shared tool logic.
     AiReviewQueueModule,
+    // email_receipt_parsers: the receipt parser tool's shared logic. A
+    // forwardRef: the module reaches `PayeesModule`, which reaches back here.
+    forwardRef(() => EmailReceiptParsersModule),
   ],
   providers: [
     McpServerService,
@@ -94,6 +99,7 @@ import { McpSpendingAnalysisPrompt } from "./prompts/spending-analysis.prompt";
     McpBudgetsTools,
     McpRulesTools,
     McpAiReviewTools,
+    McpEmailReceiptParserTools,
     McpAccountListResource,
     McpCategoryTreeResource,
     McpRecentTransactionsResource,

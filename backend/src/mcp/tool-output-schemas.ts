@@ -454,7 +454,8 @@ const reviewRequest = looseObject({ id: str, status: str });
 
 /**
  * `ai_review_requests`: list returns `requests`; claim returns the `request`
- * (null when nothing is pending) with its `transaction` rows; submit returns
+ * (null when nothing is pending) with its `transaction` rows (or, for a parser
+ * draft request, its `emailReceipts`); submit returns
  * the `proposal` card preview and `status: "proposed"`; reject returns the
  * `request` in its new status.
  */
@@ -466,6 +467,24 @@ export const aiReviewRequestsOutput = toolOutput({
   transaction: rows().optional(),
   proposal: looseObject({}).optional(),
   status: str.optional(),
+  message: str.optional(),
+});
+
+// ---------------------------------------------------------------------------
+// email-receipt-parsers.tool.ts
+// ---------------------------------------------------------------------------
+
+/**
+ * `email_receipt_parsers`: test returns `valid` (false lists `errors`),
+ * `unknownCategoryIds`, one entry per email in `emails` and `allComplete`;
+ * categories returns the `categories` and `truncated`; save_draft returns the
+ * `parserId` and whether the request is now proposed (`requestProposed`). Only
+ * what a model must reason about is declared; the rest rides in the payload.
+ */
+export const emailReceiptParsersOutput = toolOutput({
+  valid: bool.optional(),
+  allComplete: bool.optional(),
+  parserId: str.optional(),
   message: str.optional(),
 });
 

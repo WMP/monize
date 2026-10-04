@@ -31,9 +31,9 @@ const page = (rows: unknown[], hasMore = false) => ({
   pagination: { page: 1, limit: 50, total: rows.length, totalPages: 1, hasMore },
 });
 
-async function renderPicker(linkingId: string | null = null, receivedAt = '2026-09-01T23:30:00.000Z') {
+async function renderPicker(linkingId: string | null = null, effectiveDate = '2026-09-01T23:30:00.000Z') {
   await act(async () => {
-    render(<ReceiptTransactionPicker receivedAt={receivedAt} linkingId={linkingId} onLink={onLink} />);
+    render(<ReceiptTransactionPicker effectiveDate={effectiveDate} linkingId={linkingId} onLink={onLink} />);
   });
   await act(async () => {});
 }
@@ -44,7 +44,7 @@ describe('ReceiptTransactionPicker', () => {
     api.getAll.mockResolvedValue(page([tx(), tx({ id: 'tx-2', payeeName: null, amount: '-7.5', description: 'Ticket https://shop.example/t/9' })]));
   });
 
-  it('loads the matcher window: 3 days before the email day to 14 after, one bounded page', async () => {
+  it('starts as the matcher window: 3 days before the purchase day to 14 after, one bounded page', async () => {
     await renderPicker();
     expect(api.getAll).toHaveBeenCalledWith({ startDate: '2026-08-29', endDate: '2026-09-15', limit: 50 });
   });
@@ -52,6 +52,87 @@ describe('ReceiptTransactionPicker', () => {
   it('takes the window across a month and a year end without a Date', async () => {
     await renderPicker(null, '2026-12-25T10:00:00.000Z');
     expect(api.getAll).toHaveBeenCalledWith({ startDate: '2026-12-22', endDate: '2027-01-08', limit: 50 });
+  });
+
+  it('is centred on the shop\'s day for a forwarded email, passed as the effective date', async () => {
+    // Forwarded on Sep 10, bought on Aug 10.
+    await renderPicker(null, '2026-08-10T08:15:00.000Z');
+    expect(api.getAll).toHaveBeenCalledWith({ startDate: '2026-08-07', endDate: '2026-08-24', limit: 50 });
+  });
+
+  describe('the date range', () => {
+    const typeDate = async (label: string, value: string) => {
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText(label), { target: { value } });
+      });
+      await act(async () => {});
+    };
+
+    it('shows the From and To dates the window starts as, in the reader\'s own format', async () => {
+      await renderPicker();
+      expect(screen.getByLabelText('From')).toHaveValue('08/29/2026');
+      expect(screen.getByLabelText('To')).toHaveValue('09/15/2026');
+    });
+
+    it('asks again for the new range when From is edited', async () => {
+      await renderPicker();
+      api.getAll.mockClear();
+      await typeDate('From', '06/01/2026');
+      expect(api.getAll).toHaveBeenCalledTimes(1);
+      expect(api.getAll).toHaveBeenCalledWith({ startDate: '2026-06-01', endDate: '2026-09-15', limit: 50 });
+    });
+
+    it('asks again for the new range when To is edited, keeping the search', async () => {
+      await renderPicker();
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'allegro' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+      });
+      await act(async () => {});
+      api.getAll.mockClear();
+      await typeDate('To', '12/31/2026');
+      expect(api.getAll).toHaveBeenCalledWith({ startDate: '2026-08-29', endDate: '2026-12-31', limit: 50, search: 'allegro' });
+    });
+
+    it('asks nothing, and says why, when From is after To', async () => {
+      await renderPicker();
+      api.getAll.mockClear();
+      await typeDate('From', '10/01/2026');
+      expect(api.getAll).not.toHaveBeenCalled();
+      expect(screen.getByRole('alert')).toHaveTextContent('The From date is after the To date.');
+      expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Link' })).not.toBeInTheDocument();
+    });
+
+    it('asks nothing while a date is cleared', async () => {
+      await renderPicker();
+      api.getAll.mockClear();
+      await typeDate('To', '');
+      expect(api.getAll).not.toHaveBeenCalled();
+      expect(screen.getByText('Enter both dates to list transactions.')).toBeInTheDocument();
+      expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
+    });
+
+    it('lists again once the range is fixed', async () => {
+      await renderPicker();
+      await typeDate('From', '10/01/2026');
+      await typeDate('From', '09/01/2026');
+      expect(screen.getAllByRole('listitem')).toHaveLength(2);
+    });
+
+    it('says the reader can widen the dates when no transaction is in the range', async () => {
+      api.getAll.mockResolvedValue(page([]));
+      await renderPicker();
+      expect(
+        screen.getByText('You have no transactions in this period that can be linked. You can widen the dates above to look further.'),
+      ).toBeInTheDocument();
+    });
+
+    it('never offers a transaction outside the page it asked for, however far the dates reach', async () => {
+      await renderPicker();
+      await typeDate('From', '01/01/2020');
+      expect(api.getAll).toHaveBeenLastCalledWith({ startDate: '2020-01-01', endDate: '2026-09-15', limit: 50 });
+    });
   });
 
   it('shows the date, payee, amount and description of each transaction', async () => {
@@ -94,14 +175,14 @@ describe('ReceiptTransactionPicker', () => {
   it('says which kind of empty it is', async () => {
     api.getAll.mockResolvedValueOnce(page([]));
     await renderPicker();
-    expect(screen.getByText('You have no transactions in this period that can be linked.')).toBeInTheDocument();
+    expect(screen.getByText(/You have no transactions in this period that can be linked\./)).toBeInTheDocument();
     api.getAll.mockResolvedValueOnce(page([]));
     await act(async () => {
       fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'zzz' } });
       fireEvent.click(screen.getByRole('button', { name: 'Search' }));
     });
     await act(async () => {});
-    expect(screen.getByText('No transaction in this period matches the search.')).toBeInTheDocument();
+    expect(screen.getByText(/No transaction in this period matches the search\./)).toBeInTheDocument();
   });
 
   it('does not draw the previous search\'s rows, nor offer their Link buttons, while the new one loads', async () => {
@@ -124,7 +205,7 @@ describe('ReceiptTransactionPicker', () => {
     let resolveFirst!: (value: unknown) => void;
     api.getAll.mockReturnValueOnce(new Promise((r) => (resolveFirst = r)));
     await act(async () => {
-      render(<ReceiptTransactionPicker receivedAt="2026-09-01T10:00:00.000Z" linkingId={null} onLink={onLink} />);
+      render(<ReceiptTransactionPicker effectiveDate="2026-09-01T10:00:00.000Z" linkingId={null} onLink={onLink} />);
     });
     api.getAll.mockResolvedValueOnce(page([tx({ id: 'b', payeeName: 'Second' })]));
     await act(async () => {
@@ -173,7 +254,7 @@ describe('ReceiptTransactionPicker', () => {
   describe('in the "choose for AI" mode', () => {
     it('says the choice goes to the AI, with its own heading, help and button, over the same list', async () => {
       await act(async () => {
-        render(<ReceiptTransactionPicker mode="ai" receivedAt="2026-09-01T23:30:00.000Z" linkingId={null} onLink={onLink} />);
+        render(<ReceiptTransactionPicker mode="ai" effectiveDate="2026-09-01T23:30:00.000Z" linkingId={null} onLink={onLink} />);
       });
       await act(async () => {});
 

@@ -65,6 +65,8 @@ interface ItemRow {
   from_domain: string;
   subject: string;
   received_at: Date | string;
+  forwarded_by: string | null;
+  original_sent_at: Date | string | null;
   created_at: Date | string;
   status: EmailReceiptStatus;
   status_reason: string | null;
@@ -84,12 +86,13 @@ interface ItemRow {
 
 interface DetailRow extends ItemRow {
   body_text: string;
+  body_html: string | null;
   parsed: Record<string, unknown> | null;
   candidate_transaction_ids: string[];
 }
 
 const ITEM_COLUMNS = `r.id, r.from_address, r.from_domain, r.subject, r.received_at,
-       r.created_at, r.status, r.status_reason, r.match_kind, r.parser_id,
+       r.forwarded_by, r.original_sent_at, r.created_at, r.status, r.status_reason, r.match_kind, r.parser_id,
        p.name AS parser_name, r.ai_review_request_id,
        rq.status AS request_status,
        (rq.expires_at <= CURRENT_TIMESTAMP) AS request_expired,
@@ -117,6 +120,9 @@ function toListItem(row: ItemRow): EmailReceiptListItem {
     fromDomain: row.from_domain,
     subject: row.subject,
     receivedAt: iso(row.received_at),
+    forwardedBy: row.forwarded_by ?? null,
+    originalSentAt: row.original_sent_at ? iso(row.original_sent_at) : null,
+    effectiveDate: iso(row.original_sent_at ?? row.received_at),
     status: row.status,
     statusReason: row.status_reason,
     matchKind: row.match_kind,
@@ -302,7 +308,7 @@ export class EmailReceiptsService {
     const rows = returnedRows<DetailRow>(
       await m.query(
         `SELECT ${ITEM_COLUMNS},
-                r.body_text, r.parsed, r.candidate_transaction_ids
+                r.body_text, r.body_html, r.parsed, r.candidate_transaction_ids
            ${ITEM_JOINS}
           WHERE r.user_id = $1
             AND r.id = $2`,
@@ -314,6 +320,7 @@ export class EmailReceiptsService {
     return {
       ...toListItem(row),
       bodyText: row.body_text,
+      bodyHtml: row.body_html,
       parsed: row.parsed,
       candidates: await this.readCandidates(
         m,

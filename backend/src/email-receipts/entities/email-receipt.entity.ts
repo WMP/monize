@@ -54,11 +54,19 @@ export const EMAIL_RECEIPT_MATCH_KINDS: readonly EmailReceiptMatchKind[] = [
 
 /** The schema's bounds on a stored email and on the candidate list. */
 export const EMAIL_RECEIPT_MAX_BODY_CHARS = 100_000;
+export const EMAIL_RECEIPT_MAX_HTML_CHARS = 1_000_000;
 export const EMAIL_RECEIPT_MAX_CANDIDATES = 10;
 
 /**
  * One stored order-confirmation email (design sections 3.9, 4 and 6). The raw
- * MIME source and the HTML are not stored: `bodyText` is the converted text.
+ * MIME source is not stored: `bodyText` is the text every parser and prompt
+ * reads, and `bodyHtml` is the HTML part kept for display only.
+ *
+ * A forwarded email (the user forwards from their own address) is stored with
+ * the ORIGINAL sender, subject and date read from the forwarded header block:
+ * `fromAddress` / `fromDomain` / `subject` are the shop's, `forwardedBy` is the
+ * mailbox's own From, and `originalSentAt` is the day the shop sent the order.
+ * The match window is centred on `originalSentAt ?? receivedAt`.
  * `(mailboxId, uidValidity, uid)` is the ingestion idempotency, and
  * `aiReviewRequestId` carries no foreign key because `ai_review_requests`
  * references this table.
@@ -111,6 +119,23 @@ export class EmailReceipt {
 
   @Column({ type: "text", name: "body_text" })
   bodyText: string;
+
+  /** The HTML part as the sender wrote it (display only, never parsed); null when there is none. */
+  @Column({ type: "text", name: "body_html", nullable: true })
+  bodyHtml: string | null;
+
+  /** The mailbox's From when the message was a forward of an order confirmation, else null. */
+  @Column({
+    type: "varchar",
+    length: 320,
+    name: "forwarded_by",
+    nullable: true,
+  })
+  forwardedBy: string | null;
+
+  /** When the shop sent the order, read from the forwarded header block; null when unknown. */
+  @Column({ type: "timestamptz", name: "original_sent_at", nullable: true })
+  originalSentAt: Date | null;
 
   @Column({ type: "varchar", length: 20, default: "pending" })
   status: EmailReceiptStatus;

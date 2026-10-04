@@ -62,7 +62,7 @@ describe('MailboxStatus', () => {
       await renderStatus();
       await click(screen.getByRole('button', { name: 'Poll now' }));
       expect(api.pollNow).toHaveBeenCalledTimes(1);
-      expect(screen.getByRole('status')).toHaveTextContent('Poll finished: 3 emails stored, 1 skipped, 2 processed.');
+      expect(screen.getByRole('status')).toHaveTextContent('Poll finished: 3 emails saved, 1 skipped, 2 processed.');
       expect(onRefreshed).toHaveBeenCalledWith(refreshed);
     });
 
@@ -71,7 +71,34 @@ describe('MailboxStatus', () => {
       api.get.mockResolvedValue(makeMailbox());
       await renderStatus();
       await click(screen.getByRole('button', { name: 'Poll now' }));
-      expect(screen.getByRole('status')).toHaveTextContent('1 email stored');
+      expect(screen.getByRole('status')).toHaveTextContent('1 email saved');
+    });
+
+    it('links to the receipts page when the poll saved emails', async () => {
+      api.pollNow.mockResolvedValue({ ok: true, fetched: 3, skipped: 0, processed: 3 });
+      api.get.mockResolvedValue(makeMailbox());
+      await renderStatus();
+      await click(screen.getByRole('button', { name: 'Poll now' }));
+      const link = within(screen.getByRole('status')).getByRole('link', { name: 'View the saved emails' });
+      expect(link).toHaveAttribute('href', '/email-receipts');
+    });
+
+    it('offers no link when the poll saved nothing, even if it skipped or processed some', async () => {
+      api.pollNow.mockResolvedValue({ ok: true, fetched: 0, skipped: 2, processed: 1 });
+      api.get.mockResolvedValue(makeMailbox());
+      await renderStatus();
+      await click(screen.getByRole('button', { name: 'Poll now' }));
+      expect(screen.getByRole('status')).toHaveTextContent('Poll finished: 0 emails saved, 2 skipped, 1 processed.');
+      expect(screen.queryByRole('link', { name: 'View the saved emails' })).not.toBeInTheDocument();
+    });
+
+    it('polls whether or not the mailbox is read automatically: the switch only decides the 15-minute poll', async () => {
+      api.pollNow.mockResolvedValue({ ok: true, fetched: 0, skipped: 0, processed: 0 });
+      api.get.mockResolvedValue(makeMailbox({ enabled: false }));
+      await renderStatus(makeMailbox({ enabled: false }));
+      await click(screen.getByRole('button', { name: 'Poll now' }));
+      expect(api.pollNow).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('status')).toHaveTextContent('Poll finished');
     });
 
     it('keeps the result when only the refresh of the status line fails', async () => {

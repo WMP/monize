@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "Skrzynka przeglądów AI",
-    "subtitle": "Transakcje, które reguła kazała sprawdzić sztucznej inteligencji, oraz zmiany zaproponowane przez asystenta do Twojej akceptacji."
+    "subtitle": "Transakcje, które reguła kazała sprawdzić sztucznej inteligencji, parsery, które asystent miał przygotować, oraz zmiany zaproponowane przez asystenta do Twojej akceptacji."
   },
   "filter": {
     "label": "Filtruj według statusu",
@@ -34,11 +34,13 @@
     "manualRequest": "Zgłoszono ręcznie",
     "emailReceipt": "Paragon z e-maila: {subject}, nadawca: {sender}",
     "emailReceiptMissing": "Paragon z e-maila (wiadomość została usunięta)",
+    "parserDraft": "Szkic parsera z {count, plural, one {# wiadomości} few {# wiadomości} many {# wiadomości} other {# wiadomości}} ({domain})",
     "viewEmailReceipts": "Zobacz paragony z e-maili",
     "agentNote": "Uwaga asystenta: {reason}",
     "dates": "Utworzono {created}, wygasa {expires}",
     "viewTransaction": "Zobacz transakcję",
-    "waitingForAgent": "Oczekiwanie na agenta AI. <link>Połącz dostawcę AI w Ustawieniach</link> lub pozwól klientowi MCP ją przejąć."
+    "waitingForAgent": "Oczekiwanie na agenta AI. <link>Połącz dostawcę AI w Ustawieniach</link> lub pozwól klientowi MCP ją przejąć.",
+    "parserDraftReady": "Szkic parsera gotowy. <link>Przetestuj i zatwierdź go w ustawieniach parserów</link>."
   },
   "actions": {
     "dismiss": "Odrzuć"
@@ -48,7 +50,7 @@
   },
   "dismissDialog": {
     "title": "Odrzucić tę prośbę?",
-    "message": "Nikt nie zostanie ponownie poproszony o sprawdzenie tej transakcji. Sama transakcja nie zostanie zmieniona.",
+    "message": "Nikt nie zostanie ponownie poproszony o zajęcie się tą prośbą. Nic, czego dotyczyła, nie zostanie zmienione.",
     "confirm": "Odrzuć prośbę"
   },
   "loading": "Wczytywanie próśb o przegląd...",

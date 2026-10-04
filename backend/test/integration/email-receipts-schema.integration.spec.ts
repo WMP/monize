@@ -31,6 +31,8 @@ describe("email receipts schema (schema.sql and migrations)", () => {
     "add_email_receipts",
     "widen_ai_review_requests_for_email_receipts",
     "add_email_receipt_oauth",
+    "email_receipts_html_and_forwarded",
+    "ai_review_requests_parser_draft",
   ];
 
   let admin: DataSource;
@@ -463,6 +465,43 @@ describe("email receipts schema (schema.sql and migrations)", () => {
       ).rejects.toThrow(/ck_email_receipts_body_length/);
     });
 
+    it("keeps an HTML part of up to 1,000,000 characters, or none, and refuses more", async () => {
+      await receipt({ uid: 1 });
+      await receipt({ uid: 2, body_html: "<p>x</p>" });
+      await receipt({ uid: 3, body_html: "x".repeat(1_000_000) });
+      await expect(
+        receipt({ uid: 4, body_html: "x".repeat(1_000_001) }),
+      ).rejects.toThrow(/ck_email_receipts_body_html_length/);
+      const rows = await db.query(
+        `SELECT uid, body_html IS NULL AS none FROM email_receipts ORDER BY uid`,
+      );
+      expect(rows.map((r: { none: boolean }) => r.none)).toEqual([
+        true,
+        false,
+        false,
+      ]);
+    });
+
+    it("stores who forwarded an email and when the shop sent it, both optional", async () => {
+      await receipt({
+        uid: 1,
+        forwarded_by: "alice.example@gmail.example.com",
+        original_sent_at: "2026-08-10T08:15:00Z",
+      });
+      await receipt({ uid: 2 });
+      const rows = await db.query(
+        `SELECT forwarded_by, original_sent_at FROM email_receipts ORDER BY uid`,
+      );
+      expect(rows[0].forwarded_by).toBe("alice.example@gmail.example.com");
+      expect(new Date(rows[0].original_sent_at).toISOString()).toBe(
+        "2026-08-10T08:15:00.000Z",
+      );
+      expect(rows[1]).toEqual({ forwarded_by: null, original_sent_at: null });
+      await expect(
+        receipt({ uid: 3, forwarded_by: "x".repeat(321) }),
+      ).rejects.toThrow(/value too long/);
+    });
+
     it("holds at most 10 candidate transactions", async () => {
       const ids = Array.from(
         { length: 11 },
@@ -545,12 +584,170 @@ describe("email receipts schema (schema.sql and migrations)", () => {
       expect(row.email_receipt_id).toBeNull();
     });
 
+    describe("kind email_parser_draft", () => {
+      const R1 = "00000000-0000-4000-8000-000000000001";
+      const draft = (over: Record<string, unknown> = {}, user = userId) => {
+        const row: Record<string, unknown> = {
+          user_id: user,
+          kind: "email_parser_draft",
+          instruction: "Write a parser",
+          email_receipt_ids: [R1],
+          parser_domain: "shop.example.com",
+          ...over,
+        };
+        const cols = Object.keys(row);
+        return db.query(
+          `INSERT INTO ai_review_requests (${cols.join(", ")})
+           VALUES (${cols.map((_, i) => `$${i + 1}`).join(", ")}) RETURNING id`,
+          cols.map((c) => row[c]),
+        );
+      };
+
+      it("is admitted with no transaction, its emails and its sender domain", async () => {
+        const [row] = await draft();
+        expect(row.id).toBeDefined();
+        const [stored] = await db.query(
+          `SELECT transaction_id, email_receipt_ids, parser_domain FROM ai_review_requests`,
+        );
+        expect(stored).toEqual({
+          transaction_id: null,
+          email_receipt_ids: [R1],
+          parser_domain: "shop.example.com",
+        });
+      });
+
+      it("holds one to five emails, no more, and never none", async () => {
+        const ids = (n: number) =>
+          Array.from(
+            { length: n },
+            (_, i) =>
+              `00000000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`,
+          );
+        await draft({
+          email_receipt_ids: ids(5),
+          parser_domain: "a.example.com",
+        });
+        await expect(
+          draft({ email_receipt_ids: ids(6), parser_domain: "b.example.com" }),
+        ).rejects.toThrow(/ck_ai_review_requests_email_receipt_ids/);
+        await expect(
+          draft({ email_receipt_ids: [], parser_domain: "c.example.com" }),
+        ).rejects.toThrow(/ck_ai_review_requests_parser_draft_shape/);
+        await expect(
+          draft({ email_receipt_ids: null, parser_domain: "d.example.com" }),
+        ).rejects.toThrow(/ck_ai_review_requests_parser_draft_shape/);
+      });
+
+      it("needs a sender domain, and refuses a transaction", async () => {
+        await expect(draft({ parser_domain: null })).rejects.toThrow(
+          /ck_ai_review_requests_parser_draft_shape/,
+        );
+        const [account] = await db.query(`SELECT id FROM accounts LIMIT 1`);
+        const [tx] = await db.query(
+          `INSERT INTO transactions (user_id, account_id, transaction_date, amount, currency_code, status)
+           VALUES ($1, $2, '2026-03-10', -5, 'USD', 'UNRECONCILED') RETURNING id`,
+          [userId, account.id],
+        );
+        await expect(draft({ transaction_id: tx.id })).rejects.toThrow(
+          /ck_ai_review_requests_parser_draft_shape/,
+        );
+      });
+
+      it("is the only kind that may omit its transaction, and the others may not carry the draft columns", async () => {
+        const bare = (kind: string, extra = "") =>
+          db.query(
+            `INSERT INTO ai_review_requests (user_id, kind, instruction${extra ? ", " + extra.split("=")[0] : ""})
+             VALUES ($1, $2, 'x'${extra ? ", " + extra.split("=")[1] : ""})`,
+            [userId, kind],
+          );
+        await expect(bare("transaction_review")).rejects.toThrow(
+          /ck_ai_review_requests_transaction_required|null value/,
+        );
+        await expect(bare("email_receipt")).rejects.toThrow(
+          /ck_ai_review_requests_transaction_required|null value/,
+        );
+        const [account] = await db.query(`SELECT id FROM accounts LIMIT 1`);
+        const [tx] = await db.query(
+          `INSERT INTO transactions (user_id, account_id, transaction_date, amount, currency_code, status)
+           VALUES ($1, $2, '2026-03-10', -5, 'USD', 'UNRECONCILED') RETURNING id`,
+          [userId, account.id],
+        );
+        await expect(
+          db.query(
+            `INSERT INTO ai_review_requests (user_id, transaction_id, kind, instruction, parser_domain)
+             VALUES ($1, $2, 'transaction_review', 'x', 'shop.example.com')`,
+            [userId, tx.id],
+          ),
+        ).rejects.toThrow(/ck_ai_review_requests_parser_draft_shape/);
+        await expect(
+          db.query(
+            `INSERT INTO ai_review_requests (user_id, transaction_id, kind, instruction, email_receipt_ids)
+             VALUES ($1, $2, 'email_receipt', 'x', ARRAY[$3]::uuid[])`,
+            [userId, tx.id, R1],
+          ),
+        ).rejects.toThrow(/ck_ai_review_requests_parser_draft_shape/);
+      });
+
+      it("holds one OPEN request per user and sender domain, and any number once closed or for another sender or user", async () => {
+        await draft();
+        await expect(draft()).rejects.toThrow(
+          /uq_ai_review_requests_parser_draft_open/,
+        );
+        // another sender, another user
+        await draft({ parser_domain: "other.example.org" });
+        await draft({}, otherUserId);
+        // a closed one does not hold the slot
+        await db.query(
+          `UPDATE ai_review_requests SET status = 'rejected' WHERE user_id = $1 AND parser_domain = 'shop.example.com'`,
+          [userId],
+        );
+        await draft();
+        await draft({ status: "applied" });
+        await draft({ status: "expired" });
+        const open = await db.query(
+          `SELECT 1 FROM ai_review_requests
+            WHERE user_id = $1 AND parser_domain = 'shop.example.com'
+              AND status IN ('pending', 'claimed', 'proposed')`,
+          [userId],
+        );
+        expect(open).toHaveLength(1);
+      });
+
+      it("never conflicts in the (transaction, rule) index: NULL transaction ids are distinct", async () => {
+        await draft({ parser_domain: "a.example.com" });
+        await draft({ parser_domain: "b.example.com" });
+        const [{ n }] = await db.query(
+          `SELECT COUNT(*)::int AS n FROM ai_review_requests WHERE transaction_id IS NULL`,
+        );
+        expect(n).toBe(2);
+      });
+
+      it("deletes with its user, like every request", async () => {
+        await draft({}, otherUserId);
+        await db.query(`DELETE FROM users WHERE id = $1`, [otherUserId]);
+        expect(
+          await db.query(
+            `SELECT 1 FROM ai_review_requests WHERE kind = 'email_parser_draft'`,
+          ),
+        ).toEqual([]);
+      });
+    });
+
     it("still dedupes by (transaction, rule) exactly as before: the unique index is untouched", async () => {
       const [{ indexdef }] = await db.query(
         `SELECT indexdef FROM pg_indexes WHERE indexname = 'uq_ai_review_requests_open'`,
       );
       expect(indexdef).toMatch(/\(transaction_id, rule_id\)/);
       expect(indexdef).toMatch(/'pending'.*'claimed'.*'proposed'/);
+    });
+
+    it("admits email_parser_draft in the kind vocabulary and still refuses any other", async () => {
+      const [{ def }] = await db.query(
+        `SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conname = 'ck_ai_review_requests_kind'`,
+      );
+      expect(def).toContain("email_parser_draft");
+      expect(def).toContain("email_receipt");
+      expect(def).toContain("transaction_review");
     });
   });
 
@@ -589,13 +786,32 @@ describe("email receipts schema (schema.sql and migrations)", () => {
       expect(await constraints(upgraded)).toEqual(await constraints(db));
     });
 
-    it("has both migrations on disk, timestamp-prefixed, widening after creating", () => {
+    it("has every migration of the feature on disk, timestamp-prefixed, widening after creating", () => {
       const files = fs.readdirSync(MIGRATIONS).sort(compareMigrationFilenames);
       const positions = OWN_MIGRATIONS.map((name) =>
         files.findIndex((f) => f.endsWith(`_${name}.sql`)),
       );
       expect(positions.every((p) => p >= 0)).toBe(true);
       expect(positions[0]).toBeLessThan(positions[1]);
+      // the two of the parser-draft work come after the three that built the feature
+      expect(positions[3]).toBeGreaterThan(positions[2]);
+      expect(positions[4]).toBeGreaterThan(positions[3]);
+    });
+
+    it("has the new columns, with the same types, after the replays", async () => {
+      const columns = (ds: DataSource) =>
+        ds.query(
+          `SELECT table_name, column_name, data_type, is_nullable
+             FROM information_schema.columns
+            WHERE (table_name = 'email_receipts'
+                   AND column_name IN ('body_html', 'forwarded_by', 'original_sent_at'))
+               OR (table_name = 'ai_review_requests'
+                   AND column_name IN ('transaction_id', 'email_receipt_ids', 'parser_domain'))
+            ORDER BY 1, 2`,
+        );
+      const expected = await columns(db);
+      expect(expected).toHaveLength(6);
+      expect(await columns(upgraded)).toEqual(expected);
     });
   });
 });

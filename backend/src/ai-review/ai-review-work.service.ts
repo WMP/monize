@@ -21,6 +21,7 @@ import { AiReviewRequest } from "./ai-review-request.entity";
 import { AiReviewRequestsService } from "./ai-review-requests.service";
 import {
   AI_REVIEW_EMAIL_TEXT_MAX_CHARS,
+  AI_REVIEW_PARSER_EMAIL_TEXT_MAX_CHARS,
   AiReviewInboxItem,
   AiReviewProposalInput,
   AiReviewSubmitResult,
@@ -28,6 +29,7 @@ import {
   LlmAiReviewClaim,
   LlmAiReviewEmailReceipt,
   LlmAiReviewList,
+  LlmAiReviewParserEmail,
   LlmAiReviewRequest,
   MAX_AI_REVIEW_TOOL_LIST_LIMIT,
   StoredAiReviewProposal,
@@ -50,6 +52,24 @@ function agentNoteOf(request: AiReviewRequest): AgentNote | undefined {
   return note && typeof note.reason === "string"
     ? { reason: note.reason, at: String(note.at ?? "") }
     : undefined;
+}
+
+/**
+ * What the inbox says about a parser-draft request: the sender domain, how many
+ * emails it names and, once an agent saved its draft, which parser that is.
+ * Null for every other kind.
+ */
+function inboxParserDraft(
+  request: AiReviewRequest,
+): AiReviewInboxItem["parserDraft"] {
+  if (request.kind !== "email_parser_draft") return null;
+  const parserId = (request.proposal as { parserId?: unknown } | null)
+    ?.parserId;
+  return {
+    domain: request.parserDomain ?? "",
+    emailCount: request.emailReceiptIds?.length ?? 0,
+    parserId: typeof parserId === "string" ? parserId : null,
+  };
 }
 
 /** The inbox's view of a stored email: who, what, when -- never its text. */
@@ -98,6 +118,8 @@ export class AiReviewWorkService {
       transactionId: request.transactionId,
       ruleId: request.ruleId,
       emailReceiptId: request.emailReceiptId ?? null,
+      emailReceiptIds: request.emailReceiptIds ?? null,
+      parserDomain: request.parserDomain ?? null,
       claimedByYou: request.claimedBy === caller,
       createdAt: request.createdAt.toISOString(),
       expiresAt: request.expiresAt.toISOString(),
@@ -147,9 +169,17 @@ export class AiReviewWorkService {
       : await this.requests.claimNext(userId, caller);
     if (!request) return { request: null };
     try {
+      // A parser-draft request is about emails, not a transaction: its claim
+      // carries the emails and no transaction.
+      if (request.kind === "email_parser_draft") {
+        return {
+          request: this.toLlm(request, caller),
+          emailReceipts: await this.loadParserEmailsForClaim(userId, request),
+        };
+      }
       const transaction = await this.transactionsService.getLlmTransactionById(
         userId,
-        request.transactionId,
+        this.requireTransactionId(request),
       );
       const emailReceipt = await this.loadEmailForClaim(userId, request);
       return {
@@ -164,6 +194,72 @@ export class AiReviewWorkService {
       });
       throw err;
     }
+  }
+
+  /**
+   * The transaction a request is about. Every kind but `email_parser_draft` has
+   * one (the schema's CHECK), so a null here is a row that should not exist; it is
+   * refused rather than read as "no transaction".
+   */
+  private requireTransactionId(request: AiReviewRequest): string {
+    if (request.transactionId === null) {
+      throw new BadRequestException(
+        tr(
+          "errors.aiReview.noTransaction",
+          "This AI review request is not about a transaction.",
+        ),
+      );
+    }
+    return request.transactionId;
+  }
+
+  /**
+   * The emails of a parser-draft request that still exist, in the order the
+   * request names them: sender, subject, the day the shop sent the order (a
+   * forward's original date, else the arrival day) and the text, each cut to
+   * `AI_REVIEW_PARSER_EMAIL_TEXT_MAX_CHARS`. Read through the user's own scope
+   * by id and owner, so another user's email is absent, never read; a deleted one
+   * is skipped.
+   */
+  private async loadParserEmailsForClaim(
+    userId: string,
+    request: AiReviewRequest,
+  ): Promise<LlmAiReviewParserEmail[]> {
+    const ids = request.emailReceiptIds ?? [];
+    if (ids.length === 0) return [];
+    const receipts = await withScopedDb(this.dataSource, (m) =>
+      m.getRepository(EmailReceipt).find({
+        where: { userId, id: In([...ids]) },
+        select: {
+          id: true,
+          fromAddress: true,
+          subject: true,
+          receivedAt: true,
+          originalSentAt: true,
+          bodyText: true,
+        },
+      }),
+    );
+    const byId = new Map(receipts.map((r) => [r.id, r]));
+    return ids.flatMap((id) => {
+      const receipt = byId.get(id);
+      return receipt
+        ? [
+            {
+              id: receipt.id,
+              fromAddress: receipt.fromAddress,
+              subject: receipt.subject,
+              effectiveDate: (
+                receipt.originalSentAt ?? receipt.receivedAt
+              ).toISOString(),
+              text: receipt.bodyText.slice(
+                0,
+                AI_REVIEW_PARSER_EMAIL_TEXT_MAX_CHARS,
+              ),
+            },
+          ]
+        : [];
+    });
   }
 
   /**
@@ -261,9 +357,10 @@ export class AiReviewWorkService {
         ),
       );
     }
+    const transactionId = this.requireTransactionId(request);
     const transaction = await this.transactionsService.findOne(
       userId,
-      request.transactionId,
+      transactionId,
     );
     if (transaction.isTransfer) {
       throw new BadRequestException(
@@ -291,7 +388,7 @@ export class AiReviewWorkService {
       }
     }
     const prep = await this.prepService.prepareUpdate(userId, {
-      transactionId: request.transactionId,
+      transactionId,
       splits: input.splits,
       categoryName: input.categoryName,
       payeeName: input.payeeName,
@@ -326,6 +423,14 @@ export class AiReviewWorkService {
     input: AiReviewProposalInput,
   ): Promise<AiReviewSubmitResult> {
     const request = await this.requireClaim(userId, caller, requestId);
+    if (request.kind === "email_parser_draft") {
+      throw new BadRequestException(
+        tr(
+          "errors.aiReview.parserDraftNotSubmittable",
+          "A parser draft request is answered with the email_receipt_parsers tool (test, then save_draft with this requestId), not with a transaction proposal.",
+        ),
+      );
+    }
     const action = await this.buildCard(userId, request, input);
     const stored: StoredAiReviewProposal = {
       input,
@@ -399,13 +504,18 @@ export class AiReviewWorkService {
         rows.flatMap((r) => (r.emailReceiptId ? [r.emailReceiptId] : [])),
       ),
     ];
+    const transactionIds = rows.flatMap((r) =>
+      r.transactionId ? [r.transactionId] : [],
+    );
     const { transactions, rules, receipts } = await withScopedDb(
       this.dataSource,
       async (m) => ({
-        transactions: await m.getRepository(Transaction).find({
-          where: { userId, id: In(rows.map((r) => r.transactionId)) },
-          relations: ["account", "category"],
-        }),
+        transactions: transactionIds.length
+          ? await m.getRepository(Transaction).find({
+              where: { userId, id: In(transactionIds) },
+              relations: ["account", "category"],
+            })
+          : [],
         rules: ruleIds.length
           ? await m.getRepository(TransactionRule).find({
               where: { userId, id: In(ruleIds) },
@@ -431,7 +541,9 @@ export class AiReviewWorkService {
 
     const items: AiReviewInboxItem[] = [];
     for (const request of rows) {
-      const t = txById.get(request.transactionId);
+      const t = request.transactionId
+        ? txById.get(request.transactionId)
+        : undefined;
       const note = agentNoteOf(request);
       const stored = request.proposal as Partial<StoredAiReviewProposal> | null;
       items.push({
@@ -449,6 +561,7 @@ export class AiReviewWorkService {
             ? receiptById.get(request.emailReceiptId)
             : undefined,
         ),
+        parserDraft: inboxParserDraft(request),
         createdAt: request.createdAt.toISOString(),
         expiresAt: request.expiresAt.toISOString(),
         transaction: t

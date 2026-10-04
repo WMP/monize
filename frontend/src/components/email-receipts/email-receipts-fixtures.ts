@@ -72,6 +72,9 @@ export function makeReceipt(overrides: Partial<EmailReceiptListItem> = {}): Emai
     fromDomain: 'allegro.pl',
     subject: 'Your order 123',
     receivedAt: '2026-09-01T10:00:00.000Z',
+    forwardedBy: null,
+    originalSentAt: null,
+    effectiveDate: '2026-09-01T10:00:00.000Z',
     status: 'unmatched',
     statusReason: null,
     matchKind: null,
@@ -90,6 +93,7 @@ export function makeDetail(overrides: Partial<EmailReceiptDetail> = {}): EmailRe
   return {
     ...makeReceipt(),
     bodyText: 'Thank you for your order.\nTotal 25.00',
+    bodyHtml: null,
     parsed: null,
     candidates: [],
     ...overrides,

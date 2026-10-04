@@ -19,6 +19,7 @@ import { OwnerOnly } from "../../delegation/decorators/delegate-access.decorator
 import {
   ApproveEmailReceiptParserDto,
   CreateEmailReceiptParserDto,
+  DraftParserWithAiDto,
   TestEmailReceiptParserDto,
   UpdateEmailReceiptParserDto,
 } from "./dto/email-receipt-parser.dto";
@@ -55,6 +56,20 @@ export class EmailReceiptParsersController {
     @Body() dto: TestEmailReceiptParserDto,
   ) {
     return this.parsers.test(req.user.id, dto);
+  }
+
+  @Post("draft-with-ai")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  @ApiOperation({
+    summary:
+      "Queue a request for the assistant (or an MCP agent) to write a parser from 1 to 5 stored emails; no provider is called",
+  })
+  draftWithAi(
+    @Request() req: { user: { id: string } },
+    @Body() dto: DraftParserWithAiDto,
+  ) {
+    return this.parsers.requestAiDraft(req.user.id, dto.receiptIds);
   }
 
   @Get(":id")

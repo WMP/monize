@@ -130,7 +130,9 @@
     "nothingProposed": "Una proposta richiede almeno una modifica: splits, categoryName, payeeName o description.",
     "splitsAndCategory": "Invia splits oppure categoryName, non entrambi: una transazione suddivisa non ha una categoria unica.",
     "transferNotSupported": "Un trasferimento non può essere rivisto tramite proposta. Rifiuta invece la richiesta.",
-    "splitDifference": "Le righe di suddivisione sommano {{ sum }} ma la transazione è {{ amount }}: {{ difference }} non è assegnato. Fai in modo che le righe sommino all'importo della transazione; un residuo come le spese di consegna richiede una riga propria, oppure viene indicato all'utente invece di essere assegnato."
+    "splitDifference": "Le righe di suddivisione sommano {{ sum }} ma la transazione è {{ amount }}: {{ difference }} non è assegnato. Fai in modo che le righe sommino all'importo della transazione; un residuo come le spese di consegna richiede una riga propria, oppure viene indicato all'utente invece di essere assegnato.",
+    "noTransaction": "Questa richiesta di revisione IA non riguarda una transazione.",
+    "parserDraftNotSubmittable": "A una richiesta di bozza di parser si risponde con lo strumento email_receipt_parsers (test, poi save_draft con questo requestId), non con una proposta di transazione."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Troppi tentativi di verifica. Accedi di nuovo.",
@@ -348,7 +350,6 @@
     "openRequestExists": "Per questa transazione è già aperta un'altra richiesta di revisione. Completala o scartala prima.",
     "receiptNotFound": "Email {{ id }} non trovata",
     "aiOff": "L'IA è disattivata per questa casella di posta. Cambia prima la modalità IA nelle impostazioni della casella.",
-    "pollMailboxDisabled": "La casella di posta è disattivata. Attivala nelle impostazioni della casella per controllarla.",
     "pollBusy": "La casella di posta è in lettura in questo momento. Riprova tra un minuto.",
     "parserPayeeNotFound": "Il beneficiario di questo parser non è stato trovato.",
     "parserNotFound": "Parser di ricevute {{ id }} non trovato",
@@ -370,7 +371,10 @@
     "oauthReconnectRequired": "L'accesso della casella di posta è stato revocato o è scaduto. Collega di nuovo la casella nelle sue impostazioni.",
     "oauthTokenUnreadable": "L'accesso archiviato non può essere letto su questo server. Collega di nuovo la casella nelle sue impostazioni.",
     "notOAuthMailbox": "Questa casella di posta non accede con Google o Microsoft.",
-    "settingsEmpty": "Invia almeno un'impostazione da modificare."
+    "settingsEmpty": "Invia almeno un'impostazione da modificare.",
+    "parserToolReceiptCount": "Indica da 1 a 5 email su cui provare il parser.",
+    "parserToolInvalidSender": "Una bozza richiede un nome e da uno a dieci domini mittente come shop.example.com.",
+    "parserDraftRequestNotClaimed": "Questa richiesta di bozza di parser non è stata presa in carico da te. Prendila prima in carico con ai_review_requests, oppure salva la bozza senza requestId."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "L'email non è configurata. L'accesso di emergenza non può essere abilitato finché SMTP non è configurato.",

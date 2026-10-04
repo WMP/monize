@@ -141,7 +141,9 @@
     "nothingProposed": "[XX-A proposal needs at least one change: splits, categoryName, payeeName or description.-XX]",
     "splitsAndCategory": "[XX-Send either splits or categoryName, not both: a split transaction has no single category.-XX]",
     "transferNotSupported": "[XX-A transfer cannot be reviewed by proposal. Reject the request instead.-XX]",
-    "splitDifference": "[XX-The split lines add up to {{ sum }} but the transaction is {{ amount }}: {{ difference }} is not assigned. Make the lines add up to the transaction; a leftover such as a delivery cost needs its own line, or is named to the user instead of being assigned.-XX]"
+    "splitDifference": "[XX-The split lines add up to {{ sum }} but the transaction is {{ amount }}: {{ difference }} is not assigned. Make the lines add up to the transaction; a leftover such as a delivery cost needs its own line, or is named to the user instead of being assigned.-XX]",
+    "noTransaction": "[XX-This AI review request is not about a transaction.-XX]",
+    "parserDraftNotSubmittable": "[XX-A parser draft request is answered with the email_receipt_parsers tool (test, then save_draft with this requestId), not with a transaction proposal.-XX]"
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "[XX-Too many verification attempts. Please log in again.-XX]",
@@ -359,7 +361,6 @@
     "openRequestExists": "[XX-Another review request is already open for this transaction. Finish or dismiss it first.-XX]",
     "receiptNotFound": "[XX-Email {{ id }} not found-XX]",
     "aiOff": "[XX-The AI is turned off for this mailbox. Change the AI mode in the mailbox settings first.-XX]",
-    "pollMailboxDisabled": "[XX-The mailbox is switched off. Turn it on in the mailbox settings to poll it.-XX]",
     "pollBusy": "[XX-The mailbox is being read right now. Try again in a minute.-XX]",
     "parserPayeeNotFound": "[XX-The payee of this parser was not found.-XX]",
     "parserNotFound": "[XX-Receipt parser {{ id }} not found-XX]",
@@ -381,7 +382,10 @@
     "oauthReconnectRequired": "[XX-The mailbox's sign-in was revoked or has expired. Connect the mailbox again in the mailbox settings.-XX]",
     "oauthTokenUnreadable": "[XX-The stored sign-in cannot be read on this server. Connect the mailbox again in the mailbox settings.-XX]",
     "notOAuthMailbox": "[XX-This mailbox does not sign in with Google or Microsoft.-XX]",
-    "settingsEmpty": "[XX-Send at least one setting to change.-XX]"
+    "settingsEmpty": "[XX-Send at least one setting to change.-XX]",
+    "parserToolReceiptCount": "[XX-Name 1 to 5 emails to test the parser on.-XX]",
+    "parserToolInvalidSender": "[XX-A draft needs a name and one to ten sender domains such as shop.example.com.-XX]",
+    "parserDraftRequestNotClaimed": "[XX-This parser draft request is not claimed by you. Claim it first with ai_review_requests, or save the draft without a requestId.-XX]"
   },
   "emergencyAccess": {
     "smtpNotConfigured": "[XX-Email is not configured. Emergency access cannot be enabled until SMTP is set up.-XX]",

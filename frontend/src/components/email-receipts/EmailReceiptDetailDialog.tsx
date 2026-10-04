@@ -5,6 +5,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { EmailBodyView } from '@/components/email-receipts/EmailBodyView';
 import { ParsedReceiptView } from '@/components/email-receipts/ParsedReceiptView';
 import { ReceiptTransactionPicker } from '@/components/email-receipts/ReceiptTransactionPicker';
 import { ReceiptStateBadge } from '@/components/email-receipts/ReceiptStateBadge';
@@ -41,9 +42,10 @@ type DetailState = { status: 'loading' } | { status: 'error' } | { status: 'read
  * One stored email: who sent it, what state it is in and why, what the parser
  * read from it, and, when several transactions fit, which one to link it to.
  *
- * The email's text is plain text in a `<pre>` (the server stores it already
- * converted from HTML), never markup: an email is hostile input. Mount it only
- * while open and key it on the receipt, so its state starts fresh for each one.
+ * The email is hostile input. Its HTML is shown only in a sandboxed, script-less,
+ * network-less frame (`EmailBodyView`), and its text as plain text in a `<pre>`;
+ * neither is ever markup of this page. Mount it only while open and key it on the
+ * receipt, so its state starts fresh for each one.
  */
 export function EmailReceiptDetailDialog({ receiptId, categoryLabels, onClose, onChanged }: EmailReceiptDetailDialogProps) {
   const t = useTranslations('emailReceipts.detail');
@@ -127,10 +129,22 @@ export function EmailReceiptDetailDialog({ receiptId, categoryLabels, onClose, o
             <dt className="text-gray-500 dark:text-gray-400">{t('from')}</dt>
             <dd className="break-words text-gray-900 dark:text-gray-100">{detail.fromAddress}</dd>
           </div>
+          {detail.forwardedBy && (
+            <div className="min-w-0">
+              <dt className="text-gray-500 dark:text-gray-400">{t('forwardedBy')}</dt>
+              <dd className="break-words text-gray-900 dark:text-gray-100">{detail.forwardedBy}</dd>
+            </div>
+          )}
           <div className="min-w-0">
             <dt className="text-gray-500 dark:text-gray-400">{t('received')}</dt>
             <dd className="text-gray-900 dark:text-gray-100">{formatDateTime(detail.receivedAt)}</dd>
           </div>
+          {detail.originalSentAt && (
+            <div className="min-w-0">
+              <dt className="text-gray-500 dark:text-gray-400">{t('originalSent')}</dt>
+              <dd className="text-gray-900 dark:text-gray-100">{formatDateTime(detail.originalSentAt)}</dd>
+            </div>
+          )}
           <div className="min-w-0 sm:col-span-2">
             <dt className="text-gray-500 dark:text-gray-400">{t('subject')}</dt>
             <dd className="break-words text-gray-900 dark:text-gray-100">{detail.subject}</dd>
@@ -242,7 +256,7 @@ export function EmailReceiptDetailDialog({ receiptId, categoryLabels, onClose, o
         )}
 
         {canPick && (
-          <ReceiptTransactionPicker receivedAt={detail.receivedAt} linkingId={linkingId} onLink={(id) => void handleLink(id)} />
+          <ReceiptTransactionPicker effectiveDate={detail.effectiveDate} linkingId={linkingId} onLink={(id) => void handleLink(id)} />
         )}
 
         {linkError && (
@@ -253,19 +267,9 @@ export function EmailReceiptDetailDialog({ receiptId, categoryLabels, onClose, o
 
         <section aria-labelledby="receipt-text-heading" className="space-y-2">
           <h3 id="receipt-text-heading" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            {t('textHeading')}
+            {t('bodyHeading')}
           </h3>
-          {detail.bodyText === '' ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400">{t('noText')}</p>
-          ) : (
-            <pre
-              tabIndex={0}
-              aria-label={t('textLabel')}
-              className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-gray-200 bg-gray-50 p-3 font-mono text-xs text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
-            >
-              {detail.bodyText}
-            </pre>
-          )}
+          <EmailBodyView bodyText={detail.bodyText} bodyHtml={detail.bodyHtml ?? null} />
         </section>
 
         <div className="flex justify-end border-t border-gray-200 pt-4 dark:border-gray-700">
