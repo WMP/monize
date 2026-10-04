@@ -15,7 +15,10 @@ import { RuleAction } from "./rule-action.types";
 import { RuleConditionNode } from "./rule-condition.types";
 import { TransactionRuleApplication } from "./transaction-rule-application.entity";
 import { TransactionRule } from "./transaction-rule.entity";
-import { TransactionRulesApplierService } from "./transaction-rules-applier.service";
+import {
+  TransactionRulesApplierService,
+  ruleRowInputFromStored,
+} from "./transaction-rules-applier.service";
 
 const uuid = (n: number): string =>
   `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -953,6 +956,80 @@ describe("the X3 fields (design 10.3) on the write paths", () => {
       });
       await h.service.applyToNewTransfer(h.m, legs);
       expect(h.tags.addTransactionTags).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe("ruleRowInputFromStored", () => {
+  const stored = row({
+    payeeId: PAYEE,
+    payeeName: "Biedronka",
+    categoryId: CAT,
+    referenceNumber: "REF-1",
+    transactionDate: "2026-03-01",
+    status: "CLEARED",
+  } as Partial<Transaction>);
+
+  it("is the input applyToNew plans each stored row over, so a caller that builds the row it would store hands the rules the same facts", async () => {
+    const h = harness({
+      rules: [rule(RULE_1, [{ type: "add_tags", tagIds: [TAG_B] }])],
+      rows: [stored],
+      links: [{ transactionId: TX, tagId: TAG_A }],
+    });
+    const planned = jest.spyOn(h.service, "planResolved");
+
+    await h.service.applyToNew(h.m, USER, [TX], "import", {
+      payeeTextById: new Map([[TX, "BANK TEXT"]]),
+    });
+
+    expect(planned.mock.calls[0][1]).toEqual(
+      ruleRowInputFromStored(stored, {
+        tagIds: [TAG_A],
+        payeeText: "BANK TEXT",
+      }),
+    );
+  });
+
+  it("reads the columns the rules read, and nothing else", () => {
+    expect(
+      ruleRowInputFromStored(stored, { tagIds: [TAG_A], payeeText: null }),
+    ).toEqual({
+      accountId: ACCOUNT,
+      currencyCode: "PLN",
+      amount: "-50.0000",
+      isTransfer: false,
+      fromAccountId: null,
+      toAccountId: null,
+      payeeId: PAYEE,
+      payeeText: null,
+      payeeName: "Biedronka",
+      categoryId: CAT,
+      description: "milk",
+      tagIds: [TAG_A],
+      hasSplits: false,
+      referenceNumber: "REF-1",
+      transactionDate: "2026-03-01",
+      status: "CLEARED",
+      hasAttachment: false,
+    });
+  });
+
+  it("carries a transfer's two accounts and a split's flag", () => {
+    expect(
+      ruleRowInputFromStored(
+        { ...stored, isTransfer: true, isSplit: true },
+        {
+          tagIds: [],
+          payeeText: "x",
+          fromAccountId: ACCOUNT,
+          toAccountId: uuid(77),
+        },
+      ),
+    ).toMatchObject({
+      isTransfer: true,
+      hasSplits: true,
+      fromAccountId: ACCOUNT,
+      toAccountId: uuid(77),
     });
   });
 });

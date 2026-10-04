@@ -46,7 +46,7 @@
     "requires": {
       "transactionEntry": "Tambahkan akun terlebih dahulu — tur ini memandu pencatatan transaksi.",
       "securitiesExist": "Tambahkan sekuritas terlebih dahulu — tur ini membuka salah satunya dari daftar sekuritas Anda.",
-      "ownerView": "Kembalilah dulu ke data Anda sendiri. Panduan ini membahas Aturan dan kotak masuk peninjauan AI, yang tidak tersedia saat Anda bertindak atas nama orang lain."
+      "ownerView": "Kembali dulu ke data Anda sendiri. Panduan ini membahas fitur yang tidak tersedia saat Anda bertindak atas nama orang lain."
     },
     "start": "Mulai",
     "restart": "Ulangi",
@@ -423,6 +423,48 @@
           "reviews": {
             "title": "Kotak masuk peninjauan AI",
             "body": "Aturan dengan **Minta peninjauan AI** tidak mengubah transaksi, tetapi menaruhnya di sini. Sebuah asisten mengusulkan perubahan, dan tidak ada yang ditulis sampai Anda menyetujuinya. Anda juga dapat menolak permintaan. Temukan di **AI** sebagai **Kotak masuk peninjauan AI**."
+          }
+        }
+      }
+    },
+    "v1_18_0": {
+      "bankSync": {
+        "title": "Sinkronisasi Bank",
+        "steps": {
+          "welcome": {
+            "title": "Impor transaksi dari bank Anda",
+            "body": "Sinkronisasi bank membaca transaksi terbukukan dari rekening bank Anda melalui Open Banking. Transaksi itu diimpor ke akun Monize Anda. Aksesnya hanya-baca. Anda masuk di bank Anda sendiri, dan Monize tidak pernah melihat kata sandi bank Anda. Panduan ini menunjukkan tempat menyiapkannya."
+          },
+          "credentials": {
+            "title": "Aplikasi Enable Banking Anda",
+            "body": "Monize terhubung ke bank Anda melalui aplikasi Enable Banking milik Anda sendiri. Daftarkan satu di panel kontrol Enable Banking. Lalu pilih **Siapkan kredensial** dan masukkan ID aplikasi serta kunci privatnya. Daftarkan juga **URL Pengalihan** yang ditampilkan di sini di panel kontrol. **Uji koneksi** memeriksa apakah semuanya berfungsi. **Tampilkan bantuan penyiapan** menjelaskan setiap langkah."
+          },
+          "connect": {
+            "title": "Hubungkan bank",
+            "body": "**Hubungkan bank** berfungsi setelah kredensial tersimpan. Pilih negara dan bank Anda. Pilih apakah rekening itu pribadi atau bisnis. Lalu pilih **Lanjutkan ke bank**. Anda masuk di bank dan mengizinkan Monize membaca rekening Anda. Bank mengembalikan Anda ke Monize setelah selesai."
+          },
+          "connections": {
+            "title": "Bank yang terhubung",
+            "body": "Setiap bank yang terhubung memiliki kartu. Kartu itu menampilkan status dan tanggal akses berlaku. Sebuah sakelar mengaktifkan sinkronisasi sekali sehari. **Sinkronkan semua** mengimpor dari semua rekening yang tertaut. **Putuskan** menghentikan sinkronisasi. Transaksi yang sudah diimpor tetap ada. Jika belum ada bank yang terhubung, area ini menyatakannya."
+          },
+          "link": {
+            "title": "Tautkan rekening bank ke akun Monize",
+            "body": "Setiap rekening bank ditautkan ke satu akun Monize. Pilih akun Monize di sini, atau pilih **Buat akun baru**. Monize menanyakan tanggal mulai impor. Transaksi sebelum tanggal itu tidak pernah diimpor. **Cocokkan menurut nomor akun** menautkan rekening yang bernomor sama.",
+            "fallbackBody": "Setelah Anda menghubungkan bank, setiap rekening bank-nya ditampilkan dengan pemilih **Akun Monize**. Anda menautkan masing-masing ke satu akun Monize, atau membuat akun baru. Monize menanyakan tanggal mulai impor. Transaksi sebelum tanggal itu tidak pernah diimpor."
+          },
+          "preview": {
+            "title": "Pratinjau sebelum impor pertama",
+            "body": "Impor pertama dari rekening yang tertaut dikonfirmasi lewat pratinjau. Pilih **Sinkronkan sekarang** untuk membukanya. Tidak ada yang diimpor sampai Anda mengonfirmasi. Setiap baris punya kotak centang dan tombol untuk rinciannya. Rincian menampilkan hasil uji aturan: setiap aturan impor, apakah cocok, dan apa yang akan diubahnya. Rincian juga menunjukkan bagaimana teks bank menjadi penerima. Baris yang sudah diimpor atau ditolak tercantum tetapi tidak diimpor. Sinkronisasi berikutnya langsung mengimpor.",
+            "fallbackBody": "Setelah rekening bank tertaut, **Sinkronkan sekarang** membuka pratinjau transaksinya. Tidak ada yang diimpor sampai Anda mengonfirmasi. Setiap baris punya kotak centang dan tombol untuk rinciannya. Rincian menampilkan hasil uji aturan dan bagaimana teks bank menjadi penerima. Sinkronisasi berikutnya langsung mengimpor."
+          },
+          "consent": {
+            "title": "Persetujuan dan cara memperbaruinya",
+            "body": "Persetujuan Anda berlaku untuk waktu terbatas, hingga 180 hari. Kartu menampilkan tanggal akses berlaku. Dalam 7 hari terakhir, kartu menampilkan **Segera kedaluwarsa**. Pilih **Perbarui persetujuan** untuk memberi otorisasi lagi di bank Anda. Rekening yang sudah tertaut tetap ada. Saat persetujuan berakhir, sinkronisasi berhenti sampai Anda memperbaruinya.",
+            "fallbackBody": "Setelah bank terhubung, kartunya menampilkan tanggal akses berlaku. Persetujuan Anda berlaku hingga 180 hari. Saat akhirnya mendekat, **Perbarui persetujuan** muncul di sini. Pilih untuk memberi otorisasi lagi di bank Anda. Rekening yang sudah tertaut tetap ada."
+          },
+          "notifications": {
+            "title": "Pengingat dan hasil sinkronisasi",
+            "body": "Monize memberi tahu Anda sebelum persetujuan berakhir, dan saat sudah berakhir. Monize juga memberi tahu bagaimana sinkronisasi harian berjalan: transaksi baru, tidak ada yang baru, atau gagal. Dalam tabel ini, **Koneksi bank** berisi pengingat persetujuan. **Hasil sinkronisasi bank** berisi hasil sinkronisasi. Pilih tempat pengiriman masing-masing. Pada setiap kartu bank, **Beri tahu setelah sinkronisasi harian** menentukan sinkronisasi berhasil mana yang memberi tahu Anda."
           }
         }
       }

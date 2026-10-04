@@ -46,7 +46,7 @@
     "requires": {
       "transactionEntry": "Adicione primeiro uma conta — esta visita mostra como registar uma transação.",
       "securitiesExist": "Adicione primeiro um título — esta visita abre um a partir da sua lista de títulos.",
-      "ownerView": "Volte primeiro aos seus próprios dados. Esta visita aborda as Regras e a caixa de revisão de IA, que não estão disponíveis enquanto atua em nome de outra pessoa."
+      "ownerView": "Volte primeiro aos seus próprios dados. Esta visita abrange funcionalidades que não estão disponíveis enquanto atua em nome de outra pessoa."
     },
     "start": "Iniciar",
     "restart": "Repetir",
@@ -423,6 +423,48 @@
           "reviews": {
             "title": "A caixa de revisão de IA",
             "body": "Uma regra com **Pedir uma revisão da IA** não altera a transação, coloca-a aqui. Um assistente propõe uma edição e nada é escrito até a aprovar. Também pode dispensar um pedido. Encontra-a em **IA** como **Caixa de revisão de IA**."
+          }
+        }
+      }
+    },
+    "v1_18_0": {
+      "bankSync": {
+        "title": "Sincronização Bancária",
+        "steps": {
+          "welcome": {
+            "title": "Importe transações do seu banco",
+            "body": "A sincronização bancária lê as transações contabilizadas das suas contas bancárias através do Open Banking. Importa-as para as suas contas Monize. O acesso é só de leitura. Inicia sessão no seu próprio banco e o Monize nunca vê a sua palavra-passe bancária. Esta visita mostra onde a configurar."
+          },
+          "credentials": {
+            "title": "A sua aplicação Enable Banking",
+            "body": "O Monize acede ao seu banco através da sua própria aplicação Enable Banking. Registe uma no painel de controlo do Enable Banking. Depois escolha **Configurar credenciais** e introduza o ID da aplicação e a chave privada. Registe também no painel de controlo o **URL de redirecionamento** mostrado aqui. **Testar ligação** verifica se funciona. **Mostrar ajuda de configuração** explica cada passo."
+          },
+          "connect": {
+            "title": "Ligar um banco",
+            "body": "**Ligar um banco** funciona quando as credenciais estão guardadas. Escolha o país e o seu banco. Escolha se a conta é pessoal ou empresarial. Depois escolha **Continuar para o banco**. Inicia sessão no seu banco e permite que o Monize leia as suas contas. O banco devolve-o ao Monize quando terminar."
+          },
+          "connections": {
+            "title": "Os seus bancos ligados",
+            "body": "Cada banco ligado tem um cartão. Mostra o estado e a data até à qual o acesso é válido. Um interruptor ativa uma sincronização por dia. **Sincronizar tudo** importa de todas as contas associadas. **Desligar** para a sincronização. As transações já importadas ficam. Se não houver nenhum banco ligado, esta área di-lo."
+          },
+          "link": {
+            "title": "Associar uma conta bancária a uma conta Monize",
+            "body": "Cada conta bancária é associada a uma conta Monize. Escolha aqui a conta Monize ou escolha **Criar uma conta nova**. O Monize pede a data a partir da qual importar. As transações anteriores a essa data nunca são importadas. **Associar por número de conta** associa as contas que têm o mesmo número.",
+            "fallbackBody": "Depois de ligar um banco, cada uma das suas contas bancárias aparece com um seletor **Conta do Monize**. Associa cada uma a uma conta Monize ou cria uma conta nova. O Monize pede a data a partir da qual importar. As transações anteriores a essa data nunca são importadas."
+          },
+          "preview": {
+            "title": "Pré-visualização antes da primeira importação",
+            "body": "A primeira importação de uma conta associada é confirmada a partir de uma pré-visualização. Escolha **Sincronizar agora** para a abrir. Nada é importado até confirmar. Cada linha tem uma caixa de seleção e um botão para os detalhes. Os detalhes mostram o resultado do teste das regras: cada regra de importação, se correspondeu e o que alteraria. Mostram também como o texto do banco passou a ser o beneficiário. As linhas já importadas ou recusadas são listadas, mas não importadas. As sincronizações seguintes importam logo.",
+            "fallbackBody": "Quando uma conta bancária está associada, **Sincronizar agora** abre uma pré-visualização das suas transações. Nada é importado até confirmar. Cada linha tem uma caixa de seleção e um botão para os detalhes. Os detalhes mostram o resultado do teste das regras e como o texto do banco passou a ser o beneficiário. As sincronizações seguintes importam logo."
+          },
+          "consent": {
+            "title": "O consentimento e como o renovar",
+            "body": "O seu consentimento dura um tempo limitado, até 180 dias. O cartão mostra a data até à qual o acesso é válido. Nos últimos 7 dias mostra **Expira em breve**. Escolha **Renovar consentimento** para autorizar de novo no seu banco. As contas associadas ficam. Quando o consentimento termina, a sincronização para até o renovar.",
+            "fallbackBody": "Quando um banco está ligado, o seu cartão mostra a data até à qual o acesso é válido. O seu consentimento dura até 180 dias. Quando o fim se aproxima, aparece aqui **Renovar consentimento**. Escolha-o para autorizar de novo no seu banco. As contas associadas ficam."
+          },
+          "notifications": {
+            "title": "Lembretes e resultados da sincronização",
+            "body": "O Monize avisa-o antes de o consentimento terminar e quando terminou. Diz-lhe também como correu a sincronização diária: transações novas, nada de novo ou uma falha. Nesta tabela, **Ligações bancárias** contém os lembretes do consentimento. **Resultados da sincronização bancária** contém os resultados da sincronização. Escolha onde cada um é entregue. Em cada cartão de banco, **Notificar após a sincronização diária** define que sincronizações bem-sucedidas o avisam."
           }
         }
       }

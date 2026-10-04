@@ -546,5 +546,79 @@
     "mnyPasswordRequired": "Bu Money dosyası parola korumalı.",
     "mnyPasswordIncorrect": "Bu parola Money dosyasını açmıyor.",
     "mnyUnreadableDatabase": "Bu Money dosyasının şifresi çözüldü ancak içeriği okunamadı. Dosya bozuk olabilir."
+  },
+  "preview": {
+    "choice": {
+      "legend": "İçe aktarılmazsa {payee} için ne yapılsın",
+      "skip": "Şimdilik atla",
+      "except": "İstisnalara ekle"
+    },
+    "payeeTip": {
+      "name": "Bankadan: {original}. Eşleşen: {name}",
+      "alias": "Bankadan: {original}. Eşleşen: {name} (\"{pattern}\" takma adı)",
+      "aliasNoPattern": "Bankadan: {original}. Eşleşen: {name} (takma ad)",
+      "new": "Bankadan: {original}. Eşleşen: {name} (yeni alacaklı)",
+      "rule": "Bankadan: {original}. Eşleşen: {name} (bir kural belirledi)",
+      "ruleNone": "Bankadan: {original}. Eşleşen: alacaklı yok (bir kural belirledi)"
+    },
+    "expand": {
+      "show": "{payee} ayrıntılarını göster",
+      "hide": "{payee} ayrıntılarını gizle"
+    },
+    "rules": {
+      "heading": "İçe aktarma kuralları",
+      "none": "Hiçbir içe aktarma kuralı bu işlemle eşleşmedi.",
+      "skipped": "{action}: atlandı ({reason})",
+      "stopped": "Sonraki kuralları durdurur.",
+      "applied": "Uygulananlar: {actions}",
+      "openNewTab": "{name} kuralını yeni sekmede aç"
+    },
+    "ruleTest": {
+      "loading": "Kural testi sonucu yükleniyor",
+      "error": "Kural testi sonucu yüklenemedi.",
+      "retry": "Yeniden dene",
+      "noRules": "İçe aktarma kuralınız yok, bu yüzden test edilecek bir şey yoktu.",
+      "showNotMatched": "Eşleşmeyen kuralları göster ({count})",
+      "hideNotMatched": "Eşleşmeyen kuralları gizle ({count})",
+      "noChanges": "Eşleşti, ancak bu işlemde hiçbir şeyi değiştirmiyor.",
+      "badge": {
+        "matched": "Eşleşti",
+        "notMatched": "Eşleşmedi",
+        "notEvaluated": "Değerlendirilmedi"
+      },
+      "notEvaluated": {
+        "afterStop": "Değerlendirilmedi: önceki bir kural kuralları durdurdu.",
+        "disabled": "Değerlendirilmedi: kural kapalı.",
+        "invalid": "Değerlendirilmedi: kural geçerli değil. Onarmak için açın."
+      },
+      "condition": {
+        "met": "Koşul sağlandı",
+        "notMet": "Koşul sağlanmadı",
+        "actual": "Bu işlemdeki değer: {value}",
+        "noValue": "yok",
+        "noTags": "etiket yok",
+        "capture": "{name} = {value}",
+        "omitted": "Koşulun bu bölümünün ayrıntıları gösterilmiyor."
+      },
+      "skipReasons": {
+        "already_set": "zaten bir değeri var ve kural yalnızca boş olanları doldurur",
+        "no_change": "zaten kuralın ayarlayacağı değere sahip",
+        "payee_unresolved": "kuralın oluşturduğu alıcı aranamadı"
+      }
+    },
+    "payee": {
+      "heading": "Alacaklı",
+      "unknown": "Bu işlem için alacaklı bilgisi yok.",
+      "original": "Bankanın metni: {original}",
+      "name": "Mevcut alacaklınız {name} ile eşleşiyor.",
+      "alias": "\"{pattern}\" takma adıyla {name} ile eşleşiyor.",
+      "aliasNoPattern": "Bir takma adla {name} ile eşleşiyor.",
+      "new": "Henüz hiçbir alacaklı bu ada sahip değil, bu yüzden {name} oluşturulur.",
+      "rule": "Bir içe aktarma kuralı alacaklıyı belirler: {name}.",
+      "ruleNone": "Bir içe aktarma kuralı alacaklıyı kaldırır.",
+      "none": "Banka karşı taraf belirtmedi, bu yüzden işlemin alacaklısı yok.",
+      "openAliases": "Alacaklının takma adlarını aç",
+      "openAliasesNewTab": "Alacaklının takma adlarını yeni sekmede aç"
+    }
   }
 }

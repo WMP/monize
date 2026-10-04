@@ -46,7 +46,7 @@
     "requires": {
       "transactionEntry": "Add an account first — this tour walks through recording a transaction.",
       "securitiesExist": "Add a security first — this tour opens one from your securities list.",
-      "ownerView": "Switch back to your own data first. This tour covers Rules and the AI review inbox, which are not available while you act for someone else."
+      "ownerView": "Switch back to your own data first. This tour covers features that are not available while you act for someone else."
     },
     "start": "Start",
     "restart": "Retake",
@@ -423,6 +423,48 @@
           "reviews": {
             "title": "The AI review inbox",
             "body": "A rule with **Ask for an AI review** does not change the transaction. It puts it here instead. An assistant proposes an edit, and nothing is written until you approve it. You can also dismiss a request. Find it under **AI** as **AI Review Inbox**."
+          }
+        }
+      }
+    },
+    "v1_18_0": {
+      "bankSync": {
+        "title": "Bank sync",
+        "steps": {
+          "welcome": {
+            "title": "Import transactions from your bank",
+            "body": "Bank sync reads the booked transactions of your bank accounts through Open Banking. It imports them into your Monize accounts. The access is read-only. You sign in at your own bank, and Monize never sees your bank password. This tour shows where to set it up."
+          },
+          "credentials": {
+            "title": "Your Enable Banking application",
+            "body": "Monize reaches your bank through your own Enable Banking application. Register one in the Enable Banking control panel. Then choose **Set up credentials** and enter its application ID and private key. Register the **Redirect URL** shown here in the control panel too. **Test connection** checks that it works. **Show setup help** explains each step."
+          },
+          "connect": {
+            "title": "Connect a bank",
+            "body": "**Connect a bank** works once the credentials are saved. Choose the country and your bank. Choose whether the account is personal or business. Then choose **Continue to bank**. You sign in at your bank and allow Monize to read your accounts. Your bank sends you back to Monize when you are done."
+          },
+          "connections": {
+            "title": "Your connected banks",
+            "body": "Each connected bank has a card. It shows the status and the date the access is valid until. A switch turns on a sync once a day. **Sync all** imports from every linked account. **Disconnect** stops the sync. Transactions already imported stay. With no bank connected, this area says so."
+          },
+          "link": {
+            "title": "Link a bank account to a Monize account",
+            "body": "Each bank account is linked to one Monize account. Pick the Monize account here, or choose **Create a new account**. Monize asks for the date to import from. Transactions before that date are never imported. **Match by account number** links accounts that have the same number.",
+            "fallbackBody": "After you connect a bank, each of its bank accounts is listed with a **Monize account** picker. You link each one to one Monize account, or create a new account. Monize asks for the date to import from. Transactions before that date are never imported."
+          },
+          "preview": {
+            "title": "Preview before the first import",
+            "body": "The first import of a linked account is confirmed from a preview. Choose **Sync now** to open it. Nothing is imported until you confirm. Each row has a checkbox and a button for its details. The details show the rule test result: each import rule, whether it matched and what it would change. They also show how the bank text became the payee. Rows already imported or refused are listed but not imported. Later syncs import straight away.",
+            "fallbackBody": "Once a bank account is linked, **Sync now** opens a preview of its transactions. Nothing is imported until you confirm. Each row has a checkbox and a button for its details. The details show the rule test result and how the bank text became the payee. Later syncs import straight away."
+          },
+          "consent": {
+            "title": "Consent and how to renew it",
+            "body": "Your consent lasts for a limited time, up to 180 days. The card shows the date the access is valid until. In the last 7 days it shows **Expires soon**. Choose **Renew consent** to authorize at your bank again. The accounts you linked are kept. When the consent ends, the sync stops until you renew.",
+            "fallbackBody": "Once a bank is connected, its card shows the date the access is valid until. Your consent lasts up to 180 days. When the end is near, **Renew consent** appears here. Choose it to authorize at your bank again. The accounts you linked are kept."
+          },
+          "notifications": {
+            "title": "Reminders and sync results",
+            "body": "Monize tells you before the consent ends, and when it has ended. It also tells you how the daily sync went: new transactions, nothing new or a failure. In this table, **Bank connections** holds the consent reminders. **Bank sync results** holds the sync outcomes. Choose where each one is delivered. On each bank card, **Notify after the daily sync** sets which successful syncs notify you."
           }
         }
       }

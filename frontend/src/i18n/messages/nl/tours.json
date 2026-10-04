@@ -46,7 +46,7 @@
     "requires": {
       "transactionEntry": "Voeg eerst een rekening toe — deze rondleiding laat zien hoe je een transactie vastlegt.",
       "securitiesExist": "Voeg eerst een waardepapier toe — deze rondleiding opent er een uit je lijst met waardepapieren.",
-      "ownerView": "Ga eerst terug naar je eigen gegevens. Deze rondleiding behandelt Regels en het AI-controlepostvak, die niet beschikbaar zijn zolang je namens iemand anders handelt."
+      "ownerView": "Ga eerst terug naar je eigen gegevens. Deze rondleiding behandelt functies die niet beschikbaar zijn terwijl je voor iemand anders handelt."
     },
     "start": "Starten",
     "restart": "Opnieuw doen",
@@ -423,6 +423,48 @@
           "reviews": {
             "title": "Het AI-controlepostvak",
             "body": "Een regel met **AI-controle aanvragen** wijzigt de transactie niet, maar zet hem hier neer. Een assistent stelt een wijziging voor en er wordt niets geschreven totdat jij die goedkeurt. Je kunt een verzoek ook afwijzen. Je vindt het onder **AI** als **AI-controlepostvak**."
+          }
+        }
+      }
+    },
+    "v1_18_0": {
+      "bankSync": {
+        "title": "Banksynchronisatie",
+        "steps": {
+          "welcome": {
+            "title": "Importeer transacties van je bank",
+            "body": "Banksynchronisatie leest de geboekte transacties van je bankrekeningen via Open Banking. Het importeert ze in je Monize-rekeningen. De toegang is alleen-lezen. Je meldt je aan bij je eigen bank en Monize ziet je bankwachtwoord nooit. Deze rondleiding laat zien waar je het instelt."
+          },
+          "credentials": {
+            "title": "Je Enable Banking-applicatie",
+            "body": "Monize bereikt je bank via je eigen Enable Banking-applicatie. Registreer er een in het Enable Banking-controlepaneel. Kies daarna **Inloggegevens instellen** en voer het applicatie-ID en de privésleutel in. Registreer ook de hier getoonde **Omleidings-URL** in het controlepaneel. **Verbinding testen** controleert of het werkt. **Hulp bij instellen tonen** legt elke stap uit."
+          },
+          "connect": {
+            "title": "Een bank koppelen",
+            "body": "**Bank koppelen** werkt zodra de inloggegevens zijn opgeslagen. Kies het land en je bank. Kies of de rekening privé of zakelijk is. Kies daarna **Verder naar bank**. Je meldt je aan bij je bank en geeft Monize toestemming je rekeningen te lezen. Je bank stuurt je terug naar Monize als je klaar bent."
+          },
+          "connections": {
+            "title": "Je gekoppelde banken",
+            "body": "Elke gekoppelde bank heeft een kaart. Die toont de status en de datum tot wanneer de toegang geldig is. Een schakelaar zet een synchronisatie per dag aan. **Alles synchroniseren** importeert uit alle gekoppelde rekeningen. **Ontkoppelen** stopt de synchronisatie. Al geïmporteerde transacties blijven bestaan. Is er geen bank gekoppeld, dan staat dat hier."
+          },
+          "link": {
+            "title": "Een bankrekening aan een Monize-rekening koppelen",
+            "body": "Elke bankrekening wordt aan één Monize-rekening gekoppeld. Kies hier de Monize-rekening of kies **Nieuwe rekening maken**. Monize vraagt vanaf welke datum er wordt geïmporteerd. Transacties van vóór die datum worden nooit geïmporteerd. **Koppelen op rekeningnummer** koppelt rekeningen met hetzelfde nummer.",
+            "fallbackBody": "Nadat je een bank hebt gekoppeld, staat elke bankrekening erin met een keuzelijst **Monize-rekening**. Je koppelt elke rekening aan een Monize-rekening of maakt een nieuwe rekening. Monize vraagt vanaf welke datum er wordt geïmporteerd. Transacties van vóór die datum worden nooit geïmporteerd."
+          },
+          "preview": {
+            "title": "Voorbeeld vóór de eerste import",
+            "body": "De eerste import van een gekoppelde rekening bevestig je vanuit een voorbeeld. Kies **Nu synchroniseren** om het te openen. Er wordt niets geïmporteerd tot je bevestigt. Elke rij heeft een selectievakje en een knop voor de details. De details tonen het resultaat van de regeltest: elke importregel, of die paste en wat die zou wijzigen. Ze tonen ook hoe de banktekst de begunstigde werd. Rijen die al zijn geïmporteerd of geweigerd, staan in de lijst maar worden niet geïmporteerd. Latere synchronisaties importeren meteen.",
+            "fallbackBody": "Zodra een bankrekening is gekoppeld, opent **Nu synchroniseren** een voorbeeld van de transacties. Er wordt niets geïmporteerd tot je bevestigt. Elke rij heeft een selectievakje en een knop voor de details. De details tonen het resultaat van de regeltest en hoe de banktekst de begunstigde werd. Latere synchronisaties importeren meteen."
+          },
+          "consent": {
+            "title": "Toestemming en hoe je die vernieuwt",
+            "body": "Je toestemming duurt beperkte tijd, tot 180 dagen. De kaart toont de datum tot wanneer de toegang geldig is. In de laatste 7 dagen toont de kaart **Verloopt binnenkort**. Kies **Toestemming verlengen** om opnieuw toestemming te geven bij je bank. De gekoppelde rekeningen blijven behouden. Als de toestemming eindigt, stopt de synchronisatie tot je haar vernieuwt.",
+            "fallbackBody": "Zodra een bank is gekoppeld, toont de kaart de datum tot wanneer de toegang geldig is. Je toestemming duurt tot 180 dagen. Als het einde nadert, verschijnt hier **Toestemming verlengen**. Kies dit om opnieuw toestemming te geven bij je bank. De gekoppelde rekeningen blijven behouden."
+          },
+          "notifications": {
+            "title": "Herinneringen en synchronisatieresultaten",
+            "body": "Monize waarschuwt je voordat de toestemming eindigt en wanneer die is geëindigd. Het meldt ook hoe de dagelijkse synchronisatie ging: nieuwe transacties, niets nieuws of een mislukking. In deze tabel bevat **Bankkoppelingen** de herinneringen over de toestemming. **Resultaten van banksynchronisatie** bevat de uitkomsten van de synchronisatie. Kies waar elk wordt bezorgd. Op elke bankkaart bepaalt **Melding na de dagelijkse synchronisatie** welke geslaagde synchronisaties je een melding geven."
           }
         }
       }

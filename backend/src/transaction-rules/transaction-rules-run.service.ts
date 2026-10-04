@@ -14,7 +14,10 @@ import { withScopedDb } from "../common/db/scoped-db";
 import { tr } from "../i18n/translate";
 import { TransactionStatus } from "../transactions/entities/transaction-status.enum";
 import { isReconciledLockEnabled } from "../transactions/reconciled-lock.util";
+import { ExplainRuleRowDto } from "./dto/explain-rule-row.dto";
 import { PreviewDraftRuleDto, RunTransactionRuleDto } from "./dto/rule-run.dto";
+import { checkedRuleRowInput } from "./rule-row-input";
+import type { RuleRowExplanation } from "./rule-row-explain";
 import { withActionDefaults } from "./rule-references";
 import { PayeeResolution, PlannableRule } from "./rule-effects";
 import { loadAttachmentPresence } from "./rule-facts";
@@ -138,6 +141,22 @@ export class TransactionRulesRunService {
         actions: withActionDefaults(definition.actions) as RunRule["actions"],
       };
       return (await this.plan(m, userId, draft, filters, false)).preview;
+    });
+  }
+
+  /**
+   * Why each rule of a trigger did or did not apply to one row that is not
+   * stored (an import preview's row): its condition tree with the answer of
+   * every node, and the effects `planForRow` plans. Writes nothing: the row's
+   * ids are checked against the caller's data, then the applier reads.
+   */
+  async explainRow(
+    userId: string,
+    dto: ExplainRuleRowDto,
+  ): Promise<RuleRowExplanation> {
+    return withScopedDb(this.dataSource, async (m) => {
+      const input = await checkedRuleRowInput(m, userId, dto.input);
+      return this.applier.explainRow(m, userId, input, dto.trigger);
     });
   }
 

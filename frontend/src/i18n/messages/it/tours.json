@@ -46,7 +46,7 @@
     "requires": {
       "transactionEntry": "Aggiungi prima un conto: questo tour mostra come registrare una transazione.",
       "securitiesExist": "Aggiungi prima un titolo: questo tour ne apre uno dal tuo elenco titoli.",
-      "ownerView": "Torna prima ai tuoi dati. Questo percorso tratta le Regole e la posta di revisione IA, che non sono disponibili mentre agisci per conto di qualcun altro."
+      "ownerView": "Torna prima ai tuoi dati. Questo percorso riguarda funzioni non disponibili mentre agisci per conto di qualcun altro."
     },
     "start": "Avvia",
     "restart": "Rivedi",
@@ -423,6 +423,48 @@
           "reviews": {
             "title": "La posta di revisione IA",
             "body": "Una regola con **Richiedi una revisione dell’IA** non modifica la transazione, ma la mette qui. Un assistente propone una modifica e non viene scritto nulla finché non la approvi. Puoi anche scartare una richiesta. La trovi sotto **AI** come **Posta di revisione IA**."
+          }
+        }
+      }
+    },
+    "v1_18_0": {
+      "bankSync": {
+        "title": "Sincronizzazione bancaria",
+        "steps": {
+          "welcome": {
+            "title": "Importa le transazioni dalla tua banca",
+            "body": "La sincronizzazione bancaria legge le transazioni contabilizzate dei tuoi conti bancari tramite Open Banking. Le importa nei tuoi conti Monize. L’accesso è di sola lettura. Accedi alla tua banca e Monize non vede mai la password bancaria. Questo percorso mostra dove configurarla."
+          },
+          "credentials": {
+            "title": "La tua applicazione Enable Banking",
+            "body": "Monize raggiunge la tua banca tramite la tua applicazione Enable Banking. Registrane una nel pannello di controllo di Enable Banking. Poi scegli **Configura le credenziali** e inserisci l’ID dell’applicazione e la chiave privata. Registra nel pannello di controllo anche l’**URL di reindirizzamento** mostrato qui. **Testa connessione** verifica che funzioni. **Mostra la guida alla configurazione** spiega ogni passaggio."
+          },
+          "connect": {
+            "title": "Collega una banca",
+            "body": "**Collega una banca** funziona quando le credenziali sono salvate. Scegli il paese e la tua banca. Scegli se il conto è personale o aziendale. Poi scegli **Continua verso la banca**. Accedi alla tua banca e consenti a Monize di leggere i tuoi conti. Al termine la banca ti riporta su Monize."
+          },
+          "connections": {
+            "title": "Le tue banche collegate",
+            "body": "Ogni banca collegata ha una scheda. Mostra lo stato e la data fino alla quale l’accesso è valido. Un interruttore attiva una sincronizzazione al giorno. **Sincronizza tutto** importa da tutti i conti collegati. **Scollega** ferma la sincronizzazione. Le transazioni già importate restano. Se non c’è nessuna banca collegata, quest’area lo dice."
+          },
+          "link": {
+            "title": "Collega un conto bancario a un conto Monize",
+            "body": "Ogni conto bancario è collegato a un conto Monize. Scegli qui il conto Monize, oppure scegli **Crea un nuovo conto**. Monize chiede la data da cui importare. Le transazioni precedenti a quella data non vengono mai importate. **Abbina per numero di conto** collega i conti che hanno lo stesso numero.",
+            "fallbackBody": "Dopo aver collegato una banca, ogni suo conto bancario compare con un selettore **Conto Monize**. Colleghi ciascuno a un conto Monize, oppure crei un nuovo conto. Monize chiede la data da cui importare. Le transazioni precedenti a quella data non vengono mai importate."
+          },
+          "preview": {
+            "title": "Anteprima prima del primo import",
+            "body": "Il primo import di un conto collegato si conferma da un’anteprima. Scegli **Sincronizza ora** per aprirla. Non viene importato nulla finché non confermi. Ogni riga ha una casella e un pulsante per i dettagli. I dettagli mostrano il risultato del test delle regole: ogni regola di importazione, se ha corrisposto e che cosa cambierebbe. Mostrano anche come il testo della banca è diventato il beneficiario. Le righe già importate o rifiutate sono elencate ma non importate. Le sincronizzazioni successive importano subito.",
+            "fallbackBody": "Quando un conto bancario è collegato, **Sincronizza ora** apre un’anteprima delle sue transazioni. Non viene importato nulla finché non confermi. Ogni riga ha una casella e un pulsante per i dettagli. I dettagli mostrano il risultato del test delle regole e come il testo della banca è diventato il beneficiario. Le sincronizzazioni successive importano subito."
+          },
+          "consent": {
+            "title": "Il consenso e come rinnovarlo",
+            "body": "Il tuo consenso dura un tempo limitato, fino a 180 giorni. La scheda mostra la data fino alla quale l’accesso è valido. Negli ultimi 7 giorni mostra **Scade a breve**. Scegli **Rinnova il consenso** per autorizzare di nuovo presso la banca. I conti collegati restano. Quando il consenso termina, la sincronizzazione si ferma finché non lo rinnovi.",
+            "fallbackBody": "Quando una banca è collegata, la sua scheda mostra la data fino alla quale l’accesso è valido. Il tuo consenso dura fino a 180 giorni. Quando la fine si avvicina, qui compare **Rinnova il consenso**. Sceglilo per autorizzare di nuovo presso la banca. I conti collegati restano."
+          },
+          "notifications": {
+            "title": "Promemoria e risultati della sincronizzazione",
+            "body": "Monize ti avvisa prima che il consenso termini e quando è terminato. Ti dice anche com’è andata la sincronizzazione giornaliera: nuove transazioni, nulla di nuovo o un errore. In questa tabella, **Collegamenti bancari** contiene i promemoria del consenso. **Risultati della sincronizzazione bancaria** contiene i risultati della sincronizzazione. Scegli dove viene consegnato ciascuno. Su ogni scheda di banca, **Notifica dopo la sincronizzazione giornaliera** imposta quali sincronizzazioni riuscite ti avvisano."
           }
         }
       }

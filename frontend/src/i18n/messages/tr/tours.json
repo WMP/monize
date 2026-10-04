@@ -46,7 +46,7 @@
     "requires": {
       "transactionEntry": "Önce bir hesap ekleyin — bu tur bir işlemin nasıl kaydedildiğini anlatır.",
       "securitiesExist": "Önce bir menkul kıymet ekleyin — bu tur menkul kıymet listenizden birini açar.",
-      "ownerView": "Önce kendi verilerinize dönün. Bu tur, başkası adına işlem yaparken kullanılamayan Kurallar’ı ve yapay zekâ inceleme kutusunu kapsar."
+      "ownerView": "Önce kendi verilerinize dönün. Bu tur, başkası adına işlem yaparken kullanılamayan özellikleri kapsar."
     },
     "start": "Başlat",
     "restart": "Tekrar al",
@@ -423,6 +423,48 @@
           "reviews": {
             "title": "Yapay zekâ inceleme kutusu",
             "body": "**Yapay zekâ incelemesi iste** eylemi olan bir kural işlemi değiştirmez, onu buraya koyar. Bir asistan değişiklik önerir ve siz onaylayana kadar hiçbir şey yazılmaz. Bir isteği reddedebilirsiniz de. Kutuyu **YZ** altında **Yapay zekâ inceleme kutusu** olarak bulursunuz."
+          }
+        }
+      }
+    },
+    "v1_18_0": {
+      "bankSync": {
+        "title": "Banka Senkronizasyonu",
+        "steps": {
+          "welcome": {
+            "title": "Bankanızdan işlemleri içe aktarın",
+            "body": "Banka senkronizasyonu, banka hesaplarınızın kesinleşmiş işlemlerini Open Banking üzerinden okur. Bunları Monize hesaplarınıza aktarır. Erişim salt okunurdur. Kendi bankanızda oturum açarsınız ve Monize banka şifrenizi asla görmez. Bu tur, nerede kurulacağını gösterir."
+          },
+          "credentials": {
+            "title": "Enable Banking uygulamanız",
+            "body": "Monize, bankanıza kendi Enable Banking uygulamanız üzerinden ulaşır. Enable Banking kontrol panelinde bir uygulama kaydedin. Sonra **Kimlik bilgilerini ayarla** seçeneğini seçin ve uygulama kimliğini ve özel anahtarı girin. Burada gösterilen **Yönlendirme URL'si** adresini de kontrol panelinde kaydedin. **Bağlantıyı test et** her şeyin çalıştığını denetler. **Kurulum yardımını göster** her adımı açıklar."
+          },
+          "connect": {
+            "title": "Banka bağlayın",
+            "body": "**Banka bağla** kimlik bilgileri kaydedilince çalışır. Ülkeyi ve bankanızı seçin. Hesabın bireysel mi ticari mi olduğunu seçin. Sonra **Bankaya devam et** seçeneğini seçin. Bankanızda oturum açar ve Monize’un hesaplarınızı okumasına izin verirsiniz. İşiniz bitince bankanız sizi Monize’a geri gönderir."
+          },
+          "connections": {
+            "title": "Bağlı bankalarınız",
+            "body": "Her bağlı bankanın bir kartı vardır. Kart, durumu ve erişimin geçerli olduğu tarihi gösterir. Bir anahtar günde bir senkronizasyonu açar. **Tümünü senkronize et** bağlı tüm hesaplardan içe aktarır. **Bağlantıyı kes** senkronizasyonu durdurur. Önceden içe aktarılan işlemler kalır. Bağlı banka yoksa bu alan bunu söyler."
+          },
+          "link": {
+            "title": "Banka hesabını bir Monize hesabına bağlayın",
+            "body": "Her banka hesabı bir Monize hesabına bağlanır. Monize hesabını buradan seçin ya da **Yeni hesap oluştur** seçeneğini seçin. Monize, hangi tarihten itibaren içe aktarılacağını sorar. O tarihten önceki işlemler asla içe aktarılmaz. **Hesap numarasına göre eşleştir** aynı numaraya sahip hesapları bağlar.",
+            "fallbackBody": "Bir banka bağladıktan sonra her banka hesabı bir **Monize hesabı** seçicisiyle listelenir. Her birini bir Monize hesabına bağlarsınız ya da yeni bir hesap oluşturursunuz. Monize, hangi tarihten itibaren içe aktarılacağını sorar. O tarihten önceki işlemler asla içe aktarılmaz."
+          },
+          "preview": {
+            "title": "İlk içe aktarmadan önce önizleme",
+            "body": "Bağlı bir hesabın ilk içe aktarması bir önizlemeden onaylanır. Açmak için **Şimdi senkronize et** seçeneğini seçin. Siz onaylayana kadar hiçbir şey içe aktarılmaz. Her satırda bir onay kutusu ve ayrıntılar için bir düğme vardır. Ayrıntılar kural testi sonucunu gösterir: her içe aktarma kuralı, eşleşip eşleşmediği ve neyi değiştireceği. Ayrıca banka metninin nasıl alıcıya dönüştüğünü gösterir. Zaten içe aktarılmış veya reddedilmiş satırlar listelenir ama içe aktarılmaz. Sonraki senkronizasyonlar hemen içe aktarır.",
+            "fallbackBody": "Bir banka hesabı bağlanınca **Şimdi senkronize et**, işlemlerinin önizlemesini açar. Siz onaylayana kadar hiçbir şey içe aktarılmaz. Her satırda bir onay kutusu ve ayrıntılar için bir düğme vardır. Ayrıntılar kural testi sonucunu ve banka metninin nasıl alıcıya dönüştüğünü gösterir. Sonraki senkronizasyonlar hemen içe aktarır."
+          },
+          "consent": {
+            "title": "İzin ve yenileme",
+            "body": "İzniniz sınırlı bir süre geçerlidir, en fazla 180 gün. Kart, erişimin geçerli olduğu tarihi gösterir. Son 7 günde **Yakında sona eriyor** görünür. Bankanızda yeniden yetki vermek için **Onayı yenile** seçeneğini seçin. Bağladığınız hesaplar korunur. İzin bitince, siz yenileyene kadar senkronizasyon durur.",
+            "fallbackBody": "Bir banka bağlandığında kartı, erişimin geçerli olduğu tarihi gösterir. İzniniz en fazla 180 gün sürer. Bitiş yaklaşınca burada **Onayı yenile** görünür. Bankanızda yeniden yetki vermek için onu seçin. Bağladığınız hesaplar korunur."
+          },
+          "notifications": {
+            "title": "Hatırlatmalar ve senkronizasyon sonuçları",
+            "body": "Monize, izin bitmeden önce ve bittiğinde sizi bilgilendirir. Günlük senkronizasyonun nasıl geçtiğini de söyler: yeni işlemler, yeni bir şey yok veya bir hata. Bu tabloda **Banka bağlantıları** izin hatırlatmalarını içerir. **Banka senkronizasyonu sonuçları** senkronizasyon sonuçlarını içerir. Her birinin nereye iletileceğini seçin. Her banka kartında **Günlük senkronizasyondan sonra bildir**, hangi başarılı senkronizasyonların sizi bilgilendireceğini belirler."
           }
         }
       }

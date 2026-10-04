@@ -46,7 +46,7 @@
     "requires": {
       "transactionEntry": "Hãy thêm một tài khoản trước — hướng dẫn này chỉ cách ghi lại một giao dịch.",
       "securitiesExist": "Hãy thêm một chứng khoán trước — hướng dẫn này mở một mục từ danh sách chứng khoán của bạn.",
-      "ownerView": "Hãy quay lại dữ liệu của chính bạn trước. Phần hướng dẫn này nói về Quy tắc và hộp thư xem xét của AI, những mục không khả dụng khi bạn đang thao tác thay cho người khác."
+      "ownerView": "Hãy quay lại dữ liệu của chính bạn trước. Phần hướng dẫn này nói về các tính năng không dùng được khi bạn đang thao tác thay người khác."
     },
     "start": "Bắt đầu",
     "restart": "Xem lại",
@@ -423,6 +423,48 @@
           "reviews": {
             "title": "Hộp thư xem xét của AI",
             "body": "Quy tắc có thao tác **Yêu cầu AI xem xét** không thay đổi giao dịch mà đưa nó vào đây. Một trợ lý đề xuất chỉnh sửa, và không có gì được ghi cho đến khi bạn phê duyệt. Bạn cũng có thể bỏ qua một yêu cầu. Bạn tìm thấy nó trong **AI** với tên **Hộp thư xem xét của AI**."
+          }
+        }
+      }
+    },
+    "v1_18_0": {
+      "bankSync": {
+        "title": "Đồng bộ ngân hàng",
+        "steps": {
+          "welcome": {
+            "title": "Nhập giao dịch từ ngân hàng của bạn",
+            "body": "Đồng bộ ngân hàng đọc các giao dịch đã ghi sổ của tài khoản ngân hàng qua Open Banking. Nó nhập chúng vào tài khoản Monize của bạn. Quyền truy cập chỉ để đọc. Bạn đăng nhập tại chính ngân hàng của mình, và Monize không bao giờ thấy mật khẩu ngân hàng của bạn. Phần hướng dẫn này chỉ nơi thiết lập."
+          },
+          "credentials": {
+            "title": "Ứng dụng Enable Banking của bạn",
+            "body": "Monize kết nối đến ngân hàng của bạn qua ứng dụng Enable Banking của chính bạn. Hãy đăng ký một ứng dụng trong bảng điều khiển Enable Banking. Sau đó chọn **Thiết lập thông tin đăng nhập** và nhập ID ứng dụng cùng khóa riêng. Hãy đăng ký cả **URL chuyển hướng** hiển thị ở đây trong bảng điều khiển. **Kiểm tra kết nối** kiểm tra xem mọi thứ có hoạt động không. **Hiện trợ giúp thiết lập** giải thích từng bước."
+          },
+          "connect": {
+            "title": "Kết nối ngân hàng",
+            "body": "**Kết nối ngân hàng** hoạt động khi thông tin xác thực đã được lưu. Chọn quốc gia và ngân hàng của bạn. Chọn tài khoản là cá nhân hay doanh nghiệp. Sau đó chọn **Tiếp tục đến ngân hàng**. Bạn đăng nhập tại ngân hàng và cho phép Monize đọc các tài khoản của bạn. Ngân hàng sẽ đưa bạn quay lại Monize khi xong."
+          },
+          "connections": {
+            "title": "Các ngân hàng đã kết nối",
+            "body": "Mỗi ngân hàng đã kết nối có một thẻ. Thẻ cho biết trạng thái và ngày quyền truy cập còn hiệu lực. Một công tắc bật đồng bộ mỗi ngày một lần. **Đồng bộ tất cả** nhập từ mọi tài khoản đã liên kết. **Ngắt kết nối** dừng đồng bộ. Các giao dịch đã nhập vẫn được giữ lại. Nếu chưa kết nối ngân hàng nào, khu vực này sẽ cho biết."
+          },
+          "link": {
+            "title": "Liên kết tài khoản ngân hàng với tài khoản Monize",
+            "body": "Mỗi tài khoản ngân hàng được liên kết với một tài khoản Monize. Hãy chọn tài khoản Monize tại đây, hoặc chọn **Tạo tài khoản mới**. Monize hỏi ngày bắt đầu nhập. Các giao dịch trước ngày đó không bao giờ được nhập. **Ghép theo số tài khoản** liên kết các tài khoản có cùng số.",
+            "fallbackBody": "Sau khi bạn kết nối một ngân hàng, mỗi tài khoản ngân hàng của nó được liệt kê kèm bộ chọn **Tài khoản Monize**. Bạn liên kết từng tài khoản với một tài khoản Monize, hoặc tạo tài khoản mới. Monize hỏi ngày bắt đầu nhập. Các giao dịch trước ngày đó không bao giờ được nhập."
+          },
+          "preview": {
+            "title": "Xem trước khi nhập lần đầu",
+            "body": "Lần nhập đầu tiên của một tài khoản đã liên kết được xác nhận từ bản xem trước. Chọn **Đồng bộ ngay** để mở nó. Không có gì được nhập cho đến khi bạn xác nhận. Mỗi dòng có một hộp chọn và một nút xem chi tiết. Phần chi tiết cho thấy kết quả kiểm tra quy tắc: từng quy tắc nhập, nó có khớp không và nó sẽ thay đổi gì. Phần đó cũng cho thấy văn bản của ngân hàng trở thành người nhận như thế nào. Các dòng đã nhập hoặc bị từ chối được liệt kê nhưng không được nhập. Các lần đồng bộ sau nhập ngay.",
+            "fallbackBody": "Khi một tài khoản ngân hàng đã được liên kết, **Đồng bộ ngay** mở bản xem trước các giao dịch của nó. Không có gì được nhập cho đến khi bạn xác nhận. Mỗi dòng có một hộp chọn và một nút xem chi tiết. Phần chi tiết cho thấy kết quả kiểm tra quy tắc và văn bản của ngân hàng trở thành người nhận như thế nào. Các lần đồng bộ sau nhập ngay."
+          },
+          "consent": {
+            "title": "Sự đồng ý và cách gia hạn",
+            "body": "Sự đồng ý của bạn có hiệu lực trong thời gian giới hạn, tối đa 180 ngày. Thẻ cho biết ngày quyền truy cập còn hiệu lực. Trong 7 ngày cuối, thẻ hiển thị **Sắp hết hạn**. Chọn **Gia hạn sự đồng ý** để cấp quyền lại tại ngân hàng. Các tài khoản đã liên kết được giữ lại. Khi sự đồng ý kết thúc, đồng bộ dừng cho đến khi bạn gia hạn.",
+            "fallbackBody": "Khi một ngân hàng đã được kết nối, thẻ của nó cho biết ngày quyền truy cập còn hiệu lực. Sự đồng ý của bạn kéo dài tối đa 180 ngày. Khi sắp hết hạn, **Gia hạn sự đồng ý** xuất hiện ở đây. Hãy chọn nó để cấp quyền lại tại ngân hàng. Các tài khoản đã liên kết được giữ lại."
+          },
+          "notifications": {
+            "title": "Nhắc nhở và kết quả đồng bộ",
+            "body": "Monize báo cho bạn trước khi sự đồng ý kết thúc, và khi nó đã kết thúc. Monize cũng cho biết lần đồng bộ hằng ngày diễn ra thế nào: có giao dịch mới, không có gì mới hoặc bị lỗi. Trong bảng này, **Kết nối ngân hàng** chứa các nhắc nhở về sự đồng ý. **Kết quả đồng bộ ngân hàng** chứa kết quả đồng bộ. Hãy chọn nơi gửi từng loại. Trên mỗi thẻ ngân hàng, **Thông báo sau lần đồng bộ hằng ngày** đặt những lần đồng bộ thành công nào sẽ báo cho bạn."
           }
         }
       }

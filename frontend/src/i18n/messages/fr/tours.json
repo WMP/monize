@@ -46,7 +46,7 @@
     "requires": {
       "transactionEntry": "Ajoutez d'abord un compte : cette visite explique comment enregistrer une transaction.",
       "securitiesExist": "Ajoutez d'abord un titre : cette visite en ouvre un depuis votre liste de titres.",
-      "ownerView": "Revenez d’abord à vos propres données. Cette visite couvre les Règles et la boîte de révision par l’IA, qui ne sont pas disponibles lorsque vous agissez pour le compte de quelqu’un d’autre."
+      "ownerView": "Revenez d’abord à vos propres données. Cette visite couvre des fonctions indisponibles quand vous agissez pour quelqu’un d’autre."
     },
     "start": "Démarrer",
     "restart": "Refaire",
@@ -423,6 +423,48 @@
           "reviews": {
             "title": "La boîte de révision par l’IA",
             "body": "Une règle avec **Demander une révision par l’IA** ne modifie pas la transaction : elle la dépose ici. Un assistant propose une modification, et rien n’est écrit tant que vous ne l’approuvez pas. Vous pouvez aussi écarter une demande. Vous la trouvez sous **IA**, à l’entrée **Boîte de révision par l’IA**."
+          }
+        }
+      }
+    },
+    "v1_18_0": {
+      "bankSync": {
+        "title": "Synchronisation bancaire",
+        "steps": {
+          "welcome": {
+            "title": "Importez les transactions de votre banque",
+            "body": "La synchronisation bancaire lit les transactions comptabilisées de vos comptes bancaires via Open Banking. Elle les importe dans vos comptes Monize. L’accès est en lecture seule. Vous vous connectez à votre propre banque, et Monize ne voit jamais votre mot de passe bancaire. Cette visite montre où la configurer."
+          },
+          "credentials": {
+            "title": "Votre application Enable Banking",
+            "body": "Monize accède à votre banque grâce à votre propre application Enable Banking. Enregistrez-en une dans le panneau de contrôle d’Enable Banking. Choisissez ensuite **Configurer les identifiants** et saisissez l’identifiant de l’application et la clé privée. Enregistrez aussi dans le panneau de contrôle l’**URL de redirection** affichée ici. **Tester la connexion** vérifie que tout fonctionne. **Afficher l'aide à la configuration** explique chaque étape."
+          },
+          "connect": {
+            "title": "Connecter une banque",
+            "body": "**Connecter une banque** fonctionne dès que les identifiants sont enregistrés. Choisissez le pays et votre banque. Indiquez si le compte est personnel ou professionnel. Choisissez ensuite **Continuer vers la banque**. Vous vous connectez à votre banque et autorisez Monize à lire vos comptes. Votre banque vous renvoie vers Monize quand vous avez terminé."
+          },
+          "connections": {
+            "title": "Vos banques connectées",
+            "body": "Chaque banque connectée a une carte. Elle indique l’état et la date jusqu’à laquelle l’accès est valable. Un interrupteur active une synchronisation par jour. **Tout synchroniser** importe depuis tous les comptes liés. **Déconnecter** arrête la synchronisation. Les transactions déjà importées sont conservées. Si aucune banque n’est connectée, cette zone l’indique."
+          },
+          "link": {
+            "title": "Lier un compte bancaire à un compte Monize",
+            "body": "Chaque compte bancaire est lié à un compte Monize. Choisissez ici le compte Monize, ou choisissez **Créer un nouveau compte**. Monize demande la date à partir de laquelle importer. Les transactions antérieures à cette date ne sont jamais importées. **Associer par numéro de compte** lie les comptes qui ont le même numéro.",
+            "fallbackBody": "Après avoir connecté une banque, chacun de ses comptes bancaires apparaît avec un sélecteur **Compte Monize**. Vous liez chacun à un compte Monize, ou vous créez un nouveau compte. Monize demande la date à partir de laquelle importer. Les transactions antérieures à cette date ne sont jamais importées."
+          },
+          "preview": {
+            "title": "Aperçu avant le premier import",
+            "body": "Le premier import d’un compte lié se confirme depuis un aperçu. Choisissez **Synchroniser maintenant** pour l’ouvrir. Rien n’est importé tant que vous ne confirmez pas. Chaque ligne a une case à cocher et un bouton pour ses détails. Les détails montrent le résultat du test des règles : chaque règle d’import, si elle correspond et ce qu’elle changerait. Ils montrent aussi comment le texte de la banque est devenu le bénéficiaire. Les lignes déjà importées ou refusées sont listées, mais pas importées. Les synchronisations suivantes importent aussitôt.",
+            "fallbackBody": "Quand un compte bancaire est lié, **Synchroniser maintenant** ouvre un aperçu de ses transactions. Rien n’est importé tant que vous ne confirmez pas. Chaque ligne a une case à cocher et un bouton pour ses détails. Les détails montrent le résultat du test des règles et comment le texte de la banque est devenu le bénéficiaire. Les synchronisations suivantes importent aussitôt."
+          },
+          "consent": {
+            "title": "Le consentement et son renouvellement",
+            "body": "Votre consentement dure un temps limité, jusqu’à 180 jours. La carte indique la date jusqu’à laquelle l’accès est valable. Pendant les 7 derniers jours, elle affiche **Expire bientôt**. Choisissez **Renouveler le consentement** pour autoriser de nouveau auprès de votre banque. Les comptes liés sont conservés. Quand le consentement prend fin, la synchronisation s’arrête jusqu’au renouvellement.",
+            "fallbackBody": "Quand une banque est connectée, sa carte indique la date jusqu’à laquelle l’accès est valable. Votre consentement dure jusqu’à 180 jours. Quand la fin approche, **Renouveler le consentement** apparaît ici. Choisissez-le pour autoriser de nouveau auprès de votre banque. Les comptes liés sont conservés."
+          },
+          "notifications": {
+            "title": "Rappels et résultats de synchronisation",
+            "body": "Monize vous prévient avant la fin du consentement, et quand il est terminé. Il vous dit aussi comment s’est passée la synchronisation quotidienne : nouvelles transactions, rien de nouveau ou un échec. Dans ce tableau, **Connexions bancaires** contient les rappels de consentement. **Résultats de la synchronisation bancaire** contient les résultats de synchronisation. Choisissez où chacun est envoyé. Sur chaque carte de banque, **Notifier après la synchronisation quotidienne** définit quelles synchronisations réussies vous notifient."
           }
         }
       }

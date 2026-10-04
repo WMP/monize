@@ -546,5 +546,79 @@
     "mnyPasswordRequired": "That Money file is password protected.",
     "mnyPasswordIncorrect": "That password does not open the Money file.",
     "mnyUnreadableDatabase": "That Money file was decrypted but its contents could not be read. It may be damaged."
+  },
+  "preview": {
+    "choice": {
+      "legend": "What to do with {payee} if it is not imported",
+      "skip": "Skip now",
+      "except": "Add to exceptions"
+    },
+    "payeeTip": {
+      "name": "From the bank: {original}. Maps to: {name}",
+      "alias": "From the bank: {original}. Maps to: {name} (alias \"{pattern}\")",
+      "aliasNoPattern": "From the bank: {original}. Maps to: {name} (alias)",
+      "new": "From the bank: {original}. Maps to: {name} (new payee)",
+      "rule": "From the bank: {original}. Maps to: {name} (set by a rule)",
+      "ruleNone": "From the bank: {original}. Maps to: no payee (set by a rule)"
+    },
+    "expand": {
+      "show": "Show details of {payee}",
+      "hide": "Hide details of {payee}"
+    },
+    "rules": {
+      "heading": "Import rules",
+      "none": "No import rule matched this transaction.",
+      "skipped": "{action}: skipped ({reason})",
+      "stopped": "Stops the rules after it.",
+      "applied": "Applied: {actions}",
+      "openNewTab": "Open the rule {name} in a new tab"
+    },
+    "ruleTest": {
+      "loading": "Loading the rule test result",
+      "error": "The rule test result could not be loaded.",
+      "retry": "Try again",
+      "noRules": "You have no import rules, so there was nothing to test.",
+      "showNotMatched": "Show rules that did not match ({count})",
+      "hideNotMatched": "Hide rules that did not match ({count})",
+      "noChanges": "It matched, but it changes nothing in this transaction.",
+      "badge": {
+        "matched": "Matched",
+        "notMatched": "Not matched",
+        "notEvaluated": "Not evaluated"
+      },
+      "notEvaluated": {
+        "afterStop": "Not evaluated: a previous rule stopped the rules.",
+        "disabled": "Not evaluated: the rule is switched off.",
+        "invalid": "Not evaluated: the rule is not valid. Open it to repair it."
+      },
+      "condition": {
+        "met": "Condition met",
+        "notMet": "Condition not met",
+        "actual": "Value in this transaction: {value}",
+        "noValue": "none",
+        "noTags": "no tags",
+        "capture": "{name} = {value}",
+        "omitted": "The details of this part of the condition are not shown."
+      },
+      "skipReasons": {
+        "already_set": "it already has a value and the rule only fills in an empty one",
+        "no_change": "it already has what the rule would set",
+        "payee_unresolved": "the payee the rule builds could not be looked up"
+      }
+    },
+    "payee": {
+      "heading": "Payee",
+      "unknown": "No payee information for this transaction.",
+      "original": "The bank's text: {original}",
+      "name": "Matches your existing payee {name}.",
+      "alias": "Maps to {name} through the alias \"{pattern}\".",
+      "aliasNoPattern": "Maps to {name} through an alias.",
+      "new": "No payee has this name yet, so {name} would be created.",
+      "rule": "An import rule sets the payee: {name}.",
+      "ruleNone": "An import rule clears the payee.",
+      "none": "The bank gave no counterparty, so the transaction has no payee.",
+      "openAliases": "Open the payee's aliases",
+      "openAliasesNewTab": "Open the payee's aliases in a new tab"
+    }
   }
 }
