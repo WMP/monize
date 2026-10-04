@@ -13,6 +13,12 @@
     "rejected": "Rejected",
     "expired": "Expired"
   },
+  "kindFilter": {
+    "label": "Filter by kind",
+    "all": "All",
+    "email_receipt": "Email receipts",
+    "transaction_review": "Rules"
+  },
   "status": {
     "pending": "Pending",
     "claimed": "In review",
@@ -47,6 +53,23 @@
   },
   "proposal": {
     "errorTitle": "This proposal can no longer be applied"
+  },
+  "bulk": {
+    "selectRow": "Select {name}",
+    "selectAll": "Select all approvable requests shown",
+    "approveSelected": "Approve selected ({count})",
+    "approveAllShown": "Approve all shown ({count})",
+    "summary": "{approved, plural, one {# proposal} other {# proposals}} applied, {failed, plural, one {# not applied} other {# not applied}}.",
+    "closeSummary": "Close",
+    "failure": "{name}: {reason}",
+    "noReason": "No reason was given",
+    "unknownRequest": "A request",
+    "failed": "Could not apply the proposals",
+    "dialog": {
+      "title": "{count, plural, one {Apply # proposal?} other {Apply # proposals?}}",
+      "message": "Each proposal is checked against its transaction as it is now and applied on its own. One that no longer fits is skipped and reported, and the rest are still applied. Review the proposals before approving them.",
+      "confirm": "{count, plural, one {Apply # proposal} other {Apply # proposals}}"
+    }
   },
   "dismissDialog": {
     "title": "Dismiss this request?",

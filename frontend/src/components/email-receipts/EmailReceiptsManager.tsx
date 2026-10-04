@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { EnvelopeIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { EmailReceiptDetailDialog } from '@/components/email-receipts/EmailReceiptDetailDialog';
+import { ProcessAllButton } from '@/components/email-receipts/ProcessAllButton';
 import { ParserEditorDialog } from '@/components/email-receipts/ParserEditorDialog';
 import { RecognizeWithAiDialog } from '@/components/email-receipts/RecognizeWithAiDialog';
 import { ReceiptStateBadge } from '@/components/email-receipts/ReceiptStateBadge';
@@ -30,6 +31,7 @@ import {
   distinctSenderDomains,
   isReceiptActionable,
   normalizeDomainFilter,
+  processableForDomains,
   senderDomain,
 } from '@/lib/email-receipts-format';
 import { getErrorMessage } from '@/lib/errors';
@@ -100,6 +102,8 @@ export function EmailReceiptsManager() {
   const [domain, setDomain] = useState<string>(() => normalizeDomainFilter(searchParams.get('domain')));
   // The sender domains with their counts for the filter; null while unknown or failed (the select then offers only "All" and the current one).
   const [domains, setDomains] = useState<EmailReceiptDomainCount[] | null>(null);
+  // How many stored emails "Process all" runs over, from the overview (the domain list is capped, so it cannot be summed); null while unknown or failed.
+  const [processableTotal, setProcessableTotal] = useState<number | null>(null);
   const [loaded, setLoaded] = useState<LoadedList | null>(null);
   const [mailbox, setMailbox] = useState<MailboxState>({ status: 'loading' });
   // The emails ticked for "Draft parser with AI", by id. Only ids of the list on
@@ -144,12 +148,21 @@ export function EmailReceiptsManager() {
   const loadDomains = useCallback(async () => {
     const request = ++latestDomains.current;
     try {
-      const found = await emailReceiptsApi.receipts.listDomains();
-      if (request === latestDomains.current) setDomains(found);
+      const [found, overview] = await Promise.all([
+        emailReceiptsApi.receipts.listDomains(),
+        emailReceiptsApi.receipts.overview().catch((error) => {
+          logger.error(error);
+          return null;
+        }),
+      ]);
+      if (request !== latestDomains.current) return;
+      setDomains(found);
+      setProcessableTotal(overview === null ? null : overview.processable);
     } catch (error) {
       if (request !== latestDomains.current) return;
       logger.error(error);
       setDomains(null);
+      setProcessableTotal(null);
     }
   }, []);
 
@@ -171,6 +184,8 @@ export function EmailReceiptsManager() {
     setDomain(next);
     setSelectedIds(new Set());
     const params = new URLSearchParams(searchParams.toString());
+    // Without a domain a legacy `/email-receipts?domain=` link would fall back to the Overview, so the tab is named.
+    params.set('tab', 'emails');
     if (next === '') params.delete('domain');
     else params.set('domain', next);
     const query = params.toString();
@@ -391,6 +406,14 @@ export function EmailReceiptsManager() {
     ...(domain !== '' && !(domains ?? []).some((entry) => entry.domain === domain) ? [{ value: domain, label: domain }] : []),
   ];
 
+  // "Process all" for the sender being looked at, or every sender; unknown (and the button off) until the counts are read.
+  const processCount =
+    domain === ''
+      ? processableTotal
+      : domains === null
+        ? null
+        : processableForDomains(domains, [domain]);
+
   let body;
   if (current !== null && current.items === null) {
     body = (
@@ -415,7 +438,7 @@ export function EmailReceiptsManager() {
         description={noMailbox ? t('empty.noMailboxBody') : unfiltered ? t('empty.body') : t('empty.filteredBody')}
         action={
           noMailbox ? (
-            <Link href="/settings/email-receipts" className={buttonClassName('primary', 'md')}>
+            <Link href="/email-receipts?tab=mailbox" className={buttonClassName('primary', 'md')}>
               {t('empty.connectButton')}
             </Link>
           ) : undefined
@@ -510,7 +533,7 @@ export function EmailReceiptsManager() {
         <Link href="/ai-reviews" className="text-blue-600 hover:underline dark:text-blue-400">
           {t('links.reviewInbox')}
         </Link>
-        <Link href="/settings/email-receipts" className="text-blue-600 hover:underline dark:text-blue-400">
+        <Link href="/email-receipts?tab=mailbox" className="text-blue-600 hover:underline dark:text-blue-400">
           {t('links.settings')}
         </Link>
       </div>
@@ -543,6 +566,12 @@ export function EmailReceiptsManager() {
         </div>
       </div>
       {domain !== '' && <p className="text-xs text-gray-500 dark:text-gray-400">{t('domainFilter.help', { domain })}</p>}
+
+      <ProcessAllButton
+        count={processCount}
+        domain={domain === '' ? undefined : domain}
+        onFinished={() => void reload()}
+      />
 
       {notice && (
         <div

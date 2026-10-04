@@ -33,6 +33,8 @@ describe("email receipts schema (schema.sql and migrations)", () => {
     "add_email_receipt_oauth",
     "email_receipts_html_and_forwarded",
     "ai_review_requests_parser_draft",
+    "email_receipts_match_kind_profile",
+    "email_receipt_mailbox_profile_ai_limit",
   ];
 
   let admin: DataSource;
@@ -188,7 +190,8 @@ describe("email receipts schema (schema.sql and migrations)", () => {
       );
       await mailboxWith("ai_mode", "on_demand");
       const [row] = await db.query(
-        `SELECT port, security, folder, enabled, ai_mode, auto_apply, uid_validity, last_uid
+        `SELECT port, security, folder, enabled, ai_mode, auto_apply,
+                profile_proposals_count_toward_ai_limit, uid_validity, last_uid
            FROM email_receipt_mailboxes WHERE user_id = $1`,
         [userId],
       );
@@ -199,9 +202,24 @@ describe("email receipts schema (schema.sql and migrations)", () => {
         enabled: false,
         ai_mode: "off",
         auto_apply: false,
+        // The user's own switch defaults to today's behaviour: every confirm counts.
+        profile_proposals_count_toward_ai_limit: true,
         uid_validity: null,
         last_uid: null,
       });
+    });
+
+    it("holds the switch for profile proposals NOT NULL, so no row reads as undecided", async () => {
+      await expect(
+        mailboxWith("profile_proposals_count_toward_ai_limit", null),
+      ).rejects.toThrow(/not-null|null value/);
+      await mailboxWith("profile_proposals_count_toward_ai_limit", false);
+      const [row] = await db.query(
+        `SELECT profile_proposals_count_toward_ai_limit AS counts
+           FROM email_receipt_mailboxes WHERE user_id = $1`,
+        [otherUserId],
+      );
+      expect(row.counts).toBe(false);
     });
 
     describe("credentials (password or OAuth2)", () => {
@@ -422,11 +440,13 @@ describe("email receipts schema (schema.sql and migrations)", () => {
       );
     });
 
-    it("admits only the four match kinds, or none", async () => {
+    it("admits only the six match kinds, or none (amount_only is what rows matched before the strategies were configurable carry)", async () => {
       await receipt({ uid: 1, match_kind: null });
       for (const [i, kind] of [
         "order_id",
+        "reference",
         "amount_payee",
+        "amount_date",
         "amount_only",
         "manual",
       ].entries()) {
@@ -796,6 +816,9 @@ describe("email receipts schema (schema.sql and migrations)", () => {
       // the two of the parser-draft work come after the three that built the feature
       expect(positions[3]).toBeGreaterThan(positions[2]);
       expect(positions[4]).toBeGreaterThan(positions[3]);
+      // the two of the profile work come last
+      expect(positions[5]).toBeGreaterThan(positions[4]);
+      expect(positions[6]).toBeGreaterThan(positions[5]);
     });
 
     it("has the new columns, with the same types, after the replays", async () => {
@@ -807,10 +830,12 @@ describe("email receipts schema (schema.sql and migrations)", () => {
                    AND column_name IN ('body_html', 'forwarded_by', 'original_sent_at'))
                OR (table_name = 'ai_review_requests'
                    AND column_name IN ('transaction_id', 'email_receipt_ids', 'parser_domain'))
+               OR (table_name = 'email_receipt_mailboxes'
+                   AND column_name = 'profile_proposals_count_toward_ai_limit')
             ORDER BY 1, 2`,
         );
       const expected = await columns(db);
-      expect(expected).toHaveLength(6);
+      expect(expected).toHaveLength(7);
       expect(await columns(upgraded)).toEqual(expected);
     });
   });

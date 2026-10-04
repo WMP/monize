@@ -81,6 +81,7 @@ describe('ParserTestPanel', () => {
         shipping: null,
         discount: null,
         payee: null,
+        reference: null,
         requireLine: null,
         skipIfLine: null,
         waitIfLine: null,

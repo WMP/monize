@@ -282,13 +282,13 @@ describe('SettingsPage', () => {
     });
   });
 
-  it('links the Email Receipts card at its settings page, right after AI Settings in both places', async () => {
+  it('links the Email Receipts card at its hub page, right after AI Settings in both places', async () => {
     const { container } = render(<SettingsPage />);
     await waitFor(() => {
       const card = screen
         .getAllByText('Email Receipts')
         .map((el) => el.closest('a'))
-        .find((a) => a?.getAttribute('href') === '/settings/email-receipts' && a.closest('#email-receipts'));
+        .find((a) => a?.getAttribute('href') === '/email-receipts' && a.closest('#email-receipts'));
       expect(card).toBeTruthy();
     });
     const anchors = Array.from(container.querySelectorAll('[id].scroll-mt-32'))

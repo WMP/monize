@@ -14,6 +14,7 @@ import { Category } from "../../categories/entities/category.entity";
 import { Payee } from "../../payees/entities/payee.entity";
 import type { PayeesService } from "../../payees/payees.service";
 import { createScopedDbMocks } from "../../test-helpers/scoped-db-testing";
+import type { EmailReceiptCategoryAiService } from "../ai/email-receipt-category-ai.service";
 import { EmailReceiptMailbox } from "../entities/email-receipt-mailbox.entity";
 import { EmailReceiptParser } from "../entities/email-receipt-parser.entity";
 import { EmailReceipt } from "../entities/email-receipt.entity";
@@ -233,17 +234,26 @@ function setup(over: Partial<World> = {}) {
     resolveByName: jest.fn(async () => world.sellerPayee),
   } as unknown as jest.Mocked<PayeesService>;
 
+  const categoryAi = {
+    canAnswerNow: jest.fn(async () => true),
+    categorize: jest.fn(
+      async (): Promise<Map<number, string> | null> => new Map(),
+    ),
+  } as unknown as jest.Mocked<EmailReceiptCategoryAiService>;
+
   const service = new EmailReceiptPipelineService(
     dataSource as never,
     requests,
     work,
     actions,
     payees,
+    categoryAi,
   );
   return {
     service,
     world,
     payees,
+    categoryAi,
     manager,
     receiptRepo,
     requests,
@@ -1274,7 +1284,7 @@ describe("EmailReceiptPipelineService.process", () => {
         candidates: [candidate({ description: "CARD" })],
       });
       const result = await run(h);
-      expect(result.matchKind).toBe("amount_only");
+      expect(result.matchKind).toBe("amount_date");
       expect(h.actions.confirm).not.toHaveBeenCalled();
     });
 
@@ -1375,10 +1385,32 @@ describe("autoApplyAllowed", () => {
   it("holds when every condition does", () => {
     expect(autoApplyAllowed(facts())).toBe(true);
     expect(autoApplyAllowed(facts({ matchKind: "amount_payee" }))).toBe(true);
+    // The profile's own identifier in the bank operation is as strong as an order number.
+    expect(autoApplyAllowed(facts({ matchKind: "reference" }))).toBe(true);
     expect(autoApplyAllowed(facts({ proposalKind: "single_category" }))).toBe(
       true,
     );
     expect(autoApplyAllowed(facts({ transactionAmount: 15 }))).toBe(true);
+  });
+
+  it.each(["amount_date", "amount_only", "manual"] as const)(
+    "never applies a match by %s: the amount alone is not certain",
+    (matchKind) => {
+      expect(autoApplyAllowed(facts({ matchKind }))).toBe(false);
+    },
+  );
+
+  it("still demands the exact amount whatever tolerance the profile matched with", () => {
+    expect(
+      autoApplyAllowed(
+        facts({ matchKind: "amount_payee", transactionAmount: -15.4 }),
+      ),
+    ).toBe(false);
+    expect(
+      autoApplyAllowed(
+        facts({ matchKind: "reference", transactionAmount: -15.4 }),
+      ),
+    ).toBe(false);
   });
 
   it("compares the transaction with the amount paid, else the total", () => {

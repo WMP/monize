@@ -158,6 +158,8 @@ export class EmailReceiptMailboxService {
               enabled: dto.enabled,
               aiMode: dto.aiMode,
               autoApply: dto.autoApply,
+              profileProposalsCountTowardAiLimit:
+                dto.profileProposalsCountTowardAiLimit ?? true,
             }),
           );
         }
@@ -182,6 +184,12 @@ export class EmailReceiptMailboxService {
             enabled: dto.enabled,
             aiMode: dto.aiMode,
             autoApply: dto.autoApply,
+            ...(dto.profileProposalsCountTowardAiLimit === undefined
+              ? {}
+              : {
+                  profileProposalsCountTowardAiLimit:
+                    dto.profileProposalsCountTowardAiLimit,
+                }),
             ...(passwordEnc === undefined ? {} : { passwordEnc }),
             ...(wasOAuth
               ? {
@@ -231,7 +239,8 @@ export class EmailReceiptMailboxService {
       folder === undefined &&
       dto.enabled === undefined &&
       dto.aiMode === undefined &&
-      dto.autoApply === undefined
+      dto.autoApply === undefined &&
+      dto.profileProposalsCountTowardAiLimit === undefined
     ) {
       throw new BadRequestException(
         tr(
@@ -255,6 +264,12 @@ export class EmailReceiptMailboxService {
           ...(dto.enabled === undefined ? {} : { enabled: dto.enabled }),
           ...(dto.aiMode === undefined ? {} : { aiMode: dto.aiMode }),
           ...(dto.autoApply === undefined ? {} : { autoApply: dto.autoApply }),
+          ...(dto.profileProposalsCountTowardAiLimit === undefined
+            ? {}
+            : {
+                profileProposalsCountTowardAiLimit:
+                  dto.profileProposalsCountTowardAiLimit,
+              }),
           ...(folderChanged
             ? {
                 uidValidity: null,

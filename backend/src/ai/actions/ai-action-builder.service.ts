@@ -576,6 +576,7 @@ export class AiActionBuilderService {
       currencyCode: preview.currencyCode,
       ...(splits ? { splits: splits.map(toSplitRowDescriptor) } : {}),
       ...(attachments?.length ? { attachments } : {}),
+      ...(preview.tagNames?.length ? { tagNames: [...preview.tagNames] } : {}),
       ...(options.aiReviewRequestId
         ? { aiReviewRequestId: options.aiReviewRequestId }
         : {}),
@@ -594,11 +595,22 @@ export class AiActionBuilderService {
         payeeName: preview.payeeName,
         payeeWillBeCreated: preview.payeeWillBeCreated,
         categoryName: preview.categoryName,
+        ...(preview.categorySource === "ai" && !splits
+          ? { categorySource: "ai" as const }
+          : {}),
         description: preview.description,
         isReconciled: preview.isReconciled,
         ...(splits ? { splits: splits.map(toSplitPreview) } : {}),
         ...(attachments?.length
           ? { attachments: attachments.map(toAttachmentPreview) }
+          : {}),
+        ...(preview.tagNames?.length
+          ? {
+              tagNames: [...preview.tagNames],
+              ...(preview.newTagNames?.length
+                ? { newTagNames: [...preview.newTagNames] }
+                : {}),
+            }
           : {}),
       },
     };

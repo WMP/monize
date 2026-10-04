@@ -598,10 +598,28 @@ describe("EmailReceiptParsersService.test", () => {
       pattern: "Order total: {amount}",
       line: { line: 2, text: "Order total: 37.97" },
     });
-    expect(result.match).toEqual({
+    expect(result.match).toMatchObject({
       kind: "matched",
       transactionId: "t1",
       matchKind: "order_id",
+      strategy: "orderId",
+    });
+    // What the matcher looked at: the default window and strategies, and what
+    // the deciding strategy kept (design 5.5).
+    expect(result.matchTrace).toMatchObject({
+      window: { from: "2026-09-07", to: "2026-09-24" },
+      by: ["orderId", "amount_payee", "amount_date"],
+      considered: 1,
+      decidedBy: "orderId",
+      attempts: [
+        {
+          strategy: "orderId",
+          count: 1,
+          transactions: [
+            { id: "t1", date: "2026-09-11", amount: -37.97, payeeName: "Shop" },
+          ],
+        },
+      ],
     });
     expect(result.candidateCount).toBe(1);
     expect(result.transaction).toEqual({
@@ -732,8 +750,56 @@ describe("EmailReceiptParsersService.test", () => {
       }),
     );
     expect(result.parsed.items[0]).toMatchObject({ categoryId: CAT_A });
-    expect(result.match).toEqual({ kind: "unmatched" });
+    expect(result.match).toMatchObject({ kind: "unmatched" });
     expect(result.transaction).toBeNull();
+  });
+
+  it("matches with the definition's own match section: its strategy, tolerance and window", async () => {
+    const { service, manager, receiptRepo } = setup();
+    receiptRepo.findOne.mockResolvedValue(receipt);
+    manager.query.mockResolvedValue([
+      {
+        id: "t9",
+        transaction_date: "2026-10-05",
+        amount: "-38.2000",
+        payee_id: null,
+        payee_name: "Bank",
+        description: "no order number here",
+        reference_number: null,
+      },
+    ]);
+
+    const result = await service.test(
+      USER,
+      testDto({
+        definition: {
+          version: 2,
+          total: ["Order total: {amount}"],
+          match: {
+            by: ["amount_date"],
+            daysBefore: 0,
+            daysAfter: 30,
+            amountTolerance: "0.25",
+          },
+        },
+      }),
+    );
+
+    // The candidate query was given the profile's window (purchase 2026-09-10).
+    const params = manager.query.mock.calls[0][1] as unknown[];
+    expect(params[1]).toBe("2026-09-10");
+    expect(params[2]).toBe("2026-10-10");
+    expect(result.match).toMatchObject({
+      kind: "matched",
+      transactionId: "t9",
+      matchKind: "amount_date",
+    });
+    expect(result.matchTrace).toMatchObject({
+      daysBefore: 0,
+      daysAfter: 30,
+      toleranceUnits: 2500,
+      decidedBy: "amount_date",
+    });
   });
 
   it("is a 404 for an email or a payee that is not the user's", async () => {

@@ -170,14 +170,22 @@ const hasStrictAmount = (captures: GlobCaptures): boolean =>
   captures.amount !== undefined && isStrictReceiptAmount(captures.amount);
 
 const hasOrderId = (captures: GlobCaptures): boolean =>
-  orderIdToken(captures) !== "";
+  identifierToken(captures, "orderid") !== "";
+
+const hasReference = (captures: GlobCaptures): boolean =>
+  identifierToken(captures, "reference") !== "";
 
 const hasPayee = (captures: GlobCaptures): boolean =>
   (captures.payee ?? "") !== "";
 
-/** An order number has no spaces: only the first whitespace-delimited token of the capture is kept. */
-const orderIdToken = (captures: GlobCaptures): string =>
-  captures.orderid?.trim().split(/\s+/)[0] ?? "";
+/**
+ * An order number or a bank reference has no spaces: only the first
+ * whitespace-delimited token of the capture is kept.
+ */
+const identifierToken = (
+  captures: GlobCaptures,
+  name: "orderid" | "reference",
+): string => captures[name]?.trim().split(/\s+/)[0] ?? "";
 
 interface Read<T> {
   value: T;
@@ -205,31 +213,34 @@ function readPayee(
 }
 
 /**
- * The first entry, in array order, that finds an order id. A line pattern
- * reads the subject first, then each line; a labelled entry reads lines only
- * (a subject is one line, with nothing near it to be a label for).
+ * The first entry, in array order, that finds an identifier (an order id or a
+ * bank reference: the same rules for both). A line pattern reads the subject
+ * first, then each line; a labelled entry reads lines only (a subject is one
+ * line, with nothing near it to be a label for).
  */
-function readOrderId(
+function readIdentifier(
   entries: readonly ReceiptFieldEntry[] | undefined,
   subject: string,
   lines: readonly string[],
+  capture: "orderid" | "reference",
 ): Read<string> | null {
   if (!Array.isArray(entries)) return null;
+  const accept = capture === "orderid" ? hasOrderId : hasReference;
   for (let index = 0; index < entries.length; index++) {
     const entry = entries[index];
     if (typeof entry === "string") {
-      const fromSubject = matchReceiptPattern(entry, subject, hasOrderId);
+      const fromSubject = matchReceiptPattern(entry, subject, accept);
       if (fromSubject !== null) {
         return {
-          value: orderIdToken(fromSubject),
+          value: identifierToken(fromSubject, capture),
           hit: { entry: index, pattern: entry, line: traceSubject(subject) },
         };
       }
     }
-    const found = findEntry(entry, lines, hasOrderId);
+    const found = findEntry(entry, lines, accept);
     if (found !== null) {
       return {
-        value: orderIdToken(found.captures),
+        value: identifierToken(found.captures, capture),
         hit: hitOf(entry, index, found, lines),
       };
     }
@@ -663,7 +674,13 @@ export function parseReceiptLinesTraced(
 ): TracedReceipt {
   const lines = sourceLines ?? [];
   const subjectLine = typeof subject === "string" ? normalizeLine(subject) : "";
-  const orderId = readOrderId(def.orderId, subjectLine, lines);
+  const orderId = readIdentifier(def.orderId, subjectLine, lines, "orderid");
+  const reference = readIdentifier(
+    def.reference,
+    subjectLine,
+    lines,
+    "reference",
+  );
   const total = readAmount(def.total, lines);
   const paid = readAmount(def.paid, lines);
   const shipping = readAmount(def.shipping, lines);
@@ -698,6 +715,7 @@ export function parseReceiptLinesTraced(
   }));
   const parsed = {
     orderId: orderId?.value ?? null,
+    reference: reference?.value ?? null,
     total: total?.value ?? null,
     paid: paid?.value ?? null,
     payee: payee?.value ?? null,
@@ -710,6 +728,7 @@ export function parseReceiptLinesTraced(
   const reason = completeness(parsed, itemsUnresolved);
   const trace: ReceiptTrace = {
     orderId: orderId?.hit ?? null,
+    reference: reference?.hit ?? null,
     total: total?.hit ?? null,
     paid: paid?.hit ?? null,
     shipping: shipping?.hit ?? null,

@@ -8,6 +8,8 @@ import { makeDetail, makeMailbox, makeParser, makeReceipt } from './email-receip
 const api = vi.hoisted(() => ({
   list: vi.fn(),
   listDomains: vi.fn(),
+  overview: vi.fn(),
+  processBatch: vi.fn(),
   get: vi.fn(),
   reprocess: vi.fn(),
   link: vi.fn(),
@@ -38,6 +40,8 @@ vi.mock('@/lib/email-receipts-api', () => ({
     receipts: {
       list: api.list,
       listDomains: api.listDomains,
+      overview: api.overview,
+      processBatch: api.processBatch,
       get: api.get,
       reprocess: api.reprocess,
       link: api.link,
@@ -147,9 +151,10 @@ describe('EmailReceiptsManager', () => {
     nav.params = new URLSearchParams();
     api.list.mockResolvedValue(all);
     api.listDomains.mockResolvedValue([
-      { domain: 'allegro.pl', count: 5 },
-      { domain: 'shop.example.com', count: 2 },
+      { domain: 'allegro.pl', count: 5, processable: 3 },
+      { domain: 'shop.example.com', count: 2, processable: 2 },
     ]);
+    api.overview.mockResolvedValue({ processable: 6 });
     api.mailboxGet.mockResolvedValue(makeMailbox({ aiMode: 'on_demand' }));
     payeesApi.getAll.mockResolvedValue([]);
     categoriesApi.getAll.mockResolvedValue([]);
@@ -173,7 +178,7 @@ describe('EmailReceiptsManager', () => {
     it('links to the review inbox and to the settings', async () => {
       await renderManager();
       expect(screen.getByRole('link', { name: 'Open the AI review inbox' })).toHaveAttribute('href', '/ai-reviews');
-      expect(screen.getByRole('link', { name: 'Mailbox and parser settings' })).toHaveAttribute('href', '/settings/email-receipts');
+      expect(screen.getByRole('link', { name: 'Mailbox settings' })).toHaveAttribute('href', '/email-receipts?tab=mailbox');
     });
 
     it('says there are no emails only when the list loaded empty', async () => {
@@ -186,7 +191,7 @@ describe('EmailReceiptsManager', () => {
       api.list.mockResolvedValue([]);
       api.mailboxGet.mockResolvedValue(null);
       await renderManager();
-      expect(screen.getByRole('link', { name: 'Connect a mailbox' })).toHaveAttribute('href', '/settings/email-receipts');
+      expect(screen.getByRole('link', { name: 'Connect a mailbox' })).toHaveAttribute('href', '/email-receipts?tab=mailbox');
     });
 
     it('does not invite connecting a mailbox when there is one, or when that could not be checked', async () => {
@@ -261,6 +266,30 @@ describe('EmailReceiptsManager', () => {
     });
   });
 
+  describe('Process all', () => {
+    it('counts what the overview says can be processed, for every sender', async () => {
+      await renderManager();
+      expect(screen.getByRole('button', { name: 'Process all (6)' })).toBeEnabled();
+    });
+
+    it('counts the filtered sender\'s own processable emails, and runs for that sender only', async () => {
+      nav.params = new URLSearchParams('domain=shop.example.com');
+      api.processBatch.mockResolvedValue({ processed: 2, byOutcome: { review: 2 }, failed: 0, remaining: 0, since: 'T' });
+      await renderManager();
+      await click(screen.getByRole('button', { name: 'Process all (2)' }));
+      await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Process' }));
+      expect(api.processBatch).toHaveBeenCalledWith({ domain: 'shop.example.com' });
+      // The list and the counts are read again after the run.
+      expect(api.listDomains.mock.calls.length).toBeGreaterThan(1);
+    });
+
+    it('is off until the count is known, never zero', async () => {
+      api.overview.mockRejectedValue(new Error('down'));
+      await renderManager();
+      expect(screen.getByRole('button', { name: 'Process all' })).toBeDisabled();
+    });
+  });
+
   describe('the sender domain filter', () => {
     const domainSelect = () => screen.getByLabelText('Sender domain') as HTMLSelectElement;
     const choose = (value: string) =>
@@ -283,7 +312,7 @@ describe('EmailReceiptsManager', () => {
       await renderManager();
       await choose('shop.example.com');
       expect(api.list).toHaveBeenLastCalledWith(undefined, undefined, 'shop.example.com');
-      expect(nav.router.replace).toHaveBeenLastCalledWith('/email-receipts?domain=shop.example.com', { scroll: false });
+      expect(nav.router.replace).toHaveBeenLastCalledWith('/email-receipts?tab=emails&domain=shop.example.com', { scroll: false });
       await click(screen.getByRole('button', { name: 'Could not be read' }));
       expect(api.list).toHaveBeenLastCalledWith('parse_failed', undefined, 'shop.example.com');
       expect(
@@ -291,14 +320,14 @@ describe('EmailReceiptsManager', () => {
       ).toBeInTheDocument();
       await choose('');
       expect(api.list).toHaveBeenLastCalledWith('parse_failed', undefined, undefined);
-      expect(nav.router.replace).toHaveBeenLastCalledWith('/email-receipts', { scroll: false });
+      expect(nav.router.replace).toHaveBeenLastCalledWith('/email-receipts?tab=emails', { scroll: false });
     });
 
     it('keeps the other query parameters when it writes the domain', async () => {
       nav.params = new URLSearchParams('keep=1');
       await renderManager();
       await choose('allegro.pl');
-      expect(nav.router.replace).toHaveBeenLastCalledWith('/email-receipts?keep=1&domain=allegro.pl', { scroll: false });
+      expect(nav.router.replace).toHaveBeenLastCalledWith('/email-receipts?keep=1&tab=emails&domain=allegro.pl', { scroll: false });
     });
 
     it('starts from ?domain= and asks for it on the first load', async () => {

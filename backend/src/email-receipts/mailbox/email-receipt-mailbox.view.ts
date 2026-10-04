@@ -27,6 +27,11 @@ export interface EmailReceiptMailboxView {
   enabled: boolean;
   aiMode: EmailReceiptAiMode;
   autoApply: boolean;
+  /**
+   * Whether a proposal a saved parser profile built counts toward the daily AI
+   * write limit when it is confirmed (design 7.1). The user's own switch.
+   */
+  profileProposalsCountTowardAiLimit: boolean;
   authMethod: EmailReceiptAuthMethod;
   oauthProvider: EmailReceiptOAuthProvider | null;
   passwordSet: boolean;
@@ -67,6 +72,7 @@ export function toMailboxView(
     enabled: row.enabled,
     aiMode: row.aiMode,
     autoApply: row.autoApply,
+    profileProposalsCountTowardAiLimit: row.profileProposalsCountTowardAiLimit,
     authMethod: row.authMethod,
     oauthProvider: row.oauthProvider ?? null,
     passwordSet: flags.passwordSet,

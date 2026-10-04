@@ -38,6 +38,24 @@ describe("UpsertEmailReceiptMailboxDto", () => {
     expect(await errorsOf(upsert())).toEqual([]);
   });
 
+  it("accepts the switch for profile proposals and the AI limit, optional and boolean", async () => {
+    expect(
+      await errorsOf(upsert({ profileProposalsCountTowardAiLimit: false })),
+    ).toEqual([]);
+    expect(
+      await errorsOf(upsert({ profileProposalsCountTowardAiLimit: true })),
+    ).toEqual([]);
+    // Not converted from text: the real pipe does not coerce a string to a boolean.
+    expect(
+      await errorsOf(
+        plainToInstance(UpsertEmailReceiptMailboxDto, {
+          ...valid,
+          profileProposalsCountTowardAiLimit: "yes",
+        }),
+      ),
+    ).toEqual(["profileProposalsCountTowardAiLimit"]);
+  });
+
   it("accepts a request with no password or folder (keep and default)", async () => {
     const { password: _password, ...withoutPassword } = valid;
     const dto = plainToInstance(UpsertEmailReceiptMailboxDto, withoutPassword);

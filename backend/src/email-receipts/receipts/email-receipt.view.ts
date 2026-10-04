@@ -96,4 +96,42 @@ export interface EmailReceiptDetail extends EmailReceiptListItem {
 export interface EmailReceiptDomainCount {
   domain: string;
   count: number;
+  /**
+   * How many of them "process in bulk" would run again (the six statuses a new
+   * profile or a new transaction can change): what "Process the N stored emails
+   * now?" counts after a profile is approved.
+   */
+  processable: number;
+}
+
+/**
+ * What the hub's Overview cards show, from ONE query (`GET
+ * /email-receipts/overview`, design 9): the mailbox's state, the stored emails
+ * by status, the profiles by status, the proposals waiting for approval and the
+ * sender domains no profile covers. Counts only: no email text, no secret.
+ */
+export interface EmailReceiptsOverview {
+  /** Null when the user has no mailbox yet (the first-run wizard's cue). */
+  mailbox: {
+    enabled: boolean;
+    authMethod: "password" | "oauth2";
+    aiMode: "off" | "on_demand" | "automatic";
+    /** An OAuth2 mailbox that was disconnected or revoked cannot read mail until it is connected again. */
+    connected: boolean;
+    lastPolledAt: string | null;
+    lastSuccessAt: string | null;
+    lastError: string | null;
+    lastErrorAt: string | null;
+  } | null;
+  /** Stored emails by status; a status with none is absent. */
+  emailsByStatus: Partial<Record<EmailReceiptStatus, number>>;
+  /** Emails "Process all" would run: the statuses the pipeline can act on again. */
+  processable: number;
+  /** Proposals of kind `email_receipt` waiting for the person's approval (not expired). */
+  proposalsToApprove: number;
+  parsers: { approved: number; draft: number };
+  /** Sender domains of `no_parser` emails that no profile (of any status) covers, most emails first, at most ten. */
+  domainsWithoutProfile: Array<
+    Pick<EmailReceiptDomainCount, "domain" | "count">
+  >;
 }

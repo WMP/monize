@@ -638,6 +638,81 @@ says, and every item and the shipping line (when present) has a category. The
 object also carries `paid` and `payee` (`null` when the email states none). `reason` names the first missing
 thing otherwise. The spec has the amount grammar and the truth table.
 
+### 5.4 Reference and tag
+
+`reference` is a pattern field read exactly like `orderId` (capture `{reference}`,
+the subject first, then the lines, the first token kept): the identifier a shop or a
+payment gateway puts into the bank operation, a statement text or a transfer title.
+It is a matching signal and nothing else; it is not shown as an order number. `tag`
+is a string of 1 to 50 characters: the proposal for a transaction the profile
+categorizes also adds that tag, found by name (case-insensitive, the user's own) or
+created. The tag is additive: the card lists it ("Tags: X (new)"), `confirm` finds
+or creates it and adds a `transaction_tags` row in the same transaction as the edit,
+and no existing tag is removed. A proposal that only changes the description carries
+no tag, because nothing was categorized.
+
+### 5.5 Matching, configured by the profile
+
+Which bank transaction an email paid for is the profile's decision, in its optional
+`match` section (all keys optional; spec 3a has the truth table):
+
+```json
+"match": { "by": ["reference", "orderId", "amount_payee"], "referenceIn": ["description"],
+           "daysBefore": 3, "daysAfter": 14, "amountTolerance": "0.50" }
+```
+
+- `by`: the strategies, in the order tried, each at most once, any of `reference`,
+  `orderId`, `amount_payee`, `amount_date`. The default (`orderId`, `amount_payee`,
+  `amount_date`) reproduces the matching a profile without the section always had.
+  `reference` in `by` needs a `reference` field (`reference_field_missing`).
+- `referenceIn`: the transaction fields a reference or an order id is looked for in:
+  `description`, `payee`, `referenceNumber` (default all three).
+- `daysBefore` 0 to 60 (default 3) and `daysAfter` 0 to 90 (default 14): the
+  candidate window around the purchase date. The candidate loader reads the window
+  of the profile that read the email, so a wider window is a wider query (still at
+  most 200 rows, newest first).
+- `amountTolerance`: a decimal string `"0.00"` to `"5.00"` (default `"0"`). The amount
+  signal holds when the bank amount is within it of what was paid, compared as integers
+  in 1/10000 units. A tolerance never lets an email auto-apply: the gate still demands
+  `abs(T) = paid ?? total` exactly.
+
+`match_kind` gains `reference` and `amount_date` (a migration widens the CHECK; the
+legacy `amount_only` stays readable and is never written again). The matcher reports
+what it tried (`attempts`: strategy, how many candidates it kept, the closest ten),
+how many candidates the window held and which strategy decided. The test panel and the
+`email_receipt_parsers` tool's `test` return that trace per email, so a person or an
+agent that tunes a profile sees why an email matched, was ambiguous or found nothing.
+The validator reports `match` problems at their own paths (`match.by[1]`,
+`match.daysBefore`, ...), and the tool's guide describes the section in a few lines (the
+MCP tools list must not grow, `tools-list-budget.spec.ts`).
+
+### 5.6 Categories chosen by the AI
+
+`aiCategories: true` lets the AI choose the category of an item no `categoryRules`
+entry matched and no `defaultCategoryId` covers. Without it nothing changes: such an
+email stays description-only, and the AI is never called for it (a source-scanning
+unit test holds that). With it, in the order below:
+
+1. The reading is complete and the profile is approved, and at least one item has no
+   category.
+2. When the user's AI provider can answer now (`AiService.canAnswerNow`), one bounded
+   call (`AiService.complete`, `responseFormat: "json"`, feature `email_receipt_categories`)
+   gets the uncategorized item names, the user's category list (ids and names) and the
+   merchant, framed as untrusted data. The output is validated (zod): an index outside
+   the items, an id that is not the user's category, or a second answer for an item is
+   dropped. A chosen category marks the item `categorySource: "ai"`; the card and the
+   test panel show it as the AI's, and it is display-only (never signed, never a reason to
+   auto-apply).
+3. Otherwise a request with the instruction `RECEIPT_CATEGORIZE_INSTRUCTION` is queued in
+   the inbox for an agent, like "Recognize with AI". There is one open rule-less request
+   per transaction, so it replaces the description-only proposal that would otherwise be
+   stored (a deliberate deviation from "a proposal is never replaced by a question": a
+   description-only proposal would have hidden the fact that categories were asked for).
+4. The poll's automatic step never takes this path (INV-RECEIPT-003 holds either way,
+   because the result is a proposal), and a poll asks at most 10 such questions, a bulk
+   call at most 25; the rest are queued. The AI call sits between two transactions of the
+   pipeline, never inside a database transaction (`docs/external-side-effects.md`).
+
 ## 6. Pipeline and receipt states
 
 ```
@@ -757,6 +832,18 @@ What a proposal contains:
 
 `docs/system-invariants.md` carries each with an honest status.
 
+### 7.1 The daily limit of AI-proposed writes
+
+Every confirmed AI proposal is counted by `AiWriteLimiter`. A mailbox has the switch
+`profile_proposals_count_toward_ai_limit` (default true): when it is off, a proposal that
+a profile built (`claimed_by = 'email-receipts'`) is neither counted nor refused by the
+limit, so a first run over hundreds of stored emails does not use the day's allowance up
+for the user's other AI edits. The exemption is decided on the server, from the stored
+request's claimant and the stored switch, at confirm; the client sends nothing that could
+claim it, and a proposal an AI or an agent built always counts. Nothing else about the
+card changes: it is still signed, still single-use, still approved by a person (or by the
+auto-apply gate).
+
 ## 8. Backend
 
 Module `backend/src/email-receipts/`:
@@ -833,9 +920,54 @@ Environment (operator, all optional): `EMAIL_RECEIPTS_MAX_MESSAGES_PER_POLL`
 `EMAIL_RECEIPTS_PRIVATE_HOST_ALLOWLIST` (empty), and the OAuth clients of
 section 3a.
 
+### 8.1 Bulk work, the overview and approving in bulk
+
+- `POST /email-receipts/process-batch` `{ domain?, statuses?, limit?, since? }` runs the
+  pipeline over up to `limit` (default 100, at most 200) stored emails, oldest first, one
+  after the other, each in its own transaction, and answers `{ processed, byOutcome,
+  failed, remaining, since }`. The default statuses are the ones the pipeline can run
+  again (`pending`, `no_parser`, `parse_failed`, `unmatched`, `ambiguous`,
+  `review_conflict`); a `review` email stands behind a proposal and is never taken. The
+  run ends because of `since`: the first call stamps the database clock, and every call
+  selects only emails whose `updated_at` is before it. The pipeline touches the row it
+  processes, and a failure touches it too, so every email is taken at most once per run
+  and `remaining` (the matching emails still before `since`) reaches 0. The client
+  loops until `remaining` is 0, a call touches nothing, the person cancels or a call
+  fails. There is no new lock: each email is processed under its own row lock, as a
+  reprocess is, and a concurrent poll that reaches the same email serializes on it.
+- `GET /email-receipts/overview` answers the Overview cards in one statement (the
+  mailbox's state, the emails by status, how many "Process all" would run, the proposals
+  waiting, the approved and draft profiles, and up to ten sender domains of `no_parser`
+  emails no profile covers). It carries counts and names only, never email text.
+  `GET /email-receipts/domains` gains `processable` per domain, so the post-approve dialog
+  can name how many emails of the new profile's senders it would process.
+- `POST /ai-review-requests/approve-batch` `{ ids }` (1 to 100 distinct ids) approves
+  proposals the way a single approval does: for each id the card is rebuilt from the
+  stored proposal against the transaction as it is now (`AiReviewWorkService.buildApprovalCard`),
+  then `AiActionsService.confirm` is called, one transaction per request, so a refusal
+  (a changed row, a reconciled lock, the write limit) leaves that request proposed and the
+  others unaffected. The answer lists, per id, `ok` or the reason. Nothing is approved
+  that the same person could not approve one by one, and the daily limit counts each one.
+  The service and controller live in the AI module (the receipts module imports it, not
+  the reverse).
+
 ## 9. Frontend
 
-- `/settings/email-receipts`: "Connect with Google" / "Connect with Microsoft"
+- `/email-receipts` is a hub with the tabs Overview, Emails, Profiles and Mailbox
+  (`?tab=`; a link with `?domain=` and no tab opens Emails; a tab is mounted when first
+  opened). `/settings/email-receipts` redirects to `?tab=mailbox`, the settings page keeps
+  a card that links to the hub, and the OAuth callback (its path is the redirect URI
+  registered with the providers and is unchanged) returns to `?tab=mailbox`. The Overview
+  shows the cards of `GET /email-receipts/overview` and, until a mailbox is connected, an
+  email is stored and a profile is approved, a four-step wizard (connect a mailbox, fetch
+  emails, create a profile, review proposals). Emails has "Process all (N)" (the filtered
+  sender's emails, or all), a confirmation, progress with Cancel and a summary of where the
+  emails ended; approving a profile offers "Process the N stored emails from <domains>
+  now?" when any are waiting. Profiles and Mailbox are the sections that were on
+  `/settings/email-receipts`; the profile editor gains the Matching and Proposal fieldsets
+  (5.4 to 5.6) and the mailbox settings the AI-limit switch (7.1). The demo account gets
+  the explanation on Profiles and Mailbox.
+- The mailbox section of the hub: "Connect with Google" / "Connect with Microsoft"
   (only for a provider the operator configured) or the manual mailbox form
   (write-only password, test
   connection, poll now, AI mode, auto-apply, last poll and last error), and the
@@ -884,8 +1016,12 @@ section 3a.
   the rule name, and a `pending` one says it waits for an AI agent (with a link
   to the AI settings). An `email_parser_draft` row reads "Parser draft from N
   emails (domain)", says the same while `pending`, and once `proposed` says "Draft
-  parser ready" with a link to `/settings/email-receipts` where it is tested and
-  approved; it has no card and no transaction, and can be dismissed.
+  parser ready" with a link to `/email-receipts?tab=profiles` where it is tested and
+  approved; it has no card and no transaction, and can be dismissed. A column of
+  checkboxes selects the proposals that can be approved (`proposed`, with a card);
+  "Approve selected (N)" and "Approve all shown (M)" ask once and call
+  `approve-batch` in chunks of 100, then show how many were applied and, for each that
+  was not, why. A kind filter (All, Email receipts, Rules; `?kind=`) narrows the list.
 - `/ai`: "Recognize with AI" opens the chat with the order email attached as
   `order-email-YYYY-MM-DD.txt` and the message typed in the composer
   (`/ai?handoff=<id>`, `lib/ai-chat-handoff.ts`: in memory, one entry per id,

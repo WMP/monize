@@ -163,6 +163,8 @@ export interface SplitRowDescriptor {
  */
 export interface ResolvedSplitLine extends SplitRowDescriptor {
   categoryName: string;
+  /** `"ai"` when the AI chose the category: shown on the card, never signed (see `toSplitRowDescriptor`). */
+  categorySource?: "ai";
 }
 
 /**
@@ -202,6 +204,7 @@ export function toSplitPreview(line: ResolvedSplitLine): AiActionSplitPreview {
     categoryName: line.categoryName,
     amount: line.amount,
     memo: line.memo,
+    ...(line.categorySource === "ai" ? { categorySource: "ai" as const } : {}),
   };
 }
 
@@ -429,6 +432,12 @@ export interface UpdateTransactionDescriptor extends BaseDescriptor {
   splits?: SplitRowDescriptor[];
   /** Files to persist as transaction attachments after the update commits. */
   attachments?: AttachmentRefDescriptor[];
+  /**
+   * Tag names this edit ADDS to the transaction (the tags it carries stay): the
+   * user's tag of that name, created by the write's own transaction when there is
+   * none. Signed with the rest, so a client cannot add a tag the card did not show.
+   */
+  tagNames?: string[];
   /**
    * The AI review request this edit answers. Not part of the change (nothing on
    * the transaction reads it) and not an envelope field: it is signed with the
@@ -788,6 +797,8 @@ export interface AiActionSplitPreview {
   categoryName: string | null;
   amount: number;
   memo?: string | null;
+  /** `"ai"` when the AI chose this line's category (display only). */
+  categorySource?: "ai";
 }
 
 /** Display-only preview of one file an action will attach on approval. */
@@ -863,6 +874,8 @@ export interface AiActionPreview {
   /** True when approving the transaction will also create a new payee. */
   payeeWillBeCreated?: boolean;
   categoryName?: string | null;
+  /** `"ai"` when the AI chose `categoryName` (display only; an email-receipt proposal). */
+  categorySource?: "ai";
   /**
    * What the user's transaction rules will do to a created transaction on
    * approval (display-only, not signed). Absent when no rule matches.
@@ -899,6 +912,10 @@ export interface AiActionPreview {
    * Display-only mirror of the descriptor's attachment refs.
    */
   attachments?: AiActionAttachmentPreview[];
+  /** update_transaction: tag names the approval adds (display mirror of the descriptor's). */
+  tagNames?: string[];
+  /** The subset of `tagNames` the approval creates because the user has no such tag yet. */
+  newTagNames?: string[];
   // create_investment_transaction display fields.
   investmentAction?: InvestmentAction;
   symbol?: string | null;

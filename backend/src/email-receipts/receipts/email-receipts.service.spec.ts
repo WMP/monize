@@ -5,6 +5,7 @@ import { EmailReceipt } from "../entities/email-receipt.entity";
 import type { EmailReceiptPipelineService } from "../pipeline/email-receipt-pipeline.service";
 import {
   deriveDisplayState,
+  EMAIL_RECEIPTS_BATCH_AI_CATEGORY_CALLS,
   EMAIL_RECEIPTS_MAX_DOMAINS,
   EmailReceiptsService,
 } from "./email-receipts.service";
@@ -287,18 +288,33 @@ describe("EmailReceiptsService.listDomains", () => {
   it("lists the user's sender domains with counts, most first then by name, at most 200", async () => {
     const { service, manager } = setup();
     manager.query.mockResolvedValue([
-      { domain: "a.example.com", count: "5" },
-      { domain: "b.example.com", count: 2 },
+      { domain: "a.example.com", count: "5", processable: "3" },
+      { domain: "b.example.com", count: 2, processable: 0 },
     ]);
     await expect(service.listDomains(USER)).resolves.toEqual([
-      { domain: "a.example.com", count: 5 },
-      { domain: "b.example.com", count: 2 },
+      { domain: "a.example.com", count: 5, processable: 3 },
+      { domain: "b.example.com", count: 2, processable: 0 },
     ]);
     const [sql, params] = manager.query.mock.calls[0];
     expect(sql).toContain("GROUP BY r.from_domain");
     expect(sql).toContain("ORDER BY count DESC, r.from_domain ASC");
     expect(sql).toContain("r.user_id = $1");
-    expect(params).toEqual([USER, 200]);
+    // `processable` counts the six statuses "process in bulk" can act on again.
+    expect(sql).toContain(
+      "COUNT(*) FILTER (WHERE r.status = ANY($3::varchar[]))",
+    );
+    expect(params).toEqual([
+      USER,
+      200,
+      [
+        "pending",
+        "no_parser",
+        "parse_failed",
+        "unmatched",
+        "ambiguous",
+        "review_conflict",
+      ],
+    ]);
     expect(EMAIL_RECEIPTS_MAX_DOMAINS).toBe(200);
   });
 
@@ -621,5 +637,376 @@ describe("EmailReceiptsService.remove", () => {
     );
     expect(receiptRepo.delete).not.toHaveBeenCalled();
     expect(manager.query).not.toHaveBeenCalled();
+  });
+});
+
+describe("EmailReceiptsService.overview", () => {
+  it("answers the hub's cards from ONE statement, keyed on the user", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([
+      {
+        mailbox: {
+          enabled: true,
+          auth_method: "oauth2",
+          ai_mode: "on_demand",
+          connected: true,
+          last_polled_at: "2026-10-04T11:00:00.000Z",
+          last_success_at: "2026-10-04T11:00:00.000Z",
+          last_error: null,
+          last_error_at: null,
+        },
+        by_status: {
+          pending: 2,
+          no_parser: 5,
+          unmatched: 1,
+          review: 7,
+          ignored: 4,
+        },
+        to_approve: 3,
+        parsers: { approved: 2, draft: 1 },
+        uncovered: [
+          { domain: "shop.example.com", count: 4 },
+          { domain: "pay.example.org", count: 1 },
+        ],
+      },
+    ]);
+
+    const overview = await service.overview(USER);
+
+    expect(manager.query).toHaveBeenCalledTimes(1);
+    const [sql, params] = manager.query.mock.calls[0];
+    expect(String(sql)).toContain("user_id = $1");
+    expect(params[0]).toBe(USER);
+    expect(overview).toEqual({
+      mailbox: {
+        enabled: true,
+        authMethod: "oauth2",
+        aiMode: "on_demand",
+        connected: true,
+        lastPolledAt: "2026-10-04T11:00:00.000Z",
+        lastSuccessAt: "2026-10-04T11:00:00.000Z",
+        lastError: null,
+        lastErrorAt: null,
+      },
+      emailsByStatus: {
+        pending: 2,
+        no_parser: 5,
+        unmatched: 1,
+        review: 7,
+        ignored: 4,
+      },
+      // pending + no_parser + parse_failed + unmatched + ambiguous + review_conflict
+      processable: 8,
+      proposalsToApprove: 3,
+      parsers: { approved: 2, draft: 1 },
+      domainsWithoutProfile: [
+        { domain: "shop.example.com", count: 4 },
+        { domain: "pay.example.org", count: 1 },
+      ],
+    });
+  });
+
+  it("is empty and names no mailbox for a user with nothing yet", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([
+      {
+        mailbox: null,
+        by_status: null,
+        to_approve: 0,
+        parsers: { approved: 0, draft: 0 },
+        uncovered: null,
+      },
+    ]);
+    expect(await service.overview(USER)).toEqual({
+      mailbox: null,
+      emailsByStatus: {},
+      processable: 0,
+      proposalsToApprove: 0,
+      parsers: { approved: 0, draft: 0 },
+      domainsWithoutProfile: [],
+    });
+  });
+
+  it("reads a disconnected OAuth2 mailbox as not connected", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([
+      {
+        mailbox: {
+          enabled: true,
+          auth_method: "oauth2",
+          ai_mode: "off",
+          connected: false,
+          last_polled_at: null,
+          last_success_at: null,
+          last_error: "Reconnect it",
+          last_error_at: "2026-10-04T10:00:00.000Z",
+        },
+        by_status: null,
+        to_approve: 0,
+        parsers: { approved: 0, draft: 0 },
+        uncovered: null,
+      },
+    ]);
+    const overview = await service.overview(USER);
+    expect(overview.mailbox).toMatchObject({
+      connected: false,
+      lastError: "Reconnect it",
+    });
+  });
+
+  it("counts a domain no profile covers by the same predicate the automatic draft step uses", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([
+      {
+        mailbox: null,
+        by_status: null,
+        to_approve: 0,
+        parsers: { approved: 0, draft: 0 },
+        uncovered: [],
+      },
+    ]);
+    await service.overview(USER);
+    const sql = String(manager.query.mock.calls[0][0]);
+    expect(sql).toContain("r.status = 'no_parser'");
+    expect(sql).toContain("unnest(p.from_domains)");
+    expect(sql).toContain("kind = 'email_receipt'");
+    expect(sql).toContain("rq.status = 'proposed'");
+    expect(sql).toContain("rq.expires_at > CURRENT_TIMESTAMP");
+  });
+
+  it("is a statement of reads only", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([
+      {
+        mailbox: null,
+        by_status: null,
+        to_approve: 0,
+        parsers: {},
+        uncovered: null,
+      },
+    ]);
+    await service.overview(USER);
+    expect(String(manager.query.mock.calls[0][0]).trim()).toMatch(/^SELECT/);
+  });
+});
+
+describe("EmailReceiptsService.processBatch", () => {
+  const SINCE = "2026-10-04T12:00:00.123456Z";
+
+  /** The statements a run issues: the cutoff, the selection, the count of what is left. */
+  function batch(ids: string[], remaining = 0, since = SINCE) {
+    const h = setup();
+    h.manager.query.mockImplementation(async (sql: string) => {
+      const text = String(sql);
+      if (text.includes("AS since")) return [{ since }];
+      if (text.includes("SELECT r.id")) return ids.map((id) => ({ id }));
+      if (text.includes("COUNT(*)::int AS remaining")) return [{ remaining }];
+      return [];
+    });
+    return h;
+  }
+
+  const result = (status: string, over: Record<string, unknown> = {}) => ({
+    status,
+    statusReason: null,
+    transactionId: null,
+    matchKind: null,
+    requestId: null,
+    autoApplied: false,
+    unchanged: false,
+    ...over,
+  });
+
+  it("runs the pipeline over the selected emails one after the other and counts where each ended", async () => {
+    const h = batch(["a", "b", "c"], 4);
+    h.pipeline.process
+      .mockResolvedValueOnce(result("review") as never)
+      .mockResolvedValueOnce(result("unmatched") as never)
+      .mockResolvedValueOnce(result("review") as never);
+
+    const out = await h.service.processBatch(USER, {});
+
+    expect(h.pipeline.process.mock.calls.map((c) => c[1])).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
+    expect(out).toEqual({
+      processed: 3,
+      byOutcome: { review: 2, unmatched: 1 },
+      failed: 0,
+      remaining: 4,
+      since: SINCE,
+    });
+  });
+
+  it("is sequential: the next email starts after the previous one finished", async () => {
+    const h = batch(["a", "b"]);
+    const order: string[] = [];
+    h.pipeline.process.mockImplementation((async (_u: string, id: string) => {
+      order.push(`start ${id}`);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      order.push(`end ${id}`);
+      return result("review");
+    }) as never);
+    await h.service.processBatch(USER, {});
+    expect(order).toEqual(["start a", "end a", "start b", "end b"]);
+  });
+
+  it("guards each email by the statuses it was selected for, and gives them one shared AI budget", async () => {
+    const h = batch(["a", "b"]);
+    h.pipeline.process.mockResolvedValue(result("review") as never);
+    await h.service.processBatch(USER, { statuses: ["pending", "no_parser"] });
+    const [first, second] = h.pipeline.process.mock.calls;
+    expect(first[2]).toMatchObject({
+      onlyWhenStatusIn: ["pending", "no_parser"],
+    });
+    expect(first[2]?.aiCategoryBudget).toBe(second[2]?.aiCategoryBudget);
+    expect(first[2]?.aiCategoryBudget?.remaining).toBe(
+      EMAIL_RECEIPTS_BATCH_AI_CATEGORY_CALLS,
+    );
+  });
+
+  it("does not count an email the pipeline left as it was", async () => {
+    const h = batch(["a", "b"]);
+    h.pipeline.process
+      .mockResolvedValueOnce(result("review", { unchanged: true }) as never)
+      .mockResolvedValueOnce(result("review") as never);
+    const out = await h.service.processBatch(USER, {});
+    expect(out.processed).toBe(1);
+    expect(out.byOutcome).toEqual({ review: 1 });
+  });
+
+  it("selects the user's emails in the given statuses (all six by default), oldest first, up to the limit, not touched since the run began", async () => {
+    const h = batch([]);
+    await h.service.processBatch(USER, { limit: 25 });
+    const select = h.manager.query.mock.calls.find((c) =>
+      String(c[0]).includes("SELECT r.id"),
+    ) as [string, unknown[]];
+    expect(select[0]).toContain("r.user_id = $1");
+    expect(select[0]).toContain("r.status = ANY($2::varchar[])");
+    expect(select[0]).toContain("r.updated_at < $5::timestamptz");
+    expect(select[0]).toContain("ORDER BY r.received_at ASC, r.id ASC");
+    expect(select[1]).toEqual([
+      USER,
+      [
+        "pending",
+        "no_parser",
+        "parse_failed",
+        "unmatched",
+        "ambiguous",
+        "review_conflict",
+      ],
+      null,
+      null,
+      SINCE,
+      25,
+    ]);
+  });
+
+  it("clamps the limit to 1..200 and defaults it to 100", async () => {
+    const limitOf = async (limit?: number) => {
+      const h = batch([]);
+      await h.service.processBatch(USER, { limit });
+      const select = h.manager.query.mock.calls.find((c) =>
+        String(c[0]).includes("SELECT r.id"),
+      ) as [string, unknown[]];
+      return select[1][5];
+    };
+    expect(await limitOf(undefined)).toBe(100);
+    expect(await limitOf(0)).toBe(1);
+    expect(await limitOf(5000)).toBe(200);
+  });
+
+  it("filters by sender domain or one of its sub-domains, with the LIKE specials taken literally", async () => {
+    const h = batch([]);
+    await h.service.processBatch(USER, { domain: "Shop_1.Example.com " });
+    const select = h.manager.query.mock.calls.find((c) =>
+      String(c[0]).includes("SELECT r.id"),
+    ) as [string, unknown[]];
+    expect(select[1][2]).toBe("shop_1.example.com");
+    expect(select[1][3]).toBe("%.shop\\_1.example.com");
+  });
+
+  it("takes the run's cutoff from the first call and gives it back; a later call sends it again and is clamped to now by the database", async () => {
+    const h = batch([]);
+    await h.service.processBatch(USER, {
+      since: "2026-10-04T11:59:59.000000Z",
+    });
+    const stamp = h.manager.query.mock.calls.find((c) =>
+      String(c[0]).includes("AS since"),
+    ) as [string, unknown[]];
+    expect(stamp[1]).toEqual(["2026-10-04T11:59:59.000000Z"]);
+    expect(stamp[0]).toContain("LEAST(");
+    expect(stamp[0]).toContain("CURRENT_TIMESTAMP");
+  });
+
+  it("counts what is left with the same filter and the same cutoff, so a run ends", async () => {
+    const h = batch(["a"], 0);
+    h.pipeline.process.mockResolvedValue(result("unmatched") as never);
+    const out = await h.service.processBatch(USER, {
+      domain: "shop.example.com",
+    });
+    const count = h.manager.query.mock.calls.find((c) =>
+      String(c[0]).includes("COUNT(*)::int AS remaining"),
+    ) as [string, unknown[]];
+    expect(count[0]).toContain("r.updated_at < $5::timestamptz");
+    expect(count[1]).toEqual([
+      USER,
+      expect.any(Array),
+      "shop.example.com",
+      "%.shop.example.com",
+      SINCE,
+    ]);
+    expect(out.remaining).toBe(0);
+  });
+
+  it("passes over an email that raised an error: counts it, touches it so the run does not take it again, and goes on", async () => {
+    const h = batch(["a", "b"], 0);
+    h.pipeline.process
+      .mockRejectedValueOnce(new ConflictException("applied"))
+      .mockResolvedValueOnce(result("review") as never);
+
+    const out = await h.service.processBatch(USER, {});
+
+    expect(out).toMatchObject({
+      processed: 1,
+      failed: 1,
+      byOutcome: { review: 1 },
+    });
+    const touch = h.manager.query.mock.calls.find((c) =>
+      String(c[0]).includes("SET status_reason = status_reason"),
+    ) as [string, unknown[]];
+    expect(touch[1]).toEqual(["a", USER]);
+  });
+
+  it("does not fail the run when marking a failed email also fails", async () => {
+    const h = batch(["a"], 0);
+    h.pipeline.process.mockRejectedValue(new Error("boom"));
+    const base = h.manager.query.getMockImplementation() as (
+      sql: string,
+    ) => Promise<unknown>;
+    h.manager.query.mockImplementation(async (sql: string) => {
+      if (String(sql).includes("SET status_reason = status_reason")) {
+        throw new Error("also down");
+      }
+      return base(sql);
+    });
+    await expect(h.service.processBatch(USER, {})).resolves.toMatchObject({
+      failed: 1,
+    });
+  });
+
+  it("never runs more than the selection: an empty one is a quiet answer", async () => {
+    const h = batch([], 0);
+    const out = await h.service.processBatch(USER, {});
+    expect(h.pipeline.process).not.toHaveBeenCalled();
+    expect(out).toEqual({
+      processed: 0,
+      byOutcome: {},
+      failed: 0,
+      remaining: 0,
+      since: SINCE,
+    });
   });
 });

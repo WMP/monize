@@ -40,7 +40,7 @@ describe('EmailReceiptsOAuthCallbackPage', () => {
     expect(api.complete).toHaveBeenCalledTimes(1);
     expect(api.complete).toHaveBeenCalledWith('the-code', 'the-state');
     expect(toast.success).toHaveBeenCalledWith('Mailbox connected');
-    expect(replace).toHaveBeenCalledWith('/settings/email-receipts');
+    expect(replace).toHaveBeenCalledWith('/email-receipts?tab=mailbox');
     expect(screen.getByRole('status')).toHaveTextContent('Connected as me@gmail.com');
   });
 
@@ -57,7 +57,7 @@ describe('EmailReceiptsOAuthCallbackPage', () => {
     api.complete.mockResolvedValue(makeOAuthMailbox());
     await renderCallback('?code=c&state=s', true);
     expect(api.complete).toHaveBeenCalledTimes(1);
-    expect(replace).toHaveBeenCalledWith('/settings/email-receipts');
+    expect(replace).toHaveBeenCalledWith('/email-receipts?tab=mailbox');
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
@@ -77,7 +77,7 @@ describe('EmailReceiptsOAuthCallbackPage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('The sign-in link has expired. Start again.');
     expect(screen.getByRole('link', { name: 'Back to the email receipts settings' })).toHaveAttribute(
       'href',
-      '/settings/email-receipts',
+      '/email-receipts?tab=mailbox',
     );
     expect(replace).not.toHaveBeenCalled();
     expect(toast.success).not.toHaveBeenCalled();

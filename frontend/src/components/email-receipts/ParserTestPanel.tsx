@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { MatchTraceView } from '@/components/email-receipts/MatchTraceView';
 import { ParsedReceiptView } from '@/components/email-receipts/ParsedReceiptView';
 import { ParserTraceList } from '@/components/email-receipts/ParserTraceList';
 import { Button } from '@/components/ui/Button';
@@ -183,6 +184,7 @@ export function ParserTestPanel({ definition, payeeId, initialReceiptId, categor
             {match?.kind === 'ambiguous' && <p>{t('ambiguous', { count: match.candidateIds.length })}</p>}
             {match?.kind === 'unmatched' && <p>{t('unmatched', { count: result.candidateCount })}</p>}
           </div>
+          {result.matchTrace && <MatchTraceView trace={result.matchTrace} />}
         </div>
       )}
     </section>

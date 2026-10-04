@@ -8,6 +8,7 @@ import {
   canRecognizeWithAi,
   isReceiptActionable,
   normalizeDomainFilter,
+  processableForDomains,
   readParsedReceipt,
   senderDomain,
   shownReceiptState,
@@ -213,6 +214,31 @@ describe('dominantSenderDomain', () => {
   it('is empty when no email has a domain', () => {
     expect(dominantSenderDomain([{ fromDomain: '', fromAddress: '' }])).toBe('');
     expect(dominantSenderDomain([])).toBe('');
+  });
+});
+
+describe('processableForDomains', () => {
+  const domains = [
+    { domain: 'amazon.com', count: 9, processable: 4 },
+    { domain: 'mail.amazon.com', count: 3, processable: 3 },
+    { domain: 'notamazon.com', count: 5, processable: 5 },
+    { domain: 'old.example', count: 2 },
+  ];
+
+  it('sums the processable emails of the domain and its sub-domains, and of no look-alike', () => {
+    expect(processableForDomains(domains, ['amazon.com'])).toBe(7);
+  });
+
+  it('sums several domains, ignoring case and blanks', () => {
+    expect(processableForDomains(domains, ['Amazon.com', ' ', 'old.example'])).toBe(9);
+  });
+
+  it('reads a server that sends no processable as all of the emails, never zero', () => {
+    expect(processableForDomains(domains, ['old.example'])).toBe(2);
+  });
+
+  it('is zero for a sender with no stored email', () => {
+    expect(processableForDomains(domains, ['nowhere.example'])).toBe(0);
   });
 });
 

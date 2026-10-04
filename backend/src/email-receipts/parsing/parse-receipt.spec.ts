@@ -100,6 +100,7 @@ describe("parseReceipt: the spec section 5 receipt", () => {
     const parsed = parse(DEFINITION, RECEIPT);
     expect(parsed).toEqual({
       orderId: "EX-20931",
+      reference: null,
       total: 379700,
       paid: null,
       payee: null,
@@ -119,6 +120,7 @@ describe("parseReceipt: the spec section 5 receipt", () => {
   it("returns nothing but nulls for an empty definition", () => {
     expect(parse({ version: 2 }, RECEIPT)).toEqual({
       orderId: null,
+      reference: null,
       total: null,
       paid: null,
       payee: null,
@@ -739,6 +741,7 @@ describe("parseReceipt: realistic lines without a delimiter", () => {
     const parsed = parse(design, text, "Your receipt");
     expect(parsed).toEqual({
       orderId: "EX-20931",
+      reference: null,
       total: 379700,
       paid: null,
       payee: null,

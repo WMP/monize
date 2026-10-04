@@ -690,6 +690,7 @@ CREATE TABLE email_receipt_mailboxes (
     enabled BOOLEAN NOT NULL DEFAULT false,
     ai_mode VARCHAR(12) NOT NULL DEFAULT 'off',
     auto_apply BOOLEAN NOT NULL DEFAULT false,
+    profile_proposals_count_toward_ai_limit BOOLEAN NOT NULL DEFAULT true,
     uid_validity BIGINT,
     last_uid BIGINT,
     last_polled_at TIMESTAMPTZ,
@@ -787,7 +788,8 @@ CREATE TABLE email_receipts (
                         'ignored')),
     CONSTRAINT ck_email_receipts_match_kind
       CHECK (match_kind IS NULL
-             OR match_kind IN ('order_id', 'amount_payee', 'amount_only', 'manual')),
+             OR match_kind IN ('order_id', 'reference', 'amount_payee',
+                               'amount_date', 'amount_only', 'manual')),
     CONSTRAINT ck_email_receipts_candidates
       CHECK (cardinality(candidate_transaction_ids) <= 10)
 );

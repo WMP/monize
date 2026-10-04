@@ -37,6 +37,8 @@ import { CurrenciesModule } from "../currencies/currencies.module";
 import { TransactionRulesModule } from "../transaction-rules/transaction-rules.module";
 import { AiReviewModule } from "../ai-review/ai-review.module";
 import { AiReviewQueueModule } from "../ai-review/ai-review-queue.module";
+import { AiReviewApprovalController } from "../ai-review/ai-review-approval.controller";
+import { AiReviewApprovalService } from "../ai-review/ai-review-approval.service";
 import { EmailReceiptParsersModule } from "../email-receipts/parsers/email-receipt-parsers.module";
 
 @Module({
@@ -93,6 +95,7 @@ import { EmailReceiptParsersModule } from "../email-receipts/parsers/email-recei
     ForecastAggregatorService,
     AiActionsService,
     AiWriteLimiter,
+    AiReviewApprovalService,
   ],
   controllers: [
     AiController,
@@ -100,6 +103,7 @@ import { EmailReceiptParsersModule } from "../email-receipts/parsers/email-recei
     AiInsightsController,
     AiForecastController,
     AiActionsController,
+    AiReviewApprovalController,
   ],
   // AiActionsService: the MCP rule tools commit a descriptor a client's own
   // dialog approved through the same executors `/ai/actions/confirm` uses.

@@ -1003,3 +1003,174 @@ describe("AiReviewWorkService inbox", () => {
     });
   });
 });
+
+describe("AiReviewWorkService.submit with tag names (email-receipts design 5.5)", () => {
+  it("hands the tag names to the update preparation, which previews them as additions", async () => {
+    const { service, requests, prep } = setup();
+    requests.submitProposal.mockResolvedValue(request({ status: "proposed" }));
+
+    await service.submit(USER, "agent-1", REQ, {
+      splits: lines,
+      tagNames: ["Allegro"],
+    });
+
+    expect(prep.prepareUpdate).toHaveBeenCalledWith(
+      USER,
+      expect.objectContaining({ tagNames: ["Allegro"], splits: lines }),
+    );
+    expect(requests.submitProposal).toHaveBeenCalledWith(
+      USER,
+      REQ,
+      "agent-1",
+      expect.objectContaining({
+        input: { splits: lines, tagNames: ["Allegro"] },
+      }),
+    );
+  });
+
+  it("accepts a proposal that only adds a tag", async () => {
+    const { service, requests } = setup();
+    requests.submitProposal.mockResolvedValue(request({ status: "proposed" }));
+    await expect(
+      service.submit(USER, "agent-1", REQ, { tagNames: ["Allegro"] }),
+    ).resolves.toBeDefined();
+  });
+
+  it("still refuses a proposal with no change: an empty tag list is none", async () => {
+    const { service, requests, prep } = setup();
+    await expect(
+      service.submit(USER, "agent-1", REQ, { tagNames: [] }),
+    ).rejects.toThrow(/at least one change/);
+    expect(prep.prepareUpdate).not.toHaveBeenCalled();
+    expect(requests.submitProposal).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["too many names", ["a", "b", "c", "d", "e", "f"]],
+    ["a blank name", ["  "]],
+    ["a name over 50 characters", ["x".repeat(51)]],
+    ["a control character", ["tag\nname"]],
+    ["a non-string name", [5 as unknown as string]],
+  ])(
+    "refuses %s before anything is prepared or stored",
+    async (_label, tagNames) => {
+      const { service, requests, prep } = setup();
+      await expect(
+        service.submit(USER, "agent-1", REQ, { splits: lines, tagNames }),
+      ).rejects.toThrow(/tags/);
+      expect(prep.prepareUpdate).not.toHaveBeenCalled();
+      expect(requests.submitProposal).not.toHaveBeenCalled();
+    },
+  );
+
+  it("accepts five names of fifty characters", async () => {
+    const { service, requests } = setup();
+    requests.submitProposal.mockResolvedValue(request({ status: "proposed" }));
+    await expect(
+      service.submit(USER, "agent-1", REQ, {
+        splits: lines,
+        tagNames: Array.from({ length: 5 }, (_, i) =>
+          `${i}`.repeat(50).slice(0, 50),
+        ),
+      }),
+    ).resolves.toBeDefined();
+  });
+});
+
+describe("AiReviewWorkService.buildApprovalCard (bulk approval)", () => {
+  const proposed = (over: Partial<AiReviewRequest> = {}) =>
+    request({
+      status: "proposed",
+      proposal: {
+        input: { splits: lines },
+        action: card("stale"),
+        proposedAt: "2026-09-29T09:30:00Z",
+      },
+      ...over,
+    });
+
+  it("rebuilds the card from the stored proposal against the transaction as it is now", async () => {
+    const { service, requests, prep, builder } = setup();
+    requests.getForUser.mockResolvedValue(proposed());
+    builder.buildUpdateTransaction.mockReturnValue(card("fresh"));
+
+    const result = await service.buildApprovalCard(USER, REQ);
+
+    expect(requests.getForUser).toHaveBeenCalledWith(USER, REQ);
+    expect(prep.prepareUpdate).toHaveBeenCalledWith(
+      USER,
+      expect.objectContaining({ transactionId: TX, splits: lines }),
+    );
+    expect(result).toEqual({ action: card("fresh") });
+  });
+
+  it("says a request that is not the user's is not found (another user's reads as absent)", async () => {
+    const { service, requests, builder } = setup();
+    requests.getForUser.mockResolvedValue(null);
+    const result = await service.buildApprovalCard(USER, REQ);
+    expect(result).toEqual({ error: expect.stringContaining("not found") });
+    expect(builder.buildUpdateTransaction).not.toHaveBeenCalled();
+  });
+
+  it.each(["pending", "claimed", "applied", "rejected", "expired"] as const)(
+    "refuses a request that is %s: only a proposed one waits for approval",
+    async (status) => {
+      const { service, requests, builder } = setup();
+      requests.getForUser.mockResolvedValue(proposed({ status }));
+      const result = await service.buildApprovalCard(USER, REQ);
+      expect(result).toEqual({
+        error: expect.stringContaining("no longer waiting for approval"),
+      });
+      expect(builder.buildUpdateTransaction).not.toHaveBeenCalled();
+    },
+  );
+
+  it("refuses a proposed request whose life ran out", async () => {
+    const { service, requests } = setup();
+    requests.getForUser.mockResolvedValue(
+      proposed({ expiresAt: new Date(Date.now() - 1000) }),
+    );
+    const result = await service.buildApprovalCard(USER, REQ);
+    expect(result).toEqual({
+      error: expect.stringContaining("no longer waiting for approval"),
+    });
+  });
+
+  it("refuses a parser draft: it has no card to approve here", async () => {
+    const { service, requests } = setup();
+    requests.getForUser.mockResolvedValue(
+      proposed({
+        kind: "email_parser_draft",
+        transactionId: null,
+        proposal: { parserId: "p1" },
+      }),
+    );
+    const result = await service.buildApprovalCard(USER, REQ);
+    expect(result).toEqual({
+      error: expect.stringContaining("no proposal to approve"),
+    });
+  });
+
+  it("returns the refusal as the reason when the transaction no longer admits the proposal", async () => {
+    const { service, requests, transactions } = setup();
+    requests.getForUser.mockResolvedValue(proposed());
+    transactions.findOne.mockResolvedValue({
+      id: TX,
+      amount: -60,
+      isTransfer: false,
+    });
+    const result = await service.buildApprovalCard(USER, REQ);
+    expect(result).toEqual({
+      error: expect.stringMatching(/add up to -50 but the transaction is -60/),
+    });
+  });
+
+  it("lets an internal error propagate instead of showing it as a proposal's refusal", async () => {
+    const { service, requests, prep } = setup();
+    requests.getForUser.mockResolvedValue(proposed());
+    prep.prepareUpdate.mockRejectedValue(new Error("db down"));
+    await expect(service.buildApprovalCard(USER, REQ)).rejects.toThrow(
+      "db down",
+    );
+  });
+});

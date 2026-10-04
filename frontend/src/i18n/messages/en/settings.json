@@ -993,7 +993,7 @@
     },
     "emailReceiptsCard": {
       "title": "Email Receipts",
-      "description": "Connect a mailbox for order confirmations and manage the parsers that read them."
+      "description": "Connect a mailbox for order confirmations and manage the profiles that read them."
     },
     "delegateSecurityError": "Unable to load your security settings.",
     "toasts": {

@@ -19,6 +19,7 @@ import { TransactionReconciliationService } from "./transaction-reconciliation.s
 import { TransactionAnalyticsService } from "./transaction-analytics.service";
 import { TransactionBulkUpdateService } from "./transaction-bulk-update.service";
 import { TagsService } from "../tags/tags.service";
+import { TransactionTag } from "../tags/entities/transaction-tag.entity";
 import { TransactionRulesApplierService } from "../transaction-rules/transaction-rules-applier.service";
 import {
   PlannableRule,
@@ -74,6 +75,7 @@ describe("TransactionsService", () => {
   let payeesService: Record<string, jest.Mock>;
   let netWorthService: Record<string, jest.Mock>;
   let tagsService: Record<string, jest.Mock>;
+  let transactionTagsRepository: Record<string, jest.Mock>;
   let rulesApplier: Record<string, jest.Mock>;
   // The withScopedDb EntityManager, under the legacy `mockQueryRunner.manager`
   // shape so the pre-RLS manager assertions still read naturally.
@@ -175,7 +177,9 @@ describe("TransactionsService", () => {
     };
 
     const payeesRepository = { findOne: jest.fn().mockResolvedValue(null) };
+    transactionTagsRepository = { find: jest.fn().mockResolvedValue([]) };
     const tenantMocks = createScopedDbMocks([
+      [TransactionTag, transactionTagsRepository],
       [TransactionSplit, splitsRepository],
       [Category, categoriesRepository],
       [InvestmentTransaction, investmentTxRepository],
@@ -379,6 +383,8 @@ describe("TransactionsService", () => {
             setTransactionTags: jest.fn().mockResolvedValue(undefined),
             addTransactionTags: jest.fn().mockResolvedValue(undefined),
             setSplitTags: jest.fn().mockResolvedValue(undefined),
+            findByNames: jest.fn().mockResolvedValue([]),
+            findOrCreateByNames: jest.fn().mockResolvedValue([]),
           },
         },
         { provide: NetWorthService, useValue: netWorthService },
@@ -1604,6 +1610,84 @@ describe("TransactionsService", () => {
 
       expect(beforeWrite).toHaveBeenCalledTimes(1);
       expect(order).toEqual(["hook", "write"]);
+    });
+
+    describe("addTagNames (a proposal's tags are added, never replacing the tags a transaction has)", () => {
+      const update = async (
+        options: object,
+        dto: object = { description: "x" },
+      ) => {
+        transactionsRepository.findOne.mockResolvedValue({ ...mockTx });
+        lockedRow = { ...mockTx };
+        mockQueryRunner.manager.findOne.mockResolvedValueOnce({ ...mockTx });
+        return service.update("user-1", "tx-1", dto as any, options);
+      };
+
+      it("finds or creates the tags and links them additively, in the write's own transaction", async () => {
+        tagsService.findOrCreateByNames.mockResolvedValue([
+          { id: "tag-a", name: "Allegro" },
+          { id: "tag-b", name: "Gifts" },
+        ]);
+
+        await update({ addTagNames: ["Allegro", "Gifts"] });
+
+        expect(tagsService.findOrCreateByNames).toHaveBeenCalledWith(
+          mockQueryRunner.manager,
+          "user-1",
+          ["Allegro", "Gifts"],
+        );
+        expect(tagsService.addTransactionTags).toHaveBeenCalledWith(
+          mockQueryRunner.manager,
+          "user-1",
+          ["tx-1"],
+          ["tag-a", "tag-b"],
+        );
+        // Never the replacing call: the transaction keeps the tags it has.
+        expect(tagsService.setTransactionTags).not.toHaveBeenCalled();
+      });
+
+      it("does nothing about tags when none are asked for", async () => {
+        await update({});
+        await update({ addTagNames: [] });
+        expect(tagsService.findOrCreateByNames).not.toHaveBeenCalled();
+        expect(tagsService.addTransactionTags).not.toHaveBeenCalled();
+      });
+
+      it("is independent of tagIds, which still replaces the whole set", async () => {
+        tagsService.findOrCreateByNames.mockResolvedValue([
+          { id: "tag-a", name: "A" },
+        ]);
+        await update(
+          { addTagNames: ["A"] },
+          { description: "x", tagIds: ["tag-z"] },
+        );
+        expect(tagsService.setTransactionTags).toHaveBeenCalledWith(
+          "tx-1",
+          ["tag-z"],
+          "user-1",
+        );
+        expect(tagsService.addTransactionTags).toHaveBeenCalledWith(
+          mockQueryRunner.manager,
+          "user-1",
+          ["tx-1"],
+          ["tag-a"],
+        );
+      });
+
+      it("adds the tags after the hook that marks the request applied, so a refusal creates no tag", async () => {
+        const order: string[] = [];
+        tagsService.findOrCreateByNames.mockImplementation(async () => {
+          order.push("tags");
+          return [];
+        });
+        await update({
+          addTagNames: ["Allegro"],
+          beforeWrite: async () => {
+            order.push("hook");
+          },
+        });
+        expect(order).toEqual(["hook", "tags"]);
+      });
     });
 
     it("writes nothing when beforeWrite refuses", async () => {
@@ -8518,6 +8602,93 @@ describe("TransactionsService", () => {
         currencyCode: "USD",
       });
       expect(transactionsRepository.save).not.toHaveBeenCalled();
+    });
+
+    describe("tag names (a proposal's tag is an addition)", () => {
+      it("previews a name the user has no tag for as a new tag", async () => {
+        transactionsRepository.findOne.mockResolvedValueOnce({ ...baseTx });
+        tagsService.findByNames.mockResolvedValue([]);
+
+        const preview = await service.previewUpdate("user-1", "tx-1", {
+          description: "x",
+          tagNames: ["Allegro"],
+        });
+
+        expect(preview.tagNames).toEqual(["Allegro"]);
+        expect(preview.newTagNames).toEqual(["Allegro"]);
+      });
+
+      it("previews an existing tag in the user's own spelling, not as new", async () => {
+        transactionsRepository.findOne.mockResolvedValueOnce({ ...baseTx });
+        tagsService.findByNames.mockResolvedValue([
+          { id: "t1", name: "Allegro" },
+        ]);
+
+        const preview = await service.previewUpdate("user-1", "tx-1", {
+          description: "x",
+          tagNames: ["ALLEGRO"],
+        });
+
+        expect(preview.tagNames).toEqual(["Allegro"]);
+        expect(preview.newTagNames).toBeUndefined();
+      });
+
+      it("leaves out a tag the transaction already carries: that is not a change", async () => {
+        transactionsRepository.findOne.mockResolvedValueOnce({ ...baseTx });
+        tagsService.findByNames.mockResolvedValue([
+          { id: "t1", name: "Allegro" },
+        ]);
+        transactionTagsRepository.find.mockResolvedValue([
+          { transactionId: "tx-1", tagId: "t1" },
+        ]);
+
+        const preview = await service.previewUpdate("user-1", "tx-1", {
+          description: "x",
+          tagNames: ["Allegro", "Gifts"],
+        });
+
+        expect(preview.tagNames).toEqual(["Gifts"]);
+        expect(preview.newTagNames).toEqual(["Gifts"]);
+      });
+
+      it("counts a tag to add as a change on its own, and not one already carried", async () => {
+        transactionsRepository.findOne.mockResolvedValue({ ...baseTx });
+        tagsService.findByNames.mockResolvedValue([]);
+        const added = await service.previewUpdate("user-1", "tx-1", {
+          tagNames: ["Allegro"],
+        });
+        expect(added.tagNames).toEqual(["Allegro"]);
+
+        tagsService.findByNames.mockResolvedValue([
+          { id: "t1", name: "Allegro" },
+        ]);
+        transactionTagsRepository.find.mockResolvedValue([
+          { transactionId: "tx-1", tagId: "t1" },
+        ]);
+        await expect(
+          service.previewUpdate("user-1", "tx-1", { tagNames: ["Allegro"] }),
+        ).rejects.toThrow(/at least one field/);
+      });
+
+      it("shows no tags when none were asked for, and reads none", async () => {
+        transactionsRepository.findOne.mockResolvedValueOnce({ ...baseTx });
+        const preview = await service.previewUpdate("user-1", "tx-1", {
+          description: "x",
+        });
+        expect(preview).not.toHaveProperty("tagNames");
+        expect(tagsService.findByNames).not.toHaveBeenCalled();
+      });
+
+      it("counts a name once however it is spelled, and writes nothing", async () => {
+        transactionsRepository.findOne.mockResolvedValueOnce({ ...baseTx });
+        const preview = await service.previewUpdate("user-1", "tx-1", {
+          description: "x",
+          tagNames: ["Allegro", " allegro ", ""],
+        });
+        expect(preview.tagNames).toEqual(["Allegro"]);
+        expect(tagsService.findOrCreateByNames).not.toHaveBeenCalled();
+        expect(tagsService.addTransactionTags).not.toHaveBeenCalled();
+      });
     });
 
     it("surfaces the reconciled status of the target transaction", async () => {

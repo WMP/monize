@@ -293,6 +293,8 @@ export interface PendingActionSplit {
   categoryName?: string | null;
   amount: number;
   memo?: string | null;
+  /** `"ai"` when the AI chose this line's category (email-receipt proposals). */
+  categorySource?: 'ai';
 }
 
 /** One chat file a create/update card will save on the transaction on approval. */
@@ -322,9 +324,15 @@ export interface PendingActionPreview {
    */
   contactLookupSource?: ContactLookupSource | null;
   categoryName?: string | null;
+  /** `"ai"` when the AI chose `categoryName`. */
+  categorySource?: 'ai';
   newCategoryName?: string | null;
   currentCategoryName?: string | null;
   description?: string | null;
+  /** update_transaction: tag names the approval adds (the transaction keeps its own). */
+  tagNames?: string[];
+  /** The subset of `tagNames` the approval creates because the user has no such tag yet. */
+  newTagNames?: string[];
   name?: string | null;
   /** Payee website, as the commit would store it. */
   website?: string | null;

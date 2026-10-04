@@ -5275,11 +5275,16 @@ Status              enforced
 Statement           Nothing a receipt carries is written to a transaction except
                     by /ai/actions/confirm with the signed card built for it, and
                     the card never carries an amount, a date, an account or a
-                    status change. Auto-apply, when the user turned it on, calls
-                    the same confirm with the card it built.
+                    status change. A profile's tag and the categories the AI
+                    chose are part of the card (tags are added, never removed;
+                    an AI category is display-only and a person approves it).
+                    Auto-apply, when the user turned it on, calls the same
+                    confirm with the card it built; the daily AI write limit
+                    is exempted for a profile's proposal only by the user's own
+                    stored mailbox switch, decided on the server.
 Source of truth     ai_review_requests (kind email_receipt), transactions
 Enforcement         The proposal is AiReviewProposalInput (splits, category,
-                    payee, description); AiReviewWorkService.submit validates it
+                    payee, description, tagNames); AiReviewWorkService.submit validates it
                     (exact split sum, owned categories, no transfer) and signs the
                     card; confirm marks the request applied in the write's own
                     transaction (markApplied). The auto-apply gate is a pure
