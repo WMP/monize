@@ -13,6 +13,12 @@
     "rejected": "Reddedildi",
     "expired": "Süresi doldu"
   },
+  "kindFilter": {
+    "label": "Türe göre filtrele",
+    "all": "Tümü",
+    "email_receipt": "E-posta makbuzları",
+    "transaction_review": "Kurallar"
+  },
   "status": {
     "pending": "Beklemede",
     "claimed": "İncelemede",
@@ -47,6 +53,23 @@
   },
   "proposal": {
     "errorTitle": "Bu öneri artık uygulanamaz"
+  },
+  "bulk": {
+    "selectRow": "{name} öğesini seç",
+    "selectAll": "Gösterilen onaylanabilir tüm istekleri seç",
+    "approveSelected": "Seçilenleri onayla ({count})",
+    "approveAllShown": "Gösterilenlerin tümünü onayla ({count})",
+    "summary": "{approved, plural, one {# öneri} other {# öneri}} uygulandı, {failed, plural, one {# uygulanmadı} other {# uygulanmadı}}.",
+    "closeSummary": "Kapat",
+    "failure": "{name}: {reason}",
+    "noReason": "Hiçbir neden belirtilmedi",
+    "unknownRequest": "Bir istek",
+    "failed": "Öneriler uygulanamadı",
+    "dialog": {
+      "title": "{count, plural, one {# öneri uygulansın mı?} other {# öneri uygulansın mı?}}",
+      "message": "Her öneri, işlemin şu anki haline göre denetlenir ve tek tek uygulanır. Artık uymayan öneri atlanır ve bildirilir, diğerleri yine uygulanır. Önerileri onaylamadan önce inceleyin.",
+      "confirm": "{count, plural, one {# öneriyi uygula} other {# öneriyi uygula}}"
+    }
   },
   "dismissDialog": {
     "title": "Bu istek yoksayılsın mı?",

@@ -13,6 +13,12 @@
     "rejected": "Ditolak",
     "expired": "Kedaluwarsa"
   },
+  "kindFilter": {
+    "label": "Filter menurut jenis",
+    "all": "Semua",
+    "email_receipt": "Struk surel",
+    "transaction_review": "Aturan"
+  },
   "status": {
     "pending": "Menunggu",
     "claimed": "Sedang ditinjau",
@@ -47,6 +53,23 @@
   },
   "proposal": {
     "errorTitle": "Usulan ini tidak dapat diterapkan lagi"
+  },
+  "bulk": {
+    "selectRow": "Pilih {name}",
+    "selectAll": "Pilih semua permintaan yang dapat disetujui yang ditampilkan",
+    "approveSelected": "Setujui yang dipilih ({count})",
+    "approveAllShown": "Setujui semua yang ditampilkan ({count})",
+    "summary": "{approved, plural, one {# usulan} other {# usulan}} diterapkan, {failed, plural, one {# tidak diterapkan} other {# tidak diterapkan}}.",
+    "closeSummary": "Tutup",
+    "failure": "{name}: {reason}",
+    "noReason": "Tidak ada alasan yang diberikan",
+    "unknownRequest": "Sebuah permintaan",
+    "failed": "Usulan tidak dapat diterapkan",
+    "dialog": {
+      "title": "{count, plural, one {Terapkan # usulan?} other {Terapkan # usulan?}}",
+      "message": "Setiap usulan diperiksa terhadap transaksinya sebagaimana kondisinya saat ini dan diterapkan sendiri-sendiri. Usulan yang tidak lagi cocok dilewati dan dilaporkan, sedangkan sisanya tetap diterapkan. Tinjau usulan sebelum menyetujuinya.",
+      "confirm": "{count, plural, one {Terapkan # usulan} other {Terapkan # usulan}}"
+    }
   },
   "dismissDialog": {
     "title": "Abaikan permintaan ini?",
