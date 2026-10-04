@@ -153,7 +153,8 @@
     "payeeUnknown": "Begunstigde niet gevonden",
     "payeeUnavailable": "Lijst met begunstigden niet beschikbaar",
     "actions": {
-      "approve": "Goedkeuren"
+      "approve": "Goedkeuren",
+      "viewJson": "JSON bekijken"
     },
     "toasts": {
       "approved": "Parser goedgekeurd",
@@ -165,6 +166,14 @@
     "deleteDialog": {
       "title": "De parser verwijderen?",
       "message": "De parser {name} wordt verwijderd. E-mails die hij al heeft gelezen behouden hun resultaten."
+    },
+    "jsonDialog": {
+      "title": "Definitie van {name}",
+      "help": "De parserdefinitie zoals die is opgeslagen. Hier is ze alleen-lezen; gebruik Bewerken om haar te wijzigen.",
+      "contentLabel": "Definitie-JSON",
+      "copy": "Kopiëren",
+      "copied": "JSON gekopieerd",
+      "copyFailed": "De JSON kon niet worden gekopieerd"
     }
   },
   "editor": {
@@ -222,6 +231,18 @@
       "defaultHelp": "Wordt gebruikt voor artikelen waar geen enkele regel bij past.",
       "shippingLabel": "Verzendcategorie",
       "shippingHelp": "De categorie van de verzendregel."
+    },
+    "mode": {
+      "label": "Bewerkmodus",
+      "form": "Formulier",
+      "json": "JSON",
+      "formUnavailable": "Deze definitie gebruikt iets wat het formulier niet kan tonen: vermeldingen met een label, artikelen over meerdere regels of sleutels waarvoor het geen veld heeft. Bewerk haar als JSON.",
+      "jsonInvalid": "De JSON is nog niet geldig, dus het formulier kan niet worden getoond. Herstel dit eerst."
+    },
+    "json": {
+      "label": "Parserdefinitie (JSON)",
+      "help": "Dezelfde definitie die het formulier opbouwt. De server controleert haar bij het opslaan en de test hieronder leest haar zoals ze nu is.",
+      "parseError": "Dit is geen geldige JSON of geen JSON-object. Herstel dit om de parser op te slaan of te testen."
     }
   },
   "problems": {
@@ -230,7 +251,12 @@
     "paths": {
       "definition": "De definitie",
       "line": "{field}, regel {line}",
-      "rule": "Categorieregel {rule}, {part}"
+      "rule": "Categorieregel {rule}, {part}",
+      "entryPart": "{field}, vermelding {line}, {part}",
+      "skipLine": "Over te slaan regel {line}",
+      "recordStep": "Recordstap {step}",
+      "recordStepPart": "Recordstap {step}, {part}",
+      "recordAlternative": "Recordstap {step}, alternatief {alternative}"
     },
     "fields": {
       "orderId": "Patronen voor het ordernummer",
@@ -245,12 +271,28 @@
       "rulePattern": "patroon",
       "ruleCategory": "categorie",
       "defaultCategory": "Standaardcategorie",
-      "shippingCategory": "Verzendcategorie"
+      "shippingCategory": "Verzendcategorie",
+      "skipLines": "Over te slaan regels",
+      "record": "Record",
+      "label": "label",
+      "value": "value",
+      "within": "within",
+      "line": "line",
+      "optional": "optional",
+      "paid": "Patronen voor het betaalde bedrag",
+      "payee": "Patronen voor de verkoper",
+      "requireLine": "Vereiste regels",
+      "skipIfLine": "Regels die de e-mail overslaan",
+      "waitIfLine": "Regels die de e-mail vasthouden",
+      "single": "Enkel artikel",
+      "singleName": "Naam van het enkele artikel",
+      "joinWrapped": "Afgebroken regels samenvoegen",
+      "ruleField": "field"
     },
     "codes": {
       "not_object": "is geen geldige definitie",
       "unknown_key": "is niets wat een parser kan hebben",
-      "invalid_version": "is een versie die deze server niet leest",
+      "unsupported_version": "is een versie die deze server niet leest (gebruik versie 2)",
       "invalid_type": "heeft het verkeerde soort waarde",
       "empty": "mag niet leeg zijn",
       "too_many": "heeft te veel items (maximaal {max})",
@@ -262,7 +304,15 @@
       "capture_not_allowed": "gebruikt een vastleggingsnaam die dit veld niet accepteert",
       "capture_missing": "mist een vastlegging die dit veld nodig heeft",
       "capture_conflict": "legt zowel het regeltotaal als de stukprijs vast. Gebruik er één van.",
-      "invalid_uuid": "is geen geldige categorie"
+      "invalid_uuid": "is geen geldige categorie",
+      "out_of_range": "moet een geheel getal van 1 tot {max} zijn",
+      "items_patterns_and_record": "heeft zowel patronen als een record. Gebruik er één van.",
+      "items_shape_missing": "heeft patronen of een record nodig",
+      "skip_lines_need_record": "kan alleen samen met een record worden gebruikt",
+      "record_name_missing": "moet {capture} vastleggen in een van zijn stappen",
+      "items_single_conflict": "heeft een enkel artikel naast patronen of een record. Gebruik er één van.",
+      "join_wrapped_needs_patterns": "werkt alleen met artikelpatronen",
+      "invalid_value": "heeft een waarde die dit veld niet accepteert"
     }
   },
   "test": {
@@ -285,7 +335,33 @@
     },
     "noPayee": "geen begunstigde",
     "ambiguous": "{count, plural, one {# transactie past} other {# transacties passen}} even goed, dus er zou er geen worden gekoppeld totdat je er een kiest.",
-    "unmatched": "Er komt geen transactie overeen, uit {count, plural, one {# kandidaat} other {# kandidaten}}."
+    "unmatched": "Er komt geen transactie overeen, uit {count, plural, one {# kandidaat} other {# kandidaten}}.",
+    "jsonInvalid": "De JSON is niet geldig, dus er is nog niets te testen.",
+    "outcome": {
+      "not_applicable": "Deze parser zou deze e-mail niet lezen: geen van de vereiste regels komt erin voor, dus de volgende parser voor de afzender zou worden geprobeerd.",
+      "skip_line": "Deze parser zou deze e-mail opzijzetten: er staat een regel in waarop hij overslaat.",
+      "wait_line": "Deze parser zou deze e-mail vasthouden: een regel zegt dat de bestelling nog niet definitief is, dus hij wordt later opnieuw gelezen."
+    },
+    "matchedBy": {
+      "heading": "Gevonden via",
+      "none": "Uit deze e-mail is geen waarde gelezen.",
+      "fields": {
+        "orderId": "Ordernummer",
+        "total": "Totaal",
+        "paid": "Betaald",
+        "shipping": "Verzending",
+        "discount": "Korting",
+        "payee": "Verkoper",
+        "requireLine": "Vereiste regel",
+        "skipIfLine": "Overslaanregel",
+        "waitIfLine": "Wachtregel"
+      },
+      "entryLine": "vermelding {entry} ({pattern}), regel {line}: {text}",
+      "entrySubject": "vermelding {entry} ({pattern}), het onderwerp: {text}",
+      "labelled": "vermelding {entry}, label {label} op regel {labelLine} ({labelText}), waarde {pattern} op regel {line}: {text}",
+      "item": "Artikel {number}",
+      "itemLine": "{pattern}, regel {line}: {text}"
+    }
   },
   "parsed": {
     "notFound": "Niet gevonden",
@@ -310,9 +386,12 @@
       "no_items": "Er zijn geen artikelregels gevonden.",
       "items_unbalanced": "De artikelregels tellen niet op tot het totaal.",
       "items_uncategorized": "Sommige artikelregels hebben geen categorie.",
-      "shipping_uncategorized": "De verzendregel heeft geen categorie."
+      "shipping_uncategorized": "De verzendregel heeft geen categorie.",
+      "item_amount_missing": "Een artikel heeft geen bedrag en de e-mail heeft geen enkel totaal om het te geven."
     },
-    "readByAi": "Gelezen door de AI"
+    "readByAi": "Gelezen door de AI",
+    "paid": "Betaald",
+    "payee": "Verkoper"
   },
   "state": {
     "pending": "Wacht om gelezen te worden",
@@ -457,7 +536,10 @@
       "amount_differs": "Het gelezen totaal wijkt af van het bedrag van de transactie, dus er wordt alleen een omschrijving voorgesteld.",
       "proposal_fallback": "Het gespecificeerde voorstel is geweigerd, dus er wordt alleen een omschrijving voorgesteld.",
       "nothing_to_propose": "De e-mail voegt niets toe aan deze transactie.",
-      "proposal_refused": "Het voorstel is geweigerd, dus er is niets voorgesteld."
+      "proposal_refused": "Het voorstel is geweigerd, dus er is niets voorgesteld.",
+      "skip_line": "Er is een regel gevonden waarop deze parser overslaat, dus de e-mail is genegeerd.",
+      "wait_line": "Een regel zegt dat de bestelling nog niet definitief is, dus de e-mail wordt later opnieuw gelezen.",
+      "item_amount_missing": "Een artikel heeft geen bedrag en de e-mail heeft geen enkel totaal om het te geven."
     },
     "reasonUnknown": "Reden: {reason}",
     "requestNote": "Controleverzoek ({state}): {note}",

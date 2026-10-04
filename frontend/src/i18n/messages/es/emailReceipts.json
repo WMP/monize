@@ -153,7 +153,8 @@
     "payeeUnknown": "Beneficiario no encontrado",
     "payeeUnavailable": "Lista de beneficiarios no disponible",
     "actions": {
-      "approve": "Aprobar"
+      "approve": "Aprobar",
+      "viewJson": "Ver JSON"
     },
     "toasts": {
       "approved": "Analizador aprobado",
@@ -165,6 +166,14 @@
     "deleteDialog": {
       "title": "¿Eliminar el analizador?",
       "message": "Se eliminará el analizador {name}. Los correos que ya leyó conservan sus resultados."
+    },
+    "jsonDialog": {
+      "title": "Definición de {name}",
+      "help": "La definición del analizador tal como está guardada. Aquí es de solo lectura; usa Editar para cambiarla.",
+      "contentLabel": "JSON de la definición",
+      "copy": "Copiar",
+      "copied": "JSON copiado",
+      "copyFailed": "No se pudo copiar el JSON"
     }
   },
   "editor": {
@@ -222,6 +231,18 @@
       "defaultHelp": "Se usa para los artículos que no coinciden con ninguna regla.",
       "shippingLabel": "Categoría de envío",
       "shippingHelp": "La categoría de la línea de envío."
+    },
+    "mode": {
+      "label": "Modo de edición",
+      "form": "Formulario",
+      "json": "JSON",
+      "formUnavailable": "Esta definición usa algo que el formulario no puede mostrar: entradas con etiqueta, artículos de varias líneas o claves para las que no tiene campo. Edítala como JSON.",
+      "jsonInvalid": "El JSON todavía no es válido, así que no se puede mostrar el formulario. Corrígelo primero."
+    },
+    "json": {
+      "label": "Definición del analizador (JSON)",
+      "help": "La misma definición que genera el formulario. El servidor la comprueba al guardar, y la prueba de abajo la lee tal como está ahora.",
+      "parseError": "Esto no es un JSON válido o no es un objeto JSON. Corrígelo para guardar o probar el analizador."
     }
   },
   "problems": {
@@ -230,7 +251,12 @@
     "paths": {
       "definition": "La definición",
       "line": "{field}, línea {line}",
-      "rule": "Regla de categoría {rule}, {part}"
+      "rule": "Regla de categoría {rule}, {part}",
+      "entryPart": "{field}, entrada {line}, {part}",
+      "skipLine": "Línea que se omite {line}",
+      "recordStep": "Paso de registro {step}",
+      "recordStepPart": "Paso de registro {step}, {part}",
+      "recordAlternative": "Paso de registro {step}, alternativa {alternative}"
     },
     "fields": {
       "orderId": "Patrones del número de pedido",
@@ -245,12 +271,28 @@
       "rulePattern": "patrón",
       "ruleCategory": "categoría",
       "defaultCategory": "Categoría predeterminada",
-      "shippingCategory": "Categoría de envío"
+      "shippingCategory": "Categoría de envío",
+      "skipLines": "Líneas que se omiten",
+      "record": "Record",
+      "label": "label",
+      "value": "value",
+      "within": "within",
+      "line": "line",
+      "optional": "optional",
+      "paid": "Patrones del importe pagado",
+      "payee": "Patrones del comercio",
+      "requireLine": "Líneas obligatorias",
+      "skipIfLine": "Líneas que omiten el correo",
+      "waitIfLine": "Líneas que retienen el correo",
+      "single": "Artículo único",
+      "singleName": "Nombre del artículo único",
+      "joinWrapped": "Unir líneas partidas",
+      "ruleField": "field"
     },
     "codes": {
       "not_object": "no es una definición válida",
       "unknown_key": "no es algo que un analizador pueda tener",
-      "invalid_version": "es una versión que este servidor no lee",
+      "unsupported_version": "es una versión que este servidor no lee (usa la versión 2)",
       "invalid_type": "tiene un tipo de valor incorrecto",
       "empty": "no puede estar vacío",
       "too_many": "tiene demasiadas entradas (como máximo {max})",
@@ -262,7 +304,15 @@
       "capture_not_allowed": "usa un nombre de captura que este campo no acepta",
       "capture_missing": "le falta una captura que este campo necesita",
       "capture_conflict": "captura a la vez el total de la línea y el precio unitario. Usa solo uno de ellos.",
-      "invalid_uuid": "no es una categoría válida"
+      "invalid_uuid": "no es una categoría válida",
+      "out_of_range": "debe ser un número entero de 1 a {max}",
+      "items_patterns_and_record": "tiene patrones y un registro a la vez. Usa solo uno de ellos.",
+      "items_shape_missing": "necesita patrones o un registro",
+      "skip_lines_need_record": "solo se puede usar junto con un registro",
+      "record_name_missing": "debe capturar {capture} en uno de sus pasos",
+      "items_single_conflict": "tiene un artículo único junto a patrones o un registro. Usa solo uno de ellos.",
+      "join_wrapped_needs_patterns": "solo funciona con patrones de artículos",
+      "invalid_value": "tiene un valor que este campo no acepta"
     }
   },
   "test": {
@@ -285,7 +335,33 @@
     },
     "noPayee": "sin beneficiario",
     "ambiguous": "{count, plural, one {# transacción encaja} other {# transacciones encajan}} igual de bien, así que no se vincularía ninguna hasta que elijas.",
-    "unmatched": "Ninguna transacción coincide, entre {count, plural, one {# candidata} other {# candidatas}}."
+    "unmatched": "Ninguna transacción coincide, entre {count, plural, one {# candidata} other {# candidatas}}.",
+    "jsonInvalid": "El JSON no es válido, así que todavía no hay nada que probar.",
+    "outcome": {
+      "not_applicable": "Este analizador no leería este correo: no contiene ninguna de sus líneas obligatorias, así que se probaría el siguiente analizador del remitente.",
+      "skip_line": "Este analizador apartaría este correo: contiene una línea ante la que se omite.",
+      "wait_line": "Este analizador retendría este correo: una línea indica que el pedido todavía no es definitivo, así que se leerá de nuevo más adelante."
+    },
+    "matchedBy": {
+      "heading": "Encontrado por",
+      "none": "No se leyó ningún valor de este correo.",
+      "fields": {
+        "orderId": "Número de pedido",
+        "total": "Total",
+        "paid": "Pagado",
+        "shipping": "Envío",
+        "discount": "Descuento",
+        "payee": "Comercio",
+        "requireLine": "Línea obligatoria",
+        "skipIfLine": "Línea de omisión",
+        "waitIfLine": "Línea de espera"
+      },
+      "entryLine": "entrada {entry} ({pattern}), línea {line}: {text}",
+      "entrySubject": "entrada {entry} ({pattern}), el asunto: {text}",
+      "labelled": "entrada {entry}, etiqueta {label} en la línea {labelLine} ({labelText}), valor {pattern} en la línea {line}: {text}",
+      "item": "Artículo {number}",
+      "itemLine": "{pattern}, línea {line}: {text}"
+    }
   },
   "parsed": {
     "notFound": "No encontrado",
@@ -310,9 +386,12 @@
       "no_items": "No se encontró ninguna línea de artículo.",
       "items_unbalanced": "Las líneas de artículos no suman el total.",
       "items_uncategorized": "Algunas líneas de artículos no tienen categoría.",
-      "shipping_uncategorized": "La línea de envío no tiene categoría."
+      "shipping_uncategorized": "La línea de envío no tiene categoría.",
+      "item_amount_missing": "Un artículo no tiene importe y el correo no tiene un único total que asignarle."
     },
-    "readByAi": "Leído por la IA"
+    "readByAi": "Leído por la IA",
+    "paid": "Pagado",
+    "payee": "Comercio"
   },
   "state": {
     "pending": "Pendiente de lectura",
@@ -457,7 +536,10 @@
       "amount_differs": "El total leído difiere del importe de la transacción, así que solo se propone una descripción.",
       "proposal_fallback": "Se rechazó la propuesta detallada, así que solo se propone una descripción.",
       "nothing_to_propose": "El correo no aporta nada a esta transacción.",
-      "proposal_refused": "Se rechazó la propuesta, así que no se propuso nada."
+      "proposal_refused": "Se rechazó la propuesta, así que no se propuso nada.",
+      "skip_line": "Se encontró una línea ante la que este analizador omite, así que se ignoró el correo.",
+      "wait_line": "Una línea indica que el pedido todavía no es definitivo, así que el correo se leerá de nuevo más adelante.",
+      "item_amount_missing": "Un artículo no tiene importe y el correo no tiene un único total que asignarle."
     },
     "reasonUnknown": "Motivo: {reason}",
     "requestNote": "Solicitud de revisión ({state}): {note}",
