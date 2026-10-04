@@ -1,7 +1,14 @@
+import {
+  DEFAULT_PROFILE_ID,
+  profileNotesView,
+  resolveConnectionProfile,
+} from "./bank-sync-profiles";
 import type { BankSyncAccount } from "./entities/bank-sync-account.entity";
 import type { BankSyncConnection } from "./entities/bank-sync-connection.entity";
 import type {
+  BankInstitutionProfileView,
   BankSyncAccountView,
+  BankSyncConnectionProfileView,
   BankSyncConnectionView,
 } from "./bank-sync.types";
 
@@ -59,9 +66,50 @@ export function toBankSyncAccountView(
   };
 }
 
+/**
+ * The profile a connection's rows are read by, with its notes in `readerLang`
+ * (English where a note has no text in it). Always present: a bank with no
+ * profile of its own has the default, which carries no notes.
+ */
+export function toBankSyncConnectionProfileView(
+  row: Pick<
+    BankSyncConnection,
+    "provider" | "institutionCountry" | "institutionName"
+  >,
+  readerLang: string,
+): BankSyncConnectionProfileView {
+  const profile = resolveConnectionProfile(row);
+  return {
+    id: profile.id,
+    version: profile.version,
+    notes: profileNotesView(profile, readerLang),
+  };
+}
+
+/**
+ * The built-in profile of a bank the provider lists, or null when it has none
+ * (the default applies, and there is nothing to tell the reader before they
+ * connect). A Map lookup per bank, so a list of several hundred banks is cheap.
+ */
+export function toBankInstitutionProfileView(
+  provider: string,
+  institution: { readonly country: string; readonly name: string },
+  readerLang: string,
+): BankInstitutionProfileView | null {
+  const profile = resolveConnectionProfile({
+    provider,
+    institutionCountry: institution.country,
+    institutionName: institution.name,
+  });
+  return profile.id === DEFAULT_PROFILE_ID
+    ? null
+    : { id: profile.id, notes: profileNotesView(profile, readerLang) };
+}
+
 export function toBankSyncConnectionView(
   row: BankSyncConnection,
   accounts: readonly BankSyncAccount[],
+  readerLang: string,
 ): BankSyncConnectionView {
   return {
     id: row.id,
@@ -76,6 +124,7 @@ export function toBankSyncConnectionView(
     tagOperationType: row.tagOperationType,
     lastError: row.lastError,
     createdAt: row.createdAt.toISOString(),
+    profile: toBankSyncConnectionProfileView(row, readerLang),
     accounts: accounts.map(toBankSyncAccountView),
   };
 }

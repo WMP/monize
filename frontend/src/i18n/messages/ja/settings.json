@@ -1550,6 +1550,15 @@
       "tagOperationTypeOff": "操作種別タグをオフにしました",
       "tagOperationTypeFailed": "操作種別タグを変更できませんでした"
     },
+    "profileNotes": {
+      "title": "この銀行のAPIの仕組み",
+      "show": "この銀行のAPIの仕組みを表示",
+      "hide": "この銀行のAPIの仕組みを非表示",
+      "severity": {
+        "warning": "警告:",
+        "info": "メモ:"
+      }
+    },
     "account": {
       "unnamed": "名称未設定の銀行口座",
       "linkLabel": "Monize の口座",

@@ -1550,6 +1550,15 @@
       "tagOperationTypeOff": "Tags de type d'opération désactivés",
       "tagOperationTypeFailed": "Impossible de modifier les tags de type d'opération"
     },
+    "profileNotes": {
+      "title": "Comment fonctionne l'API de cette banque",
+      "show": "Afficher le fonctionnement de l'API de cette banque",
+      "hide": "Masquer le fonctionnement de l'API de cette banque",
+      "severity": {
+        "warning": "Avertissement :",
+        "info": "Remarque :"
+      }
+    },
     "account": {
       "unnamed": "Compte bancaire sans nom",
       "linkLabel": "Compte Monize",

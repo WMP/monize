@@ -23,6 +23,7 @@ const institution = (over: Partial<BankInstitution> = {}): BankInstitution => ({
   logoUrl: null,
   psuTypes: ['personal', 'business'],
   maximumConsentValidityDays: 90,
+  profile: null,
   ...over,
 });
 
@@ -179,6 +180,43 @@ describe('BankSyncConnectDialog', () => {
     });
     expect(screen.getByText('German Bank')).toBeInTheDocument();
     expect(screen.queryByText('Polish Bank')).toBeNull();
+  });
+
+  it('shows how a bank\'s API works once a bank with a profile is chosen, as the server worded it', async () => {
+    mockListInstitutions.mockResolvedValue([
+      institution({
+        profile: {
+          id: 'pl/pko-bp',
+          notes: [
+            { id: 'gluedFields', severity: 'warning', text: 'Town and merchant are joined.', lang: 'en' },
+            { id: 'operationCodeLine', severity: 'info', text: 'The type is on line two.', lang: 'en' },
+          ],
+        },
+      }),
+      institution({ name: 'Beta Credit' }),
+    ]);
+    await renderDialog();
+
+    await chooseCountry('PL');
+    await screen.findByRole('textbox');
+    expect(screen.queryByText("How this bank's API works")).toBeNull();
+
+    await chooseBank('Alpha Bank');
+
+    expect(screen.getByRole('heading', { name: "How this bank's API works" })).toBeInTheDocument();
+    expect(screen.getByText('Town and merchant are joined.')).toBeInTheDocument();
+    expect(screen.getByText('The type is on line two.')).toBeInTheDocument();
+  });
+
+  it('shows no notes for a bank without a profile', async () => {
+    mockListInstitutions.mockResolvedValue([institution()]);
+    await renderDialog();
+
+    await chooseCountry('PL');
+    await chooseBank('Alpha Bank');
+
+    expect(screen.getByLabelText('Account holder')).toBeInTheDocument();
+    expect(screen.queryByText("How this bank's API works")).toBeNull();
   });
 
   it('limits the account holder to what the bank supports', async () => {

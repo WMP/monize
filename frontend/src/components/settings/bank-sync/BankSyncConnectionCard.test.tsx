@@ -8,6 +8,7 @@ import type {
   BankSyncAccount,
   BankSyncConnection,
   BankSyncFailure,
+  BankSyncProfileNote,
   BankSyncResult,
 } from '@/types/bank-sync';
 
@@ -129,6 +130,7 @@ const connection = (over: Partial<BankSyncConnection> = {}): BankSyncConnection 
   tagOperationType: true,
   lastError: null,
   createdAt: '2026-01-01T00:00:00.000Z',
+  profile: { id: 'default', version: 1, notes: [] },
   accounts: [bankAccount()],
   ...over,
 });
@@ -1916,6 +1918,44 @@ describe('BankSyncConnectionCard', () => {
       });
       await waitFor(() => expect(onChanged).toHaveBeenCalled());
       expect(mockSyncAccount).not.toHaveBeenCalled();
+    });
+  });
+  describe('how the bank\'s API works (profile notes)', () => {
+    const notes: BankSyncProfileNote[] = [
+      { id: 'gluedFields', severity: 'warning', text: 'The bank joins town and merchant.', lang: 'en' },
+      { id: 'counterpartyOnTransfers', severity: 'info', text: 'Only transfers name a counterparty.', lang: 'en' },
+    ];
+    const withNotes = () =>
+      connection({ profile: { id: 'pl/pko-bp', version: 1, notes } });
+
+    it('offers nothing for a connection whose profile has no notes', () => {
+      renderCard(connection());
+      expect(screen.queryByRole('button', { name: /how this bank's API works/ })).toBeNull();
+    });
+
+    it('keeps the notes folded until the reader asks, and says what the button controls', async () => {
+      renderCard(withNotes());
+      const toggle = screen.getByRole('button', { name: "Show how this bank's API works" });
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByText('The bank joins town and merchant.')).toBeNull();
+
+      await click("Show how this bank's API works");
+
+      expect(screen.getByText('The bank joins town and merchant.')).toBeInTheDocument();
+      expect(screen.getByText('Only transfers name a counterparty.')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: "How this bank's API works" })).toBeInTheDocument();
+      const hide = screen.getByRole('button', { name: "Hide how this bank's API works" });
+      expect(hide).toHaveAttribute('aria-expanded', 'true');
+      expect(document.getElementById(hide.getAttribute('aria-controls') as string)).toContainElement(
+        screen.getByText('The bank joins town and merchant.'),
+      );
+    });
+
+    it('folds the notes again', async () => {
+      renderCard(withNotes());
+      await click("Show how this bank's API works");
+      await click("Hide how this bank's API works");
+      expect(screen.queryByText('The bank joins town and merchant.')).toBeNull();
     });
   });
 });

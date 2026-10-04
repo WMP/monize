@@ -1550,6 +1550,15 @@
       "tagOperationTypeOff": "ऑपरेशन प्रकार के टैग बंद किए गए",
       "tagOperationTypeFailed": "ऑपरेशन प्रकार के टैग नहीं बदले जा सके"
     },
+    "profileNotes": {
+      "title": "इस बैंक का API कैसे काम करता है",
+      "show": "इस बैंक का API कैसे काम करता है, यह दिखाएं",
+      "hide": "इस बैंक का API कैसे काम करता है, यह छिपाएं",
+      "severity": {
+        "warning": "चेतावनी:",
+        "info": "सूचना:"
+      }
+    },
     "account": {
       "unnamed": "बिना नाम का बैंक खाता",
       "linkLabel": "Monize खाता",

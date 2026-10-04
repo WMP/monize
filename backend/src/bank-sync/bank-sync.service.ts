@@ -32,7 +32,7 @@ import {
 } from "./bank-sync-errors";
 import { readLinkDefaults } from "./bank-sync-cutoff";
 import { BankSyncPreviewService } from "./bank-sync-preview.service";
-import { resolveProfile, type BankSyncProfile } from "./bank-sync-profiles";
+import { resolveConnectionProfile } from "./bank-sync-profiles";
 import {
   assertDisjointSelection,
   type BankSyncSelection,
@@ -124,25 +124,6 @@ function isUniqueViolation(error: unknown): boolean {
     | null
     | undefined;
   return (candidate?.driverError?.code ?? candidate?.code) === "23505";
-}
-
-/**
- * The profile of a connection's institution (docs/future-plans/source-profiles.md
- * section 4): the built-in one for that bank, else the default. Resolved once per
- * sync and once per preview, from the connection as step 1 read it, and handed
- * down, so the writer and the preview never choose a profile themselves.
- */
-function profileOf(
-  connection: Pick<
-    BankSyncConnection,
-    "provider" | "institutionCountry" | "institutionName"
-  >,
-): BankSyncProfile {
-  return resolveProfile(
-    connection.provider,
-    connection.institutionCountry,
-    connection.institutionName,
-  );
 }
 
 /** Everything step 1 of a sync reads (spec section 7). */
@@ -404,7 +385,7 @@ export class BankSyncService {
             explained: fetched.explained,
             balance: fetched.balance,
             tagOperationType: ctx.connection.tagOperationType,
-            profile: profileOf(ctx.connection),
+            profile: resolveConnectionProfile(ctx.connection),
           });
         },
       );
@@ -494,7 +475,7 @@ export class BankSyncService {
           balance,
           expectedFingerprint,
           tagOperationType: connection.tagOperationType,
-          profile: profileOf(connection),
+          profile: resolveConnectionProfile(connection),
           selection,
         });
 

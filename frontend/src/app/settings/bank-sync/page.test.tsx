@@ -60,6 +60,7 @@ const connection = (over: Partial<BankSyncConnection> = {}): BankSyncConnection 
   tagOperationType: true,
   lastError: null,
   createdAt: '2026-01-01T00:00:00.000Z',
+  profile: { id: 'default', version: 1, notes: [] },
   accounts: [],
   ...over,
 });

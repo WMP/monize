@@ -65,12 +65,29 @@ export interface BankSyncCredentialsTestResult {
   redirectUrls: string[];
 }
 
+/** How much a profile note matters: `warning` names a problem the reader may need to act on. */
+export type BankSyncProfileNoteSeverity = 'info' | 'warning';
+
+/**
+ * One thing worth knowing about how a bank's API behaves. `text` is the server's
+ * wording in the reader's language when the note has it, else in English; `lang`
+ * is the language it is actually in, for the element's `lang` attribute.
+ */
+export interface BankSyncProfileNote {
+  id: string;
+  severity: BankSyncProfileNoteSeverity;
+  text: string;
+  lang: string;
+}
+
 export interface BankInstitution {
   name: string;
   country: string;
   logoUrl: string | null;
   psuTypes: string[];
   maximumConsentValidityDays: number | null;
+  /** The bank's own profile; null when it has none and the default applies. */
+  profile: { id: string; notes: BankSyncProfileNote[] } | null;
 }
 
 export interface BankSyncAccount {
@@ -125,6 +142,8 @@ export interface BankSyncConnection {
   tagOperationType: boolean;
   lastError: string | null;
   createdAt: string;
+  /** The profile this connection's rows are read by (the default has no notes). */
+  profile: { id: string; version: number; notes: BankSyncProfileNote[] };
   accounts: BankSyncAccount[];
 }
 

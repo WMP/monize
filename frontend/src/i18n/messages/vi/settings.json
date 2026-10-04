@@ -1550,6 +1550,15 @@
       "tagOperationTypeOff": "Đã tắt thẻ loại thao tác",
       "tagOperationTypeFailed": "Không thể đổi thẻ loại thao tác"
     },
+    "profileNotes": {
+      "title": "API của ngân hàng này hoạt động thế nào",
+      "show": "Hiện cách API của ngân hàng này hoạt động",
+      "hide": "Ẩn cách API của ngân hàng này hoạt động",
+      "severity": {
+        "warning": "Cảnh báo:",
+        "info": "Ghi chú:"
+      }
+    },
     "account": {
       "unnamed": "Tài khoản ngân hàng chưa đặt tên",
       "linkLabel": "Tài khoản Monize",

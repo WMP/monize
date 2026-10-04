@@ -1550,6 +1550,15 @@
       "tagOperationTypeOff": "작업 유형 태그를 껐습니다",
       "tagOperationTypeFailed": "작업 유형 태그를 변경하지 못했습니다"
     },
+    "profileNotes": {
+      "title": "이 은행 API의 작동 방식",
+      "show": "이 은행 API의 작동 방식 보기",
+      "hide": "이 은행 API의 작동 방식 숨기기",
+      "severity": {
+        "warning": "경고:",
+        "info": "참고:"
+      }
+    },
     "account": {
       "unnamed": "이름 없는 은행 계정",
       "linkLabel": "Monize 계정",

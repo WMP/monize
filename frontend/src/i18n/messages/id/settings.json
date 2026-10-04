@@ -1550,6 +1550,15 @@
       "tagOperationTypeOff": "Tag jenis operasi dinonaktifkan",
       "tagOperationTypeFailed": "Tidak dapat mengubah tag jenis operasi"
     },
+    "profileNotes": {
+      "title": "Cara kerja API bank ini",
+      "show": "Tampilkan cara kerja API bank ini",
+      "hide": "Sembunyikan cara kerja API bank ini",
+      "severity": {
+        "warning": "Peringatan:",
+        "info": "Catatan:"
+      }
+    },
     "account": {
       "unnamed": "Rekening bank tanpa nama",
       "linkLabel": "Akun Monize",

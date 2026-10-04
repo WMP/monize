@@ -1550,6 +1550,15 @@
       "tagOperationTypeOff": "Operation type tags turned off",
       "tagOperationTypeFailed": "Could not change the operation type tags"
     },
+    "profileNotes": {
+      "title": "How this bank's API works",
+      "show": "Show how this bank's API works",
+      "hide": "Hide how this bank's API works",
+      "severity": {
+        "warning": "Warning:",
+        "info": "Note:"
+      }
+    },
     "account": {
       "unnamed": "Unnamed bank account",
       "linkLabel": "Monize account",

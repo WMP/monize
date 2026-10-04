@@ -431,6 +431,20 @@ transfer. So:
   operation code (PKO BP sends it as the second line); the duplicate key
   still hashes the raw remittance text, so this changes no key.
 
+**Profile notes.** A profile may carry `notes`: short texts about how that
+bank's API behaves and which problems it has (PKO BP: town, merchant and country
+glued into one line, the operation type on the description's second line, the
+counterparty given only for transfers). Each note has an `id`, a `severity`
+(`info` or `warning`) and a `text` object that lives in the profile file itself:
+`en` is required, any other supported locale is optional. The server shows a
+note in the reader's language (the one the tag labels use) when the note has
+it, else in English, and returns the language it used as `lang`. Notes are read
+by the S2 personal-data check like every other string in the file, and a note
+changes what the reader is told, never what a row gets, so adding one does not
+bump the profile `version`. They show in the "Connect a bank" dialog once a
+bank with a profile is chosen (`GET /bank-sync/institutions`, `profile`) and,
+folded by default, on the connection card (`profile` of the connection view).
+
 **Selection.** Every `new` row has a checkbox, checked by default, with
 "select all" and "select none" for the visible tab. A row that is not
 checked is either:

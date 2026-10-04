@@ -1550,6 +1550,15 @@
       "tagOperationTypeOff": "Vorgangsart-Tags deaktiviert",
       "tagOperationTypeFailed": "Die Vorgangsart-Tags konnten nicht geändert werden"
     },
+    "profileNotes": {
+      "title": "So funktioniert die Schnittstelle dieser Bank",
+      "show": "Anzeigen, wie die Schnittstelle dieser Bank funktioniert",
+      "hide": "Ausblenden, wie die Schnittstelle dieser Bank funktioniert",
+      "severity": {
+        "warning": "Warnung:",
+        "info": "Hinweis:"
+      }
+    },
     "account": {
       "unnamed": "Unbenanntes Bankkonto",
       "linkLabel": "Monize-Konto",
