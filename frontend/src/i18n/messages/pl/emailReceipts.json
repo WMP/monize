@@ -202,6 +202,12 @@
     "conflict": "Ten parser został zmieniony w innym miejscu od chwili jego otwarcia. Wczytaj go ponownie, aby zobaczyć aktualną wersję. Twoje zmiany tutaj nie są zapisane.",
     "conflictReload": "Wczytaj parser ponownie",
     "patterns": {
+      "sourceLabel": "Źródło wierszy",
+      "sourceHint": "Z którą postacią wiadomości porównywane są poniższe wzorce. Tekst to część tekstowa wiadomości, jeden wiersz na każde złamanie wiersza. HTML odczytuje część HTML: każdy blok i każda komórka tabeli staje się osobnym wierszem, dzięki czemu nazwa produktu, którą tekst rozbija na kilka wierszy, pozostaje w całości. Widok Wiersze wiadomości pokazuje dokładnie, co daje każde źródło.",
+      "sourceOptions": {
+        "text": "Tekst",
+        "html": "HTML"
+      },
       "globHelp": "Każdy wzorzec jest porównywany z całym wierszem wiadomości, bez rozróżniania wielkości liter. Użyj {star} dla dowolnego tekstu oraz nazwy w nawiasach klamrowych, na przykład {capture}, aby przechwycić wartość. Każde pole przyjmuje do {max} wzorców, po jednym w wierszu.",
       "orderIdLabel": "Wzorce numeru zamówienia",
       "orderIdHint": "Musi przechwytywać {capture}. Przykład: Numer zamówienia: {capture}",
@@ -284,6 +290,7 @@
       "requireLine": "Wymagane wiersze",
       "skipIfLine": "Wiersze pomijające wiadomość",
       "waitIfLine": "Wiersze wstrzymujące wiadomość",
+      "source": "Źródło wierszy",
       "single": "Pojedyncza pozycja",
       "singleName": "Nazwa pojedynczej pozycji",
       "joinWrapped": "Łączenie zawiniętych wierszy",
@@ -340,7 +347,8 @@
     "outcome": {
       "not_applicable": "Ten parser nie odczytałby tej wiadomości: nie ma w niej żadnego z jego wymaganych wierszy, więc zostałby wypróbowany kolejny parser dla tego nadawcy.",
       "skip_line": "Ten parser odłożyłby tę wiadomość na bok: znajduje się w niej wiersz, po którym ją pomija.",
-      "wait_line": "Ten parser wstrzymałby tę wiadomość: jeden z wierszy mówi, że zamówienie nie jest jeszcze ostateczne, więc zostanie odczytana ponownie później."
+      "wait_line": "Ten parser wstrzymałby tę wiadomość: jeden z wierszy mówi, że zamówienie nie jest jeszcze ostateczne, więc zostanie odczytana ponownie później.",
+      "no_html": "Ten parser odczytuje część HTML wiadomości, a ta wiadomość jej nie ma, więc zostałaby oznaczona jako nieczytelna (brak HTML)."
     },
     "matchedBy": {
       "heading": "Dopasowano przez",
@@ -390,6 +398,7 @@
       "item_amount_missing": "Pozycja nie ma kwoty, a wiadomość nie podaje jednej sumy, którą można by jej przypisać."
     },
     "readByAi": "Odczytano przez AI",
+    "readFromStructuredData": "Odczytano z danych ustrukturyzowanych",
     "paid": "Zapłacono",
     "payee": "Sprzedawca"
   },
@@ -427,6 +436,12 @@
       "review_conflict": "Otwarta jest inna prośba",
       "review": "W trakcie przeglądu",
       "ignored": "Zignorowana"
+    },
+    "domainFilter": {
+      "label": "Domena nadawcy",
+      "all": "Wszyscy nadawcy",
+      "option": "{domain} ({count})",
+      "help": "Wyświetlane są wiadomości z domeny {domain} i jej poddomen. Zaznacz kilka z nich, aby przygotować jeden parser dla nadawcy."
     },
     "columns": {
       "select": "Zaznacz",
@@ -511,6 +526,7 @@
     "state": "Status",
     "parser": "Parser",
     "noParser": "Brak",
+    "structuredSource": "Dane ustrukturyzowane",
     "matchedBy": "Dopasowano według",
     "matchKinds": {
       "order_id": "Numer zamówienia",
@@ -539,6 +555,8 @@
       "proposal_refused": "Propozycja została odrzucona, więc nic nie zaproponowano.",
       "skip_line": "Znaleziono wiersz, po którym ten parser pomija wiadomość, więc została zignorowana.",
       "wait_line": "Jeden z wierszy mówi, że zamówienie nie jest jeszcze ostateczne, więc wiadomość zostanie odczytana ponownie później.",
+      "no_html": "Ten parser odczytuje część HTML wiadomości, a ta wiadomość jej nie ma.",
+      "schema_org": "Parser nie był potrzebny: zamówienie odczytano z danych ustrukturyzowanych (schema.org) zawartych w wiadomości.",
       "item_amount_missing": "Pozycja nie ma kwoty, a wiadomość nie podaje jednej sumy, którą można by jej przypisać."
     },
     "reasonUnknown": "Powód: {reason}",
@@ -556,10 +574,34 @@
     "bodyView": {
       "label": "Pokaż wiadomość jako",
       "html": "HTML",
-      "text": "Tekst"
+      "text": "Tekst",
+      "lines": "Wiersze"
     },
     "remoteImagesNote": "Zewnętrzne obrazy nie są wczytywane.",
-    "htmlFrameTitle": "Wiadomość w postaci sformatowanej przez nadawcę"
+    "htmlFrameTitle": "Wiadomość w postaci sformatowanej przez nadawcę",
+    "structured": {
+      "heading": "Dane ustrukturyzowane (schema.org)",
+      "help": "Zamówienie lub faktura, które wiadomość zawiera jako znaczniki dla programów pocztowych. Są odczytywane tylko wtedy, gdy nie pasuje żaden parser albo parser nie znajduje kwoty łącznej.",
+      "found": "Znaleziono",
+      "notFound": "Nie znaleziono",
+      "notFoundHelp": "Wiadomość nie zawiera znaczników zamówienia albo nie podają one kwoty łącznej ani pozycji.",
+      "seller": "Sprzedawca",
+      "currency": "Waluta",
+      "orderDate": "Data zamówienia",
+      "unitPrice": "Cena jednostkowa"
+    },
+    "lines": {
+      "help": "Wiersze, z którymi porównywane są wzorce parsera, ponumerowane tak, jak numeruje je lista „Dopasowano przez” w teście.",
+      "sourceLabel": "Źródło wierszy",
+      "sources": {
+        "text": "Tekst",
+        "html": "HTML"
+      },
+      "noHtml": "Ta wiadomość nie ma części HTML, więc parser odczytujący HTML nie może jej odczytać.",
+      "capped": "Odczytywane jest tylko pierwszych {max} wierszy.",
+      "empty": "Brak wierszy.",
+      "listLabel": "Ponumerowane wiersze wiadomości"
+    }
   },
   "picker": {
     "heading": "Wybierz transakcję",

@@ -202,6 +202,12 @@
     "conflict": "Questo parser è stato modificato altrove da quando lo hai aperto. Ricaricalo per vedere la versione attuale. Le tue modifiche qui non sono salvate.",
     "conflictReload": "Ricarica il parser",
     "patterns": {
+      "sourceLabel": "Origine delle righe",
+      "sourceHint": "Con quale rappresentazione dell'email vengono confrontati i modelli seguenti. Testo è la parte di testo dell'email, una riga per ogni a capo. HTML legge la parte HTML: ogni blocco e ogni cella di tabella diventa una riga a sé, così il nome di un prodotto che il testo divide su più righe resta intero. La vista Righe dell'email mostra esattamente ciò che fornisce ogni origine.",
+      "sourceOptions": {
+        "text": "Testo",
+        "html": "HTML"
+      },
       "globHelp": "Ogni modello viene confrontato con un'intera riga dell'email, senza distinguere maiuscole e minuscole. Usa {star} per qualsiasi testo e un nome tra parentesi graffe, come {capture}, per catturare un valore. Ogni campo accetta fino a {max} modelli, uno per riga.",
       "orderIdLabel": "Modelli del numero d'ordine",
       "orderIdHint": "Deve catturare {capture}. Esempio: Numero d'ordine: {capture}",
@@ -284,6 +290,7 @@
       "requireLine": "Righe obbligatorie",
       "skipIfLine": "Righe che fanno saltare l'email",
       "waitIfLine": "Righe che trattengono l'email",
+      "source": "Origine delle righe",
       "single": "Articolo singolo",
       "singleName": "Nome dell'articolo singolo",
       "joinWrapped": "Unisci le righe spezzate",
@@ -340,7 +347,8 @@
     "outcome": {
       "not_applicable": "Questo parser non leggerebbe questa email: nessuna delle sue righe obbligatorie è presente, quindi verrebbe provato il parser successivo per il mittente.",
       "skip_line": "Questo parser metterebbe da parte questa email: contiene una riga su cui la salta.",
-      "wait_line": "Questo parser tratterrebbe questa email: una riga indica che l'ordine non è ancora definitivo, quindi verrà riletta più tardi."
+      "wait_line": "Questo parser tratterrebbe questa email: una riga indica che l'ordine non è ancora definitivo, quindi verrà riletta più tardi.",
+      "no_html": "Questo parser legge la parte HTML dell'email e questa email non ne ha una, quindi verrebbe contrassegnata come non leggibile (nessun HTML)."
     },
     "matchedBy": {
       "heading": "Trovato tramite",
@@ -390,6 +398,7 @@
       "item_amount_missing": "Un articolo non ha un importo, e l'email non ha un totale unico da assegnargli."
     },
     "readByAi": "Letto dall'IA",
+    "readFromStructuredData": "Letto dai dati strutturati",
     "paid": "Pagato",
     "payee": "Esercente"
   },
@@ -427,6 +436,12 @@
       "review_conflict": "Un'altra richiesta è aperta",
       "review": "In revisione",
       "ignored": "Ignorata"
+    },
+    "domainFilter": {
+      "label": "Dominio del mittente",
+      "all": "Tutti i mittenti",
+      "option": "{domain} ({count})",
+      "help": "Vengono mostrate le email di {domain} e dei suoi sottodomini. Selezionane diverse per redigere un parser per il mittente."
     },
     "columns": {
       "select": "Seleziona",
@@ -511,6 +526,7 @@
     "state": "Stato",
     "parser": "Parser",
     "noParser": "Nessuno",
+    "structuredSource": "Dati strutturati",
     "matchedBy": "Abbinata tramite",
     "matchKinds": {
       "order_id": "Numero d'ordine",
@@ -539,6 +555,8 @@
       "proposal_refused": "La proposta è stata rifiutata, quindi non è stato proposto nulla.",
       "skip_line": "È stata trovata una riga su cui questo parser salta, quindi l'email è stata ignorata.",
       "wait_line": "Una riga indica che l'ordine non è ancora definitivo, quindi l'email verrà riletta più tardi.",
+      "no_html": "Questo parser legge la parte HTML dell'email e questa email non ne ha una.",
+      "schema_org": "Non è stato necessario alcun parser: l'ordine è stato letto dai dati strutturati (schema.org) dell'email.",
       "item_amount_missing": "Un articolo non ha un importo, e l'email non ha un totale unico da assegnargli."
     },
     "reasonUnknown": "Motivo: {reason}",
@@ -556,10 +574,34 @@
     "bodyView": {
       "label": "Mostra l'email come",
       "html": "HTML",
-      "text": "Testo"
+      "text": "Testo",
+      "lines": "Righe"
     },
     "remoteImagesNote": "Le immagini remote non vengono caricate.",
-    "htmlFrameTitle": "L'email come l'ha formattata il mittente"
+    "htmlFrameTitle": "L'email come l'ha formattata il mittente",
+    "structured": {
+      "heading": "Dati strutturati (schema.org)",
+      "help": "Un ordine o una fattura che l'email contiene come markup per i client di posta. Viene letto solo quando nessun parser si applica o il parser non trova un totale.",
+      "found": "Trovati",
+      "notFound": "Non trovati",
+      "notFoundHelp": "L'email non contiene markup di ordine, oppure non indica né un totale né righe d'ordine.",
+      "seller": "Venditore",
+      "currency": "Valuta",
+      "orderDate": "Data dell'ordine",
+      "unitPrice": "Prezzo unitario"
+    },
+    "lines": {
+      "help": "Le righe con cui vengono confrontati i modelli di un parser, numerate come le numera l'elenco «Trovato tramite» di un test.",
+      "sourceLabel": "Origine delle righe",
+      "sources": {
+        "text": "Testo",
+        "html": "HTML"
+      },
+      "noHtml": "Questa email non ha una parte HTML, quindi un parser che legge l'HTML non può leggerla.",
+      "capped": "Vengono lette solo le prime {max} righe.",
+      "empty": "Nessuna riga.",
+      "listLabel": "Righe numerate dell'email"
+    }
   },
   "picker": {
     "heading": "Scegli la transazione",
