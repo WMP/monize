@@ -21,6 +21,18 @@ import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 
 const logger = createLogger('NotificationPreferencesMatrix');
 
+/**
+ * The rows a tour points at one by one. Only these carry an anchor, so the other
+ * rows stay plain and each id is attached once (the uniqueness test counts
+ * literal `tourAnchor(TOUR_ANCHORS.x)` calls, hence the two calls here).
+ */
+const ROW_TOUR_ANCHORS: Partial<
+  Record<NotificationCategory, ReturnType<typeof tourAnchor>>
+> = {
+  BANK_SYNC: tourAnchor(TOUR_ANCHORS.notificationBankConnectionsRow),
+  BANK_SYNC_ACTIVITY: tourAnchor(TOUR_ANCHORS.notificationBankSyncResultsRow),
+};
+
 interface NotificationPreferencesMatrixProps {
   /**
    * Whether the email channel can deliver: SMTP is configured AND the master
@@ -56,6 +68,11 @@ interface NotificationPreferencesMatrixProps {
  * `PushDiagnostics` reflows its readout. A second copy of the controls behind
  * `md:hidden` would double every `role="switch"` in the accessibility tree and
  * give each one two labelled instances.
+ *
+ * The row wrapper from `md` up is a subgrid spanning every column rather than
+ * `display: contents`: a row with no box of its own cannot be outlined, and the
+ * bank sync tour points at single rows. The cells still fall on the grid's
+ * columns, so the layout does not change.
  *
  * `md` and not `sm` because `InfoTooltip` is itself desktop-only (a hover
  * popover has no touch trigger): the per-column help has to be inline prose
@@ -224,7 +241,8 @@ export function NotificationPreferencesMatrix({
           return (
             <div
               key={row.category}
-              className="rounded-lg border border-gray-200 p-3 md:contents dark:border-gray-700"
+              {...ROW_TOUR_ANCHORS[row.category]}
+              className="rounded-lg border border-gray-200 p-3 md:col-span-full md:grid md:grid-cols-subgrid md:rounded-none md:border-0 md:p-0 dark:border-gray-700"
             >
               <div className="mb-1 text-sm font-medium text-gray-900 md:mb-0 md:flex md:items-center md:border-t md:border-gray-100 md:py-2 md:font-normal md:text-gray-700 dark:text-gray-100 md:dark:border-gray-800 md:dark:text-gray-300">
                 {categoryLabel}

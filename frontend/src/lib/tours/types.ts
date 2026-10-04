@@ -106,6 +106,14 @@ export interface TourStep {
    */
   openNotificationBell?: boolean;
   /**
+   * Open the setup help panel of Settings > Bank sync while this step is
+   * showing. The panel is folded behind a toggle once credentials are saved, so
+   * a step anchored on a point inside it needs the engine to unfold it; the
+   * panel's own state is ORed with this flag, so it also closes again once the
+   * tour steps past.
+   */
+  openBankSyncHelp?: boolean;
+  /**
    * Data this step needs to be worth showing. The engine omits the step (with
    * no "steps were skipped" outro -- the omission is deliberate) when the
    * requirement is not met, e.g. skipping the record-a-transaction walkthrough

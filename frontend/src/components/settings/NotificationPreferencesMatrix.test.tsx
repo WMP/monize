@@ -358,4 +358,52 @@ describe('NotificationPreferencesMatrix', () => {
       expect(paymentsReport.getAttribute('aria-checked')).toBe('true'),
     );
   });
+
+  describe('tour row anchors', () => {
+    const rowOf = (label: string) => screen.getByText(label).parentElement as HTMLElement;
+    const anchoredRows = (id: string) => document.querySelectorAll(`[data-tour-id="${id}"]`);
+
+    beforeEach(() => {
+      list.mockResolvedValue([
+        { category: 'PAYMENTS', email: true, emailNotification: false, push: false, unifiedpush: false, throttleMinutes: 0, supportedChannels: allChannels },
+        { category: 'BANK_SYNC', email: false, emailNotification: true, push: false, unifiedpush: false, throttleMinutes: 0, supportedChannels: pushOnly },
+        { category: 'BANK_SYNC_ACTIVITY', email: false, emailNotification: true, push: false, unifiedpush: false, throttleMinutes: 0, supportedChannels: pushOnly },
+      ]);
+    });
+
+    it('anchors each bank sync category on its own row, which holds that row\'s controls only', async () => {
+      await renderMatrix();
+
+      const connections = anchoredRows('notification-bank-connections-row');
+      const results = anchoredRows('notification-bank-sync-results-row');
+      expect(connections).toHaveLength(1);
+      expect(results).toHaveLength(1);
+      expect(connections[0]).toBe(rowOf('Bank connections'));
+      expect(results[0]).toBe(rowOf('Bank sync results'));
+      expect(connections[0]).not.toContainElement(screen.getByText('Bills and scheduled'));
+      expect(connections[0]).not.toContainElement(screen.getByText('Bank sync results'));
+      expect(connections[0].querySelectorAll('[role="switch"]').length).toBeGreaterThan(0);
+      // Neither is the whole matrix.
+      const matrix = document.querySelector('[data-tour-id="notification-channel-matrix"]');
+      expect(matrix).toContainElement(connections[0] as HTMLElement);
+      expect(connections[0]).not.toBe(matrix);
+    });
+
+    it('is a real box from md up (a subgrid), never display: contents, which has no rectangle to outline', async () => {
+      await renderMatrix();
+
+      for (const id of ['notification-bank-connections-row', 'notification-bank-sync-results-row']) {
+        const row = anchoredRows(id)[0];
+        expect(row.className).toContain('md:grid-cols-subgrid');
+        expect(row.className).not.toContain('md:contents');
+      }
+    });
+
+    it('leaves the other categories unanchored and keeps the whole-matrix anchor for the other tour', async () => {
+      await renderMatrix();
+
+      expect(rowOf('Bills and scheduled').getAttribute('data-tour-id')).toBeNull();
+      expect(anchoredRows('notification-channel-matrix')).toHaveLength(1);
+    });
+  });
 });

@@ -7,6 +7,9 @@ import {
 } from '@/lib/bank-sync-links';
 import { BankSyncCredentialsCard } from './BankSyncCredentialsCard';
 import type { BankSyncStatus } from '@/types/bank-sync';
+import { useTourStore } from '@/store/tourStore';
+import { TOUR_ANCHORS } from '@/lib/tours/anchors';
+import type { TourDefinition } from '@/lib/tours/types';
 
 const mockSave = vi.fn();
 const mockDelete = vi.fn();
@@ -241,10 +244,10 @@ describe('BankSyncCredentialsCard', () => {
       expect(list.tagName).toBe('OL');
       expect(items).toHaveLength(7);
       expect(items[0]).toHaveTextContent(
-        'Create an account at Enable Banking (select "Get Started" and wait for the confirmation email). Then sign in to the control panel and open "API applications".',
+        'Open the Enable Banking website and create a free account (select "Get Started" and wait for the confirmation email). Then sign in on the website and open "API applications".',
       );
       expect(
-        within(items[0]).getByRole('link', { name: 'Enable Banking' }),
+        within(items[0]).getByRole('link', { name: 'Enable Banking website' }),
       ).toHaveAttribute('href', ENABLE_BANKING_SITE_URL);
       expect(items[1]).toHaveTextContent(
         'Select "Production". Monize reads your real bank accounts only through a Production application. Select "Sandbox" only if you want to try the connection first: it shows only demo data from test banks.',
@@ -353,7 +356,7 @@ describe('BankSyncCredentialsCard', () => {
     it('opens the Enable Banking site from step one in a new tab without handing it window.opener', () => {
       renderCard(status());
 
-      const link = screen.getByRole('link', { name: 'Enable Banking' });
+      const link = screen.getByRole('link', { name: 'Enable Banking website' });
       expect(link).toHaveAttribute('href', ENABLE_BANKING_SITE_URL);
       expect(link).toHaveAttribute('target', '_blank');
       expect(link).toHaveAttribute('rel', 'noopener noreferrer');
@@ -431,6 +434,87 @@ describe('BankSyncCredentialsCard', () => {
 
       expect(await screen.findByText('Provider unavailable')).toBeInTheDocument();
       expect(screen.queryByText('The provider did not accept these credentials.')).toBeNull();
+    });
+  });
+
+  describe('wording: Enable Banking is a website, not an app the reader owns', () => {
+    it('says in the subtitle that it is an outside web service the reader registers with once', () => {
+      renderCard(status());
+
+      const subtitle = screen.getByText(/^Enable Banking is an outside web service/);
+      expect(subtitle).toHaveTextContent('free account on the Enable Banking website');
+      expect(subtitle).toHaveTextContent('register an application there once');
+      expect(subtitle).not.toHaveTextContent(/your own Enable Banking application/);
+    });
+
+    it('says in the help that it is not a program on the computer, and never says control panel', () => {
+      renderCard(status());
+
+      expect(
+        screen.getByText(/^Enable Banking is a web service, not a program that you install on your computer\./),
+      ).toBeInTheDocument();
+      expect(document.body.textContent).not.toMatch(/control panel/i);
+    });
+  });
+
+  describe('a tour step that points inside the setup help', () => {
+    // The panel is folded once credentials are stored, so a step anchored on a
+    // point inside it declares `openBankSyncHelp` and the card honours it.
+    const HELP_TOUR: TourDefinition = {
+      id: 'test/bank-sync-help',
+      area: 'settings',
+      i18nPrefix: 'intro.basics',
+      steps: [
+        {
+          id: 'help',
+          route: '/settings/bank-sync',
+          anchorId: TOUR_ANCHORS.bankSyncHelpWhat,
+          openBankSyncHelp: true,
+        },
+        { id: 'after', route: '/settings/bank-sync', anchorId: null },
+      ],
+    };
+
+    beforeEach(() => {
+      useTourStore.setState({ active: null, progress: {}, progressLoaded: false });
+    });
+
+    it('unfolds the help with credentials stored, and carries both anchors', async () => {
+      renderCard(configured());
+      expect(screen.queryByRole('heading', { name: 'How to set it up' })).toBeNull();
+
+      await act(async () => {
+        useTourStore.getState().startTour(HELP_TOUR);
+      });
+
+      expect(screen.getByRole('heading', { name: 'How to set it up' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Hide setup help' })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      );
+      const what = document.querySelector(`[data-tour-id="${TOUR_ANCHORS.bankSyncHelpWhat}"]`);
+      const steps = document.querySelector(`[data-tour-id="${TOUR_ANCHORS.bankSyncHelpSteps}"]`);
+      expect(what).toContainElement(screen.getByRole('heading', { name: 'What is Enable Banking?' }));
+      expect(steps).toContainElement(screen.getByRole('heading', { name: 'How to set it up' }));
+    });
+
+    it('stays open through a click outside it, and folds once the tour steps past', async () => {
+      renderCard(configured());
+      await act(async () => {
+        useTourStore.getState().startTour(HELP_TOUR);
+      });
+
+      await act(async () => {
+        fireEvent.mouseDown(document.body);
+        fireEvent.click(document.body);
+      });
+      expect(screen.getByRole('heading', { name: 'How to set it up' })).toBeInTheDocument();
+
+      await act(async () => {
+        useTourStore.getState().next();
+      });
+      expect(screen.queryByRole('heading', { name: 'How to set it up' })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Show setup help' })).toBeInTheDocument();
     });
   });
 });

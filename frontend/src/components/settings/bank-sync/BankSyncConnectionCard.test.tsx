@@ -1965,7 +1965,7 @@ describe('BankSyncConnectionCard', () => {
     const anchored = (container: HTMLElement, id: string) =>
       container.querySelectorAll(`[data-tour-id="${id}"]`);
 
-    it('marks the card actions, and the first bank account link and actions, once', () => {
+    it('marks the card header (the consent), and the first bank account link and actions, once', () => {
       const linked = connection({
         accounts: [
           bankAccount({ id: 'ba-1', accountId: 'a1', syncFromDate: '2026-01-01' }),
@@ -1974,14 +1974,28 @@ describe('BankSyncConnectionCard', () => {
       });
       const { container } = renderCard(linked, { tourAnchors: true });
 
-      expect(anchored(container, 'bank-sync-connection-actions')).toHaveLength(1);
+      expect(anchored(container, 'bank-sync-connection-consent')).toHaveLength(1);
+      expect(anchored(container, 'bank-sync-connection-actions')).toHaveLength(0);
       expect(anchored(container, 'bank-sync-account-link')).toHaveLength(1);
       expect(anchored(container, 'bank-sync-account-actions')).toHaveLength(1);
-      expect(anchored(container, 'bank-sync-connection-actions')[0]).toHaveTextContent('Disconnect');
       expect(anchored(container, 'bank-sync-account-link')[0]).toContainElement(
         screen.getAllByLabelText('Monize account')[0],
       );
       expect(anchored(container, 'bank-sync-account-actions')[0]).toHaveTextContent('Sync now');
+    });
+
+    it('puts the consent anchor on the status, the valid-until date and Renew consent, not on a button group', () => {
+      const { container } = renderCard(connection({ validUntil: inDays(3) }), {
+        tourAnchors: true,
+      });
+
+      const anchor = anchored(container, 'bank-sync-connection-consent')[0];
+      expect(anchor).toContainElement(screen.getByText('Expires soon'));
+      expect(anchor).toContainElement(screen.getByText(/^Access valid until /));
+      expect(anchor).toContainElement(screen.getByRole('button', { name: 'Renew consent' }));
+      // The retired anchor wrapped only the button group, so the highlight read
+      // as a box of buttons; it must not come back.
+      expect(container.querySelector('[data-tour-id="bank-sync-connection-actions"]')).toBeNull();
     });
 
     it('marks nothing unless asked, so a second connection adds no second anchor', () => {
@@ -1995,7 +2009,7 @@ describe('BankSyncConnectionCard', () => {
     it('has no sync actions to anchor while the bank account is not linked', () => {
       const { container } = renderCard(connection(), { tourAnchors: true });
 
-      expect(anchored(container, 'bank-sync-connection-actions')).toHaveLength(1);
+      expect(anchored(container, 'bank-sync-connection-consent')).toHaveLength(1);
       expect(anchored(container, 'bank-sync-account-link')).toHaveLength(1);
       expect(anchored(container, 'bank-sync-account-actions')).toHaveLength(0);
     });

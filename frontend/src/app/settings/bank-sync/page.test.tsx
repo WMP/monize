@@ -332,7 +332,7 @@ describe('BankSyncSettingsPage', () => {
       });
 
       for (const id of PAGE_ANCHORS) expect(count(container, id)).toBe(1);
-      expect(count(container, 'bank-sync-connection-actions')).toBe(0);
+      expect(count(container, 'bank-sync-connection-consent')).toBe(0);
     });
 
     it('is on the connect header whether or not the button is enabled', async () => {
@@ -356,8 +356,8 @@ describe('BankSyncSettingsPage', () => {
       });
 
       expect(count(container, 'bank-sync-connections')).toBe(1);
-      expect(count(container, 'bank-sync-connection-actions')).toBe(1);
-      const anchor = container.querySelector('[data-tour-id="bank-sync-connection-actions"]');
+      expect(count(container, 'bank-sync-connection-consent')).toBe(1);
+      const anchor = container.querySelector('[data-tour-id="bank-sync-connection-consent"]');
       expect(anchor?.closest('div.mb-4')).toHaveTextContent('Alpha Bank');
     });
   });

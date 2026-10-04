@@ -78,7 +78,7 @@ describe('BankSyncConnectDialog', () => {
     const paragraph = screen.getByText(/^You authorize at your bank again here/);
     expect(paragraph.tagName).toBe('P');
     expect(paragraph).toHaveTextContent(
-      'You authorize at your bank again here, even if you already linked the same accounts in the Enable Banking control panel. The control panel only lists which accounts the application may read, and its consent ends the same day. This step gives Monize its own consent to read balances and transactions, for up to 180 days. When it is about to end, the connection card shows "Renew consent".',
+      'You authorize at your bank again here, even if you already linked the same accounts on the Enable Banking website. The website only lists which accounts the application may read, and its consent ends the same day. This step gives Monize its own consent to read balances and transactions, for up to 180 days. When it is about to end, the connection card shows "Renew consent".',
     );
     // First in the body, above the first field.
     const country = screen.getByLabelText('Country');

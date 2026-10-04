@@ -27,6 +27,7 @@ import { useAuthStore } from '@/store/authStore';
 import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/errors';
 import Link from 'next/link';
+import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 
 const logger = createLogger('Settings');
 
@@ -382,6 +383,7 @@ function OwnerSettingsView() {
               <div id="bank-sync" className="scroll-mt-32 lg:scroll-mt-22">
                 <Link
                   href="/settings/bank-sync"
+                  {...tourAnchor(TOUR_ANCHORS.settingsBankSyncCard)}
                   className="block bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-6 mb-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">

@@ -81,7 +81,7 @@ describe('BankSyncRegistrationValues', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'The labels and values stay in English because the control panel is in English.',
+        'The labels and values stay in English because the Enable Banking website is in English.',
       ),
     ).toBeInTheDocument();
     expect(

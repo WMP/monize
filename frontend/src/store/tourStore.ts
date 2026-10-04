@@ -271,3 +271,15 @@ export function useTourOpensNotificationBell(): boolean {
     return !!active.steps[active.stepIndex]?.openNotificationBell;
   });
 }
+
+/**
+ * Whether the step showing right now wants the Bank sync setup help panel
+ * open, so it can point at the points inside it rather than a folded toggle.
+ */
+export function useTourOpensBankSyncHelp(): boolean {
+  return useTourStore((s) => {
+    const active = s.active;
+    if (!active || active.showSkippedOutro) return false;
+    return !!active.steps[active.stepIndex]?.openBankSyncHelp;
+  });
+}

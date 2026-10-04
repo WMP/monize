@@ -294,6 +294,15 @@ describe('SettingsPage', () => {
     });
   });
 
+  it('marks the Bank Sync card as the tour anchor, once, on the link itself', async () => {
+    const { container } = render(<SettingsPage />);
+    await waitFor(() => {
+      const anchored = container.querySelectorAll('[data-tour-id="settings-bank-sync-card"]');
+      expect(anchored).toHaveLength(1);
+      expect(anchored[0]).toHaveAttribute('href', '/settings/bank-sync');
+    });
+  });
+
   it('links the Guided Tours card at the tours page', async () => {
     render(<SettingsPage />);
     await waitFor(() => {

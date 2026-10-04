@@ -31,9 +31,13 @@ describe('bank sync release tour', () => {
     expect(getReleaseTours('1.17.0').map((t) => t.id)).not.toContain(tour.id);
   });
 
-  it('walks credentials, connect, connections, link, preview, consent, then notifications', () => {
+  it('walks where the settings are, the setup help, the credentials, connect, connections, link, preview, consent, then the two notification rows', () => {
     expect(tour.steps.map((s) => s.id)).toEqual([
       'welcome',
+      'openSettings',
+      'settingsHub',
+      'helpWhat',
+      'helpSteps',
       'credentials',
       'connect',
       'connections',
@@ -41,7 +45,39 @@ describe('bank sync release tour', () => {
       'preview',
       'consent',
       'notifications',
+      'notificationsSync',
     ]);
+  });
+
+  it('shows where Settings is before the page: the header button, then the Bank sync card', () => {
+    const header = step('openSettings');
+    expect(header?.anchorId).toBe(TOUR_ANCHORS.navSettings);
+    // Route-agnostic and passive: the button navigates, and a click advance
+    // would race its own navigation. The phone has no header button.
+    expect(header?.route).toBeUndefined();
+    expect(header?.advance).toBeUndefined();
+    expect(header?.skipOnMobile).toBe(true);
+    expect(header?.fallbackWhenMissing).toBe(true);
+
+    const hub = step('settingsHub');
+    expect(hub?.route).toBe('/settings');
+    expect(hub?.anchorId).toBe(TOUR_ANCHORS.settingsBankSyncCard);
+    expect(hub?.advance).toEqual({ type: 'route', route: '/settings/bank-sync' });
+    expect(hub?.fallbackWhenMissing).toBe(true);
+  });
+
+  it('opens the setup help first, holds it open for both of its steps, and points inside it', () => {
+    const ids = tour.steps.map((s) => s.id);
+    expect(ids.indexOf('helpWhat')).toBeLessThan(ids.indexOf('helpSteps'));
+    expect(ids.indexOf('helpSteps')).toBeLessThan(ids.indexOf('credentials'));
+    expect(step('helpWhat')?.anchorId).toBe(TOUR_ANCHORS.bankSyncHelpWhat);
+    expect(step('helpSteps')?.anchorId).toBe(TOUR_ANCHORS.bankSyncHelpSteps);
+    for (const id of ['helpWhat', 'helpSteps']) {
+      expect(step(id)?.route).toBe('/settings/bank-sync');
+      expect(step(id)?.openBankSyncHelp).toBe(true);
+    }
+    // The card step is about the form, so the help folds away again.
+    expect(step('credentials')?.openBankSyncHelp).toBeUndefined();
   });
 
   it('references only declared anchors', () => {
@@ -76,7 +112,7 @@ describe('bank sync release tour', () => {
     const needsBank = {
       link: TOUR_ANCHORS.bankSyncAccountLink,
       preview: TOUR_ANCHORS.bankSyncAccountActions,
-      consent: TOUR_ANCHORS.bankSyncConnectionActions,
+      consent: TOUR_ANCHORS.bankSyncConnectionConsent,
     };
     for (const [id, anchor] of Object.entries(needsBank)) {
       expect(step(id)?.route).toBe('/settings/bank-sync');
@@ -86,9 +122,14 @@ describe('bank sync release tour', () => {
     }
   });
 
-  it('ends on the notification matrix in Settings, which already carries its anchor', () => {
+  it('ends on the two bank sync rows of the notification matrix, never the whole matrix', () => {
     expect(step('notifications')?.route).toBe('/settings');
-    expect(step('notifications')?.anchorId).toBe(TOUR_ANCHORS.notificationChannelMatrix);
+    expect(step('notifications')?.anchorId).toBe(TOUR_ANCHORS.notificationBankConnectionsRow);
+    expect(step('notificationsSync')?.route).toBe('/settings');
+    expect(step('notificationsSync')?.anchorId).toBe(TOUR_ANCHORS.notificationBankSyncResultsRow);
+    for (const s of tour.steps) {
+      expect(s.anchorId).not.toBe(TOUR_ANCHORS.notificationChannelMatrix);
+    }
   });
 
   it('pins every step to a static route the engine can navigate to', () => {
@@ -162,7 +203,22 @@ describe('bank sync tour copy', () => {
     expect(body('preview')).toContain(`**${settings.account.syncNow}**`);
     expect(body('consent')).toContain(`**${settings.connection.renew}**`);
     expect(body('consent')).toContain(`**${settings.connection.expiresSoon}**`);
-    expect(body('notifications')).toContain(`**${settings.connection.notifySuccess}**`);
+    expect(body('notificationsSync')).toContain(`**${settings.connection.notifySuccess}**`);
+    const hub = JSON.parse(
+      readFileSync(join(messagesDir, 'en', 'settings.json'), 'utf8'),
+    ).page.bankSyncCard;
+    expect(body('settingsHub')).toContain(`**${hub.title}**`);
+    expect(body('openSettings')).toContain('**Settings**');
+    // The outside service is a website, never an app the reader already owns or
+    // a Windows-style control panel.
+    expect(body('helpWhat')).toContain('not a program on your computer');
+    for (const s of tour.steps) {
+      for (const leaf of ['body', 'fallbackBody']) {
+        const key = `${tour.i18nPrefix}.steps.${s.id}.${leaf}`;
+        const text = t.has(key) ? (t as unknown as (k: string) => string)(key) : '';
+        expect(text, key).not.toMatch(/control panel|your own Enable Banking/i);
+      }
+    }
 
     for (const s of tour.steps) {
       for (const leaf of ['title', 'body']) {

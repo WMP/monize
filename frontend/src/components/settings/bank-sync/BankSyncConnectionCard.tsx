@@ -281,7 +281,12 @@ export function BankSyncConnectionCard({
 
   return (
     <Card padding="md" className="mb-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      {/* The header row holds the consent: the status, "Expires soon", the
+          valid-until date and, beside them, Renew consent. */}
+      <div
+        className="flex flex-wrap items-start justify-between gap-3"
+        {...(tourAnchors ? tourAnchor(TOUR_ANCHORS.bankSyncConnectionConsent) : {})}
+      >
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
@@ -307,10 +312,7 @@ export function BankSyncConnectionCard({
           )}
         </div>
 
-        <div
-          className="flex flex-wrap items-center gap-2"
-          {...(tourAnchors ? tourAnchor(TOUR_ANCHORS.bankSyncConnectionActions) : {})}
-        >
+        <div className="flex flex-wrap items-center gap-2">
           {canRenew && (
             <Button
               type="button"

@@ -14,6 +14,8 @@ import {
   ENABLE_BANKING_SITE_URL,
 } from '@/lib/bank-sync-links';
 import { getErrorMessage } from '@/lib/errors';
+import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
+import { useTourOpensBankSyncHelp } from '@/store/tourStore';
 import type {
   BankSyncCredentialsTestResult,
   BankSyncStatus,
@@ -66,7 +68,11 @@ export function BankSyncCredentialsCard({
   const helpId = useId();
 
   const credentials = status.credentials;
-  const showHelp = !credentials || helpOpen;
+  // A tour step that points inside the panel unfolds it, and the panel folds
+  // again once the tour steps past; the reader's own toggle is not touched.
+  const tourOpensHelp = useTourOpensBankSyncHelp();
+  const panelOpen = helpOpen || tourOpensHelp;
+  const showHelp = !credentials || panelOpen;
 
   const handleSave = async (data: SaveBankSyncCredentials) => {
     try {
@@ -143,24 +149,24 @@ export function BankSyncCredentialsCard({
             size="sm"
             className="mb-3 -ml-3"
             onClick={() => setHelpOpen((open) => !open)}
-            aria-expanded={helpOpen}
+            aria-expanded={panelOpen}
             // The panel is not in the document while folded, so the button
             // names it only while it exists.
-            aria-controls={helpOpen ? helpId : undefined}
+            aria-controls={panelOpen ? helpId : undefined}
           >
             <ChevronDownIcon
               aria-hidden="true"
               className={`mr-1 h-4 w-4 transition-transform motion-reduce:transition-none ${
-                helpOpen ? 'rotate-180' : ''
+                panelOpen ? 'rotate-180' : ''
               }`}
             />
-            {helpOpen ? t('help.hide') : t('help.show')}
+            {panelOpen ? t('help.hide') : t('help.show')}
           </Button>
         )}
 
         {showHelp && (
           <div id={helpId} className="mb-4 space-y-4">
-            <section>
+            <section {...tourAnchor(TOUR_ANCHORS.bankSyncHelpWhat)}>
               <h3 className={HELP_HEADING_CLASS}>{t('help.whatIsTitle')}</h3>
               <p className={HELP_BODY_CLASS}>{t('help.whatIsBody')}</p>
               <p className={`mt-2 ${HELP_BODY_CLASS}`}>
@@ -175,7 +181,7 @@ export function BankSyncCredentialsCard({
               <p className={`mt-2 ${HELP_BODY_CLASS}`}>{t('help.whatIsFree')}</p>
             </section>
 
-            <section>
+            <section {...tourAnchor(TOUR_ANCHORS.bankSyncHelpSteps)}>
               <h3 className={HELP_HEADING_CLASS}>{t('help.setupTitle')}</h3>
               <ol className={`list-decimal space-y-1 pl-5 ${HELP_BODY_CLASS}`}>
                 <li>

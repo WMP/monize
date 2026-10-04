@@ -82,12 +82,18 @@ export const TOUR_ANCHORS = {
   // Settings
   settingsWhatsNewToggle: 'settings-whats-new-toggle',
   settingsAppVersion: 'settings-app-version',
+  // The Bank sync card on the Settings hub: the way in to /settings/bank-sync.
+  settingsBankSyncCard: 'settings-bank-sync-card',
   // Settings -> Notifications. Each is on a container that renders in every
   // state of its block -- the push panel's heading wrapper is shared by its
   // "administrator has not enabled this" branch too -- so a step never points
   // at something only a configured deployment mounts.
   settingsNotifications: 'settings-notifications',
   notificationChannelMatrix: 'notification-channel-matrix',
+  // Two single rows of that matrix, for the bank sync tour: the row is a real
+  // box at every width (see the row wrapper in NotificationPreferencesMatrix).
+  notificationBankConnectionsRow: 'notification-bank-connections-row',
+  notificationBankSyncResultsRow: 'notification-bank-sync-results-row',
   notificationPushDevices: 'notification-push-devices',
   notificationPortfolioAlert: 'notification-portfolio-alert',
 
@@ -102,14 +108,19 @@ export const TOUR_ANCHORS = {
   ruleEditorTest: 'rule-editor-test',
   aiReviewInbox: 'ai-review-inbox',
 
-  // Bank sync (Settings > Bank sync). The first three wrap blocks that render
-  // in every state of the page (loading, failed, empty, populated). The last
-  // four sit on the first connection's card and its first bank account, which
-  // exist only once a bank is connected, so their steps carry a fallback body.
+  // Bank sync (Settings > Bank sync). The credentials, connect header and
+  // connections anchors wrap blocks that render in every state of the page
+  // (loading, failed, empty, populated). The two help anchors sit inside the
+  // setup help panel, which the tour holds open (`openBankSyncHelp`). The
+  // consent, link and actions anchors sit on the first connection's card and
+  // its first bank account, which exist only once a bank is connected, so their
+  // steps carry a fallback body.
   bankSyncCredentials: 'bank-sync-credentials',
+  bankSyncHelpWhat: 'bank-sync-help-what',
+  bankSyncHelpSteps: 'bank-sync-help-steps',
   bankSyncConnectHeader: 'bank-sync-connect-header',
   bankSyncConnections: 'bank-sync-connections',
-  bankSyncConnectionActions: 'bank-sync-connection-actions',
+  bankSyncConnectionConsent: 'bank-sync-connection-consent',
   bankSyncAccountLink: 'bank-sync-account-link',
   bankSyncAccountActions: 'bank-sync-account-actions',
 } as const;

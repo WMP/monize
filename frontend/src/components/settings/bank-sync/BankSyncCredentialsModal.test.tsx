@@ -143,13 +143,13 @@ describe('BankSyncCredentialsModal', () => {
     await waitFor(() => expect(onSave).toHaveBeenCalledWith({ applicationId: 'app-1', privateKey: rsa }));
   });
 
-  it('says where to get the credentials, linking the control panel in a new tab', () => {
+  it('says where to get the credentials, linking the Enable Banking website in a new tab', () => {
     renderModal();
 
     expect(
       screen.getByText(/Get the application ID and the private key from the/),
     ).toBeInTheDocument();
-    const link = screen.getByRole('link', { name: 'Enable Banking control panel' });
+    const link = screen.getByRole('link', { name: 'Enable Banking website' });
     expect(link).toHaveAttribute('href', ENABLE_BANKING_CONTROL_PANEL_URL);
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');

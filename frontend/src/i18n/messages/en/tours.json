@@ -435,9 +435,27 @@
             "title": "Import transactions from your bank",
             "body": "Bank sync reads the booked transactions of your bank accounts through Open Banking. It imports them into your Monize accounts. The access is read-only. You sign in at your own bank, and Monize never sees your bank password. This tour shows where to set it up."
           },
+          "openSettings": {
+            "title": "Open Settings",
+            "body": "Bank sync is set up in Settings. The **Settings** button is in the top bar. The next step opens it for you.",
+            "fallbackBody": "Bank sync is set up in Settings. Open **Settings** from the menu. The next step opens it for you."
+          },
+          "settingsHub": {
+            "title": "Find Bank sync",
+            "body": "Settings has a card for each area. Choose the **Bank Sync** card. It opens the page for this feature.",
+            "fallbackBody": "Settings has a card named **Bank Sync**. Choose it to open the page for this feature."
+          },
+          "helpWhat": {
+            "title": "Enable Banking is a website",
+            "body": "Monize reads your bank through Enable Banking. It is an outside service on the web, not a program on your computer. You make a free account on its website. You register an application there once. The application gives you the keys that Monize needs."
+          },
+          "helpSteps": {
+            "title": "Register on the Enable Banking website",
+            "body": "Follow these steps on the Enable Banking website, not in Monize. Copy the values from here into its form. They include the **Redirect URL**. The private key is saved as a file. Keep it secret."
+          },
           "credentials": {
-            "title": "Your Enable Banking application",
-            "body": "Monize reaches your bank through your own Enable Banking application. Register one in the Enable Banking control panel. Then choose **Set up credentials** and enter its application ID and private key. Register the **Redirect URL** shown here in the control panel too. **Test connection** checks that it works. **Show setup help** explains each step."
+            "title": "Enter your keys in Monize",
+            "body": "When the application is ready, choose **Set up credentials**. Enter its application ID and private key. The **Redirect URL** shown here must be registered for the application on the website. **Test connection** checks that it all works. **Show setup help** brings the steps back."
           },
           "connect": {
             "title": "Connect a bank",
@@ -459,12 +477,16 @@
           },
           "consent": {
             "title": "Consent and how to renew it",
-            "body": "Your consent lasts for a limited time, up to 180 days. The card shows the date the access is valid until. In the last 7 days it shows **Expires soon**. Choose **Renew consent** to authorize at your bank again. The accounts you linked are kept. When the consent ends, the sync stops until you renew.",
-            "fallbackBody": "Once a bank is connected, its card shows the date the access is valid until. Your consent lasts up to 180 days. When the end is near, **Renew consent** appears here. Choose it to authorize at your bank again. The accounts you linked are kept."
+            "body": "Your consent lasts for a limited time, up to 180 days. This part of the card shows the date the access is valid until. In the last 7 days it shows **Expires soon**. Then choose **Renew consent** to authorize at your bank again. The accounts you linked are kept. When the consent ends, the sync stops until you renew.",
+            "fallbackBody": "No bank is connected yet, so there is no card to show. Once a bank is connected, its card shows the date the access is valid until. Your consent lasts up to 180 days. When the end is near, the card shows **Expires soon** and **Renew consent**. Choose it to authorize at your bank again. The accounts you linked are kept."
           },
           "notifications": {
-            "title": "Reminders and sync results",
-            "body": "Monize tells you before the consent ends, and when it has ended. It also tells you how the daily sync went: new transactions, nothing new or a failure. In this table, **Bank connections** holds the consent reminders. **Bank sync results** holds the sync outcomes. Choose where each one is delivered. On each bank card, **Notify after the daily sync** sets which successful syncs notify you."
+            "title": "Reminders before the consent ends",
+            "body": "This row is **Bank connections**. Monize tells you before your consent ends, and when it has ended. Choose where each reminder is delivered."
+          },
+          "notificationsSync": {
+            "title": "Results of the daily sync",
+            "body": "This row is **Bank sync results**. Monize tells you how the daily sync went: new transactions, nothing new or a failure. Choose where it is delivered. On each bank card, **Notify after the daily sync** sets which successful syncs notify you."
           }
         }
       }
