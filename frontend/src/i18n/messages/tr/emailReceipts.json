@@ -202,6 +202,12 @@
     "conflict": "Bu ayrıştırıcı, siz açtıktan sonra başka bir yerde değiştirildi. Güncel sürümü görmek için yeniden yükleyin. Buradaki düzenlemeleriniz kaydedilmedi.",
     "conflictReload": "Ayrıştırıcıyı yeniden yükle",
     "patterns": {
+      "sourceLabel": "Satır kaynağı",
+      "sourceHint": "Aşağıdaki desenlerin e-postanın hangi görünümüyle eşleştirileceği. Metin, e-postanın metin kısmıdır ve her satır sonu yeni bir satır olur. HTML, e-postanın HTML kısmını okur: her blok ve her tablo hücresi kendi satırı olur, böylece metnin birkaç satıra böldüğü bir ürün adı bütün kalır. E-postanın Satırlar görünümü, her kaynağın tam olarak ne verdiğini gösterir.",
+      "sourceOptions": {
+        "text": "Metin",
+        "html": "HTML"
+      },
       "globHelp": "Her desen, e-postanın tek bir satırının tamamıyla büyük/küçük harf ayrımı yapılmadan eşleştirilir. Herhangi bir metin için {star}, bir değeri yakalamak için ise {capture} gibi küme parantezi içinde bir ad kullanın. Her alan en fazla {max} desen alır, satır başına bir tane.",
       "orderIdLabel": "Sipariş numarası desenleri",
       "orderIdHint": "{capture} değerini yakalamalıdır. Örnek: Sipariş numarası: {capture}",
@@ -284,6 +290,7 @@
       "requireLine": "Zorunlu satırlar",
       "skipIfLine": "E-postayı atlatan satırlar",
       "waitIfLine": "E-postayı bekleten satırlar",
+      "source": "Satır kaynağı",
       "single": "Tek kalem",
       "singleName": "Tek kalem adı",
       "joinWrapped": "Bölünmüş satırları birleştir",
@@ -340,7 +347,8 @@
     "outcome": {
       "not_applicable": "Bu ayrıştırıcı bu e-postayı okumaz: zorunlu satırlarından hiçbiri e-postada yok, bu yüzden gönderen için sıradaki ayrıştırıcı denenir.",
       "skip_line": "Bu ayrıştırıcı bu e-postayı kenara ayırır: e-postada atlamasını gerektiren bir satır var.",
-      "wait_line": "Bu ayrıştırıcı bu e-postayı bekletir: bir satır siparişin henüz kesinleşmediğini söylüyor, bu yüzden e-posta daha sonra yeniden okunur."
+      "wait_line": "Bu ayrıştırıcı bu e-postayı bekletir: bir satır siparişin henüz kesinleşmediğini söylüyor, bu yüzden e-posta daha sonra yeniden okunur.",
+      "no_html": "Bu ayrıştırıcı e-postanın HTML kısmını okur ve bu e-postada HTML yok, bu yüzden okunamaz olarak işaretlenir (HTML yok)."
     },
     "matchedBy": {
       "heading": "Eşleşen",
@@ -390,6 +398,7 @@
       "item_amount_missing": "Bir kalemin tutarı yok ve e-postada ona verilecek tek bir toplam yok."
     },
     "readByAi": "Yapay zekâ okudu",
+    "readFromStructuredData": "Yapılandırılmış verilerden okundu",
     "paid": "Ödenen",
     "payee": "Satıcı"
   },
@@ -427,6 +436,12 @@
       "review_conflict": "Başka bir istek açık",
       "review": "İncelemede",
       "ignored": "Yoksayıldı"
+    },
+    "domainFilter": {
+      "label": "Gönderen alan adı",
+      "all": "Tüm göndericiler",
+      "option": "{domain} ({count})",
+      "help": "{domain} alan adından ve alt alan adlarından gelen e-postalar gösteriliyor. Gönderen için tek bir ayrıştırıcı taslağı oluşturmak üzere bunlardan birkaçını seçin."
     },
     "columns": {
       "select": "Seç",
@@ -511,6 +526,7 @@
     "state": "Durum",
     "parser": "Ayrıştırıcı",
     "noParser": "Yok",
+    "structuredSource": "Yapılandırılmış veri",
     "matchedBy": "Eşleşme ölçütü",
     "matchKinds": {
       "order_id": "Sipariş numarası",
@@ -539,6 +555,8 @@
       "proposal_refused": "Öneri reddedildi, bu yüzden hiçbir şey önerilmedi.",
       "skip_line": "Bu ayrıştırıcının atladığı bir satır bulundu, bu yüzden e-posta yok sayıldı.",
       "wait_line": "Bir satır siparişin henüz kesinleşmediğini söylüyor, bu yüzden e-posta daha sonra yeniden okunacak.",
+      "no_html": "Bu ayrıştırıcı e-postanın HTML kısmını okur ve bu e-postada HTML yok.",
+      "schema_org": "Ayrıştırıcıya gerek kalmadı: sipariş, e-postadaki yapılandırılmış verilerden (schema.org) okundu.",
       "item_amount_missing": "Bir kalemin tutarı yok ve e-postada ona verilecek tek bir toplam yok."
     },
     "reasonUnknown": "Neden: {reason}",
@@ -556,10 +574,34 @@
     "bodyView": {
       "label": "E-postayı şu biçimde göster",
       "html": "HTML",
-      "text": "Metin"
+      "text": "Metin",
+      "lines": "Satırlar"
     },
     "remoteImagesNote": "Uzak görseller yüklenmez.",
-    "htmlFrameTitle": "E-posta, göndericisinin biçimlendirdiği haliyle"
+    "htmlFrameTitle": "E-posta, göndericisinin biçimlendirdiği haliyle",
+    "structured": {
+      "heading": "Yapılandırılmış veri (schema.org)",
+      "help": "E-postanın posta istemcileri için işaretleme olarak taşıdığı bir sipariş veya fatura. Yalnızca hiçbir ayrıştırıcı uygulanmadığında ya da ayrıştırıcı toplam bulamadığında okunur.",
+      "found": "Bulundu",
+      "notFound": "Bulunamadı",
+      "notFoundHelp": "E-postada sipariş işaretlemesi yok ya da işaretlemede ne toplam ne de kalem var.",
+      "seller": "Satıcı",
+      "currency": "Para birimi",
+      "orderDate": "Sipariş tarihi",
+      "unitPrice": "Birim fiyat"
+    },
+    "lines": {
+      "help": "Bir ayrıştırıcının desenlerinin eşleştirildiği satırlar; testteki \"Eşleşen\" listesinin numaraladığı şekilde numaralanır.",
+      "sourceLabel": "Satır kaynağı",
+      "sources": {
+        "text": "Metin",
+        "html": "HTML"
+      },
+      "noHtml": "Bu e-postanın HTML kısmı yok, bu yüzden HTML okuyan bir ayrıştırıcı onu okuyamaz.",
+      "capped": "Yalnızca ilk {max} satır okunur.",
+      "empty": "Satır yok.",
+      "listLabel": "E-postanın numaralı satırları"
+    }
   },
   "picker": {
     "heading": "İşlemi seçin",
