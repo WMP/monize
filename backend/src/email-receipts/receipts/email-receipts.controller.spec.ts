@@ -5,13 +5,17 @@ import { ParseUUIDPipe } from "@nestjs/common";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
 import { ALLOW_DELEGATE_KEY } from "../../delegation/decorators/delegate-access.decorator";
-import { AskAiEmailReceiptDto } from "./dto/email-receipts.dto";
+import {
+  AskAiEmailReceiptDto,
+  ListEmailReceiptsDto,
+} from "./dto/email-receipts.dto";
 import { EmailReceiptsController } from "./email-receipts.controller";
 
 describe("EmailReceiptsController", () => {
   const req = { user: { id: "user-1" } };
   const receipts = {
     list: jest.fn(),
+    listDomains: jest.fn(),
     get: jest.fn(),
     reprocess: jest.fn(),
     link: jest.fn(),
@@ -37,6 +41,80 @@ describe("EmailReceiptsController", () => {
     expect(receipts.list).toHaveBeenCalledWith("user-1", {
       status: "review",
       limit: 10,
+    });
+  });
+
+  it("lists with the domain of the query as well, still for the JWT user", async () => {
+    receipts.list.mockResolvedValue([]);
+    await controller.list(req, {
+      status: "review",
+      domain: "shop.example.com",
+      userId: "someone-else",
+    } as never);
+    expect(receipts.list).toHaveBeenCalledWith("user-1", {
+      status: "review",
+      domain: "shop.example.com",
+      limit: undefined,
+    });
+  });
+
+  it("lists the sender domains for the JWT user", async () => {
+    receipts.listDomains.mockResolvedValue([
+      { domain: "a.example.com", count: 2 },
+    ]);
+    await expect(controller.domains(req)).resolves.toEqual([
+      { domain: "a.example.com", count: 2 },
+    ]);
+    expect(receipts.listDomains).toHaveBeenCalledWith("user-1");
+  });
+
+  it("declares the domains route before :id, so the literal segment is matched first", () => {
+    const names = Object.getOwnPropertyNames(EmailReceiptsController.prototype);
+    expect(names.indexOf("domains")).toBeGreaterThan(-1);
+    expect(names.indexOf("domains")).toBeLessThan(names.indexOf("get"));
+    expect(Reflect.getMetadata("path", proto.domains)).toBe("domains");
+  });
+
+  describe("the list query", () => {
+    const check = async (query: object) => {
+      const dto = plainToInstance(ListEmailReceiptsDto, query);
+      const errors = await validate(dto, {
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      });
+      return { dto, errors };
+    };
+
+    it("accepts no domain, and a host name", async () => {
+      expect((await check({})).errors).toHaveLength(0);
+      expect((await check({ domain: "shop.example.com" })).errors).toHaveLength(
+        0,
+      );
+    });
+
+    it("lower-cases and trims the domain, drops a leading @ and a trailing dot", async () => {
+      const { dto, errors } = await check({ domain: "  @Shop.Example.COM. " });
+      expect(errors).toHaveLength(0);
+      expect(dto.domain).toBe("shop.example.com");
+    });
+
+    it.each([
+      "not a domain",
+      "nodots",
+      "a%.example.com",
+      "a_b.example.com",
+      "shop.example.com/path",
+      "a@b.example.com",
+      "x".repeat(250) + ".com",
+      "",
+      5,
+      ["a.example.com"],
+    ])("refuses the domain %j", async (domain) => {
+      expect((await check({ domain })).errors.length).toBeGreaterThan(0);
+    });
+
+    it("refuses a key the query does not have", async () => {
+      expect((await check({ userId: "x" })).errors.length).toBeGreaterThan(0);
     });
   });
 
@@ -129,7 +207,9 @@ describe("EmailReceiptsController", () => {
   it("parses every :id with ParseUUIDPipe", () => {
     const routes = Object.getOwnPropertyNames(
       EmailReceiptsController.prototype,
-    ).filter((name) => name !== "constructor" && name !== "list");
+    ).filter(
+      (name) => name !== "constructor" && name !== "list" && name !== "domains",
+    );
     expect(routes).toHaveLength(6);
     for (const name of routes) {
       const args = Reflect.getMetadata(

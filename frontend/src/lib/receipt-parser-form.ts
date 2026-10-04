@@ -1,9 +1,11 @@
-import type {
-  CreateEmailReceiptParserPayload,
-  EmailReceiptParser,
-  ReceiptCategoryRule,
-  ReceiptParserDefinition,
-  ReceiptParserValidationError,
+import {
+  RECEIPT_LINES_SOURCES,
+  type CreateEmailReceiptParserPayload,
+  type EmailReceiptParser,
+  type ReceiptCategoryRule,
+  type ReceiptLinesSource,
+  type ReceiptParserDefinition,
+  type ReceiptParserValidationError,
 } from '@/types/email-receipts';
 
 /**
@@ -31,6 +33,8 @@ export interface ParserFormState {
   fromDomains: string;
   /** Comma or line separated (a word may hold spaces). */
   subjectContains: string;
+  /** The lines the patterns read: the email's text (the default) or its HTML part. */
+  source: ReceiptLinesSource;
   /** One pattern per line, for each of the four fields below. */
   orderId: string;
   total: string;
@@ -59,6 +63,7 @@ export const emptyParserForm = (overrides: Partial<ParserFormState> = {}): Parse
   payeeId: '',
   fromDomains: '',
   subjectContains: '',
+  source: 'text',
   orderId: '',
   total: '',
   shipping: '',
@@ -112,6 +117,8 @@ export function splitDomains(text: string): string[] {
  */
 export function buildParserDefinition(form: ParserFormState): ReceiptParserDefinition {
   const definition: ReceiptParserDefinition = { version: PARSER_DEFINITION_VERSION };
+  // The text source is the default, so it is left out (reading it back gives the same form).
+  if (form.source === 'html') definition.source = 'html';
 
   const orderId = splitLines(form.orderId);
   const total = splitLines(form.total);
@@ -170,6 +177,7 @@ const text = (value: unknown): string => (typeof value === 'string' ? value : ''
 
 type DefinitionFields = Pick<
   ParserFormState,
+  | 'source'
   | 'orderId'
   | 'total'
   | 'shipping'
@@ -194,6 +202,7 @@ export function definitionToFormFields(value: unknown): DefinitionFields {
   const items = isRecord(definition.items) ? definition.items : {};
   const rules = Array.isArray(definition.categoryRules) ? definition.categoryRules : [];
   return {
+    source: definition.source === 'html' ? 'html' : 'text',
     orderId: stringList(definition.orderId).join('\n'),
     total: stringList(definition.total).join('\n'),
     shipping: stringList(definition.shipping).join('\n'),
@@ -222,6 +231,7 @@ export function parserToForm(parser: EmailReceiptParser): ParserFormState {
 
 const FORM_TOP_LEVEL_KEYS = [
   'version',
+  'source',
   'orderId',
   'total',
   'shipping',
@@ -251,6 +261,7 @@ const onlyKeys = (value: Record<string, unknown>, allowed: readonly string[]): b
 export function formCanRepresent(value: unknown): boolean {
   if (!isRecord(value)) return false;
   if (!onlyKeys(value, FORM_TOP_LEVEL_KEYS)) return false;
+  if (value.source !== undefined && !RECEIPT_LINES_SOURCES.includes(value.source as ReceiptLinesSource)) return false;
   for (const field of ['orderId', 'total', 'shipping', 'discount']) {
     if (!onlyStrings(value[field])) return false;
   }

@@ -30,6 +30,8 @@ let actingAsUserId: string | null = null;
 vi.mock('next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('next/navigation')>()),
   useRouter: () => ({ replace, push: vi.fn() }),
+  usePathname: () => '/email-receipts',
+  useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock('@/store/authStore', () => ({
   useAuthStore: (selector: (state: unknown) => unknown) => selector({ actingAsUserId }),

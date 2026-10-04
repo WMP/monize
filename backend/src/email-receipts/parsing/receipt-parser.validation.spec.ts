@@ -1064,3 +1064,28 @@ describe("validateReceiptParserDefinition: single, joinWrapped, alternatives and
     ]);
   });
 });
+
+describe("validateReceiptParserDefinition: the lines source", () => {
+  it("accepts text and html, and keeps what was written", () => {
+    for (const source of ["text", "html"]) {
+      const input = { version: 2, source, total: ["Total: {amount}"] };
+      expect(validateReceiptParserDefinition(input)).toEqual({
+        ok: true,
+        definition: input,
+      });
+    }
+  });
+
+  it("does not require it: a definition without one reads the text", () => {
+    const result = validateReceiptParserDefinition({ version: 2 });
+    expect(result).toEqual({ ok: true, definition: { version: 2 } });
+  });
+
+  it("refuses anything else as invalid_value, whatever its type", () => {
+    for (const source of ["pdf", "HTML", "", " text", 5, null, true, [], {}]) {
+      expect(codesAt({ version: 2, source }, "source")).toEqual([
+        "invalid_value",
+      ]);
+    }
+  });
+});

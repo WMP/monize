@@ -19,8 +19,9 @@ import {
 import { EmailReceipt } from "../entities/email-receipt.entity";
 import { EMAIL_RECEIPT_PARSER_LANGUAGE_GUIDE } from "./parser-tool.guide";
 import { effectiveReceiptDate } from "../imap/forwarded-receipt";
+import { ReceiptSourceLines } from "../pipeline/receipt-source-lines";
 import {
-  parseReceiptTraced,
+  parseReceiptLinesTraced,
   type ReceiptOutcome,
 } from "../parsing/parse-receipt";
 import {
@@ -265,6 +266,7 @@ export class EmailReceiptParserToolsService {
           id: true,
           subject: true,
           bodyText: true,
+          bodyHtml: true,
           receivedAt: true,
           originalSentAt: true,
         },
@@ -275,10 +277,10 @@ export class EmailReceiptParserToolsService {
       for (const id of input.receiptIds) {
         const receipt = byId.get(id);
         if (!receipt) throw receiptNotFound(id);
-        const { parsed, trace, outcome } = parseReceiptTraced(
+        const { parsed, trace, outcome } = parseReceiptLinesTraced(
           definition,
           receipt.subject,
-          receipt.bodyText,
+          new ReceiptSourceLines(receipt).forSource(definition.source),
           payee?.defaultCategoryId ?? null,
         );
         emails.push({

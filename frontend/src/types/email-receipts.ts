@@ -194,6 +194,39 @@ export interface EmailReceiptListItem {
   createdAt: string;
 }
 
+/** One line of a schema.org order: the line total is the unit price times the quantity; either is `null` when the markup states none. */
+export interface SchemaOrgOrderItem {
+  name: string;
+  qty: number;
+  /** In 1/10000 units. */
+  amount: number | null;
+  /** In 1/10000 units. */
+  unitPrice: number | null;
+}
+
+/** The schema.org `Order` or `Invoice` the email carries as markup (JSON-LD or microdata). Amounts are in 1/10000 units. */
+export interface SchemaOrgOrder {
+  orderNumber: string | null;
+  seller: string | null;
+  currency: string | null;
+  orderDate: string | null;
+  total: number | null;
+  discount: number | null;
+  items: SchemaOrgOrderItem[];
+}
+
+/** The lines a parser's patterns are matched against, per `source`; `html` is `null` when the email has no HTML part. */
+export interface EmailReceiptLines {
+  text: string[];
+  html: string[] | null;
+}
+
+/** One sender domain of the user's stored emails with how many there are (`GET /email-receipts/domains`). */
+export interface EmailReceiptDomainCount {
+  domain: string;
+  count: number;
+}
+
 export interface EmailReceiptDetail extends EmailReceiptListItem {
   bodyText: string;
   /**
@@ -201,6 +234,13 @@ export interface EmailReceiptDetail extends EmailReceiptListItem {
    * loads nothing (`EmailHtmlFrame`); `null` when the email has none. Never in the list.
    */
   bodyHtml: string | null;
+  /**
+   * The numbered lines each source gives (at most 2,000 each): exactly what a
+   * parser's patterns match against. Only the detail carries them.
+   */
+  lines: EmailReceiptLines;
+  /** The schema.org order found in the HTML part, or `null` when there is none. */
+  structuredOrder: SchemaOrgOrder | null;
   /** The stored `ParsedReceipt`; read it through `readParsedReceipt`. */
   parsed: Record<string, unknown> | null;
   candidates: EmailReceiptCandidateSummary[];
@@ -296,9 +336,15 @@ export interface ReceiptSingleItemsDefinition {
   single: { name: string };
 }
 
+/** Which lines a parser reads: the email's text (the default) or the lines of its HTML part. */
+export const RECEIPT_LINES_SOURCES = ['text', 'html'] as const;
+export type ReceiptLinesSource = (typeof RECEIPT_LINES_SOURCES)[number];
+
 /** A parser definition, version 2 (`definition` of an `email_receipt_parsers` row). */
 export interface ReceiptParserDefinition {
   version: 2;
+  /** The lines the patterns read: the email's text (default) or its HTML part. */
+  source?: ReceiptLinesSource;
   orderId?: ReceiptFieldEntry[];
   total?: ReceiptFieldEntry[];
   paid?: ReceiptFieldEntry[];
@@ -378,8 +424,8 @@ export interface ParsedReceipt {
   discountCategoryId: string | null;
   complete: boolean;
   reason: ParsedReceiptReason | null;
-  /** Who read the email: a saved parser, or the AI. Absent on a receipt stored before the field existed. */
-  source?: 'parser' | 'ai';
+  /** Who read the email: a saved parser, the AI, or the email's own schema.org markup. Absent on a receipt stored before the field existed. */
+  source?: 'parser' | 'ai' | 'schema_org';
 }
 
 export type ReceiptMatchResult =
@@ -426,8 +472,8 @@ export type ReceiptTraceField = (typeof RECEIPT_TRACE_FIELDS)[number];
 
 export type ReceiptTrace = Record<ReceiptTraceField, ReceiptTraceHit | null> & { items: ReceiptTraceItem[] };
 
-/** What the pipeline would do with the email under this parser. */
-export type ReceiptOutcome = 'read' | 'not_applicable' | 'skip_line' | 'wait_line';
+/** What the pipeline would do with the email under this parser (`no_html`: it reads the HTML part and the email has none). */
+export type ReceiptOutcome = 'read' | 'not_applicable' | 'skip_line' | 'wait_line' | 'no_html';
 
 export interface EmailReceiptParserTestResult {
   parsed: ParsedReceipt;

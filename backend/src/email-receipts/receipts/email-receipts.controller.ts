@@ -54,8 +54,19 @@ export class EmailReceiptsController {
   ) {
     return this.receipts.list(req.user.id, {
       status: query.status,
+      domain: query.domain,
       limit: query.limit,
     });
+  }
+
+  // Declared before `:id`, so the literal segment is matched first.
+  @Get("domains")
+  @ApiOperation({
+    summary:
+      "The sender domains of my stored emails with their counts, most first (at most 200)",
+  })
+  domains(@Request() req: { user: { id: string } }) {
+    return this.receipts.listDomains(req.user.id);
   }
 
   @Get(":id")

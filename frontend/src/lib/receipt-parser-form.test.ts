@@ -303,3 +303,41 @@ describe('the server codes of version 2', () => {
     ]);
   });
 });
+
+describe('the lines source', () => {
+  it('is the text by default, and is left out of the definition', () => {
+    expect(emptyParserForm().source).toBe('text');
+    expect(buildParserDefinition(emptyParserForm())).toEqual({ version: 2 });
+  });
+
+  it('writes source html only when the form says html', () => {
+    expect(buildParserDefinition(emptyParserForm({ source: 'html' }))).toEqual({ version: 2, source: 'html' });
+    expect(buildParserDefinition(emptyParserForm({ source: 'text' }))).not.toHaveProperty('source');
+  });
+
+  it('reads the source of a stored definition: html is html, anything else the text', () => {
+    expect(definitionToFormFields({ version: 2, source: 'html' }).source).toBe('html');
+    expect(definitionToFormFields({ version: 2, source: 'text' }).source).toBe('text');
+    expect(definitionToFormFields({ version: 2 }).source).toBe('text');
+    expect(definitionToFormFields({}).source).toBe('text');
+  });
+
+  it('can show a definition with a valid source, and not one with another', () => {
+    expect(formCanRepresent({ version: 2, source: 'html', total: ['Total {amount}'] })).toBe(true);
+    expect(formCanRepresent({ version: 2, source: 'text' })).toBe(true);
+    expect(formCanRepresent({ version: 2, source: 'pdf' })).toBe(false);
+    expect(formCanRepresent({ version: 2, source: 5 })).toBe(false);
+  });
+
+  it('round-trips an html parser through the form to the same definition', () => {
+    const definition = { version: 2 as const, source: 'html' as const, total: ['Total {amount}'], items: { patterns: ['{name} {amount}'] } };
+    expect(formCanRepresent(definition)).toBe(true);
+    const form = { ...emptyParserForm(), ...definitionToFormFields(definition) };
+    expect(buildParserDefinition(form)).toEqual(definition);
+  });
+
+  it('carries the source into a parser form', () => {
+    const parser = { definition: { version: 2, source: 'html' }, name: 'x', payeeId: null, fromDomains: [], subjectContains: [] } as unknown as EmailReceiptParser;
+    expect(parserToForm(parser).source).toBe('html');
+  });
+});

@@ -65,7 +65,7 @@ export function readParsedReceipt(value: unknown): ParsedReceipt | null {
     discountCategoryId: readText(value.discountCategoryId),
     complete: value.complete === true,
     reason: reason ?? null,
-    ...(value.source === 'ai' || value.source === 'parser' ? { source: value.source } : {}),
+    ...(value.source === 'ai' || value.source === 'parser' || value.source === 'schema_org' ? { source: value.source } : {}),
   };
 }
 
@@ -211,4 +211,18 @@ export function dominantSenderDomain(receipts: ReadonlyArray<Pick<EmailReceiptLi
     }
   }
   return best;
+}
+
+/** A sender domain the list filter accepts: a dotted host name (the server's own shape). */
+const DOMAIN_FILTER = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/;
+
+/**
+ * The sender domain a `?domain=` value names, as the list filter uses it:
+ * trimmed and lower-cased, or `''` (no filter) for anything that is not a host
+ * name, so a mistyped or hostile query value never becomes a request the
+ * server would refuse.
+ */
+export function normalizeDomainFilter(raw: string | null | undefined): string {
+  const domain = (raw ?? '').trim().toLowerCase().replace(/^@+/, '').replace(/\.+$/, '');
+  return domain.length <= 253 && DOMAIN_FILTER.test(domain) ? domain : '';
 }

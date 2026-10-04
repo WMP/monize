@@ -100,6 +100,19 @@ describe('emailReceiptsApi', () => {
       expect(client.get).toHaveBeenLastCalledWith('/email-receipts', { params: { status: 'unmatched', limit: 20 } });
     });
 
+    it('lists with a sender domain beside the status, and reads the domain counts', async () => {
+      client.get.mockResolvedValue({ data: [] });
+      await emailReceiptsApi.receipts.list(undefined, undefined, 'shop.example.com');
+      expect(client.get).toHaveBeenLastCalledWith('/email-receipts', { params: { domain: 'shop.example.com' } });
+      await emailReceiptsApi.receipts.list('review', 10, 'shop.example.com');
+      expect(client.get).toHaveBeenLastCalledWith('/email-receipts', {
+        params: { status: 'review', domain: 'shop.example.com', limit: 10 },
+      });
+      client.get.mockResolvedValue({ data: [{ domain: 'shop.example.com', count: 3 }] });
+      await expect(emailReceiptsApi.receipts.listDomains()).resolves.toEqual([{ domain: 'shop.example.com', count: 3 }]);
+      expect(client.get).toHaveBeenLastCalledWith('/email-receipts/domains');
+    });
+
     it('addresses one email by id', async () => {
       client.get.mockResolvedValue({ data: { id: 'r-1' } });
       await emailReceiptsApi.receipts.get('r-1');

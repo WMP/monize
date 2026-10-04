@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { EnvelopeIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
@@ -16,6 +17,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { RowActions, type RowAction } from '@/components/ui/row-actions';
+import { Select } from '@/components/ui/Select';
 import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 import { TABLE_BODY_CLASS, TABLE_CLASS, Td, Th } from '@/components/ui/Table';
 import { useDateFormat } from '@/hooks/useDateFormat';
@@ -27,6 +29,7 @@ import {
   canRecognizeWithAi,
   distinctSenderDomains,
   isReceiptActionable,
+  normalizeDomainFilter,
   senderDomain,
 } from '@/lib/email-receipts-format';
 import { getErrorMessage } from '@/lib/errors';
@@ -34,6 +37,7 @@ import { createLogger } from '@/lib/logger';
 import {
   EMAIL_RECEIPT_STATUSES,
   PARSER_DRAFT_MAX_RECEIPTS,
+  type EmailReceiptDomainCount,
   type EmailReceiptListItem,
   type EmailReceiptStatus,
 } from '@/types/email-receipts';
@@ -46,9 +50,10 @@ type ReceiptFilter = (typeof FILTERS)[number];
 /** States from which the detail dialog can link the email to a transaction. */
 const LINKABLE_STATUSES: readonly EmailReceiptStatus[] = ['ambiguous', 'unmatched', 'no_parser', 'parse_failed'];
 
-/** The list answers one filter; `items === null` is a request that failed. */
+/** The list answers one pair of filters (state and sender domain, `''` for all); `items === null` is a request that failed. */
 interface LoadedList {
   filter: ReceiptFilter;
+  domain: string;
   items: EmailReceiptListItem[] | null;
 }
 
@@ -68,8 +73,9 @@ interface Notice {
  * The receipts page body: every stored order-confirmation email with its state
  * and the actions on it.
  *
- * A list belongs to the filter that asked for it (`LoadedList.filter`), so a
- * slow answer for a filter the reader has left is never drawn under the new one
+ * A list belongs to the filters that asked for it (`LoadedList.filter` and
+ * `.domain`), so a slow answer for a filter the reader has left is never drawn
+ * under the new one
  * and no action can be aimed at a row of the other list. `null` is loading or
  * failed, never an empty list; only a loaded, empty answer says "nothing here".
  * "Draft parser with AI" and "Recognize with AI" are the person's own request to
@@ -85,7 +91,15 @@ export function EmailReceiptsManager() {
   const { formatCurrency } = useNumberFormat();
   const { state: lookups, reload: reloadLookups } = useReceiptParserLookups();
 
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [filter, setFilter] = useState<ReceiptFilter>('all');
+  // The sender domain filter starts from `?domain=` and is written back to it;
+  // a value that is no host name is no filter.
+  const [domain, setDomain] = useState<string>(() => normalizeDomainFilter(searchParams.get('domain')));
+  // The sender domains with their counts for the filter; null while unknown or failed (the select then offers only "All" and the current one).
+  const [domains, setDomains] = useState<EmailReceiptDomainCount[] | null>(null);
   const [loaded, setLoaded] = useState<LoadedList | null>(null);
   const [mailbox, setMailbox] = useState<MailboxState>({ status: 'loading' });
   // The emails ticked for "Draft parser with AI", by id. Only ids of the list on
@@ -103,29 +117,65 @@ export function EmailReceiptsManager() {
   // Only the newest request may write the list, and a reload after an action
   // asks for the filter the reader is on NOW, not the one the handler saw.
   const latestLoad = useRef(0);
-  const currentFilter = useRef<ReceiptFilter>(filter);
+  const latestDomains = useRef(0);
+  const currentFilters = useRef({ filter, domain });
   useEffect(() => {
-    currentFilter.current = filter;
-  }, [filter]);
+    currentFilters.current = { filter, domain };
+  }, [filter, domain]);
 
-  const load = useCallback(async (forFilter: ReceiptFilter) => {
+  const load = useCallback(async (forFilter: ReceiptFilter, forDomain: string) => {
     const request = ++latestLoad.current;
     try {
-      const items = await emailReceiptsApi.receipts.list(forFilter === 'all' ? undefined : forFilter);
+      const items = await emailReceiptsApi.receipts.list(
+        forFilter === 'all' ? undefined : forFilter,
+        undefined,
+        forDomain === '' ? undefined : forDomain,
+      );
       if (request !== latestLoad.current) return;
-      setLoaded({ filter: forFilter, items });
+      setLoaded({ filter: forFilter, domain: forDomain, items });
     } catch (error) {
       if (request !== latestLoad.current) return;
       logger.error(error);
-      setLoaded({ filter: forFilter, items: null });
+      setLoaded({ filter: forFilter, domain: forDomain, items: null });
     }
   }, []);
 
-  const reload = useCallback(() => load(currentFilter.current), [load]);
+  /** The domains the filter offers; a failed read leaves them unknown, never an empty list. */
+  const loadDomains = useCallback(async () => {
+    const request = ++latestDomains.current;
+    try {
+      const found = await emailReceiptsApi.receipts.listDomains();
+      if (request === latestDomains.current) setDomains(found);
+    } catch (error) {
+      if (request !== latestDomains.current) return;
+      logger.error(error);
+      setDomains(null);
+    }
+  }, []);
+
+  // After a command or a change the list and the domain counts are read again.
+  const reload = useCallback(async () => {
+    void loadDomains();
+    await load(currentFilters.current.filter, currentFilters.current.domain);
+  }, [load, loadDomains]);
 
   useEffect(() => {
-    void load(filter);
-  }, [filter, load]);
+    void load(filter, domain);
+  }, [filter, domain, load]);
+
+  useEffect(() => {
+    void loadDomains();
+  }, [loadDomains]);
+
+  const changeDomain = (next: string) => {
+    setDomain(next);
+    setSelectedIds(new Set());
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === '') params.delete('domain');
+    else params.set('domain', next);
+    const query = params.toString();
+    router.replace(query === '' ? pathname : `${pathname}?${query}`, { scroll: false });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -326,10 +376,20 @@ export function EmailReceiptsManager() {
     ];
   };
 
-  const current = loaded !== null && loaded.filter === filter ? loaded : null;
+  const current = loaded !== null && loaded.filter === filter && loaded.domain === domain ? loaded : null;
   // What is ticked AND still on screen: an email a reload dropped is not selected.
   const selected = (current?.items ?? []).filter((receipt) => selectedIds.has(receipt.id));
   const selectedDomains = distinctSenderDomains(selected);
+
+  // "All senders", each domain with its count, and the filtered one even when it is not (yet) in the list.
+  const domainOptions = [
+    { value: '', label: t('domainFilter.all') },
+    ...(domains ?? []).map((entry) => ({
+      value: entry.domain,
+      label: t('domainFilter.option', { domain: entry.domain, count: entry.count }),
+    })),
+    ...(domain !== '' && !(domains ?? []).some((entry) => entry.domain === domain) ? [{ value: domain, label: domain }] : []),
+  ];
 
   let body;
   if (current !== null && current.items === null) {
@@ -346,12 +406,13 @@ export function EmailReceiptsManager() {
   } else if (current === null) {
     body = <LoadingSpinner text={t('loading')} />;
   } else if (current.items === null || current.items.length === 0) {
-    const noMailbox = mailbox.status === 'none' && filter === 'all';
+    const unfiltered = filter === 'all' && domain === '';
+    const noMailbox = mailbox.status === 'none' && unfiltered;
     body = (
       <EmptyState
         icon={<EnvelopeIcon />}
-        title={filter === 'all' ? t('empty.title') : t('empty.filteredTitle')}
-        description={noMailbox ? t('empty.noMailboxBody') : filter === 'all' ? t('empty.body') : t('empty.filteredBody')}
+        title={unfiltered ? t('empty.title') : t('empty.filteredTitle')}
+        description={noMailbox ? t('empty.noMailboxBody') : unfiltered ? t('empty.body') : t('empty.filteredBody')}
         action={
           noMailbox ? (
             <Link href="/settings/email-receipts" className={buttonClassName('primary', 'md')}>
@@ -454,22 +515,34 @@ export function EmailReceiptsManager() {
         </Link>
       </div>
 
-      <div role="group" aria-label={t('filter.label')} className={`${SEGMENTED_GROUP_CLASS} max-w-full flex-wrap`}>
-        {FILTERS.map((option) => (
-          <button
-            key={option}
-            type="button"
-            aria-pressed={filter === option}
-            onClick={() => {
-              setFilter(option);
-              setSelectedIds(new Set());
-            }}
-            className={segmentClass(filter === option)}
-          >
-            {t(`filter.${option}`)}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
+        <div role="group" aria-label={t('filter.label')} className={`${SEGMENTED_GROUP_CLASS} max-w-full flex-wrap`}>
+          {FILTERS.map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={filter === option}
+              onClick={() => {
+                setFilter(option);
+                setSelectedIds(new Set());
+              }}
+              className={segmentClass(filter === option)}
+            >
+              {t(`filter.${option}`)}
+            </button>
+          ))}
+        </div>
+        <div className="w-full sm:w-72">
+          <Select
+            id="receipts-domain-filter"
+            label={t('domainFilter.label')}
+            value={domain}
+            onChange={(e) => changeDomain(e.target.value)}
+            options={domainOptions}
+          />
+        </div>
       </div>
+      {domain !== '' && <p className="text-xs text-gray-500 dark:text-gray-400">{t('domainFilter.help', { domain })}</p>}
 
       {notice && (
         <div
