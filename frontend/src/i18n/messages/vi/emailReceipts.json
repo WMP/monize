@@ -289,11 +289,6 @@
       "tagNameLabel": "Tag name",
       "aiCategoriesLabel": "Let the AI choose the category of items no rule matches",
       "aiCategoriesHelp": "When an item matches no category rule and there is no default category, the AI is asked for its category from your category list. The choice is marked as the AI's on the proposal. With this off the AI is never asked."
-    },
-    "problems": {
-      "feesCategory": "Danh mục phí",
-      "balanceTolerance": "Dung sai cân bằng",
-      "fees": "Mẫu phí"
     }
   },
   "problems": {
@@ -524,7 +519,7 @@
       "label": "Sender domain",
       "all": "All senders",
       "option": "{domain} ({count})",
-      "unknown": "The sender counts could not be loaded.",
+      "unknown": "Không thể tải số lượng người gửi.",
       "help": "Showing emails from {domain} and its sub-domains. Select several of them to draft one profile for the sender."
     },
     "columns": {
@@ -536,12 +531,12 @@
       "actions": "Actions"
     },
     "guide": {
-      "heading": "How to create a profile",
-      "buttonName": "Prepare a profile with AI",
-      "stepSender": "Choose a sender in the cloud of sender domains.",
-      "stepTransaction": "Give each of its emails the transaction it paid for: open the email and choose the transaction.",
-      "stepSelect": "Tick those emails.",
-      "stepPrepare": "Press {button}. The assistant writes the profile, and you test and approve it in the profiles."
+      "heading": "Cách tạo hồ sơ",
+      "buttonName": "Chuẩn bị hồ sơ với AI",
+      "stepSender": "Chọn người gửi từ đám mây miền người gửi.",
+      "stepTransaction": "Cung cấp cho mỗi email của nó giao dịch mà nó đã thanh toán: mở email và chọn giao dịch.",
+      "stepSelect": "Tích các email này.",
+      "stepPrepare": "Nhấn {button}. Trợ lý sẽ viết hồ sơ và bạn sẽ kiểm tra và phê duyệt nó trong các hồ sơ."
     },
     "transactionSummary": "{date}, {amount}, {payee}",
     "noPayee": "no payee",
@@ -564,9 +559,9 @@
       "reprocess": "Reprocess",
       "link": "Choose transaction",
       "recognizeAi": "Recognize with AI",
-      "approve": "Approve",
-      "draftParser": "Prepare a profile with AI",
-      "createParser": "Create profile",
+      "approve": "Phê duyệt",
+      "draftParser": "Chuẩn bị hồ sơ với AI",
+      "createParser": "Tạo hồ sơ",
       "ignore": "Ignore"
     },
     "toasts": {
@@ -595,15 +590,7 @@
       "count": "{count, plural, one {# email selected} other {# emails selected}} (at most {max})",
       "draftButton": "Prepare a profile with AI ({count})",
       "clear": "Clear selection",
-      "differentSenders": "The selected emails come from different senders ({domains}). A profile reads one sender's emails, so select emails from one sender.",
-      "guide": {
-        "heading": "Cách tạo hồ sơ",
-        "buttonName": "Chuẩn bị hồ sơ với AI",
-        "stepSender": "Chọn người gửi từ đám mây miền người gửi.",
-        "stepTransaction": "Cung cấp cho mỗi email của nó giao dịch mà nó đã thanh toán: mở email và chọn giao dịch.",
-        "stepSelect": "Tích các email này.",
-        "stepPrepare": "Nhấn {button}. Trợ lý sẽ viết hồ sơ và bạn sẽ kiểm tra và phê duyệt nó trong các hồ sơ."
-      }
+      "differentSenders": "The selected emails come from different senders ({domains}). A profile reads one sender's emails, so select emails from one sender."
     },
     "draft": {
       "failed": "Could not start drafting a profile",
@@ -612,21 +599,6 @@
       "inboxLink": "Open the AI review inbox",
       "opened": "Opened the chat with the emails attached. Read the message and press Send.",
       "chatPrompt": "Build an email receipt profile for {count, plural, one {this order email} other {these # order emails}} from {domain}. Claim AI review request {requestId}, test your profile on every attached email with the email_receipt_parsers tool, fix it until each one reads completely, then save it as a draft for request {requestId}."
-    },
-    "list": {
-      "filter": {
-        "unknown": "Không thể tải số lượng người gửi."
-      }
-    },
-    "row": {
-      "approve": "Phê duyệt",
-      "draftParser": "Chuẩn bị hồ sơ với AI",
-      "createParser": "Tạo hồ sơ"
-    },
-    "state": {
-      "filter": {
-        "option": "{label} ({count})"
-      }
     }
   },
   "detail": {
@@ -829,10 +801,7 @@
     "failed": "Processing stopped because a request failed.",
     "failedWithReason": "Processing stopped: {reason}",
     "outcome": "{count} {state}",
-    "close": "Close",
-    "draft": {
-      "chatPrompt": "Xây dựng hồ sơ biên lai email cho {count, plural, one {email đơn hàng này} other {các email đơn hàng # này}} từ {domain}. Yêu cầu xem xét AI {requestId}, kiểm tra hồ sơ của bạn trên mỗi email đính kèm bằng công cụ email_receipt_parsers, sửa nó cho đến khi mỗi email được đọc hoàn toàn, sau đó lưu nó làm bản nháp cho yêu cầu {requestId}."
-    }
+    "close": "Close"
   },
   "overview": {
     "loading": "Loading the overview...",

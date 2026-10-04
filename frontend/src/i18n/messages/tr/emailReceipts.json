@@ -289,11 +289,6 @@
       "tagNameLabel": "Tag name",
       "aiCategoriesLabel": "Let the AI choose the category of items no rule matches",
       "aiCategoriesHelp": "When an item matches no category rule and there is no default category, the AI is asked for its category from your category list. The choice is marked as the AI's on the proposal. With this off the AI is never asked."
-    },
-    "problems": {
-      "feesCategory": "Ücret kategorisi",
-      "balanceTolerance": "Denge toleransı",
-      "fees": "Ücret desenleri"
     }
   },
   "problems": {
@@ -524,7 +519,7 @@
       "label": "Sender domain",
       "all": "All senders",
       "option": "{domain} ({count})",
-      "unknown": "The sender counts could not be loaded.",
+      "unknown": "Gönderici sayıları yüklenemedi.",
       "help": "Showing emails from {domain} and its sub-domains. Select several of them to draft one profile for the sender."
     },
     "columns": {
@@ -536,12 +531,12 @@
       "actions": "Actions"
     },
     "guide": {
-      "heading": "How to create a profile",
-      "buttonName": "Prepare a profile with AI",
-      "stepSender": "Choose a sender in the cloud of sender domains.",
-      "stepTransaction": "Give each of its emails the transaction it paid for: open the email and choose the transaction.",
-      "stepSelect": "Tick those emails.",
-      "stepPrepare": "Press {button}. The assistant writes the profile, and you test and approve it in the profiles."
+      "heading": "Profil oluşturma",
+      "buttonName": "Yapay Zeka ile profil hazırla",
+      "stepSender": "Gönderici etki alanı bulutundan bir gönderici seçin.",
+      "stepTransaction": "Her bir e-postasına ödediği işlemi verin: e-postayı açın ve işlemi seçin.",
+      "stepSelect": "Bu e-postaları işaretleyin.",
+      "stepPrepare": "{button} tuşuna basın. Asistan profili yazacak ve siz onu profillerde test edip onaylayacaksınız."
     },
     "transactionSummary": "{date}, {amount}, {payee}",
     "noPayee": "no payee",
@@ -564,9 +559,9 @@
       "reprocess": "Reprocess",
       "link": "Choose transaction",
       "recognizeAi": "Recognize with AI",
-      "approve": "Approve",
-      "draftParser": "Prepare a profile with AI",
-      "createParser": "Create profile",
+      "approve": "Onayla",
+      "draftParser": "Yapay Zeka ile profil hazırla",
+      "createParser": "Profil oluştur",
       "ignore": "Ignore"
     },
     "toasts": {
@@ -595,15 +590,7 @@
       "count": "{count, plural, one {# email selected} other {# emails selected}} (at most {max})",
       "draftButton": "Prepare a profile with AI ({count})",
       "clear": "Clear selection",
-      "differentSenders": "The selected emails come from different senders ({domains}). A profile reads one sender's emails, so select emails from one sender.",
-      "guide": {
-        "heading": "Profil oluşturma",
-        "buttonName": "Yapay Zeka ile profil hazırla",
-        "stepSender": "Gönderici etki alanı bulutundan bir gönderici seçin.",
-        "stepTransaction": "Her bir e-postasına ödediği işlemi verin: e-postayı açın ve işlemi seçin.",
-        "stepSelect": "Bu e-postaları işaretleyin.",
-        "stepPrepare": "{button} tuşuna basın. Asistan profili yazacak ve siz onu profillerde test edip onaylayacaksınız."
-      }
+      "differentSenders": "The selected emails come from different senders ({domains}). A profile reads one sender's emails, so select emails from one sender."
     },
     "draft": {
       "failed": "Could not start drafting a profile",
@@ -612,21 +599,6 @@
       "inboxLink": "Open the AI review inbox",
       "opened": "Opened the chat with the emails attached. Read the message and press Send.",
       "chatPrompt": "Build an email receipt profile for {count, plural, one {this order email} other {these # order emails}} from {domain}. Claim AI review request {requestId}, test your profile on every attached email with the email_receipt_parsers tool, fix it until each one reads completely, then save it as a draft for request {requestId}."
-    },
-    "list": {
-      "filter": {
-        "unknown": "Gönderici sayıları yüklenemedi."
-      }
-    },
-    "row": {
-      "approve": "Onayla",
-      "draftParser": "Yapay Zeka ile profil hazırla",
-      "createParser": "Profil oluştur"
-    },
-    "state": {
-      "filter": {
-        "option": "{label} ({count})"
-      }
     }
   },
   "detail": {
@@ -829,10 +801,7 @@
     "failed": "Processing stopped because a request failed.",
     "failedWithReason": "Processing stopped: {reason}",
     "outcome": "{count} {state}",
-    "close": "Close",
-    "draft": {
-      "chatPrompt": "{count, plural, one {bu sipariş e-postası} other {bu # sipariş e-postası}} için {domain} adresinden bir e-posta irsaliye profili oluşturun. Yapay Zeka inceleme isteği {requestId} talebinde bulunun, profilinizi email_receipt_parsers aracı ile eklenen her e-postada test edin, her biri tamamen okunana kadar düzeltin ve ardından {requestId} isteği için taslak olarak kaydedin."
-    }
+    "close": "Close"
   },
   "overview": {
     "loading": "Loading the overview...",

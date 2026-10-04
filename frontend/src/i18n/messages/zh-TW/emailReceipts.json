@@ -289,11 +289,6 @@
       "tagNameLabel": "Tag name",
       "aiCategoriesLabel": "Let the AI choose the category of items no rule matches",
       "aiCategoriesHelp": "When an item matches no category rule and there is no default category, the AI is asked for its category from your category list. The choice is marked as the AI's on the proposal. With this off the AI is never asked."
-    },
-    "problems": {
-      "feesCategory": "費用類別",
-      "balanceTolerance": "餘額容差",
-      "fees": "費用模式"
     }
   },
   "problems": {
@@ -524,7 +519,7 @@
       "label": "Sender domain",
       "all": "All senders",
       "option": "{domain} ({count})",
-      "unknown": "The sender counts could not be loaded.",
+      "unknown": "無法載入寄件者計數。",
       "help": "Showing emails from {domain} and its sub-domains. Select several of them to draft one profile for the sender."
     },
     "columns": {
@@ -536,12 +531,12 @@
       "actions": "Actions"
     },
     "guide": {
-      "heading": "How to create a profile",
-      "buttonName": "Prepare a profile with AI",
-      "stepSender": "Choose a sender in the cloud of sender domains.",
-      "stepTransaction": "Give each of its emails the transaction it paid for: open the email and choose the transaction.",
-      "stepSelect": "Tick those emails.",
-      "stepPrepare": "Press {button}. The assistant writes the profile, and you test and approve it in the profiles."
+      "heading": "如何建立設定檔",
+      "buttonName": "使用 AI 準備設定檔",
+      "stepSender": "從寄件者網域雲端選擇寄件者。",
+      "stepTransaction": "為每個電子郵件提供它支付的交易：開啟電子郵件並選擇交易。",
+      "stepSelect": "勾選這些電子郵件。",
+      "stepPrepare": "按 {button}。助理將撰寫設定檔，您可以在設定檔中測試並核准。"
     },
     "transactionSummary": "{date}, {amount}, {payee}",
     "noPayee": "no payee",
@@ -564,9 +559,9 @@
       "reprocess": "Reprocess",
       "link": "Choose transaction",
       "recognizeAi": "Recognize with AI",
-      "approve": "Approve",
-      "draftParser": "Prepare a profile with AI",
-      "createParser": "Create profile",
+      "approve": "核准",
+      "draftParser": "使用 AI 準備設定檔",
+      "createParser": "建立設定檔",
       "ignore": "Ignore"
     },
     "toasts": {
@@ -595,15 +590,7 @@
       "count": "{count, plural, one {# email selected} other {# emails selected}} (at most {max})",
       "draftButton": "Prepare a profile with AI ({count})",
       "clear": "Clear selection",
-      "differentSenders": "The selected emails come from different senders ({domains}). A profile reads one sender's emails, so select emails from one sender.",
-      "guide": {
-        "heading": "如何建立設定檔",
-        "buttonName": "使用 AI 準備設定檔",
-        "stepSender": "從寄件者網域雲端選擇寄件者。",
-        "stepTransaction": "為每個電子郵件提供它支付的交易：開啟電子郵件並選擇交易。",
-        "stepSelect": "勾選這些電子郵件。",
-        "stepPrepare": "按 {button}。助理將撰寫設定檔，您可以在設定檔中測試並核准。"
-      }
+      "differentSenders": "The selected emails come from different senders ({domains}). A profile reads one sender's emails, so select emails from one sender."
     },
     "draft": {
       "failed": "Could not start drafting a profile",
@@ -612,21 +599,6 @@
       "inboxLink": "Open the AI review inbox",
       "opened": "Opened the chat with the emails attached. Read the message and press Send.",
       "chatPrompt": "Build an email receipt profile for {count, plural, one {this order email} other {these # order emails}} from {domain}. Claim AI review request {requestId}, test your profile on every attached email with the email_receipt_parsers tool, fix it until each one reads completely, then save it as a draft for request {requestId}."
-    },
-    "list": {
-      "filter": {
-        "unknown": "無法載入寄件者計數。"
-      }
-    },
-    "row": {
-      "approve": "核准",
-      "draftParser": "使用 AI 準備設定檔",
-      "createParser": "建立設定檔"
-    },
-    "state": {
-      "filter": {
-        "option": "{label} ({count})"
-      }
     }
   },
   "detail": {
@@ -829,10 +801,7 @@
     "failed": "Processing stopped because a request failed.",
     "failedWithReason": "Processing stopped: {reason}",
     "outcome": "{count} {state}",
-    "close": "Close",
-    "draft": {
-      "chatPrompt": "為來自 {domain} 的 {count, plural, one {這 # 封訂單電子郵件} other {這 # 封訂單電子郵件}} 建置電子郵件收據設定檔。聲稱 AI 審查要求 {requestId}，使用 email_receipt_parsers 工具在每個附加電子郵件上測試您的設定檔，修復它直到每個都完全讀取，然後將其儲存為要求 {requestId} 的草稿。"
-    }
+    "close": "Close"
   },
   "overview": {
     "loading": "Loading the overview...",
