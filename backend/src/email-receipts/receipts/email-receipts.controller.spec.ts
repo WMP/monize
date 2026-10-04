@@ -8,6 +8,7 @@ import { ALLOW_DELEGATE_KEY } from "../../delegation/decorators/delegate-access.
 import {
   AskAiEmailReceiptDto,
   ListEmailReceiptsDto,
+  ProcessBatchEmailReceiptsDto,
 } from "./dto/email-receipts.dto";
 import { EmailReceiptsController } from "./email-receipts.controller";
 
@@ -16,6 +17,8 @@ describe("EmailReceiptsController", () => {
   const receipts = {
     list: jest.fn(),
     listDomains: jest.fn(),
+    overview: jest.fn(),
+    processBatch: jest.fn(),
     get: jest.fn(),
     reprocess: jest.fn(),
     link: jest.fn(),
@@ -155,6 +158,89 @@ describe("EmailReceiptsController", () => {
     },
   );
 
+  it("answers the overview for the JWT user", async () => {
+    receipts.overview.mockResolvedValue({ parsers: { approved: 1, draft: 0 } });
+    expect(await controller.overview(req)).toEqual({
+      parsers: { approved: 1, draft: 0 },
+    });
+    expect(receipts.overview).toHaveBeenCalledWith("user-1");
+  });
+
+  it("processes in bulk for the JWT user with exactly the fields of the body", async () => {
+    receipts.processBatch.mockResolvedValue({ processed: 2 });
+    await controller.processBatch(req, {
+      domain: "shop.example.com",
+      statuses: ["pending"],
+      limit: 20,
+      since: "2026-10-04T12:00:00.000000Z",
+      userId: "someone-else",
+    } as never);
+    expect(receipts.processBatch).toHaveBeenCalledWith("user-1", {
+      domain: "shop.example.com",
+      statuses: ["pending"],
+      limit: 20,
+      since: "2026-10-04T12:00:00.000000Z",
+    });
+  });
+
+  it("registers overview and process-batch before :id, and throttles the bulk route", () => {
+    const names = Object.getOwnPropertyNames(EmailReceiptsController.prototype);
+    expect(names.indexOf("overview")).toBeLessThan(names.indexOf("get"));
+    expect(names.indexOf("processBatch")).toBeLessThan(names.indexOf("get"));
+    expect(
+      Reflect.getMetadata("THROTTLER:LIMITdefault", proto.processBatch),
+    ).toBe(30);
+  });
+
+  describe("the process-batch body", () => {
+    const check = async (body: object) =>
+      validate(plainToInstance(ProcessBatchEmailReceiptsDto, body), {
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      });
+
+    it.each([
+      {},
+      { domain: "Shop.Example.com" },
+      { statuses: ["pending", "no_parser", "parse_failed"] },
+      {
+        statuses: [
+          "pending",
+          "no_parser",
+          "parse_failed",
+          "unmatched",
+          "ambiguous",
+          "review_conflict",
+        ],
+      },
+      { limit: 1 },
+      { limit: 200 },
+      { since: "2026-10-04T12:00:00.123456Z" },
+    ])("accepts %j", async (body) => {
+      expect(await check(body)).toHaveLength(0);
+    });
+
+    it.each([
+      { limit: 0 },
+      { limit: 201 },
+      { limit: 1.5 },
+      { limit: "20" },
+      { statuses: ["review"] },
+      { statuses: ["ignored"] },
+      { statuses: ["pending", "pending"] },
+      { statuses: "pending" },
+      { statuses: [].concat(Array(7).fill("pending") as never) },
+      { domain: "not a domain" },
+      { domain: "has@sign.example.com" },
+      { since: "yesterday" },
+      { since: 5 },
+      { userId: "x" },
+      { unknown: true },
+    ])("refuses %j", async (body) => {
+      expect((await check(body)).length).toBeGreaterThan(0);
+    });
+  });
+
   it("has no synchronous draft-parser route: parsers are drafted through the chat", () => {
     expect(
       (controller as unknown as Record<string, unknown>).draftParser,
@@ -208,7 +294,14 @@ describe("EmailReceiptsController", () => {
     const routes = Object.getOwnPropertyNames(
       EmailReceiptsController.prototype,
     ).filter(
-      (name) => name !== "constructor" && name !== "list" && name !== "domains",
+      (name) =>
+        ![
+          "constructor",
+          "list",
+          "domains",
+          "overview",
+          "processBatch",
+        ].includes(name),
     );
     expect(routes).toHaveLength(6);
     for (const name of routes) {

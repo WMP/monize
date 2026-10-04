@@ -16,6 +16,7 @@ import type { EmailReceiptMailboxView } from "../mailbox/email-receipt-mailbox.v
 import type { EmailReceiptPipelineService } from "../pipeline/email-receipt-pipeline.service";
 import {
   EmailReceiptPollService,
+  AI_CATEGORY_CALLS_PER_POLL,
   MAX_PROCESSED_PER_POLL,
   MAX_REMATCHED_PER_POLL,
   pickReceivedAt,
@@ -658,6 +659,7 @@ describe("processing and rematching", () => {
     expect(h.pipeline.process).toHaveBeenCalledTimes(2);
     expect(h.pipeline.process).toHaveBeenCalledWith(USER, "r1", {
       onlyWhenStatusIn: ["pending"],
+      aiCategoryBudget: { remaining: AI_CATEGORY_CALLS_PER_POLL },
     });
     expect(outcome.processed).toBe(2);
     const select = h.manager.query.mock.calls.find((c) =>
@@ -672,12 +674,21 @@ describe("processing and rematching", () => {
     h.pending.push("r1");
     h.rematch.push("r1", "r2", "r3");
     await poll(h);
-    const ids = h.pipeline.process.mock.calls.map((c) => [c[1], c[2]]);
-    expect(ids).toEqual([
-      ["r1", { onlyWhenStatusIn: ["pending"] }],
-      ["r2", { onlyWhenStatusIn: ["unmatched", "review"] }],
-      ["r3", { onlyWhenStatusIn: ["unmatched", "review"] }],
+    const ids = h.pipeline.process.mock.calls.map((c) => [
+      c[1],
+      c[2]?.onlyWhenStatusIn,
     ]);
+    expect(ids).toEqual([
+      ["r1", ["pending"]],
+      ["r2", ["unmatched", "review"]],
+      ["r3", ["unmatched", "review"]],
+    ]);
+    // One AI-question budget is shared by the whole poll, not one per email.
+    const budgets = h.pipeline.process.mock.calls.map(
+      (c) => c[2]?.aiCategoryBudget,
+    );
+    expect(new Set(budgets).size).toBe(1);
+    expect(budgets[0]).toEqual({ remaining: AI_CATEGORY_CALLS_PER_POLL });
     const select = h.manager.query.mock.calls.find((c) =>
       String(c[0]).includes("r.status = 'unmatched'"),
     ) as [string, unknown[]];

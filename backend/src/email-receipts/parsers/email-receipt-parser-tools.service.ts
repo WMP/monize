@@ -20,6 +20,10 @@ import { EmailReceipt } from "../entities/email-receipt.entity";
 import { EMAIL_RECEIPT_PARSER_LANGUAGE_GUIDE } from "./parser-tool.guide";
 import { effectiveReceiptDate } from "../imap/forwarded-receipt";
 import { ReceiptSourceLines } from "../pipeline/receipt-source-lines";
+import { loadReceiptCandidates } from "../pipeline/receipt-candidates";
+import { matchReceipt } from "../matching/match-receipt";
+import { resolveMatchConfig } from "../parsing/receipt-match-config";
+import type { ReceiptMatchStrategy } from "../parsing/receipt-parser.types";
 import {
   parseReceiptLinesTraced,
   type ReceiptOutcome,
@@ -76,6 +80,8 @@ const MAX_SUBJECT_WORD_LENGTH = 100;
 /** A parsed receipt as a model reads it: decimal amounts, category names. */
 export interface LlmParsedReceipt {
   orderId: string | null;
+  /** What the profile's `reference` field read; null when none. */
+  reference: string | null;
   total: number | null;
   paid: number | null;
   payee: string | null;
@@ -91,6 +97,26 @@ export interface LlmParsedReceipt {
   reason: ParsedReceipt["reason"];
 }
 
+/**
+ * What the profile's matching would do with one tested email, compactly: the
+ * strategy that decided, the transaction it matched, how many candidates each
+ * strategy kept (spec 3a). Reads only.
+ */
+export interface ParserToolMatch {
+  outcome: "matched" | "ambiguous" | "unmatched";
+  /** The strategy that matched or found several candidates; null when none did. */
+  strategy: ReceiptMatchStrategy | null;
+  transaction: {
+    id: string;
+    date: string;
+    amount: number;
+    payeeName: string | null;
+  } | null;
+  /** Candidates inside the profile's date window. */
+  considered: number;
+  attempts: Array<{ strategy: ReceiptMatchStrategy; count: number }>;
+}
+
 export interface ParserToolTestEmail {
   receiptId: string;
   subject: string;
@@ -101,6 +127,8 @@ export interface ParserToolTestEmail {
   outcome: ReceiptOutcome;
   /** Which entry and which line read each value; at most 20 items are traced. */
   trace: ReceiptTrace;
+  /** What the definition's `match` section would do with this email (design 5.5). */
+  match: ParserToolMatch;
 }
 
 /** Items a `test` result traces (the rest are counted in `parsed`). */
@@ -168,6 +196,7 @@ function toLlmParsed(
 ): LlmParsedReceipt {
   return {
     orderId: parsed.orderId,
+    reference: parsed.reference ?? null,
     total: units(parsed.total),
     paid: units(parsed.paid ?? null),
     payee: parsed.payee ?? null,
@@ -283,13 +312,51 @@ export class EmailReceiptParserToolsService {
           new ReceiptSourceLines(receipt).forSource(definition.source),
           payee?.defaultCategoryId ?? null,
         );
+        const effectiveDate = effectiveReceiptDate(receipt);
+        const purchaseDate = effectiveDate.toISOString().slice(0, 10);
+        const matchConfig = resolveMatchConfig(definition.match);
+        const candidates = await loadReceiptCandidates(
+          m,
+          userId,
+          purchaseDate,
+          receipt.id,
+          matchConfig,
+        );
+        const matched = matchReceipt(
+          parsed,
+          purchaseDate,
+          candidates,
+          payee?.id ?? null,
+          matchConfig,
+        );
+        const hit =
+          matched.kind === "matched"
+            ? candidates.find((c) => c.id === matched.transactionId)
+            : undefined;
         emails.push({
           receiptId: receipt.id,
           subject: receipt.subject,
-          effectiveDate: effectiveReceiptDate(receipt).toISOString(),
+          effectiveDate: effectiveDate.toISOString(),
           parsed: toLlmParsed(parsed, categoryNames),
           outcome,
           trace: { ...trace, items: trace.items.slice(0, TRACE_MAX_ITEMS) },
+          match: {
+            outcome: matched.kind,
+            strategy: matched.kind === "unmatched" ? null : matched.strategy,
+            transaction: hit
+              ? {
+                  id: hit.id,
+                  date: hit.transactionDate,
+                  amount: hit.amount,
+                  payeeName: hit.payeeName,
+                }
+              : null,
+            considered: matched.considered,
+            attempts: matched.attempts.map((attempt) => ({
+              strategy: attempt.strategy,
+              count: attempt.count,
+            })),
+          },
         });
       }
       const unknownCategoryIds = collectParserCategoryIds(definition).filter(

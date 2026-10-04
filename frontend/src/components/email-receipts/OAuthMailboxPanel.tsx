@@ -50,6 +50,7 @@ export function OAuthMailboxPanel({ mailbox, providers, onChanged }: OAuthMailbo
     enabled: mailbox.enabled,
     aiMode: mailbox.aiMode,
     autoApply: mailbox.autoApply,
+    profileProposalsCountTowardAiLimit: mailbox.profileProposalsCountTowardAiLimit,
   });
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -60,7 +61,8 @@ export function OAuthMailboxPanel({ mailbox, providers, onChanged }: OAuthMailbo
     settings.folder.trim() !== baseline.folder ||
     settings.enabled !== baseline.enabled ||
     settings.aiMode !== baseline.aiMode ||
-    settings.autoApply !== baseline.autoApply;
+    settings.autoApply !== baseline.autoApply ||
+    settings.profileProposalsCountTowardAiLimit !== baseline.profileProposalsCountTowardAiLimit;
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -74,9 +76,18 @@ export function OAuthMailboxPanel({ mailbox, providers, onChanged }: OAuthMailbo
         ...(settings.enabled !== baseline.enabled ? { enabled: settings.enabled } : {}),
         ...(settings.aiMode !== baseline.aiMode ? { aiMode: settings.aiMode } : {}),
         ...(settings.autoApply !== baseline.autoApply ? { autoApply: settings.autoApply } : {}),
+        ...(settings.profileProposalsCountTowardAiLimit !== baseline.profileProposalsCountTowardAiLimit
+          ? { profileProposalsCountTowardAiLimit: settings.profileProposalsCountTowardAiLimit }
+          : {}),
       });
       setBaseline(saved);
-      setSettings({ folder: saved.folder, enabled: saved.enabled, aiMode: saved.aiMode, autoApply: saved.autoApply });
+      setSettings({
+        folder: saved.folder,
+        enabled: saved.enabled,
+        aiMode: saved.aiMode,
+        autoApply: saved.autoApply,
+        profileProposalsCountTowardAiLimit: saved.profileProposalsCountTowardAiLimit,
+      });
       onChanged(saved);
       toast.success(t('saved'));
     } catch (error) {

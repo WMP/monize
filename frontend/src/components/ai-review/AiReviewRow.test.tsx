@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@/test/render';
 import { AiReviewRow } from './AiReviewRow';
-import { makeReviewItem } from './ai-review-fixtures';
+import { makeReviewItem, PROPOSED_ACTION } from './ai-review-fixtures';
 import type { AiReviewItem } from '@/types/ai-review';
 
 function renderRow(item: AiReviewItem) {
@@ -51,7 +51,7 @@ describe('AiReviewRow', () => {
 
   it('links to the receipts page from an email receipt row', () => {
     renderRow(emailReceiptItem());
-    expect(screen.getByRole('link', { name: 'View email receipts' })).toHaveAttribute('href', '/email-receipts');
+    expect(screen.getByRole('link', { name: 'View email receipts' })).toHaveAttribute('href', '/email-receipts?tab=emails');
   });
 
   it('shows the email as it is, as plain text', () => {
@@ -144,7 +144,7 @@ describe('AiReviewRow', () => {
 
     it('links to the emails', () => {
       renderRow(draftItem());
-      expect(screen.getByRole('link', { name: 'View email receipts' })).toHaveAttribute('href', '/email-receipts');
+      expect(screen.getByRole('link', { name: 'View email receipts' })).toHaveAttribute('href', '/email-receipts?tab=emails');
     });
 
     it('says a pending one waits for an AI agent, with the link to the AI settings', () => {
@@ -163,7 +163,7 @@ describe('AiReviewRow', () => {
       expect(screen.getByText(/Draft parser ready\./)).toBeInTheDocument();
       expect(screen.getByRole('link', { name: 'Test and approve it in the parser settings' })).toHaveAttribute(
         'href',
-        '/settings/email-receipts',
+        '/email-receipts?tab=profiles',
       );
       expect(screen.queryByText(/Waiting for an AI agent/)).not.toBeInTheDocument();
     });
@@ -204,6 +204,50 @@ describe('AiReviewRow', () => {
     it('shows an agent\'s note, as for any request', () => {
       renderRow(draftItem({ agentNote: { reason: 'The emails were empty', at: '2026-09-02T10:00:00.000Z' } }));
       expect(screen.getByText('Note from the assistant: The emails were empty')).toBeInTheDocument();
+    });
+  });
+  describe('selection', () => {
+    const proposed = (overrides: Partial<AiReviewItem> = {}) =>
+      emailReceiptItem({ status: 'proposed', proposal: { action: PROPOSED_ACTION }, ...overrides });
+
+    function renderSelectable(item: AiReviewItem, props: { selected?: boolean; onToggleSelected?: () => void } = {}) {
+      return render(
+        <table>
+          <tbody>
+            <AiReviewRow
+              item={item}
+              dismissing={false}
+              selectable
+              selected={props.selected ?? false}
+              onToggleSelected={props.onToggleSelected}
+              onApprove={vi.fn()}
+              onDismiss={vi.fn()}
+            />
+          </tbody>
+        </table>,
+      );
+    }
+
+    it('draws a checkbox named after the email subject for a proposal that can be approved', () => {
+      const onToggle = vi.fn();
+      renderSelectable(proposed(), { onToggleSelected: onToggle });
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Select Your order 123' }));
+      expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ id: 'req-1' }));
+    });
+
+    it('shows the selected state', () => {
+      renderSelectable(proposed(), { selected: true });
+      expect(screen.getByRole('checkbox')).toBeChecked();
+    });
+
+    it('leaves the cell empty for a request that cannot be approved', () => {
+      renderSelectable(emailReceiptItem());
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    });
+
+    it('spans the card row across the extra column', () => {
+      const { container } = renderSelectable(proposed());
+      expect(container.querySelector('td[colspan="5"]')).not.toBeNull();
     });
   });
 });

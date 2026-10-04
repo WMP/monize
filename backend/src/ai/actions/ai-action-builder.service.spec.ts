@@ -518,6 +518,124 @@ describe("AiActionBuilderService", () => {
     expect(signing.sign).toHaveBeenLastCalledWith(answering.descriptor);
   });
 
+  it("signs the tag names an update adds, and shows which of them are new", () => {
+    const preview: UpdateTransactionPreview = {
+      transactionId: "t1",
+      accountId: "a1",
+      accountName: "Checking",
+      amount: -75,
+      transactionDate: "2025-04-01",
+      payeeId: null,
+      payeeName: null,
+      payeeMatched: false,
+      payeeWillBeCreated: false,
+      categoryId: null,
+      categoryName: null,
+      description: "d",
+      currencyCode: "USD",
+      isReconciled: false,
+      tagNames: ["Allegro", "Gifts"],
+      newTagNames: ["Gifts"],
+    };
+
+    const action = builder.buildUpdateTransaction("u1", preview);
+
+    // In the descriptor, so the signature covers them: a client cannot add a tag the card did not show.
+    expect(action.descriptor).toMatchObject({ tagNames: ["Allegro", "Gifts"] });
+    expect(signing.sign).toHaveBeenLastCalledWith(action.descriptor);
+    expect(action.preview).toMatchObject({
+      tagNames: ["Allegro", "Gifts"],
+      newTagNames: ["Gifts"],
+    });
+  });
+
+  it("carries no tag keys when the update adds none", () => {
+    const preview: UpdateTransactionPreview = {
+      transactionId: "t1",
+      accountId: "a1",
+      accountName: "Checking",
+      amount: -75,
+      transactionDate: "2025-04-01",
+      payeeId: null,
+      payeeName: null,
+      payeeMatched: false,
+      payeeWillBeCreated: false,
+      categoryId: null,
+      categoryName: null,
+      description: "d",
+      currencyCode: "USD",
+      isReconciled: false,
+    };
+    const action = builder.buildUpdateTransaction("u1", preview);
+    expect(action.descriptor).not.toHaveProperty("tagNames");
+    expect(action.preview).not.toHaveProperty("tagNames");
+    expect(action.preview).not.toHaveProperty("newTagNames");
+  });
+
+  it("shows a tag the user already has without marking it new", () => {
+    const action = builder.buildUpdateTransaction("u1", {
+      transactionId: "t1",
+      accountId: "a1",
+      accountName: "Checking",
+      amount: -75,
+      transactionDate: "2025-04-01",
+      payeeId: null,
+      payeeName: null,
+      payeeMatched: false,
+      payeeWillBeCreated: false,
+      categoryId: null,
+      categoryName: null,
+      description: "d",
+      currencyCode: "USD",
+      isReconciled: false,
+      tagNames: ["Allegro"],
+    });
+    expect(action.preview).toMatchObject({ tagNames: ["Allegro"] });
+    expect(action.preview).not.toHaveProperty("newTagNames");
+  });
+
+  it("shows the AI's choice of a category on the card but signs none of it", () => {
+    const preview: UpdateTransactionPreview = {
+      transactionId: "t1",
+      accountId: "a1",
+      accountName: "Checking",
+      amount: -75,
+      transactionDate: "2025-04-01",
+      payeeId: null,
+      payeeName: null,
+      payeeMatched: false,
+      payeeWillBeCreated: false,
+      categoryId: "c1",
+      categoryName: "Toys",
+      description: null,
+      currencyCode: "USD",
+      isReconciled: false,
+      categorySource: "ai",
+    };
+    const single = builder.buildUpdateTransaction("u1", preview);
+    expect(single.preview).toMatchObject({ categorySource: "ai" });
+    expect(single.descriptor).not.toHaveProperty("categorySource");
+
+    const split = builder.buildUpdateTransaction("u1", preview, [
+      {
+        categoryId: "c1",
+        categoryName: "Toys",
+        amount: -50,
+        memo: null,
+        categorySource: "ai",
+      },
+      { categoryId: "c2", categoryName: "Books", amount: -25, memo: null },
+    ]);
+    expect(split.preview.splits).toEqual([
+      { categoryName: "Toys", amount: -50, memo: null, categorySource: "ai" },
+      { categoryName: "Books", amount: -25, memo: null },
+    ]);
+    // The signed lines carry ids, amounts and memos only.
+    expect(JSON.stringify(split.descriptor)).not.toContain("categorySource");
+    // A split card has no single category row to mark.
+    expect(split.preview).not.toHaveProperty("categorySource");
+  });
+
   it("builds a delete_transaction action with only the target id signed", () => {
     const preview: DeleteTransactionPreview = {
       transactionId: "t9",

@@ -5,6 +5,7 @@ import type { ReceiptTrace } from '@/types/email-receipts';
 
 const empty: ReceiptTrace = {
   orderId: null,
+  reference: null,
   total: null,
   paid: null,
   shipping: null,

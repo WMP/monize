@@ -51,7 +51,8 @@ export function ParserTraceList({ trace }: ParserTraceListProps) {
 
   const hits = RECEIPT_TRACE_FIELDS.flatMap((field) => {
     const value = trace[field];
-    return value === null ? [] : [hit(field, value)];
+    // A server that predates a field sends none: nothing was read, as for null.
+    return !value ? [] : [hit(field, value)];
   });
 
   return (

@@ -21,6 +21,8 @@ import { AiReviewRequest } from "./ai-review-request.entity";
 import { AiReviewRequestsService } from "./ai-review-requests.service";
 import {
   AI_REVIEW_EMAIL_TEXT_MAX_CHARS,
+  AI_REVIEW_MAX_TAG_NAME_LENGTH,
+  AI_REVIEW_MAX_TAG_NAMES,
   AI_REVIEW_PARSER_EMAIL_TEXT_MAX_CHARS,
   AiReviewInboxItem,
   AiReviewProposalInput,
@@ -41,6 +43,15 @@ export const DEFAULT_AI_REVIEW_INBOX_LIMIT = 50;
 /** Statuses an inbox shows: everything still waiting, plus what ran out. */
 const INBOX_STATUSES = ["pending", "claimed", "proposed", "expired"] as const;
 const OPEN_STATUSES = ["pending", "claimed", "proposed"] as const;
+
+/** Whether a text holds a control character (a line break included). */
+function hasControlCharacter(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code < 0x20 || code === 0x7f) return true;
+  }
+  return false;
+}
 
 interface AgentNote {
   reason: string;
@@ -340,7 +351,8 @@ export class AiReviewWorkService {
       input.splits === undefined &&
       input.categoryName === undefined &&
       input.payeeName === undefined &&
-      input.description === undefined
+      input.description === undefined &&
+      (input.tagNames === undefined || input.tagNames.length === 0)
     ) {
       throw new BadRequestException(
         tr(
@@ -349,6 +361,7 @@ export class AiReviewWorkService {
         ),
       );
     }
+    this.assertTagNames(input.tagNames);
     if (input.splits !== undefined && input.categoryName !== undefined) {
       throw new BadRequestException(
         tr(
@@ -393,6 +406,8 @@ export class AiReviewWorkService {
       categoryName: input.categoryName,
       payeeName: input.payeeName,
       description: input.description,
+      tagNames: input.tagNames,
+      categorySource: input.categorySource,
     });
     if (prep.kind !== "standard") {
       throw new BadRequestException(
@@ -409,6 +424,33 @@ export class AiReviewWorkService {
       undefined,
       { aiReviewRequestId: request.id },
     );
+  }
+
+  /** Tag names a proposal may add: a few, each a short plain name. Defence in depth; the producers bound them too. */
+  private assertTagNames(names: readonly string[] | undefined): void {
+    if (names === undefined) return;
+    const valid =
+      Array.isArray(names) &&
+      names.length <= AI_REVIEW_MAX_TAG_NAMES &&
+      names.every(
+        (name) =>
+          typeof name === "string" &&
+          name.trim().length >= 1 &&
+          name.trim().length <= AI_REVIEW_MAX_TAG_NAME_LENGTH &&
+          !hasControlCharacter(name),
+      );
+    if (!valid) {
+      throw new BadRequestException(
+        tr(
+          "errors.aiReview.tagNamesInvalid",
+          `A proposal may add up to ${AI_REVIEW_MAX_TAG_NAMES} tags of 1 to ${AI_REVIEW_MAX_TAG_NAME_LENGTH} characters each, with no control characters.`,
+          {
+            max: AI_REVIEW_MAX_TAG_NAMES,
+            length: AI_REVIEW_MAX_TAG_NAME_LENGTH,
+          },
+        ),
+      );
+    }
   }
 
   /**
@@ -585,6 +627,52 @@ export class AiReviewWorkService {
       });
     }
     return items;
+  }
+
+  /**
+   * The card to approve for one of the user's requests, rebuilt from its stored
+   * proposal against the transaction as it is now (the inbox's own path, so what
+   * is approved is what the inbox shows), or the reason there is none: not the
+   * user's (reads as not found), no longer `proposed`, expired, not a proposal
+   * that has a card (a parser draft), or a proposal the transaction no longer
+   * admits. Reads only; the caller commits the card through
+   * `AiActionsService.confirm`.
+   */
+  async buildApprovalCard(
+    userId: string,
+    requestId: string,
+  ): Promise<{ action: PendingAiAction } | { error: string }> {
+    const request = await this.requests.getForUser(userId, requestId);
+    if (!request) {
+      return {
+        error: tr(
+          "errors.aiReview.notFound",
+          `AI review request with ID ${requestId} not found`,
+          { id: requestId },
+        ),
+      };
+    }
+    const stored = request.proposal as Partial<StoredAiReviewProposal> | null;
+    if (
+      request.status !== "proposed" ||
+      request.expiresAt.getTime() <= Date.now()
+    ) {
+      return {
+        error: tr(
+          "errors.aiReview.notProposed",
+          "This AI review request is no longer waiting for approval, so its proposal was not applied.",
+        ),
+      };
+    }
+    if (request.kind === "email_parser_draft" || !stored?.input) {
+      return {
+        error: tr(
+          "errors.aiReview.noApprovableProposal",
+          "This request has no proposal to approve here.",
+        ),
+      };
+    }
+    return this.rebuiltCard(userId, request, stored.input);
   }
 
   private async rebuiltCard(

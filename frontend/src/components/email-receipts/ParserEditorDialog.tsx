@@ -6,7 +6,9 @@ import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { ParserCategoryFields } from '@/components/email-receipts/ParserCategoryFields';
+import { ParserMatchFields } from '@/components/email-receipts/ParserMatchFields';
 import { ParserPatternFields, PatternArea } from '@/components/email-receipts/ParserPatternFields';
+import { ParserProposalFields } from '@/components/email-receipts/ParserProposalFields';
 import { ParserProblems } from '@/components/email-receipts/ParserProblems';
 import { ParserTestPanel } from '@/components/email-receipts/ParserTestPanel';
 import { Button } from '@/components/ui/Button';
@@ -291,6 +293,8 @@ function ParserEditorForm({
         <>
           <ParserPatternFields form={form} onChange={change} />
           <ParserCategoryFields form={form} categories={lookups.categories} onChange={change} />
+          <ParserMatchFields form={form} onChange={change} />
+          <ParserProposalFields form={form} onChange={change} />
         </>
       ) : (
         <div className="space-y-2">

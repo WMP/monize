@@ -40,6 +40,11 @@ const FIRST_SYNC_DAYS = 30;
 /** Stored emails processed, and emails re-matched, per poll. */
 export const MAX_PROCESSED_PER_POLL = 100;
 export const MAX_REMATCHED_PER_POLL = 100;
+/**
+ * AI category questions one poll may ask (design 5.6): each is a provider call,
+ * so past this the receipts that need one are queued for an agent instead.
+ */
+export const AI_CATEGORY_CALLS_PER_POLL = 10;
 /** An unmatched email is retried for this many days after it arrived (design 3.8). */
 const REMATCH_DAYS = 30;
 const DAY_MS = 86_400_000;
@@ -281,16 +286,23 @@ export class EmailReceiptPollService {
     }
 
     // What is stored can be processed whether or not the mailbox answered.
+    const budget = { remaining: AI_CATEGORY_CALLS_PER_POLL };
     const seen = new Set<string>();
     for (const id of await this.selectPending(userId, mailboxId)) {
       if (Date.now() > deadline) break;
       seen.add(id);
-      await this.processOne(userId, id, ["pending"], outcome);
+      await this.processOne(userId, id, ["pending"], outcome, budget);
     }
     for (const id of await this.selectRematch(userId, mailboxId)) {
       if (Date.now() > deadline) break;
       if (seen.has(id)) continue;
-      await this.processOne(userId, id, ["unmatched", "review"], outcome);
+      await this.processOne(
+        userId,
+        id,
+        ["unmatched", "review"],
+        outcome,
+        budget,
+      );
     }
 
     if (loaded.aiMode === "automatic" && Date.now() <= deadline) {
@@ -417,10 +429,12 @@ export class EmailReceiptPollService {
     receiptId: string,
     statuses: readonly EmailReceiptStatus[],
     outcome: EmailReceiptPollOutcome,
+    budget: { remaining: number },
   ): Promise<void> {
     try {
       const result = await this.pipeline.process(userId, receiptId, {
         onlyWhenStatusIn: statuses,
+        aiCategoryBudget: budget,
       });
       if (!result.unchanged) outcome.processed++;
     } catch (error) {

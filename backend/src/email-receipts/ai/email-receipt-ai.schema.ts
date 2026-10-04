@@ -84,3 +84,53 @@ export const receiptExtractionSchema = z
   .strict();
 
 export type ReceiptExtractionAnswer = z.infer<typeof receiptExtractionSchema>;
+
+/** Items one category question may carry (a profile reads at most 100 items). */
+export const CATEGORY_QUESTION_MAX_ITEMS = 100;
+
+/**
+ * What the AI answers when asked for the category of each uncategorized item
+ * (design 5.6): one entry per item it chose for, by the item's index in the
+ * question. `categoryId` is one of the ids the prompt listed or null; anything
+ * else is read as null by `readCategoryChoices`. Unknown keys are refused, so
+ * an answer cannot carry an amount or a transaction.
+ */
+export const receiptCategoriesSchema = z
+  .object({
+    items: z
+      .array(
+        z
+          .object({
+            index: z.number().int().min(0).max(CATEGORY_QUESTION_MAX_ITEMS),
+            categoryId: optional(z.string().trim().max(MAX_CATEGORY_ID)),
+          })
+          .strict(),
+      )
+      .max(CATEGORY_QUESTION_MAX_ITEMS),
+  })
+  .strict();
+
+/**
+ * The categories a model chose, by item index: only an index that was asked
+ * about and an id the user owns (a key of `known`) count; an unknown id is
+ * "no category" (null, so absent here), and the first answer for an index wins.
+ * Undefined when the reply is not a valid answer at all.
+ */
+export function readCategoryChoices(
+  content: unknown,
+  askedIndexes: ReadonlySet<number>,
+  known: ReadonlyMap<string, string>,
+): Map<number, string> | undefined {
+  const raw = extractJsonObject(content);
+  if (raw === undefined) return undefined;
+  const parsed = receiptCategoriesSchema.safeParse(raw);
+  if (!parsed.success) return undefined;
+  const chosen = new Map<number, string>();
+  for (const entry of parsed.data.items) {
+    if (!askedIndexes.has(entry.index) || chosen.has(entry.index)) continue;
+    if (entry.categoryId !== undefined && known.has(entry.categoryId)) {
+      chosen.set(entry.index, entry.categoryId);
+    }
+  }
+  return chosen;
+}

@@ -28,7 +28,7 @@ type MailboxState =
     };
 
 /**
- * The mailbox half of `/settings/email-receipts`. Loads the mailbox and the
+ * The Mailbox tab of `/email-receipts`. Loads the mailbox and the
  * operator's OAuth providers, and tells "no mailbox" (an empty, loaded answer)
  * apart from "the request failed" (an error with a retry), so a failed read can
  * never invite the reader to set up a mailbox they already have.

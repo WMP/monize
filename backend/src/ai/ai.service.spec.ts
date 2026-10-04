@@ -1140,6 +1140,65 @@ describe("AiService", () => {
     });
   });
 
+  describe("canAnswerNow()", () => {
+    it("is false when no provider is configured", async () => {
+      mockConfigRepository.find.mockResolvedValue([]);
+      await expect(service.canAnswerNow(userId)).resolves.toBe(false);
+      expect(mockRelayService.getStatus).not.toHaveBeenCalled();
+    });
+
+    it("is true for a configured provider that is not the relay, without asking the relay", async () => {
+      mockConfigRepository.find.mockResolvedValue([makeConfig()]);
+      await expect(service.canAnswerNow(userId)).resolves.toBe(true);
+      expect(mockRelayService.getStatus).not.toHaveBeenCalled();
+    });
+
+    it("is true when the system default answers and the user has none of their own", async () => {
+      mockConfigRepository.find.mockResolvedValue([]);
+      mockConfigService.get!.mockImplementation((key: string) => {
+        if (key === "AI_DEFAULT_PROVIDER") return "openai";
+        if (key === "AI_DEFAULT_MODEL") return "gpt-4o";
+        return undefined;
+      });
+      await expect(service.canAnswerNow(userId)).resolves.toBe(true);
+    });
+
+    describe("when the user's top provider is the MCP relay", () => {
+      beforeEach(() => {
+        mockConfigRepository.find.mockResolvedValue([
+          makeConfig({ provider: "mcp_relay", priority: 0 }),
+          makeConfig({ id: "config-2", priority: 1 }),
+        ]);
+      });
+
+      it.each(["listening", "busy"])(
+        "is true while the agent is %s",
+        async (state) => {
+          mockRelayService.getStatus!.mockResolvedValue({ state, queued: 0 });
+          await expect(service.canAnswerNow(userId)).resolves.toBe(true);
+        },
+      );
+
+      it("is false while the agent is offline, whatever other providers exist", async () => {
+        mockRelayService.getStatus!.mockResolvedValue({
+          state: "offline",
+          queued: 0,
+        });
+        await expect(service.canAnswerNow(userId)).resolves.toBe(false);
+      });
+
+      it("is false when the relay's state cannot be read: a failed read is never a yes", async () => {
+        mockRelayService.getStatus!.mockRejectedValue(new Error("db down"));
+        await expect(service.canAnswerNow(userId)).resolves.toBe(false);
+      });
+    });
+
+    it("is false when the status cannot be read", async () => {
+      mockConfigRepository.find.mockRejectedValue(new Error("db down"));
+      await expect(service.canAnswerNow(userId)).resolves.toBe(false);
+    });
+  });
+
   describe("getStatus()", () => {
     it("returns status with active provider count", async () => {
       mockConfigRepository.find.mockResolvedValue([makeConfig()]);

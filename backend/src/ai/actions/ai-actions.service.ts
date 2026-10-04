@@ -82,6 +82,7 @@ import { BulkCreateSkip } from "../../common/bulk-create.types";
 import { ConfirmAiActionDto } from "./dto/confirm-ai-action.dto";
 import { SingleUseTokenService } from "../../auth/single-use-token.service";
 import { AiReviewRequestsService } from "../../ai-review/ai-review-requests.service";
+import { EMAIL_RECEIPTS_CLAIM_KEY } from "../../ai-review/ai-review-work.types";
 
 export interface ConfirmActionResult {
   type: AiActionDescriptor["type"];
@@ -175,8 +176,16 @@ export class AiActionsService {
     const writeCount = this.proposedWriteCount(
       descriptor as AiActionDescriptor,
     );
+    // A profile's proposal is left out of the count when the user turned that on
+    // (email-receipts design 7.1). Decided here, on the server, from the stored
+    // request and the stored switch, never from anything the client sent but the
+    // signed request id.
+    const exempt = await this.exemptFromWriteLimit(
+      userId,
+      descriptor as AiActionDescriptor,
+    );
     const limit = await this.writeLimiter.checkLimit(userId);
-    if (limit.currentCount + writeCount > limit.limit) {
+    if (!exempt && limit.currentCount + writeCount > limit.limit) {
       throw new BadRequestException(
         tr(
           "errors.ai.actionWriteLimit",
@@ -221,11 +230,13 @@ export class AiActionsService {
       // best-effort, so this may be fewer than the proposed count). `record`
       // never rejects, so a counter failure cannot reach the `catch` below and
       // release the claim on a write that has already committed.
-      await this.writeLimiter.record(
-        userId,
-        descriptor.type,
-        result.count ?? 1,
-      );
+      if (!exempt) {
+        await this.writeLimiter.record(
+          userId,
+          descriptor.type,
+          result.count ?? 1,
+        );
+      }
       return result;
     } catch (err) {
       // Best-effort, and it must never replace the error it is cleaning up
@@ -254,6 +265,29 @@ export class AiActionsService {
       }
       throw err;
     }
+  }
+
+  /**
+   * Whether this confirm is a profile's proposal the user chose not to count
+   * toward the daily AI write limit: an `update_transaction` that answers a
+   * request (`aiReviewRequestId`, signed) whose proposal the deterministic profile
+   * submitted, on a mailbox whose switch is off. Every other descriptor counts.
+   */
+  private async exemptFromWriteLimit(
+    userId: string,
+    descriptor: AiActionDescriptor,
+  ): Promise<boolean> {
+    if (
+      descriptor.type !== "update_transaction" ||
+      typeof descriptor.aiReviewRequestId !== "string"
+    ) {
+      return false;
+    }
+    return this.aiReviewRequests.isExemptFromWriteLimit(
+      userId,
+      descriptor.aiReviewRequestId,
+      EMAIL_RECEIPTS_CLAIM_KEY,
+    );
   }
 
   /**
@@ -739,6 +773,9 @@ export class AiActionsService {
       dto,
       {
         createPayeeIfMissing: descriptor.createPayee === true,
+        ...(descriptor.tagNames?.length
+          ? { addTagNames: descriptor.tagNames }
+          : {}),
         ...(typeof reviewRequestId === "string"
           ? {
               beforeWrite: (m) =>

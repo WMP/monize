@@ -55,6 +55,7 @@ export function MailboxForm({ mailbox, onSaved }: MailboxFormProps) {
     enabled: mailbox?.enabled ?? false,
     aiMode: mailbox?.aiMode ?? 'off',
     autoApply: mailbox?.autoApply ?? false,
+    profileProposalsCountTowardAiLimit: mailbox?.profileProposalsCountTowardAiLimit ?? true,
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -77,7 +78,8 @@ export function MailboxForm({ mailbox, onSaved }: MailboxFormProps) {
     settings.folder.trim() !== view.folder ||
     settings.enabled !== view.enabled ||
     settings.aiMode !== view.aiMode ||
-    settings.autoApply !== view.autoApply;
+    settings.autoApply !== view.autoApply ||
+    settings.profileProposalsCountTowardAiLimit !== view.profileProposalsCountTowardAiLimit;
   const canSave = hasLogin && isDirty && !(passwordRequired && password === '');
 
   const applyView = (next: EmailReceiptMailbox) => {
@@ -89,7 +91,13 @@ export function MailboxForm({ mailbox, onSaved }: MailboxFormProps) {
     // What came back says only that a secret is stored; keeping what was typed
     // in the box would make the next save resend it.
     setPassword('');
-    setSettings({ folder: next.folder, enabled: next.enabled, aiMode: next.aiMode, autoApply: next.autoApply });
+    setSettings({
+      folder: next.folder,
+      enabled: next.enabled,
+      aiMode: next.aiMode,
+      autoApply: next.autoApply,
+      profileProposalsCountTowardAiLimit: next.profileProposalsCountTowardAiLimit,
+    });
   };
 
   const handleSave = async () => {
@@ -104,6 +112,7 @@ export function MailboxForm({ mailbox, onSaved }: MailboxFormProps) {
       enabled: settings.enabled,
       aiMode: settings.aiMode,
       autoApply: settings.autoApply,
+      profileProposalsCountTowardAiLimit: settings.profileProposalsCountTowardAiLimit,
     };
     setIsSaving(true);
     setSaveError(null);

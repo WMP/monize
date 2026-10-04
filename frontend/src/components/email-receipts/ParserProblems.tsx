@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { RECEIPT_PARSER_LIMITS, type ReceiptParserValidationError } from '@/types/email-receipts';
 
-const PATTERN_FIELDS = ['orderId', 'total', 'paid', 'shipping', 'discount', 'payee'] as const;
+const PATTERN_FIELDS = ['orderId', 'total', 'paid', 'shipping', 'discount', 'payee', 'reference'] as const;
 const GUARD_FIELDS = ['requireLine', 'skipIfLine', 'waitIfLine'] as const;
 type PatternField = (typeof PATTERN_FIELDS)[number];
 
@@ -73,6 +73,21 @@ export function describeProblemPath(path: string, t: Translator): string {
     return t('paths.rule', { rule: Number(rule[1]) + 1, part: t(part) });
   }
   if (path === 'source') return t('fields.source');
+  const choice = /^match\.(by|referenceIn)\[(\d+)\]$/.exec(path);
+  if (choice) {
+    return t('paths.line', {
+      field: t(choice[1] === 'by' ? 'fields.matchBy' : 'fields.matchReferenceIn'),
+      line: Number(choice[2]) + 1,
+    });
+  }
+  if (path === 'match') return t('fields.match');
+  if (path === 'match.by') return t('fields.matchBy');
+  if (path === 'match.referenceIn') return t('fields.matchReferenceIn');
+  if (path === 'match.daysBefore') return t('fields.matchDaysBefore');
+  if (path === 'match.daysAfter') return t('fields.matchDaysAfter');
+  if (path === 'match.amountTolerance') return t('fields.matchTolerance');
+  if (path === 'tag') return t('fields.tag');
+  if (path === 'aiCategories') return t('fields.aiCategories');
   if (path === 'categoryRules') return t('fields.categoryRules');
   if (path === 'defaultCategoryId') return t('fields.defaultCategory');
   if (path === 'shippingCategoryId') return t('fields.shippingCategory');
@@ -89,7 +104,14 @@ function boundFor(code: string, path: string): number {
     if (path === 'items.record') return RECEIPT_PARSER_LIMITS.maxRecordSteps;
     return RECEIPT_PARSER_LIMITS.maxPatternsPerField;
   }
-  if (code === 'out_of_range') return RECEIPT_PARSER_LIMITS.maxLabelWithin;
+  if (code === 'out_of_range') {
+    if (path === 'match.daysBefore') return RECEIPT_PARSER_LIMITS.maxDaysBefore;
+    if (path === 'match.daysAfter') return RECEIPT_PARSER_LIMITS.maxDaysAfter;
+    if (path === 'match.amountTolerance') return RECEIPT_PARSER_LIMITS.maxAmountTolerance;
+    return RECEIPT_PARSER_LIMITS.maxLabelWithin;
+  }
+  if (path === 'tag') return RECEIPT_PARSER_LIMITS.maxTagLength;
+  if (path === 'match.by') return RECEIPT_PARSER_LIMITS.maxMatchStrategies;
   return path.endsWith('startAfter') || path.endsWith('stopAt')
     ? RECEIPT_PARSER_LIMITS.maxSectionMarkerLength
     : RECEIPT_PARSER_LIMITS.maxPatternLength;
@@ -119,7 +141,16 @@ const KNOWN_CODES = new Set([
   'items_single_conflict',
   'join_wrapped_needs_patterns',
   'invalid_value',
+  'duplicate_entry',
+  'reference_field_missing',
 ]);
+
+/** The wording key of a code at a path: the `match` section's range errors are not "1 to 10". */
+function codeKey(code: string, path: string): string {
+  if (code === 'out_of_range' && (path === 'match.daysBefore' || path === 'match.daysAfter')) return 'out_of_range_days';
+  if (code === 'out_of_range' && path === 'match.amountTolerance') return 'out_of_range_tolerance';
+  return code;
+}
 
 interface ParserProblemsProps {
   /** The problems the server's validator listed. */
@@ -144,7 +175,7 @@ export function ParserProblems({ problems }: ParserProblemsProps) {
             {t('item', {
               where: describeProblemPath(problem.path, t),
               problem: KNOWN_CODES.has(problem.code)
-                ? t(`codes.${problem.code}`, {
+                ? t(`codes.${codeKey(problem.code, problem.path)}`, {
                     max: boundFor(problem.code, problem.path),
                     capture: '{name}',
                   })

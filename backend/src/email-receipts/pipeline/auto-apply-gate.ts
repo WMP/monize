@@ -24,8 +24,10 @@ const MONEY_UNITS = 10000;
 /**
  * Spec section 7. Applies only when every condition holds: the mailbox opted in;
  * the parser is `approved`; the parse is `complete` and was read by a parser
- * (never by the email's schema.org markup); `abs(T)` equals the parsed total;
- * the match is by order number or by amount plus payee; the card was built.
+ * (never by the email's schema.org markup); `abs(T)` equals the parsed total
+ * exactly (whatever tolerance the profile matched with); the match is by order
+ * number, by the profile's reference, or by amount plus payee; the card was
+ * built. A match by amount and date alone (`amount_date`) never auto-applies.
  * Stricter than the spec in one way: the stored proposal must be the
  * category lines themselves (itemized or one category), not a description-only
  * proposal or the fallback of a refused one, because the design promises that
@@ -41,7 +43,9 @@ export function autoApplyAllowed(facts: AutoApplyFacts): boolean {
     receiptMatchAmount(facts.parsed) !== null &&
     Math.round(Math.abs(facts.transactionAmount) * MONEY_UNITS) ===
       receiptMatchAmount(facts.parsed) &&
-    (facts.matchKind === "order_id" || facts.matchKind === "amount_payee") &&
+    (facts.matchKind === "order_id" ||
+      facts.matchKind === "reference" ||
+      facts.matchKind === "amount_payee") &&
     (facts.proposalKind === "itemized" ||
       facts.proposalKind === "single_category") &&
     !facts.usedFallback &&

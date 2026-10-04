@@ -50,6 +50,8 @@ units or `null`.
 
 ## 3. Matching (`matchReceipt`)
 
+This section is the matching of a profile with no `match` section, which is the default of section 3a: the strategies `orderId`, `amount_payee`, `amount_date` in that order, a window of 3 days before and 14 after, an exact amount. A profile changes any of it in section 3a.
+
 Candidates are the user's transactions, loaded in one query: not a transfer,
 not VOID, not an investment row, in the currency of the account, dated from
 `purchase_date - 3` to `purchase_date + 14` (calendar dates in UTC,
@@ -84,7 +86,7 @@ Signals per candidate:
 | 2 or more | any | any | ambiguous (the O set) | -- |
 | 0 | exactly 1 | any | that one | `amount_payee` |
 | 0 | 2 or more | any | ambiguous (the A and P set) | -- |
-| 0 | 0 | exactly 1 | that one | `amount_only` |
+| 0 | 0 | exactly 1 | that one | `amount_date` (stored as `amount_only` before the profile configured matching) |
 | 0 | 0 | 2 or more | ambiguous (the A set) | -- |
 | 0 | 0 | 0 | unmatched | -- |
 
@@ -92,6 +94,61 @@ The candidate list stored on an ambiguous receipt is at most 10, closest date
 first. A manual link sets `match_kind = manual`; the transaction must be the
 user's, not a transfer and not VOID, checked in the transaction that stores the
 link.
+
+## 3a. Matching configured by the profile (`match`)
+
+A profile's optional `match` section chooses the strategies, where a text signal is looked
+for, the candidate window and the amount tolerance. Resolved once (`resolveMatchConfig`):
+`by` default `orderId, amount_payee, amount_date`; `referenceIn` default `description,
+payee, referenceNumber`; `daysBefore` 3 (0 to 60); `daysAfter` 14 (0 to 90); `amountTolerance`
+`"0"` (`"0.00"` to `"5.00"`, digits with an optional point and at most four decimals, no
+sign or exponent), held as integer units of 1/10000.
+
+Signals per candidate, in addition to section 3:
+
+- **R**: the parsed `reference` (at least 4 characters, trimmed) appears, case-insensitive, in
+  the transaction fields named by `referenceIn`.
+- **O**: as in section 3, but only in the fields named by `referenceIn`.
+- **A**: `abs(abs(amount) - paid)` in units is at most the tolerance, where `paid` is
+  `paid ?? total`. With neither parsed, A is false for every candidate. Integer units,
+  never floats.
+- **P**: as in section 3.
+
+Strategies, tried in the order of `by`; the first that keeps exactly one candidate decides:
+
+| Strategy | Keeps the candidates with | `match_kind` stored |
+|---|---|---|
+| `reference` | R | `reference` |
+| `orderId` | O | `order_id` |
+| `amount_payee` | A and P | `amount_payee` |
+| `amount_date` | A | `amount_date` |
+
+For each strategy: exactly one kept is a match (the later strategies are not run); two or
+more kept is ambiguous with exactly those candidates (at most 10 stored, closest date first)
+and the later strategies are not run; none kept passes to the next; none after the last is
+unmatched. A strategy whose value is missing or shorter than 4 characters keeps none.
+A candidate outside `purchase_date - daysBefore` to `purchase_date + daysAfter` is not
+considered, whatever the strategy; the candidate loader reads that window, still at most
+200 rows, newest first.
+
+Validation: `by` is a non-empty list of the four names, each at most once (`duplicate_entry`),
+and `reference` in `by` needs a `reference` field (`reference_field_missing`); `referenceIn`
+likewise non-empty, from the three names, each once; the days are integers inside their
+bounds and the tolerance a well-formed text inside its bound (`out_of_range`, `invalid_value`).
+
+Numerical example. An email read `paid 49.99`, `reference ZX81-4477`, purchase date
+2026-03-10; profile `by: [reference, amount_payee]`, tolerance `0.50`, window 3 before and
+14 after (window 2026-03-07 to 2026-03-24). Candidates: T1 2026-03-12 `-50.40` "CARD
+ZX81-4477", T2 2026-03-12 `-49.99` "CARD SHOP", T3 2026-02-20 `-49.99` "ZX81-4477".
+T3 is outside the window. `reference` keeps T1 only (R): matched, `reference`, even though
+T2 has the exact amount, and the attempts list `reference` with 1 kept; `amount_payee` is
+not run. Without T1: `reference` keeps none, `amount_payee` keeps T2 if its payee is the
+parser's payee. T1 as the only amount candidate would be kept by A (`|50.40 - 49.99| = 0.41
+<= 0.50`) but T1's `-50.40` never auto-applies, because the gate requires the exact amount.
+
+The test result carries the trace: the window, `considered`, the tolerance, the list of
+attempts (strategy, kept count, at most 10 candidate transactions with date, amount and
+payee) and the strategy that decided.
 
 ## 4. Completeness (`ParsedReceipt.complete`)
 
@@ -189,9 +246,40 @@ transaction of `-24.99` is description only, reason `amount_differs` (`paid` is
 ## 7. Auto-apply gate
 
 Applies only when every one holds: mailbox `auto_apply`; parser `approved`;
-`complete`; `abs(T) = paid ?? total`; `match_kind` is `order_id` or `amount_payee`; the
-card was built. Any refusal from `confirm` (write limit, reconciled lock, a
+`complete`; `abs(T) = paid ?? total`; `match_kind` is `order_id`, `reference` or `amount_payee` (never `amount_date`, never a
+match made with a tolerance that an exact amount would not make); the card was built. Any refusal from `confirm` (write limit, reconciled lock, a
 changed row) leaves the proposal waiting in the inbox.
+
+## 7. (continued) Tag, categories by the AI, bulk work
+
+**Tag.** A profile's `tag` (1 to 50 characters, no control character) is added to the
+transaction by the proposal when, and only when, the proposal categorizes it (itemized
+or one category); a description-only proposal has no tag. `confirm` finds the user's tag
+by name case-insensitively or creates it, and adds the `transaction_tags` row in the
+write's own transaction; existing tags stay. The card says "Tags: X (new)" when the tag
+does not exist yet.
+
+**Categories by the AI (`aiCategories`).** For an item no rule and no default category
+covers, in a complete-otherwise reading of an approved profile:
+
+| `aiCategories` | AI can answer now | Result |
+|---|---|---|
+| false | any | no call; the proposal is what the rules gave (description only when an item is uncategorized) |
+| true | yes | one call; each valid choice sets the category with `categorySource: "ai"`; an invalid or missing choice leaves that item uncategorized |
+| true | no | a request with the categorize instruction is queued; the proposal waits for an agent |
+
+The poll's automatic step never calls the AI for categories; an email with every item
+categorized by rules makes no call. A valid choice is an index of an uncategorized item
+and an id of one of the user's own categories; anything else is dropped. The call is made
+between two database transactions.
+
+**Bulk processing.** `process-batch` selects emails with `status` in the requested
+statuses (default: `pending`, `no_parser`, `parse_failed`, `unmatched`, `ambiguous`,
+`review_conflict`) and `updated_at` before the run's `since`; each processed or failed email is
+touched, so it is not selected again in the same run, and `remaining` is the count
+still before `since`. A call with `limit` emails left returns `remaining` greater than 0
+until the last. Example: 250 processable emails and `limit` 100 give `remaining` 150, then 50,
+then 0; an email that raised an error is counted in `failed` and not retried by the run.
 
 ## 7a. AI extraction
 
@@ -418,6 +506,14 @@ markup is read from that.
 | Forwarded-header detection (Gmail, Outlook, Apple Mail, Thunderbird; English and Polish labels; date formats; the 200-line bound; no header means no result) | `imap/forwarded-message.spec.ts`, `imap/forwarded-receipt.spec.ts` |
 | A forwarded receipt matches the transaction near the original date, on ingestion and on reprocess; a manual link of any date | `test/integration/email-receipts-pipeline.integration.spec.ts` |
 | Every row of the proposal table; the numerical example; description cap and duplicate | `proposal/build-receipt-proposal.spec.ts` |
-| Auto-apply gate: each condition false in turn | `email-receipt-pipeline.service.spec.ts` |
+| Auto-apply gate: each condition false in turn (and `reference`, `amount_date`) | `email-receipt-pipeline.service.spec.ts`, `pipeline/email-receipt-pipeline.profile.spec.ts` |
+| Every strategy of section 3a, the order tried, the window edges per profile, the tolerance edges in integer units, R and O in the chosen fields only, a value shorter than 4 characters | `matching/match-receipt.profile.spec.ts`, `parsing/receipt-match-config.spec.ts` |
+| The match trace: attempts stop at the deciding strategy, at most 10 candidates per attempt | `matching/match-trace.spec.ts` |
+| Every validation code of `match`, `reference`, `tag`, `aiCategories` | `parsing/receipt-parser.validation.match.spec.ts`, `parsing/parse-receipt.reference.spec.ts` |
+| Tag: find or create, additive, no tag on a description-only proposal | `tags/tags.service.names.spec.ts`, `proposal/build-receipt-proposal.spec.ts`, `test/integration/email-receipts-profile.integration.spec.ts` |
+| Categories by the AI: the three rows of section 7, invalid choices dropped, no call without the flag, no call from the poll's automatic step | `ai/email-receipt-ai.categories.spec.ts`, `pipeline/email-receipt-pipeline.profile.spec.ts`, `poll/email-receipt-poll.service.spec.ts` |
+| Bulk processing: termination by `since`, a failed email not retried, the statuses taken, `remaining` | `receipts/email-receipts.service.spec.ts`, `test/integration/email-receipts-profile.integration.spec.ts` |
+| Approve in bulk: one transaction per request, a refusal leaves the others, the limit counts each, the ownership of every id | `ai-review/ai-review-approval.service.spec.ts`, `test/integration/email-receipts-profile.integration.spec.ts` |
+| The write-limit exemption: decided on the server from the stored claimant and switch, never from the request | `ai/actions/ai-actions.service.spec.ts`, `ai-review/ai-review-requests.service.spec.ts`, `test/integration/email-receipts-profile.integration.spec.ts` |
 | AI extraction: amount conversion, unknown category (item, shipping, discount), dropped items, completeness through the shared function, `source: "ai"`, description-only reasons | `ai/email-receipt-ai.extraction.spec.ts`, `ai/email-receipt-ai.service.spec.ts` |
 | Recognize with AI: refusals before any write, chosen transaction stored as manual, pending request visible in the inbox, claim by id, card confirm applies the request | `email-receipt-ai.service.spec.ts`, `test/integration/email-receipts-pipeline.integration.spec.ts` |

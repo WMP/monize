@@ -820,3 +820,59 @@ describe("AiReviewRequestsService the parser draft lifecycle", () => {
     expect(other).toMatchObject({ emailReceiptIds: null, parserDomain: null });
   });
 });
+
+describe("AiReviewRequestsService.isExemptFromWriteLimit (email-receipts design 7.1)", () => {
+  const REQUEST = "30000000-0000-4000-8000-000000000001";
+  const KEY = "email-receipts";
+
+  it("is exempt only when the stored switch is off for a proposed request submitted under the profile's key", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([{ counts: false }]);
+
+    await expect(
+      service.isExemptFromWriteLimit(USER, REQUEST, KEY),
+    ).resolves.toBe(true);
+
+    const [sql, params] = manager.query.mock.calls[0];
+    expect(String(sql)).toContain("profile_proposals_count_toward_ai_limit");
+    expect(String(sql)).toContain("r.kind = 'email_receipt'");
+    expect(String(sql)).toContain("r.status = 'proposed'");
+    expect(String(sql)).toContain("r.claimed_by = $3");
+    expect(String(sql)).toContain("r.user_id = $2");
+    expect(String(sql)).toContain(
+      "JOIN email_receipt_mailboxes mb ON mb.user_id = r.user_id",
+    );
+    expect(params).toEqual([REQUEST, USER, KEY]);
+    // A read: it never writes the request or the mailbox.
+    expect(String(sql).trim()).toMatch(/^SELECT/);
+  });
+
+  it("counts (not exempt) while the switch is on, which is the default", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([{ counts: true }]);
+    await expect(
+      service.isExemptFromWriteLimit(USER, REQUEST, KEY),
+    ).resolves.toBe(false);
+  });
+
+  it.each([
+    [
+      "a request that is not found, is another user's, is another kind or key, or is not proposed",
+      [],
+    ],
+  ])("counts for %s", async (_label, rows) => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue(rows);
+    await expect(
+      service.isExemptFromWriteLimit(USER, REQUEST, KEY),
+    ).resolves.toBe(false);
+  });
+
+  it("counts when the switch reads as anything but false (a null is no information)", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([{ counts: null }]);
+    await expect(
+      service.isExemptFromWriteLimit(USER, REQUEST, KEY),
+    ).resolves.toBe(false);
+  });
+});

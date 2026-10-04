@@ -7,6 +7,7 @@ import { EncryptionModule } from "../common/encryption/encryption.module";
 import { PayeesModule } from "../payees/payees.module";
 import { TransactionsModule } from "../transactions/transactions.module";
 import { EmailReceiptAiService } from "./ai/email-receipt-ai.service";
+import { EmailReceiptCategoryAiService } from "./ai/email-receipt-category-ai.service";
 import {
   ImapFlowMailboxClient,
   ImapMailboxClient,
@@ -78,6 +79,7 @@ import { EmailReceiptsService } from "./receipts/email-receipts.service";
     EmailReceiptPollService,
     EmailReceiptsService,
     EmailReceiptAiService,
+    EmailReceiptCategoryAiService,
   ],
   exports: [EmailReceiptMailboxService, ImapMailboxClient],
 })

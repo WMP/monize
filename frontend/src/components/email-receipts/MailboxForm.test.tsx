@@ -63,6 +63,7 @@ describe('MailboxForm', () => {
         enabled: false,
         aiMode: 'off',
         autoApply: false,
+        profileProposalsCountTowardAiLimit: true,
       });
       expect(onSaved).toHaveBeenCalledWith(makeMailbox());
       expect(toast.success).toHaveBeenCalledWith('Mailbox saved');
@@ -151,6 +152,23 @@ describe('MailboxForm', () => {
       expect(api.upsert.mock.calls[0][0]).toMatchObject({ aiMode: 'on_demand', autoApply: true });
     });
 
+    it('saves the switch that exempts profile proposals from the daily AI limit, on by default', async () => {
+      api.upsert.mockResolvedValue(makeMailbox({ profileProposalsCountTowardAiLimit: false }));
+      await renderForm(makeMailbox());
+      const toggle = screen.getByRole('switch', { name: 'Count profile proposals toward the daily AI limit' });
+      expect(toggle).toBeChecked();
+      await click(toggle);
+      await click(screen.getByRole('button', { name: 'Save mailbox' }));
+      expect(api.upsert.mock.calls[0][0]).toMatchObject({ profileProposalsCountTowardAiLimit: false });
+    });
+
+    it('explains the limit switch in its tooltip, and that every proposal still waits for approval', async () => {
+      await renderForm(makeMailbox());
+      const help = screen.getByRole('button', { name: /^On by default: an edit a profile proposes/ });
+      expect(help).toHaveAccessibleName(/daily limit of AI-proposed changes/);
+      expect(help).toHaveAccessibleName(/every proposal still waits for your approval/);
+    });
+
     it('describes the chosen AI mode under the picker', async () => {
       await renderForm(makeMailbox({ aiMode: 'on_demand' }));
       expect(screen.getByText('The poll never calls the AI. You ask the assistant yourself with Recognize with AI or Draft parser with AI.')).toBeInTheDocument();
@@ -171,8 +189,8 @@ describe('MailboxForm', () => {
     it('states the gate of auto-apply in its tooltip, so the switch is never a blind one', async () => {
       await renderForm(makeMailbox());
       const help = screen.getByRole('button', { name: /^Off by default\. A proposal is applied without asking only when all of these hold/ });
-      expect(help).toHaveAccessibleName(/an approved parser read the whole email/);
-      expect(help).toHaveAccessibleName(/by order number or by exact amount and payee with a single candidate/);
+      expect(help).toHaveAccessibleName(/an approved profile read the whole email/);
+      expect(help).toHaveAccessibleName(/by an order number or a reference, or by exact amount and payee, with a single candidate/);
       expect(help).toHaveAccessibleName(/adds up to the cent/);
       expect(help).toHaveAccessibleName(/Everything else waits for your approval/);
     });

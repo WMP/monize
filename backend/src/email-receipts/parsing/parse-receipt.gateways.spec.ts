@@ -73,6 +73,7 @@ describe("PayU: a gateway notice, the merchant on a labelled line, Gmail-bold va
     expect(PAYU_1_NAME.split('"')).toHaveLength(3);
     expect(parsed).toEqual({
       orderId: "5712867912",
+      reference: null,
       total: 1494100,
       paid: 1494100,
       payee: "GRUPA OLX SP. Z O.O.",
@@ -140,6 +141,7 @@ describe("Google Play: wrapped names, a card line under a promotion, a VAT note"
     const parsed = read(GOOGLE_DEFINITION, GOOGLE_1_BODY);
     expect(parsed).toEqual({
       orderId: GOOGLE_1_ORDER_ID,
+      reference: null,
       total: 249900,
       paid: 219900,
       payee: null,
@@ -244,6 +246,7 @@ describe("Amazon: the name under the link or in [image: ...], no unit price, the
     (_label, body) => {
       expect(read(AMAZON_DEFINITION, body)).toEqual({
         orderId: AMAZON_ORDER_ID,
+        reference: null,
         total: 1439700,
         paid: null,
         payee: null,

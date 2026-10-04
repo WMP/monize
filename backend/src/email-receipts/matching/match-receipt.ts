@@ -1,6 +1,15 @@
 import { addDaysYMD } from "../../common/date-utils";
 import { normalizePayeeName } from "../../payees/payee-normalize.util";
-import type { ParsedReceipt } from "../parsing/receipt-parser.types";
+import {
+  DEFAULT_DAYS_AFTER,
+  DEFAULT_DAYS_BEFORE,
+  DEFAULT_MATCH_CONFIG,
+  type ResolvedMatchConfig,
+} from "../parsing/receipt-match-config";
+import type {
+  ParsedReceipt,
+  ReceiptMatchStrategy,
+} from "../parsing/receipt-parser.types";
 
 /**
  * Which bank transaction an order-confirmation email pays for (spec section
@@ -12,13 +21,13 @@ import type { ParsedReceipt } from "../parsing/receipt-parser.types";
 /**
  * The window is centred on the PURCHASE date: the day the shop sent the order
  * (the original date of a forwarded email) or, when none is known, the day the
- * email arrived. A candidate is dated this many days before it... */
-export const RECEIPT_MATCH_DAYS_BEFORE = 3;
-/** ...or this many days after (the bank posts later than the shop mails). */
-export const RECEIPT_MATCH_DAYS_AFTER = 14;
+ * email arrived. A candidate is dated this many days before it by default... */
+export const RECEIPT_MATCH_DAYS_BEFORE = DEFAULT_DAYS_BEFORE;
+/** ...or this many days after (the bank posts later than the shop mails). A profile's `match` section changes both. */
+export const RECEIPT_MATCH_DAYS_AFTER = DEFAULT_DAYS_AFTER;
 /** The candidate list stored on an ambiguous receipt. */
 export const MAX_STORED_CANDIDATES = 10;
-/** An order id shorter than this is too likely to occur by chance to be a signal. */
+/** An order id or a reference shorter than this is too likely to occur by chance to be a signal. */
 export const MIN_ORDER_ID_LENGTH = 4;
 
 const MONEY_UNITS = 10000;
@@ -36,21 +45,62 @@ export interface ReceiptMatchCandidate {
   referenceNumber: string | null;
 }
 
-export type ReceiptMatchKind = "order_id" | "amount_payee" | "amount_only";
+/** The match kind a strategy stores (spec 3a): `orderId` is stored as `order_id`. */
+export type ReceiptMatchKind =
+  | "order_id"
+  | "reference"
+  | "amount_payee"
+  | "amount_date";
+
+const MATCH_KIND_OF: Record<ReceiptMatchStrategy, ReceiptMatchKind> = {
+  reference: "reference",
+  orderId: "order_id",
+  amount_payee: "amount_payee",
+  amount_date: "amount_date",
+};
+
+/** What one strategy found: how many candidates it kept and which (at most 10, closest date first). */
+export interface ReceiptMatchAttempt {
+  strategy: ReceiptMatchStrategy;
+  count: number;
+  candidateIds: string[];
+}
+
+interface MatchDetail {
+  /** Every strategy tried, in order, up to and including the one that decided. */
+  attempts: ReceiptMatchAttempt[];
+  /** Candidates inside the window (what the strategies chose from). */
+  considered: number;
+}
 
 export type ReceiptMatchResult =
-  | { kind: "matched"; transactionId: string; matchKind: ReceiptMatchKind }
-  | { kind: "ambiguous"; candidateIds: string[] }
-  | { kind: "unmatched" };
+  | ({
+      kind: "matched";
+      transactionId: string;
+      matchKind: ReceiptMatchKind;
+      strategy: ReceiptMatchStrategy;
+    } & MatchDetail)
+  | ({
+      kind: "ambiguous";
+      candidateIds: string[];
+      strategy: ReceiptMatchStrategy;
+    } & MatchDetail)
+  | ({ kind: "unmatched" } & MatchDetail);
 
 /** The inclusive date range in which a transaction can be the one an email paid for. */
-export function receiptCandidateWindow(purchaseDate: string): {
+export function receiptCandidateWindow(
+  purchaseDate: string,
+  config: Pick<
+    ResolvedMatchConfig,
+    "daysBefore" | "daysAfter"
+  > = DEFAULT_MATCH_CONFIG,
+): {
   from: string;
   to: string;
 } {
   return {
-    from: addDaysYMD(purchaseDate, -RECEIPT_MATCH_DAYS_BEFORE),
-    to: addDaysYMD(purchaseDate, RECEIPT_MATCH_DAYS_AFTER),
+    from: addDaysYMD(purchaseDate, -config.daysBefore),
+    to: addDaysYMD(purchaseDate, config.daysAfter),
   };
 }
 
@@ -81,13 +131,23 @@ function closestIds(
     .map((candidate) => candidate.id);
 }
 
-/** Signal O: the order id occurs, case-insensitively, in the description, payee name or reference. */
-function mentionsOrderId(
+/**
+ * Signals O and R: the value occurs, case-insensitively, in one of the
+ * transaction's chosen text fields (`description`, the payee name, the reference
+ * number).
+ */
+function mentions(
   candidate: ReceiptMatchCandidate,
-  orderId: string,
+  value: string,
+  fields: ResolvedMatchConfig["referenceIn"],
 ): boolean {
-  const needle = orderId.toLowerCase();
-  return [candidate.description, candidate.payeeName, candidate.referenceNumber]
+  const needle = value.toLowerCase();
+  const texts = [
+    fields.includes("description") ? candidate.description : null,
+    fields.includes("payee") ? candidate.payeeName : null,
+    fields.includes("referenceNumber") ? candidate.referenceNumber : null,
+  ];
+  return texts
     .filter((text): text is string => typeof text === "string")
     .some((text) => text.toLowerCase().includes(needle));
 }
@@ -110,83 +170,95 @@ function namesParsedPayee(
 }
 
 /**
- * Match a parsed receipt against the user's candidate transactions.
+ * Match a parsed receipt against the user's candidate transactions with the
+ * strategies the profile lists, in order (spec 3 and 3a). Signals per
+ * candidate: R and O (the parsed reference, and the order id, each at least four
+ * characters, appear in the chosen text fields), A (`abs(amount)` in units is
+ * within the tolerance of the amount paid, else the parsed total; false when
+ * neither was parsed) and P (the candidate's payee is the parser's payee, or its
+ * payee's name is the merchant the email names).
  *
- * Signals per candidate: O (the order id, at least four characters, appears in
- * its description, payee name or reference), A (`abs(amount)` in units equals
- * the amount paid, else the parsed total, exactly; false when neither was
- * parsed) and P (its payee is the parser's payee, or its payee's name is the
- * merchant the email names). One O candidate wins; else one A-and-P candidate;
- * else one A candidate; two or more at any step are ambiguous (that step's
- * set). A candidate outside the window around `purchaseDate` is ignored.
+ * `reference` and `orderId` keep the candidates with R / O; `amount_payee` those
+ * with A and P; `amount_date` those with A. A strategy with exactly one candidate
+ * matches; several are ambiguous with exactly those candidates; none passes to the
+ * next strategy; none left is unmatched. A candidate outside the window around
+ * `purchaseDate` (the profile's, else 3 days before and 14 after) is ignored. With
+ * no `config` the strategies are `orderId`, `amount_payee`, `amount_date`: the
+ * truth table a profile without a `match` section always had.
  */
 export function matchReceipt(
-  parsed: Partial<Pick<ParsedReceipt, "total" | "paid" | "payee">> &
+  parsed: Partial<
+    Pick<ParsedReceipt, "total" | "paid" | "payee" | "reference">
+  > &
     Pick<ParsedReceipt, "orderId">,
   purchaseDate: string,
   candidates: readonly ReceiptMatchCandidate[],
   parserPayeeId: string | null,
+  config: ResolvedMatchConfig = DEFAULT_MATCH_CONFIG,
 ): ReceiptMatchResult {
-  const window = receiptCandidateWindow(purchaseDate);
+  const window = receiptCandidateWindow(purchaseDate, config);
   const inWindow = candidates.filter(
     (candidate) =>
       candidate.transactionDate >= window.from &&
       candidate.transactionDate <= window.to,
   );
+  const attempts: ReceiptMatchAttempt[] = [];
+  const detail = (): MatchDetail => ({
+    attempts,
+    considered: inWindow.length,
+  });
 
-  const orderId = parsed.orderId?.trim() ?? "";
-  const withOrderId =
-    orderId.length >= MIN_ORDER_ID_LENGTH
-      ? inWindow.filter((candidate) => mentionsOrderId(candidate, orderId))
-      : [];
-  if (withOrderId.length === 1) {
-    return matched(withOrderId[0], "order_id");
-  }
-  if (withOrderId.length > 1) {
-    return {
-      kind: "ambiguous",
-      candidateIds: closestIds(withOrderId, purchaseDate),
-    };
-  }
-
-  const total = receiptMatchAmount(parsed);
+  const paid = receiptMatchAmount(parsed);
   const parsedPayee = parsed.payee ?? null;
-  const withAmount =
-    total === null
-      ? []
-      : inWindow.filter(
-          (candidate) =>
-            Math.round(Math.abs(candidate.amount) * MONEY_UNITS) === total,
-        );
-  const withAmountAndPayee = withAmount.filter(
-    (candidate) =>
-      (parserPayeeId !== null && candidate.payeeId === parserPayeeId) ||
-      namesParsedPayee(candidate, parsedPayee),
-  );
-  if (withAmountAndPayee.length === 1) {
-    return matched(withAmountAndPayee[0], "amount_payee");
-  }
-  if (withAmountAndPayee.length > 1) {
-    return {
-      kind: "ambiguous",
-      candidateIds: closestIds(withAmountAndPayee, purchaseDate),
-    };
-  }
-  if (withAmount.length === 1) {
-    return matched(withAmount[0], "amount_only");
-  }
-  if (withAmount.length > 1) {
-    return {
-      kind: "ambiguous",
-      candidateIds: closestIds(withAmount, purchaseDate),
-    };
-  }
-  return { kind: "unmatched" };
-}
+  const withinTolerance = (candidate: ReceiptMatchCandidate): boolean =>
+    paid !== null &&
+    Math.abs(Math.round(Math.abs(candidate.amount) * MONEY_UNITS) - paid) <=
+      config.toleranceUnits;
+  const hasPayeeSignal = (candidate: ReceiptMatchCandidate): boolean =>
+    (parserPayeeId !== null && candidate.payeeId === parserPayeeId) ||
+    namesParsedPayee(candidate, parsedPayee);
+  const byText = (raw: string | null | undefined) => {
+    const value = raw?.trim() ?? "";
+    return value.length >= MIN_ORDER_ID_LENGTH
+      ? inWindow.filter((candidate) =>
+          mentions(candidate, value, config.referenceIn),
+        )
+      : [];
+  };
 
-function matched(
-  candidate: ReceiptMatchCandidate,
-  matchKind: ReceiptMatchKind,
-): ReceiptMatchResult {
-  return { kind: "matched", transactionId: candidate.id, matchKind };
+  for (const strategy of config.by) {
+    let kept: ReceiptMatchCandidate[];
+    switch (strategy) {
+      case "reference":
+        kept = byText(parsed.reference);
+        break;
+      case "orderId":
+        kept = byText(parsed.orderId);
+        break;
+      case "amount_payee":
+        kept = inWindow.filter(
+          (candidate) =>
+            withinTolerance(candidate) && hasPayeeSignal(candidate),
+        );
+        break;
+      case "amount_date":
+        kept = inWindow.filter(withinTolerance);
+        break;
+    }
+    const candidateIds = closestIds(kept, purchaseDate);
+    attempts.push({ strategy, count: kept.length, candidateIds });
+    if (kept.length === 1) {
+      return {
+        kind: "matched",
+        transactionId: kept[0].id,
+        matchKind: MATCH_KIND_OF[strategy],
+        strategy,
+        ...detail(),
+      };
+    }
+    if (kept.length > 1) {
+      return { kind: "ambiguous", candidateIds, strategy, ...detail() };
+    }
+  }
+  return { kind: "unmatched", ...detail() };
 }

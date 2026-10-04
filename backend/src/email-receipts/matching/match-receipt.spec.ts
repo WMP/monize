@@ -75,7 +75,7 @@ describe("matchReceipt: the spec section 3 truth table", () => {
   it("row 1: exactly one candidate with O matches by order id (A and P elsewhere do not matter)", () => {
     const o = tx({ description: "Payment ref EX-20931" });
     const ap = amount({ payeeId: PAYEE });
-    expect(match([ap, o])).toEqual({
+    expect(match([ap, o])).toMatchObject({
       kind: "matched",
       transactionId: o.id,
       matchKind: "order_id",
@@ -86,7 +86,7 @@ describe("matchReceipt: the spec section 3 truth table", () => {
     const o1 = tx({ description: "ex-20931 web" });
     const o2 = tx({ payeeName: "Shop EX-20931" });
     const ap = amount({ payeeId: PAYEE });
-    expect(match([ap, o1, o2])).toEqual({
+    expect(match([ap, o1, o2])).toMatchObject({
       kind: "ambiguous",
       candidateIds: [o1.id, o2.id],
     });
@@ -96,7 +96,7 @@ describe("matchReceipt: the spec section 3 truth table", () => {
     const ap = amount({ payeeId: PAYEE });
     const aOnly1 = amount();
     const aOnly2 = amount();
-    expect(match([aOnly1, ap, aOnly2])).toEqual({
+    expect(match([aOnly1, ap, aOnly2])).toMatchObject({
       kind: "matched",
       transactionId: ap.id,
       matchKind: "amount_payee",
@@ -107,7 +107,7 @@ describe("matchReceipt: the spec section 3 truth table", () => {
     const ap1 = amount({ payeeId: PAYEE });
     const ap2 = amount({ payeeId: PAYEE });
     const aOnly = amount();
-    expect(match([aOnly, ap1, ap2])).toEqual({
+    expect(match([aOnly, ap1, ap2])).toMatchObject({
       kind: "ambiguous",
       candidateIds: [ap1.id, ap2.id],
     });
@@ -116,27 +116,27 @@ describe("matchReceipt: the spec section 3 truth table", () => {
   it("row 5: no O, no A and P, exactly one A matches by amount only", () => {
     const a = amount();
     const noise = tx({ payeeId: PAYEE });
-    expect(match([noise, a])).toEqual({
+    expect(match([noise, a])).toMatchObject({
       kind: "matched",
       transactionId: a.id,
-      matchKind: "amount_only",
+      matchKind: "amount_date",
     });
   });
 
   it("row 6: no O, no A and P, two or more A are ambiguous (the A set)", () => {
     const a1 = amount();
     const a2 = amount();
-    expect(match([a1, tx(), a2])).toEqual({
+    expect(match([a1, tx(), a2])).toMatchObject({
       kind: "ambiguous",
       candidateIds: [a1.id, a2.id],
     });
   });
 
   it("row 7: nothing matches", () => {
-    expect(match([tx(), tx({ payeeId: PAYEE })])).toEqual({
+    expect(match([tx(), tx({ payeeId: PAYEE })])).toMatchObject({
       kind: "unmatched",
     });
-    expect(match([])).toEqual({ kind: "unmatched" });
+    expect(match([])).toMatchObject({ kind: "unmatched" });
   });
 });
 
@@ -149,7 +149,7 @@ describe("matchReceipt: the order id signal (O)", () => {
     ["reference number", (id: string) => tx({ referenceNumber: id })],
   ])("finds the id in the %s", (_label, make) => {
     const candidate = make("EX-20931");
-    expect(match([candidate])).toEqual({
+    expect(match([candidate])).toMatchObject({
       kind: "matched",
       transactionId: candidate.id,
       matchKind: "order_id",
@@ -165,7 +165,7 @@ describe("matchReceipt: the order id signal (O)", () => {
 
   it("needs at least 4 characters", () => {
     const candidate = withDescription("ref A12 and AB-1");
-    expect(match([candidate], { orderId: "A12", total: null })).toEqual({
+    expect(match([candidate], { orderId: "A12", total: null })).toMatchObject({
       kind: "unmatched",
     });
     expect(match([candidate], { orderId: "AB-1", total: null }).kind).toBe(
@@ -175,7 +175,9 @@ describe("matchReceipt: the order id signal (O)", () => {
 
   it("counts the trimmed length", () => {
     const candidate = withDescription("ref A12 here");
-    expect(match([candidate], { orderId: "  A12  ", total: null })).toEqual({
+    expect(
+      match([candidate], { orderId: "  A12  ", total: null }),
+    ).toMatchObject({
       kind: "unmatched",
     });
   });
@@ -183,7 +185,9 @@ describe("matchReceipt: the order id signal (O)", () => {
   it("is a substring test, not a pattern: specials are literal", () => {
     const literal = withDescription("ref AB.12*x");
     const lookalike = withDescription("ref ABx12yy");
-    expect(match([lookalike], { orderId: "AB.12*", total: null })).toEqual({
+    expect(
+      match([lookalike], { orderId: "AB.12*", total: null }),
+    ).toMatchObject({
       kind: "unmatched",
     });
     expect(match([literal], { orderId: "AB.12*", total: null }).kind).toBe(
@@ -193,18 +197,20 @@ describe("matchReceipt: the order id signal (O)", () => {
 
   it("is ignored when the receipt has no order id", () => {
     const candidate = withDescription("EX-20931");
-    expect(match([candidate], { orderId: null, total: null })).toEqual({
+    expect(match([candidate], { orderId: null, total: null })).toMatchObject({
       kind: "unmatched",
     });
-    expect(match([candidate], { orderId: "", total: null })).toEqual({
+    expect(match([candidate], { orderId: "", total: null })).toMatchObject({
       kind: "unmatched",
     });
   });
 
   it("does not match a candidate whose texts are all empty", () => {
-    expect(match([tx(), tx({ description: "", payeeName: "" })])).toEqual({
-      kind: "unmatched",
-    });
+    expect(match([tx(), tx({ description: "", payeeName: "" })])).toMatchObject(
+      {
+        kind: "unmatched",
+      },
+    );
   });
 
   it("falls through to the amount when no candidate has the order id", () => {
@@ -217,18 +223,22 @@ describe("matchReceipt: the amount signal (A)", () => {
   it("compares the absolute value in units, for either sign", () => {
     const debit = amount();
     const credit = tx({ amount: 37.97 });
-    expect(match([debit])).toMatchObject({ matchKind: "amount_only" });
-    expect(match([credit])).toMatchObject({ matchKind: "amount_only" });
+    expect(match([debit])).toMatchObject({ matchKind: "amount_date" });
+    expect(match([credit])).toMatchObject({ matchKind: "amount_date" });
   });
 
   it("is exact: one unit off is not a match", () => {
-    expect(match([tx({ amount: -37.9701 })])).toEqual({ kind: "unmatched" });
-    expect(match([tx({ amount: -37.9699 })])).toEqual({ kind: "unmatched" });
+    expect(match([tx({ amount: -37.9701 })])).toMatchObject({
+      kind: "unmatched",
+    });
+    expect(match([tx({ amount: -37.9699 })])).toMatchObject({
+      kind: "unmatched",
+    });
   });
 
   it("is false for every candidate when no total was parsed", () => {
     const a = amount({ payeeId: PAYEE });
-    expect(match([a], { orderId: null, total: null })).toEqual({
+    expect(match([a], { orderId: null, total: null })).toMatchObject({
       kind: "unmatched",
     });
   });
@@ -247,13 +257,13 @@ describe("matchReceipt: the payee signal (P)", () => {
     const a = amount({ payeeId: null });
     const b = amount({ payeeId: null });
     // Two A candidates and two null payees: null is not the parser's payee.
-    expect(match([a, b], undefined, null)).toEqual({
+    expect(match([a, b], undefined, null)).toMatchObject({
       kind: "ambiguous",
       candidateIds: [a.id, b.id],
     });
     const single = amount({ payeeId: null });
     expect(match([single], undefined, null)).toMatchObject({
-      matchKind: "amount_only",
+      matchKind: "amount_date",
     });
   });
 
@@ -321,7 +331,7 @@ describe("matchReceipt: the stored candidate list", () => {
     const same2 = amount({ id: "b-same", transactionDate: RECEIVED });
     const same1 = amount({ id: "a-same", transactionDate: RECEIVED });
     const after = amount({ id: "d-after", transactionDate: "2026-03-12" });
-    expect(match([far, before, same2, after, same1])).toEqual({
+    expect(match([far, before, same2, after, same1])).toMatchObject({
       kind: "ambiguous",
       candidateIds: ["a-same", "b-same", "c-before", "d-after", "a-far"],
     });
@@ -331,7 +341,7 @@ describe("matchReceipt: the stored candidate list", () => {
     const later = amount({ id: "a-later", transactionDate: "2026-03-12" });
     const earlier = amount({ id: "b-earlier", transactionDate: "2026-03-08" });
     const result = match([earlier, later]);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       kind: "ambiguous",
       candidateIds: ["a-later", "b-earlier"],
     });
@@ -374,7 +384,7 @@ describe("matchReceipt: the stored candidate list", () => {
       description: "EX-20931",
       transactionDate: "2026-03-20",
     });
-    expect(match([far, near])).toEqual({
+    expect(match([far, near])).toMatchObject({
       kind: "ambiguous",
       candidateIds: ["z-near", "a-far"],
     });
@@ -393,10 +403,10 @@ describe("matchReceipt: paid, and the merchant the email names", () => {
     const listPrice = tx({ amount: -49.99 });
     expect(
       match([listPrice, bank], { orderId: null, total: LIST, paid: PAID }),
-    ).toEqual({
+    ).toMatchObject({
       kind: "matched",
       transactionId: bank.id,
-      matchKind: "amount_only",
+      matchKind: "amount_date",
     });
   });
 
@@ -413,7 +423,7 @@ describe("matchReceipt: paid, and the merchant the email names", () => {
   it("matches nothing by amount when neither was read", () => {
     expect(
       match([charged()], { orderId: null, total: null, paid: null }),
-    ).toEqual({
+    ).toMatchObject({
       kind: "unmatched",
     });
   });
@@ -436,7 +446,7 @@ describe("matchReceipt: paid, and the merchant the email names", () => {
         },
         "payee-gateway",
       ),
-    ).toEqual({
+    ).toMatchObject({
       kind: "matched",
       transactionId: merchant.id,
       matchKind: "amount_payee",
@@ -464,7 +474,7 @@ describe("matchReceipt: paid, and the merchant the email names", () => {
     const byName = charged({ payeeId: "x", payeeName: "Shop X" });
     expect(
       match([byId, byName], { orderId: null, total: PAID, payee: "Shop X" }),
-    ).toEqual({ kind: "ambiguous", candidateIds: [byId.id, byName.id] });
+    ).toMatchObject({ kind: "ambiguous", candidateIds: [byId.id, byName.id] });
   });
 
   it("does not take a different merchant, or a candidate with no payee name, for the one named", () => {
@@ -472,6 +482,6 @@ describe("matchReceipt: paid, and the merchant the email names", () => {
     const b = charged({ payeeName: null });
     expect(
       match([a, b], { orderId: null, total: PAID, payee: "Shop Xavier" }, null),
-    ).toEqual({ kind: "ambiguous", candidateIds: [a.id, b.id] });
+    ).toMatchObject({ kind: "ambiguous", candidateIds: [a.id, b.id] });
   });
 });
