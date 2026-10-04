@@ -452,6 +452,16 @@ differences produce failures that look like regressions and are not.
   `roots: ["<rootDir>/src"]` and `test/jest-e2e.json` pins `maxWorkers: 1`, both
   asserted by `backend/src/common/jest-config.guard.spec.ts`. The default command
   therefore needs a reachable PostgreSQL; `npm run test:unit` is the offline path.
+- `npm run test:changed` (backend and frontend) is the loop for an agent or a
+  developer between commits: the tests related to files changed since
+  `origin/main`, plus every guard test, with only failures printed and no
+  coverage. Guards are always added because they scan source text and so never
+  appear in an import graph. It selects from `git`, so a new file needs
+  `git add -N` first (the backend script; the frontend script also reads
+  untracked files). It does not run the integration specs, and it proves no
+  coverage threshold, because a threshold over a subset means nothing. The full
+  `test:cov` gate stays CI's, which runs it before merge. The rule is held by
+  `backend/src/common/test-changed.guard.spec.ts`.
 - `--workers=1` for the whole E2E suite. `playwright.config.ts` sets one worker
   only when `CI` is set, and `e2e/tests/zz-danger-zone.spec.ts` deletes the
   shared account -- the `zz-` prefix orders it last, which only means anything
