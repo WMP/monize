@@ -1,17 +1,11 @@
 {
   "settingsPage": {
-    "backLink": "Kembali ke Pengaturan",
-    "title": "Struk Surel",
-    "subtitle": "Baca konfirmasi pesanan dari kotak surel dan ubah menjadi transaksi dengan rincian item",
-    "receiptsLink": "Buka surel yang tersimpan",
-    "demoRestricted": {
-      "heading": "Dibatasi di Mode Demo",
-      "body": "Menghubungkan kotak surel dinonaktifkan di mode demo."
-    }
+    "redirecting": "Membuka halaman Struk Surel...",
+    "redirectLink": "Buka pengaturan kotak surel"
   },
   "page": {
     "title": "Struk Surel",
-    "subtitle": "Surel konfirmasi pesanan yang dibaca dari kotak surel Anda, dan hasil pemrosesan masing-masing"
+    "subtitle": "Baca konfirmasi pesanan dari kotak surel dan ubah menjadi transaksi dengan rincian item: apa yang terhubung, apa yang terjadi pada setiap surel, dan apa yang menunggu Anda"
   },
   "mailbox": {
     "heading": "Kotak surel",
@@ -99,7 +93,9 @@
         "automatic": "Setiap pemeriksaan menanyakan AI tentang struk yang cocok tetapi tidak terbaca lengkap oleh pengurai yang disetujui, dan membuat draf pengurai untuk pengirim yang belum memilikinya."
       },
       "autoApplyLabel": "Terapkan usulan secara otomatis",
-      "autoApplyHelp": "Nonaktif secara default. Usulan diterapkan tanpa bertanya hanya jika semua syarat ini terpenuhi: pengurai yang disetujui membaca seluruh surel, transaksi ditemukan lewat nomor pesanan atau lewat jumlah dan penerima yang persis sama dengan satu kandidat saja, dan usulan cocok hingga satuan mata uang terkecil. Semua kasus lain menunggu persetujuan Anda."
+      "autoApplyHelp": "Nonaktif secara default. Usulan diterapkan tanpa bertanya hanya jika semua syarat ini terpenuhi: profil yang disetujui membaca seluruh surel, transaksi ditemukan lewat nomor pesanan atau referensi, atau lewat jumlah dan penerima yang persis sama, dengan satu kandidat saja, dan usulan cocok hingga satuan mata uang terkecil. Semua kasus lain menunggu persetujuan Anda.",
+      "profileLimitLabel": "Hitung usulan profil dalam batas AI harian",
+      "profileLimitHelp": "Aktif secara default: suntingan yang diusulkan profil dari sebuah surel dihitung dalam batas harian perubahan yang diusulkan AI, seperti usulan AI lainnya. Matikan jika sekumpulan besar surel tersimpan akan menghabiskan batas tersebut. Hanya usulan dari profil yang dikecualikan; setiap usulan tetap menunggu persetujuan Anda."
     },
     "status": {
       "lastPolled": "Pemeriksaan terakhir",
@@ -121,8 +117,8 @@
     }
   },
   "parsers": {
-    "heading": "Pengurai",
-    "description": "Pengurai membaca konfirmasi pesanan dari satu pengirim dengan pola yang Anda tulis atau tinjau. Setelah disetujui, pengurai berjalan tanpa AI.",
+    "heading": "Profil",
+    "description": "Profil membaca konfirmasi pesanan dari satu pengirim dengan pola yang Anda tulis atau tinjau, dan menentukan cara menemukan transaksi bank. Setelah disetujui, profil berjalan tanpa AI.",
     "newButton": "Pengurai baru",
     "loading": "Memuat pengurai",
     "error": {
@@ -174,6 +170,12 @@
       "copy": "Salin",
       "copied": "JSON disalin",
       "copyFailed": "Tidak dapat menyalin JSON"
+    },
+    "processOffer": {
+      "title": "Proses surel tersimpan sekarang?",
+      "message": "Proses {count, plural, one {# surel tersimpan} other {# surel tersimpan}} dari {domains} sekarang? Setiap surel dibaca ulang dengan profil ini; usulan yang dihasilkan menunggu di kotak masuk peninjauan kecuali terapkan otomatis aktif.",
+      "confirm": "Proses sekarang",
+      "later": "Nanti saja"
     }
   },
   "editor": {
@@ -249,6 +251,44 @@
       "label": "Definisi pengurai (JSON)",
       "help": "Definisi yang sama dengan yang dibuat formulir. Server memeriksanya saat Anda menyimpan, dan pengujian di bawah membacanya sebagaimana adanya sekarang.",
       "parseError": "Ini bukan JSON yang valid, atau bukan objek JSON. Perbaiki agar pengurai dapat disimpan atau diuji."
+    },
+    "matching": {
+      "heading": "Pencocokan",
+      "help": "Cara menemukan transaksi bank yang dibayar oleh sebuah surel. Strategi dicoba berurutan; strategi pertama yang menyisakan tepat satu transaksi menentukan, jika beberapa tersisa maka ambigu, dan jika tidak ada yang tersisa maka lanjut ke strategi berikutnya.",
+      "referenceLabel": "Pola referensi",
+      "referenceHint": "Pengenal yang dimasukkan toko atau gerbang pembayaran ke dalam operasi bank, seperti teks rekening koran atau judul transfer. Harus menangkap {capture}.",
+      "strategiesLabel": "Strategi, menurut urutan dicoba",
+      "strategiesHelp": "Nomor pesanan dan referensi mencari nilainya di deskripsi, penerima, atau nomor referensi transaksi. Jumlah dan penerima membutuhkan jumlah ditambah petunjuk penerima. Jumlah dan tanggal hanya membutuhkan jumlah, dalam rentang waktu. Setidaknya satu harus tetap aktif.",
+      "strategyPosition": "{position}. {name}",
+      "moveUp": "Pindahkan {name} lebih awal",
+      "moveDown": "Pindahkan {name} lebih akhir",
+      "strategies": {
+        "reference": "Referensi",
+        "orderId": "Nomor pesanan",
+        "amount_payee": "Jumlah dan penerima",
+        "amount_date": "Jumlah dan tanggal"
+      },
+      "referenceNeeded": "Strategi referensi aktif tetapi tidak ada pola referensi, sehingga tidak akan menemukan apa pun.",
+      "referenceInLabel": "Cari referensi dan nomor pesanan di",
+      "referenceInHint": "Nilai yang lebih pendek dari 4 karakter tidak pernah dicari.",
+      "referenceIn": {
+        "description": "Deskripsi",
+        "payee": "Nama penerima",
+        "referenceNumber": "Nomor referensi"
+      },
+      "daysBeforeLabel": "Jumlah hari sebelum pembelian",
+      "daysAfterLabel": "Jumlah hari setelah pembelian",
+      "daysHint": "Rentang waktu di sekitar tanggal pembelian. Default {default}, maksimal {max}.",
+      "toleranceLabel": "Toleransi jumlah",
+      "toleranceHint": "Seberapa jauh jumlah di bank boleh berbeda dari total surel. Default 0, maksimal {max}."
+    },
+    "proposal": {
+      "heading": "Usulan",
+      "tagLabel": "Tambahkan tag ke transaksi yang dikategorikan profil ini",
+      "tagHelp": "Tag dibuat jika Anda belum memiliki tag dengan nama itu. Tag ditampilkan pada usulan, dan tidak ada yang ditulis sampai Anda menyetujuinya.",
+      "tagNameLabel": "Nama tag",
+      "aiCategoriesLabel": "Biarkan AI memilih kategori item yang tidak cocok dengan aturan apa pun",
+      "aiCategoriesHelp": "Jika sebuah item tidak cocok dengan aturan kategori mana pun dan tidak ada kategori default, AI diminta memilih kategorinya dari daftar kategori Anda. Pilihan itu ditandai sebagai pilihan AI pada usulan. Jika ini dimatikan, AI tidak pernah ditanya."
     }
   },
   "problems": {
@@ -294,7 +334,16 @@
       "single": "Item tunggal",
       "singleName": "Nama item tunggal",
       "joinWrapped": "Gabungkan baris yang terpotong",
-      "ruleField": "field"
+      "ruleField": "field",
+      "reference": "Pola referensi",
+      "match": "Bagian pencocokan",
+      "matchBy": "Strategi pencocokan",
+      "matchReferenceIn": "Bidang tempat referensi dicari",
+      "matchDaysBefore": "Jumlah hari sebelum pembelian",
+      "matchDaysAfter": "Jumlah hari setelah pembelian",
+      "matchTolerance": "Toleransi jumlah",
+      "tag": "Tag",
+      "aiCategories": "Kategori AI"
     },
     "codes": {
       "not_object": "bukan definisi yang valid",
@@ -319,7 +368,11 @@
       "record_name_missing": "harus menangkap {capture} di salah satu langkahnya",
       "items_single_conflict": "memiliki item tunggal di samping patterns atau record. Gunakan salah satunya saja.",
       "join_wrapped_needs_patterns": "hanya berfungsi dengan pola item",
-      "invalid_value": "memiliki nilai yang tidak diterima bidang ini"
+      "invalid_value": "memiliki nilai yang tidak diterima bidang ini",
+      "duplicate_entry": "mencantumkan entri yang sama dua kali",
+      "reference_field_missing": "membutuhkan pola referensi (strategi referensi aktif)",
+      "out_of_range_days": "harus berupa bilangan bulat dari 0 sampai {max}",
+      "out_of_range_tolerance": "harus berupa jumlah dari 0.00 sampai {max}"
     }
   },
   "test": {
@@ -338,7 +391,9 @@
       "order_id": "nomor pesanan",
       "amount_payee": "jumlah dan penerima",
       "amount_only": "jumlah",
-      "manual": "pilihan Anda"
+      "manual": "pilihan Anda",
+      "reference": "referensi",
+      "amount_date": "jumlah dan tanggal"
     },
     "noPayee": "tanpa penerima",
     "ambiguous": "{count, plural, one {# transaksi} other {# transaksi}} sama-sama cocok, jadi tidak ada yang akan ditautkan sampai Anda memilih.",
@@ -362,13 +417,30 @@
         "payee": "Penjual",
         "requireLine": "Baris wajib",
         "skipIfLine": "Baris lewati",
-        "waitIfLine": "Baris tunggu"
+        "waitIfLine": "Baris tunggu",
+        "reference": "Referensi"
       },
       "entryLine": "entri {entry} ({pattern}), baris {line}: {text}",
       "entrySubject": "entri {entry} ({pattern}), subjek: {text}",
       "labelled": "entri {entry}, label {label} di baris {labelLine} ({labelText}), nilai {pattern} di baris {line}: {text}",
       "item": "Item {number}",
       "itemLine": "{pattern}, baris {line}: {text}"
+    },
+    "trace": {
+      "heading": "Yang diperiksa pencocok",
+      "window": "Transaksi dari {from} sampai {to} ({before} hari sebelum dan {after} hari setelah pembelian): {considered, plural, one {# dipertimbangkan} other {# dipertimbangkan}}.",
+      "tolerance": "Jumlah boleh berbeda hingga {amount}.",
+      "attempt": "{position}. {name}",
+      "kept": "{count, plural, =0 {tidak menyisakan satu pun} one {menyisakan # transaksi} other {menyisakan # transaksi}}",
+      "decided": "Menentukan",
+      "transaction": "{date}, {amount}, {payee}",
+      "noPayee": "tanpa penerima",
+      "strategies": {
+        "reference": "Referensi",
+        "orderId": "Nomor pesanan",
+        "amount_payee": "Jumlah dan penerima",
+        "amount_date": "Jumlah dan tanggal"
+      }
     }
   },
   "parsed": {
@@ -400,7 +472,9 @@
     "readByAi": "Dibaca oleh AI",
     "readFromStructuredData": "Dibaca dari data terstruktur",
     "paid": "Dibayar",
-    "payee": "Penjual"
+    "payee": "Penjual",
+    "reference": "Referensi",
+    "categoryByAi": "AI"
   },
   "state": {
     "pending": "Menunggu dibaca",
@@ -422,7 +496,7 @@
     "loading": "Memuat surel",
     "links": {
       "reviewInbox": "Buka kotak masuk peninjauan AI",
-      "settings": "Pengaturan kotak surel dan pengurai"
+      "settings": "Pengaturan kotak surel"
     },
     "filter": {
       "label": "Filter menurut status",
@@ -532,7 +606,9 @@
       "order_id": "Nomor pesanan",
       "amount_payee": "Jumlah dan penerima",
       "amount_only": "Jumlah",
-      "manual": "Pilihan Anda"
+      "manual": "Pilihan Anda",
+      "reference": "Referensi",
+      "amount_date": "Jumlah dan tanggal"
     },
     "transaction": "Transaksi",
     "transactionSummary": "{date}, {amount}, {payee}",
@@ -674,5 +750,119 @@
     "inboxLink": "Buka kotak masuk peninjauan AI",
     "opened": "Obrolan dibuka dengan surel terlampir. Baca pesannya lalu tekan Kirim.",
     "chatPrompt": "Kenali produk, jumlah, dan harga dalam surel pesanan terlampir, lalu bagi transaksi saya tanggal {date} ({payee}, {amount}) per produk dengan satu kategori untuk masing-masing. Ambil permintaan peninjauan AI {requestId} dan kirimkan usulan Anda untuk permintaan itu."
+  },
+  "hub": {
+    "tabs": {
+      "ariaLabel": "Bagian struk surel",
+      "overview": "Ringkasan",
+      "emails": "Surel",
+      "profiles": "Profil",
+      "mailbox": "Kotak surel"
+    },
+    "demoRestricted": {
+      "heading": "Dibatasi di Mode Demo",
+      "body": "Menghubungkan kotak surel dan menulis profil dinonaktifkan di mode demo."
+    }
+  },
+  "process": {
+    "button": "Proses semua",
+    "buttonCount": "Proses semua ({count})",
+    "dialog": {
+      "title": "{count, plural, one {Proses # surel tersimpan?} other {Proses # surel tersimpan?}}",
+      "message": "Setiap surel tersimpan yang belum dibaca, atau yang dapat berubah karena profil atau transaksi baru, dibaca ulang. Usulan yang dihasilkan menunggu di kotak masuk peninjauan kecuali terapkan otomatis aktif.",
+      "messageDomain": "Setiap surel tersimpan dari {domain} yang belum dibaca, atau yang dapat berubah karena profil atau transaksi baru, dibaca ulang. Usulan yang dihasilkan menunggu di kotak masuk peninjauan kecuali terapkan otomatis aktif.",
+      "confirm": "Proses"
+    },
+    "starting": "Memulai...",
+    "progress": "{processed, plural, one {# surel diproses} other {# surel diproses}}, sisa {remaining}.",
+    "cancel": "Batal",
+    "cancelling": "Membatalkan...",
+    "summary": "{count, plural, one {# surel diproses.} other {# surel diproses.}}",
+    "cancelledSummary": "Dibatalkan setelah {count, plural, one {# surel.} other {# surel.}}",
+    "outcomes": "Hasil akhirnya: {outcomes}.",
+    "passedOver": "{count, plural, one {# surel mengalami galat dan dilewati.} other {# surel mengalami galat dan dilewati.}}",
+    "failed": "Pemrosesan berhenti karena sebuah permintaan gagal.",
+    "failedWithReason": "Pemrosesan berhenti: {reason}",
+    "outcome": "{count} {state}",
+    "close": "Tutup"
+  },
+  "overview": {
+    "loading": "Memuat ringkasan...",
+    "error": {
+      "title": "Ringkasan tidak dapat dimuat",
+      "body": "Permintaan gagal, jadi apa pun yang tidak tampil di sini jangan dianggap kosong. Coba lagi.",
+      "retry": "Coba lagi"
+    },
+    "mailbox": {
+      "title": "Kotak surel",
+      "none": "Belum ada kotak surel yang terhubung.",
+      "connect": "Hubungkan kotak surel",
+      "manage": "Buka pengaturan kotak surel",
+      "state": {
+        "notConnected": "Tidak terhubung",
+        "failing": "Pemeriksaan terakhir gagal",
+        "off": "Pemeriksaan nonaktif",
+        "polling": "Memeriksa"
+      },
+      "auth": {
+        "password": "Login dengan kata sandi",
+        "oauth2": "Masuk dengan penyedia"
+      },
+      "lastSuccess": "Pemeriksaan berhasil terakhir: {when}",
+      "neverPolled": "Belum pernah diperiksa dengan berhasil.",
+      "lastError": "Galat terakhir: {error}"
+    },
+    "emails": {
+      "title": "Surel",
+      "stored": "tersimpan",
+      "processable": "{count, plural, one {# surel dapat diproses ulang} other {# surel dapat diproses ulang}}.",
+      "open": "Buka surel"
+    },
+    "proposals": {
+      "title": "Usulan",
+      "waiting": "menunggu persetujuan Anda",
+      "review": "Tinjau usulan",
+      "open": "Buka kotak masuk peninjauan"
+    },
+    "profiles": {
+      "title": "Profil",
+      "approved": "disetujui",
+      "drafts": "{count, plural, one {# draf menunggu persetujuan Anda} other {# draf menunggu persetujuan Anda}}.",
+      "manage": "Buka profil"
+    },
+    "uncovered": {
+      "title": "Pengirim tanpa profil",
+      "help": "Surel dari pengirim ini tidak dibaca oleh profil mana pun. Buat profil untuk salah satunya, atau minta asisten menyusun drafnya.",
+      "none": "Setiap pengirim surel tersimpan sudah tercakup oleh profil.",
+      "row": "{domain} ({count, plural, one {# surel} other {# surel}})",
+      "show": "Tampilkan surel"
+    }
+  },
+  "wizard": {
+    "heading": "Mulai menggunakan struk surel",
+    "intro": "Empat langkah dari nol hingga usulan pertama Anda.",
+    "done": "(selesai)",
+    "steps": {
+      "mailbox": {
+        "title": "Hubungkan kotak surel",
+        "body": "Gunakan kotak surel khusus yang menerima konfirmasi pesanan Anda. Monize hanya membacanya.",
+        "action": "Hubungkan kotak surel"
+      },
+      "emails": {
+        "title": "Ambil surel",
+        "body": "Surel dibaca saat kotak surel diperiksa. Periksa dari pengaturan kotak surel untuk melihat surel pertama.",
+        "action": "Buka surel"
+      },
+      "profile": {
+        "title": "Buat profil untuk pengirim",
+        "body": "Profil memberi tahu Monize cara membaca konfirmasi pesanan dari satu pengirim. Tulis satu, atau susun drafnya dari surel tersimpan.",
+        "action": "Buka profil"
+      },
+      "review": {
+        "title": "Tinjau usulan",
+        "body": "Setiap surel menjadi usulan pada sebuah transaksi. Tidak ada yang berubah sampai Anda menyetujuinya.",
+        "action": "Buka kotak masuk peninjauan"
+      }
+    }
   }
 }

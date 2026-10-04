@@ -1,17 +1,11 @@
 {
   "settingsPage": {
-    "backLink": "返回設定",
-    "title": "郵件收據",
-    "subtitle": "從信箱讀取訂單確認郵件，並將其轉換為含明細的交易",
-    "receiptsLink": "開啟已儲存的郵件",
-    "demoRestricted": {
-      "heading": "示範模式下無法使用",
-      "body": "示範模式下已停用連接信箱。"
-    }
+    "redirecting": "正在開啟郵件收據頁面...",
+    "redirectLink": "前往信箱設定"
   },
   "page": {
     "title": "郵件收據",
-    "subtitle": "從信箱讀取的訂單確認郵件，以及每封郵件的處理結果"
+    "subtitle": "從信箱讀取訂單確認郵件，並將其轉換為逐項明細的交易：已連接的內容、每封郵件的處理結果，以及等待您處理的事項"
   },
   "mailbox": {
     "heading": "信箱",
@@ -99,7 +93,9 @@
         "automatic": "檢查信箱時，對於已比對但已核准的解析器無法完整讀取的收據，會詢問 AI；對於沒有解析器的寄件者，會起草解析器。"
       },
       "autoApplyLabel": "自動套用提議",
-      "autoApplyHelp": "預設為關閉。僅當以下條件全部成立時，提議才會不經詢問直接套用：已核准的解析器讀取了整封郵件；透過訂單編號，或透過完全相符的金額和收款人找到了交易，且只有一個候選；提議的合計精確到最小貨幣單位。其他情況都會等待您的核准。"
+      "autoApplyHelp": "預設為關閉。僅當以下條件全部成立時，提議才會不經詢問直接套用：已核准的設定檔讀取了整封郵件；透過訂單編號或參考號碼，或透過完全相符的金額和收款人找到了交易，且只有一個候選；提議的合計精確到最小貨幣單位。其他情況都會等待您的核准。",
+      "profileLimitLabel": "將設定檔的提議計入每日 AI 上限",
+      "profileLimitHelp": "預設為開啟：設定檔根據郵件提出的修改，與其他 AI 提議一樣，計入 AI 提議變更的每日上限。如果大批已儲存的郵件會耗盡該上限，請將其關閉。只有來自設定檔的提議可免計；每則提議仍需等待您的核准。"
     },
     "status": {
       "lastPolled": "上次檢查",
@@ -121,8 +117,8 @@
     }
   },
   "parsers": {
-    "heading": "解析器",
-    "description": "解析器使用您撰寫或審核過的模式，讀取某個寄件者的訂單確認郵件。一旦獲得核准，它無需 AI 即可執行。",
+    "heading": "設定檔",
+    "description": "設定檔使用您撰寫或審核過的模式，讀取某個寄件者的訂單確認郵件，並說明如何找到對應的銀行交易。一旦獲得核准，它無需 AI 即可執行。",
     "newButton": "新增解析器",
     "loading": "正在載入解析器",
     "error": {
@@ -174,6 +170,12 @@
       "copy": "複製",
       "copied": "已複製 JSON",
       "copyFailed": "無法複製 JSON"
+    },
+    "processOffer": {
+      "title": "現在處理已儲存的郵件？",
+      "message": "現在處理來自 {domains} 的{count, plural, one {# 封已儲存郵件} other {# 封已儲存郵件}}嗎？每封郵件都會用此設定檔重新讀取；除非開啟了自動套用，否則它提出的提議會在審核收件匣中等待。",
+      "confirm": "立即處理",
+      "later": "暫不處理"
     }
   },
   "editor": {
@@ -249,6 +251,44 @@
       "label": "解析器定義（JSON）",
       "help": "與表單產生的定義相同。儲存時伺服器會檢查它，下方的測試則依其目前內容讀取。",
       "parseError": "這不是有效的 JSON，或不是 JSON 物件。請修正後再儲存或測試解析器。"
+    },
+    "matching": {
+      "heading": "比對",
+      "help": "如何找到郵件所支付的銀行交易。各策略依序嘗試：第一個恰好只剩一筆交易的策略做出決定，剩下多筆則無法確定，一筆都不剩則交給下一個策略。",
+      "referenceLabel": "參考號碼模式",
+      "referenceHint": "商店或支付閘道寫入銀行操作的識別碼，例如對帳單文字或轉帳標題。必須擷取 {capture}。",
+      "strategiesLabel": "策略，依嘗試順序",
+      "strategiesHelp": "訂單編號和參考號碼會在交易的說明、收款人或參考號碼欄位中尋找該值。金額和收款人除金額外還需要收款人線索。金額和日期只需要金額，且須在時間範圍內。至少要保持開啟一個。",
+      "strategyPosition": "{position}. {name}",
+      "moveUp": "將{name}前移",
+      "moveDown": "將{name}後移",
+      "strategies": {
+        "reference": "參考號碼",
+        "orderId": "訂單編號",
+        "amount_payee": "金額和收款人",
+        "amount_date": "金額和日期"
+      },
+      "referenceNeeded": "參考號碼策略已開啟，但沒有參考號碼模式，因此什麼也找不到。",
+      "referenceInLabel": "在以下位置尋找參考號碼和訂單編號",
+      "referenceInHint": "短於 4 個字元的值不會被尋找。",
+      "referenceIn": {
+        "description": "說明",
+        "payee": "收款人名稱",
+        "referenceNumber": "參考號碼"
+      },
+      "daysBeforeLabel": "購買前的天數",
+      "daysAfterLabel": "購買後的天數",
+      "daysHint": "購買日期前後的範圍。預設 {default}，最多 {max}。",
+      "toleranceLabel": "金額容差",
+      "toleranceHint": "銀行金額與郵件合計允許相差多少。預設 0，最多 {max}。"
+    },
+    "proposal": {
+      "heading": "提議",
+      "tagLabel": "為此設定檔歸類的交易新增標籤",
+      "tagHelp": "如果您沒有同名標籤，則會建立該標籤。它會顯示在提議中，在您核准之前不會寫入任何內容。",
+      "tagNameLabel": "標籤名稱",
+      "aiCategoriesLabel": "讓 AI 為沒有規則相符的商品選擇類別",
+      "aiCategoriesHelp": "當商品不符合任何類別規則且沒有預設類別時，會請 AI 從您的類別清單中為其選擇類別。提議中會將該選擇標示為 AI 所選。關閉後，永遠不會詢問 AI。"
     }
   },
   "problems": {
@@ -294,7 +334,16 @@
       "single": "單一明細",
       "singleName": "單一明細名稱",
       "joinWrapped": "合併折行",
-      "ruleField": "field"
+      "ruleField": "field",
+      "reference": "參考號碼模式",
+      "match": "比對區段",
+      "matchBy": "比對策略",
+      "matchReferenceIn": "尋找參考號碼的欄位",
+      "matchDaysBefore": "購買前的天數",
+      "matchDaysAfter": "購買後的天數",
+      "matchTolerance": "金額容差",
+      "tag": "標籤",
+      "aiCategories": "AI 類別"
     },
     "codes": {
       "not_object": "不是有效的定義",
@@ -319,7 +368,11 @@
       "record_name_missing": "必須在其某個步驟中擷取 {capture}",
       "items_single_conflict": "在 patterns 或 record 之外還有單一明細。請只使用其中之一。",
       "join_wrapped_needs_patterns": "僅適用於明細模式",
-      "invalid_value": "的值不被此欄位接受"
+      "invalid_value": "的值不被此欄位接受",
+      "duplicate_entry": "重複列出了同一項目",
+      "reference_field_missing": "需要參考號碼模式（參考號碼策略已開啟）",
+      "out_of_range_days": "必須是 0 到 {max} 之間的整數",
+      "out_of_range_tolerance": "必須是 0.00 到 {max} 之間的金額"
     }
   },
   "test": {
@@ -338,7 +391,9 @@
       "order_id": "訂單編號",
       "amount_payee": "金額和收款人",
       "amount_only": "金額",
-      "manual": "您的選擇"
+      "manual": "您的選擇",
+      "reference": "參考號碼",
+      "amount_date": "金額和日期"
     },
     "noPayee": "無收款人",
     "ambiguous": "{count, plural, one {# 筆交易} other {# 筆交易}}同樣相符，因此在您選擇之前不會連結任何一筆。",
@@ -362,13 +417,30 @@
         "payee": "商家",
         "requireLine": "必要的行",
         "skipIfLine": "略過行",
-        "waitIfLine": "暫緩行"
+        "waitIfLine": "暫緩行",
+        "reference": "參考號碼"
       },
       "entryLine": "項目 {entry}（{pattern}），第 {line} 行：{text}",
       "entrySubject": "項目 {entry}（{pattern}），主旨：{text}",
       "labelled": "項目 {entry}，第 {labelLine} 行（{labelText}）上的標籤 {label}，第 {line} 行上的值 {pattern}：{text}",
       "item": "明細 {number}",
       "itemLine": "{pattern}，第 {line} 行：{text}"
+    },
+    "trace": {
+      "heading": "比對器查看的內容",
+      "window": "從 {from} 到 {to} 的交易（購買前 {before} 天、購買後 {after} 天）：已考慮 {considered, plural, one {# 筆} other {# 筆}}。",
+      "tolerance": "金額最多可相差 {amount}。",
+      "attempt": "{position}. {name}",
+      "kept": "{count, plural, =0 {一筆都沒留下} one {留下 # 筆交易} other {留下 # 筆交易}}",
+      "decided": "已決定",
+      "transaction": "{date}，{amount}，{payee}",
+      "noPayee": "無收款人",
+      "strategies": {
+        "reference": "參考號碼",
+        "orderId": "訂單編號",
+        "amount_payee": "金額和收款人",
+        "amount_date": "金額和日期"
+      }
     }
   },
   "parsed": {
@@ -400,7 +472,9 @@
     "readByAi": "由 AI 讀取",
     "readFromStructuredData": "由結構化資料讀取",
     "paid": "已付",
-    "payee": "商家"
+    "payee": "商家",
+    "reference": "參考號碼",
+    "categoryByAi": "AI"
   },
   "state": {
     "pending": "等待讀取",
@@ -422,7 +496,7 @@
     "loading": "正在載入郵件",
     "links": {
       "reviewInbox": "開啟 AI 審核收件匣",
-      "settings": "信箱和解析器設定"
+      "settings": "信箱設定"
     },
     "filter": {
       "label": "依狀態篩選",
@@ -532,7 +606,9 @@
       "order_id": "訂單編號",
       "amount_payee": "金額和收款人",
       "amount_only": "金額",
-      "manual": "您的選擇"
+      "manual": "您的選擇",
+      "reference": "參考號碼",
+      "amount_date": "金額和日期"
     },
     "transaction": "交易",
     "transactionSummary": "{date}，{amount}，{payee}",
@@ -674,5 +750,119 @@
     "inboxLink": "開啟 AI 審核收件匣",
     "opened": "已開啟聊天並附上該郵件。請閱讀訊息並按下「傳送」。",
     "chatPrompt": "請辨識所附訂單郵件中的商品、數量和價格，並將我 {date} 的交易（{payee}，{amount}）依商品拆分，並為每項指定類別。請認領 AI 審核請求 {requestId}，並為它提交你的提議。"
+  },
+  "hub": {
+    "tabs": {
+      "ariaLabel": "郵件收據分區",
+      "overview": "概覽",
+      "emails": "郵件",
+      "profiles": "設定檔",
+      "mailbox": "信箱"
+    },
+    "demoRestricted": {
+      "heading": "示範模式下無法使用",
+      "body": "示範模式下已停用連接信箱和撰寫設定檔。"
+    }
+  },
+  "process": {
+    "button": "全部處理",
+    "buttonCount": "全部處理（{count}）",
+    "dialog": {
+      "title": "{count, plural, one {處理 # 封已儲存郵件？} other {處理 # 封已儲存郵件？}}",
+      "message": "每封尚未讀取、或可能因新的設定檔或交易而改變結果的已儲存郵件，都會被重新讀取。除非開啟了自動套用，否則它提出的提議會在審核收件匣中等待。",
+      "messageDomain": "來自 {domain} 的每封尚未讀取、或可能因新的設定檔或交易而改變結果的已儲存郵件，都會被重新讀取。除非開啟了自動套用，否則它提出的提議會在審核收件匣中等待。",
+      "confirm": "處理"
+    },
+    "starting": "正在開始...",
+    "progress": "{processed, plural, one {已處理 # 封郵件} other {已處理 # 封郵件}}，剩餘 {remaining} 封。",
+    "cancel": "取消",
+    "cancelling": "正在取消...",
+    "summary": "{count, plural, one {已處理 # 封郵件。} other {已處理 # 封郵件。}}",
+    "cancelledSummary": "{count, plural, one {處理 # 封郵件後已取消。} other {處理 # 封郵件後已取消。}}",
+    "outcomes": "結果：{outcomes}。",
+    "passedOver": "{count, plural, one {# 封郵件發生錯誤，已被略過。} other {# 封郵件發生錯誤，已被略過。}}",
+    "failed": "處理已停止，因為有請求失敗。",
+    "failedWithReason": "處理已停止：{reason}",
+    "outcome": "{count} {state}",
+    "close": "關閉"
+  },
+  "overview": {
+    "loading": "正在載入概覽...",
+    "error": {
+      "title": "無法載入概覽",
+      "body": "請求失敗，因此這裡沒有顯示的內容不應被視為空。請重試。",
+      "retry": "重試"
+    },
+    "mailbox": {
+      "title": "信箱",
+      "none": "尚未連接信箱。",
+      "connect": "連接信箱",
+      "manage": "開啟信箱設定",
+      "state": {
+        "notConnected": "未連接",
+        "failing": "上次檢查失敗",
+        "off": "檢查已關閉",
+        "polling": "檢查中"
+      },
+      "auth": {
+        "password": "密碼登入",
+        "oauth2": "使用提供者登入"
+      },
+      "lastSuccess": "上次成功檢查：{when}",
+      "neverPolled": "尚未成功檢查過。",
+      "lastError": "上次錯誤：{error}"
+    },
+    "emails": {
+      "title": "郵件",
+      "stored": "已儲存",
+      "processable": "{count, plural, one {可重新處理 # 封郵件} other {可重新處理 # 封郵件}}。",
+      "open": "開啟郵件"
+    },
+    "proposals": {
+      "title": "提議",
+      "waiting": "等待您的核准",
+      "review": "審核提議",
+      "open": "開啟審核收件匣"
+    },
+    "profiles": {
+      "title": "設定檔",
+      "approved": "已核准",
+      "drafts": "{count, plural, one {# 份草稿等待您的核准} other {# 份草稿等待您的核准}}。",
+      "manage": "開啟設定檔"
+    },
+    "uncovered": {
+      "title": "沒有設定檔的寄件者",
+      "help": "這些寄件者寄來的郵件沒有任何設定檔讀取。請為其中之一建立設定檔，或請助理起草。",
+      "none": "已儲存郵件的每個寄件者都有設定檔涵蓋。",
+      "row": "{domain}（{count, plural, one {# 封郵件} other {# 封郵件}}）",
+      "show": "顯示郵件"
+    }
+  },
+  "wizard": {
+    "heading": "開始使用郵件收據",
+    "intro": "從零到第一則提議，只需四個步驟。",
+    "done": "（已完成）",
+    "steps": {
+      "mailbox": {
+        "title": "連接信箱",
+        "body": "請使用專門接收訂單確認郵件的信箱。Monize 只會讀取它。",
+        "action": "連接信箱"
+      },
+      "emails": {
+        "title": "取得郵件",
+        "body": "檢查信箱時才會讀取郵件。請在信箱設定中執行檢查，以查看最初的幾封。",
+        "action": "開啟郵件"
+      },
+      "profile": {
+        "title": "為寄件者建立設定檔",
+        "body": "設定檔告訴 Monize 如何讀取某個寄件者的訂單確認郵件。可以自己撰寫，也可以根據已儲存的郵件起草。",
+        "action": "開啟設定檔"
+      },
+      "review": {
+        "title": "審核提議",
+        "body": "每封郵件都會成為針對某筆交易的提議。在您核准之前不會變更任何內容。",
+        "action": "開啟審核收件匣"
+      }
+    }
   }
 }

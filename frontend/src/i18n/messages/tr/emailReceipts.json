@@ -1,17 +1,11 @@
 {
   "settingsPage": {
-    "backLink": "Ayarlara Geri Dön",
-    "title": "E-posta Makbuzları",
-    "subtitle": "Sipariş onaylarını bir posta kutusundan okuyun ve kalem kalem işlemlere dönüştürün",
-    "receiptsLink": "Saklanan e-postaları aç",
-    "demoRestricted": {
-      "heading": "Demo Modunda Kısıtlı",
-      "body": "Posta kutusu bağlama demo modunda devre dışıdır."
-    }
+    "redirecting": "E-posta Makbuzları sayfası açılıyor...",
+    "redirectLink": "Posta kutusu ayarlarına git"
   },
   "page": {
     "title": "E-posta Makbuzları",
-    "subtitle": "Posta kutunuzdan okunan sipariş onayı e-postaları ve her birine ne olduğu"
+    "subtitle": "Sipariş onaylarını bir posta kutusundan okuyun ve kalem kalem işlemlere dönüştürün: nelerin bağlı olduğu, her e-postaya ne olduğu ve sizi nelerin beklediği"
   },
   "mailbox": {
     "heading": "Posta kutusu",
@@ -99,7 +93,9 @@
         "automatic": "Yoklama sırasında, onaylı hiçbir ayrıştırıcının tamamen okuyamadığı eşleşmiş bir makbuz için yapay zekâya sorulur ve ayrıştırıcısı olmayan bir gönderen için ayrıştırıcı taslağı oluşturulur."
       },
       "autoApplyLabel": "Önerileri otomatik uygula",
-      "autoApplyHelp": "Varsayılan olarak kapalıdır. Bir öneri, ancak şunların hepsi geçerliyse sormadan uygulanır: onaylı bir ayrıştırıcı e-postanın tamamını okudu, işlem sipariş numarasıyla ya da tam tutar ve alıcıyla tek bir adayla bulundu ve öneri kuruşu kuruşuna tutuyor. Geri kalan her şey onayınızı bekler."
+      "autoApplyHelp": "Varsayılan olarak kapalıdır. Bir öneri, ancak şunların hepsi geçerliyse sormadan uygulanır: onaylı bir profil e-postanın tamamını okudu, işlem bir sipariş numarası veya referansla ya da tam tutar ve alıcıyla tek bir adayla bulundu ve öneri kuruşu kuruşuna tutuyor. Geri kalan her şey onayınızı bekler.",
+      "profileLimitLabel": "Profil önerilerini günlük yapay zekâ sınırına say",
+      "profileLimitHelp": "Varsayılan olarak açıktır: bir profilin bir e-postadan önerdiği düzenleme, diğer yapay zekâ önerileri gibi yapay zekânın önerdiği değişikliklerin günlük sınırına sayılır. Saklanan çok sayıda e-posta sınırı tüketecekse bunu kapatın. Yalnızca profillerden gelen öneriler muaftır; her öneri yine de onayınızı bekler."
     },
     "status": {
       "lastPolled": "Son yoklama",
@@ -121,8 +117,8 @@
     }
   },
   "parsers": {
-    "heading": "Ayrıştırıcılar",
-    "description": "Ayrıştırıcı, tek bir göndericinin sipariş onaylarını sizin yazdığınız veya incelediğiniz desenlerle okur. Onaylandıktan sonra yapay zekâ olmadan çalışır.",
+    "heading": "Profiller",
+    "description": "Bir profil, tek bir göndericinin sipariş onaylarını sizin yazdığınız veya incelediğiniz desenlerle okur ve banka işleminin nasıl bulunacağını belirtir. Onaylandıktan sonra yapay zekâ olmadan çalışır.",
     "newButton": "Yeni ayrıştırıcı",
     "loading": "Ayrıştırıcılar yükleniyor",
     "error": {
@@ -174,6 +170,12 @@
       "copy": "Kopyala",
       "copied": "JSON kopyalandı",
       "copyFailed": "JSON kopyalanamadı"
+    },
+    "processOffer": {
+      "title": "Saklanan e-postalar şimdi işlensin mi?",
+      "message": "{domains} göndericisinden gelen {count, plural, one {# saklanan e-posta} other {# saklanan e-posta}} şimdi işlensin mi? Her biri bu profille yeniden okunur; önerdikleri, otomatik uygulama açık değilse inceleme kutusunda bekler.",
+      "confirm": "Şimdi işle",
+      "later": "Şimdi değil"
     }
   },
   "editor": {
@@ -249,6 +251,44 @@
       "label": "Ayrıştırıcı tanımı (JSON)",
       "help": "Formun oluşturduğu tanımın aynısı. Sunucu kaydettiğinizde kontrol eder, aşağıdaki sınama da onu şu anki hâliyle okur.",
       "parseError": "Bu geçerli bir JSON değil ya da bir JSON nesnesi değil. Ayrıştırıcıyı kaydetmek veya sınamak için düzeltin."
+    },
+    "matching": {
+      "heading": "Eşleştirme",
+      "help": "Bir e-postanın ödediği banka işleminin nasıl bulunduğu. Stratejiler sırayla denenir; tam olarak tek bir işlem bırakan ilk strateji karar verir, birden çok işlem bırakan belirsizdir, hiçbirini bırakmayan ise sonrakine geçer.",
+      "referenceLabel": "Referans desenleri",
+      "referenceHint": "Mağazanın veya ödeme geçidinin banka işlemine yazdığı tanımlayıcı; örneğin bir ekstre metni ya da havale başlığı. {capture} değerini yakalamalıdır.",
+      "strategiesLabel": "Stratejiler, denenme sırasıyla",
+      "strategiesHelp": "Sipariş numarası ve referans, değeri işlemin açıklamasında, alıcısında veya referans numarasında arar. Tutar ve alıcı, tutarın yanında bir alıcı işareti de ister. Tutar ve tarih, pencere içinde yalnızca tutarı ister. En az biri açık kalmalıdır.",
+      "strategyPosition": "{position}. {name}",
+      "moveUp": "{name} stratejisini daha erkene taşı",
+      "moveDown": "{name} stratejisini daha geç denenecek şekilde taşı",
+      "strategies": {
+        "reference": "Referans",
+        "orderId": "Sipariş numarası",
+        "amount_payee": "Tutar ve alıcı",
+        "amount_date": "Tutar ve tarih"
+      },
+      "referenceNeeded": "Referans stratejisi açık ama referans deseni yok, bu yüzden hiçbir şey bulamaz.",
+      "referenceInLabel": "Referansı ve sipariş numarasını şurada ara",
+      "referenceInHint": "4 karakterden kısa değerler hiçbir zaman aranmaz.",
+      "referenceIn": {
+        "description": "Açıklama",
+        "payee": "Alıcı adı",
+        "referenceNumber": "Referans numarası"
+      },
+      "daysBeforeLabel": "Alışverişten önceki gün sayısı",
+      "daysAfterLabel": "Alışverişten sonraki gün sayısı",
+      "daysHint": "Alışveriş tarihi çevresindeki pencere. Varsayılan {default}, en fazla {max}.",
+      "toleranceLabel": "Tutar toleransı",
+      "toleranceHint": "Banka tutarının e-postanın toplamından ne kadar farklı olabileceği. Varsayılan 0, en fazla {max}."
+    },
+    "proposal": {
+      "heading": "Öneri",
+      "tagLabel": "Bu profilin kategorilere ayırdığı işlemlere etiket ekle",
+      "tagHelp": "Etiket, bu adda bir etiketiniz yoksa oluşturulur. Öneride gösterilir ve siz onaylamadan hiçbir şey yazılmaz.",
+      "tagNameLabel": "Etiket adı",
+      "aiCategoriesLabel": "Hiçbir kuralın eşleşmediği kalemlerin kategorisini yapay zekâ seçsin",
+      "aiCategoriesHelp": "Bir kalem hiçbir kategori kuralıyla eşleşmiyorsa ve varsayılan kategori yoksa, yapay zekâdan kategori listenizden bir kategori istenir. Seçim, öneride yapay zekânın seçimi olarak işaretlenir. Bu kapalıyken yapay zekâya hiç sorulmaz."
     }
   },
   "problems": {
@@ -294,7 +334,16 @@
       "single": "Tek kalem",
       "singleName": "Tek kalem adı",
       "joinWrapped": "Bölünmüş satırları birleştir",
-      "ruleField": "field"
+      "ruleField": "field",
+      "reference": "Referans desenleri",
+      "match": "Eşleştirme bölümü",
+      "matchBy": "Eşleştirme stratejileri",
+      "matchReferenceIn": "Referansın aranacağı alanlar",
+      "matchDaysBefore": "Alışverişten önceki gün sayısı",
+      "matchDaysAfter": "Alışverişten sonraki gün sayısı",
+      "matchTolerance": "Tutar toleransı",
+      "tag": "Etiket",
+      "aiCategories": "Yapay zekâ kategorileri"
     },
     "codes": {
       "not_object": "geçerli bir tanım değil",
@@ -319,7 +368,11 @@
       "record_name_missing": "adımlarından birinde {capture} yakalamalı",
       "items_single_conflict": "patterns veya record'un yanında tek bir kalem içeriyor. Birini seçin.",
       "join_wrapped_needs_patterns": "yalnızca kalem desenleriyle çalışır",
-      "invalid_value": "bu alanın kabul etmediği bir değer içeriyor"
+      "invalid_value": "bu alanın kabul etmediği bir değer içeriyor",
+      "duplicate_entry": "aynı girdiyi iki kez listeliyor",
+      "reference_field_missing": "referans desenleri gerekiyor (referans stratejisi açık)",
+      "out_of_range_days": "0 ile {max} arasında bir tam sayı olmalıdır",
+      "out_of_range_tolerance": "0.00 ile {max} arasında bir tutar olmalıdır"
     }
   },
   "test": {
@@ -338,7 +391,9 @@
       "order_id": "sipariş numarası",
       "amount_payee": "tutar ve alıcı",
       "amount_only": "tutar",
-      "manual": "sizin seçiminiz"
+      "manual": "sizin seçiminiz",
+      "reference": "referans",
+      "amount_date": "tutar ve tarih"
     },
     "noPayee": "alıcı yok",
     "ambiguous": "{count, plural, one {# işlem} other {# işlem}} eşit derecede uyuyor, bu yüzden siz seçene kadar hiçbiri bağlanmaz.",
@@ -362,13 +417,30 @@
         "payee": "Satıcı",
         "requireLine": "Zorunlu satır",
         "skipIfLine": "Atlama satırı",
-        "waitIfLine": "Bekleme satırı"
+        "waitIfLine": "Bekleme satırı",
+        "reference": "Referans"
       },
       "entryLine": "girdi {entry} ({pattern}), {line}. satır: {text}",
       "entrySubject": "girdi {entry} ({pattern}), konu: {text}",
       "labelled": "girdi {entry}, {labelLine}. satırdaki {label} etiketi ({labelText}), {line}. satırdaki {pattern} değeri: {text}",
       "item": "Kalem {number}",
       "itemLine": "{pattern}, {line}. satır: {text}"
+    },
+    "trace": {
+      "heading": "Eşleştiricinin baktığı yerler",
+      "window": "{from} ile {to} arasındaki işlemler (alışverişten {before} gün önce, {after} gün sonra): {considered, plural, one {# işlem değerlendirildi} other {# işlem değerlendirildi}}.",
+      "tolerance": "Tutar en fazla {amount} farklı olabilir.",
+      "attempt": "{position}. {name}",
+      "kept": "{count, plural, =0 {hiçbir işlem kalmadı} one {# işlem kaldı} other {# işlem kaldı}}",
+      "decided": "Karar verdi",
+      "transaction": "{date}, {amount}, {payee}",
+      "noPayee": "alıcı yok",
+      "strategies": {
+        "reference": "Referans",
+        "orderId": "Sipariş numarası",
+        "amount_payee": "Tutar ve alıcı",
+        "amount_date": "Tutar ve tarih"
+      }
     }
   },
   "parsed": {
@@ -400,7 +472,9 @@
     "readByAi": "Yapay zekâ okudu",
     "readFromStructuredData": "Yapılandırılmış verilerden okundu",
     "paid": "Ödenen",
-    "payee": "Satıcı"
+    "payee": "Satıcı",
+    "reference": "Referans",
+    "categoryByAi": "Yapay zekâ"
   },
   "state": {
     "pending": "Okunmayı bekliyor",
@@ -422,7 +496,7 @@
     "loading": "E-postalar yükleniyor",
     "links": {
       "reviewInbox": "Yapay zekâ inceleme kutusunu aç",
-      "settings": "Posta kutusu ve ayrıştırıcı ayarları"
+      "settings": "Posta kutusu ayarları"
     },
     "filter": {
       "label": "Duruma göre filtrele",
@@ -532,7 +606,9 @@
       "order_id": "Sipariş numarası",
       "amount_payee": "Tutar ve alıcı",
       "amount_only": "Tutar",
-      "manual": "Sizin seçiminiz"
+      "manual": "Sizin seçiminiz",
+      "reference": "Referans",
+      "amount_date": "Tutar ve tarih"
     },
     "transaction": "İşlem",
     "transactionSummary": "{date}, {amount}, {payee}",
@@ -674,5 +750,119 @@
     "inboxLink": "Yapay zekâ inceleme kutusunu aç",
     "opened": "Sohbet, e-posta ekli olarak açıldı. Mesajı okuyun ve Gönder'e basın.",
     "chatPrompt": "Ekteki sipariş e-postasındaki ürünleri, miktarları ve fiyatları tanı; {date} tarihli işlemimi ({payee}, {amount}) her biri için bir kategoriyle ürünlere göre böl. {requestId} numaralı yapay zekâ inceleme isteğini üstlen ve önerini onun için gönder."
+  },
+  "hub": {
+    "tabs": {
+      "ariaLabel": "E-posta makbuzu bölümleri",
+      "overview": "Genel bakış",
+      "emails": "E-postalar",
+      "profiles": "Profiller",
+      "mailbox": "Posta kutusu"
+    },
+    "demoRestricted": {
+      "heading": "Demo Modunda Kısıtlı",
+      "body": "Demo modunda posta kutusu bağlama ve profil yazma devre dışıdır."
+    }
+  },
+  "process": {
+    "button": "Tümünü işle",
+    "buttonCount": "Tümünü işle ({count})",
+    "dialog": {
+      "title": "{count, plural, one {# saklanan e-posta işlensin mi?} other {# saklanan e-posta işlensin mi?}}",
+      "message": "Henüz okunmamış ya da yeni bir profil veya işlemin değiştirebileceği her saklanan e-posta yeniden okunur. Önerdikleri, otomatik uygulama açık değilse inceleme kutusunda bekler.",
+      "messageDomain": "{domain} göndericisinden gelen, henüz okunmamış ya da yeni bir profil veya işlemin değiştirebileceği her saklanan e-posta yeniden okunur. Önerdikleri, otomatik uygulama açık değilse inceleme kutusunda bekler.",
+      "confirm": "İşle"
+    },
+    "starting": "Başlatılıyor...",
+    "progress": "{processed, plural, one {# e-posta işlendi} other {# e-posta işlendi}}, {remaining} kaldı.",
+    "cancel": "İptal",
+    "cancelling": "İptal ediliyor...",
+    "summary": "{count, plural, one {# e-posta işlendi.} other {# e-posta işlendi.}}",
+    "cancelledSummary": "{count, plural, one {# e-postadan sonra iptal edildi.} other {# e-postadan sonra iptal edildi.}}",
+    "outcomes": "Sonuçları şöyle: {outcomes}.",
+    "passedOver": "{count, plural, one {# e-posta hata verdi ve atlandı.} other {# e-posta hata verdi ve atlandı.}}",
+    "failed": "Bir istek başarısız olduğu için işleme durduruldu.",
+    "failedWithReason": "İşleme durduruldu: {reason}",
+    "outcome": "{count} {state}",
+    "close": "Kapat"
+  },
+  "overview": {
+    "loading": "Genel bakış yükleniyor...",
+    "error": {
+      "title": "Genel bakış yüklenemedi",
+      "body": "İstek başarısız oldu, bu yüzden buradaki hiçbir şeyin boş olduğu varsayılmamalıdır. Yeniden deneyin.",
+      "retry": "Yeniden dene"
+    },
+    "mailbox": {
+      "title": "Posta kutusu",
+      "none": "Henüz bağlı bir posta kutusu yok.",
+      "connect": "Posta kutusu bağla",
+      "manage": "Posta kutusu ayarlarını aç",
+      "state": {
+        "notConnected": "Bağlı değil",
+        "failing": "Son yoklama başarısız oldu",
+        "off": "Yoklama kapalı",
+        "polling": "Yoklanıyor"
+      },
+      "auth": {
+        "password": "Parola ile giriş",
+        "oauth2": "Bir sağlayıcıyla oturum açma"
+      },
+      "lastSuccess": "Son başarılı yoklama: {when}",
+      "neverPolled": "Henüz başarılı bir yoklama yapılmadı.",
+      "lastError": "Son hata: {error}"
+    },
+    "emails": {
+      "title": "E-postalar",
+      "stored": "saklanan",
+      "processable": "{count, plural, one {# e-posta yeniden işlenebilir} other {# e-posta yeniden işlenebilir}}.",
+      "open": "E-postaları aç"
+    },
+    "proposals": {
+      "title": "Öneriler",
+      "waiting": "onayınızı bekleyen",
+      "review": "Önerileri incele",
+      "open": "İnceleme kutusunu aç"
+    },
+    "profiles": {
+      "title": "Profiller",
+      "approved": "onaylı",
+      "drafts": "{count, plural, one {# taslak onayınızı bekliyor} other {# taslak onayınızı bekliyor}}.",
+      "manage": "Profilleri aç"
+    },
+    "uncovered": {
+      "title": "Profili olmayan göndericiler",
+      "help": "Bu göndericilerin e-postalarını hiçbir profil okumuyor. Birine profil oluşturun ya da asistandan taslağını hazırlamasını isteyin.",
+      "none": "Saklanan e-postaların her göndericisi bir profille karşılanıyor.",
+      "row": "{domain} ({count, plural, one {# e-posta} other {# e-posta}})",
+      "show": "E-postaları göster"
+    }
+  },
+  "wizard": {
+    "heading": "E-posta makbuzlarıyla başlayın",
+    "intro": "Sıfırdan ilk önerinize dört adım.",
+    "done": "(tamam)",
+    "steps": {
+      "mailbox": {
+        "title": "Posta kutusu bağlayın",
+        "body": "Sipariş onaylarınızı alan ayrılmış bir posta kutusu kullanın. Monize onu yalnızca okur.",
+        "action": "Posta kutusu bağla"
+      },
+      "emails": {
+        "title": "E-postaları getirin",
+        "body": "E-postalar, posta kutusu yoklandığında okunur. İlk e-postaları görmek için posta kutusu ayarlarından yoklayın.",
+        "action": "E-postaları aç"
+      },
+      "profile": {
+        "title": "Bir gönderici için profil oluşturun",
+        "body": "Profil, Monize'a tek bir göndericinin sipariş onaylarını nasıl okuyacağını söyler. Bir tane yazın ya da saklanan bir e-postadan taslağını hazırlayın.",
+        "action": "Profilleri aç"
+      },
+      "review": {
+        "title": "Önerileri inceleyin",
+        "body": "Her e-posta, bir işlem için öneriye dönüşür. Siz onaylamadan hiçbir şey değişmez.",
+        "action": "İnceleme kutusunu aç"
+      }
+    }
   }
 }

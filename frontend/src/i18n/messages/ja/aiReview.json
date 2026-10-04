@@ -13,6 +13,12 @@
     "rejected": "却下",
     "expired": "期限切れ"
   },
+  "kindFilter": {
+    "label": "種類で絞り込み",
+    "all": "すべて",
+    "email_receipt": "メールレシート",
+    "transaction_review": "ルール"
+  },
   "status": {
     "pending": "保留中",
     "claimed": "レビュー中",
@@ -47,6 +53,23 @@
   },
   "proposal": {
     "errorTitle": "この提案はもう適用できません"
+  },
+  "bulk": {
+    "selectRow": "{name} を選択",
+    "selectAll": "表示中の承認可能なリクエストをすべて選択",
+    "approveSelected": "選択した項目を承認 ({count})",
+    "approveAllShown": "表示中の項目をすべて承認 ({count})",
+    "summary": "{approved, plural, one {# 件の提案} other {# 件の提案}}を適用、{failed, plural, one {# 件は未適用} other {# 件は未適用}}です。",
+    "closeSummary": "閉じる",
+    "failure": "{name}: {reason}",
+    "noReason": "理由は示されませんでした",
+    "unknownRequest": "リクエスト",
+    "failed": "提案を適用できませんでした",
+    "dialog": {
+      "title": "{count, plural, one {# 件の提案を適用しますか?} other {# 件の提案を適用しますか?}}",
+      "message": "各提案は、現在の取引の状態と照らして確認され、個別に適用されます。合わなくなった提案はスキップして報告し、残りは引き続き適用されます。承認する前に提案を確認してください。",
+      "confirm": "{count, plural, one {# 件の提案を適用} other {# 件の提案を適用}}"
+    }
   },
   "dismissDialog": {
     "title": "この依頼を却下しますか?",

@@ -146,7 +146,10 @@
     "transferNotSupported": "转账无法通过提议进行审核。请改为拒绝该请求。",
     "splitDifference": "拆分行合计为 {{ sum }}，但交易金额为 {{ amount }}：{{ difference }} 尚未分配。请让各行合计等于交易金额；运费等余额需要单独一行，或告知用户而不是自行分配。",
     "noTransaction": "此 AI 审核请求与交易无关。",
-    "parserDraftNotSubmittable": "解析器草稿请求应使用 email_receipt_parsers 工具回复（先测试，再用此 requestId 执行 save_draft），而不是提交交易提议。"
+    "parserDraftNotSubmittable": "解析器草稿请求应使用 email_receipt_parsers 工具回复（先测试，再用此 requestId 执行 save_draft），而不是提交交易提议。",
+    "tagNamesInvalid": "一条提议最多可添加 {{ max }} 个标签，每个标签 1 到 {{ length }} 个字符，且不能包含控制字符。",
+    "noApprovableProposal": "此请求在这里没有可批准的提议。",
+    "approveFailed": "无法批准此提议。请单独尝试。"
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "验证尝试次数过多。请重新登录。",

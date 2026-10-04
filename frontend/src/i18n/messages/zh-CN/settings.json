@@ -996,7 +996,7 @@
     },
     "emailReceiptsCard": {
       "title": "邮件收据",
-      "description": "连接用于接收订单确认邮件的邮箱，并管理读取这些邮件的解析器。"
+      "description": "连接用于接收订单确认邮件的邮箱，并管理读取这些邮件的配置文件。"
     },
     "bankSyncCard": {
       "title": "银行同步",
