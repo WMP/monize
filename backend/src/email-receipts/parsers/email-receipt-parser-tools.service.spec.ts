@@ -8,6 +8,7 @@ import { Payee } from "../../payees/entities/payee.entity";
 import { createScopedDbMocks } from "../../test-helpers/scoped-db-testing";
 import { EmailReceiptParser } from "../entities/email-receipt-parser.entity";
 import { EmailReceipt } from "../entities/email-receipt.entity";
+import { EMAIL_RECEIPT_PARSER_LANGUAGE_GUIDE } from "./parser-tool.guide";
 import { MAX_PARSERS_PER_USER } from "./email-receipt-parsers.service";
 import {
   EmailReceiptParserToolsService,
@@ -30,7 +31,7 @@ const CAT_GONE = "33333333-3333-4333-8333-333333333333";
 const CALLER = "assistant";
 
 const DEFINITION = {
-  version: 1,
+  version: 2,
   orderId: ["Order number: {orderid}"],
   total: ["Order total: {amount}"],
   shipping: ["Shipping: {amount}"],
@@ -132,6 +133,7 @@ describe("EmailReceiptParserToolsService.listCategories", () => {
       ],
       totalCount: 2,
       truncated: false,
+      guide: EMAIL_RECEIPT_PARSER_LANGUAGE_GUIDE,
     });
   });
 
@@ -159,6 +161,15 @@ describe("EmailReceiptParserToolsService.listCategories", () => {
 
     expect(categoryRepo.find.mock.calls[0][0].where.userId).toBe(USER);
   });
+
+  it("returns the whole parser language beside the categories", async () => {
+    const { service } = setup();
+
+    const result = await service.listCategories(USER);
+
+    expect(result.guide).toBe(EMAIL_RECEIPT_PARSER_LANGUAGE_GUIDE);
+    expect(result.guide).toContain("joinWrapped");
+  });
 });
 
 describe("EmailReceiptParserToolsService.testDefinition", () => {
@@ -179,6 +190,8 @@ describe("EmailReceiptParserToolsService.testDefinition", () => {
     expect(result.emails[1].parsed).toEqual({
       orderId: "ABCD1234",
       total: 15,
+      paid: null,
+      payee: null,
       shipping: 3,
       discount: null,
       items: [{ name: "Widget", qty: 1, amount: 12, category: "Books" }],
@@ -192,6 +205,65 @@ describe("EmailReceiptParserToolsService.testDefinition", () => {
     });
     expect(result.allComplete).toBe(false);
     expect(result.unknownCategoryIds).toEqual([]);
+  });
+
+  it("says which entry and which line read each value, and what the guards would do", async () => {
+    const { service, receiptRepo } = setup();
+    receiptRepo.find.mockResolvedValue([receipt()]);
+
+    const result = await service.testDefinition(USER, {
+      definition: DEFINITION,
+      receiptIds: [R1],
+    });
+
+    const [email] = result.emails;
+    expect(email.outcome).toBe("read");
+    expect(email.trace.orderId).toMatchObject({
+      entry: 0,
+      pattern: "Order number: {orderid}",
+      line: { line: 1, text: "Order number: ABCD1234" },
+    });
+    expect(email.trace.total).toMatchObject({ entry: 0, line: { line: 6 } });
+    expect(email.trace.items).toEqual([
+      expect.objectContaining({
+        mode: "patterns",
+        patterns: ["{name} {amount}"],
+        lines: [{ line: 3, text: "Widget 12.00" }],
+      }),
+    ]);
+  });
+
+  it("reports a guard that would stop the pipeline reading the email", async () => {
+    const { service, receiptRepo } = setup();
+    receiptRepo.find.mockResolvedValue([receipt()]);
+
+    const result = await service.testDefinition(USER, {
+      definition: { ...DEFINITION, requireLine: ["*PayU*"] },
+      receiptIds: [R1],
+    });
+
+    expect(result.emails[0].outcome).toBe("not_applicable");
+    expect(result.emails[0].trace.requireLine).toBeNull();
+  });
+
+  it("traces at most 20 items per email", async () => {
+    const { service, receiptRepo } = setup();
+    const body = [
+      "Items",
+      ...Array.from({ length: 30 }, (_, i) => `P${i} 1.00`),
+    ].join("\n");
+    receiptRepo.find.mockResolvedValue([receipt({ bodyText: body })]);
+
+    const result = await service.testDefinition(USER, {
+      definition: {
+        version: 2,
+        items: { patterns: ["{name} {amount}"], startAfter: "Items" },
+      },
+      receiptIds: [R1],
+    });
+
+    expect(result.emails[0].parsed.items).toHaveLength(30);
+    expect(result.emails[0].trace.items).toHaveLength(20);
   });
 
   it("is allComplete only when every email reads complete", async () => {
@@ -361,7 +433,7 @@ describe("EmailReceiptParserToolsService.saveDraft", () => {
     const error = await service
       .saveDraft(USER, CALLER, {
         ...input,
-        definition: { version: 1, total: ["no capture"], bogus: 1 },
+        definition: { version: 2, total: ["no capture"], bogus: 1 },
       })
       .catch((e) => e);
 
@@ -382,7 +454,7 @@ describe("EmailReceiptParserToolsService.saveDraft", () => {
 
     expect(
       (parserRepo.save.mock.calls[0][0] as EmailReceiptParser).definition,
-    ).toMatchObject({ version: 1 });
+    ).toMatchObject({ version: 2 });
   });
 
   it.each([

@@ -31,7 +31,7 @@ const USER = "user-1";
 const R1 = "e0000000-0000-4000-8000-000000000001";
 const R2 = "e0000000-0000-4000-8000-000000000002";
 const REQ = "e0000000-0000-4000-8000-000000000009";
-const DEFINITION = { version: 1, total: ["Order total: {amount}"] };
+const DEFINITION = { version: 2, total: ["Order total: {amount}"] };
 
 describe("ToolExecutorService email_receipt_parsers", () => {
   let service: ToolExecutorService;

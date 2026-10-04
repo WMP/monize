@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ParsedReceiptView } from '@/components/email-receipts/ParsedReceiptView';
+import { ParserTraceList } from '@/components/email-receipts/ParserTraceList';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { useDateFormat } from '@/hooks/useDateFormat';
@@ -22,8 +23,8 @@ const logger = createLogger('ReceiptParserTest');
 const RECEIPT_CHOICES = 50;
 
 interface ParserTestPanelProps {
-  /** The definition as the form holds it now, saved or not. */
-  definition: ReceiptParserDefinition;
+  /** The definition as the form or the JSON editor holds it now, saved or not; null when the JSON does not parse. */
+  definition: ReceiptParserDefinition | null;
   payeeId: string;
   /** A stored email to preselect, such as the one the parser is being written for. */
   initialReceiptId?: string;
@@ -84,7 +85,7 @@ export function ParserTestPanel({ definition, payeeId, initialReceiptId, categor
   );
 
   const handleTest = async () => {
-    if (receiptId === '') return;
+    if (receiptId === '' || definition === null) return;
     setIsTesting(true);
     setError(null);
     setResult(null);
@@ -142,13 +143,15 @@ export function ParserTestPanel({ definition, payeeId, initialReceiptId, categor
             type="button"
             variant="outline"
             isLoading={isTesting}
-            disabled={receiptId === ''}
+            disabled={receiptId === '' || definition === null}
             onClick={() => void handleTest()}
           >
             {t('button')}
           </Button>
         </div>
       )}
+
+      {definition === null && <p className="text-sm text-gray-500 dark:text-gray-400">{t('jsonInvalid')}</p>}
 
       {error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
@@ -158,7 +161,13 @@ export function ParserTestPanel({ definition, payeeId, initialReceiptId, categor
 
       {result && (
         <div className="space-y-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+          {result.outcome !== undefined && result.outcome !== 'read' && (
+            <p role="note" className="rounded-lg border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+              {t(`outcome.${result.outcome}`)}
+            </p>
+          )}
           <ParsedReceiptView parsed={result.parsed} categoryLabels={categoryLabels} />
+          {result.trace && <ParserTraceList trace={result.trace} />}
           <div role="status" className="text-sm text-gray-700 dark:text-gray-300">
             <p className="font-medium text-gray-900 dark:text-gray-100">{t('matchHeading')}</p>
             {match?.kind === 'matched' && result.transaction && (

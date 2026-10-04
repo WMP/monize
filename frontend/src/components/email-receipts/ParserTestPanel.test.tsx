@@ -11,7 +11,7 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }),
 }));
 
-const definition = { version: 1 as const, total: ['Total {amount}'] };
+const definition = { version: 2 as const, total: ['Total {amount}'] };
 const labels = new Map([['cat-1', 'Electronics']]);
 
 async function renderPanel(props: Partial<Parameters<typeof ParserTestPanel>[0]> = {}) {
@@ -43,6 +43,14 @@ describe('ParserTestPanel', () => {
     ]);
   });
 
+  it('cannot test a definition that is not there (the JSON does not parse) and says why', async () => {
+    await renderPanel({ definition: null });
+    await choose('r-1');
+    expect(screen.getByText('The JSON is not valid, so there is nothing to test yet.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Test' })).toBeDisabled();
+    expect(api.test).not.toHaveBeenCalled();
+  });
+
   it('offers the stored emails and cannot test until one is chosen', async () => {
     await renderPanel();
     expect(api.list).toHaveBeenCalledWith(undefined, 50);
@@ -61,6 +69,60 @@ describe('ParserTestPanel', () => {
     await choose('r-2');
     await runTest();
     expect(api.test).toHaveBeenCalledWith({ definition, receiptId: 'r-2', payeeId: 'payee-1' });
+  });
+
+  it('lists what matched each value under the result', async () => {
+    api.test.mockResolvedValue({
+      parsed: PARSED_RECEIPT,
+      trace: {
+        orderId: null,
+        total: { entry: 0, pattern: 'Total {amount}', line: { line: 3, text: 'Total 25.00' } },
+        paid: null,
+        shipping: null,
+        discount: null,
+        payee: null,
+        requireLine: null,
+        skipIfLine: null,
+        waitIfLine: null,
+        items: [],
+      },
+      outcome: 'read',
+      match: { kind: 'unmatched' },
+      candidateCount: 0,
+      transaction: null,
+    });
+    await renderPanel();
+    await choose('r-1');
+    await runTest();
+    expect(screen.getByText('Matched by')).toBeInTheDocument();
+    expect(screen.getByText(/entry 1 \(Total \{amount\}\), line 3: Total 25\.00/)).toBeInTheDocument();
+    expect(screen.queryByRole('note')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['not_applicable', /would not read this email/],
+    ['skip_line', /would set this email aside/],
+    ['wait_line', /would hold this email/],
+  ])('says when a guard (%s) would stop the pipeline reading the email', async (outcome, text) => {
+    api.test.mockResolvedValue({
+      parsed: PARSED_RECEIPT,
+      outcome,
+      match: { kind: 'unmatched' },
+      candidateCount: 0,
+      transaction: null,
+    });
+    await renderPanel();
+    await choose('r-1');
+    await runTest();
+    expect(screen.getByRole('note')).toHaveTextContent(text);
+  });
+
+  it('shows no trace from a server that sent none', async () => {
+    api.test.mockResolvedValue({ parsed: PARSED_RECEIPT, match: { kind: 'unmatched' }, candidateCount: 0, transaction: null });
+    await renderPanel();
+    await choose('r-1');
+    await runTest();
+    expect(screen.queryByText('Matched by')).not.toBeInTheDocument();
   });
 
   it('sends no payee when none is picked', async () => {

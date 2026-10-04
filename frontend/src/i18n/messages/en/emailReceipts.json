@@ -153,7 +153,8 @@
     "payeeUnknown": "Payee not found",
     "payeeUnavailable": "Payee list unavailable",
     "actions": {
-      "approve": "Approve"
+      "approve": "Approve",
+      "viewJson": "View JSON"
     },
     "toasts": {
       "approved": "Parser approved",
@@ -165,6 +166,14 @@
     "deleteDialog": {
       "title": "Delete the parser?",
       "message": "The parser {name} will be deleted. Emails it already read keep their results."
+    },
+    "jsonDialog": {
+      "title": "Definition of {name}",
+      "help": "The parser definition as it is stored. It is read-only here; use Edit to change it.",
+      "contentLabel": "Definition JSON",
+      "copy": "Copy",
+      "copied": "JSON copied",
+      "copyFailed": "Could not copy the JSON"
     }
   },
   "editor": {
@@ -222,6 +231,18 @@
       "defaultHelp": "Used for items that no rule matches.",
       "shippingLabel": "Shipping category",
       "shippingHelp": "The category of the shipping line."
+    },
+    "mode": {
+      "label": "Editing mode",
+      "form": "Form",
+      "json": "JSON",
+      "formUnavailable": "This definition uses something the form cannot show: labelled entries, multi-line items or keys it has no field for. Edit it as JSON.",
+      "jsonInvalid": "The JSON is not valid yet, so the form cannot be shown. Fix it first."
+    },
+    "json": {
+      "label": "Parser definition (JSON)",
+      "help": "The same definition the form builds. The server checks it when you save, and the test below reads it as it is now.",
+      "parseError": "This is not valid JSON, or it is not a JSON object. Fix it to save or test the parser."
     }
   },
   "problems": {
@@ -230,7 +251,12 @@
     "paths": {
       "definition": "The definition",
       "line": "{field}, line {line}",
-      "rule": "Category rule {rule}, {part}"
+      "rule": "Category rule {rule}, {part}",
+      "entryPart": "{field}, entry {line}, {part}",
+      "skipLine": "Line to skip {line}",
+      "recordStep": "Record step {step}",
+      "recordStepPart": "Record step {step}, {part}",
+      "recordAlternative": "Record step {step}, alternative {alternative}"
     },
     "fields": {
       "orderId": "Order number patterns",
@@ -245,12 +271,28 @@
       "rulePattern": "pattern",
       "ruleCategory": "category",
       "defaultCategory": "Default category",
-      "shippingCategory": "Shipping category"
+      "shippingCategory": "Shipping category",
+      "skipLines": "Lines to skip",
+      "record": "Record",
+      "label": "label",
+      "value": "value",
+      "within": "within",
+      "line": "line",
+      "optional": "optional",
+      "paid": "Paid patterns",
+      "payee": "Merchant patterns",
+      "requireLine": "Required lines",
+      "skipIfLine": "Lines that skip the email",
+      "waitIfLine": "Lines that hold the email",
+      "single": "Single item",
+      "singleName": "Single item name",
+      "joinWrapped": "Join wrapped lines",
+      "ruleField": "field"
     },
     "codes": {
       "not_object": "is not a valid definition",
       "unknown_key": "is not something a parser can have",
-      "invalid_version": "is a version this server does not read",
+      "unsupported_version": "is a version this server does not read (use version 2)",
       "invalid_type": "has the wrong kind of value",
       "empty": "must not be empty",
       "too_many": "has too many entries (at most {max})",
@@ -262,7 +304,15 @@
       "capture_not_allowed": "uses a capture name this field does not accept",
       "capture_missing": "is missing a capture this field needs",
       "capture_conflict": "captures both the line total and the unit price. Use one of them.",
-      "invalid_uuid": "is not a valid category"
+      "invalid_uuid": "is not a valid category",
+      "out_of_range": "must be a whole number from 1 to {max}",
+      "items_patterns_and_record": "has both patterns and a record. Use one of them.",
+      "items_shape_missing": "needs either patterns or a record",
+      "skip_lines_need_record": "can only be used together with a record",
+      "record_name_missing": "must capture {capture} in one of its steps",
+      "items_single_conflict": "has a single item beside patterns or a record. Use one of them.",
+      "join_wrapped_needs_patterns": "only works with item patterns",
+      "invalid_value": "has a value this field does not accept"
     }
   },
   "test": {
@@ -285,7 +335,33 @@
     },
     "noPayee": "no payee",
     "ambiguous": "{count, plural, one {# transaction fits} other {# transactions fit}} equally well, so none would be linked until you choose.",
-    "unmatched": "No transaction matches, out of {count, plural, one {# candidate} other {# candidates}}."
+    "unmatched": "No transaction matches, out of {count, plural, one {# candidate} other {# candidates}}.",
+    "jsonInvalid": "The JSON is not valid, so there is nothing to test yet.",
+    "outcome": {
+      "not_applicable": "This parser would not read this email: none of its required lines is in it, so the next parser for the sender would be tried.",
+      "skip_line": "This parser would set this email aside: a line it skips on is in it.",
+      "wait_line": "This parser would hold this email: a line says the order is not final, so it is read again later."
+    },
+    "matchedBy": {
+      "heading": "Matched by",
+      "none": "No value was read from this email.",
+      "fields": {
+        "orderId": "Order number",
+        "total": "Total",
+        "paid": "Paid",
+        "shipping": "Shipping",
+        "discount": "Discount",
+        "payee": "Merchant",
+        "requireLine": "Required line",
+        "skipIfLine": "Skip line",
+        "waitIfLine": "Wait line"
+      },
+      "entryLine": "entry {entry} ({pattern}), line {line}: {text}",
+      "entrySubject": "entry {entry} ({pattern}), the subject: {text}",
+      "labelled": "entry {entry}, label {label} on line {labelLine} ({labelText}), value {pattern} on line {line}: {text}",
+      "item": "Item {number}",
+      "itemLine": "{pattern}, line {line}: {text}"
+    }
   },
   "parsed": {
     "notFound": "Not found",
@@ -310,9 +386,12 @@
       "no_items": "No line items were found.",
       "items_unbalanced": "The line items do not add up to the total.",
       "items_uncategorized": "Some line items have no category.",
-      "shipping_uncategorized": "The shipping line has no category."
+      "shipping_uncategorized": "The shipping line has no category.",
+      "item_amount_missing": "An item has no amount, and the email has no single total to give it."
     },
-    "readByAi": "Read by the AI"
+    "readByAi": "Read by the AI",
+    "paid": "Paid",
+    "payee": "Merchant"
   },
   "state": {
     "pending": "Waiting to be read",
@@ -457,7 +536,10 @@
       "amount_differs": "The parsed total differs from the transaction amount, so only a description is proposed.",
       "proposal_fallback": "The itemized proposal was refused, so only a description is proposed.",
       "nothing_to_propose": "The email adds nothing to this transaction.",
-      "proposal_refused": "The proposal was refused, so nothing was proposed."
+      "proposal_refused": "The proposal was refused, so nothing was proposed.",
+      "skip_line": "A line this parser skips on was found, so the email was ignored.",
+      "wait_line": "A line says the order is not final yet, so the email will be read again later.",
+      "item_amount_missing": "An item has no amount, and the email has no single total to give it."
     },
     "reasonUnknown": "Reason: {reason}",
     "requestNote": "Review request ({state}): {note}",

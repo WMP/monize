@@ -36,7 +36,12 @@ const amount = (over: Partial<ReceiptMatchCandidate> = {}) =>
 
 const match = (
   candidates: ReceiptMatchCandidate[],
-  parsed: { orderId: string | null; total: number | null } = {
+  parsed: {
+    orderId: string | null;
+    total: number | null;
+    paid?: number | null;
+    payee?: string | null;
+  } = {
     orderId: "EX-20931",
     total: TOTAL,
   },
@@ -373,5 +378,100 @@ describe("matchReceipt: the stored candidate list", () => {
       kind: "ambiguous",
       candidateIds: ["z-near", "a-far"],
     });
+  });
+});
+
+describe("matchReceipt: paid, and the merchant the email names", () => {
+  // A list price of 49.99 less a 3.00 promotion is charged 46.99.
+  const LIST = 499900;
+  const PAID = 469900;
+  const charged = (over: Partial<ReceiptMatchCandidate> = {}) =>
+    tx({ amount: -46.99, ...over });
+
+  it("matches the amount paid, not the list price, when both are stated", () => {
+    const bank = charged();
+    const listPrice = tx({ amount: -49.99 });
+    expect(
+      match([listPrice, bank], { orderId: null, total: LIST, paid: PAID }),
+    ).toEqual({
+      kind: "matched",
+      transactionId: bank.id,
+      matchKind: "amount_only",
+    });
+  });
+
+  it("falls back to the total when no paid was read", () => {
+    const bank = tx({ amount: -49.99 });
+    expect(
+      match([bank], { orderId: null, total: LIST, paid: null }),
+    ).toMatchObject({
+      kind: "matched",
+      transactionId: bank.id,
+    });
+  });
+
+  it("matches nothing by amount when neither was read", () => {
+    expect(
+      match([charged()], { orderId: null, total: null, paid: null }),
+    ).toEqual({
+      kind: "unmatched",
+    });
+  });
+
+  it("counts a candidate whose payee NAME is the merchant the email names as signal P", () => {
+    const merchant = charged({
+      payeeId: "payee-olx",
+      payeeName: "Grupa OLX sp. z o.o.",
+    });
+    const other = charged();
+    // The parser's payee is the gateway; the merchant is read from the email.
+    expect(
+      match(
+        [other, merchant],
+        {
+          orderId: null,
+          total: PAID,
+          paid: PAID,
+          payee: "GRUPA OLX SP. Z O.O.",
+        },
+        "payee-gateway",
+      ),
+    ).toEqual({
+      kind: "matched",
+      transactionId: merchant.id,
+      matchKind: "amount_payee",
+    });
+  });
+
+  it("compares the merchant ignoring case, accents and legal suffixes", () => {
+    const merchant = charged({ payeeName: "Zażółć Sklep" });
+    const other = charged({ payeeName: "Zazolc Inny" });
+    expect(
+      match(
+        [other, merchant],
+        { orderId: null, total: PAID, payee: "ZAZOLC SKLEP sp. z o.o." },
+        null,
+      ),
+    ).toMatchObject({
+      kind: "matched",
+      transactionId: merchant.id,
+      matchKind: "amount_payee",
+    });
+  });
+
+  it("keeps the parser's payee id signal beside the merchant name", () => {
+    const byId = charged({ payeeId: PAYEE });
+    const byName = charged({ payeeId: "x", payeeName: "Shop X" });
+    expect(
+      match([byId, byName], { orderId: null, total: PAID, payee: "Shop X" }),
+    ).toEqual({ kind: "ambiguous", candidateIds: [byId.id, byName.id] });
+  });
+
+  it("does not take a different merchant, or a candidate with no payee name, for the one named", () => {
+    const a = charged({ payeeName: "Shop Yankee" });
+    const b = charged({ payeeName: null });
+    expect(
+      match([a, b], { orderId: null, total: PAID, payee: "Shop Xavier" }, null),
+    ).toEqual({ kind: "ambiguous", candidateIds: [a.id, b.id] });
   });
 });

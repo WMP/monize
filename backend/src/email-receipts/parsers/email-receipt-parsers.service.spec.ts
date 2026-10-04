@@ -26,7 +26,7 @@ const CAT_A = "11111111-1111-4111-8111-111111111111";
 const CAT_B = "22222222-2222-4222-8222-222222222222";
 
 const definition = (over: Record<string, unknown> = {}) => ({
-  version: 1,
+  version: 2,
   total: ["Order total: {amount}"],
   defaultCategoryId: CAT_A,
   ...over,
@@ -189,7 +189,7 @@ describe("EmailReceiptParsersService.create", () => {
       .create(
         USER,
         createDto({
-          definition: { version: 1, total: ["no capture"], bogus: 1 },
+          definition: { version: 2, total: ["no capture"], bogus: 1 },
         }),
       )
       .catch((e) => e);
@@ -205,7 +205,7 @@ describe("EmailReceiptParsersService.create", () => {
       .create(USER, createDto({ definition: {} }))
       .catch((e) => e);
     expect(error).toBeInstanceOf(BadRequestException);
-    expect(error.message).toContain("version: invalid_version");
+    expect(error.message).toContain("version: unsupported_version");
   });
 
   it("refuses beyond the cap", async () => {
@@ -229,7 +229,7 @@ describe("EmailReceiptParsersService reads", () => {
     expect(parserRepo.find.mock.calls[0][0].where).toEqual({ userId: USER });
     expect(views.map((v) => v.definitionValid)).toEqual([true, false]);
     expect(views[1].definitionErrors.map((e) => e.code)).toContain(
-      "invalid_version",
+      "unsupported_version",
     );
   });
 
@@ -391,7 +391,7 @@ describe("EmailReceiptParsersService.approve", () => {
     parserRepo.findOne.mockResolvedValue(stored({ definition: {} }));
     const error = await service.approve(USER, "p1").catch((e) => e);
     expect(error).toBeInstanceOf(BadRequestException);
-    expect(error.message).toContain("invalid_version");
+    expect(error.message).toContain("unsupported_version");
     expect(parserRepo.update).not.toHaveBeenCalled();
   });
 
@@ -567,7 +567,7 @@ describe("EmailReceiptParsersService.test", () => {
     ({
       receiptId: "r1",
       definition: {
-        version: 1,
+        version: 2,
         orderId: ["Order number: {orderid}"],
         total: ["Order total: {amount}"],
       },
@@ -592,6 +592,12 @@ describe("EmailReceiptParsersService.test", () => {
     const result = await service.test(USER, testDto());
 
     expect(result.parsed).toMatchObject({ orderId: "ABCD1234", total: 379700 });
+    expect(result.outcome).toBe("read");
+    expect(result.trace.total).toEqual({
+      entry: 0,
+      pattern: "Order total: {amount}",
+      line: { line: 2, text: "Order total: 37.97" },
+    });
     expect(result.match).toEqual({
       kind: "matched",
       transactionId: "t1",
@@ -629,7 +635,7 @@ describe("EmailReceiptParsersService.test", () => {
       testDto({
         payeeId: "pay1",
         definition: {
-          version: 1,
+          version: 2,
           total: ["Order total: {amount}"],
           items: { patterns: ["Item: {name} {amount}"] },
         },
@@ -660,7 +666,7 @@ describe("EmailReceiptParsersService.test", () => {
       .test(USER, testDto({ definition: {} }))
       .catch((e) => e);
     expect(error).toBeInstanceOf(BadRequestException);
-    expect(error.message).toContain("invalid_version");
+    expect(error.message).toContain("unsupported_version");
     expect(manager.getRepository).not.toHaveBeenCalled();
   });
 });

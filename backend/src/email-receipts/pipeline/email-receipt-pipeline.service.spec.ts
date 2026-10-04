@@ -41,7 +41,7 @@ const CAT_BOOKS = "11111111-1111-4111-8111-111111111111";
 const CAT_SHIPPING = "22222222-2222-4222-8222-222222222222";
 
 const DEFINITION = {
-  version: 1,
+  version: 2,
   orderId: ["Order number: {orderid}"],
   total: ["Order total: {amount}"],
   shipping: ["Shipping: {amount}"],
@@ -381,6 +381,193 @@ describe("EmailReceiptPipelineService.process", () => {
       const result = await run(h);
       expect(result.status).toBe("review");
       expect(result.matchKind).toBe("order_id");
+    });
+  });
+
+  describe("a parser's line guards (requireLine, skipIfLine, waitIfLine)", () => {
+    const guarded = (extra: Record<string, unknown>) => ({
+      ...DEFINITION,
+      ...extra,
+    });
+
+    it("passes over a parser whose requireLine finds no line, and the next parser for the domain reads the email", async () => {
+      const h = setup({
+        parsers: [
+          parserRow({
+            id: "parser-a",
+            definition: guarded({ requireLine: ["*PayU*"] }),
+          }),
+          parserRow({
+            id: "parser-b",
+            createdAt: new Date("2026-09-02T00:00:00Z"),
+          }),
+        ],
+      });
+      const result = await run(h);
+      expect(result.status).toBe("review");
+      expect(h.lastUpdate()?.[1]).toMatchObject({ parserId: "parser-b" });
+    });
+
+    it("reads the email with the first parser when its requireLine is met", async () => {
+      const h = setup({
+        receipt: receiptRow({ bodyText: `PayU\n${BODY}` }),
+        parsers: [
+          parserRow({
+            id: "parser-a",
+            definition: guarded({ requireLine: ["*PayU*"] }),
+          }),
+          parserRow({
+            id: "parser-b",
+            createdAt: new Date("2026-09-02T00:00:00Z"),
+          }),
+        ],
+      });
+      await run(h);
+      expect(h.lastUpdate()?.[1]).toMatchObject({ parserId: "parser-a" });
+    });
+
+    it("is no_parser when no candidate's requireLine is met", async () => {
+      const h = setup({
+        parsers: [
+          parserRow({ definition: guarded({ requireLine: ["*PayU*"] }) }),
+        ],
+      });
+      const result = await run(h);
+      expect(result.status).toBe("no_parser");
+      expect(h.lastUpdate()?.[1]).toMatchObject({
+        parserId: null,
+        parsed: null,
+      });
+    });
+
+    it("an invalid definition on the way still stops the read as parser_invalid", async () => {
+      const h = setup({
+        parsers: [
+          parserRow({ id: "parser-a", definition: {} }),
+          parserRow({
+            id: "parser-b",
+            createdAt: new Date("2026-09-02T00:00:00Z"),
+          }),
+        ],
+      });
+      const result = await run(h);
+      expect(result).toMatchObject({
+        status: "parse_failed",
+        statusReason: "parser_invalid",
+      });
+    });
+
+    it("a skipIfLine match makes the receipt ignored with skip_line, and reads nothing further", async () => {
+      const h = setup({
+        parsers: [
+          parserRow({ definition: guarded({ skipIfLine: ["Subtotal*"] }) }),
+        ],
+      });
+      const result = await run(h);
+      expect(result).toMatchObject({
+        status: "ignored",
+        statusReason: "skip_line",
+        transactionId: null,
+      });
+      expect(h.lastUpdate()?.[1]).toMatchObject({
+        status: "ignored",
+        statusReason: "skip_line",
+        parserId: "parser-1",
+        parsed: null,
+        transactionId: null,
+        matchKind: null,
+      });
+      expect(h.requests.enqueueClaimed).not.toHaveBeenCalled();
+      expect(h.manager.query).not.toHaveBeenCalledWith(
+        expect.stringContaining("JOIN accounts a"),
+        expect.anything(),
+      );
+    });
+
+    it("a waitIfLine match leaves the receipt unmatched with wait_line, for the rematch to read again", async () => {
+      const h = setup({
+        parsers: [
+          parserRow({ definition: guarded({ waitIfLine: ["*Widget*"] }) }),
+        ],
+      });
+      const result = await run(h);
+      expect(result).toMatchObject({
+        status: "unmatched",
+        statusReason: "wait_line",
+      });
+      expect(h.lastUpdate()?.[1]).toMatchObject({
+        status: "unmatched",
+        statusReason: "wait_line",
+        parserId: "parser-1",
+        parsed: null,
+      });
+      expect(h.requests.enqueueClaimed).not.toHaveBeenCalled();
+    });
+
+    it("skip wins over wait", async () => {
+      const h = setup({
+        parsers: [
+          parserRow({
+            definition: guarded({
+              skipIfLine: ["*Widget*"],
+              waitIfLine: ["*Widget*"],
+            }),
+          }),
+        ],
+      });
+      expect((await run(h)).statusReason).toBe("skip_line");
+    });
+
+    it("the rematch reads a wait_line email again from the top: once the line is gone it is parsed and matched", async () => {
+      const definition = guarded({ waitIfLine: ["*pending*"] });
+      const h = setup({
+        receipt: receiptRow({
+          status: "unmatched",
+          statusReason: "wait_line",
+          bodyText: `Payment pending\n${BODY}`,
+        }),
+        parsers: [parserRow({ definition })],
+      });
+      const first = await run(h, { onlyWhenStatusIn: ["unmatched"] });
+      expect(first).toMatchObject({
+        status: "unmatched",
+        statusReason: "wait_line",
+        unchanged: false,
+      });
+
+      // The shop sends the final mail text: the same stored row, read again.
+      h.world.receipt = receiptRow({
+        status: "unmatched",
+        statusReason: "wait_line",
+        bodyText: BODY,
+      });
+      const second = await run(h, { onlyWhenStatusIn: ["unmatched"] });
+      expect(second.status).toBe("review");
+      expect(second.statusReason).toBeNull();
+      expect(h.lastUpdate()?.[1]).toMatchObject({
+        parsed: expect.objectContaining({ total: 150000, complete: true }),
+        matchKind: "order_id",
+      });
+    });
+
+    it("a person's own link is a command: no guard holds it back", async () => {
+      const h = setup({
+        parsers: [
+          parserRow({ definition: guarded({ waitIfLine: ["*Widget*"] }) }),
+        ],
+        linkRow: {
+          id: TX,
+          amount: "-15.0000",
+          description: null,
+          payee_id: null,
+          is_transfer: false,
+          status: "UNRECONCILED",
+          plain: true,
+        },
+      });
+      const result = await run(h, { link: { transactionId: TX } });
+      expect(result.statusReason).not.toBe("wait_line");
+      expect(result.status).toBe("review");
     });
   });
 
@@ -1149,6 +1336,8 @@ describe("autoApplyAllowed", () => {
   const parsed = (over: Partial<ParsedReceipt> = {}): ParsedReceipt => ({
     orderId: "ABCD1234",
     total: 150000,
+    paid: null,
+    payee: null,
     shipping: null,
     discount: null,
     items: [],
@@ -1179,6 +1368,24 @@ describe("autoApplyAllowed", () => {
     expect(autoApplyAllowed(facts({ transactionAmount: 15 }))).toBe(true);
   });
 
+  it("compares the transaction with the amount paid, else the total", () => {
+    const promo = parsed({ total: 150000, paid: 120000 });
+    expect(
+      autoApplyAllowed(facts({ parsed: promo, transactionAmount: -12 })),
+    ).toBe(true);
+    expect(
+      autoApplyAllowed(facts({ parsed: promo, transactionAmount: -15 })),
+    ).toBe(false);
+    expect(
+      autoApplyAllowed(
+        facts({
+          parsed: parsed({ total: null, paid: 120000 }),
+          transactionAmount: -12,
+        }),
+      ),
+    ).toBe(true);
+  });
+
   it.each<[string, Partial<AutoApplyFacts>]>([
     ["the mailbox has not opted in", { mailboxAutoApply: false }],
     ["the parser is a draft", { parserStatus: "draft" }],
@@ -1187,6 +1394,10 @@ describe("autoApplyAllowed", () => {
       { parsed: parsed({ complete: false, reason: "no_items" }) },
     ],
     ["there is no total", { parsed: parsed({ total: null }) }],
+    [
+      "paid is stated and the amount equals only the total",
+      { parsed: parsed({ total: 150000, paid: 120000 }) },
+    ],
     ["the amount differs from the total", { transactionAmount: -14.99 }],
     ["the match is by amount alone", { matchKind: "amount_only" }],
     ["the match is manual", { matchKind: "manual" }],

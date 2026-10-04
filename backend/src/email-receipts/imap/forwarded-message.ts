@@ -262,6 +262,24 @@ interface HeaderBlock {
   end: number;
 }
 
+/** A client wraps text at this many columns when it breaks a long header line. */
+const WRAP_COLUMNS = 76;
+const MIN_WRAPPED_LINE = 60;
+
+/**
+ * True when `next` is the rest of a line a mail client hard-wrapped: `previous`
+ * was nearly as wide as the wrap column and the first word of `next` would not
+ * have fitted on it.
+ */
+function wrapsOnto(previous: string | undefined, next: string): boolean {
+  if (previous === undefined) return false;
+  const width = previous.trimEnd().length;
+  const firstWord = next.trim().split(/\s+/)[0] ?? "";
+  return (
+    width >= MIN_WRAPPED_LINE && width + 1 + firstWord.length > WRAP_COLUMNS
+  );
+}
+
 /**
  * The `Label: value` lines starting at `from`. A line that starts with white
  * space continues the previous value (a wrapped `To:`); the first blank line or
@@ -283,6 +301,20 @@ function readHeaderBlock(lines: readonly string[], from: number): HeaderBlock {
       continue;
     }
     const startsWithSpace = raw.startsWith(" ") || raw.startsWith("\t");
+    if (
+      last === "subject" &&
+      !startsWithSpace &&
+      !isBlank(raw) &&
+      wrapsOnto(lines[index - 1], raw)
+    ) {
+      // Gmail hard-wraps a long forwarded `Subject:` at about 76 columns and
+      // leaves the rest, unindented, on the next line.
+      const joined = `${headers.subject ?? ""} ${cleanLine(raw)}`.trim();
+      headers.subject = joined.slice(0, MAX_VALUE_CHARS);
+      index += 1;
+      count += 1;
+      continue;
+    }
     if (last !== null && startsWithSpace && !isBlank(raw)) {
       const extra = cleanLine(raw);
       const joined = `${headers[last] ?? ""} ${extra}`.trim();

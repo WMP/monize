@@ -7,9 +7,12 @@
  *
  * The MCP `tools/list` payload is paid for on every request
  * (`mcp/tools-list-budget.spec.ts`), so the text is as short as it can be while
- * still teaching the whole language. The bounds quoted in it are the validator's
- * (`receipt-parser.types.ts`); `parser-tool.guide.spec.ts` holds the two
- * together.
+ * still teaching the whole language: version 2, its labelled entries, priority
+ * by order and block items. It is sized to the byte against the per-tool cap in
+ * that spec, so the validator's bounds are left out: a definition over one is
+ * refused with a `too_many` or `too_long` code the model can read.
+ * `parser-tool.guide.spec.ts` holds the keys and captures it names to the
+ * validator.
  */
 
 export const EMAIL_RECEIPT_PARSER_OPERATIONS = [
@@ -24,12 +27,30 @@ export type EmailReceiptParserOperation =
 export const EMAIL_RECEIPT_PARSER_TOOL_MAX_RECEIPTS = 5;
 
 export const EMAIL_RECEIPT_PARSER_TOOL_DESCRIPTION =
-  "Write a parser for one merchant's order emails and save it as a draft. " +
-  "Parser JSON: {version:1, orderId:[p], total:[p], shipping:[p], discount:[p], items:{startAfter, stopAt, patterns:[p]}, categoryRules:[{match:g, categoryId}], defaultCategoryId, shippingCategoryId}. " +
-  "A pattern p is a glob matched case-insensitively against one whole line: * matches any text, {name} captures it, the rest is literal; no regex. " +
-  "Captures: orderId {orderid}; total, shipping, discount {amount}; items {name} plus {amount} (line total) or {price} with optional {qty}, not both. " +
-  "startAfter/stopAt: substrings bounding the item section. g: a capture-free glob over the item name. Category ids: operation categories. " +
-  "Max 10 patterns per field, 200 characters each, 50 rules. " +
-  "test reads 1 to 5 emails (receiptIds) with a definition and writes nothing. " +
-  "Loop: test every email, fix patterns until each reads complete or you know why not, then save_draft (with requestId if you claimed a parser draft request). " +
-  "The user must approve the draft in Monize before it reads mail; never say it was applied.";
+  "Draft an order-email parser. " +
+  "JSON: {version:2, orderId:[e], total:[e], shipping:[e], discount:[e], items:{startAfter, stopAt, skipLines:[g], patterns:[p] or record:[{line:p, optional}]}, categoryRules:[{match:g, categoryId}], defaultCategoryId, shippingCategoryId}. " +
+  "p: glob on a whole line, case-insensitive: * any text, {name} captures, rest literal; no regex. g: no captures. " +
+  "e: p or {label:g, value:p, within:1-10 (3)}: value read from the lines after one matching label. Entries are tried in order, each over the email. " +
+  "Captures: orderId {orderid}; total, shipping, discount {amount}; items {name} + {amount} (line total) or {price}, opt. {qty}. " +
+  "patterns: one item per line. record: one item over several lines (a step per line, optional steps may be absent); skipLines drop lines first. startAfter/stopAt: substrings bounding the items. " +
+  "categories: category ids and the full language guide. " +
+  "test: 1 to 5 emails (receiptIds), writes nothing. Test every email, fix until complete, then save_draft (requestId if claimed). The user must approve the draft; never say it was applied.";
+
+/**
+ * The whole parser language, returned by the `categories` operation (the first
+ * call of the loop) and not carried in `tools/list`: the description above is
+ * sized to the byte, so what it has no room for is here, once, for the one
+ * model that asks. It names every field the validator accepts; the guide spec
+ * holds the two together.
+ */
+export const EMAIL_RECEIPT_PARSER_LANGUAGE_GUIDE = [
+  'Parser language, version 2. Every pattern is a glob over ONE whole line, case-insensitive: * any text, {name} a capture, everything else literal; no regex. {*} or \\* is a literal asterisk (a Gmail-bold value: "Kwota: {*}{amount} PLN{*}"). Every captured value is trimmed of spaces, * and _; invisible characters are removed from lines.',
+  "Fields orderId, total, paid, shipping, discount, payee: each a list of up to 10 entries, tried IN ORDER, each over the whole email (put the specific entry first; a later one is read only when every earlier one found nothing). An entry is a pattern or {label, value, within}: label is a capture-free glob matched to a whole line; value a pattern with the field's capture, read from the first of the next `within` lines (1-10, default 3) that holds one; else the next label line. A labelled orderId entry never reads the subject.",
+  'Captures: orderId {orderid}; total, paid, shipping, discount {amount}; payee {payee}. An amount line is only an amount: "3 × 1,47 zł" or "10,95 + 5,00" is never one.',
+  "Arithmetic: gross = items + shipping; net = gross - discount. total is the email's total, paid what was actually charged (a card line after a promotion). One of them is required; paid must equal net; total must equal gross or net. A receipt is matched to a bank transaction by paid, else total.",
+  "payee: the merchant when it is not the sender (a payment gateway); it becomes the transaction's payee.",
+  "items holds exactly one of: patterns (one item per line; each captures {name} and {amount} (line total) or {price} with optional {qty}; optional joinWrapped:true puts up to 3 unread lines in front of the next line, for names wrapped over lines with the price on the last); record (an item over several lines: 1-6 steps {line, optional}, line a pattern or up to 5 alternative patterns tried in order, a capture name in one step only, {name} required; skipLines, up to 10 capture-free globs, drop section lines first; a failed record moves the cursor one line); single {name} (one item for the whole email, quantity 1, amount = total, else paid). startAfter/stopAt (substrings) bound the section for all three. An item with no amount or price takes the total (else paid) when it is the only item; else the receipt is incomplete (item_amount_missing).",
+  "categoryRules[{match, categoryId, field}]: match a capture-free glob; field item (default: the item name), payee (the parsed payee) or line (any line of the email); payee and line rules cover every item. First matching rule wins; then defaultCategoryId. shippingCategoryId is the shipping line's category (required when shipping is above 0); the discount line uses defaultCategoryId.",
+  "requireLine, skipIfLine, waitIfLine: up to 10 capture-free globs each. requireLine: the parser applies only when a line matches (else the next parser for the sender is tried); skipIfLine: a matching line makes the email ignored; waitIfLine: it is held (unmatched) and read again later.",
+  "Bounds: 10 entries per field, 200 characters per pattern, 50 category rules, 100 characters per startAfter/stopAt. test also returns, per email, outcome (read, not_applicable, skip_line or wait_line) and trace: for each field the entry index, the pattern and the line (number, text) that produced it (a labelled entry: its label line too), and each item's patterns and lines.",
+].join("\n");

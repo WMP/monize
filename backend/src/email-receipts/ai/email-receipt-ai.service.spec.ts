@@ -103,7 +103,7 @@ const validExtraction = {
 };
 
 const validDefinition = {
-  version: 1,
+  version: 2,
   total: ["Order total: {amount}"],
   defaultCategoryId: CAT_BOOKS,
 };
@@ -272,14 +272,14 @@ describe("EmailReceiptAiService.draftParser", () => {
     expect(request.systemPrompt).toMatch(/untrusted data/);
   });
 
-  it("reads a version-less answer as version 1", async () => {
+  it("reads a version-less answer as the current version", async () => {
     const h = setup();
     const { version: _v, ...noVersion } = validDefinition;
     h.ai.complete.mockResolvedValue(reply(JSON.stringify(noVersion)));
     await h.service.draftParser(USER, RECEIPT);
     expect(
       (h.parserRepo.save.mock.calls[0][0] as EmailReceiptParser).definition,
-    ).toMatchObject({ version: 1 });
+    ).toMatchObject({ version: 2 });
   });
 
   it("an answer that is not JSON is a 422, and nothing is saved", async () => {
@@ -294,7 +294,7 @@ describe("EmailReceiptAiService.draftParser", () => {
   it("an answer the validator refuses is a 422 naming the codes", async () => {
     const h = setup();
     h.ai.complete.mockResolvedValue(
-      reply(JSON.stringify({ version: 1, total: ["no capture"], extra: true })),
+      reply(JSON.stringify({ version: 2, total: ["no capture"], extra: true })),
     );
     const error = await h.service.draftParser(USER, RECEIPT).catch((e) => e);
     expect(error).toBeInstanceOf(UnprocessableEntityException);
@@ -662,6 +662,8 @@ describe("EmailReceiptAiService.processAiRequest", () => {
     expect(stored?.parsed).toEqual({
       orderId: "A-1",
       total: 150000,
+      paid: null,
+      payee: null,
       shipping: null,
       discount: null,
       items: [
