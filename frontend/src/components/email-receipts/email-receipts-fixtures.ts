@@ -94,6 +94,8 @@ export function makeDetail(overrides: Partial<EmailReceiptDetail> = {}): EmailRe
     ...makeReceipt(),
     bodyText: 'Thank you for your order.\nTotal 25.00',
     bodyHtml: null,
+    lines: { text: ['Thank you for your order.', 'Total 25.00'], html: null },
+    structuredOrder: null,
     parsed: null,
     candidates: [],
     ...overrides,

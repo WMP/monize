@@ -19,14 +19,12 @@ import { loadQualifiedCategoryNames } from "../../categories/category-name.util"
 import { withScopedDb } from "../../common/db/scoped-db";
 import { tr } from "../../i18n/translate";
 import { Payee } from "../../payees/entities/payee.entity";
+import { PayeesService } from "../../payees/payees.service";
 import {
   EmailReceiptMailbox,
   type EmailReceiptAiMode,
 } from "../entities/email-receipt-mailbox.entity";
-import {
-  EmailReceiptParser,
-  type EmailReceiptParserStatus,
-} from "../entities/email-receipt-parser.entity";
+import { EmailReceiptParser } from "../entities/email-receipt-parser.entity";
 import {
   EmailReceipt,
   type EmailReceiptMatchKind,
@@ -38,33 +36,26 @@ import {
   sameIdentity,
   type ReceiptIdentity,
 } from "../imap/forwarded-receipt";
-import { matchReceipt, receiptMatchAmount } from "../matching/match-receipt";
-import {
-  parseReceipt,
-  readLineGuards,
-  type ReceiptLineGuards,
-} from "../parsing/parse-receipt";
-import { normalizeReceiptLines } from "../parsing/receipt-lines";
-import type {
-  ParsedReceipt,
-  ReceiptParserDefinition,
-} from "../parsing/receipt-parser.types";
-import { validateReceiptParserDefinition } from "../parsing/receipt-parser.validation";
+import { matchReceipt } from "../matching/match-receipt";
+import { parseReceiptLines } from "../parsing/parse-receipt";
+import type { ParsedReceipt } from "../parsing/receipt-parser.types";
 import {
   buildReceiptProposal,
   type ReceiptProposal,
   type ReceiptProposalContext,
-  type ReceiptProposalKind,
   type ReceiptProposalTransaction,
 } from "../proposal/build-receipt-proposal";
+import { autoApplyAllowed, type AutoApplyFacts } from "./auto-apply-gate";
+import { chooseReceiptParser } from "./choose-receipt-parser";
 import { loadLinkableTransaction } from "./linkable-transaction";
 import { loadReceiptCandidates } from "./receipt-candidates";
+import { ReceiptSourceLines } from "./receipt-source-lines";
+import { readSchemaOrgReceipt } from "./schema-org-reading";
 import {
   closeReceiptRequests,
   currentReceiptRequestStatus,
   lockReceiptTransaction,
 } from "./receipt-requests.util";
-import { rankReceiptParsers } from "./select-receipt-parser";
 
 /**
  * The instructions a receipt's request carries (the column holds 1..1000
@@ -100,6 +91,18 @@ export const RECEIPT_PARSED_INSTRUCTION =
  */
 export const RECEIPT_SKIP_LINE_REASON = "skip_line";
 export const RECEIPT_WAIT_LINE_REASON = "wait_line";
+/**
+ * The `status_reason` of a `parse_failed` receipt whose parser reads the HTML
+ * part (`source: "html"`) when the email stored none.
+ */
+export const RECEIPT_NO_HTML_REASON = "no_html";
+/**
+ * The `status_reason` of a receipt read from the email's own schema.org order
+ * (`ParsedReceipt.source` `"schema_org"`). It fills the reason slot only when
+ * the outcome has no more specific reason of its own (`amount_differs`,
+ * `items_uncategorized`, ...), which `parsed.source` records either way.
+ */
+export const RECEIPT_SCHEMA_ORG_REASON = "schema_org";
 
 /** At most this many approved parsers are considered for one email. */
 const MAX_PARSERS_CONSIDERED = 1000;
@@ -131,46 +134,8 @@ export interface ProcessReceiptResult {
   unchanged: boolean;
 }
 
-/** What `autoApplyAllowed` reads: every condition of spec section 7. */
-export interface AutoApplyFacts {
-  mailboxAutoApply: boolean;
-  parserStatus: EmailReceiptParserStatus;
-  parsed: ParsedReceipt;
-  /** Signed, as stored. */
-  transactionAmount: number;
-  matchKind: EmailReceiptMatchKind;
-  proposalKind: ReceiptProposalKind;
-  /** The itemized proposal was refused and the description-only one stored instead. */
-  usedFallback: boolean;
-  cardBuilt: boolean;
-}
-
-const MONEY_UNITS = 10000;
-
-/**
- * Spec section 7. Applies only when every condition holds: the mailbox opted in;
- * the parser is `approved`; the parse is `complete`; `abs(T)` equals the parsed
- * total; the match is by order number or by amount plus payee; the card was
- * built. Stricter than the spec in one way: the stored proposal must be the
- * category lines themselves (itemized or one category), not a description-only
- * proposal or the fallback of a refused one, because the design promises that
- * what is applied "balances to the cent".
- */
-export function autoApplyAllowed(facts: AutoApplyFacts): boolean {
-  return (
-    facts.mailboxAutoApply &&
-    facts.parserStatus === "approved" &&
-    facts.parsed.complete &&
-    receiptMatchAmount(facts.parsed) !== null &&
-    Math.round(Math.abs(facts.transactionAmount) * MONEY_UNITS) ===
-      receiptMatchAmount(facts.parsed) &&
-    (facts.matchKind === "order_id" || facts.matchKind === "amount_payee") &&
-    (facts.proposalKind === "itemized" ||
-      facts.proposalKind === "single_category") &&
-    !facts.usedFallback &&
-    facts.cardBuilt
-  );
-}
+// The gate of spec section 7 lives in its own file; re-exported for its callers.
+export { autoApplyAllowed, type AutoApplyFacts };
 
 interface Stored {
   status: EmailReceiptStatus;
@@ -233,6 +198,7 @@ export class EmailReceiptPipelineService {
     private readonly requests: AiReviewRequestsService,
     private readonly work: AiReviewWorkService,
     private readonly actions: AiActionsService,
+    private readonly payees: PayeesService,
   ) {}
 
   async process(
@@ -298,90 +264,105 @@ export class EmailReceiptPipelineService {
       matchKind: link ? ("manual" as const) : null,
     };
 
-    // The parsers that may read this sender, best first. A parser whose
-    // `requireLine` finds no line is passed over for the next one; an invalid
-    // definition stops the read (the person must fix it), as it always did.
-    const lines = normalizeReceiptLines(receipt.bodyText);
-    let parser: EmailReceiptParser | null = null;
-    let definition: ReceiptParserDefinition | null = null;
-    let guards: ReceiptLineGuards | null = null;
-    for (const candidate of rankReceiptParsers(
-      parsers,
-      receipt.fromDomain,
-      receipt.subject,
-    )) {
-      const validation = validateReceiptParserDefinition(candidate.definition);
-      if (!validation.ok) {
-        return this.finish(m, userId, receipt, {
-          status: "parse_failed",
-          reason: "parser_invalid",
-          parserId: candidate.id,
-          parsed: null,
-          requestId: null,
-          ...keptLink,
-        });
-      }
-      const read = readLineGuards(validation.definition, lines);
-      if (!read.applies) continue;
-      parser = candidate;
-      definition = validation.definition;
-      guards = read;
-      break;
-    }
-    if (!parser || !definition || !guards) {
+    // The parser that reads this sender (`chooseReceiptParser`: best first, the
+    // lines of each parser's own source, an invalid definition stops the read).
+    const sources = new ReceiptSourceLines(receipt);
+    const choice = chooseReceiptParser(parsers, receipt, sources);
+    if (choice.kind === "invalid") {
       return this.finish(m, userId, receipt, {
-        status: "no_parser",
-        reason: null,
-        parserId: null,
+        status: "parse_failed",
+        reason: "parser_invalid",
+        parserId: choice.parser.id,
         parsed: null,
         requestId: null,
         ...keptLink,
       });
     }
-
-    // A line the parser was told to skip on: nothing to read, nothing to ask.
-    // (A person's own link is a command and is never held back by a guard.)
-    if (!link && guards.skipIfLine !== null) {
+    // A parser that reads the HTML of an email with none, and no other that
+    // applies: `no_html`, not `no_parser`.
+    if (choice.kind === "none" && choice.needsHtml) {
       return this.finish(m, userId, receipt, {
-        status: "ignored",
-        reason: RECEIPT_SKIP_LINE_REASON,
-        parserId: parser.id,
+        status: "parse_failed",
+        reason: RECEIPT_NO_HTML_REASON,
+        parserId: choice.needsHtml.id,
         parsed: null,
         requestId: null,
-        transactionId: null,
-        candidateIds: [],
-        matchKind: null,
+        ...keptLink,
       });
     }
-    // A line that says the order is not final: leave it `unmatched`, so the
-    // poll's rematch reads it again (the whole pipeline, parser selection and
-    // parse included) while it is within the rematch window.
-    if (!link && guards.waitIfLine !== null) {
-      return this.finish(m, userId, receipt, {
-        status: "unmatched",
-        reason: RECEIPT_WAIT_LINE_REASON,
-        parserId: parser.id,
-        parsed: null,
-        requestId: null,
-        transactionId: null,
-        candidateIds: [],
-        matchKind: null,
-      });
-    }
+    const parser = choice.kind === "chosen" ? choice.parser : null;
 
-    const payee = parser.payeeId
-      ? await m.getRepository(Payee).findOne({
-          where: { id: parser.payeeId, userId },
-          select: { id: true, name: true, defaultCategoryId: true },
-        })
-      : null;
-    const parsed = parseReceipt(
-      definition,
-      receipt.subject,
-      receipt.bodyText,
-      payee?.defaultCategoryId ?? null,
-    );
-    const stored = { parserId: parser.id, parsed };
+    // The parser's reading, or the email's own schema.org order when no parser
+    // applies or the parser found no amount (spec "Structured data"): a parser
+    // that read a total always wins.
+    let payee: Pick<Payee, "id" | "name" | "defaultCategoryId"> | null = null;
+    let parsed: ParsedReceipt;
+    let structured: ParsedReceipt | null = null;
+    if (choice.kind === "chosen") {
+      const { definition, guards } = choice;
+      // A line the parser was told to skip on: nothing to read, nothing to ask.
+      // (A person's own link is a command and is never held back by a guard.)
+      if (!link && guards.skipIfLine !== null) {
+        return this.finish(m, userId, receipt, {
+          status: "ignored",
+          reason: RECEIPT_SKIP_LINE_REASON,
+          parserId: choice.parser.id,
+          parsed: null,
+          requestId: null,
+          transactionId: null,
+          candidateIds: [],
+          matchKind: null,
+        });
+      }
+      // A line that says the order is not final: leave it `unmatched`, so the
+      // poll's rematch reads it again (the whole pipeline, parser selection and
+      // parse included) while it is within the rematch window.
+      if (!link && guards.waitIfLine !== null) {
+        return this.finish(m, userId, receipt, {
+          status: "unmatched",
+          reason: RECEIPT_WAIT_LINE_REASON,
+          parserId: choice.parser.id,
+          parsed: null,
+          requestId: null,
+          transactionId: null,
+          candidateIds: [],
+          matchKind: null,
+        });
+      }
+      payee = choice.parser.payeeId
+        ? await m.getRepository(Payee).findOne({
+            where: { id: choice.parser.payeeId, userId },
+            select: { id: true, name: true, defaultCategoryId: true },
+          })
+        : null;
+      parsed = parseReceiptLines(
+        definition,
+        receipt.subject,
+        sources.forSource(definition.source),
+        payee?.defaultCategoryId ?? null,
+      );
+      if (parsed.total === null && parsed.paid === null) {
+        structured = await this.readStructured(userId, sources);
+        if (structured) parsed = structured;
+      }
+    } else {
+      structured = await this.readStructured(userId, sources);
+      if (!structured) {
+        return this.finish(m, userId, receipt, {
+          status: "no_parser",
+          reason: null,
+          parserId: null,
+          parsed: null,
+          requestId: null,
+          ...keptLink,
+        });
+      }
+      parsed = structured;
+    }
+    // The reason slot a schema.org reading fills when the outcome has none of its own.
+    const reasonOf = (reason: string | null): string | null =>
+      reason ?? (structured ? RECEIPT_SCHEMA_ORG_REASON : null);
+    const stored = { parserId: parser?.id ?? null, parsed };
 
     if (
       !link &&
@@ -419,12 +400,12 @@ export class EmailReceiptPipelineService {
         parsed,
         purchaseDate,
         candidates,
-        parser.payeeId,
+        parser?.payeeId ?? null,
       );
       if (match.kind === "unmatched") {
         return this.finish(m, userId, receipt, {
           status: "unmatched",
-          reason: null,
+          reason: reasonOf(null),
           transactionId: null,
           candidateIds: [],
           matchKind: null,
@@ -435,7 +416,7 @@ export class EmailReceiptPipelineService {
       if (match.kind === "ambiguous") {
         return this.finish(m, userId, receipt, {
           status: "ambiguous",
-          reason: null,
+          reason: reasonOf(null),
           transactionId: null,
           candidateIds: match.candidateIds,
           matchKind: null,
@@ -461,10 +442,12 @@ export class EmailReceiptPipelineService {
       ...stored,
     };
     const categoryNames = await loadQualifiedCategoryNames(m, userId);
+    // A schema.org reading with no parser behind it is labelled by the sender's
+    // domain (as an AI reading is) and names no gateway payee of its own.
     const context: ReceiptProposalContext = {
-      parserName: parser.name,
-      parserPayeeId: parser.payeeId,
-      payeeName: payee?.name ?? null,
+      parserName: parser?.name ?? receipt.fromDomain,
+      parserPayeeId: parser?.payeeId ?? null,
+      payeeName: structured && !parser ? null : (payee?.name ?? null),
       categoryNames,
     };
     const proposal = buildReceiptProposal(parsed, transaction, context);
@@ -497,13 +480,13 @@ export class EmailReceiptPipelineService {
         request
           ? {
               status: "review",
-              reason: proposal.reason,
+              reason: reasonOf(proposal.reason),
               requestId: request.id,
               ...matched,
             }
           : {
               status: "review_conflict",
-              reason: null,
+              reason: reasonOf(null),
               requestId: null,
               ...matched,
             },
@@ -520,7 +503,7 @@ export class EmailReceiptPipelineService {
     if (!request) {
       return this.finish(m, userId, receipt, {
         status: "review_conflict",
-        reason: null,
+        reason: reasonOf(null),
         requestId: null,
         ...matched,
       });
@@ -544,7 +527,7 @@ export class EmailReceiptPipelineService {
 
     const gate: AutoApplyFacts = {
       mailboxAutoApply: autoApplyOn,
-      parserStatus: parser.status,
+      parserStatus: parser?.status ?? "draft",
       parsed,
       transactionAmount: transaction.amount,
       matchKind,
@@ -556,7 +539,7 @@ export class EmailReceiptPipelineService {
       status: "review",
       reason: submitted.usedFallback
         ? "proposal_fallback"
-        : (proposal.reason ?? null),
+        : reasonOf(proposal.reason ?? null),
       requestId: request.id,
       ...matched,
     });
@@ -564,6 +547,20 @@ export class EmailReceiptPipelineService {
       result: committed.result,
       autoApply: autoApplyAllowed(gate) ? submitted.action : null,
     };
+  }
+
+  /**
+   * The email's own schema.org order as a receipt (`readSchemaOrgReceipt`): the
+   * seller is looked up with `PayeesService.resolveByName`, which never creates
+   * a payee. Reads only, inside the receipt's transaction.
+   */
+  private readStructured(
+    userId: string,
+    sources: ReceiptSourceLines,
+  ): Promise<ParsedReceipt | null> {
+    return readSchemaOrgReceipt(sources, (name) =>
+      this.payees.resolveByName(userId, name),
+    );
   }
 
   /**

@@ -2,9 +2,10 @@
 
 import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { cn, inputBaseClasses } from '@/lib/utils';
 import type { ParserFormChange, ParserFormState } from '@/lib/receipt-parser-form';
-import { RECEIPT_PARSER_LIMITS } from '@/types/email-receipts';
+import { RECEIPT_LINES_SOURCES, RECEIPT_PARSER_LIMITS, type ReceiptLinesSource } from '@/types/email-receipts';
 
 interface PatternAreaProps {
   id: string;
@@ -57,6 +58,17 @@ export function ParserPatternFields({ form, onChange }: ParserPatternFieldsProps
 
   return (
     <div className="space-y-4">
+      <div>
+        <Select
+          id="parser-source"
+          label={t('sourceLabel')}
+          value={form.source}
+          onChange={(e) => onChange({ source: e.target.value as ReceiptLinesSource })}
+          options={RECEIPT_LINES_SOURCES.map((source) => ({ value: source, label: t(`sourceOptions.${source}`) }))}
+        />
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('sourceHint')}</p>
+      </div>
+
       <p className="text-sm text-gray-600 dark:text-gray-400">
         {t('globHelp', { star: '*', capture: '{name}', max: RECEIPT_PARSER_LIMITS.maxPatternsPerField })}
       </p>

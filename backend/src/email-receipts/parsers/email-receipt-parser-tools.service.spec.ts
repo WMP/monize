@@ -246,6 +246,81 @@ describe("EmailReceiptParserToolsService.testDefinition", () => {
     expect(result.emails[0].trace.requireLine).toBeNull();
   });
 
+  it("reads the lines of the definition's source: html lines for source html, the text otherwise", async () => {
+    const { service, receiptRepo } = setup();
+    const html =
+      "<table><tr><td>Order number:</td><td>HTML-1</td></tr>" +
+      "<tr><td>Wrapped product name</td><td>12.00</td></tr>" +
+      "<tr><td>Order total:</td><td>12.00</td></tr></table>";
+    receiptRepo.find.mockResolvedValue([receipt({ bodyHtml: html })]);
+    const htmlDefinition = {
+      version: 2,
+      source: "html",
+      orderId: [{ label: "Order number:", value: "{orderid}" }],
+      total: [{ label: "Order total:", value: "{amount}" }],
+      items: { patterns: ["{name} {amount}"] },
+      defaultCategoryId: CAT_BOOKS,
+    };
+
+    const html1 = await service.testDefinition(USER, {
+      definition: htmlDefinition,
+      receiptIds: [R1],
+    });
+    const [email] = html1.emails;
+    expect(email.outcome).toBe("read");
+    expect(email.parsed).toMatchObject({ orderId: "HTML-1", total: 12 });
+    expect(email.trace.total?.line).toEqual({ line: 6, text: "12.00" });
+
+    // The same email read as text: the definition's own source decides.
+    const text = await service.testDefinition(USER, {
+      definition: DEFINITION,
+      receiptIds: [R1],
+    });
+    expect(text.emails[0].parsed).toMatchObject({
+      orderId: "ABCD1234",
+      total: 15,
+    });
+  });
+
+  it("an html parser on an email with no HTML part is outcome no_html and not complete", async () => {
+    const { service, receiptRepo } = setup();
+    receiptRepo.find.mockResolvedValue([receipt({ bodyHtml: null })]);
+    const result = await service.testDefinition(USER, {
+      definition: { ...DEFINITION, source: "html" },
+      receiptIds: [R1],
+    });
+    expect(result.emails[0].outcome).toBe("no_html");
+    expect(result.emails[0].parsed).toMatchObject({
+      total: null,
+      complete: false,
+      reason: "no_total",
+    });
+    expect(result.allComplete).toBe(false);
+  });
+
+  it("asks the store for the HTML part, which the test reads for an html parser", async () => {
+    const { service, receiptRepo } = setup();
+    await service.testDefinition(USER, {
+      definition: DEFINITION,
+      receiptIds: [R1],
+    });
+    expect(receiptRepo.find.mock.calls[0][0].select).toMatchObject({
+      bodyText: true,
+      bodyHtml: true,
+    });
+  });
+
+  it("refuses an unknown source as an invalid definition, reading no email", async () => {
+    const { service, receiptRepo } = setup();
+    const result = await service.testDefinition(USER, {
+      definition: { ...DEFINITION, source: "pdf" },
+      receiptIds: [R1],
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual([{ path: "source", code: "invalid_value" }]);
+    expect(receiptRepo.find).not.toHaveBeenCalled();
+  });
+
   it("traces at most 20 items per email", async () => {
     const { service, receiptRepo } = setup();
     const body = [

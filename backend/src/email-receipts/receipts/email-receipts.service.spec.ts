@@ -1,9 +1,11 @@
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import { createScopedDbMocks } from "../../test-helpers/scoped-db-testing";
+import { MAX_PARSE_LINES } from "../parsing/receipt-parser.types";
 import { EmailReceipt } from "../entities/email-receipt.entity";
 import type { EmailReceiptPipelineService } from "../pipeline/email-receipt-pipeline.service";
 import {
   deriveDisplayState,
+  EMAIL_RECEIPTS_MAX_DOMAINS,
   EmailReceiptsService,
 } from "./email-receipts.service";
 
@@ -126,7 +128,7 @@ describe("EmailReceiptsService.list", () => {
     const [sql, params] = manager.query.mock.calls[0];
     expect(sql).toContain("ORDER BY r.received_at DESC");
     expect(sql).not.toContain("body_text");
-    expect(params).toEqual([USER, "review", 20]);
+    expect(params).toEqual([USER, "review", null, null, 20]);
     expect(items[0]).toEqual({
       id: ID,
       fromAddress: "orders@shop.example.com",
@@ -162,6 +164,68 @@ describe("EmailReceiptsService.list", () => {
     expect(Object.keys(items[0])).not.toContain("bodyHtml");
   });
 
+  describe("the sender domain filter", () => {
+    it("matches the domain exactly or as a sub-domain, with parameters only, scoped to the user", async () => {
+      const { service, manager } = setup();
+      manager.query.mockResolvedValue([]);
+      await service.list(USER, { domain: "shop.example.com" });
+      const [sql, params] = manager.query.mock.calls[0];
+      expect(sql).toContain("r.user_id = $1");
+      expect(sql).toContain("r.from_domain = $3::varchar");
+      expect(sql).toContain("r.from_domain LIKE $4::varchar ESCAPE '\\'");
+      expect(sql).not.toContain("shop.example.com");
+      expect(params).toEqual([
+        USER,
+        null,
+        "shop.example.com",
+        "%.shop.example.com",
+        50,
+      ]);
+    });
+
+    it("escapes % _ and backslash in the domain before it becomes a LIKE pattern", async () => {
+      const { service, manager } = setup();
+      manager.query.mockResolvedValue([]);
+      await service.list(USER, { domain: "a%b_c\\d.example.com" });
+      const params = manager.query.mock.calls[0][1];
+      expect(params[2]).toBe("a%b_c\\d.example.com");
+      expect(params[3]).toBe("%.a\\%b\\_c\\\\d.example.com");
+    });
+
+    it("lower-cases and trims it, and an empty value is no filter", async () => {
+      const { service, manager } = setup();
+      manager.query.mockResolvedValue([]);
+      await service.list(USER, { domain: "  Shop.Example.COM " });
+      expect(manager.query.mock.calls[0][1][2]).toBe("shop.example.com");
+      await service.list(USER, { domain: "   " });
+      expect(manager.query.mock.calls[1][1].slice(1, 4)).toEqual([
+        null,
+        null,
+        null,
+      ]);
+    });
+
+    it("combines with the status filter and the limit in one query", async () => {
+      const { service, manager } = setup();
+      manager.query.mockResolvedValue([]);
+      await service.list(USER, {
+        status: "no_parser",
+        domain: "shop.example.com",
+        limit: 7,
+      });
+      expect(manager.query).toHaveBeenCalledTimes(1);
+      const [sql, params] = manager.query.mock.calls[0];
+      expect(sql).toContain("r.status = $2::varchar");
+      expect(params).toEqual([
+        USER,
+        "no_parser",
+        "shop.example.com",
+        "%.shop.example.com",
+        7,
+      ]);
+    });
+  });
+
   it("never selects the HTML part for the list", async () => {
     const { service, manager } = setup();
     manager.query.mockResolvedValue([]);
@@ -193,11 +257,17 @@ describe("EmailReceiptsService.list", () => {
     const { service, manager } = setup();
     manager.query.mockResolvedValue([]);
     await service.list(USER);
-    expect(manager.query.mock.calls[0][1]).toEqual([USER, null, 50]);
+    expect(manager.query.mock.calls[0][1]).toEqual([
+      USER,
+      null,
+      null,
+      null,
+      50,
+    ]);
     await service.list(USER, { limit: 9999 });
-    expect(manager.query.mock.calls[1][1][2]).toBe(200);
+    expect(manager.query.mock.calls[1][1][4]).toBe(200);
     await service.list(USER, { limit: 0 });
-    expect(manager.query.mock.calls[2][1][2]).toBe(1);
+    expect(manager.query.mock.calls[2][1][4]).toBe(1);
   });
 
   it("carries why a request was closed", async () => {
@@ -210,6 +280,32 @@ describe("EmailReceiptsService.list", () => {
       displayState: "dismissed",
       requestNote: "lines do not add up",
     });
+  });
+});
+
+describe("EmailReceiptsService.listDomains", () => {
+  it("lists the user's sender domains with counts, most first then by name, at most 200", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([
+      { domain: "a.example.com", count: "5" },
+      { domain: "b.example.com", count: 2 },
+    ]);
+    await expect(service.listDomains(USER)).resolves.toEqual([
+      { domain: "a.example.com", count: 5 },
+      { domain: "b.example.com", count: 2 },
+    ]);
+    const [sql, params] = manager.query.mock.calls[0];
+    expect(sql).toContain("GROUP BY r.from_domain");
+    expect(sql).toContain("ORDER BY count DESC, r.from_domain ASC");
+    expect(sql).toContain("r.user_id = $1");
+    expect(params).toEqual([USER, 200]);
+    expect(EMAIL_RECEIPTS_MAX_DOMAINS).toBe(200);
+  });
+
+  it("is empty for a user with no emails", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([]);
+    await expect(service.listDomains(USER)).resolves.toEqual([]);
   });
 });
 
@@ -275,6 +371,94 @@ describe("EmailReceiptsService.get", () => {
     ]);
 
     expect((await service.get(USER, ID)).bodyHtml).toBeNull();
+  });
+
+  describe("the lines a parser reads and the structured order", () => {
+    const HTML =
+      "<table><tr><td>Widget</td><td>9,99 zł</td></tr></table>" +
+      '<script type="application/ld+json">' +
+      JSON.stringify({
+        "@type": "Order",
+        orderNumber: "SO-1",
+        merchant: { name: "Example Shop" },
+        price: "9.99",
+        acceptedOffer: [{ itemOffered: { name: "Widget" }, price: "9.99" }],
+      }) +
+      "</script>";
+    const detailRow = (over: Record<string, unknown>) => ({
+      ...row(),
+      body_text: "Widget  9,99 zł\n\nTotal 9,99",
+      body_html: null,
+      parsed: null,
+      candidate_transaction_ids: [],
+      ...over,
+    });
+
+    it("returns the text lines and the html lines, as each source numbers them", async () => {
+      const { service, manager } = setup();
+      manager.query.mockResolvedValueOnce([detailRow({ body_html: HTML })]);
+      const detail = await service.get(USER, ID);
+      expect(detail.lines).toEqual({
+        text: ["Widget 9,99 zł", "Total 9,99"],
+        html: ["Widget", "9,99 zł"],
+      });
+    });
+
+    it("has no html lines, and no structured order, for an email with no HTML part", async () => {
+      const { service, manager } = setup();
+      manager.query.mockResolvedValueOnce([detailRow({})]);
+      const detail = await service.get(USER, ID);
+      expect(detail.lines.html).toBeNull();
+      expect(detail.lines.text).toEqual(["Widget 9,99 zł", "Total 9,99"]);
+      expect(detail.structuredOrder).toBeNull();
+    });
+
+    it("returns the schema.org order found in the HTML, in 1/10000 units", async () => {
+      const { service, manager } = setup();
+      manager.query.mockResolvedValueOnce([detailRow({ body_html: HTML })]);
+      const detail = await service.get(USER, ID);
+      expect(detail.structuredOrder).toEqual({
+        orderNumber: "SO-1",
+        seller: "Example Shop",
+        currency: null,
+        orderDate: null,
+        total: 99900,
+        discount: null,
+        items: [{ name: "Widget", qty: 1, unitPrice: 99900, amount: 99900 }],
+      });
+    });
+
+    it("says not found (null) for HTML with no order markup", async () => {
+      const { service, manager } = setup();
+      manager.query.mockResolvedValueOnce([
+        detailRow({ body_html: "<p>Thanks</p>" }),
+      ]);
+      const detail = await service.get(USER, ID);
+      expect(detail.structuredOrder).toBeNull();
+      expect(detail.lines.html).toEqual(["Thanks"]);
+    });
+
+    it("bounds each list at the parser's line cap", async () => {
+      const { service, manager } = setup();
+      manager.query.mockResolvedValueOnce([
+        detailRow({
+          body_text: "x\n".repeat(MAX_PARSE_LINES + 50),
+          body_html: "<p>x</p>".repeat(MAX_PARSE_LINES + 50),
+        }),
+      ]);
+      const detail = await service.get(USER, ID);
+      expect(detail.lines.text).toHaveLength(MAX_PARSE_LINES);
+      expect(detail.lines.html).toHaveLength(MAX_PARSE_LINES);
+    });
+
+    it("never carries lines or the order in the list", async () => {
+      const { service, manager } = setup();
+      manager.query.mockResolvedValue([row()]);
+      const [item] = await service.list(USER, {});
+      expect(Object.keys(item)).not.toContain("lines");
+      expect(Object.keys(item)).not.toContain("structuredOrder");
+      expect(manager.query.mock.calls[0][0]).not.toContain("body_html");
+    });
   });
 
   it("does not look for candidates when there are none", async () => {

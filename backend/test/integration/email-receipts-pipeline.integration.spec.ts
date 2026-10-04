@@ -40,6 +40,7 @@ import {
 import {
   createTestAccount,
   createTestCategory,
+  createTestPayee,
 } from "../helpers/test-factories";
 
 /** The in-process event bus a `single` deployment binds, without the app's module. */
@@ -899,6 +900,346 @@ describe("email receipts pipeline (integration)", () => {
       expect(
         (await asAlice(() => receipts.get(aliceId, row.id))).bodyHtml,
       ).toBeNull();
+    });
+  });
+
+  describe("the sender domain filter", () => {
+    let uid = 100;
+    const insertReceipt = async (
+      domain: string,
+      status = "no_parser",
+      userId = aliceId,
+      box = mailboxId,
+    ) => {
+      uid += 1;
+      await db.query(
+        `INSERT INTO email_receipts
+           (user_id, mailbox_id, uid_validity, uid, from_address, from_domain,
+            subject, received_at, body_text, status)
+         VALUES ($1, $2, 1001, $3, $4, $5, 'S', CURRENT_TIMESTAMP, 'x', $6)`,
+        [userId, box, uid, `orders@${domain}`, domain, status],
+      );
+    };
+
+    it("matches the domain exactly or as a sub-domain, never a look-alike, with % and _ taken literally, and combines with the status", async () => {
+      await insertReceipt("shop.example.com");
+      await insertReceipt("shop.example.com", "review");
+      await insertReceipt("mail.shop.example.com");
+      await insertReceipt("deep.mail.shop.example.com");
+      await insertReceipt("notshop.example.com");
+      await insertReceipt("shop.example.com.evil.org");
+      await insertReceipt("shopXexample.com");
+      await insertReceipt("other.example.org");
+      const domains = (rows: { fromDomain: string }[]) =>
+        rows.map((r) => r.fromDomain).sort();
+
+      const all = await asAlice(() =>
+        receipts.list(aliceId, { domain: "shop.example.com" }),
+      );
+      expect(domains(all)).toEqual([
+        "deep.mail.shop.example.com",
+        "mail.shop.example.com",
+        "shop.example.com",
+        "shop.example.com",
+      ]);
+      const reviewed = await asAlice(() =>
+        receipts.list(aliceId, {
+          domain: "shop.example.com",
+          status: "review",
+        }),
+      );
+      expect(domains(reviewed)).toEqual(["shop.example.com"]);
+      // "_" and "%" are not wildcards: shop_example.com does not match shopXexample.com
+      await insertReceipt("shop_example.com");
+      const underscore = await asAlice(() =>
+        receipts.list(aliceId, { domain: "shop_example.com" }),
+      );
+      expect(domains(underscore)).toEqual(["shop_example.com"]);
+      expect(
+        await asAlice(() =>
+          receipts.list(aliceId, { domain: "sh%.example.com" }),
+        ),
+      ).toEqual([]);
+    });
+
+    it("counts the user's domains, most first then by name, and never another user's", async () => {
+      await insertReceipt("b.example.com");
+      await insertReceipt("a.example.com");
+      await insertReceipt("a.example.com");
+      await insertReceipt("c.example.com");
+      const [bobBox] = await db.query(
+        `INSERT INTO email_receipt_mailboxes
+           (user_id, host, port, security, username, password_enc, enabled, ai_mode, auto_apply)
+         VALUES ($1, '8.8.8.8', 993, 'tls', 'bob@example.com', $2, false, 'off', false)
+         RETURNING id`,
+        [bobId, encryption.encrypt(PASSWORD)],
+      );
+      await insertReceipt("bobs.example.com", "no_parser", bobId, bobBox.id);
+      expect(await asAlice(() => receipts.listDomains(aliceId))).toEqual([
+        { domain: "a.example.com", count: 2 },
+        { domain: "b.example.com", count: 1 },
+        { domain: "c.example.com", count: 1 },
+      ]);
+      expect(await asBob(() => receipts.listDomains(bobId))).toEqual([
+        { domain: "bobs.example.com", count: 1 },
+      ]);
+      expect(
+        await asBob(() => receipts.list(bobId, { domain: "a.example.com" })),
+      ).toEqual([]);
+    });
+  });
+
+  describe("structured data and the lines source", () => {
+    const ORDER_JSON_LD = JSON.stringify({
+      "@context": "http://schema.org",
+      "@type": "Order",
+      merchant: { "@type": "Organization", name: "Example Shop" },
+      orderNumber: "ABCD1234",
+      priceCurrency: "USD",
+      price: "15.00",
+      acceptedOffer: [
+        {
+          "@type": "Offer",
+          itemOffered: { "@type": "Product", name: "Widget" },
+          price: "12.00",
+          eligibleQuantity: { "@type": "QuantitativeValue", value: "1" },
+        },
+        {
+          "@type": "Offer",
+          itemOffered: { "@type": "Product", name: "Gadget" },
+          price: "3.00",
+        },
+      ],
+    });
+
+    /** A multipart email: a text part that no pattern here reads, and the HTML part. */
+    const withHtml = (
+      uid: string,
+      html: string,
+      text = "Thank you for your order.",
+    ) =>
+      Buffer.from(
+        [
+          "From: Shop <orders@shop.example.com>",
+          "To: receipts@example.com",
+          "Subject: Your order ABCD1234",
+          "Date: Thu, 10 Sep 2026 10:00:00 +0000",
+          `Message-ID: <s${uid}@shop.example.com>`,
+          'Content-Type: multipart/alternative; boundary="B2"',
+          "",
+          "--B2",
+          "Content-Type: text/plain; charset=utf-8",
+          "",
+          text,
+          "--B2",
+          "Content-Type: text/html; charset=utf-8",
+          "",
+          html,
+          "--B2--",
+          "",
+        ].join("\r\n"),
+      );
+
+    const ingest = async (html: string, text?: string) => {
+      jest.spyOn(imap, "fetchSince").mockResolvedValueOnce({
+        uidValidity: "1001",
+        messages: [
+          {
+            uid: "41",
+            source: withHtml("41", html, text),
+            internalDate: new Date("2026-09-10T10:00:01Z"),
+            size: 900,
+          },
+        ],
+        skipped: [],
+        highestUid: "41",
+      });
+      return pollAlice();
+    };
+
+    const jsonLdPage = (json = ORDER_JSON_LD) =>
+      `<html><body><p>Thank you</p><script type="application/ld+json">${json}</script></body></html>`;
+
+    it("reads the order from JSON-LD when no parser is set up for the domain: review, source schema_org, a split proposal, nothing created", async () => {
+      await createTestPayee(db, aliceId, {
+        name: "Example Shop",
+        defaultCategoryId: booksId,
+      });
+      const payeesBefore = Number(
+        (await db.query(`SELECT COUNT(*)::int AS n FROM payees`))[0].n,
+      );
+
+      const outcome = await ingest(jsonLdPage());
+      expect(outcome).toMatchObject({ ok: true, fetched: 1, processed: 1 });
+
+      const [row] = await receiptRows();
+      expect(row).toMatchObject({
+        status: "review",
+        status_reason: "schema_org",
+        parser_id: null,
+        transaction_id: txId,
+        match_kind: "order_id",
+      });
+      expect(row.parsed).toMatchObject({
+        source: "schema_org",
+        orderId: "ABCD1234",
+        total: 150000,
+        payee: "Example Shop",
+        complete: true,
+      });
+      const [request] = await requestRows();
+      expect(request).toMatchObject({
+        kind: "email_receipt",
+        status: "proposed",
+      });
+      expect(request.proposal).toBeTruthy();
+      // The proposal wrote nothing to the ledger, and no payee was created.
+      expect(await splitCount()).toBe(0);
+      expect(
+        Number((await db.query(`SELECT COUNT(*)::int AS n FROM payees`))[0].n),
+      ).toBe(payeesBefore);
+
+      // The detail shows the order found and the lines of both sources.
+      const detail = await asAlice(() => receipts.get(aliceId, row.id));
+      expect(detail.structuredOrder).toMatchObject({
+        orderNumber: "ABCD1234",
+        seller: "Example Shop",
+        total: 150000,
+      });
+      expect(detail.structuredOrder?.items.map((i) => i.name)).toEqual([
+        "Widget",
+        "Gadget",
+      ]);
+      expect(detail.lines.html).toEqual(["Thank you"]);
+      expect(detail.lines.text).toEqual(["Thank you for your order."]);
+      expect(detail.parsed).toMatchObject({ source: "schema_org" });
+    });
+
+    it("with no payee for the seller the lines have no category: still review, description only, and the reason is named", async () => {
+      await ingest(jsonLdPage());
+      const [row] = await receiptRows();
+      expect(row).toMatchObject({
+        status: "review",
+        status_reason: "items_uncategorized",
+      });
+      expect(row.parsed).toMatchObject({
+        source: "schema_org",
+        complete: false,
+      });
+      expect(
+        Number((await db.query(`SELECT COUNT(*)::int AS n FROM payees`))[0].n),
+      ).toBe(0);
+    });
+
+    it("an approved parser that reads a total wins over the markup", async () => {
+      await createParser();
+      await createTestPayee(db, aliceId, {
+        name: "Example Shop",
+        defaultCategoryId: booksId,
+      });
+      await ingest(
+        jsonLdPage(ORDER_JSON_LD.replace('"price":"15.00"', '"price":"99.00"')),
+        [
+          "Order number: ABCD1234",
+          "Items",
+          "Widget 12.00",
+          "Subtotal 12.00",
+          "Shipping: 3.00",
+          "Order total: 15.00",
+        ].join("\r\n"),
+      );
+      const [row] = await receiptRows();
+      expect(row.status).toBe("review");
+      expect(row.parser_id).not.toBeNull();
+      expect(row.status_reason).toBeNull();
+      expect(row.parsed.source).toBeUndefined();
+      expect(row.parsed.total).toBe(150000);
+    });
+
+    it("a parser with source html reads the HTML lines of a real stored email; a text email makes it parse_failed no_html", async () => {
+      await asAlice(() =>
+        parsers.create(aliceId, {
+          name: "Shop HTML",
+          fromDomains: ["shop.example.com"],
+          definition: {
+            version: 2,
+            source: "html",
+            orderId: [{ label: "Order number:", value: "{orderid}" }],
+            total: [{ label: "Order total:", value: "{amount}" }],
+            items: {
+              startAfter: "Order number:",
+              stopAt: "Order total:",
+              record: [{ line: "{name}" }, { line: "{amount}" }],
+            },
+            defaultCategoryId: booksId,
+          },
+        } as never),
+      );
+      await ingest(
+        "<table><tr><td>Order number:</td><td>ABCD1234</td></tr>" +
+          "<tr><td>Wrapped product name</td><td>15.00</td></tr>" +
+          "<tr><td>Order total:</td><td>15.00</td></tr></table>",
+      );
+      let [row] = await receiptRows();
+      expect(row).toMatchObject({ status: "review", match_kind: "order_id" });
+      expect(row.parsed).toMatchObject({
+        orderId: "ABCD1234",
+        total: 150000,
+        complete: true,
+        items: [{ name: "Wrapped product name", amount: 150000 }],
+      });
+
+      await db.query(`DELETE FROM email_receipts`);
+      jest.spyOn(imap, "fetchSince").mockResolvedValueOnce({
+        ...serverReturns("42"),
+      });
+      await pollAlice();
+      [row] = await receiptRows();
+      expect(row).toMatchObject({
+        status: "parse_failed",
+        status_reason: "no_html",
+      });
+      expect(row.parser_id).not.toBeNull();
+      expect(row.parsed).toBeNull();
+    });
+
+    it("the REST test of a definition with source html reads the stored HTML", async () => {
+      await ingest(
+        "<table><tr><td>Order number:</td><td>ABCD1234</td></tr>" +
+          "<tr><td>Order total:</td><td>15.00</td></tr></table>",
+      );
+      const [row] = await receiptRows();
+      const result = await asAlice(() =>
+        parsers.test(aliceId, {
+          receiptId: row.id,
+          definition: {
+            version: 2,
+            source: "html",
+            orderId: [{ label: "Order number:", value: "{orderid}" }],
+            total: [{ label: "Order total:", value: "{amount}" }],
+          },
+        } as never),
+      );
+      expect(result.outcome).toBe("read");
+      expect(result.parsed).toMatchObject({
+        orderId: "ABCD1234",
+        total: 150000,
+      });
+      expect(result.match).toMatchObject({
+        kind: "matched",
+        transactionId: txId,
+      });
+      const viaTool = await asAlice(() =>
+        parserTools.testDefinition(aliceId, {
+          receiptIds: [row.id],
+          definition: {
+            version: 2,
+            source: "html",
+            total: [{ label: "Order total:", value: "{amount}" }],
+          },
+        }),
+      );
+      expect(viaTool.emails[0].parsed).toMatchObject({ total: 15 });
     });
   });
 

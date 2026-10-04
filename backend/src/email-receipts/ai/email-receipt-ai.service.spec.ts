@@ -282,6 +282,30 @@ describe("EmailReceiptAiService.draftParser", () => {
     ).toMatchObject({ version: 2 });
   });
 
+  it("saves the draft for the text source whatever source the model wrote: it saw only the text lines", async () => {
+    for (const source of ["html", "text"]) {
+      const h = setup();
+      h.ai.complete.mockResolvedValue(
+        reply(JSON.stringify({ ...validDefinition, source })),
+      );
+      await h.service.draftParser(USER, RECEIPT);
+      const saved = h.parserRepo.save.mock.calls[0][0] as EmailReceiptParser;
+      expect(saved.definition).toEqual(validDefinition);
+      expect(saved.definition).not.toHaveProperty("source");
+    }
+  });
+
+  it("an answer with an unknown source is a 422 naming the code", async () => {
+    const h = setup();
+    h.ai.complete.mockResolvedValue(
+      reply(JSON.stringify({ ...validDefinition, source: "pdf" })),
+    );
+    const error = await h.service.draftParser(USER, RECEIPT).catch((e) => e);
+    expect(error).toBeInstanceOf(UnprocessableEntityException);
+    expect(String(error.message)).toContain("source");
+    expect(h.parserRepo.save).not.toHaveBeenCalled();
+  });
+
   it("an answer that is not JSON is a 422, and nothing is saved", async () => {
     const h = setup();
     h.ai.complete.mockResolvedValue(reply("I cannot help with that"));
