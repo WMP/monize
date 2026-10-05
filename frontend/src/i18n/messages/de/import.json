@@ -546,5 +546,79 @@
     "mnyPasswordRequired": "Diese Money-Datei ist kennwortgeschützt.",
     "mnyPasswordIncorrect": "Mit diesem Kennwort lässt sich die Money-Datei nicht öffnen.",
     "mnyUnreadableDatabase": "Diese Money-Datei wurde entschlüsselt, ihr Inhalt konnte aber nicht gelesen werden. Sie ist möglicherweise beschädigt."
+  },
+  "preview": {
+    "choice": {
+      "legend": "Was mit {payee} geschehen soll, wenn es nicht importiert wird",
+      "skip": "Jetzt überspringen",
+      "except": "Zu den Ausnahmen hinzufügen"
+    },
+    "payeeTip": {
+      "name": "Von der Bank: {original}. Zugeordnet zu: {name}",
+      "alias": "Von der Bank: {original}. Zugeordnet zu: {name} (Alias \"{pattern}\")",
+      "aliasNoPattern": "Von der Bank: {original}. Zugeordnet zu: {name} (Alias)",
+      "new": "Von der Bank: {original}. Zugeordnet zu: {name} (neuer Zahlungsempfänger)",
+      "rule": "Von der Bank: {original}. Zugeordnet zu: {name} (durch eine Regel festgelegt)",
+      "ruleNone": "Von der Bank: {original}. Zugeordnet zu: kein Zahlungsempfänger (durch eine Regel festgelegt)"
+    },
+    "expand": {
+      "show": "Details zu {payee} anzeigen",
+      "hide": "Details zu {payee} ausblenden"
+    },
+    "rules": {
+      "heading": "Importregeln",
+      "none": "Keine Importregel hat auf diese Buchung gepasst.",
+      "skipped": "{action}: übersprungen ({reason})",
+      "stopped": "Beendet die Regelverarbeitung danach.",
+      "applied": "Angewendet: {actions}",
+      "openNewTab": "Regel {name} in einem neuen Tab öffnen"
+    },
+    "ruleTest": {
+      "loading": "Das Ergebnis des Regeltests wird geladen",
+      "error": "Das Ergebnis des Regeltests konnte nicht geladen werden.",
+      "retry": "Erneut versuchen",
+      "noRules": "Sie haben keine Importregeln, daher gab es nichts zu testen.",
+      "showNotMatched": "Regeln anzeigen, die nicht zugetroffen haben ({count})",
+      "hideNotMatched": "Regeln ausblenden, die nicht zugetroffen haben ({count})",
+      "noChanges": "Die Regel hat zugetroffen, ändert an dieser Transaktion aber nichts.",
+      "badge": {
+        "matched": "Zugetroffen",
+        "notMatched": "Nicht zugetroffen",
+        "notEvaluated": "Nicht geprüft"
+      },
+      "notEvaluated": {
+        "afterStop": "Nicht geprüft: Eine vorherige Regel hat die Regelverarbeitung beendet.",
+        "disabled": "Nicht geprüft: Die Regel ist ausgeschaltet.",
+        "invalid": "Nicht geprüft: Die Regel ist ungültig. Öffnen Sie sie, um sie zu reparieren."
+      },
+      "condition": {
+        "met": "Bedingung erfüllt",
+        "notMet": "Bedingung nicht erfüllt",
+        "actual": "Wert in dieser Transaktion: {value}",
+        "noValue": "keiner",
+        "noTags": "keine Tags",
+        "capture": "{name} = {value}",
+        "omitted": "Die Einzelheiten dieses Teils der Bedingung werden nicht angezeigt."
+      },
+      "skipReasons": {
+        "already_set": "sie hat bereits einen Wert und die Regel füllt nur leere Felder aus",
+        "no_change": "sie hat bereits, was die Regel setzen würde",
+        "payee_unresolved": "der von der Regel gebildete Zahlungsempfänger konnte nicht nachgeschlagen werden"
+      }
+    },
+    "payee": {
+      "heading": "Zahlungsempfänger",
+      "unknown": "Keine Angaben zum Zahlungsempfänger für diese Buchung.",
+      "original": "Text der Bank: {original}",
+      "name": "Entspricht Ihrem vorhandenen Zahlungsempfänger {name}.",
+      "alias": "Wird über den Alias \"{pattern}\" {name} zugeordnet.",
+      "aliasNoPattern": "Wird über einen Alias {name} zugeordnet.",
+      "new": "Noch kein Zahlungsempfänger hat diesen Namen, daher würde {name} angelegt.",
+      "rule": "Eine Importregel legt den Zahlungsempfänger fest: {name}.",
+      "ruleNone": "Eine Importregel entfernt den Zahlungsempfänger.",
+      "none": "Die Bank hat keine Gegenpartei angegeben, daher hat die Buchung keinen Zahlungsempfänger.",
+      "openAliases": "Aliase des Zahlungsempfängers öffnen",
+      "openAliasesNewTab": "Aliase des Zahlungsempfängers in einem neuen Tab öffnen"
+    }
   }
 }

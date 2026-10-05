@@ -226,6 +226,23 @@ const buildAccountSchema = (
 type AccountFormData = z.infer<ReturnType<typeof buildAccountSchema>>;
 
 /**
+ * What a surface that creates an account on someone's behalf (a bank account
+ * being linked) can start the create form with. Read once, when the form opens,
+ * and only when creating: an edit always starts from the account itself.
+ */
+export interface AccountFormInitialValues {
+  name?: string;
+  accountType?: AccountFormData['accountType'];
+  currencyCode?: string;
+  accountNumber?: string;
+  /**
+   * A number starts the field there; `null` leaves it empty for the person to
+   * enter; absent keeps the form's usual 0.
+   */
+  openingBalance?: number | null;
+}
+
+/**
  * What the form submits: its fields plus, for a mortgage, the two legacy flags
  * its type maps to (`flagsFromMortgageType`), which travel beside the type
  * until P3-B1 drops the booleans.
@@ -266,6 +283,8 @@ function cashLedgerChanged(data: AccountFormData, cash: Account | null): boolean
 
 interface AccountFormProps {
   account?: Account;
+  /** Prefill for a new account; ignored when `account` is given. */
+  initialValues?: AccountFormInitialValues;
   onSubmit: (data: AccountSubmitData) => Promise<void>;
   onCancel: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
@@ -280,6 +299,7 @@ interface AccountFormProps {
 
 export function AccountForm({
   account,
+  initialValues,
   onSubmit,
   onCancel,
   onDirtyChange,
@@ -392,8 +412,14 @@ export function AccountForm({
           mortgagePaymentFrequency: (account as any).mortgagePaymentFrequency || undefined,
         }
       : {
-          currencyCode: defaultCurrency,
-          openingBalance: 0,
+          currencyCode: initialValues?.currencyCode ?? defaultCurrency,
+          ...(initialValues?.name ? { name: initialValues.name } : {}),
+          ...(initialValues?.accountType ? { accountType: initialValues.accountType } : {}),
+          ...(initialValues?.accountNumber ? { accountNumber: initialValues.accountNumber } : {}),
+          openingBalance:
+            initialValues?.openingBalance === null
+              ? undefined
+              : (initialValues?.openingBalance ?? 0),
           isFavourite: false,
           excludeFromNetWorth: false,
           paymentFrequency: 'MONTHLY' as PaymentFrequency,

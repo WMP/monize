@@ -546,5 +546,79 @@
     "mnyPasswordRequired": "Este ficheiro do Money está protegido por palavra-passe.",
     "mnyPasswordIncorrect": "Essa palavra-passe não abre o ficheiro do Money.",
     "mnyUnreadableDatabase": "Este ficheiro do Money foi desencriptado, mas não foi possível ler o seu conteúdo. Pode estar danificado."
+  },
+  "preview": {
+    "choice": {
+      "legend": "O que fazer com {payee} se não for importada",
+      "skip": "Ignorar por agora",
+      "except": "Adicionar às exceções"
+    },
+    "payeeTip": {
+      "name": "Do banco: {original}. Corresponde a: {name}",
+      "alias": "Do banco: {original}. Corresponde a: {name} (alias \"{pattern}\")",
+      "aliasNoPattern": "Do banco: {original}. Corresponde a: {name} (alias)",
+      "new": "Do banco: {original}. Corresponde a: {name} (novo beneficiário)",
+      "rule": "Do banco: {original}. Corresponde a: {name} (definido por uma regra)",
+      "ruleNone": "Do banco: {original}. Corresponde a: nenhum beneficiário (definido por uma regra)"
+    },
+    "expand": {
+      "show": "Mostrar os detalhes de {payee}",
+      "hide": "Ocultar os detalhes de {payee}"
+    },
+    "rules": {
+      "heading": "Regras de importação",
+      "none": "Nenhuma regra de importação correspondeu a esta transação.",
+      "skipped": "{action}: ignorada ({reason})",
+      "stopped": "Interrompe as regras seguintes.",
+      "applied": "Aplicadas: {actions}",
+      "openNewTab": "Abrir a regra {name} num novo separador"
+    },
+    "ruleTest": {
+      "loading": "A carregar o resultado do teste de regras",
+      "error": "Não foi possível carregar o resultado do teste de regras.",
+      "retry": "Tentar novamente",
+      "noRules": "Não tem regras de importação, por isso não havia nada a testar.",
+      "showNotMatched": "Mostrar as regras que não correspondem ({count})",
+      "hideNotMatched": "Ocultar as regras que não correspondem ({count})",
+      "noChanges": "Corresponde, mas não altera nada nesta transação.",
+      "badge": {
+        "matched": "Corresponde",
+        "notMatched": "Não corresponde",
+        "notEvaluated": "Não avaliada"
+      },
+      "notEvaluated": {
+        "afterStop": "Não avaliada: uma regra anterior interrompeu as regras.",
+        "disabled": "Não avaliada: a regra está desativada.",
+        "invalid": "Não avaliada: a regra não é válida. Abra-a para a reparar."
+      },
+      "condition": {
+        "met": "Condição cumprida",
+        "notMet": "Condição não cumprida",
+        "actual": "Valor nesta transação: {value}",
+        "noValue": "nenhum",
+        "noTags": "sem etiquetas",
+        "capture": "{name} = {value}",
+        "omitted": "Os detalhes desta parte da condição não são apresentados."
+      },
+      "skipReasons": {
+        "already_set": "já tem um valor e a regra só preenche os vazios",
+        "no_change": "já tem o que a regra definiria",
+        "payee_unresolved": "não foi possível procurar o beneficiário que a regra constrói"
+      }
+    },
+    "payee": {
+      "heading": "Beneficiário",
+      "unknown": "Não há informação do beneficiário para esta transação.",
+      "original": "Texto do banco: {original}",
+      "name": "Corresponde ao seu beneficiário existente {name}.",
+      "alias": "Associado a {name} através do alias \"{pattern}\".",
+      "aliasNoPattern": "Associado a {name} através de um alias.",
+      "new": "Nenhum beneficiário tem ainda este nome, pelo que {name} seria criado.",
+      "rule": "Uma regra de importação define o beneficiário: {name}.",
+      "ruleNone": "Uma regra de importação remove o beneficiário.",
+      "none": "O banco não indicou contraparte, pelo que a transação não tem beneficiário.",
+      "openAliases": "Abrir os alias do beneficiário",
+      "openAliasesNewTab": "Abrir os alias do beneficiário num novo separador"
+    }
   }
 }
