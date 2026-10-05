@@ -99,11 +99,7 @@ import { tr } from "../i18n/translate";
  * support (issue #1247 re-audit).
  */
 export type LlmScheduledKind =
-  | "bill"
-  | "deposit"
-  | "transfer"
-  | "investment"
-  | "unknown";
+  "bill" | "deposit" | "transfer" | "investment" | "unknown";
 
 export interface LlmScheduledItem {
   id: string;
@@ -2286,9 +2282,7 @@ export class ScheduledTransactionsService {
         FUNDING_ACCOUNT_ACTIONS.has(effectiveInvestmentAction)
           ? suppliedOrStored(
               updateData.investmentFundingAccountId as
-                | string
-                | null
-                | undefined,
+                string | null | undefined,
               scheduled.investmentFundingAccountId,
             )
           : null;
@@ -2326,8 +2320,7 @@ export class ScheduledTransactionsService {
       //     so record the current pair.
       if (fieldsToUpdate.investmentExchangeRate !== undefined) {
         const writtenRate = fieldsToUpdate.investmentExchangeRate as
-          | number
-          | null;
+          number | null;
         const rateUnchanged =
           writtenRate !== null &&
           scheduled.investmentExchangeRate !== null &&
@@ -2674,6 +2667,12 @@ export class ScheduledTransactionsService {
        * whatever the schedule's `next_due_date` has advanced to since.
        */
       expectedDueDate?: string;
+      /**
+       * The poster is a delegate acting as the owner (see
+       * `TransactionsService.create`): the owner's structural rules are
+       * skipped on the posted row. Set from the verified identity only.
+       */
+      actorIsNotOwner?: boolean;
     } = {},
   ): Promise<ScheduledTransaction | null> {
     const scheduled = await this.findOne(userId, id);
@@ -3413,7 +3412,13 @@ export class ScheduledTransactionsService {
           m,
         );
       } else if (!skipFinancialWrite) {
-        await this.transactionsService.create(userId, transactionPayload);
+        await this.transactionsService.create(
+          userId,
+          transactionPayload,
+          ...(options.actorIsNotOwner === true
+            ? [{ actorIsNotOwner: true }]
+            : []),
+        );
       } else {
         this.logger.log(
           `Scheduled loan payment ${id} posted no money: the loan owes nothing ` +

@@ -105,11 +105,7 @@ export const DelegateRequiresCapability = (
  * decorators.
  */
 export type DelegateSection =
-  | "bills"
-  | "investments"
-  | "budgets"
-  | "reports"
-  | "ai";
+  "bills" | "investments" | "budgets" | "reports" | "ai";
 export const DELEGATE_SECTION_KEY = "delegateSection";
 export const DelegateRequiresSection = (section: DelegateSection) =>
   SetMetadata(DELEGATE_SECTION_KEY, section);

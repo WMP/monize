@@ -71,6 +71,7 @@ function RuleTestItem({
         category: (id) => labels.categories[id],
         payee: (id) => labels.payees[id],
         tag: (id) => labels.tags[id],
+        account: (id) => labels.accounts[id],
       })
     : [];
   const notes = rule.effects

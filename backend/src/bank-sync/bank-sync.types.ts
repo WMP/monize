@@ -168,8 +168,7 @@ export interface BankSyncAccountFailure {
 
 /** One entry per linked account: its result, or why it has none. */
 export type BankSyncConnectionSyncEntry =
-  | BankSyncResult
-  | BankSyncAccountFailure;
+  BankSyncResult | BankSyncAccountFailure;
 
 /** `POST /bank-sync/accounts/:id/exceptions/remove` (spec section 7b). */
 export interface BankSyncRemovedExceptionsView {

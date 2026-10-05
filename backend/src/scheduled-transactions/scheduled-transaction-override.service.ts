@@ -44,8 +44,7 @@ const OCCURRENCE_IDENTITY_CONSTRAINT = "uq_sched_txn_overrides_occurrence";
 function isOccurrenceAlreadyOverridden(error: unknown): boolean {
   if (!(error instanceof QueryFailedError)) return false;
   const driver = error.driverError as
-    | { code?: string; constraint?: string }
-    | undefined;
+    { code?: string; constraint?: string } | undefined;
   return (
     driver?.code === UNIQUE_VIOLATION &&
     driver?.constraint === OCCURRENCE_IDENTITY_CONSTRAINT

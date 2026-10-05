@@ -47,8 +47,7 @@ export function scopedDbMockModule() {
         dataSource: {
           transaction: (
             ...args:
-              | [(m: unknown) => unknown]
-              | [string, (m: unknown) => unknown]
+              [(m: unknown) => unknown] | [string, (m: unknown) => unknown]
           ) => unknown;
         },
         fn: (m: unknown) => unknown,

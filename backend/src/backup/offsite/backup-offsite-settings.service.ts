@@ -33,8 +33,7 @@ export type OffsiteS3Unavailable =
 
 /** A resolved destination, or the reason there is none. */
 export type OffsiteS3Resolution =
-  | { target: OffsiteS3Target }
-  | { target: null; reason: OffsiteS3Unavailable };
+  { target: OffsiteS3Target } | { target: null; reason: OffsiteS3Unavailable };
 
 /** The largest `limit` `listUploads` will honour, whatever a caller asks for. */
 const MAX_UPLOAD_PAGE = 200;
