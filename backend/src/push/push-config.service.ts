@@ -290,7 +290,7 @@ export class PushConfigService implements OnApplicationBootstrap {
     if (cached !== null && cached.ciphertext === ciphertext) {
       return cached.identity;
     }
-    let identity: VapidIdentity | null = null;
+    let identity: VapidIdentity | null;
     try {
       // A row with a public key and no stored private half is unreadable, not a
       // crash: `getPublicConfig` reports `keyUnreadable` and the operator is

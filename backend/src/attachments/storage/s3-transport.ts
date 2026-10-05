@@ -137,12 +137,13 @@ export async function withS3Deadline<T>(
       // The SDK's own error is carried through rather than replaced. The abort is
       // what surfaced, but only the underlying error says whether the endpoint was
       // slow or the credentials were wrong, and those two must not look identical
-      // in the log. (`Error`'s `cause` option would be the idiom; the backend
-      // targets ES2021, which does not have it.)
+      // in the log. The message carries it for log lines that print only the
+      // message; `cause` keeps the original error for anything that walks it.
       const underlying = error instanceof Error ? error.message : String(error);
       throw new Error(
         `S3 ${operation} exceeded its ${deadlineMs} ms deadline and was ` +
           `aborted (underlying error: ${underlying})`,
+        { cause: error },
       );
     }
     throw error;

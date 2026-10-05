@@ -668,7 +668,7 @@ export class McpTransactionsTools {
       if (unresolved.length > 0) {
         // Best-effort suggestion: a lookup failure must not mask the
         // "unknown payee" error, so fall back to no hint.
-        let suggestion = "";
+        let suggestion: string;
         try {
           const matches = await this.payeesService.search(
             userId,

@@ -707,7 +707,7 @@ export class AuthController {
       // see that the import has no value, which per-file transpilation cannot.
       const cause = (error as { cause?: unknown })?.cause;
       if (cause instanceof globalThis.Response) {
-        let body = "";
+        let body: string;
         try {
           body = (await cause.clone().text()).slice(0, 2000);
         } catch {

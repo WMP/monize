@@ -223,7 +223,7 @@ export async function createIntegrationModule(
   // than returning undefined. The catch is narrow on purpose: a
   // NetWorthService that is present resolves, so this only swallows the
   // "nobody asked for it" case and never a broken provider.
-  let netWorthService: NetWorthService | null = null;
+  let netWorthService: NetWorthService | null;
   try {
     netWorthService = module.get(NetWorthService, { strict: false });
   } catch {

@@ -127,7 +127,7 @@ export class StepUpAuthService {
     );
     const twoFactorEnabled = isTwoFactorActive(preferences, user);
 
-    let verified = false;
+    let verified: boolean;
 
     if (twoFactorEnabled) {
       // Strongest available: TOTP. Password is not accepted as a fallback for

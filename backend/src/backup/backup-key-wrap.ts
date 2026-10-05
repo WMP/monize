@@ -150,10 +150,7 @@ export async function decryptKeyWrappedBackup(
   let offset = MAGIC.length + 2;
   const wrap = envelope.subarray(offset, (offset += WRAPPED_KEY_LENGTH));
   const keySalt = envelope.subarray(offset, (offset += KEY_SALT_LENGTH));
-  const noncePrefix = envelope.subarray(
-    offset,
-    (offset += NONCE_PREFIX_LENGTH),
-  );
+  const noncePrefix = envelope.subarray(offset, offset + NONCE_PREFIX_LENGTH);
   const header = envelope.subarray(0, KEY_WRAPPED_HEADER_LENGTH);
   const frames = readFrameBoundaries(envelope, KEY_WRAPPED_HEADER_LENGTH);
 
