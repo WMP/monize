@@ -51,6 +51,8 @@ function makeCategory(overrides: Partial<Category> & { id: string; name: string 
     color: null,
     effectiveColor: null,
     effectiveIcon: null,
+    autoSign: null,
+    effectiveAutoSign: true,
     isIncome: false,
     isSystem: false,
     createdAt: '2026-01-01T00:00:00Z',

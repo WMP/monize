@@ -345,8 +345,7 @@ export class TransactionRulesService {
       triggers: dto.triggers,
       condition: dto.condition as TransactionRule["condition"] | undefined,
       actions: withActionDefaults(dto.actions) as
-        | TransactionRule["actions"]
-        | undefined,
+        TransactionRule["actions"] | undefined,
       stopProcessing: dto.stopProcessing,
       // A blank or null clears the side; an absent key leaves it alone.
       activeFrom:

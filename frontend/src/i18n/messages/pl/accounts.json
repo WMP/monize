@@ -248,10 +248,8 @@
     "payeeLender": "Odbiorca / Pożyczkodawca",
     "selectOrCreatePayee": "Wybierz lub utwórz odbiorcę...",
     "mortgageDetails": "Szczegóły kredytu hipotecznego",
-    "canadianMortgage": "Kredyt kanadyjski (kapitalizacja półroczna)",
-    "variableRate": "Oprocentowanie zmienne",
     "amortizationMonths": "Okres spłaty (miesiące)",
-    "termMonths": "Okres (miesiące)",
+    "termMonths": "Okres stałej stopy (miesiące)",
     "autoPost": "Automatycznie księguj transakcje w terminie",
     "skip": "Pomiń",
     "setUpPayments": "Skonfiguruj płatności",
@@ -267,17 +265,31 @@
     },
     "toasts": {
       "setupComplete": "Skonfigurowano zaplanowane spłaty dla {account}"
-    }
+    },
+    "firstInstallment": "Pierwsza rata",
+    "firstInstallmentHelp": "Ten kredyt hipoteczny nie ma stałej płatności: każda rata wynika z salda, oprocentowania i okresu amortyzacji. To rata z terminem {date}, łącznie z ewentualną dodatkową spłatą kapitału.",
+    "firstInstallmentPending": "Wpisz datę następnej płatności, aby obliczyć pierwszą ratę.",
+    "firstInstallmentCalculating": "Obliczanie pierwszej raty...",
+    "firstInstallmentFailed": "Nie udało się obliczyć pierwszej raty. Sprawdź poniższe wartości i spróbuj ponownie."
   },
   "mortgageFields": {
     "title": "Szczegóły kredytu hipotecznego",
-    "canadianMortgage": "Kredyt kanadyjski",
-    "canadianMortgageDesc": "Stosuje kapitalizację półroczną dla stałego oprocentowania (wymagane prawem w Kanadzie)",
-    "variableRate": "Oprocentowanie zmienne",
-    "variableRateDesc": "Oprocentowanie może się zmieniać w trakcie trwania (stosuje kapitalizację miesięczną)",
-    "variableRateLoanDetailsLink": "Zarejestruj zmiany oprocentowania w <link>szczegółach kredytu</link>.",
-    "termLength": "Okres kredytowania",
-    "termLengthNoTerm": "Pozostaw 0 lat i 0 miesięcy, aby nie ustawiać okresu.",
+    "type": {
+      "label": "Rodzaj kredytu hipotecznego",
+      "ANNUITY": "Raty równe (annuitetowe)",
+      "CANADIAN_FIXED": "Kanadyjska stała stopa",
+      "LINEAR": "Raty malejące (stała część kapitałowa)",
+      "INTEREST_ONLY": "Tylko odsetki",
+      "help": {
+        "ANNUITY": "Łączna rata jest co miesiąc taka sama. Wybierz to również dla kredytu o zmiennym oprocentowaniu.",
+        "CANADIAN_FIXED": "Kanadyjska umowa o stałej stopie; odsetki są kapitalizowane dwa razy w roku.",
+        "LINEAR": "Część kapitałowa jest co miesiąc taka sama, a łączna rata maleje.",
+        "INTEREST_ONLY": "Płacisz tylko odsetki, a saldo się nie zmienia."
+      }
+    },
+    "rateChangesLoanDetailsLink": "Zarejestruj zmiany oprocentowania w <link>szczegółach kredytu</link>.",
+    "termLength": "Okres stałej stopy",
+    "termLengthHelp": "Jak długo obowiązuje Twoja stopa procentowa lub okres umowy, na przykład stała stopa na 5 lat. Monize może przypomnieć Ci o tym przed jego końcem. Pozostaw 0 lat i 0 miesięcy, aby nie ustawiać okresu.",
     "amortizationPeriod": "Okres spłaty (wymagane)",
     "years": "Lata",
     "months": "Miesiące",
@@ -333,6 +345,68 @@
       "memoLabel": "Tekst notatki nadpłaty",
       "memoPlaceholder": "np. nadpłata",
       "memoHelp": "Dopasowanie fragmentu tekstu (bez rozróżniania wielkości liter) do notatki płatności, notatki transakcji źródłowej lub notatki podziału."
+    },
+    "prepaymentMode": {
+      "label": "Skutek nadpłaty",
+      "SHORTEN_TERM": "Skraca okres (ta sama część kapitałowa co miesiąc)",
+      "LOWER_INSTALLMENT": "Obniża ratę (ta sama data końcowa)",
+      "help": "Zapytaj swój bank. Jeśli po nadpłacie część kapitałowa na wyciągu się nie zmieniła, okres został skrócony."
+    },
+    "previewFirstInstallment": "Pierwsza rata:",
+    "detect": {
+      "toggle": "Nie wiesz? Wpisz kilka rat",
+      "title": "Ustal rodzaj kredytu hipotecznego",
+      "intro": "Przepisz z wyciągu dwie lub trzy kolejne raty, od najstarszej. Saldo jest opcjonalne: na jego podstawie i oprocentowania Monize może ustalić, czy odsetki są kapitalizowane dwa razy w roku.",
+      "installment": "Rata {number}",
+      "principal": "Kapitał",
+      "interest": "Odsetki",
+      "balance": "Saldo przed ratą (opcjonalnie)",
+      "rowIncomplete": "Wpisz zarówno kapitał, jak i odsetki, albo pozostaw wiersz pusty.",
+      "rate": "Sprawdzono względem oprocentowania wpisanego powyżej: {rate}.",
+      "noRate": "Powyżej nie wpisano oprocentowania, więc nie można sprawdzić kapitalizacji.",
+      "needsFrequency": "Najpierw wybierz poniżej częstotliwość płatności: raty są odczytywane z tą częstotliwością.",
+      "submit": "Zaproponuj rodzaj",
+      "close": "Zamknij",
+      "suggested": "Proponowany rodzaj: {type}",
+      "noSuggestion": "Brak proponowanego rodzaju.",
+      "lowConfidence": "Niska pewność: przed użyciem sprawdź to w umowie lub zapytaj swój bank.",
+      "use": "Użyj tego rodzaju",
+      "failed": "Nie udało się sprawdzić rat, ponieważ żądanie nie powiodło się. Spróbuj ponownie.",
+      "reason": {
+        "TOO_FEW_SAMPLES": "Do porównania potrzebne są co najmniej dwie kolejne raty.",
+        "INVALID_SAMPLE": "Jedna z rat ma ujemną lub nieczytelną kwotę.",
+        "NO_PAYMENT": "Raty nie spłacają kapitału ani nie zawierają odsetek.",
+        "AMBIGUOUS_CONSTANT_PRINCIPAL_AND_INSTALLMENT": "Kapitał i łączna rata są takie same w każdej racie, co pasuje zarówno do rat malejących, jak i do rat równych. Spróbuj rat bardziej od siebie oddalonych albo sprawdź umowę.",
+        "ACCELERATED_FREQUENCY": "Te raty wyglądają na malejące lub tylko odsetkowe, co nie jest możliwe przy przyspieszonej częstotliwości płatności. Sprawdź częstotliwość płatności.",
+        "NO_RULE_FITS": "Ani kapitał, ani łączna rata nie są stałe w tych ratach. Jeśli oprocentowanie zmieniło się między nimi, użyj rat z jednego okresu oprocentowania.",
+        "ZERO_PRINCIPAL": "Kapitał nie jest spłacany, więc saldo się nie zmienia.",
+        "ZERO_PRINCIPAL_RATE_MISMATCH": "Kapitał nie jest spłacany, ale odsetki nie odpowiadają podanemu oprocentowaniu salda. Sprawdź oprocentowanie.",
+        "CONSTANT_PRINCIPAL": "Część kapitałowa jest za każdym razem taka sama, a łączna rata maleje.",
+        "CONSTANT_PRINCIPAL_RATE_MISMATCH": "Część kapitałowa jest za każdym razem taka sama, ale odsetki nie odpowiadają podanemu oprocentowaniu salda. Sprawdź oprocentowanie.",
+        "CONSTANT_INSTALLMENT_SEMI_ANNUAL": "Łączna rata jest za każdym razem taka sama, a odsetki odpowiadają podanemu oprocentowaniu z kapitalizacją dwa razy w roku.",
+        "CONSTANT_INSTALLMENT_NOMINAL": "Łączna rata jest za każdym razem taka sama, a odsetki odpowiadają podanemu oprocentowaniu bez kapitalizacji dwa razy w roku.",
+        "CONSTANT_INSTALLMENT_RATE_UNCHECKED": "Łączna rata jest za każdym razem taka sama. Bez salda przed każdą ratą i oprocentowania nie można było sprawdzić kapitalizacji dwa razy w roku.",
+        "CONSTANT_INSTALLMENT_COMPOUNDING_AMBIGUOUS": "Łączna rata jest za każdym razem taka sama, ale saldo jest zbyt małe, aby odróżnić kapitalizację dwa razy w roku. Kanadyjska umowa o stałej stopie mówi o tym w swoich warunkach.",
+        "CONSTANT_INSTALLMENT_RATE_MISMATCH": "Łączna rata jest za każdym razem taka sama, ale odsetki nie odpowiadają żadnej z metod przy podanym oprocentowaniu. Odsetki mogą być naliczane dziennie; sprawdź oprocentowanie."
+      },
+      "history": {
+        "action": "Wykryj rodzaj kredytu hipotecznego",
+        "title": "Rodzaj kredytu hipotecznego na podstawie Twoich płatności",
+        "intro": "Odczytano z ostatnich zaksięgowanych rat przy jednym oprocentowaniu. Nic się nie zmieni, dopóki nie zapiszesz konta.",
+        "current": "Obecny rodzaj: {type}",
+        "alreadySet": "Ten kredyt hipoteczny ma już proponowany rodzaj.",
+        "rate": "Obowiązujące oprocentowanie: {rate}",
+        "noRate": "Dla tych dat nie zarejestrowano oprocentowania, więc kapitalizacja nie została sprawdzona.",
+        "noSamples": "Nie znaleziono zaksięgowanej raty zawierającej zarówno część kapitałową, jak i odsetkową. Aby z tego skorzystać, księguj płatności z podziałem na kapitał i odsetki.",
+        "colDate": "Data",
+        "colPrincipal": "Kapitał",
+        "colInterest": "Odsetki",
+        "colBalance": "Saldo przed ratą",
+        "balanceUnknown": "Nieznane",
+        "failed": "Nie udało się odczytać historii płatności, ponieważ żądanie nie powiodło się. Spróbuj ponownie.",
+        "cancel": "Anuluj",
+        "use": "Edytuj konto z tym rodzajem"
+      }
     }
   },
   "assetFields": {
@@ -361,7 +435,8 @@
     "paymentFrequencyRequired": "Częstotliwość płatności jest wymagana",
     "paymentStartDateRequired": "Data pierwszej płatności jest wymagana",
     "paymentAccountRequired": "Konto płatności jest wymagane",
-    "amortizationRequired": "Okres spłaty jest wymagany"
+    "amortizationRequired": "Okres spłaty jest wymagany",
+    "acceleratedNeedsAnnuity": "Ten kredyt hipoteczny jest spłacany według przyspieszonego harmonogramu, który ma tylko kredyt z ratami równymi. Kredyt z ratami malejącymi lub tylko odsetkowy wymaga zwykłej częstotliwości płatności, więc zostaw typ z ratami równymi."
   },
   "loanDetail": {
     "backToAccounts": "Powrót do kont",
@@ -389,7 +464,12 @@
       "estRemainingInterest": "Szac. pozostałe odsetki",
       "notSet": "Nie ustawiono",
       "notAvailable": "Brak danych",
-      "paidOff": "Spłacony"
+      "paidOff": "Spłacony",
+      "nextInstallment": "Następna rata",
+      "dueOn": "Termin {date}",
+      "finalPayment": "Płatność końcowa",
+      "nextInstallmentDue": "Następna rata (termin {date})",
+      "finalPaymentDue": "Płatność końcowa (termin {date})"
     },
     "schedule": {
       "title": "Harmonogram spłat",
@@ -430,7 +510,10 @@
         "reasonPaidOff": "Ten kredyt nie ma zadłużenia do spłaty, więc nie ma czego amortyzować.",
         "reasonNoFrequency": "Ten kredyt nie ma ustawionej częstotliwości płatności. Ustaw ją w edycji konta.",
         "reasonNoRate": "Ten kredyt nie ma zapisanej stopy procentowej. Ustaw oprocentowanie w edycji konta lub dodaj zmianę oprocentowania z datą dzisiejszą albo wcześniejszą. Stopa pokazana w wierszach harmonogramu poniżej jest odtworzona z naliczonych odsetek i nie jest stopą zapisaną.",
-        "reasonNoPayment": "Nie można ustalić kwoty raty. Zaksięguj raty regularne jako transfery na konto kredytu (kapitał, a odsetki jako linia podziału lub osobny wydatek z kategorią), albo ustaw kwotę płatności w edycji konta. Raty zaksięgowane jako zwykłe wydatki na koncie źródłowym nie trafiają na konto kredytu, więc harmonogram ich nie widzi."
+        "reasonNoPayment": "Nie można ustalić kwoty raty. Zaksięguj raty regularne jako transfery na konto kredytu (kapitał, a odsetki jako linia podziału lub osobny wydatek z kategorią), albo ustaw kwotę płatności w edycji konta. Raty zaksięgowane jako zwykłe wydatki na koncie źródłowym nie trafiają na konto kredytu, więc harmonogram ich nie widzi.",
+        "reasonNoAmortization": "Ten kredyt hipoteczny nie ma okresu amortyzacji, więc nie można obliczyć jego rat ani końca okresu kredytowania. Ustaw okres amortyzacji w ustawieniach konta.",
+        "reasonNoPaymentStart": "Ten kredyt hipoteczny nie ma daty pierwszej płatności, więc nie można policzyć płatności pozostałych do końca okresu kredytowania. Skonfiguruj jego zaplanowaną płatność w ustawieniach konta; pierwsza wpisana data wymagalności stanie się płatnością 1.",
+        "reasonNoPrincipal": "Ten kredyt hipoteczny nie ma kwoty pierwotnej, więc nie można obliczyć jego stałej części kapitałowej. Ustaw kwotę kredytu w ustawieniach konta."
       },
       "description": "Zasymuluj dodatkowe wpłaty, aby zobaczyć, o ile wcześniej kredyt mógłby zostać spłacony i ile odsetek byś zaoszczędził. Symulacje nie zmieniają Twoich rzeczywistych płatności.",
       "reset": "Resetuj",
@@ -470,7 +553,9 @@
       "budgetLabel": "Łączna miesięczna płatność",
       "budgetHint": "Przeznacz co miesiąc stałą łączną kwotę na kredyt; nadpłata to reszta po racie. Gdy rata maleje, nadpłata rośnie, żeby łączna kwota była taka sama.",
       "budgetBelowInstallment": "To mniej niż obecna rata ({amount}); zwiększ, aby nadpłacać.",
-      "windowInverted": "Data początkowa jest późniejsza niż końcowa, więc ten plan nigdy nie zadziała."
+      "windowInverted": "Data początkowa jest późniejsza niż końcowa, więc ten plan nigdy nie zadziała.",
+      "budgetBelowNextInstallment": "To mniej niż następna rata ({amount}, termin {date}); zwiększ kwotę powyżej niej, aby nadpłacać.",
+      "shortenTermNeedsPrincipal": "Ten kredyt hipoteczny nie ma kwoty pierwotnej, więc nie można zasymulować skrócenia okresu. Wybierz obniżenie raty albo ustaw kwotę kredytu w ustawieniach konta."
     },
     "comparison": {
       "newPayoff": "Nowa data spłaty",
@@ -486,7 +571,8 @@
       "newInstallment": "Nowa rata",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "Miesięczna płatność",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "Pierwsza płatność"
     },
     "chart": {
       "title": "Oś czasu spłaty",

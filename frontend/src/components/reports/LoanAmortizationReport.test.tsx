@@ -585,6 +585,54 @@ describe('LoanAmortizationReport', () => {
     });
   });
 
+  describe('a mortgage without a constant payment', () => {
+    // docs/specs/mortgage-types.md section 5.6: `payment_amount` is null for
+    // these methods, and the report shows the next installment with its date
+    // (and an interest-only bullet) rather than a constant "Payment Amount".
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-08-01T12:00:00Z'));
+      mockGetAllTransactions.mockResolvedValue({ data: [], pagination: { hasMore: false } });
+      mockGetLoanProjectionAnchor.mockResolvedValue({
+        nextDueDate: '2026-08-15',
+        debt: 265000.0006,
+      });
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    const mortgage = (mortgageType: 'LINEAR' | 'INTEREST_ONLY') => ({
+      id: 'loan-1', name: 'Hypotheek', accountType: 'MORTGAGE',
+      currentBalance: -265000.0006, openingBalance: -300000, interestRate: 2,
+      paymentAmount: null, paymentFrequency: 'MONTHLY', paymentStartDate: '2025-02-15',
+      amortizationMonths: 360, originalPrincipal: 300000,
+      mortgageType, prepaymentMode: null,
+      isCanadianMortgage: false, isVariableRate: false, isClosed: false,
+    });
+
+    it('shows a LINEAR mortgage\'s next installment with its date', async () => {
+      mockGetAllAccounts.mockResolvedValue([mortgage('LINEAR')]);
+      await renderReport();
+      await waitFor(() => {
+        expect(screen.getByText('Next Installment')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Payment Amount')).not.toBeInTheDocument();
+      expect(screen.getByText(/^\$1275\.00, due .*2026/)).toBeInTheDocument();
+      expect(screen.queryByText('Final Payment')).not.toBeInTheDocument();
+    });
+
+    it('shows an INTEREST_ONLY mortgage\'s bullet beside its installment', async () => {
+      mockGetAllAccounts.mockResolvedValue([mortgage('INTEREST_ONLY')]);
+      await renderReport();
+      await waitFor(() => {
+        expect(screen.getByText('Final Payment')).toBeInTheDocument();
+      });
+      expect(screen.getByText(/^\$441\.67, due .*2026/)).toBeInTheDocument();
+      expect(screen.getByText(/^\$265441\.67, due .*2055/)).toBeInTheDocument();
+    });
+  });
+
   it('shows Est. Payoff card when projections exist', async () => {
     mockGetAllAccounts.mockResolvedValue([
       {

@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import {
-  hasUnmeasuredFlow,
   periodResultUnknownReason,
   withheldPeriodCause,
 } from './portfolio-period-result';
@@ -50,22 +49,6 @@ describe('periodResultUnknownReason', () => {
   );
 });
 
-describe('hasUnmeasuredFlow', () => {
-  it.each(['externallySettledTrade', 'mixedSplit'] as const)(
-    'is true for %s, so the card can name the cause',
-    (reason) => {
-      expect(hasUnmeasuredFlow([reason])).toBe(true);
-    },
-  );
-
-  it('is false for a period whose figures are merely missing data', () => {
-    expect(hasUnmeasuredFlow(['incompletePrices', 'missingRatePairs'])).toBe(
-      false,
-    );
-    expect(hasUnmeasuredFlow([])).toBe(false);
-  });
-});
-
 describe('withheldPeriodCause', () => {
   it('prints nothing for boundaries, which are not defects', () => {
     expect(withheldPeriodCause([['noValueSeries'], ['zeroStart']])).toBeNull();
@@ -82,9 +65,10 @@ describe('withheldPeriodCause', () => {
     expect(withheldPeriodCause([['missingRatePairs']])).toBe('missingRatePairs');
   });
 
-  it('names an uncountable movement only when nothing is missing', () => {
-    expect(withheldPeriodCause([['externallySettledTrade']])).toBe('unmeasuredFlow');
-    expect(withheldPeriodCause([['mixedSplit', 'noValueSeries']])).toBe('unmeasuredFlow');
+  // #1516: these withhold only the account result, which no card shows.
+  it('prints nothing for an uncountable movement', () => {
+    expect(withheldPeriodCause([['externallySettledTrade']])).toBeNull();
+    expect(withheldPeriodCause([['mixedSplit', 'noValueSeries']])).toBeNull();
     expect(
       withheldPeriodCause([['mixedSplit'], ['missingRatePairs']]),
     ).toBe('missingRatePairs');

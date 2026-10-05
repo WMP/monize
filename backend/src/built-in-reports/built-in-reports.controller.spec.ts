@@ -24,6 +24,7 @@ describe("BuiltInReportsController", () => {
       getDuplicateTransactions: jest.fn(),
       getMonthlyComparison: jest.fn(),
       getMonthlyCategoryBreakdown: jest.fn(),
+      getCashFlowSankey: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -506,6 +507,29 @@ describe("BuiltInReportsController", () => {
         "user-1",
         "2024-01-01",
         "2024-12-31",
+      );
+    });
+  });
+
+  describe("getCashFlowSankey()", () => {
+    it("delegates the window, the scope and the depth to the service", async () => {
+      const query = {
+        startDate: "2026-09-01",
+        endDate: "2026-09-30",
+        accountIds: ["acc-1"],
+        depth: 2,
+      };
+      const expected = { nodes: [], links: [] };
+      mockService.getCashFlowSankey.mockResolvedValue(expected);
+
+      const result = await controller.getCashFlowSankey(mockReq, query as any);
+
+      expect(result).toEqual(expected);
+      expect(mockService.getCashFlowSankey).toHaveBeenCalledWith(
+        "user-1",
+        "2026-09-01",
+        "2026-09-30",
+        { accountIds: ["acc-1"], depth: 2 },
       );
     });
   });

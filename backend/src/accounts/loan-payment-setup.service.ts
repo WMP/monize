@@ -5,10 +5,13 @@ import {
   Logger,
   Inject,
   forwardRef,
+  ServiceUnavailableException,
 } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { Account, AccountType } from "./entities/account.entity";
 import {
+  PreviewLoanPaymentSetupDto,
+  PreviewLoanPaymentSetupResponseDto,
   SetupLoanPaymentsDto,
   SetupLoanPaymentsResponseDto,
 } from "./dto/setup-loan-payments.dto";
@@ -22,14 +25,35 @@ import {
 } from "./loan-amortization.util";
 import {
   calculateMortgagePaymentSplit,
+  getPeriodicRate,
   toMortgagePaymentFrequency,
 } from "./mortgage-amortization.util";
-import { mortgageTermEndDate } from "./payment-frequency.util";
+import {
+  DEFAULT_PERIODS_PER_YEAR,
+  mortgageTermEndDate,
+  periodsPerYearForStoredFrequency,
+} from "./payment-frequency.util";
 import { localDateForColumn } from "../common/date-utils";
 import { allocateLoanPayment } from "./loan-payment-waterfall.util";
 import { FrequencyType as FrequencyTypeDto } from "../scheduled-transactions/dto/create-scheduled-transaction.dto";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
+import {
+  MortgageType,
+  PrepaymentMode,
+  compoundingFor,
+  mortgageTypeColumns,
+  mortgageTypeOf,
+  prepaymentModeColumn,
+  requestedMortgageType,
+  storesConstantPayment,
+} from "./mortgage-type.util";
+import {
+  MortgageMethodTerms,
+  assertMortgageMethodTerms,
+  nonAnnuityInstallment,
+} from "./mortgage-installment.util";
+import { datedLoanDebt } from "./dated-loan-debt.util";
 
 @Injectable()
 export class LoanPaymentSetupService {
@@ -42,6 +66,117 @@ export class LoanPaymentSetupService {
     @Inject(forwardRef(() => ScheduledTransactionsService))
     private scheduledTransactionsService: ScheduledTransactionsService,
   ) {}
+
+  /**
+   * The first installment a setup of `dto` would schedule, for a LINEAR or
+   * INTEREST_ONLY mortgage: what `setupLoanPayments` requires its
+   * `paymentAmount` to equal, priced here by the same code
+   * (`priceFirstMethodInstallment`) so the dialog shows the figure the write
+   * will accept (spec section 5.5). Writes nothing. An annuity mortgage or a
+   * plain loan has a constant payment the user states, so it answers
+   * `derivesInstallment: false` with no figures.
+   */
+  async previewFirstInstallment(
+    userId: string,
+    accountId: string,
+    dto: PreviewLoanPaymentSetupDto,
+  ): Promise<PreviewLoanPaymentSetupResponseDto> {
+    const account = await withScopedDb(this.dataSource, (m) =>
+      m.getRepository(Account).findOne({
+        where: { id: accountId, userId },
+      }),
+    );
+    if (!account) {
+      throw new NotFoundException(
+        tr("errors.accounts.notFound", "Account not found"),
+      );
+    }
+    const mortgageType =
+      account.accountType === AccountType.MORTGAGE
+        ? (requestedMortgageType(dto, account) ?? mortgageTypeOf(account))
+        : null;
+    if (mortgageType === null || storesConstantPayment(mortgageType)) {
+      return {
+        derivesInstallment: false,
+        principalPayment: null,
+        interestPayment: null,
+        paymentAmount: null,
+      };
+    }
+    const priced = await this.priceFirstMethodInstallment(
+      account,
+      mortgageType,
+      prepaymentModeColumn(
+        mortgageType,
+        dto.prepaymentMode,
+        account.prepaymentMode,
+      ),
+      dto,
+      dto.interestRate || Number(account.interestRate) || 0,
+    );
+    return {
+      derivesInstallment: true,
+      principalPayment: priced.principal,
+      interestPayment: priced.interest,
+      paymentAmount: roundMoney(
+        priced.principal + priced.interest + (dto.extraPrincipal || 0),
+      ),
+    };
+  }
+
+  /**
+   * A LINEAR or INTEREST_ONLY mortgage has no constant payment: its first
+   * installment is table 4.3's at the first due date, priced from the ledger
+   * debt through that date (spec section 5.5). Setup makes that date payment
+   * 1, so the calendar starts there. Shared by the setup and its preview, so
+   * the figure the dialog shows is the one the write checks against.
+   */
+  private async priceFirstMethodInstallment(
+    account: Account,
+    mortgageType: MortgageType,
+    prepaymentMode: PrepaymentMode | null,
+    dto: {
+      nextDueDate: string;
+      paymentFrequency: string;
+      amortizationMonths?: number;
+    },
+    interestRate: number,
+  ): Promise<{ principal: number; interest: number; debt: number }> {
+    const terms: MortgageMethodTerms = {
+      prepaymentMode,
+      originalPrincipal: account.originalPrincipal,
+      openingBalance: account.openingBalance,
+      amortizationMonths: dto.amortizationMonths ?? account.amortizationMonths,
+      paymentStartDate: dto.nextDueDate,
+      paymentFrequency: dto.paymentFrequency,
+    };
+    assertMortgageMethodTerms(mortgageType, terms);
+    const debt = await withScopedDb(this.dataSource, (m) =>
+      datedLoanDebt(m, account, dto.nextDueDate),
+    );
+    if (debt === null) {
+      throw new ServiceUnavailableException(
+        tr(
+          "errors.accounts.loanLedgerUnreadable",
+          "This loan's balance could not be read. Try again.",
+        ),
+      );
+    }
+    // `assertMortgageMethodTerms` refused every input that leaves this null.
+    const installment = nonAnnuityInstallment(
+      mortgageType,
+      terms,
+      dto.nextDueDate,
+      debt,
+      getPeriodicRate(
+        interestRate,
+        periodsPerYearForStoredFrequency(dto.paymentFrequency) ??
+          DEFAULT_PERIODS_PER_YEAR,
+        mortgageType,
+      ),
+    )!;
+    return { ...installment, debt };
+  }
 
   /**
    * Set up scheduled loan/mortgage payments for an existing account.
@@ -109,6 +244,13 @@ export class LoanPaymentSetupService {
       }
     }
 
+    // The type this request leaves the mortgage with: its own type or flags,
+    // else the stored type. Null for any other account type.
+    const mortgageType =
+      account.accountType === AccountType.MORTGAGE
+        ? (requestedMortgageType(dto, account) ?? mortgageTypeOf(account))
+        : null;
+
     // Calculate principal/interest split for the next payment
     const currentBalance = Math.abs(Number(account.currentBalance));
     const interestRate = dto.interestRate || Number(account.interestRate) || 0;
@@ -119,7 +261,49 @@ export class LoanPaymentSetupService {
     let principalPayment: number;
     let interestPayment: number;
 
-    if (dto.detectedInterestAmount != null && dto.detectedInterestAmount >= 0) {
+    // A LINEAR or INTEREST_ONLY mortgage has no constant payment: its first
+    // installment is table 4.3's at the first due date, priced here from the
+    // ledger debt through that date (spec section 5.5). The request's payment
+    // is checked against it rather than trusted, and is not stored.
+    const derivesInstallment =
+      mortgageType !== null && !storesConstantPayment(mortgageType);
+    const prepaymentMode =
+      mortgageType !== null
+        ? prepaymentModeColumn(
+            mortgageType,
+            dto.prepaymentMode,
+            account.prepaymentMode,
+          )
+        : null;
+    let installmentDebt: number | null = null;
+
+    if (derivesInstallment) {
+      const priced = await this.priceFirstMethodInstallment(
+        account,
+        mortgageType,
+        prepaymentMode,
+        dto,
+        interestRate,
+      );
+      installmentDebt = priced.debt;
+      const expectedPayment = roundMoney(
+        priced.principal + priced.interest + extraPrincipal,
+      );
+      if (Math.abs(dto.paymentAmount - expectedPayment) > 0.00005) {
+        throw new BadRequestException(
+          tr(
+            "errors.accounts.mortgageMethodPaymentMismatch",
+            `The payment amount must be this ${mortgageType} mortgage's first installment plus any extra principal, which the server derives from the debt, the rate and the amortization; preview it again`,
+            { type: mortgageType },
+          ),
+        );
+      }
+      principalPayment = priced.principal;
+      interestPayment = priced.interest;
+    } else if (
+      dto.detectedInterestAmount != null &&
+      dto.detectedInterestAmount >= 0
+    ) {
       // Use the interest amount detected from imported transaction history.
       // This continues the actual P/I ratio from the existing data rather than
       // recalculating from the amortization formula, which may differ due to
@@ -129,30 +313,20 @@ export class LoanPaymentSetupService {
       if (principalPayment < 0) {
         principalPayment = 0;
       }
-    } else if (
-      account.accountType === AccountType.MORTGAGE &&
-      // `??`, not `||`: the same request WRITES this flag
-      // (`updateData.isCanadianMortgage = dto.isCanadianMortgage` below), so an
-      // explicit `false` means "this is not a Canadian mortgage" and must decide
-      // the split it is submitted with. Under `||` the stored flag won, and the
-      // account was saved as non-Canadian with a split computed the Canadian
-      // way -- and the setup dialog, which filters its cadence list on the
-      // checkbox, offered quarterly to an account the server then refused.
-      (dto.isCanadianMortgage ?? account.isCanadianMortgage)
-    ) {
-      // Use mortgage-specific calculation for Canadian mortgages.
+    } else if (mortgageType !== null) {
+      // Every mortgage is split by its type (spec section 5.5), the type this
+      // same request writes: a request's own type or flags decide the split it
+      // is submitted with, never the stored ones they replace.
       //
-      // The DTO's frequency is a *recurrence* spelling, and casting it into
-      // MortgagePaymentFrequency handed getMortgagePeriodsPerYear a value it has
-      // no case for: SEMIMONTHLY, QUARTERLY and YEARLY all fell through to its
-      // monthly default, so a semi-monthly Canadian mortgage was split at twice
-      // the correct interest for the life of the loan. Normalize instead, and
-      // refuse a cadence these helpers cannot express rather than computing a
-      // confident wrong number for it.
-      const mortgageFrequency = toMortgagePaymentFrequency(
-        dto.paymentFrequency,
-      );
-      if (!mortgageFrequency) {
+      // The DTO's frequency is a *recurrence* spelling, read through the one
+      // lookup that knows both domains. A semi-annually compounded mortgage
+      // refuses a cadence the mortgage helpers cannot express (quarterly,
+      // yearly), as the setup dialog does not offer them, rather than compute
+      // a conversion nothing else in the app uses for it.
+      if (
+        compoundingFor(mortgageType) === "SEMI_ANNUAL" &&
+        !toMortgagePaymentFrequency(dto.paymentFrequency)
+      ) {
         throw new BadRequestException(
           tr(
             "errors.accounts.mortgageFrequencyUnsupported",
@@ -161,16 +335,25 @@ export class LoanPaymentSetupService {
           ),
         );
       }
-      const split = calculateMortgagePaymentSplit(
-        currentBalance,
-        interestRate,
-        basePaymentAmount,
-        mortgageFrequency,
-        dto.isCanadianMortgage ?? account.isCanadianMortgage ?? false,
-        dto.isVariableRate ?? account.isVariableRate ?? false,
-      );
-      principalPayment = split.principal;
-      interestPayment = split.interest;
+      if (interestRate > 0) {
+        const split = calculateMortgagePaymentSplit(
+          currentBalance,
+          interestRate,
+          basePaymentAmount,
+          periodsPerYearForStoredFrequency(dto.paymentFrequency) ??
+            DEFAULT_PERIODS_PER_YEAR,
+          mortgageType,
+        );
+        principalPayment = split.principal;
+        interestPayment = split.interest;
+      } else {
+        // No interest: the whole base payment is principal, as for any loan
+        // below. A zero recorded balance means the history is not imported
+        // yet, so it does not cap the principal; the waterfall bounds it by a
+        // known balance.
+        principalPayment = basePaymentAmount;
+        interestPayment = 0;
+      }
     } else if (interestRate > 0) {
       const split = calculatePaymentSplit(
         currentBalance,
@@ -205,7 +388,12 @@ export class LoanPaymentSetupService {
       extraPrincipal,
       interest: interestPayment,
       principal: principalPayment,
-      currentBalance: currentBalance > 0 ? currentBalance : null,
+      currentBalance:
+        installmentDebt !== null
+          ? installmentDebt
+          : currentBalance > 0
+            ? currentBalance
+            : null,
     });
     principalPayment = allocation.principal;
     interestPayment = allocation.interest;
@@ -292,7 +480,9 @@ export class LoanPaymentSetupService {
 
     // Update the account with loan payment details
     const updateData: Partial<Account> = {
-      paymentAmount: dto.paymentAmount,
+      // Null for a LINEAR or INTEREST_ONLY mortgage, which has no constant
+      // payment to store (spec decision 11, the column's CHECK).
+      paymentAmount: derivesInstallment ? null : dto.paymentAmount,
       // The configured standing instruction, not the possibly-clamped first
       // installment: this is what the recalculation grows the extra back to
       // once a transient clamp (an interest spike) has passed.
@@ -313,12 +503,14 @@ export class LoanPaymentSetupService {
     }
 
     if (account.accountType === AccountType.MORTGAGE) {
-      if (dto.isCanadianMortgage !== undefined) {
-        updateData.isCanadianMortgage = dto.isCanadianMortgage;
+      // The type and the flags it maps to, together, only when the request
+      // names the type or a flag; otherwise the stored columns stand.
+      const requestedType = requestedMortgageType(dto, account);
+      if (requestedType !== undefined) {
+        Object.assign(updateData, mortgageTypeColumns(requestedType));
       }
-      if (dto.isVariableRate !== undefined) {
-        updateData.isVariableRate = dto.isVariableRate;
-      }
+      // Null unless the type this request leaves is LINEAR (spec decision 10).
+      updateData.prepaymentMode = prepaymentMode;
       if (dto.amortizationMonths) {
         updateData.amortizationMonths = dto.amortizationMonths;
       }

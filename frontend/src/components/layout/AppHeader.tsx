@@ -10,6 +10,7 @@ import { releasePushForSignOut } from '@/lib/push';
 import { authApi } from '@/lib/auth';
 import { isNavSectionActive } from '@/lib/nav-section';
 import {
+  beginSignOut,
   markLogoutIncomplete,
   clearLogoutIncomplete,
 } from '@/lib/logout-state';
@@ -237,6 +238,10 @@ export function AppHeader() {
     // Before `authApi.logout()`, because deleting the server row needs the
     // session that is ending -- and under its own short bound, because the
     // cleanup is best effort and revoking the session is not.
+    //
+    // First of all, so no 401 from the page still mounted here can start a
+    // competing redirect to /login once the session is gone.
+    beginSignOut();
     await releasePushForSignOut();
     try {
       await authApi.logout();

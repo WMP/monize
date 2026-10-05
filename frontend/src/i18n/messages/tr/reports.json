@@ -60,6 +60,7 @@
       "spending-anomalies": "Harcama Anomalileri",
       "weekend-weekday-spending": "Hafta Sonu - Hafta İçi Harcama",
       "monthly-comparison": "Aylık Karşılaştırma",
+      "cash-flow-sankey": "Nakit Akışı Sankey",
       "foreign-currency-fees": "Yabancı Para Birimi İşlem Ücretleri",
       "uncategorized-transactions": "Kategorisiz İşlemler",
       "duplicate-transactions": "Mükerrer İşlem Bulucu",
@@ -108,6 +109,7 @@
       "spending-anomalies": "Dikkat gerektiren olağandışı büyük işlemleri ve harcama artışlarını tespit edin.",
       "weekend-weekday-spending": "Alışkanlıkları anlamak için haftanın gününe göre harcama kalıplarınızı analiz edin.",
       "monthly-comparison": "Herhangi bir ayı önceki ayla gelir, gider, net değer ve yatırımlar açısından karşılaştırın.",
+      "cash-flow-sankey": "Paranızın nereden geldiğini ve nereye gittiğini görün: gelirin harcamalara, birikime, yatırımlara ve borç ödemelerine akışı ve geriye kalanı.",
       "foreign-currency-fees": "Dönüştürme ücreti uygulayan hesaplarda tahsil edilen yurt dışı işlem ücretlerini takip edin.",
       "uncategorized-transactions": "Kategori eksik işlemleri bulun ve kategorilendirin.",
       "duplicate-transactions": "İnceleme veya silme gerektirebilecek olası mükerrer kayıtları belirleyin.",
@@ -468,7 +470,8 @@
     "seriesPrincipalPaid": "Ödenen Anapara",
     "seriesInterestPaid": "Ödenen Faiz",
     "seriesPrincipal": "Anapara",
-    "seriesInterest": "Faiz"
+    "seriesInterest": "Faiz",
+    "installmentAndFinal": "{installment}; son ödeme {final}"
   },
   "dividendIncome": {
     "pdfTitle": "Kazançlar, Temettüler ve Faiz",
@@ -882,7 +885,10 @@
     "typeLoan": "Kredi",
     "typeMortgage": "İpotek",
     "pdfSubtitlePaymentsSummary": "{count} ödeme yapıldı, {interest} toplam faiz",
-    "pdfSubtitlePaymentsProjection": "{count} ödeme yapıldı, projeksiyon boyunca {interest} faiz"
+    "pdfSubtitlePaymentsProjection": "{count} ödeme yapıldı, projeksiyon boyunca {interest} faiz",
+    "nextInstallment": "Sonraki Taksit",
+    "finalPayment": "Son Ödeme",
+    "amountDueOn": "{amount}, vade {date}"
   },
   "monteCarlo": {
     "toasts": {
@@ -1202,7 +1208,6 @@
     "investmentReturnTooltip": "Yalnızca menkul kıymetler üzerinden hesaplanan, zaman ağırlıklı bir getiri. Bir gün yatırılan veya çekilen para onu değiştirmez; yatırıma dönüştürülmemiş nakit ne sonuca ne de karşılaştırıldığı değere dahildir.",
     "incompleteTooltip": "Bu dönemdeki bazı günlerde fiyat, döviz kuru veya nakit bakiyesi eksik, bu yüzden her güne bağlı olan rakamlar gösterilmiyor.",
     "measuredFromClose": "{date} tarihli işlem kapanışından bu yana",
-    "unmeasuredFlowTooltip": "Bu hesaplara para, burada sayılamayacak bir şekilde girdi veya çıktı: bu hesapların dışındaki bir hesaptan kapatılan bir işlem ya da bir yatırım kalemini olağan bir harcamayla karıştıran bir bölme. Yatırım sonucunun bir kısmı kendi paranız olacağından yatırım sonucu gösterilmiyor.",
     "notAvailable": "Y/A",
     "intradayUnavailable": "Ayrıntılı gün içi fiyatlandırma mevcut değil",
     "intradayUnavailableTitle": "Bu hesap kombinasyonu için gün içi görünüm mevcut değil",
@@ -1842,5 +1847,52 @@
   },
   "foreignCurrencyFees": {
     "noEligibleAccounts": "Hiçbir hesapta yapılandırılmış yurt dışı işlem ücreti yok. Yabancı para birimi ücretlerini burada takip etmek için bir hesaba ücret yüzdesi ayarlayın."
+  },
+  "sankey": {
+    "help": "Gelen para ortadan geçerek harcandığı yerlere, biriktirilen veya yatırılan kısma ve borç ödemelerine akar. Rapor varsayılan olarak açık vadesiz, birikim, nakit, kredi kartı ve kredili mevduat hesaplarınızı kapsar ve bunlardan ikisi arasındaki transfer gösterilmez. Bir birikim hesabına ne aktardığınızı görmek için o hesabı hesap filtresinden çıkarın. Kredi kartı ödemesi asla borç ödemesi değildir: kapattığı alışverişler zaten harcama olarak sayılmıştır.",
+    "depthLabel": "Ayrıntı",
+    "depthCategories": "Kategoriler",
+    "depthSubcategories": "Alt kategoriler",
+    "cardIncome": "Gelir",
+    "cardInflows": "Gelen transferler",
+    "cardExpenses": "Giderler",
+    "cardOutflows": "Giden transferler",
+    "unknown": "Bilinmiyor",
+    "knownPartOnly": "Yalnızca dönüştürülebilen kısım çizilir.",
+    "netRefund": "Net iade: bu alt kategori harcadığından fazlasını aldı.",
+    "excludedCount": "{count, plural, one {# tutar dönüştürülemedi ve yukarıdaki rakamlara dahil edilmedi.} other {# tutar dönüştürülemedi ve yukarıdaki rakamlara dahil edilmedi.}}",
+    "noData": "Bu dönemde gelir, harcama veya transfer yok",
+    "range": "{start} - {end}",
+    "ariaLabel": "Nakit akışı diyagramı. Gelir {income}, gelen transferler {inflows}, giderler {expenses}, giden transferler {outflows}, {residualLabel} {residual}.",
+    "other": "Diğer",
+    "noSubcategory": "(alt kategori yok)",
+    "linkLabel": "{source} → {target}",
+    "colFlow": "Akış",
+    "colSide": "Yön",
+    "colAmount": "Tutar",
+    "sideIn": "Gelen para",
+    "sideOut": "Giden para",
+    "sideDetail": "{parent} içinde",
+    "pdfTitle": "Nakit Akışı Sankey",
+    "csvNodes": "Akışlar",
+    "csvLinks": "Bağlantılar",
+    "csvSource": "Nereden",
+    "csvTarget": "Nereye",
+    "csvTotal": "Tutar",
+    "csvKnownTotal": "Dönüştürülen tutar",
+    "nodes": {
+      "hub": "Gelir",
+      "classSavings": "Birikim ve yatırımlar",
+      "classDebt": "Borç ödemeleri",
+      "classOtherAccounts": "Diğer hesaplar",
+      "inflowSavings": "Birikim ve yatırımlardan",
+      "inflowBorrowed": "Borç alınan",
+      "inflowOtherAccounts": "Diğer hesaplardan",
+      "uncategorizedIncome": "Kategorisiz gelir",
+      "uncategorizedExpense": "Kategorisiz giderler",
+      "residualUnspent": "Harcanmayan",
+      "residualDeficit": "Bakiyelerden çekilen",
+      "unlinkedAccount": "(bağlantısız hesap)"
+    }
   }
 }

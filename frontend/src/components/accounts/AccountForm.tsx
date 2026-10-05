@@ -23,9 +23,20 @@ import {
   Account,
   InterestBookingMode,
   MORTGAGE_PAYMENT_FREQUENCIES,
+  MORTGAGE_TYPES,
+  MortgageType,
   PAYMENT_FREQUENCIES,
   PaymentFrequency,
 } from '@/types/account';
+import {
+  PREPAYMENT_MODES,
+  flagsFromMortgageType,
+  isAcceleratedFrequency,
+  mortgageTypeOf,
+  prepaymentModeOf,
+  storesConstantPayment,
+  type PrepaymentMode,
+} from '@/lib/mortgage-type';
 import { Category } from '@/types/category';
 import { accountsApi } from '@/lib/accounts';
 import { useMainAccountName } from '@/hooks/useMainAccountName';
@@ -91,7 +102,14 @@ const optionalEnum = <T extends readonly [string, ...string[]]>(values: T) =>
     z.enum(values).optional(),
   );
 
-const buildAccountSchema = (t: (key: string) => string, isEditing: boolean) => z.object({
+const buildAccountSchema = (
+  t: (key: string) => string,
+  isEditing: boolean,
+  // The cadence the edited account is stored with. The edit form neither shows
+  // nor sends a mortgage's cadence, so a type its stored cadence rules out is
+  // refused here, inline, rather than by the server after submit.
+  storedPaymentFrequency: string | null = null,
+) => z.object({
   name: z.string().min(1, t('validation.nameRequired')).max(255),
   accountType: z.enum([
     'CHEQUING',
@@ -142,9 +160,10 @@ const buildAccountSchema = (t: (key: string) => string, isEditing: boolean) => z
   // Asset-specific fields
   assetCategoryId: z.string().optional(),
   dateAcquired: z.string().optional(),
-  // Mortgage-specific fields
-  isCanadianMortgage: z.boolean().optional(),
-  isVariableRate: z.boolean().optional(),
+  // Mortgage-specific fields. The two legacy flags are derived from the type
+  // on submit; the prepayment mode is a LINEAR mortgage's alone.
+  mortgageType: optionalEnum(MORTGAGE_TYPES),
+  prepaymentMode: optionalEnum(PREPAYMENT_MODES),
   termMonths: optionalNumber,
   amortizationMonths: optionalNumber,
   mortgagePaymentFrequency: optionalEnum(mortgagePaymentFrequencies),
@@ -154,7 +173,24 @@ const buildAccountSchema = (t: (key: string) => string, isEditing: boolean) => z
   // create. The backend rejects the same gaps, but validating here gives clean,
   // localized, inline errors instead of a generic API toast -- and stops the
   // silent fall-through that would otherwise create a payment-less account.
-  if (isEditing) return;
+  if (isEditing) {
+    // A mortgage paid on an accelerated cadence cannot become LINEAR or
+    // INTEREST_ONLY: acceleration is a fraction of an annuity's installment
+    // (docs/specs/mortgage-types.md, section 5.1).
+    if (
+      data.accountType === 'MORTGAGE' &&
+      data.mortgageType &&
+      !storesConstantPayment(data.mortgageType) &&
+      isAcceleratedFrequency(storedPaymentFrequency)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['mortgageType'],
+        message: t('validation.acceleratedNeedsAnnuity'),
+      });
+    }
+    return;
+  }
 
   const requireField = (
     condition: boolean,
@@ -189,15 +225,87 @@ const buildAccountSchema = (t: (key: string) => string, isEditing: boolean) => z
 
 type AccountFormData = z.infer<ReturnType<typeof buildAccountSchema>>;
 
+/**
+ * What a surface that creates an account on someone's behalf (a bank account
+ * being linked) can start the create form with. Read once, when the form opens,
+ * and only when creating: an edit always starts from the account itself.
+ */
+export interface AccountFormInitialValues {
+  name?: string;
+  accountType?: AccountFormData['accountType'];
+  currencyCode?: string;
+  accountNumber?: string;
+  /**
+   * A number starts the field there; `null` leaves it empty for the person to
+   * enter; absent keeps the form's usual 0.
+   */
+  openingBalance?: number | null;
+}
+
+/**
+ * What the form submits: its fields plus, for a mortgage, the two legacy flags
+ * its type maps to (`flagsFromMortgageType`), which travel beside the type
+ * until P3-B1 drops the booleans.
+ */
+type AccountSubmitData = Omit<AccountFormData, 'prepaymentMode'> & {
+  prepaymentMode?: PrepaymentMode | null;
+  isCanadianMortgage?: boolean;
+  isVariableRate?: boolean;
+};
+
+/** The cash ledger's own fields as the form loads them from the stored row. */
+function cashFieldsFromRow(cash: Account) {
+  return {
+    cashOpeningBalance:
+      cash.openingBalance !== undefined
+        ? Math.round(Number(cash.openingBalance) * 100) / 100
+        : undefined,
+    cashDescription: cash.description || undefined,
+    cashAccountNumber: cash.accountNumber || undefined,
+  };
+}
+
+/**
+ * Whether the submitted cash ledger fields differ from the stored row. A value
+ * difference, not react-hook-form's `dirtyFields`: that diffs against the
+ * form's mount-time defaults, and the pair loader fills these fields in after
+ * mount, so any later edit marks them all dirty.
+ */
+function cashLedgerChanged(data: AccountFormData, cash: Account | null): boolean {
+  if (!cash) return false;
+  const loaded = cashFieldsFromRow(cash);
+  return (
+    data.cashOpeningBalance !== loaded.cashOpeningBalance ||
+    (data.cashDescription || undefined) !== loaded.cashDescription ||
+    (data.cashAccountNumber || undefined) !== loaded.cashAccountNumber
+  );
+}
+
 interface AccountFormProps {
   account?: Account;
-  onSubmit: (data: AccountFormData) => Promise<void>;
+  /** Prefill for a new account; ignored when `account` is given. */
+  initialValues?: AccountFormInitialValues;
+  onSubmit: (data: AccountSubmitData) => Promise<void>;
   onCancel: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
   submitRef?: MutableRefObject<(() => void) | null>;
+  /**
+   * A mortgage type the person confirmed elsewhere (Loan Details' type
+   * detector), set on the select as an unsaved change: the form opens dirty
+   * and nothing is written until it is saved.
+   */
+  preselectedMortgageType?: MortgageType;
 }
 
-export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submitRef }: AccountFormProps) {
+export function AccountForm({
+  account,
+  initialValues,
+  onSubmit,
+  onCancel,
+  onDirtyChange,
+  submitRef,
+  preselectedMortgageType,
+}: AccountFormProps) {
   const t = useTranslations('accounts');
   const stripAccountName = useMainAccountName();
   const router = useRouter();
@@ -253,7 +361,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
     getValues,
     formState: { errors, isSubmitting, isDirty, dirtyFields },
   } = useForm<AccountFormData>({
-    resolver: zodResolver(buildAccountSchema(t, !!account)) as Resolver<AccountFormData>,
+    resolver: zodResolver(buildAccountSchema(t, !!account, account?.paymentFrequency ?? null)) as Resolver<AccountFormData>,
     defaultValues: account
       ? {
           name: account.name,
@@ -297,23 +405,40 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
           fxFeePercent: account.fxFeePercent ?? undefined,
           assetCategoryId: account.assetCategoryId || undefined,
           dateAcquired: account.dateAcquired?.split('T')[0] || undefined,
-          isCanadianMortgage: account.isCanadianMortgage || false,
-          isVariableRate: account.isVariableRate || false,
+          mortgageType: mortgageTypeOf(account),
+          prepaymentMode: prepaymentModeOf(account),
           termMonths: account.termMonths || undefined,
           amortizationMonths: account.amortizationMonths || undefined,
           mortgagePaymentFrequency: (account as any).mortgagePaymentFrequency || undefined,
         }
       : {
-          currencyCode: defaultCurrency,
-          openingBalance: 0,
+          currencyCode: initialValues?.currencyCode ?? defaultCurrency,
+          ...(initialValues?.name ? { name: initialValues.name } : {}),
+          ...(initialValues?.accountType ? { accountType: initialValues.accountType } : {}),
+          ...(initialValues?.accountNumber ? { accountNumber: initialValues.accountNumber } : {}),
+          openingBalance:
+            initialValues?.openingBalance === null
+              ? undefined
+              : (initialValues?.openingBalance ?? 0),
           isFavourite: false,
           excludeFromNetWorth: false,
           paymentFrequency: 'MONTHLY' as PaymentFrequency,
           createInvestmentPair: true,
+          mortgageType: 'ANNUITY',
+          prepaymentMode: 'SHORTEN_TERM',
         },
   });
 
   useFormDirtyNotify(isDirty, onDirtyChange);
+
+  // Applied as an edit rather than as a default, so the field is dirty: the
+  // unsaved-changes prompt guards it and the save sends it like a choice
+  // made in the select.
+  useEffect(() => {
+    if (preselectedMortgageType) {
+      setValue('mortgageType', preselectedMortgageType, { shouldDirty: true, shouldValidate: true });
+    }
+  }, [preselectedMortgageType, setValue]);
 
   // Retain the account's stored institution unless the user actually changed
   // the Institution field. The institution combobox marks the field dirty only
@@ -327,14 +452,23 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
   // an untouched section must not be resent, or an edit of the account's name
   // would rewrite the cash half's balance and description with whatever the
   // form happened to load.
-  const cashSectionDirty =
-    !!dirtyFields.cashOpeningBalance ||
-    !!dirtyFields.cashDescription ||
-    !!dirtyFields.cashAccountNumber;
-
   const handleValidatedSubmit = useCallback(
     (data: AccountFormData) => {
-      let payload = data;
+      // A mortgage sends its type and the flags it maps to together; any
+      // other account type sends neither. The prepayment mode belongs to a
+      // LINEAR mortgage alone: every other type sends null, which is what the
+      // server stores for it whatever it is sent.
+      const { mortgageType, prepaymentMode, ...withoutMortgageType } = data;
+      let payload: AccountSubmitData =
+        data.accountType === 'MORTGAGE' && mortgageType
+          ? {
+              ...withoutMortgageType,
+              mortgageType,
+              prepaymentMode:
+                mortgageType === 'LINEAR' ? (prepaymentMode ?? 'SHORTEN_TERM') : null,
+              ...flagsFromMortgageType(mortgageType),
+            }
+          : withoutMortgageType;
       // Editing: an emptied threshold means "clear it", so send null rather than
       // omitting the field (which would leave the stored value untouched). Only
       // on edit -- CreateAccountDto does not carry these fields.
@@ -345,7 +479,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
           highBalanceThreshold: payload.highBalanceThreshold ?? null,
         };
       }
-      if (!cashSectionDirty) {
+      if (!cashLedgerChanged(data, cashHalf)) {
         const {
           cashAccountId: _id,
           cashOpeningBalance: _balance,
@@ -361,7 +495,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
       }
       return onSubmit(payload);
     },
-    [account, cashSectionDirty, dirtyFields.institutionId, onSubmit],
+    [account, cashHalf, dirtyFields.institutionId, onSubmit],
   );
 
   useFormSubmitRef(submitRef, handleSubmit, handleValidatedSubmit);
@@ -402,8 +536,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
 
   // Show mortgage fields only for MORTGAGE account type
   const isMortgageAccount = watchedAccountType === 'MORTGAGE';
-  const watchedIsCanadianMortgage = useWatch({ control, name: 'isCanadianMortgage' });
-  const watchedIsVariableRate = useWatch({ control, name: 'isVariableRate' });
+  const watchedMortgageType = useWatch({ control, name: 'mortgageType' });
   const watchedTermMonths = useWatch({ control, name: 'termMonths' });
   const watchedAmortizationMonths = useWatch({ control, name: 'amortizationMonths' });
   const watchedMortgagePaymentFrequency = useWatch({ control, name: 'mortgagePaymentFrequency' });
@@ -424,14 +557,10 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
         // suffixes, so the field edits the base. The server re-suffixes both.
         setValue('name', stripAccountName(pair.brokerageAccount.name));
         setValue('cashAccountId', pair.cashAccount.id);
-        setValue(
-          'cashOpeningBalance',
-          pair.cashAccount.openingBalance !== undefined
-            ? Math.round(Number(pair.cashAccount.openingBalance) * 100) / 100
-            : undefined,
-        );
-        setValue('cashDescription', pair.cashAccount.description || undefined);
-        setValue('cashAccountNumber', pair.cashAccount.accountNumber || undefined);
+        const loaded = cashFieldsFromRow(pair.cashAccount);
+        setValue('cashOpeningBalance', loaded.cashOpeningBalance);
+        setValue('cashDescription', loaded.cashDescription);
+        setValue('cashAccountNumber', loaded.cashAccountNumber);
       })
       .catch(() => {
         // Not part of a pair.
@@ -979,8 +1108,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
           openingBalance={watchedOpeningBalance}
           interestRate={watchedInterestRate}
           paymentStartDate={watchedPaymentStartDate}
-          isCanadianMortgage={watchedIsCanadianMortgage}
-          isVariableRate={watchedIsVariableRate}
+          mortgageType={watchedMortgageType}
           onViewLoanDetails={account ? handleViewLoanDetails : undefined}
           termMonths={watchedTermMonths}
           amortizationMonths={watchedAmortizationMonths}
@@ -1029,11 +1157,12 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
             accountName: account.name,
             accountType: account.accountType,
             currencyCode: account.currencyCode,
-            // Both flags travel: the dialog submits its own checkboxes, so
-            // starting them at false on a Canadian mortgage turned the flag off
-            // on save and offered cadences the server refuses.
-            isCanadianMortgage: account.isCanadianMortgage,
-            isVariableRate: account.isVariableRate,
+            // The type travels: the dialog submits its own select, so
+            // starting it at ANNUITY on a Canadian fixed-rate mortgage turned
+            // the convention off on save and offered cadences the server
+            // refuses.
+            mortgageType: mortgageTypeOf(account),
+            prepaymentMode: account.prepaymentMode ?? null,
           }}
           accounts={accounts}
           onSetupComplete={() => {

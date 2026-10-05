@@ -23,12 +23,12 @@
     "button": "View Bills &amp; Deposits"
   },
   "mortgageReminder": {
-    "subject": "Monize: 1 upcoming mortgage renewal",
-    "subjectPlural": "Monize: {{ count }} upcoming mortgage renewals",
-    "heading": "Mortgage Renewal Reminder",
+    "subject": "Monize: 1 mortgage rate term ending soon",
+    "subjectPlural": "Monize: {{ count }} mortgage rate terms ending soon",
+    "heading": "Mortgage Rate Term Reminder",
     "greeting": "Hi {{ name }},",
-    "introOne": "You have 1 mortgage with an upcoming term renewal. Contact your lender to discuss renewal options before the term ends:",
-    "introMany": "You have {{ count }} mortgages with an upcoming term renewal. Contact your lender to discuss renewal options before the term ends:",
+    "introOne": "You have 1 mortgage whose current rate term ends soon. Contact your lender before it ends to arrange your next rate or renewal:",
+    "introMany": "You have {{ count }} mortgages whose current rate term ends soon. Contact your lender before each one ends to arrange the next rate or renewal:",
     "colMortgage": "Mortgage",
     "colTermEndDate": "Term End Date",
     "colTimeRemaining": "Time Remaining",
@@ -308,6 +308,22 @@
     "priceMovement": {
       "title": "Price change alert: {{ symbol }} ({{ percent }}%)",
       "message": "{{ symbol }}: {{ percent }}% compared with the previous available session."
+    },
+    "bankSync": {
+      "expiringTitleToday": "{{ institution }}: bank access ends today",
+      "expiringTitleOneDay": "{{ institution }}: bank access ends within 1 day",
+      "expiringTitleDays": "{{ institution }}: bank access ends within {{ days }} days",
+      "expiringMessage": "Your consent for Monize to read {{ institution }} ends on {{ date }}. Renew the connection in Monize to keep syncing.",
+      "expiredTitle": "{{ institution }}: bank access has ended",
+      "expiredMessage": "Your consent for Monize to read {{ institution }} has ended. Renew the connection in Monize to resume syncing.",
+      "failedTitle": "{{ institution }}: sync failed",
+      "failedMessage": "The daily sync of {{ institution }} failed for: {{ accounts }}. Open bank sync settings to see why.",
+      "failedCredentialsMessage": "The daily sync of {{ institution }} could not start because the bank sync credentials are missing or were rejected. Check them in bank sync settings.",
+      "unnamedAccount": "an account",
+      "importedTitle": "{{ institution }}: new transactions imported",
+      "importedMessage": "Transactions imported from {{ institution }} by the daily sync: {{ imported }}.",
+      "importedNoneTitle": "{{ institution }}: no new transactions",
+      "importedNoneMessage": "The daily sync of {{ institution }} found no new transactions."
     }
   },
   "backupOffsite": {

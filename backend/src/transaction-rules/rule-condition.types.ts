@@ -180,11 +180,7 @@ export const RULE_FIELDS = Object.keys(RULE_CONDITION_FIELDS) as RuleField[];
 
 /** A leaf value: a scalar, a list of scalars, or a [min, max] pair. */
 export type RuleLeafValue =
-  | string
-  | number
-  | boolean
-  | readonly string[]
-  | readonly number[];
+  string | number | boolean | readonly string[] | readonly number[];
 
 export interface RuleConditionLeaf {
   readonly field: RuleField;

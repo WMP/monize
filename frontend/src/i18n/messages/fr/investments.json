@@ -135,7 +135,6 @@
     "investmentResult": "Résultat de l'investissement",
     "investmentReturn": "Rendement",
     "investmentResultTooltip": "Ce que vos investissements ont rapporté sur cette période. Les dépôts, les retraits et les liquidités non investies sont exclus, et le pourcentage à côté est un rendement pondéré dans le temps, de sorte que les achats et les ventes ne le font pas bouger.",
-    "unmeasuredFlowTooltip": "Une opération réglée en dehors de ces comptes, ou une répartition qui mélange une ligne d'investissement avec une dépense ordinaire, signifie que le résultat ne peut pas être séparé de l'argent déplacé.",
     "netInvestedLine": "Investissement net {amount}",
     "incomeLine": "Dividendes et intérêts {amount}",
     "measuredFromClose": "Depuis la clôture de la séance du {date}",
@@ -331,8 +330,7 @@
     "reasons": {
       "incompletePrices": "Une période retenue commence un jour où une position n'avait aucun cours. Actualisez les cours, ou saisissez-en un dans l'historique des cours du titre.",
       "incompleteCash": "Une période retenue commence un jour où un compte de trésorerie de cette vue n'a signalé aucun solde, donc ce qu'il détenait est inconnu, et non nul.",
-      "missingRatePairs": "Une période retenue a besoin d'un taux de change que l'historique enregistré n'a pas. Ajoutez un historique des taux pour la devise sur la page Devises.",
-      "unmeasuredFlow": "Une période retenue contient un mouvement impossible à distinguer d'un dépôt ou d'un retrait : une opération réglée en dehors de ces comptes, ou une répartition mêlant liquidités et investissements."
+      "missingRatePairs": "Une période retenue a besoin d'un taux de change que l'historique enregistré n'a pas. Ajoutez un historique des taux pour la devise sur la page Devises."
     }
   }
 }

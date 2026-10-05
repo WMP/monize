@@ -86,8 +86,7 @@
     "reasons": {
       "incompletePrices": "A withheld period starts on a day a holding had no price. Refresh prices, or add one on the security's price history.",
       "incompleteCash": "A withheld period starts on a day a cash account in this view reported no balance, so what it held is unknown rather than zero.",
-      "missingRatePairs": "A withheld period needs an exchange rate the stored history does not have. Add rate history for the currency on the Currencies page.",
-      "unmeasuredFlow": "A withheld period holds a movement that cannot be told apart from a deposit or withdrawal: a trade settled outside these accounts, or a split mixing cash and investments."
+      "missingRatePairs": "A withheld period needs an exchange rate the stored history does not have. Add rate history for the currency on the Currencies page."
     },
     "periods": {
       "1d": "1D",
@@ -169,7 +168,6 @@
     "investmentResult": "Investment Result",
     "investmentReturn": "Return",
     "investmentResultTooltip": "What your investments earned over this window. Deposits, withdrawals and uninvested cash are left out, and the percentage beside it is a time-weighted return, so buying and selling do not move it.",
-    "unmeasuredFlowTooltip": "A trade settled outside these accounts, or a split mixing an investment line with ordinary spending, means the result cannot be separated from the money moved in.",
     "netInvestedLine": "Net invested {amount}",
     "incomeLine": "Dividends and interest {amount}",
     "measuredFromClose": "Since the close of trading on {date}",

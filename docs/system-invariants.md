@@ -59,6 +59,10 @@ implied.
 | INV-IMPORT-001 | At most one pending or running MNY import per user | enforced |
 | INV-IMPORT-002 | A retry never double-imports | enforced |
 | INV-IMPORT-003 | A category collision does not abort an import | unenforced |
+| INV-BANKSYNC-001 | A bank transaction is imported into a Monize account at most once | partial |
+| INV-BANKSYNC-002 | A bank sync provider private key never leaves the server | enforced |
+| INV-BANKSYNC-003 | A synced row is written in the Monize account's currency or not at all | enforced |
+| INV-BANKSYNC-004 | Nothing imports a bank account awaiting its first preview except the confirmed single-account sync | enforced |
 | INV-BALANCE-001 | `current_balance` equals opening balance plus included ledger rows | enforced |
 | INV-HOLDING-001 | A holding equals a deterministic replay of the investment ledger | enforced |
 | INV-HOLDING-002 | Every view replays the ledger the same way | enforced |
@@ -78,12 +82,19 @@ implied.
 | INV-INTRADAY-001 | An intraday bar is valued at its own day's positions, and a finished session closes on the daily series' figure | enforced |
 | INV-REPORT-001 | A report's account scope is investment linkage, not account type | enforced |
 | INV-REPORT-002 | A chart's down-sampling never reaches a count, a total or an export | enforced |
+| INV-REPORT-003 | A transfer leg appears in a report only as a named flow, never inside income, expenses or net | enforced |
+| INV-SANKEY-001 | The Cash Flow Sankey closes: income + inflows + deficit = expenses + outflows + unspent | enforced |
+| INV-SANKEY-002 | A Sankey transfer leg is counted at most once, by its own account's scope and its counterpart's class | enforced |
+| INV-SANKEY-003 | Investment linkage and VOID are excluded on every Sankey branch | enforced |
+| INV-SANKEY-004 | A Sankey total carries a value only when every link converted | enforced |
+| INV-SANKEY-005 | The Sankey's "Other" merge never reaches a figure | enforced |
 | INV-LOAN-001 | A recurring overpayment's cadence is a calendar, not a payment interval | enforced |
 | INV-LOAN-002 | A schedule truncated by the projection horizon yields no lifetime total | enforced |
 | INV-LOAN-003 | One named compounding convention, from preview to projection to displayed EAR | enforced |
 | INV-LOAN-004 | The final payment is the residual payoff, not another installment | enforced |
 | INV-LOAN-005 | The first payment date is payment number 1 | enforced |
-| INV-LOAN-006 | A scheduled loan installment prices the ledger debt, and the rate, through its own due date | enforced |
+| INV-LOAN-006 | A scheduled loan installment prices the ledger debt, the rate, and the remaining count through its own due date | enforced |
+| INV-LOAN-007 | One amortization method per mortgage type, from preview to pricing to projection | enforced |
 | INV-LOAN-HISTORY-001 | Historical loan interest counted as paid is ledger-backed | partial |
 | INV-OCCURRENCE-001 | One scheduled occurrence has at most one financial effect | enforced |
 | INV-OCCURRENCE-002 | A stored override price survives reopening | enforced |
@@ -263,6 +274,114 @@ RETURNING id` plus adopting the winner's row is the fix, and per
 re-read rather than reuse the pre-insert snapshot. Note that no unique index
 currently covers top-level categories (`parent_id IS NULL`), so closing this
 properly needs the index too.
+
+## Bank sync
+
+The specification is `docs/specs/bank-sync.md`.
+
+### INV-BANKSYNC-001 -- a bank transaction is imported into a Monize account at most once
+
+```text
+Statement           For one Monize account, a provider transaction (identified
+                    by its external key, docs/specs/bank-sync.md section 6)
+                    produces at most one transaction row, across every sync,
+                    replica, reconnection and re-authorization.
+Source of truth     bank_sync_imported_transactions(account_id, external_key)
+Enforcement         Unique index on (account_id, external_key). The writer
+                    inserts the ledger row with ON CONFLICT DO NOTHING RETURNING
+                    before the transaction row, in the same withScopedDb
+                    transaction; no returned row means nothing else is written
+                    for that provider row. The ledger is keyed on the Monize
+                    account, so a new connection does not re-import.
+Concurrency scope   Monize account
+Retry semantics     A retry re-fetches and re-plans; every already-imported row
+                    hits the index and is skipped. The per-account lease
+                    (JobClaimType.BankSyncAccount) only saves provider quota.
+Crash semantics     Before commit: nothing written. After commit: the ledger and
+                    the rows exist together; the next sync skips them.
+Failure response    skipped (counted in the result), never an error
+Required tests      Integration against real PostgreSQL: a second sync of the
+                    same rows imports nothing; two concurrent syncs import each
+                    row once (backend/test/integration/bank-sync.integration.spec.ts).
+Status              partial -- the index holds one row per external key; a
+                    bank transaction keeps one key only while the provider's
+                    entry reference is stable (docs/specs/bank-sync.md
+                    section 6). A bank that sends no entry reference on one
+                    fetch and one on a later fetch changes the key from hash:
+                    to ref: and the row is imported twice. BS10 verifies the
+                    provider's behaviour against a sandbox.
+```
+
+A deleted transaction keeps its ledger row with `transaction_id` NULL, so a
+deleted row is not brought back by the next sync. The ledger is not in the
+backup yet (docs/future-plans/bank-sync-tasks.md BS11); the link form's
+default cut-off date is the mitigation after a restore.
+
+### INV-BANKSYNC-002 -- a bank sync provider private key never leaves the server
+
+```text
+Statement           The RSA private key a user stores for a bank sync provider
+                    is never returned by any route, logged, or written to a
+                    backup.
+Source of truth     bank_sync_credentials.private_key_enc
+Enforcement         Encrypted with EncryptionService (AES-256-GCM). The view type
+                    has privateKeySet: boolean and no field for the key; the
+                    table is in INTENTIONALLY_EXCLUDED_TABLES; the column is not
+                    named api_key_enc, so the backup key transport ignores it.
+Concurrency scope   user
+Retry semantics     --
+Crash semantics     --
+Failure response    --
+Required tests      Unit: the credentials view and every controller answer carry
+                    no key material (bank-sync-credentials.service.spec.ts).
+Status              enforced
+```
+
+### INV-BANKSYNC-003 -- a synced row is written in the Monize account's currency or not at all
+
+```text
+Statement           A provider transaction whose currency differs from the
+                    linked Monize account's currency is refused and counted; it
+                    is never converted, and never written with the foreign
+                    amount in the account's currency.
+Source of truth     accounts.currency_code
+Enforcement         planBankImport refuses the row (currency_mismatch); the
+                    writer derives currency_code from the locked account row
+                    (assertTransactionCurrencyMatchesAccount). Linking refuses
+                    an account whose currency differs from the bank account's
+                    known currency.
+Concurrency scope   Monize account
+Retry semantics     A refused row is refused again on every sync.
+Crash semantics     --
+Failure response    refused (counted per reason in the sync result)
+Required tests      Unit: planner truth table; integration: a mismatched row
+                    writes nothing.
+Status              enforced
+```
+
+### INV-BANKSYNC-004 -- nothing imports an unconfirmed bank account
+
+```text
+Statement           A bank account that needs its preview (linked, and
+                    last_success_at NULL after a link or cut-off change) is
+                    imported only by the single-account sync the user confirms
+                    from the preview; the daily sync and the sync-all route skip
+                    it.
+Source of truth     bank_sync_accounts.account_id, sync_from_date,
+                    last_success_at
+Enforcement         One predicate, bankAccountNeedsPreview, read by the account
+                    view, BankSyncService.syncConnection and the daily cron;
+                    linkAccount clears last_success_at on every link or cut-off
+                    change.
+Concurrency scope   bank account
+Retry semantics     A skipped account stays skipped until the user confirms.
+Crash semantics     --
+Failure response    needs_preview entry in the sync-all answer; a log line in
+                    the cron
+Required tests      Unit (predicate, sync-all) and integration (the cron does not
+                    import a needs-preview account).
+Status              enforced
+```
 
 ## Ledger and derived values
 
@@ -1678,6 +1797,205 @@ that was not part of what made the group, and the answer is only as good as the
 grouping. Make it part of the key, and a mixed bucket becomes unrepresentable
 rather than mislabelled.
 
+### INV-REPORT-003 -- a transfer leg is a named flow, never income, expenses or net
+
+```text
+Statement           A transfer leg appears in a report only as a NAMED FLOW, and
+                    never inside that report's income, expenses or net. A named
+                    flow is one of two things:
+                    - a tag-key bucket's tagged inflows / tagged outflows
+                      (taggedInflows / taggedOutflows), present only when the
+                      report was asked for a tag-key breakdown
+                      (docs/specs/report-tag-key-breakdown.md section 3);
+                    - a Cash Flow Sankey destination class: an outflow to
+                      "Savings & investments", "Debt payments" or "Other
+                      accounts", or an inflow "From savings & investments",
+                      "Borrowed" or "From other accounts", decided by the
+                      counterpart account's type
+                      (docs/future-plans/sankey-cash-flow.md sections 3-5).
+                    Each leg counts once, by its own account and its own sign.
+                    Without one of those two, a report excludes transfers
+                    exactly as before. Transfers never enter income, expenses or
+                    net under either model.
+Source of truth     transactions.is_transfer and
+                    transaction_splits.transfer_account_id for what a leg is;
+                    the leg's own signed amount for its direction.
+Enforcement         Every income/expense query keeps t.is_transfer = false and
+                    the split transfer-leg exclusion on every branch
+                    (income-reports.service.ts, spending-reports.service.ts and
+                    the categorized query of cash-flow-sankey.service.ts). The
+                    tag-key transfer-flow subqueries run only when tagKey is set
+                    and write only taggedInflows / taggedOutflows. The Sankey's
+                    transfer queries write only the class:* / inflow:* nodes,
+                    which its totals report as outflows / inflows beside
+                    expenses / income rather than inside them.
+Concurrency scope   -- (read path)
+Retry semantics     -- (read path)
+Crash semantics     -- (read path)
+Failure response    -- a report answers; it does not refuse.
+Required tests      income-reports.service.spec.ts: a parity spec proves the
+                    no-tagKey response unchanged and a numeric spec lands a
+                    tagged transfer in taggedInflows and not in income.
+                    cash-flow-sankey.service.spec.ts: a transfer leg lands on its
+                    class node and never in totals.income or totals.expenses.
+Status              enforced
+```
+
+The amendment widened "named flow" from the tag-key buckets to the Sankey's
+destination classes. The half that matters -- a transfer is never income -- is
+unchanged: the Sankey reports a savings transfer as an outflow beside the
+expenses, never as one of them.
+
+### INV-SANKEY-001 -- the Cash Flow Sankey closes
+
+The design (`docs/future-plans/sankey-cash-flow.md`) names these five SANKEY-001
+to SANKEY-005; the catalog prefixes them like every other entry.
+
+```text
+Statement           income + inflows + deficit = expenses + outflows + unspent,
+                    in integer ten-thousandths, with at most one of deficit /
+                    unspent non-zero. The residual is arithmetic, never a
+                    transaction, and a diagram that does not close is never
+                    drawn.
+Source of truth     The per-link FxAggregate buckets the response's links are
+                    built from.
+Enforcement         assembleCashFlowSankey
+                    (backend/src/built-in-reports/cash-flow-sankey-assembly.ts)
+                    computes the residual from the same buckets the links come
+                    from, then assertClosingIdentity re-reads the links it is
+                    about to return: what enters the hub equals what leaves it
+                    and equals both sides of the totals, and every pass-through
+                    node (a depth-2 parent, a class with its accounts) balances.
+                    A failure throws SankeyIdentityError, which
+                    CashFlowSankeyService logs with the discrepancy and answers
+                    as a 500. Checked only while every total is known: an
+                    incomplete answer has a null residual (INV-SANKEY-004).
+Concurrency scope   -- (read path)
+Retry semantics     -- (read path)
+Crash semantics     -- (read path)
+Failure response    500 with the discrepancy logged; never a drawn diagram.
+Required tests      cash-flow-sankey.service.spec.ts (truth table A, the design's
+                    numerical example, the refusal and its 500);
+                    cash-flow-sankey.property.spec.ts (200 generated ledgers at
+                    both depths); cash-flow-sankey.integration.spec.ts (the
+                    numerical example on real PostgreSQL).
+Status              enforced
+```
+
+### INV-SANKEY-002 -- a transfer leg counts once, by scope and class
+
+```text
+Statement           A transfer leg is a Sankey flow only when its own account is
+                    in the report's scope and its counterpart is not; it counts
+                    once, at its own signed amount, in the class its
+                    counterpart's account type decides. Both legs of a transfer
+                    between two in-scope accounts are invisible. A credit card is
+                    never a debt class.
+Source of truth     transactions.account_id and the linked row's account (whole
+                    transfers); transaction_splits.transfer_account_id (split
+                    lines); accounts.account_type of the counterpart.
+Enforcement         wholeTransferLegsQuery and splitTransferLegsQuery
+                    (backend/src/built-in-reports/cash-flow-sankey.service.ts)
+                    select t.account_id = ANY(scope) AND the counterpart NOT IN
+                    scope in SQL; classifyCounterpart maps the type to a class.
+                    A leg whose counterpart the reader cannot see (deleted,
+                    never linked, or a cross-owner transfer's other leg) is
+                    "Other accounts" under "(unlinked account)".
+Concurrency scope   -- (read path)
+Retry semantics     -- (read path)
+Crash semantics     -- (read path)
+Failure response    -- a report answers; it does not refuse.
+Required tests      cash-flow-sankey.integration.spec.ts (widening the scope to
+                    the savings account makes the chequing-to-savings leg
+                    internal; the mortgage side is read only without chequing);
+                    cash-flow-sankey.property.spec.ts (a transfer contributes once
+                    or not at all, from the ledger); truth table B in
+                    cash-flow-sankey.service.spec.ts.
+Status              enforced
+```
+
+### INV-SANKEY-003 -- investment linkage and VOID are out of every branch
+
+```text
+Statement           No Sankey query reads a VOID row or an investment-generated
+                    cash leg (a BUY's, SELL's or DIVIDEND's), on the categorized
+                    branch or either transfer branch (INV-REPORT-001).
+Source of truth     transactions.status; investment_transactions linkage.
+Enforcement         investmentExclusionSql and the VOID predicate in each of the
+                    three query builders; backend/src/built-in-reports/
+                    sankey-branches.guard.spec.ts scans each builder for both,
+                    the split-aware form where a builder joins split rows, with
+                    planted negative controls. Stricter than
+                    investment-filter.guard.spec.ts, which exempts a
+                    transfer-only query.
+Concurrency scope   -- (read path)
+Retry semantics     -- (read path)
+Crash semantics     -- (read path)
+Failure response    -- a report answers; it does not refuse.
+Required tests      The guard above; the VOID row in
+                    cash-flow-sankey.integration.spec.ts. The behavioural proof
+                    of the shared predicate is INV-REPORT-001's integration suite.
+Status              enforced
+```
+
+### INV-SANKEY-004 -- a Sankey total is complete or null
+
+```text
+Statement           A node, a link or a total carries a value only when every
+                    component converted; otherwise it is null and the converted
+                    part is its known* sibling. The residual is null while any
+                    total is. A rate is the row's own where it reaches the
+                    reporting currency (INV-FX-002), otherwise the market rate on
+                    the row's own date within FX_MAX_RATE_AGE_DAYS (INV-FX-001);
+                    never 1, never the unconverted amount.
+Source of truth     exchange_rates; transactions.exchange_rate with
+                    original_currency_code for the row's own rate.
+Enforcement         One FxAggregate per node and per link in
+                    assembleCashFlowSankey; the service converts through
+                    convertAtDate over a buildRateIndex loaded for the window.
+                    missingCurrencies and excludedCount name the gap, and the
+                    report's banner names each pair and the count.
+Concurrency scope   -- (read path)
+Retry semantics     -- (read path)
+Crash semantics     -- (read path)
+Failure response    null figures beside known parts; a banner naming the pair.
+Required tests      cash-flow-sankey.service.spec.ts (the example without the USD
+                    rate, a stale rate, a rate struck after the row's date, the
+                    row's own rate); cash-flow-sankey.integration.spec.ts (the
+                    example without the rate); CashFlowSankeyReport.test.tsx (the
+                    partial cards and the banner).
+Status              enforced for completeness; the disclosure INV-FX-002 asks
+                    for is owed: the response and the report do not say
+                    whether a row was converted at its own rate or at the
+                    market's, because the design's response shape has no
+                    field for it. A follow-up adds per-basis counts (the
+                    transactionRateCount / marketRateCount shape the
+                    investment transaction summary already returns).
+```
+
+### INV-SANKEY-005 -- the "Other" merge is drawing only
+
+```text
+Statement           Merging a column's smallest categories into "Other" is a
+                    rendering decision and reaches no figure: the summary cards,
+                    the table twin and both exports read the server's unmerged
+                    response (INV-REPORT-002).
+Source of truth     The CashFlowSankeyResponse.
+Enforcement         toRechartsSankey (frontend/src/components/reports/
+                    sankey-layout.ts) merges over a copy and returns new arrays;
+                    frontend/src/test/ui-conventions.test.ts holds that the
+                    report component imports no aggregation helper and calls no
+                    .reduce, and that the layout never assigns into the response.
+Concurrency scope   -- (render path)
+Retry semantics     -- (render path)
+Crash semantics     -- (render path)
+Failure response    -- a chart draws; it does not refuse.
+Required tests      sankey-layout.test.ts (fourteen categories draw as ten plus
+                    Other over a frozen response); CashFlowSankeyReport.test.tsx
+                    (the table lists every category while the drawing merges).
+Status              enforced
+```
+
 ### INV-LOAN-001 -- a recurring overpayment's cadence is a calendar
 
 ```text
@@ -1808,15 +2126,36 @@ Statement           The mortgage creation preview, the persisted paymentAmount,
                     the scheduled principal/interest split, the frontend
                     projection and the displayed effective annual rate all use
                     one explicitly chosen compounding convention.
-Source of truth     docs/financial-semantics.md section 9.
+Source of truth     docs/financial-semantics.md section 9;
+                    accounts.mortgage_type for which convention a mortgage uses.
 Enforcement         The convention is the nominal annual rate divided by the
-                    payments per year (calculateStandardPeriodicRate), with
-                    Canadian fixed-rate semi-annual compounding as the one legal
-                    exception (calculateCanadianPeriodicRate); the frontend
-                    getPeriodicRate mirrors it. calculateEffectiveAnnualRate now
-                    takes periodsPerYear and compounds at the payment frequency,
-                    so the displayed EAR describes the rate the schedule charges
-                    rather than a monthly one nothing used.
+                    payments per year (calculateStandardPeriodicRate), with the
+                    CANADIAN_FIXED mortgage type's semi-annual compounding as the
+                    one legal exception (calculateCanadianPeriodicRate). Which
+                    of the two a mortgage uses is a trait of its type, decided
+                    once per layer by the type helper: MORTGAGE_TYPE_TRAITS and
+                    compoundingFor in backend/src/accounts/mortgage-type.util.ts
+                    and frontend/src/lib/mortgage-type.ts, Records over the type
+                    so a type without a row is a compile error, read through
+                    mortgageTypeOf (the column, else the type the two legacy
+                    flags denote while the column is nullable). getPeriodicRate
+                    and calculateEffectiveAnnualRate on the backend, and
+                    getPeriodicRate and effectiveAnnualRate in
+                    frontend/src/lib/loan-frequency.ts, are keyed on the type;
+                    the backend's two-flag overloads delegate through
+                    mortgageTypeFromFlags and have no production caller
+                    (mortgage-type-flags.guard.spec.ts fails a new one; the
+                    overloads and the guard go with the booleans).
+                    The EAR takes periodsPerYear and compounds at the payment
+                    frequency, so the displayed EAR describes the rate the
+                    schedule charges rather than a monthly one nothing used.
+                    The two contract specs hold the type list and the traits:
+                    backend/src/accounts/mortgage-type.contract.spec.ts
+                    reconciles MORTGAGE_TYPES with the accounts_mortgage_type_check
+                    CHECK in database/schema.sql both ways and asserts the parity
+                    fixture backend/src/accounts/mortgage-type-cases.json, which
+                    frontend/src/lib/mortgage-type.contract.test.ts asserts
+                    against the frontend traits, so the layers cannot drift.
                     A cadence read back out of accounts.payment_frequency is a
                     STRING -- the column is a bare VARCHAR(20) written in both
                     spellings -- so it goes through
@@ -1877,7 +2216,10 @@ Required tests      Present: the "periodic-rate convention" block in
                     list and checks both getPeriodsPerYear and calculateEndDate,
                     loan-frequency.guard.test.ts reads the setup dialog's options
                     and checks the frontend engine -- and the effectiveAnnualRate
-                    block in loan-schedule.test.ts.
+                    block in loan-schedule.test.ts. Plus the two mortgage-type
+                    contract specs (mortgage-type.contract.spec.ts,
+                    mortgage-type.contract.test.ts) and the flags guard
+                    (mortgage-type-flags.guard.spec.ts).
 Status              enforced
 ```
 
@@ -1886,7 +2228,13 @@ Status              enforced
 ```text
 Statement           Lifetime interest reflects cash actually paid. The payment
                     that clears the balance is the remaining balance plus that
-                    period's interest, not another full installment.
+                    period's interest, not another full installment. This holds
+                    for every amortization method (INV-LOAN-007): the annuity's
+                    residual payoff; the LINEAR final installment, which takes
+                    the whole debt as principal when what is left over the
+                    constant principal is within roundMoney(N x 0.005), so no
+                    payment of a few cents follows it; and the INTEREST_ONLY
+                    bullet, debt + roundMoney(debt x rate) at payment N.
 Source of truth     The period-by-period amortization of the same schedule.
 Enforcement         calculateResidualPayoff
                     (backend/src/accounts/mortgage-amortization.util.ts) computes
@@ -1910,6 +2258,16 @@ Enforcement         calculateResidualPayoff
                     paymentsToClear itself lives once, in
                     amortization-count.util.ts: the same formula had three copies
                     and two of them ran on identical inputs in a single call.
+                    For LINEAR and INTEREST_ONLY, calculateMortgageAmortization
+                    branches on amortizationMethodFor before
+                    calculateResidualPayoff and answers residualPayoffAmount
+                    and totalInterest from the method's closed forms
+                    (docs/specs/mortgage-types.md section 5.1); the final
+                    installment of a dated schedule is methodPrincipal's
+                    (linearResidueBound for LINEAR, the whole debt when one
+                    payment remains for INTEREST_ONLY), one function per layer
+                    in backend/src/accounts/mortgage-installment.util.ts and
+                    frontend/src/lib/mortgage-installment.ts.
 Concurrency scope   --
 Failure response    -1 for all three figures when the schedule is unknowable: a
                     non-finite count, or an installment that never amortizes.
@@ -1919,7 +2277,18 @@ Required tests      Present: "final payment and lifetime interest" in
                     rather than from the implementation, including both
                     directions of the count (an installment clearing early, and
                     a rounding remainder absorbed by the last payment) and the
-                    non-amortizing case at a finite count.
+                    non-amortizing case at a finite count. For the other
+                    methods, the spec's section 7 fixtures, computed
+                    independently of the implementation:
+                    mortgage-amortization.util.spec.ts (table 7.5's residual
+                    and lifetime interest), mortgage-installment.util.spec.ts
+                    (the leftover within and above the bound, the bullet),
+                    scheduled-transaction-loan.mortgage-methods.spec.ts (the
+                    final 7.1 installment absorbs the leftover and nothing is
+                    posted on 2050-07-01; the bullet written into the principal
+                    line before payment N) and, on the frontend,
+                    loan-schedule-methods.test.ts (318 payments ending
+                    2050-06-01; the bullet on payment N).
 Status              enforced
 ```
 
@@ -1983,7 +2352,7 @@ Required tests      Present: the calculateEndDate and calculateMortgageEndDate
                     processes and scans the three helpers for a local accessor.
 Status              enforced
 ```
-### INV-LOAN-006 -- a scheduled loan installment prices the ledger debt, and the rate, through its own due date
+### INV-LOAN-006 -- a scheduled loan installment prices the ledger debt, the rate, and the remaining count through its own due date
 
 ```text
 Statement           The interest of a scheduled loan installment is
@@ -2000,15 +2369,27 @@ Statement           The interest of a scheduled loan installment is
                     scheduled bill, the amounts an occurrence actually posts,
                     and the amortization report's first projected row all price
                     that one balance (issue #1253).
+                    The principal of a mortgage whose method is not ANNUITY
+                    (INV-LOAN-007) is dated the same way: a LOWER_INSTALLMENT
+                    LINEAR principal is roundMoney(debt / remaining), and an
+                    INTEREST_ONLY installment is the bullet when remaining is 1,
+                    where remaining is N - k + 1 and k is the count of calendar
+                    due dates on or before the installment's date, stepped from
+                    payment_start_date by calculateNextDueDate. Never a count of
+                    postings: a skipped occurrence or an extra manual payment
+                    does not move the term end, and a due date moved off the
+                    calendar counts the calendar dates before it
+                    (docs/specs/mortgage-types.md sections 2 and 6.2).
 Source of truth     The transactions ledger plus accounts.opening_balance
                     (INV-BALANCE-001's source) for the debt, and
                     loan_rate_changes for the rate, both bounded by the
                     installment's own date.
 Enforcement         ScheduledTransactionLoanService.resolveInstallment is the
                     one pricing path: datedLoanDebt runs the canonical as-of
-                    ledger sum, the periodic-rate rules (Canadian semi-annual
-                    compounding included) are unchanged, and allocateLoanPayment
-                    stays the shared waterfall. recalculateLoanPaymentSplits
+                    ledger sum, the periodic-rate rules (the mortgage type's
+                    compounding, CANADIAN_FIXED's semi-annual included) are
+                    unchanged, and allocateLoanPayment stays the shared
+                    waterfall. recalculateLoanPaymentSplits
                     (template advancement after a posting) and
                     resolvePostingAllocation (called by the posting path inside
                     its transaction, under the parent lock, immediately before
@@ -2052,6 +2433,13 @@ Enforcement         ScheduledTransactionLoanService.resolveInstallment is the
                     LEDGER_MOVEMENT_PREDICATE (common/ledger-balance.sql.ts),
                     shared by every balance reader so the bill's debt and the
                     report's balance cannot disagree about which rows count.
+                    The remaining count is remainingScheduledPayments over
+                    calendarPaymentNumber
+                    (backend/src/accounts/mortgage-installment.util.ts),
+                    which nonAnnuityInstallment calls with the installment's
+                    own date; the frontend projection counts with the twins in
+                    frontend/src/lib/mortgage-installment.ts. Neither takes a
+                    count of postings as an input.
 Failure response    A template shape the resolver cannot account for (an
                     escrow line, no identifiable interest line) declines: the
                     posting proceeds on the persisted amounts and the
@@ -2072,6 +2460,13 @@ Required tests      Present: scheduled-transaction-loan.service.spec.ts (prior
                     reads tomorrow) and financial-today.test.ts (the day at
                     pinned instants in named zones, so a boundary case does not
                     depend on the runner's TZ).
+                    The remaining count: mortgage-installment.util.spec.ts
+                    ("the calendar"), scheduled-transaction-loan.mortgage-methods.spec.ts
+                    (a due date moved off the calendar) and
+                    scheduled-loan-dated-balance.integration.spec.ts (a
+                    LOWER_INSTALLMENT mortgage on a real ledger, including the
+                    moved due date); frontend loan-schedule-methods.test.ts
+                    ("the calendar: k(d), remaining(d) and the next due date").
                     A LINE OF CREDIT is exempt from the paid-off deactivation:
                     it is revolving, so owing nothing this period does not
                     finish it.
@@ -2109,6 +2504,89 @@ Known gaps          The PAYMENT is not part of this invariant: a rate change
                     Interest is unaffected -- it is debt x rate.
 Status              enforced
 ```
+
+### INV-LOAN-007 -- one amortization method per mortgage type
+
+```text
+Statement           A mortgage's amortization method (annuity, linear, interest
+                    only) and its compounding convention are functions of its
+                    mortgage type alone, and every surface that prices, projects
+                    or infers -- the creation preview, the persisted payment, the
+                    scheduled installment (template and posting), the rate-change
+                    recalculation, the frontend projection and rate inference --
+                    reads them through the type's traits, not from the two
+                    booleans or a surface-local rule.
+Source of truth     accounts.mortgage_type (with prepayment_mode for LINEAR);
+                    the traits, truth tables and fixtures are
+                    docs/specs/mortgage-types.md.
+Enforcement         amortizationMethodFor over MORTGAGE_TYPE_TRAITS
+                    (backend/src/accounts/mortgage-type.util.ts and
+                    frontend/src/lib/mortgage-type.ts, a Record over the type so
+                    a missing type is a compile error), through which every
+                    surface reads the method, the compounding (INV-LOAN-003) and
+                    the annualization rate inference uses. The method branch:
+                    calculateMortgageAmortization (the preview),
+                    ScheduledTransactionLoanService.resolveInstallment (the
+                    template and the posting) and the rate-change paths
+                    (LoanRateChangesService, the mortgage rate update) on the
+                    backend, generateLoanSchedule on the frontend. The per-date
+                    principal of the spec's table 4.3 is one function per
+                    layer, methodPrincipal
+                    (backend/src/accounts/mortgage-installment.util.ts and its
+                    twin frontend/src/lib/mortgage-installment.ts), and a
+                    non-annuity installment is priced through
+                    nonAnnuityInstallment by resolveInstallment, the payment
+                    setup and its preview, the mortgage rate update and the
+                    rate-change sync; account creation takes its first
+                    installment from the preview.
+                    The shared truth table mortgage-type-cases.json holds each
+                    type's traits and first installment equal on both layers
+                    (mortgage-type.contract.spec.ts,
+                    mortgage-type.contract.test.ts). In the database: the CHECK
+                    on accounts.mortgage_type, reconciled with MORTGAGE_TYPES by
+                    the same contract spec; the CHECKs keeping
+                    accounts.payment_amount null for LINEAR and INTEREST_ONLY
+                    (no stored constant payment can disagree with the method)
+                    and accounts.prepayment_mode null off LINEAR. The two legacy
+                    booleans have no production caller of the overloads that
+                    read them: mortgage-type-flags.guard.spec.ts, shrink-only
+                    with an empty baseline, fails a new one until P3-B1 drops
+                    them. Type detection (detectMortgageType,
+                    backend/src/accounts/mortgage-type-detection.util.ts) only
+                    suggests: neither detection route writes a row, and the
+                    user confirms the type in the account form.
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     -- (a pricing rule; the writes it feeds are INV-LOAN-006's)
+Failure response    A LINEAR or INTEREST_ONLY mortgage without
+                    amortization_months is refused on create, update and
+                    preview, and its installment declines (the persisted
+                    amounts post), per the spec's missing-data policy.
+Required tests      Present: mortgage-type.util.spec.ts, the CHECK and parity
+                    contract specs (mortgage-type.contract.spec.ts,
+                    mortgage-type.contract.test.ts), the flags guard
+                    (mortgage-type-flags.guard.spec.ts), and on the backend the
+                    spec's section 7 fixtures row by row
+                    (mortgage-installment.util.spec.ts,
+                    mortgage-amortization.util.spec.ts,
+                    scheduled-transaction-loan.mortgage-methods.spec.ts) with
+                    the CHECKs and the dated debt on a real ledger
+                    (mortgage-method-checks.integration.spec.ts,
+                    scheduled-loan-dated-balance.integration.spec.ts), and on
+                    the frontend the same fixtures from generateLoanSchedule
+                    (loan-schedule-methods.test.ts) and the readers of table
+                    5.6 with payment_amount null on the fixture account
+                    (loan-history.mortgage-methods.test.ts and the component
+                    tests), and the detector's truth table
+                    (mortgage-type-detection-cases.json,
+                    mortgage-type-detection.util.spec.ts) with its reason codes
+                    held to the client's wording
+                    (mortgage-type-detection.contract.test.ts). Each truth-table
+                    row of docs/specs/mortgage-types.md names the spec that
+                    asserts it.
+Status              enforced
+```
+
 ### INV-LOAN-HISTORY-001 -- historical loan interest counted as paid is ledger-backed
 
 ```text
@@ -2178,8 +2656,9 @@ Failure response    The rejection propagates to the caller's error-and-retry
                     unavailable after recovery.
 Required tests      Present: the principal-only matrix in
                     frontend/src/lib/loan-history.test.ts (every account type x
-                    Canadian/variable flag x frequency x rate-timeline
-                    presence -- each was a separate door into the estimate), the
+                    mortgage type, stored or as its legacy flags denote it, x
+                    frequency x rate-timeline presence -- each was a separate
+                    door into the estimate), the
                     fixed-rate and variable-rate Rate-column cases, the
                     reconstruction paths re-pinned against RECORDED interest so
                     the Canadian semi-annual and day-count annualizations stay

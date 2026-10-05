@@ -41,7 +41,6 @@ import {
   sampledTickLabel,
 } from './portfolio-chart-utils';
 import {
-  hasUnmeasuredFlow,
   periodResultUnknownReason,
 } from './portfolio-period-result';
 import {
@@ -647,15 +646,6 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix,
               placement="top"
               text={t('investmentValueChart.investmentResultTooltip')}
             />
-            {/* Two movements the server could not count as a flow: nothing is
-                missing from the data, so the marker alone would send the
-                reader to a screen with nothing to do on it. */}
-            {hasUnmeasuredFlow(periodResult?.investedReasons ?? []) && (
-              <InfoTooltip
-                placement="top"
-                text={t('investmentValueChart.unmeasuredFlowTooltip')}
-              />
-            )}
           </div>
           <div className={`text-lg font-bold ${investmentResult === null ? '' : gainLossColor(investmentResult)}`}>
             {investmentResult === null ? (

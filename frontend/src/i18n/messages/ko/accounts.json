@@ -248,10 +248,8 @@
     "payeeLender": "수취인 / 대출 기관",
     "selectOrCreatePayee": "수취인 선택 또는 만들기...",
     "mortgageDetails": "담보대출 세부 정보",
-    "canadianMortgage": "캐나다 담보대출 (반기 복리)",
-    "variableRate": "변동 금리",
     "amortizationMonths": "상환 기간 (월)",
-    "termMonths": "기간 (월)",
+    "termMonths": "금리 고정 기간 (월)",
     "autoPost": "만기 시 자동으로 거래 등록",
     "skip": "건너뛰기",
     "setUpPayments": "납부 설정",
@@ -267,17 +265,31 @@
     },
     "toasts": {
       "setupComplete": "{account}의 예약 납부가 설정되었습니다"
-    }
+    },
+    "firstInstallment": "첫 할부금",
+    "firstInstallmentHelp": "이 모기지는 고정 납입금이 없습니다. 각 할부금은 잔액, 금리, 상환 기간으로 계산됩니다. {date}에 기일이 돌아오는 할부금이며 추가 원금을 포함합니다.",
+    "firstInstallmentPending": "첫 할부금을 계산하려면 다음 납입일을 입력하세요.",
+    "firstInstallmentCalculating": "첫 할부금을 계산하는 중...",
+    "firstInstallmentFailed": "첫 할부금을 계산할 수 없습니다. 아래 값을 확인하고 다시 시도하세요."
   },
   "mortgageFields": {
     "title": "담보대출 세부 정보",
-    "canadianMortgage": "캐나다 담보대출",
-    "canadianMortgageDesc": "고정 금리에 반기 복리를 사용합니다 (캐나다 법에 따라 필수)",
-    "variableRate": "변동 금리",
-    "variableRateDesc": "기간 중 금리가 변동될 수 있습니다 (월 복리 사용)",
-    "variableRateLoanDetailsLink": "<link>대출 상세</link>에서 금리 변경을 기록하세요.",
-    "termLength": "기간 길이",
-    "termLengthNoTerm": "기간 없음을 원하면 0년 0개월로 두세요.",
+    "type": {
+      "label": "담보대출 유형",
+      "ANNUITY": "원리금 균등 상환",
+      "CANADIAN_FIXED": "캐나다 고정 금리",
+      "LINEAR": "원금 균등 상환",
+      "INTEREST_ONLY": "이자만 상환",
+      "help": {
+        "ANNUITY": "매월 총 상환액이 같습니다. 변동 금리 담보대출도 이 유형을 선택하세요.",
+        "CANADIAN_FIXED": "캐나다 고정 금리 계약입니다. 이자는 1년에 두 번 복리로 계산됩니다.",
+        "LINEAR": "매월 원금 부분이 같고 총 상환액은 줄어듭니다.",
+        "INTEREST_ONLY": "이자만 내며 잔액은 변하지 않습니다."
+      }
+    },
+    "rateChangesLoanDetailsLink": "<link>대출 상세</link>에서 금리 변경을 기록하세요.",
+    "termLength": "금리 고정 기간",
+    "termLengthHelp": "금리 또는 계약 기간이 유지되는 기간입니다(예: 5년 고정 금리). 끝나기 전에 Monize가 알려 드릴 수 있습니다. 기간 없음을 원하면 0년 0개월로 두세요.",
     "amortizationPeriod": "상환 기간 (필수)",
     "years": "년",
     "months": "월",
@@ -333,6 +345,68 @@
       "memoLabel": "추가 상환 메모 텍스트",
       "memoPlaceholder": "예: 추가 상환",
       "memoHelp": "결제 메모, 원본 거래 메모 또는 분할 메모에 대한 대소문자 구분 없는 부분 문자열 일치."
+    },
+    "prepaymentMode": {
+      "label": "추가 상환의 효과",
+      "SHORTEN_TERM": "기간 단축(매월 같은 원금)",
+      "LOWER_INSTALLMENT": "할부금 감액(같은 만기일)",
+      "help": "대출 기관에 확인하세요. 추가 상환 후 명세서의 원금 부분이 그대로라면 기간이 단축된 것입니다."
+    },
+    "previewFirstInstallment": "첫 할부금:",
+    "detect": {
+      "toggle": "잘 모르시겠나요? 할부금 몇 회분을 입력하세요",
+      "title": "담보대출 유형 찾기",
+      "intro": "명세서에서 연속된 할부금 2~3회분을 오래된 것부터 입력하세요. 잔액은 선택 사항입니다. 잔액과 금리가 있으면 Monize가 이자가 1년에 두 번 복리로 계산되는지 판단할 수 있습니다.",
+      "installment": "{number}회차 할부금",
+      "principal": "원금",
+      "interest": "이자",
+      "balance": "납부 전 잔액(선택)",
+      "rowIncomplete": "원금과 이자를 모두 입력하거나 행을 비워 두세요.",
+      "rate": "위에 입력한 금리 {rate}와 대조했습니다.",
+      "noRate": "위에 입력된 금리가 없어 복리 계산을 확인할 수 없습니다.",
+      "needsFrequency": "먼저 아래에서 납부 주기를 선택하세요. 할부금은 그 주기로 읽힙니다.",
+      "submit": "유형 제안",
+      "close": "닫기",
+      "suggested": "제안된 유형: {type}",
+      "noSuggestion": "제안된 유형이 없습니다.",
+      "lowConfidence": "신뢰도 낮음: 사용하기 전에 계약서를 확인하거나 대출 기관에 문의하세요.",
+      "use": "이 유형 사용",
+      "failed": "요청이 실패하여 할부금을 확인할 수 없습니다. 다시 시도하세요.",
+      "reason": {
+        "TOO_FEW_SAMPLES": "비교하려면 연속된 할부금이 최소 2회분 필요합니다.",
+        "INVALID_SAMPLE": "금액이 음수이거나 읽을 수 없는 할부금이 있습니다.",
+        "NO_PAYMENT": "이 할부금들은 원금을 상환하지 않고 이자도 부과하지 않습니다.",
+        "AMBIGUOUS_CONSTANT_PRINCIPAL_AND_INSTALLMENT": "모든 할부금에서 원금과 총액이 같아 원금 균등 상환과 원리금 균등 상환 모두에 해당합니다. 간격이 더 떨어진 할부금으로 시도하거나 계약서를 확인하세요.",
+        "ACCELERATED_FREQUENCY": "이 할부금들은 원금 균등 상환 또는 이자만 상환으로 보이지만, 가속 납부 주기에서는 그럴 수 없습니다. 납부 주기를 확인하세요.",
+        "NO_RULE_FITS": "이 할부금들에서는 원금도 총액도 일정하지 않습니다. 그 사이에 금리가 바뀌었다면 같은 금리 기간의 할부금을 사용하세요.",
+        "ZERO_PRINCIPAL": "원금이 상환되지 않아 잔액이 변하지 않습니다.",
+        "ZERO_PRINCIPAL_RATE_MISMATCH": "원금은 상환되지 않지만, 이자가 잔액에 대한 제시 금리와 맞지 않습니다. 금리를 확인하세요.",
+        "CONSTANT_PRINCIPAL": "원금 부분이 매번 같고 총액은 줄어듭니다.",
+        "CONSTANT_PRINCIPAL_RATE_MISMATCH": "원금 부분은 매번 같지만, 이자가 잔액에 대한 제시 금리와 맞지 않습니다. 금리를 확인하세요.",
+        "CONSTANT_INSTALLMENT_SEMI_ANNUAL": "총액이 매번 같고, 이자는 제시 금리를 1년에 두 번 복리로 계산한 값과 일치합니다.",
+        "CONSTANT_INSTALLMENT_NOMINAL": "총액이 매번 같고, 이자는 1년 2회 복리 없이 제시 금리와 일치합니다.",
+        "CONSTANT_INSTALLMENT_RATE_UNCHECKED": "총액이 매번 같습니다. 각 할부금 납부 전 잔액과 금리가 없어 1년 2회 복리 여부를 확인할 수 없었습니다.",
+        "CONSTANT_INSTALLMENT_COMPOUNDING_AMBIGUOUS": "총액이 매번 같지만, 잔액이 너무 작아 1년 2회 복리 여부를 구분할 수 없습니다. 캐나다 고정 금리 계약이라면 약관에 그렇게 명시되어 있습니다.",
+        "CONSTANT_INSTALLMENT_RATE_MISMATCH": "총액이 매번 같지만, 이자가 제시 금리에서 어느 계산 방식과도 일치하지 않습니다. 이자가 일할 계산될 수 있으니 금리를 확인하세요."
+      },
+      "history": {
+        "action": "담보대출 유형 검출",
+        "title": "상환 내역으로 본 담보대출 유형",
+        "intro": "같은 금리로 기록된 최근 할부금에서 읽어 옵니다. 계정을 저장하기 전에는 아무것도 변경되지 않습니다.",
+        "current": "현재 유형: {type}",
+        "alreadySet": "이 담보대출은 이미 제안된 유형으로 설정되어 있습니다.",
+        "rate": "적용 중인 금리: {rate}",
+        "noRate": "이 날짜들에 기록된 금리가 없어 복리 계산을 확인하지 않았습니다.",
+        "noSamples": "원금과 이자 부분이 모두 있는 기록된 할부금을 찾지 못했습니다. 이 기능을 사용하려면 상환액을 원금과 이자로 분할하여 기록하세요.",
+        "colDate": "날짜",
+        "colPrincipal": "원금",
+        "colInterest": "이자",
+        "colBalance": "납부 전 잔액",
+        "balanceUnknown": "알 수 없음",
+        "failed": "요청이 실패하여 상환 내역을 읽을 수 없습니다. 다시 시도하세요.",
+        "cancel": "취소",
+        "use": "이 유형으로 계정 수정"
+      }
     }
   },
   "assetFields": {
@@ -361,7 +435,8 @@
     "paymentFrequencyRequired": "납부 주기는 필수입니다",
     "paymentStartDateRequired": "첫 납부일은 필수입니다",
     "paymentAccountRequired": "납부 출금 계정은 필수입니다",
-    "amortizationRequired": "상환 기간은 필수입니다"
+    "amortizationRequired": "상환 기간은 필수입니다",
+    "acceleratedNeedsAnnuity": "이 모기지는 가속 일정으로 납입되며, 이는 원리금 균등 모기지에만 있습니다. 원금 균등 또는 이자만 내는 모기지에는 일반 납입 주기가 필요하므로 원리금 균등 유형을 유지하세요."
   },
   "loanDetail": {
     "backToAccounts": "계좌 목록으로 돌아가기",
@@ -389,7 +464,12 @@
       "estRemainingInterest": "예상 잔여 이자",
       "notSet": "설정 안 됨",
       "notAvailable": "없음",
-      "paidOff": "완납"
+      "paidOff": "완납",
+      "nextInstallment": "다음 할부금",
+      "dueOn": "기일 {date}",
+      "finalPayment": "최종 납입금",
+      "nextInstallmentDue": "다음 할부금(기일 {date})",
+      "finalPaymentDue": "최종 납입금(기일 {date})"
     },
     "schedule": {
       "title": "상환 일정",
@@ -464,8 +544,13 @@
         "reasonPaidOff": "이 대출은 미상환 잔액이 없으므로 상환할 것이 없습니다.",
         "reasonNoFrequency": "이 대출에는 결제 주기가 설정되어 있지 않습니다. 계정 설정에서 추가하세요.",
         "reasonNoRate": "이 대출에는 저장된 이자율이 없습니다. 계정 설정에서 이자율을 설정하거나 오늘 또는 그 이전 날짜의 이자율 변경을 기록하세요. 아래 일정표에 행별로 표시된 이자율은 부과된 이자에서 재구성된 값이며 저장된 이자율이 아닙니다.",
-        "reasonNoPayment": "할부금 금액을 확인할 수 없습니다. 정기 할부금을 대출 계좌로의 이체로 기록하거나(원금, 이자는 분할 항목 또는 별도의 분류된 지출로), 계정 설정에서 결제 금액을 설정하세요. 출금 계좌에 일반 지출로 기록된 결제는 대출 계좌에 도달하지 않으므로 일정표가 이를 볼 수 없습니다."
-      }
+        "reasonNoPayment": "할부금 금액을 확인할 수 없습니다. 정기 할부금을 대출 계좌로의 이체로 기록하거나(원금, 이자는 분할 항목 또는 별도의 분류된 지출로), 계정 설정에서 결제 금액을 설정하세요. 출금 계좌에 일반 지출로 기록된 결제는 대출 계좌에 도달하지 않으므로 일정표가 이를 볼 수 없습니다.",
+        "reasonNoAmortization": "이 모기지에는 상환 기간이 없어 할부금과 만기를 계산할 수 없습니다. 계좌 설정에서 상환 기간을 설정하세요.",
+        "reasonNoPaymentStart": "이 모기지에는 첫 납입일이 없어 만기까지 남은 납입 횟수를 셀 수 없습니다. 계좌 설정에서 예약 납입을 설정하세요. 입력한 첫 납입 기일이 1회차 납입이 됩니다.",
+        "reasonNoPrincipal": "이 모기지에는 원래 금액이 없어 균등 원금을 계산할 수 없습니다. 계좌 설정에서 모기지 금액을 설정하세요."
+      },
+      "budgetBelowNextInstallment": "다음 할부금({amount}, 기일 {date})보다 적습니다. 추가 상환하려면 그보다 높게 설정하세요.",
+      "shortenTermNeedsPrincipal": "이 모기지에는 원래 금액이 없어 기간 단축을 시뮬레이션할 수 없습니다. 할부금 감액을 선택하거나 계좌 설정에서 모기지 금액을 설정하세요."
     },
     "comparison": {
       "newPayoff": "새 완납일",
@@ -481,7 +566,8 @@
       "newInstallment": "새 상환액",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "월 상환액",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "첫 납입금"
     },
     "chart": {
       "title": "완납 타임라인",

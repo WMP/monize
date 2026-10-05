@@ -152,7 +152,11 @@ export class DemoSeedService {
   private async seedDemoDataWithinContext(userId: string): Promise<void> {
     const categoryMap = await this.seedCategories(userId);
     const institutionMap = await this.seedInstitutions(userId);
-    const accountMap = await this.seedAccounts(userId, institutionMap);
+    const accountMap = await this.seedAccounts(
+      userId,
+      institutionMap,
+      categoryMap,
+    );
     const payeeMap = await this.seedPayees(userId, categoryMap);
     await this.seedTransactions(userId, accountMap, categoryMap, payeeMap);
     await this.seedScheduledTransactions(
@@ -196,7 +200,13 @@ export class DemoSeedService {
         name: "Housing",
         icon: "🏠",
         color: "#E74C3C",
-        subs: ["Rent/Mortgage", "Utilities", "Property Tax", "Maintenance"],
+        subs: [
+          "Rent/Mortgage",
+          "Mortgage Interest",
+          "Utilities",
+          "Property Tax",
+          "Maintenance",
+        ],
       },
       {
         name: "Transportation",
@@ -327,6 +337,7 @@ export class DemoSeedService {
   private async seedAccounts(
     userId: string,
     institutionMap: Map<string, string>,
+    categoryMap: Map<string, string>,
   ): Promise<Map<string, string>> {
     this.logger.log("Seeding demo accounts");
 
@@ -409,10 +420,10 @@ export class DemoSeedService {
             user_id, account_type, name, description, currency_code,
             opening_balance, current_balance, credit_limit, interest_rate,
             institution, institution_id, is_favourite,
-            is_canadian_mortgage, is_variable_rate, term_months, amortization_months, original_principal,
-            payment_amount, payment_frequency,
+            is_canadian_mortgage, is_variable_rate, mortgage_type, term_months, amortization_months, original_principal,
+            payment_amount, payment_frequency, interest_category_id,
             created_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
           RETURNING id`,
             [
               userId,
@@ -429,11 +440,15 @@ export class DemoSeedService {
               acc.isFavourite || false,
               acc.isCanadianMortgage || false,
               acc.isVariableRate || false,
+              acc.mortgageType ?? null,
               acc.termMonths || null,
               acc.amortizationMonths || null,
               acc.originalPrincipal || null,
               acc.paymentAmount || null,
               acc.paymentFrequency || null,
+              acc.interestCategoryPath
+                ? (categoryMap.get(acc.interestCategoryPath) ?? null)
+                : null,
               createdAtStr,
             ],
           ),
@@ -644,7 +659,29 @@ export class DemoSeedService {
         );
 
         for (const split of tx.splits) {
-          const splitCategoryId = categoryMap.get(split.categoryPath) || null;
+          if (split.transferAccountKey) {
+            // A transfer leg: the split names the target account, and the
+            // target holds a linked counterpart for the opposite amount, the
+            // shape TransactionSplitService writes for a posted loan payment.
+            const transferAccountId = accountMap.get(split.transferAccountKey);
+            if (!transferAccountId) continue;
+            await this.seedTransferSplit(userId, parentTx.id, {
+              transferAccountId,
+              amount: split.amount,
+              memo: split.memo,
+              date: tx.date,
+              payeeId,
+              payeeName: tx.payeeName,
+              currencyCode,
+              status: tx.status,
+            });
+            transferCount++;
+            count++;
+            continue;
+          }
+          const splitCategoryId = split.categoryPath
+            ? categoryMap.get(split.categoryPath) || null
+            : null;
           await withScopedDb(this.dataSource, (manager) =>
             manager.query(
               `INSERT INTO transaction_splits (transaction_id, category_id, amount, memo)
@@ -706,6 +743,63 @@ export class DemoSeedService {
 
     this.logger.log(
       `Seeded ${count} transactions (${splitCount} splits, ${transferCount} transfers)`,
+    );
+  }
+
+  /**
+   * One transfer leg of a split parent: the split row (`kind` 'transfer'), the
+   * counterpart on the target account linked back to the parent, and the
+   * split's link to that counterpart.
+   */
+  private async seedTransferSplit(
+    userId: string,
+    parentId: string,
+    leg: {
+      transferAccountId: string;
+      amount: number;
+      memo: string;
+      date: string;
+      payeeId: string | null;
+      payeeName: string;
+      currencyCode: string;
+      status: string;
+    },
+  ): Promise<void> {
+    const [split] = await withScopedDb(this.dataSource, (manager) =>
+      manager.query(
+        `INSERT INTO transaction_splits (transaction_id, kind, transfer_account_id, amount, memo)
+         VALUES ($1, 'transfer', $2, $3, $4)
+         RETURNING id`,
+        [parentId, leg.transferAccountId, leg.amount, leg.memo],
+      ),
+    );
+    const [counterpart] = await withScopedDb(this.dataSource, (manager) =>
+      manager.query(
+        `INSERT INTO transactions (
+        user_id, account_id, transaction_date, payee_id, payee_name,
+        amount, currency_code, description, status,
+        is_transfer, linked_transaction_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, $10)
+      RETURNING id`,
+        [
+          userId,
+          leg.transferAccountId,
+          leg.date,
+          leg.payeeId,
+          leg.payeeName,
+          -leg.amount,
+          leg.currencyCode,
+          leg.memo,
+          leg.status,
+          parentId,
+        ],
+      ),
+    );
+    await withScopedDb(this.dataSource, (manager) =>
+      manager.query(
+        "UPDATE transaction_splits SET linked_transaction_id = $1 WHERE id = $2",
+        [counterpart.id, split.id],
+      ),
     );
   }
 

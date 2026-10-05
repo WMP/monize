@@ -180,9 +180,10 @@ export function compareSchedules(
     // A truncated schedule's `finalPaymentAmount` is the installment at its last
     // PROJECTED row, not its last payment -- there is no last payment -- so a
     // drop measured from it is as unknown as the rest.
-    installmentReduction: comparable
-      ? roundToCents(baseline.finalPaymentAmount - scenario.finalPaymentAmount)
-      : null,
+    installmentReduction:
+      comparable && scenario.levelInstallment !== false
+        ? roundToCents(baseline.finalPaymentAmount - scenario.finalPaymentAmount)
+        : null,
   };
 }
 

@@ -60,9 +60,17 @@ import {
 import {
   SetupLoanPaymentsDto,
   DetectedLoanPaymentResponseDto,
+  PreviewLoanPaymentSetupDto,
+  PreviewLoanPaymentSetupResponseDto,
   SetupLoanPaymentsResponseDto,
 } from "./dto/setup-loan-payments.dto";
+import {
+  DetectMortgageTypeDto,
+  MortgageTypeDetectionResponseDto,
+  MortgageTypeHistoryDetectionResponseDto,
+} from "./dto/detect-mortgage-type.dto";
 import { PaymentFrequency } from "./loan-amortization.util";
+import { requestedMortgageType } from "./mortgage-type.util";
 import { formatDateYMD, todayYMD } from "../common/date-utils";
 import { assertStringParam } from "../common/query-param-utils";
 import { tr } from "../i18n/translate";
@@ -581,13 +589,37 @@ export class AccountsController {
       mortgagePreviewDto.amortizationMonths,
       mortgagePreviewDto.paymentFrequency,
       new Date(mortgagePreviewDto.paymentStartDate),
-      mortgagePreviewDto.isCanadian,
-      mortgagePreviewDto.isVariableRate,
+      // A preview has no stored row, so a request naming neither the type nor
+      // a flag is the default type.
+      requestedMortgageType({
+        mortgageType: mortgagePreviewDto.mortgageType,
+        isCanadianMortgage: mortgagePreviewDto.isCanadian,
+        isVariableRate: mortgagePreviewDto.isVariableRate,
+      }) ?? "ANNUITY",
     );
     return {
       ...result,
       endDate: formatDateYMD(result.endDate),
     };
+  }
+
+  @Post("mortgage-type/detect")
+  @ApiOperation({
+    summary: "Suggest a mortgage type from sample installments",
+    description:
+      "Suggests ANNUITY, CANADIAN_FIXED, LINEAR or INTEREST_ONLY from two or three consecutive installments (principal and interest, optionally the balance each was charged on), the quoted rate and the payment frequency. A suggestion only: nothing is read or written. Fewer than two samples, or samples that fit no rule, answer type null with a reason.",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Suggestion computed",
+    type: MortgageTypeDetectionResponseDto,
+  })
+  @ApiResponse({ status: 400, description: "Bad request - invalid samples" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  detectMortgageType(
+    @Body() dto: DetectMortgageTypeDto,
+  ): MortgageTypeDetectionResponseDto {
+    return this.accountsService.detectMortgageTypeFromSamples(dto);
   }
 
   @Get(":id/export")
@@ -972,6 +1004,34 @@ export class AccountsController {
     );
   }
 
+  @Post(":id/mortgage-type/detect")
+  @ApiOperation({
+    summary: "Suggest a mortgage type from the loan's posted installments",
+    description:
+      "Reads the mortgage's latest posted installments at one rate (paired with their interest the way rate-change detection pairs them, each with the ledger balance before its date) and suggests a type from them. A suggestion only: the account's type is not changed and nothing is written.",
+  })
+  @ApiParam({
+    name: "id",
+    description: "Mortgage account UUID",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Suggestion computed, with the installments it was read from",
+    type: MortgageTypeHistoryDetectionResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Bad request - not a mortgage account",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({ status: 404, description: "Account not found" })
+  detectMortgageTypeFromHistory(
+    @Request() req,
+    @Param("id", ParseUUIDPipe) id: string,
+  ): Promise<MortgageTypeHistoryDetectionResponseDto> {
+    return this.accountsService.detectMortgageTypeFromHistory(req.user.id, id);
+  }
+
   @Get(":id/detect-loan-payments")
   @ApiOperation({
     summary: "Detect loan payment patterns from transaction history",
@@ -996,6 +1056,40 @@ export class AccountsController {
     return this.loanPaymentDetectorService.detectPaymentPattern(
       req.user.id,
       id,
+    );
+  }
+
+  @Post(":id/setup-loan-payments/preview")
+  @ApiOperation({
+    summary: "Preview the first installment of a loan payment setup",
+    description:
+      "For a LINEAR or INTEREST_ONLY mortgage, prices the first installment a setup with these terms would schedule -- from the ledger debt through the due date, the rate and the amortization -- through the same code the setup checks its paymentAmount against. Writes nothing. An annuity mortgage or a loan answers derivesInstallment false.",
+  })
+  @ApiParam({
+    name: "id",
+    description: "Loan or mortgage account UUID",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "First installment priced",
+    type: PreviewLoanPaymentSetupResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      "Bad request - a term the mortgage's method needs is missing, or an accelerated frequency",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({ status: 404, description: "Account not found" })
+  previewLoanPaymentSetup(
+    @Request() req,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: PreviewLoanPaymentSetupDto,
+  ): Promise<PreviewLoanPaymentSetupResponseDto> {
+    return this.loanPaymentSetupService.previewFirstInstallment(
+      req.user.id,
+      id,
+      dto,
     );
   }
 

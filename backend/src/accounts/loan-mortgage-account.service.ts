@@ -4,6 +4,7 @@ import {
   Inject,
   forwardRef,
   Logger,
+  ServiceUnavailableException,
 } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { Account, AccountType } from "./entities/account.entity";
@@ -31,12 +32,57 @@ import {
   DEFAULT_PERIODS_PER_YEAR,
   mortgageTermEndDate,
   periodsPerYearForStoredFrequency,
+  toMortgagePaymentFrequency,
 } from "./payment-frequency.util";
-import { formatDateYMD, localDateForColumn } from "../common/date-utils";
+import {
+  formatDateYMD,
+  localDateForColumn,
+  todayYMD,
+} from "../common/date-utils";
+import { ledgerMovementPredicate } from "../common/ledger-balance.sql";
 import { roundMoney } from "../common/round.util";
 import { tr } from "../i18n/translate";
-import { LoanRateChangesService } from "../loan-rate-changes/loan-rate-changes.service";
+import {
+  LoanRateChangesService,
+  derivedInstallmentType,
+  refuseStatedPayment,
+} from "../loan-rate-changes/loan-rate-changes.service";
 import { withScopedDb } from "../common/db/scoped-db";
+import { datedLoanDebt } from "./dated-loan-debt.util";
+import {
+  MortgageType,
+  mortgageTypeColumns,
+  mortgageTypeOf,
+  prepaymentModeColumn,
+  requestedMortgageType,
+  storesConstantPayment,
+} from "./mortgage-type.util";
+import {
+  assertMortgageMethodTerms,
+  nonAnnuityInstallment,
+} from "./mortgage-installment.util";
+import { Transaction } from "../transactions/entities/transaction.entity";
+import { LoanRateChange } from "../loan-rate-changes/entities/loan-rate-change.entity";
+import {
+  InstallmentHistory,
+  LoanPaymentDetectorService,
+} from "./loan-payment-detector.service";
+import { effectiveAnnualRateOn } from "./effective-loan-rate.util";
+import {
+  detectMortgageType,
+  MortgageTypeDetection,
+} from "./mortgage-type-detection.util";
+import {
+  DatedMortgageTypeSampleDto,
+  DetectMortgageTypeDto,
+  MortgageTypeHistoryDetectionResponseDto,
+} from "./dto/detect-mortgage-type.dto";
+
+/**
+ * The installments a history detection reads: the latest three consecutive
+ * ones posted at one rate (docs/specs/mortgage-types.md, section 10).
+ */
+const HISTORY_DETECTION_SAMPLES = 3;
 
 @Injectable()
 export class LoanMortgageAccountService {
@@ -50,6 +96,7 @@ export class LoanMortgageAccountService {
     private scheduledTransactionsService: ScheduledTransactionsService,
     @Inject(forwardRef(() => LoanRateChangesService))
     private loanRateChangesService: LoanRateChangesService,
+    private loanPaymentDetectorService: LoanPaymentDetectorService,
   ) {}
 
   /**
@@ -93,6 +140,9 @@ export class LoanMortgageAccountService {
       interestCategoryId,
       interestRate,
       institution,
+      // A plain loan has no mortgage type (it amortizes on the loan engine).
+      mortgageType: _mortgageType,
+      prepaymentMode: _prepaymentMode,
       ...accountData
     } = createAccountDto;
 
@@ -237,8 +287,10 @@ export class LoanMortgageAccountService {
       interestCategoryId,
       interestRate,
       institution,
-      isCanadianMortgage = false,
-      isVariableRate = false,
+      mortgageType: requestedType,
+      prepaymentMode,
+      isCanadianMortgage,
+      isVariableRate,
       termMonths,
       amortizationMonths,
       ...accountData
@@ -289,17 +341,32 @@ export class LoanMortgageAccountService {
       }
     }
 
+    // The type wins over the legacy flags; a request naming neither is the
+    // default type, as the flags' `false` defaults always denoted.
+    const mortgageType =
+      requestedMortgageType({
+        mortgageType: requestedType,
+        isCanadianMortgage,
+        isVariableRate,
+      }) ?? "ANNUITY";
     const mortgageAmount = Math.abs(openingBalance);
     const amortizationInput: MortgageAmortizationInput = {
       principal: mortgageAmount,
       annualRate: interestRate,
       amortizationMonths,
       paymentFrequency: mortgagePaymentFrequency,
-      isCanadian: isCanadianMortgage,
-      isVariableRate,
+      mortgageType,
       startDate: new Date(paymentStartDate),
     };
+    // Refuses a LINEAR or INTEREST_ONLY mortgage it cannot price (an
+    // accelerated cadence, no principal) before anything is written.
     const amortization = calculateMortgageAmortization(amortizationInput);
+    // LINEAR and INTEREST_ONLY have no constant payment to store (spec
+    // decision 11); their template starts at the first installment, and every
+    // later one is priced at its own due date.
+    const storedPaymentAmount = storesConstantPayment(mortgageType)
+      ? amortization.paymentAmount
+      : null;
 
     const termEndDate = termMonths
       ? mortgageTermEndDate(new Date(paymentStartDate), termMonths)
@@ -314,7 +381,7 @@ export class LoanMortgageAccountService {
         currentBalance: -mortgageAmount,
         interestRate,
         institution,
-        paymentAmount: amortization.paymentAmount,
+        paymentAmount: storedPaymentAmount,
         paymentFrequency: mortgagePaymentFrequency,
         // A TypeORM `date` column, serialized with local getters: a UTC-midnight
         // value is stored a day early west of Greenwich, and this date anchors
@@ -322,8 +389,8 @@ export class LoanMortgageAccountService {
         paymentStartDate: localDateForColumn(paymentStartDate),
         sourceAccountId,
         interestCategoryId: interestCatId || null,
-        isCanadianMortgage,
-        isVariableRate,
+        ...mortgageTypeColumns(mortgageType),
+        prepaymentMode: prepaymentModeColumn(mortgageType, prepaymentMode),
         termMonths: termMonths || null,
         termEndDate,
         amortizationMonths,
@@ -393,16 +460,14 @@ export class LoanMortgageAccountService {
     amortizationMonths: number,
     paymentFrequency: MortgagePaymentFrequency,
     paymentStartDate: Date,
-    isCanadian: boolean,
-    isVariableRate: boolean,
+    mortgageType: MortgageType,
   ): MortgageAmortizationResult {
     return calculateMortgageAmortization({
       principal: Math.abs(mortgageAmount),
       annualRate: interestRate,
       amortizationMonths,
       paymentFrequency,
-      isCanadian,
-      isVariableRate,
+      mortgageType,
       startDate: paymentStartDate,
     });
   }
@@ -421,6 +486,107 @@ export class LoanMortgageAccountService {
       paymentFrequency,
       paymentStartDate,
     );
+  }
+
+  /**
+   * Suggest a mortgage type from installments the person read off a
+   * statement. Pure: nothing is read or written.
+   */
+  detectMortgageTypeFromSamples(
+    dto: DetectMortgageTypeDto,
+  ): MortgageTypeDetection {
+    return detectMortgageType(
+      dto.samples,
+      dto.interestRate ?? null,
+      dto.paymentFrequency,
+    );
+  }
+
+  /**
+   * Suggest a mortgage type from the loan's own posted installments, paired
+   * with their interest through the pairing rate-change inference reads
+   * (`LoanPaymentDetectorService.buildInstallmentHistory`), each with the
+   * ledger balance before its date. The rate is the one in effect on the
+   * latest installment's date (`effectiveAnnualRateOn`), and only the
+   * installments at that same rate are read, so a rate change inside the
+   * window is not mistaken for a method. A suggestion: it writes nothing,
+   * the stored type included.
+   */
+  async detectMortgageTypeFromHistory(
+    account: Account,
+    userId: string,
+  ): Promise<MortgageTypeHistoryDetectionResponseDto> {
+    if (account.accountType !== AccountType.MORTGAGE) {
+      throw new BadRequestException(
+        tr(
+          "errors.accounts.onlyMortgageAccounts",
+          "This operation is only valid for mortgage accounts",
+        ),
+      );
+    }
+
+    const { transactions, rateRows } = await withScopedDb(
+      this.dataSource,
+      async (m) => ({
+        // The rows `current_balance` sums: no VOID row, no split child, none
+        // dated after today. The pairing walks the balance back from
+        // `current_balance` through these, so a row it does not count would
+        // shift every balance before it, and a voided or future-dated
+        // installment would be read as one the loan paid.
+        transactions: await m
+          .getRepository(Transaction)
+          .createQueryBuilder("t")
+          .where("t.account_id = :accountId", { accountId: account.id })
+          .andWhere("t.user_id = :userId", { userId })
+          .andWhere(ledgerMovementPredicate("t"))
+          .andWhere("t.transaction_date <= :today", { today: todayYMD() })
+          .orderBy("t.transaction_date", "ASC")
+          .getMany(),
+        rateRows: await m.getRepository(LoanRateChange).find({
+          where: { accountId: account.id, userId },
+          order: { effectiveDate: "ASC" },
+        }),
+      }),
+    );
+    const history =
+      await this.loanPaymentDetectorService.buildInstallmentHistory(
+        userId,
+        account,
+        transactions,
+      );
+
+    const posted = postedInstallments(history);
+    const latest = posted.length > 0 ? posted[posted.length - 1] : null;
+    const fallbackRate =
+      account.interestRate == null ? null : Number(account.interestRate);
+    const quotedAnnualRate = latest
+      ? effectiveAnnualRateOn(rateRows, latest.date, fallbackRate)
+      : fallbackRate;
+    // The trailing run at the latest rate, walked back from the newest: an
+    // earlier period at the same rate (A, then B, then A again) is not
+    // consecutive with it, and the shape rules read consecutive installments.
+    const atLatestRate = (sample: DatedMortgageTypeSampleDto) =>
+      effectiveAnnualRateOn(rateRows, sample.date, fallbackRate) ===
+      quotedAnnualRate;
+    let start = posted.length;
+    while (
+      start > 0 &&
+      posted.length - start < HISTORY_DETECTION_SAMPLES &&
+      atLatestRate(posted[start - 1])
+    ) {
+      start--;
+    }
+    const samples = posted.slice(start);
+    const paymentFrequency = account.paymentFrequency
+      ? toMortgagePaymentFrequency(account.paymentFrequency)
+      : null;
+
+    return {
+      ...detectMortgageType(samples, quotedAnnualRate, paymentFrequency),
+      quotedAnnualRate,
+      paymentFrequency,
+      samples,
+    };
   }
 
   /**
@@ -460,20 +626,45 @@ export class LoanMortgageAccountService {
       );
     }
 
+    // A LINEAR or INTEREST_ONLY mortgage's method states every installment,
+    // so a stated payment is refused before anything is read or written
+    // (spec section 5.3).
+    refuseStatedPayment(account, newPaymentAmount);
+    const derivedType = derivedInstallmentType(account);
+    if (derivedType !== null) {
+      assertMortgageMethodTerms(derivedType, account);
+    }
+
+    // The debt the new rate first applies to: the ledger through the
+    // effective date, the as-of read installment pricing uses (spec decision
+    // 5). `current_balance` stops at today, so a future-dated change would be
+    // priced against a debt that payments posted before it no longer owe.
+    // Read before the rate change is recorded, so an unreadable ledger refuses
+    // the request before anything is written.
+    const effectiveYmd = formatDateYMD(effectiveDate);
+    const debt = await withScopedDb(this.dataSource, (m) =>
+      datedLoanDebt(m, account, effectiveYmd),
+    );
+    if (debt === null) {
+      throw new ServiceUnavailableException(
+        tr(
+          "errors.accounts.loanLedgerUnreadable",
+          "This loan's balance could not be read. Try again.",
+        ),
+      );
+    }
+
     const rateChange = await this.loanRateChangesService.create(
       userId,
       account.id,
       {
-        effectiveDate: formatDateYMD(effectiveDate),
+        effectiveDate: effectiveYmd,
         annualRate: newRate,
         newPaymentAmount: newPaymentAmount ?? null,
         recalculatePayment: newPaymentAmount == null,
       },
     );
 
-    const currentBalance = Math.abs(Number(account.currentBalance));
-    const paymentAmount =
-      rateChange.newPaymentAmount ?? (Number(account.paymentAmount) || 0);
     const periodicRate = getPeriodicRate(
       newRate,
       // The STORED cadence, read through the lookup that knows both spellings.
@@ -482,10 +673,33 @@ export class LoanMortgageAccountService {
       // so a semi-monthly mortgage's posted split carried twice the interest.
       periodsPerYearForStoredFrequency(account.paymentFrequency) ??
         DEFAULT_PERIODS_PER_YEAR,
-      account.isCanadianMortgage || false,
-      account.isVariableRate || false,
+      mortgageTypeOf(account),
     );
-    const interestPayment = roundMoney(currentBalance * periodicRate);
+
+    // The method's installment at the effective date: principal from table
+    // 4.3 on the dated debt, interest at the new rate (spec section 5.3).
+    // `assertMortgageMethodTerms` above refused every account that leaves it
+    // unpriced.
+    if (derivedType !== null) {
+      const installment = nonAnnuityInstallment(
+        derivedType,
+        account,
+        effectiveYmd,
+        debt,
+        periodicRate,
+      )!;
+      return {
+        newRate,
+        paymentAmount: roundMoney(installment.principal + installment.interest),
+        principalPayment: installment.principal,
+        interestPayment: installment.interest,
+        effectiveDate: rateChange.effectiveDate,
+      };
+    }
+
+    const paymentAmount =
+      rateChange.newPaymentAmount ?? (Number(account.paymentAmount) || 0);
+    const interestPayment = roundMoney(debt * periodicRate);
     const principalPayment = roundMoney(paymentAmount - interestPayment);
 
     return {
@@ -496,4 +710,34 @@ export class LoanMortgageAccountService {
       effectiveDate: rateChange.effectiveDate,
     };
   }
+}
+
+/**
+ * Each payment that carries both a principal and an interest figure, as a
+ * dated sample with the balance owed before its date. Where interest is a
+ * separate expense the payment's own amount is its principal; a payment with
+ * no interest figure (a lump-sum repayment, a transfer without a split) says
+ * nothing about the method and is left out.
+ */
+function postedInstallments(
+  history: InstallmentHistory,
+): DatedMortgageTypeSampleDto[] {
+  const samples: DatedMortgageTypeSampleDto[] = [];
+  for (const payment of history.payments) {
+    if (payment.interestAmount == null) continue;
+    const principal =
+      payment.principalAmount ??
+      (history.interestBookedSeparately ? payment.amount : null);
+    if (principal == null) continue;
+    const date = payment.date.split("T")[0];
+    const balance = history.balanceMap.get(date);
+    samples.push({
+      date,
+      principal: roundMoney(principal),
+      interest: roundMoney(payment.interestAmount),
+      balanceBefore:
+        balance !== undefined && balance > 0 ? roundMoney(balance) : null,
+    });
+  }
+  return samples;
 }

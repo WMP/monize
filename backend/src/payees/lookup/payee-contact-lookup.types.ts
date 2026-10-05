@@ -126,12 +126,7 @@ export const PAYEE_CONTACT_LOOKUP_PROVIDER = Symbol(
  * `no_provider`, `quota_exceeded` and `disabled` each name their own fix.
  */
 export type ContactLookupReason =
-  | "ok"
-  | "none"
-  | "disabled"
-  | "no_provider"
-  | "quota_exceeded"
-  | "failed";
+  "ok" | "none" | "disabled" | "no_provider" | "quota_exceeded" | "failed";
 
 /**
  * The candidates an `ok` outcome carries: at least one, best first. A tuple

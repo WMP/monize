@@ -1,4 +1,5 @@
 import type { BalanceForecastGap } from './banking-detail';
+import type { PrepaymentMode } from '@/lib/mortgage-type';
 
 export type AccountType =
   | 'CHEQUING'
@@ -34,6 +35,21 @@ export function isLiabilityAccountType(type: AccountType | undefined | null): bo
 /** How a loan/mortgage's interest is recorded, for rate detection. */
 export type InterestBookingMode = 'AUTO' | 'SPLIT' | 'SEPARATE';
 export const INTEREST_BOOKING_MODES: InterestBookingMode[] = ['AUTO', 'SPLIT', 'SEPARATE'];
+
+/**
+ * A mortgage's compounding convention and amortization method, stored in
+ * `accounts.mortgage_type` (docs/specs/mortgage-types.md, decision 1); the
+ * browser-side twin of the backend's `MORTGAGE_TYPES`. Behaviour per type is
+ * `MORTGAGE_TYPE_TRAITS` in `lib/mortgage-type.ts`, held to the backend's by
+ * `lib/mortgage-type.contract.test.ts`.
+ */
+export const MORTGAGE_TYPES = [
+  'ANNUITY',
+  'CANADIAN_FIXED',
+  'LINEAR',
+  'INTEREST_ONLY',
+] as const;
+export type MortgageType = (typeof MORTGAGE_TYPES)[number];
 
 /**
  * Payment frequencies a loan account can carry, mirroring the backend's
@@ -157,6 +173,14 @@ export interface Account {
   // Links an asset/other account to its financing loan/mortgage (equity view)
   linkedLoanAccountId: string | null;
   // Mortgage-specific fields
+  // The stored type: null on a non-mortgage, and on a mortgage a previous
+  // release wrote or whose flags it changed. Read it through `mortgageTypeOf`
+  // (`lib/mortgage-type.ts`), which falls back to the two flags below.
+  mortgageType: MortgageType | null;
+  // What an extra repayment does to a LINEAR mortgage's principal; null on
+  // every other type. Read it through `prepaymentModeOf`, which reads a null
+  // on a LINEAR mortgage as `SHORTEN_TERM`.
+  prepaymentMode?: PrepaymentMode | null;
   isCanadianMortgage: boolean;
   isVariableRate: boolean;
   termMonths: number | null;
@@ -219,7 +243,11 @@ export interface CreateAccountData {
   assetCategoryId?: string;
   dateAcquired?: string;
   linkedLoanAccountId?: string | null;
-  // Mortgage-specific fields
+  // Mortgage-specific fields. `mortgageType` wins over the two legacy flags
+  // when sent.
+  mortgageType?: MortgageType;
+  // LINEAR only; the server writes null for every other type.
+  prepaymentMode?: PrepaymentMode | null;
   isCanadianMortgage?: boolean;
   isVariableRate?: boolean;
   termMonths?: number;
@@ -284,6 +312,8 @@ export interface MortgagePreviewData {
   amortizationMonths: number;
   paymentFrequency: MortgagePaymentFrequency;
   paymentStartDate: string;
+  /** Wins over the two legacy flags when sent. */
+  mortgageType?: MortgageType;
   isCanadian: boolean;
   isVariableRate: boolean;
 }
@@ -324,6 +354,76 @@ export interface UpdateMortgageRateResponse {
   effectiveDate: string;
 }
 
+/**
+ * Why the mortgage-type detector answered as it did: the browser-side twin of
+ * the backend's `MORTGAGE_TYPE_DETECTION_REASONS`
+ * (`backend/src/accounts/mortgage-type-detection.util.ts`), each worded by
+ * `mortgageFields.detect.reason.<code>`. `mortgage-type-detection.contract.test.ts`
+ * holds the two lists and the catalog together.
+ */
+export const MORTGAGE_TYPE_DETECTION_REASONS = [
+  'TOO_FEW_SAMPLES',
+  'INVALID_SAMPLE',
+  'NO_PAYMENT',
+  'AMBIGUOUS_CONSTANT_PRINCIPAL_AND_INSTALLMENT',
+  'ACCELERATED_FREQUENCY',
+  'NO_RULE_FITS',
+  'ZERO_PRINCIPAL',
+  'ZERO_PRINCIPAL_RATE_MISMATCH',
+  'CONSTANT_PRINCIPAL',
+  'CONSTANT_PRINCIPAL_RATE_MISMATCH',
+  'CONSTANT_INSTALLMENT_SEMI_ANNUAL',
+  'CONSTANT_INSTALLMENT_NOMINAL',
+  'CONSTANT_INSTALLMENT_RATE_UNCHECKED',
+  'CONSTANT_INSTALLMENT_COMPOUNDING_AMBIGUOUS',
+  'CONSTANT_INSTALLMENT_RATE_MISMATCH',
+] as const;
+export type MortgageTypeDetectionReason =
+  (typeof MORTGAGE_TYPE_DETECTION_REASONS)[number];
+
+/** One installment as a statement shows it, positive amounts. */
+export interface MortgageTypeSample {
+  principal: number;
+  interest: number;
+  /** The debt the installment was charged on, when the statement shows it. */
+  balanceBefore?: number | null;
+}
+
+export interface DetectMortgageTypeData {
+  /** Consecutive installments, oldest first. */
+  samples: MortgageTypeSample[];
+  /** The quoted annual rate as a percentage; without it the compounding is unchecked. */
+  interestRate?: number | null;
+  paymentFrequency: MortgagePaymentFrequency;
+}
+
+/**
+ * A suggested type, never a saved one (docs/specs/mortgage-types.md, section
+ * 10): `type` is null when the installments do not decide one, and `reason`
+ * is always present so the reader learns why.
+ */
+export interface MortgageTypeDetection {
+  type: MortgageType | null;
+  confidence: 'high' | 'low';
+  reason: MortgageTypeDetectionReason;
+}
+
+/** A posted installment the history route read, with the debt before it. */
+export interface DatedMortgageTypeSample {
+  date: string;
+  principal: number;
+  interest: number;
+  balanceBefore: number | null;
+}
+
+export interface MortgageTypeHistoryDetection extends MortgageTypeDetection {
+  /** The annual rate in effect on the latest sample's date, when known. */
+  quotedAnnualRate: number | null;
+  paymentFrequency: MortgagePaymentFrequency | null;
+  /** The installments the suggestion was read from, oldest first. */
+  samples: DatedMortgageTypeSample[];
+}
+
 // Loan payment detection types
 export interface DetectedLoanPayment {
   paymentAmount: number;
@@ -357,12 +457,46 @@ export interface SetupLoanPaymentsData {
   payeeId?: string;
   payeeName?: string;
   autoPost?: boolean;
+  /** Wins over the two legacy flags when sent. */
+  mortgageType?: MortgageType;
+  /** LINEAR only; the server writes null for every other type. */
+  prepaymentMode?: PrepaymentMode | null;
   isCanadianMortgage?: boolean;
   isVariableRate?: boolean;
   amortizationMonths?: number;
   termMonths?: number;
   extraPrincipal?: number;
   detectedInterestAmount?: number;
+}
+
+/**
+ * The terms a LINEAR or INTEREST_ONLY mortgage's first installment is priced
+ * from before setup: the fields of `SetupLoanPaymentsData` the price depends on.
+ */
+export type PreviewLoanPaymentSetupData = Pick<
+  SetupLoanPaymentsData,
+  | 'paymentFrequency'
+  | 'nextDueDate'
+  | 'interestRate'
+  | 'mortgageType'
+  | 'prepaymentMode'
+  | 'isCanadianMortgage'
+  | 'isVariableRate'
+  | 'amortizationMonths'
+  | 'extraPrincipal'
+>;
+
+export interface PreviewLoanPaymentSetupResponse {
+  /**
+   * True for a LINEAR or INTEREST_ONLY mortgage, whose installment the server
+   * derives; false for an annuity mortgage or a loan, whose payment the user
+   * states (the figures are then null).
+   */
+  derivesInstallment: boolean;
+  principalPayment: number | null;
+  interestPayment: number | null;
+  /** What the setup request must send: the first installment plus any extra. */
+  paymentAmount: number | null;
 }
 
 export interface SetupLoanPaymentsResponse {

@@ -23,12 +23,12 @@
     "button": "청구서 &amp; 입금 보기"
   },
   "mortgageReminder": {
-    "subject": "Monize: 예정된 주택담보대출 갱신 1건",
-    "subjectPlural": "Monize: 예정된 주택담보대출 갱신 {{ count }}건",
-    "heading": "주택담보대출 갱신 알림",
+    "subject": "Monize: 곧 끝나는 주택담보대출 금리 기간 1건",
+    "subjectPlural": "Monize: 곧 끝나는 주택담보대출 금리 기간 {{ count }}건",
+    "heading": "주택담보대출 금리 기간 알림",
     "greeting": "안녕하세요 {{ name }}님,",
-    "introOne": "만기 갱신이 예정된 주택담보대출이 1건 있습니다. 만기 전에 대출 기관에 연락하여 갱신 옵션을 논의하세요:",
-    "introMany": "만기 갱신이 예정된 주택담보대출이 {{ count }}건 있습니다. 만기 전에 대출 기관에 연락하여 갱신 옵션을 논의하세요:",
+    "introOne": "현재 금리 기간이 곧 끝나는 주택담보대출이 1건 있습니다. 끝나기 전에 대출 기관에 연락하여 다음 금리나 갱신을 준비하세요:",
+    "introMany": "현재 금리 기간이 곧 끝나는 주택담보대출이 {{ count }}건 있습니다. 각각 끝나기 전에 대출 기관에 연락하여 다음 금리나 갱신을 준비하세요:",
     "colMortgage": "주택담보대출",
     "colTermEndDate": "만기일",
     "colTimeRemaining": "남은 기간",
@@ -308,6 +308,22 @@
     "priceMovement": {
       "title": "가격 변동 알림: {{ symbol }} ({{ percent }}%)",
       "message": "{{ symbol }}: 이전 데이터가 있는 거래일 대비 {{ percent }}%."
+    },
+    "bankSync": {
+      "expiringTitleToday": "{{ institution }}: 은행 접근이 오늘 종료됩니다",
+      "expiringTitleOneDay": "{{ institution }}: 은행 접근이 1일 이내에 종료됩니다",
+      "expiringTitleDays": "{{ institution }}: 은행 접근이 {{ days }}일 이내에 종료됩니다",
+      "expiringMessage": "Monize가 {{ institution }}을(를) 읽도록 한 동의가 {{ date }}에 종료됩니다. 동기화를 계속하려면 Monize에서 연결을 갱신하세요.",
+      "expiredTitle": "{{ institution }}: 은행 접근이 종료되었습니다",
+      "expiredMessage": "Monize가 {{ institution }}을(를) 읽도록 한 동의가 종료되었습니다. 동기화를 다시 시작하려면 Monize에서 연결을 갱신하세요.",
+      "failedTitle": "{{ institution }}: 동기화 실패",
+      "failedMessage": "{{ institution }}의 일일 동기화가 다음 계정에서 실패했습니다: {{ accounts }}. 이유는 은행 동기화 설정에서 확인하세요.",
+      "failedCredentialsMessage": "은행 동기화 자격 증명이 없거나 거부되어 {{ institution }}의 일일 동기화를 시작할 수 없었습니다. 은행 동기화 설정에서 자격 증명을 확인하세요.",
+      "unnamedAccount": "이름 없는 계정",
+      "importedTitle": "{{ institution }}: 새 거래를 가져왔습니다",
+      "importedMessage": "일일 동기화로 {{ institution }}에서 가져온 거래: {{ imported }}건.",
+      "importedNoneTitle": "{{ institution }}: 새 거래 없음",
+      "importedNoneMessage": "{{ institution }}의 일일 동기화에서 새 거래를 찾지 못했습니다."
     }
   },
   "backupOffsite": {

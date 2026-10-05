@@ -14,6 +14,9 @@ import {
   getPeriodsPerYear,
   monthsBetween,
 } from '@/lib/loan-schedule';
+import { amortizationMethodFor, mortgageTypeOf } from '@/lib/mortgage-type';
+import { methodScheduleTerms } from '@/lib/mortgage-installment';
+import type { MortgageType } from '@/types/account';
 import { roundToCents } from '@/lib/format';
 
 /**
@@ -137,8 +140,7 @@ export function computePastImpact(
   }
 
   const frequency = account.paymentFrequency as ScheduleFrequency;
-  const isCanadian = account.isCanadianMortgage || false;
-  const isVariableRate = account.isVariableRate || false;
+  const mortgageType = mortgageTypeOf(account);
 
   // The origination rate comes from the rate history when one exists; the
   // account's scalar rate is only the *current* rate and would corrupt the
@@ -153,101 +155,26 @@ export function computePastImpact(
   // reader has no other way to know that.
   const scalarRate =
     account.interestRate != null ? Number(account.interestRate) : null;
-  const timeline = buildRateTimeline(rateChanges, startDate, scalarRate ?? 0);
-
-  const periodsPerYear = getPeriodsPerYear(frequency);
-
-  // --- The contractual "if I never overpaid" schedule ---
-  // Prefer the loan's real origination installment -- the payment recorded on
-  // the initial rate row, sized for the full original principal -- and follow
-  // its recorded steps. This plots the loan's true payoff, so a loan paid down
-  // faster than its nominal amortization (a large regular payment on a
-  // long-amortization mortgage) is not stretched onto the theoretical
-  // minimum-payment curve that a fresh PMT over the configured term would draw.
-  //
-  // Fall back to that PMT only when no usable installment is recorded: interest
-  // booked separately leaves the rate rows' payment null (recording it would
-  // capture a principal-only figure), and a recorded payment that cannot even
-  // cover the first period's interest is unusable. The fallback path is
-  // unchanged from before, so loans that already relied on it are unaffected.
-  const configuredTermPeriods = Math.round((configuredTermMonths * periodsPerYear) / 12);
-  const recordedInstallment = timeline.startingPaymentAmount;
-  const useRecordedInstallment =
-    recordedInstallment != null &&
-    recordedInstallment >
-      firstPeriodInterest(
-        originalPrincipal,
-        timeline.startingAnnualRate,
-        frequency,
-        isCanadian,
-        isVariableRate,
-      );
-
-  const contractualPayment = useRecordedInstallment
-    ? recordedInstallment
-    : calculateMortgagePaymentAmount(
-        originalPrincipal,
-        timeline.startingAnnualRate,
-        configuredTermMonths,
-        frequency,
-        isCanadian,
-        isVariableRate,
-      );
-  if (contractualPayment <= 0) return null;
-
-  const base: LoanScheduleInput = {
-    startingBalance: originalPrincipal,
-    annualRate: timeline.startingAnnualRate,
-    paymentAmount: contractualPayment,
-    frequency,
-    isCanadian,
-    isVariableRate,
-    firstPaymentDate: parseLocalDate(startDate),
-  };
-  // Accelerated payments (monthly / 2 or / 4) are larger than the amortizing
-  // installment, so the contractual loan pays off before its nominal term.
-  // fixedEndPeriod would re-level them down to fill the full term and erase the
-  // acceleration, so those keep the fixed payment and run to their natural,
-  // earlier payoff (only rescuing a rate-rise stall) -- matching how the current
-  // projection is computed.
-  const isAccelerated =
-    frequency === 'ACCELERATED_WEEKLY' || frequency === 'ACCELERATED_BIWEEKLY';
-  const originalSchedule = generateLoanSchedule(
-    useRecordedInstallment
-      ? {
-          ...base,
-          // Keep the timeline's payment steps so the contractual installment
-          // tracks the lender period to period (e.g. a variable rate that
-          // re-levelled the payment upward), then run to the loan's own payoff.
-          rateChanges: timeline.rateChanges,
-          // Re-level toward the configured term ONLY if a rate rise would
-          // otherwise stall the payment; unlike fixedEndPeriod this never forces
-          // payoff at the term, so a faster real schedule keeps its earlier one.
-          rescueEndPeriod: configuredTermPeriods,
-          maxPayments: ORIGINAL_SCHEDULE_MAX_PAYMENTS,
-        }
-      : {
-          ...base,
-          // Keep the recorded rate steps but drop their payment overrides (often
-          // principal-only figures that would stall a fixed payment);
-          // re-levelling sets the installment instead.
-          rateChanges: timeline.rateChanges.map((change) => ({ ...change, paymentAmount: null })),
-          ...(isAccelerated
-            ? {
-                rescueEndPeriod: configuredTermPeriods,
-                maxPayments: ORIGINAL_SCHEDULE_MAX_PAYMENTS,
-              }
-            : {
-                fixedEndPeriod: configuredTermPeriods,
-                // One-period buffer so a rounding remainder on the final
-                // payment is kept.
-                maxPayments: Math.min(
-                  configuredTermPeriods + Math.ceil(periodsPerYear / 12),
-                  ORIGINAL_SCHEDULE_MAX_PAYMENTS,
-                ),
-              }),
-        },
-  );
+  const originalSchedule =
+    amortizationMethodFor(mortgageType) === 'ANNUITY'
+      ? contractualAnnuitySchedule({
+          rateChanges,
+          startDate,
+          scalarRate,
+          originalPrincipal,
+          configuredTermMonths,
+          frequency,
+          mortgageType,
+        })
+      : contractualMethodSchedule({
+          account,
+          rateChanges,
+          scalarRate,
+          originalPrincipal,
+          frequency,
+          mortgageType,
+        });
+  if (!originalSchedule) return null;
 
   // --- Current payoff, from the caller's forward projection ---
   const isPaidOff = history.currentBalance <= 0.01;
@@ -313,3 +240,162 @@ export function computePastImpact(
   };
 }
 
+/**
+ * The contractual "if I never overpaid" schedule of an annuity loan: its
+ * recorded origination installment, or a fresh PMT over the configured term
+ * when none is usable. Null when no contractual payment can be determined.
+ */
+function contractualAnnuitySchedule({
+  rateChanges,
+  startDate,
+  scalarRate,
+  originalPrincipal,
+  configuredTermMonths,
+  frequency,
+  mortgageType,
+}: {
+  rateChanges: RateTimelineRow[];
+  startDate: string;
+  scalarRate: number | null;
+  originalPrincipal: number;
+  configuredTermMonths: number;
+  frequency: ScheduleFrequency;
+  mortgageType: MortgageType;
+}): LoanScheduleResult | null {
+  const timeline = buildRateTimeline(rateChanges, startDate, scalarRate ?? 0);
+
+  const periodsPerYear = getPeriodsPerYear(frequency);
+
+  // --- The contractual "if I never overpaid" schedule ---
+  // Prefer the loan's real origination installment -- the payment recorded on
+  // the initial rate row, sized for the full original principal -- and follow
+  // its recorded steps. This plots the loan's true payoff, so a loan paid down
+  // faster than its nominal amortization (a large regular payment on a
+  // long-amortization mortgage) is not stretched onto the theoretical
+  // minimum-payment curve that a fresh PMT over the configured term would draw.
+  //
+  // Fall back to that PMT only when no usable installment is recorded: interest
+  // booked separately leaves the rate rows' payment null (recording it would
+  // capture a principal-only figure), and a recorded payment that cannot even
+  // cover the first period's interest is unusable. The fallback path is
+  // unchanged from before, so loans that already relied on it are unaffected.
+  const configuredTermPeriods = Math.round((configuredTermMonths * periodsPerYear) / 12);
+  const recordedInstallment = timeline.startingPaymentAmount;
+  const useRecordedInstallment =
+    recordedInstallment != null &&
+    recordedInstallment >
+      firstPeriodInterest(
+        originalPrincipal,
+        timeline.startingAnnualRate,
+        frequency,
+        mortgageType,
+      );
+
+  const contractualPayment = useRecordedInstallment
+    ? recordedInstallment
+    : calculateMortgagePaymentAmount(
+        originalPrincipal,
+        timeline.startingAnnualRate,
+        configuredTermMonths,
+        frequency,
+        mortgageType,
+      );
+  if (contractualPayment <= 0) return null;
+
+  const base: LoanScheduleInput = {
+    startingBalance: originalPrincipal,
+    annualRate: timeline.startingAnnualRate,
+    paymentAmount: contractualPayment,
+    frequency,
+    mortgageType,
+    firstPaymentDate: parseLocalDate(startDate),
+  };
+  // Accelerated payments (monthly / 2 or / 4) are larger than the amortizing
+  // installment, so the contractual loan pays off before its nominal term.
+  // fixedEndPeriod would re-level them down to fill the full term and erase the
+  // acceleration, so those keep the fixed payment and run to their natural,
+  // earlier payoff (only rescuing a rate-rise stall) -- matching how the current
+  // projection is computed.
+  const isAccelerated =
+    frequency === 'ACCELERATED_WEEKLY' || frequency === 'ACCELERATED_BIWEEKLY';
+  return generateLoanSchedule(
+    useRecordedInstallment
+      ? {
+          ...base,
+          // Keep the timeline's payment steps so the contractual installment
+          // tracks the lender period to period (e.g. a variable rate that
+          // re-levelled the payment upward), then run to the loan's own payoff.
+          rateChanges: timeline.rateChanges,
+          // Re-level toward the configured term ONLY if a rate rise would
+          // otherwise stall the payment; unlike fixedEndPeriod this never forces
+          // payoff at the term, so a faster real schedule keeps its earlier one.
+          rescueEndPeriod: configuredTermPeriods,
+          maxPayments: ORIGINAL_SCHEDULE_MAX_PAYMENTS,
+        }
+      : {
+          ...base,
+          // Keep the recorded rate steps but drop their payment overrides (often
+          // principal-only figures that would stall a fixed payment);
+          // re-levelling sets the installment instead.
+          rateChanges: timeline.rateChanges.map((change) => ({ ...change, paymentAmount: null })),
+          ...(isAccelerated
+            ? {
+                rescueEndPeriod: configuredTermPeriods,
+                maxPayments: ORIGINAL_SCHEDULE_MAX_PAYMENTS,
+              }
+            : {
+                fixedEndPeriod: configuredTermPeriods,
+                // One-period buffer so a rounding remainder on the final
+                // payment is kept.
+                maxPayments: Math.min(
+                  configuredTermPeriods + Math.ceil(periodsPerYear / 12),
+                  ORIGINAL_SCHEDULE_MAX_PAYMENTS,
+                ),
+              }),
+        },
+  );
+
+}
+
+/**
+ * The contractual schedule of a LINEAR or INTEREST_ONLY mortgage: the method's
+ * own schedule from the amount borrowed at `payment_start_date`, payment 1
+ * (INV-LOAN-005), with the recorded rate steps and no overpayment
+ * (docs/specs/mortgage-types.md, section 5.6). It has no installment to
+ * choose: each row's is the method's. Null when a term the method needs is
+ * missing (section 8).
+ */
+function contractualMethodSchedule({
+  account,
+  rateChanges,
+  scalarRate,
+  originalPrincipal,
+  frequency,
+  mortgageType,
+}: {
+  account: Account;
+  rateChanges: RateTimelineRow[];
+  scalarRate: number | null;
+  originalPrincipal: number;
+  frequency: ScheduleFrequency;
+  mortgageType: MortgageType;
+}): LoanScheduleResult | null {
+  const startDate = account.paymentStartDate?.split('T')[0];
+  if (!startDate) return null;
+  const method = methodScheduleTerms(mortgageType, account, startDate);
+  if (!method?.terms) return null;
+  // See the annuity schedule's note on the `0`: this is read only when there
+  // is no rate history, and the caller has refused a loan without any rate.
+  const timeline = buildRateTimeline(rateChanges, startDate, scalarRate ?? 0);
+  return generateLoanSchedule({
+    startingBalance: originalPrincipal,
+    annualRate: timeline.startingAnnualRate,
+    paymentAmount: 0,
+    frequency,
+    mortgageType,
+    methodTerms: method.terms,
+    firstPaymentDate: parseLocalDate(startDate),
+    rateChanges: timeline.rateChanges,
+    maxPayments: ORIGINAL_SCHEDULE_MAX_PAYMENTS,
+  });
+}

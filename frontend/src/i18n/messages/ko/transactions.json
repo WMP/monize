@@ -76,7 +76,10 @@
     "collapseAria": "계정 정보 숨기기",
     "showAccountNumber": "계정 번호 표시",
     "hideAccountNumber": "계정 번호 숨기기",
-    "show": "계정 정보 표시"
+    "show": "계정 정보 표시",
+    "nextInstallment": "다음 할부금",
+    "finalPayment": "최종 납입금",
+    "amountDueOn": "{amount}, 기일 {date}"
   },
   "page": {
     "title": "거래",

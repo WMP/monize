@@ -497,6 +497,160 @@ describe("LoanPaymentSetupService", () => {
       );
     });
 
+    it("writes the type with the flags it maps to, only when the request names one", async () => {
+      const storedFixed = {
+        ...mockLoanAccount,
+        id: "mortgage-4",
+        accountType: AccountType.MORTGAGE,
+        isCanadianMortgage: true,
+        isVariableRate: false,
+        mortgageType: "CANADIAN_FIXED",
+      };
+      const request = {
+        paymentAmount: 1500,
+        paymentFrequency: "MONTHLY",
+        sourceAccountId: "source-1",
+        nextDueDate: "2026-04-01",
+        interestRate: 4.25,
+      };
+      const lastUpdate = () => {
+        const calls = accountsRepository.update.mock.calls;
+        return calls[calls.length - 1][1];
+      };
+
+      accountsRepository.findOne
+        .mockResolvedValueOnce(storedFixed)
+        .mockResolvedValueOnce(mockSourceAccount);
+      await service.setupLoanPayments("user-1", "mortgage-4", {
+        ...request,
+        isCanadianMortgage: false,
+      });
+      expect(lastUpdate()).toMatchObject({
+        mortgageType: "ANNUITY",
+        isCanadianMortgage: false,
+        isVariableRate: false,
+      });
+
+      // A type-only request stores the same row a flags-only one does.
+      accountsRepository.findOne
+        .mockResolvedValueOnce(storedFixed)
+        .mockResolvedValueOnce(mockSourceAccount);
+      await service.setupLoanPayments("user-1", "mortgage-4", {
+        ...request,
+        mortgageType: "ANNUITY",
+      });
+      expect(lastUpdate()).toMatchObject({
+        mortgageType: "ANNUITY",
+        isCanadianMortgage: false,
+        isVariableRate: false,
+      });
+
+      // Naming neither leaves the stored columns alone.
+      accountsRepository.findOne
+        .mockResolvedValueOnce(storedFixed)
+        .mockResolvedValueOnce(mockSourceAccount);
+      await service.setupLoanPayments("user-1", "mortgage-4", request);
+      expect(lastUpdate()).not.toHaveProperty("mortgageType");
+      expect(lastUpdate()).not.toHaveProperty("isCanadianMortgage");
+    });
+
+    it("splits an ANNUITY mortgage at the nominal rate, at every cadence", async () => {
+      // Every mortgage is split by its type now (spec 5.5), and ANNUITY is
+      // the nominal rate over the payments per year -- the arithmetic the loan
+      // helper split it with before, quarterly included. A Canadian
+      // variable-rate mortgage is ANNUITY, so it is no longer refused the
+      // cadences the Canadian fixed-rate convention refuses.
+      for (const [paymentFrequency, ppy] of [
+        ["MONTHLY", 12],
+        ["SEMIMONTHLY", 24],
+        ["QUARTERLY", 4],
+      ] as const) {
+        accountsRepository.findOne
+          .mockResolvedValueOnce({
+            ...mockLoanAccount,
+            id: "mortgage-5",
+            accountType: AccountType.MORTGAGE,
+            isCanadianMortgage: true,
+            isVariableRate: true,
+            mortgageType: null,
+          })
+          .mockResolvedValueOnce(mockSourceAccount);
+        scheduledTransactionsService.create.mockClear();
+
+        await service.setupLoanPayments("user-1", "mortgage-5", {
+          paymentAmount: 1500,
+          paymentFrequency,
+          sourceAccountId: "source-1",
+          nextDueDate: "2026-04-01",
+          interestRate: 6,
+        });
+
+        const interest = Math.round(15000 * (0.06 / ppy) * 10000) / 10000;
+        const splits = scheduledTransactionsService.create.mock.calls[0][1]
+          .splits as Array<{ memo: string; amount: number }>;
+        expect(splits.map((sp) => [sp.memo, sp.amount])).toEqual([
+          ["Principal", -(1500 - interest)],
+          ["Interest", -interest],
+        ]);
+      }
+    });
+
+    it("splits a CANADIAN_FIXED mortgage at the semi-annual conversion", async () => {
+      accountsRepository.findOne
+        .mockResolvedValueOnce({
+          ...mockLoanAccount,
+          id: "mortgage-6",
+          accountType: AccountType.MORTGAGE,
+          isCanadianMortgage: false,
+          isVariableRate: false,
+          mortgageType: "CANADIAN_FIXED",
+        })
+        .mockResolvedValueOnce(mockSourceAccount);
+
+      await service.setupLoanPayments("user-1", "mortgage-6", {
+        paymentAmount: 1500,
+        paymentFrequency: "MONTHLY",
+        sourceAccountId: "source-1",
+        nextDueDate: "2026-04-01",
+        interestRate: 6,
+      });
+
+      const interest =
+        Math.round(15000 * (Math.pow(1.03, 2 / 12) - 1) * 10000) / 10000;
+      const interestSplit = scheduledTransactionsService.create.mock.calls[0][1]
+        .splits[1] as { memo: string; amount: number };
+      expect(interestSplit).toMatchObject({
+        memo: "Interest",
+        amount: -interest,
+      });
+    });
+
+    it("puts the whole base payment to principal on a zero-rate mortgage", async () => {
+      accountsRepository.findOne
+        .mockResolvedValueOnce({
+          ...mockLoanAccount,
+          id: "mortgage-7",
+          accountType: AccountType.MORTGAGE,
+          currentBalance: 0,
+          mortgageType: "ANNUITY",
+        })
+        .mockResolvedValueOnce(mockSourceAccount);
+
+      await service.setupLoanPayments("user-1", "mortgage-7", {
+        paymentAmount: 1500,
+        paymentFrequency: "MONTHLY",
+        sourceAccountId: "source-1",
+        nextDueDate: "2026-04-01",
+      });
+
+      // A zero recorded balance is history not yet imported, not a payoff.
+      const createCall = scheduledTransactionsService.create.mock.calls[0][1];
+      expect(createCall.amount).toBe(-1500);
+      expect(createCall.splits).toEqual([
+        expect.objectContaining({ memo: "Principal", amount: -1500 }),
+      ]);
+    });
+
     it("refuses a frequency the recurrence table cannot schedule", async () => {
       // The DTO's @IsIn list keeps this unreachable through the controller, and
       // loan-payment-frequency.guard.spec.ts holds the two lists together -- but

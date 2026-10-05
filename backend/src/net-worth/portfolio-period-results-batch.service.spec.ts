@@ -357,6 +357,10 @@ describe("PortfolioPeriodResultsBatchService", () => {
     );
     const flowQuery = queries.find((q) => q.sql.includes("SUM(t.amount)"))!;
     expect(flowQuery.params[1]).toBe("2026-09-09");
+    // The flow is drawn around the sleeve, with the whole scope as the
+    // investment scope an imported trade's sleeve leg settles inside.
+    expect(flowQuery.params[3]).toEqual(["cash-1"]);
+    expect(flowQuery.params[4]).toEqual(["brok-1", "cash-1"]);
   });
 
   it("measures a day against the previous close", async () => {
@@ -454,6 +458,9 @@ describe("PortfolioPeriodResultsBatchService", () => {
       reasons: ["externallySettledTrade"],
       valueChange: 10_200,
     });
+    // The invested measure does not read where a trade's cash settled (#1516).
+    expect(results.periods["1y"]?.investedReasons).toEqual([]);
+    expect(results.periods["1y"]?.investmentPnl).not.toBeNull();
     // The trade is outside the 1M window, which stays measurable.
     expect(results.periods["1m"]).toMatchObject({
       investmentResult: 200,

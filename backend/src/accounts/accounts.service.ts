@@ -24,6 +24,11 @@ import { PortfolioService } from "../securities/portfolio.service";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { resolveUserDefaultCurrency } from "../common/default-currency.util";
 import { memoizedRateResolver } from "../common/converting-total";
+import {
+  DetectMortgageTypeDto,
+  MortgageTypeHistoryDetectionResponseDto,
+} from "./dto/detect-mortgage-type.dto";
+import { MortgageTypeDetection } from "./mortgage-type-detection.util";
 import { LoanMortgageAccountService } from "./loan-mortgage-account.service";
 import { mortgageTermEndDate } from "./payment-frequency.util";
 import { PaymentFrequency, AmortizationResult } from "./loan-amortization.util";
@@ -50,6 +55,23 @@ import { withScopedDb } from "../common/db/scoped-db";
 import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { affectedRowCount } from "../common/db/query-result";
 import { LEDGER_MOVEMENT_PREDICATE } from "../common/ledger-balance.sql";
+import {
+  MortgageType,
+  PrepaymentMode,
+  mortgageTypeColumns,
+  mortgageTypeOf,
+  prepaymentModeColumn,
+  prepaymentModeOf,
+  requestedMortgageType,
+  storesConstantPayment,
+} from "./mortgage-type.util";
+import { assertMortgageMethodTerms } from "./mortgage-installment.util";
+import { applyMortgageMethodColumns } from "./mortgage-method-columns.util";
+import {
+  DatedInstallment,
+  derivedInstallmentFacts,
+} from "./mortgage-installment-facts";
+import { ScheduledOccurrenceService } from "../scheduled-transactions/scheduled-occurrence.service";
 
 /**
  * One account as the AI Assistant and the MCP server describe it.
@@ -86,6 +108,28 @@ export interface LlmAccountRow {
   paymentStartDate: string | null;
   amortizationMonths: number | null;
   originalPrincipal: number | null;
+  /**
+   * How a mortgage's rate compounds and its principal amortizes
+   * (`mortgage-type.util.ts`), the column or else the type its two legacy
+   * flags denote; null on every other account type.
+   */
+  mortgageType: MortgageType | null;
+  /** A LINEAR mortgage's prepayment mode; null on every other account. */
+  prepaymentMode: PrepaymentMode | null;
+  /**
+   * A LINEAR or INTEREST_ONLY mortgage has no constant payment, so
+   * `paymentAmount` is null for it (docs/specs/mortgage-types.md, decision 11)
+   * and this carries the next installment of its scheduled payment with its
+   * due date instead. Null on every other account, and when the mortgage has
+   * no active scheduled payment.
+   */
+  nextInstallment: DatedInstallment | null;
+  /**
+   * An INTEREST_ONLY mortgage's final payment (the whole debt plus that
+   * period's interest) and its date, which an installment of interest alone
+   * would otherwise hide. Null on every other account.
+   */
+  bullet: { dueDate: string; amount: number } | null;
 }
 
 /**
@@ -138,6 +182,8 @@ export class AccountsService {
     private loanMortgageService: LoanMortgageAccountService,
     private dataSource: DataSource,
     private actionHistoryService: ActionHistoryService,
+    @Inject(forwardRef(() => ScheduledOccurrenceService))
+    private scheduledOccurrenceService: ScheduledOccurrenceService,
   ) {}
 
   /**
@@ -215,10 +261,52 @@ export class AccountsService {
       delete accountData.statementSettlementDay;
     }
 
+    // Only a mortgage has a type, written with the flags it maps to; a request
+    // naming neither is the default type. LINEAR and INTEREST_ONLY are refused
+    // without the terms their method prices from (spec section 8), store no
+    // constant payment (decision 11), and only LINEAR keeps a prepayment mode
+    // (decision 10).
+    const mortgageType =
+      accountData.accountType === AccountType.MORTGAGE
+        ? (requestedMortgageType(accountData) ?? "ANNUITY")
+        : null;
+    const prepaymentMode = mortgageType
+      ? prepaymentModeColumn(mortgageType, accountData.prepaymentMode)
+      : null;
+    const derivesInstallment =
+      mortgageType !== null && !storesConstantPayment(mortgageType);
+    // A LINEAR or INTEREST_ONLY request carrying only the mortgage form's
+    // cadence (it skipped the full mortgage path for want of a source account)
+    // has that cadence stored, so the row is one the method can price and the
+    // refusal below never names a field the client did not send. The column
+    // holds both spellings (`periodsPerYearForStoredFrequency`).
+    const paymentFrequency: string | undefined =
+      accountData.paymentFrequency ??
+      (derivesInstallment ? accountData.mortgagePaymentFrequency : undefined);
+    const mortgageColumns = mortgageType
+      ? {
+          ...mortgageTypeColumns(mortgageType),
+          prepaymentMode,
+          ...(derivesInstallment ? { paymentFrequency } : {}),
+        }
+      : {};
+    if (derivesInstallment) {
+      assertMortgageMethodTerms(mortgageType, {
+        ...accountData,
+        paymentFrequency,
+        prepaymentMode,
+        openingBalance,
+      });
+      delete accountData.paymentAmount;
+    }
+    delete accountData.mortgageType;
+    delete accountData.prepaymentMode;
+
     const saved = await withScopedDb(this.dataSource, (m) => {
       const repo = m.getRepository(Account);
       const account = repo.create({
         ...accountData,
+        ...mortgageColumns,
         userId,
         openingBalance,
         currentBalance: openingBalance,
@@ -247,7 +335,14 @@ export class AccountsService {
     userId: string,
     createAccountDto: CreateAccountDto,
   ): Promise<{ cashAccount: Account; brokerageAccount: Account }> {
-    const { openingBalance = 0, name, ...accountData } = createAccountDto;
+    const {
+      openingBalance = 0,
+      name,
+      // Only a mortgage has a type.
+      mortgageType: _mortgageType,
+      prepaymentMode: _prepaymentMode,
+      ...accountData
+    } = createAccountDto;
 
     return withScopedDb(this.dataSource, async (m) => {
       const repo = m.getRepository(Account);
@@ -620,8 +715,7 @@ export class AccountsService {
     amortizationMonths: number,
     paymentFrequency: MortgagePaymentFrequency,
     paymentStartDate: Date,
-    isCanadian: boolean,
-    isVariableRate: boolean,
+    mortgageType: MortgageType,
   ): MortgageAmortizationResult {
     return this.loanMortgageService.previewMortgageAmortization(
       mortgageAmount,
@@ -629,8 +723,7 @@ export class AccountsService {
       amortizationMonths,
       paymentFrequency,
       paymentStartDate,
-      isCanadian,
-      isVariableRate,
+      mortgageType,
     );
   }
 
@@ -648,6 +741,23 @@ export class AccountsService {
       newRate,
       effectiveDate,
       newPaymentAmount,
+    );
+  }
+
+  detectMortgageTypeFromSamples(
+    dto: DetectMortgageTypeDto,
+  ): MortgageTypeDetection {
+    return this.loanMortgageService.detectMortgageTypeFromSamples(dto);
+  }
+
+  async detectMortgageTypeFromHistory(
+    userId: string,
+    accountId: string,
+  ): Promise<MortgageTypeHistoryDetectionResponseDto> {
+    const account = await this.findOne(userId, accountId);
+    return this.loanMortgageService.detectMortgageTypeFromHistory(
+      account,
+      userId,
     );
   }
 
@@ -847,11 +957,24 @@ export class AccountsService {
             : null;
         if (updateAccountDto.linkedLoanAccountId !== undefined)
           account.linkedLoanAccountId = updateAccountDto.linkedLoanAccountId;
-        // Mortgage-specific fields
-        if (updateAccountDto.isCanadianMortgage !== undefined)
-          account.isCanadianMortgage = updateAccountDto.isCanadianMortgage;
-        if (updateAccountDto.isVariableRate !== undefined)
-          account.isVariableRate = updateAccountDto.isVariableRate;
+        // Mortgage-specific fields. A mortgage writes its type and the flags
+        // it maps to together, so a previous-release pod reading the flags
+        // prices the row as this one does. Any other account type has no type
+        // (cleared when an edit moves a mortgage to another type, as the
+        // backfill leaves non-mortgage rows null) and keeps the flags as sent.
+        const requestedType =
+          effectiveType === AccountType.MORTGAGE
+            ? requestedMortgageType(updateAccountDto, account)
+            : undefined;
+        if (requestedType !== undefined) {
+          Object.assign(account, mortgageTypeColumns(requestedType));
+        } else if (effectiveType !== AccountType.MORTGAGE) {
+          account.mortgageType = null;
+          if (updateAccountDto.isCanadianMortgage !== undefined)
+            account.isCanadianMortgage = updateAccountDto.isCanadianMortgage;
+          if (updateAccountDto.isVariableRate !== undefined)
+            account.isVariableRate = updateAccountDto.isVariableRate;
+        }
         if (updateAccountDto.termMonths !== undefined) {
           account.termMonths = updateAccountDto.termMonths || null;
           // Recalculate termEndDate when termMonths changes
@@ -866,6 +989,20 @@ export class AccountsService {
         }
         if (updateAccountDto.amortizationMonths !== undefined)
           account.amortizationMonths = updateAccountDto.amortizationMonths;
+        // The prepayment mode and the stored payment follow the saved type,
+        // in this transaction (spec section 5.6).
+        const { repriceTemplate } = await applyMortgageMethodColumns(
+          m,
+          account,
+          {
+            type:
+              before.accountType === AccountType.MORTGAGE
+                ? mortgageTypeOf(before)
+                : null,
+            mode: before.prepaymentMode ?? null,
+          },
+          updateAccountDto.prepaymentMode,
+        );
 
         // Keep a linked investment pair (cash <-> brokerage) in sync. Both halves
         // represent one real-world account, so shared attributes -- currency,
@@ -904,6 +1041,14 @@ export class AccountsService {
         }
 
         const saved = await m.save(account);
+        // A changed method leaves the template at the previous rule's
+        // installment; reprice it in this transaction, after the account row
+        // it reads (spec section 5.6).
+        if (repriceTemplate && saved.scheduledTransactionId) {
+          await this.scheduledTransactionsService.repriceLoanTemplate(
+            saved.scheduledTransactionId,
+          );
+        }
 
         if (linkedAccount) {
           if (updateAccountDto.currencyCode !== undefined) {
@@ -1461,13 +1606,25 @@ export class AccountsService {
       return roundMoney(amount * rate);
     };
 
-    const accountList: LlmAccountRow[] = [];
-    for (const a of accounts) {
-      const balance = roundMoney(
+    const balanceOf = (a: (typeof accounts)[number]): number =>
+      roundMoney(
         a.accountSubType === AccountSubType.INVESTMENT_BROKERAGE
           ? (marketValues.get(a.id) ?? 0)
           : Number(a.currentBalance) + Number(a.futureTransactionsSum ?? 0),
       );
+    // LINEAR and INTEREST_ONLY mortgages carry a dated installment in place of
+    // the payment they do not store (spec section 5.6).
+    const installmentFacts = await derivedInstallmentFacts(
+      this.dataSource,
+      this.scheduledOccurrenceService,
+      userId,
+      accounts,
+      new Map(accounts.map((a) => [a.id, -balanceOf(a)])),
+    );
+
+    const accountList: LlmAccountRow[] = [];
+    for (const a of accounts) {
+      const balance = balanceOf(a);
       const currentBalance = roundMoney(Number(a.currentBalance));
       // Same currency is 1:1 by definition and asks the rate table nothing.
       const exchangeRate =
@@ -1508,6 +1665,15 @@ export class AccountsService {
           : null,
         amortizationMonths: a.amortizationMonths ?? null,
         originalPrincipal: a.originalPrincipal ?? null,
+        mortgageType:
+          a.accountType === AccountType.MORTGAGE ? mortgageTypeOf(a) : null,
+        prepaymentMode:
+          a.accountType === AccountType.MORTGAGE &&
+          mortgageTypeOf(a) === "LINEAR"
+            ? prepaymentModeOf(a)
+            : null,
+        nextInstallment: installmentFacts.get(a.id)?.nextInstallment ?? null,
+        bullet: installmentFacts.get(a.id)?.bullet ?? null,
       });
     }
 

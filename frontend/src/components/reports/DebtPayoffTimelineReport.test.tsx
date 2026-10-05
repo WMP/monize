@@ -800,6 +800,42 @@ describe('DebtPayoffTimelineReport', () => {
     }
   });
 
+  it('exports an interest-only mortgage\'s next installment and its bullet, dated', async () => {
+    // docs/specs/mortgage-types.md section 5.6: no constant payment is stored
+    // for the method, so the payment column is the next installment with its
+    // date, and the bullet travels with it.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-08-01T12:00:00Z'));
+    try {
+      mockGetAllAccounts.mockResolvedValue([
+        {
+          id: 'mortgage-1', name: 'Hypotheek', accountType: 'MORTGAGE',
+          currentBalance: -300000, openingBalance: -300000, interestRate: 2,
+          paymentAmount: null, paymentFrequency: 'MONTHLY', paymentStartDate: '2026-01-01',
+          amortizationMonths: 360, originalPrincipal: 300000,
+          mortgageType: 'INTEREST_ONLY', prepaymentMode: null,
+          isCanadianMortgage: false, isVariableRate: false, isClosed: false,
+        },
+      ]);
+      render(<DebtPayoffTimelineReport />);
+      await waitFor(() => {
+        expect(screen.getByText('Account Details')).toBeInTheDocument();
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /export/i }));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText(/PDF/i));
+      });
+      const { exportToPdf } = await import('@/lib/pdf-export');
+      const call = vi.mocked(exportToPdf).mock.calls.at(-1)![0];
+      const paymentCell = call.tableData!.rows[0][4];
+      expect(paymentCell).toMatch(/^\$500\S*, due \S*2026; final payment \$300,?500\S*, due \S*2055$/);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('shows a retryable error when loading accounts fails', async () => {
     mockGetAllAccounts.mockRejectedValue(new Error('network'));
     render(<DebtPayoffTimelineReport />);

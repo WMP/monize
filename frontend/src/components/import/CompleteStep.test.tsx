@@ -60,9 +60,12 @@ vi.mock('@/lib/logger', () => ({
 }));
 
 vi.mock('@/components/accounts/LoanPaymentSetupDialog', () => ({
-  LoanPaymentSetupDialog: ({ isOpen, onClose, onSetupComplete }: any) =>
+  LoanPaymentSetupDialog: ({ isOpen, onClose, onSetupComplete, loanAccount }: any) =>
     isOpen ? (
-      <div data-testid="loan-payment-setup-dialog">
+      <div
+        data-testid="loan-payment-setup-dialog"
+        data-mortgage-type={String(loanAccount?.mortgageType)}
+      >
         <button data-testid="close-dialog" onClick={onClose}>Close</button>
         <button data-testid="setup-complete" onClick={onSetupComplete}>Complete Setup</button>
       </div>
@@ -78,6 +81,7 @@ function createAccount(overrides: Partial<Account> = {}): Account {
     isFavourite: false, favouriteSortOrder: 0, excludeFromNetWorth: false, paymentAmount: null, paymentFrequency: null, paymentStartDate: null,
     sourceAccountId: null, principalCategoryId: null, interestCategoryId: null, overpaymentCategoryId: null, overpaymentMemo: null, overpaymentPayeeId: null, fxFeePercent: null,
     scheduledTransactionId: null, assetCategoryId: null, dateAcquired: null, linkedLoanAccountId: null,
+    mortgageType: null,
     isCanadianMortgage: false, isVariableRate: false, termMonths: null, termEndDate: null,
     amortizationMonths: null, originalPrincipal: null,
     statementDueDay: null, statementSettlementDay: null,
@@ -527,6 +531,72 @@ describe('CompleteStep', () => {
 
     // The dialog should now be open
     expect(screen.getByTestId('loan-payment-setup-dialog')).toBeInTheDocument();
+  });
+
+  describe('seeds the dialog with the type of the account', () => {
+    const openFor = (account: Account, accountId = account.id) => {
+      const resultWithLoans = {
+        ...defaultProps.importResult!,
+        loanAccountsNeedingSetup: [
+          { accountId, accountName: account.name, accountType: 'MORTGAGE' },
+        ],
+      };
+      render(
+        <CompleteStep
+          {...defaultProps}
+          accounts={[account]}
+          importResult={resultWithLoans}
+        />,
+      );
+      fireEvent.click(screen.getByRole('button', { name: /Set Up Payments/i }));
+      const dialog = screen.getByTestId('loan-payment-setup-dialog');
+      return dialog.dataset.mortgageType;
+    };
+
+    it('seeds the stored type over the flags', () => {
+      expect(
+        openFor(
+          createAccount({
+            id: 'loan-1',
+            accountType: 'MORTGAGE',
+            mortgageType: 'CANADIAN_FIXED',
+            isCanadianMortgage: false,
+          }),
+        ),
+      ).toBe('CANADIAN_FIXED');
+    });
+
+    it('seeds a Canadian variable-rate row as the ANNUITY it is', () => {
+      expect(
+        openFor(
+          createAccount({
+            id: 'loan-1',
+            accountType: 'MORTGAGE',
+            mortgageType: null,
+            isCanadianMortgage: true,
+            isVariableRate: true,
+          }),
+        ),
+      ).toBe('ANNUITY');
+    });
+
+    it('reads a null type with Canadian fixed-rate flags as CANADIAN_FIXED', () => {
+      expect(
+        openFor(
+          createAccount({
+            id: 'loan-1',
+            accountType: 'MORTGAGE',
+            mortgageType: null,
+            isCanadianMortgage: true,
+            isVariableRate: false,
+          }),
+        ),
+      ).toBe('CANADIAN_FIXED');
+    });
+
+    it('passes no type for an account it cannot find', () => {
+      expect(openFor(createAccount({ id: 'loan-1' }), 'loan-2')).toBe('undefined');
+    });
   });
 
   it('closes loan payment setup dialog when close button clicked', () => {

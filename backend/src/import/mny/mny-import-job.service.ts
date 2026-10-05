@@ -178,8 +178,7 @@ export function isActiveJobConflict(error: unknown): boolean {
     return false;
   }
   const driver = error.driverError as
-    | { code?: string; constraint?: string }
-    | undefined;
+    { code?: string; constraint?: string } | undefined;
   return (
     driver?.code === UNIQUE_VIOLATION &&
     driver?.constraint === ONE_ACTIVE_JOB_INDEX

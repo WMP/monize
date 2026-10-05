@@ -95,10 +95,7 @@ export interface QifParseResult {
 }
 
 export type DateFormat =
-  | "MM/DD/YYYY"
-  | "DD/MM/YYYY"
-  | "YYYY-MM-DD"
-  | "YYYY-DD-MM";
+  "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD" | "YYYY-DD-MM";
 
 // Strip HTML angle brackets to prevent stored XSS from QIF content.
 function stripHtml(value: string): string {

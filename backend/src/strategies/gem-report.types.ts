@@ -268,9 +268,7 @@ export interface GemPerformancePoint {
  */
 /** Why the current-composition simulation could not be produced. */
 export type GemSimulationUnavailableReason =
-  | "NO_HOLDINGS"
-  | "UNKNOWN_CURRENT_VALUE"
-  | "MISSING_PRICE_HISTORY";
+  "NO_HOLDINGS" | "UNKNOWN_CURRENT_VALUE" | "MISSING_PRICE_HISTORY";
 
 /**
  * What today's holdings would have returned over the window, had they been

@@ -248,10 +248,8 @@
     "payeeLender": "Người nhận thanh toán / Bên cho vay",
     "selectOrCreatePayee": "Chọn hoặc tạo người nhận thanh toán...",
     "mortgageDetails": "Chi tiết thế chấp",
-    "canadianMortgage": "Thế chấp Canada (lãi kép nửa năm)",
-    "variableRate": "Lãi suất thay đổi",
     "amortizationMonths": "Thời gian khấu hao (tháng)",
-    "termMonths": "Thời hạn (tháng)",
+    "termMonths": "Kỳ lãi suất cố định (tháng)",
     "autoPost": "Tự động đăng giao dịch khi đến hạn",
     "skip": "Bỏ qua",
     "setUpPayments": "Thiết lập thanh toán",
@@ -267,17 +265,31 @@
     },
     "toasts": {
       "setupComplete": "Đã thiết lập thanh toán theo lịch cho {account}"
-    }
+    },
+    "firstInstallment": "Kỳ trả góp đầu tiên",
+    "firstInstallmentHelp": "Khoản vay thế chấp này không có khoản thanh toán cố định: mỗi kỳ được tính từ số dư, lãi suất và thời gian trả dần. Đây là kỳ đến hạn {date}, bao gồm mọi khoản gốc trả thêm.",
+    "firstInstallmentPending": "Nhập ngày thanh toán tiếp theo để tính kỳ trả góp đầu tiên.",
+    "firstInstallmentCalculating": "Đang tính kỳ trả góp đầu tiên...",
+    "firstInstallmentFailed": "Không thể tính kỳ trả góp đầu tiên. Hãy kiểm tra các giá trị bên dưới và thử lại."
   },
   "mortgageFields": {
     "title": "Chi tiết thế chấp",
-    "canadianMortgage": "Thế chấp Canada",
-    "canadianMortgageDesc": "Sử dụng lãi kép nửa năm cho lãi suất cố định (theo quy định pháp luật tại Canada)",
-    "variableRate": "Lãi suất thay đổi",
-    "variableRateDesc": "Lãi suất có thể thay đổi trong thời hạn (sử dụng lãi kép hàng tháng)",
-    "variableRateLoanDetailsLink": "Ghi lại các thay đổi lãi suất trong <link>chi tiết khoản vay</link>.",
-    "termLength": "Thời hạn",
-    "termLengthNoTerm": "Để 0 năm và 0 tháng nếu không có thời hạn.",
+    "type": {
+      "label": "Loại thế chấp",
+      "ANNUITY": "Niên kim (trả đều)",
+      "CANADIAN_FIXED": "Lãi suất cố định Canada",
+      "LINEAR": "Tuyến tính (gốc đều)",
+      "INTEREST_ONLY": "Chỉ trả lãi",
+      "help": {
+        "ANNUITY": "Tổng khoản thanh toán của bạn giống nhau mỗi tháng. Cũng chọn loại này cho khoản thế chấp lãi suất thả nổi.",
+        "CANADIAN_FIXED": "Hợp đồng lãi suất cố định của Canada; lãi được nhập gốc hai lần mỗi năm.",
+        "LINEAR": "Phần gốc giống nhau mỗi tháng và tổng khoản thanh toán giảm dần.",
+        "INTEREST_ONLY": "Bạn chỉ trả lãi và dư nợ không thay đổi."
+      }
+    },
+    "rateChangesLoanDetailsLink": "Ghi lại các thay đổi lãi suất trong <link>chi tiết khoản vay</link>.",
+    "termLength": "Kỳ lãi suất cố định",
+    "termLengthHelp": "Lãi suất hoặc kỳ hạn hợp đồng của bạn kéo dài bao lâu, ví dụ lãi suất cố định 5 năm. Monize có thể nhắc bạn trước khi kết thúc. Để 0 năm và 0 tháng nếu không có thời hạn.",
     "amortizationPeriod": "Thời gian khấu hao (bắt buộc)",
     "years": "Năm",
     "months": "Tháng",
@@ -333,6 +345,68 @@
       "memoLabel": "Nội dung ghi chú trả trước",
       "memoPlaceholder": "vd. trả trước",
       "memoHelp": "So khớp chuỗi con không phân biệt hoa thường với ghi chú của khoản thanh toán, ghi chú của giao dịch nguồn hoặc ghi chú tách."
+    },
+    "prepaymentMode": {
+      "label": "Tác dụng của khoản trả trước",
+      "SHORTEN_TERM": "Rút ngắn kỳ hạn (phần gốc như nhau mỗi tháng)",
+      "LOWER_INSTALLMENT": "Giảm kỳ trả góp (cùng ngày kết thúc)",
+      "help": "Hãy hỏi bên cho vay. Nếu sau khi trả trước, phần gốc trên sao kê không đổi thì kỳ hạn đã được rút ngắn."
+    },
+    "previewFirstInstallment": "Kỳ trả góp đầu tiên:",
+    "detect": {
+      "toggle": "Không chắc? Nhập vài kỳ trả góp",
+      "title": "Tìm loại thế chấp của bạn",
+      "intro": "Sao chép hai hoặc ba kỳ trả góp liên tiếp từ sao kê, kỳ cũ nhất trước. Dư nợ là tùy chọn: khi có dư nợ và lãi suất, Monize có thể biết lãi có được nhập gốc hai lần mỗi năm hay không.",
+      "installment": "Kỳ trả góp {number}",
+      "principal": "Gốc",
+      "interest": "Lãi",
+      "balance": "Dư nợ trước kỳ (tùy chọn)",
+      "rowIncomplete": "Nhập cả gốc và lãi, hoặc để trống dòng này.",
+      "rate": "Đã đối chiếu với lãi suất nhập ở trên, {rate}.",
+      "noRate": "Chưa nhập lãi suất ở trên nên không thể kiểm tra cách nhập gốc.",
+      "needsFrequency": "Hãy chọn tần suất thanh toán bên dưới trước: các kỳ trả góp được đọc theo tần suất đó.",
+      "submit": "Gợi ý loại",
+      "close": "Đóng",
+      "suggested": "Loại được gợi ý: {type}",
+      "noSuggestion": "Không có loại nào được gợi ý.",
+      "lowConfidence": "Độ tin cậy thấp: hãy đối chiếu với hợp đồng hoặc hỏi bên cho vay trước khi dùng.",
+      "use": "Dùng loại này",
+      "failed": "Không thể kiểm tra các kỳ trả góp vì yêu cầu thất bại. Hãy thử lại.",
+      "reason": {
+        "TOO_FEW_SAMPLES": "Cần ít nhất hai kỳ trả góp liên tiếp để so sánh.",
+        "INVALID_SAMPLE": "Một kỳ trả góp có số tiền âm hoặc không đọc được.",
+        "NO_PAYMENT": "Các kỳ trả góp này không trả gốc và không tính lãi.",
+        "AMBIGUOUS_CONSTANT_PRINCIPAL_AND_INSTALLMENT": "Gốc và tổng số tiền giống nhau ở mọi kỳ, phù hợp với cả thế chấp tuyến tính lẫn niên kim. Hãy thử các kỳ cách xa nhau hơn, hoặc kiểm tra hợp đồng.",
+        "ACCELERATED_FREQUENCY": "Các kỳ trả góp này trông giống tuyến tính hoặc chỉ trả lãi, điều không thể xảy ra với tần suất thanh toán tăng tốc. Hãy kiểm tra tần suất thanh toán.",
+        "NO_RULE_FITS": "Cả gốc lẫn tổng số tiền đều không giữ nguyên qua các kỳ này. Nếu lãi suất thay đổi giữa các kỳ, hãy dùng các kỳ trong cùng một giai đoạn lãi suất.",
+        "ZERO_PRINCIPAL": "Không trả gốc nên dư nợ không thay đổi.",
+        "ZERO_PRINCIPAL_RATE_MISMATCH": "Không trả gốc, nhưng tiền lãi không khớp với lãi suất đã nêu trên dư nợ. Hãy kiểm tra lãi suất.",
+        "CONSTANT_PRINCIPAL": "Phần gốc giống nhau mỗi kỳ và tổng số tiền giảm dần.",
+        "CONSTANT_PRINCIPAL_RATE_MISMATCH": "Phần gốc giống nhau mỗi kỳ, nhưng tiền lãi không khớp với lãi suất đã nêu trên dư nợ. Hãy kiểm tra lãi suất.",
+        "CONSTANT_INSTALLMENT_SEMI_ANNUAL": "Tổng số tiền giống nhau mỗi kỳ và tiền lãi khớp với lãi suất đã nêu khi nhập gốc hai lần mỗi năm.",
+        "CONSTANT_INSTALLMENT_NOMINAL": "Tổng số tiền giống nhau mỗi kỳ và tiền lãi khớp với lãi suất đã nêu khi không nhập gốc hai lần mỗi năm.",
+        "CONSTANT_INSTALLMENT_RATE_UNCHECKED": "Tổng số tiền giống nhau mỗi kỳ. Không có dư nợ trước mỗi kỳ và lãi suất nên không thể kiểm tra việc nhập gốc hai lần mỗi năm.",
+        "CONSTANT_INSTALLMENT_COMPOUNDING_AMBIGUOUS": "Tổng số tiền giống nhau mỗi kỳ, nhưng dư nợ quá nhỏ để phân biệt việc nhập gốc hai lần mỗi năm. Hợp đồng lãi suất cố định của Canada có ghi rõ điều này trong điều khoản.",
+        "CONSTANT_INSTALLMENT_RATE_MISMATCH": "Tổng số tiền giống nhau mỗi kỳ, nhưng tiền lãi không khớp với cách tính nào ở lãi suất đã nêu. Lãi có thể được tính theo ngày; hãy kiểm tra lãi suất."
+      },
+      "history": {
+        "action": "Phát hiện loại thế chấp",
+        "title": "Loại thế chấp từ các khoản thanh toán của bạn",
+        "intro": "Đọc từ các kỳ trả góp đã ghi sổ gần nhất ở cùng một lãi suất. Không có gì thay đổi cho đến khi bạn lưu tài khoản.",
+        "current": "Loại hiện tại: {type}",
+        "alreadySet": "Khoản thế chấp này đã có loại được gợi ý.",
+        "rate": "Lãi suất đang áp dụng: {rate}",
+        "noRate": "Không có lãi suất nào được ghi cho các ngày này nên chưa kiểm tra cách nhập gốc.",
+        "noSamples": "Không tìm thấy kỳ trả góp đã ghi sổ nào có cả phần gốc và phần lãi. Hãy ghi các khoản thanh toán dưới dạng tách gốc và lãi để dùng tính năng này.",
+        "colDate": "Ngày",
+        "colPrincipal": "Gốc",
+        "colInterest": "Lãi",
+        "colBalance": "Dư nợ trước kỳ",
+        "balanceUnknown": "Không rõ",
+        "failed": "Không thể đọc lịch sử thanh toán vì yêu cầu thất bại. Hãy thử lại.",
+        "cancel": "Hủy",
+        "use": "Sửa tài khoản với loại này"
+      }
     }
   },
   "assetFields": {
@@ -361,7 +435,8 @@
     "paymentFrequencyRequired": "Tần suất thanh toán là bắt buộc",
     "paymentStartDateRequired": "Ngày thanh toán đầu tiên là bắt buộc",
     "paymentAccountRequired": "Tài khoản thanh toán là bắt buộc",
-    "amortizationRequired": "Thời gian khấu hao là bắt buộc"
+    "amortizationRequired": "Thời gian khấu hao là bắt buộc",
+    "acceleratedNeedsAnnuity": "Khoản vay thế chấp này được trả theo lịch tăng tốc, vốn chỉ có ở khoản vay trả góp đều. Khoản vay trả gốc đều hoặc chỉ trả lãi cần tần suất thanh toán thông thường, vì vậy hãy giữ loại trả góp đều."
   },
   "loanDetail": {
     "backToAccounts": "Quay lại danh sách tài khoản",
@@ -389,7 +464,12 @@
       "estRemainingInterest": "Lãi còn lại (ước tính)",
       "notSet": "Chưa đặt",
       "notAvailable": "Không có",
-      "paidOff": "Đã trả hết"
+      "paidOff": "Đã trả hết",
+      "nextInstallment": "Kỳ trả góp tiếp theo",
+      "dueOn": "Đến hạn {date}",
+      "finalPayment": "Khoản thanh toán cuối",
+      "nextInstallmentDue": "Kỳ trả góp tiếp theo (đến hạn {date})",
+      "finalPaymentDue": "Khoản thanh toán cuối (đến hạn {date})"
     },
     "schedule": {
       "title": "Lịch trả nợ",
@@ -464,8 +544,13 @@
         "reasonPaidOff": "Khoản vay này không còn dư nợ, nên không còn gì để khấu hao.",
         "reasonNoFrequency": "Khoản vay này chưa đặt tần suất thanh toán. Hãy thêm trong cài đặt tài khoản.",
         "reasonNoRate": "Khoản vay này chưa lưu lãi suất. Hãy đặt lãi suất trong cài đặt tài khoản, hoặc ghi một thay đổi lãi suất có ngày hôm nay hoặc trước đó. Lãi suất hiển thị theo từng dòng trong lịch bên dưới được tái tạo từ tiền lãi đã tính và không phải là lãi suất đã lưu.",
-        "reasonNoPayment": "Không thể xác định số tiền trả góp. Hãy ghi các kỳ trả góp thường xuyên dưới dạng chuyển khoản vào tài khoản khoản vay (gốc, với lãi là dòng tách hoặc một khoản chi có phân loại riêng), hoặc đặt số tiền thanh toán trong cài đặt tài khoản. Các khoản thanh toán được ghi là chi tiêu thông thường trên tài khoản nguồn không bao giờ đến được tài khoản khoản vay, nên lịch không thể thấy chúng."
-      }
+        "reasonNoPayment": "Không thể xác định số tiền trả góp. Hãy ghi các kỳ trả góp thường xuyên dưới dạng chuyển khoản vào tài khoản khoản vay (gốc, với lãi là dòng tách hoặc một khoản chi có phân loại riêng), hoặc đặt số tiền thanh toán trong cài đặt tài khoản. Các khoản thanh toán được ghi là chi tiêu thông thường trên tài khoản nguồn không bao giờ đến được tài khoản khoản vay, nên lịch không thể thấy chúng.",
+        "reasonNoAmortization": "Khoản vay thế chấp này chưa có thời gian trả dần, nên không thể tính các kỳ trả góp và ngày kết thúc kỳ hạn. Hãy đặt thời gian trả dần trong phần cài đặt tài khoản.",
+        "reasonNoPaymentStart": "Khoản vay thế chấp này chưa có ngày thanh toán đầu tiên, nên không thể đếm số kỳ còn lại đến hết kỳ hạn. Hãy thiết lập khoản thanh toán định kỳ trong phần cài đặt tài khoản; ngày đến hạn đầu tiên bạn nhập sẽ là kỳ thanh toán 1.",
+        "reasonNoPrincipal": "Khoản vay thế chấp này chưa có số tiền gốc ban đầu, nên không thể tính phần gốc cố định. Hãy đặt số tiền vay trong phần cài đặt tài khoản."
+      },
+      "budgetBelowNextInstallment": "Số tiền này thấp hơn kỳ trả góp tiếp theo ({amount}, đến hạn {date}); hãy tăng lên trên mức đó để trả trước.",
+      "shortenTermNeedsPrincipal": "Khoản vay thế chấp này chưa có số tiền gốc ban đầu, nên không thể mô phỏng việc rút ngắn kỳ hạn. Hãy chọn giảm kỳ trả góp, hoặc đặt số tiền vay trong phần cài đặt tài khoản."
     },
     "comparison": {
       "newPayoff": "Ngày trả hết mới",
@@ -481,7 +566,8 @@
       "newInstallment": "Kỳ trả mới",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "Khoản trả hàng tháng",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "Khoản thanh toán đầu tiên"
     },
     "chart": {
       "title": "Dòng thời gian trả nợ",

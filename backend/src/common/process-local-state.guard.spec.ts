@@ -112,7 +112,7 @@ function blankComments(source: string): string {
 
 /** The first occurrence of `body` at or after `from` that a `//` or `/*` opens. */
 function commentBodyStart(source: string, body: string, from: number): number {
-  for (let at = source.indexOf(body, from); at !== -1; ) {
+  for (let at = source.indexOf(body, from); at !== -1;) {
     const opener = source.slice(Math.max(0, at - 2), at);
     if (opener === "//" || opener === "/*") return at;
     at = source.indexOf(body, at + 1);

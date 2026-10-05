@@ -89,6 +89,7 @@
     "stackedChart": "Gráfico de barras empilhadas 100%",
     "lineChart": "Gráfico de linhas",
     "areaChart": "Gráfico de área",
+    "sankeyChart": "Diagrama de fluxo",
     "table": "Tabela"
   },
   "formActions": {

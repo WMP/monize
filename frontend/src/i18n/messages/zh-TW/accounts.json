@@ -248,10 +248,8 @@
     "payeeLender": "收款人 / 貸款機構",
     "selectOrCreatePayee": "選擇或建立收款人...",
     "mortgageDetails": "抵押貸款詳情",
-    "canadianMortgage": "加拿大式抵押貸款（半年複利）",
-    "variableRate": "浮動利率",
     "amortizationMonths": "攤還期（月）",
-    "termMonths": "貸款期限（月）",
+    "termMonths": "固定利率期限（月）",
     "autoPost": "到期時自動過帳",
     "skip": "略過",
     "setUpPayments": "設定還款",
@@ -267,17 +265,31 @@
     },
     "toasts": {
       "setupComplete": "已為 {account} 設定排程付款"
-    }
+    },
+    "firstInstallment": "首期還款",
+    "firstInstallmentHelp": "此房貸沒有固定還款額：每期還款依餘額、利率與攤還期間計算。這是 {date} 到期的一期，包含任何額外本金。",
+    "firstInstallmentPending": "請輸入下次還款日期以計算首期還款。",
+    "firstInstallmentCalculating": "正在計算首期還款...",
+    "firstInstallmentFailed": "無法計算首期還款。請檢查下方的數值後再試一次。"
   },
   "mortgageFields": {
     "title": "抵押貸款詳情",
-    "canadianMortgage": "加拿大式抵押貸款",
-    "canadianMortgageDesc": "固定利率使用半年複利（加拿大法律規定）",
-    "variableRate": "浮動利率",
-    "variableRateDesc": "貸款期間利率可能變動（使用月複利）",
-    "variableRateLoanDetailsLink": "在<link>貸款詳情</link>中記錄利率變更。",
-    "termLength": "貸款期限",
-    "termLengthNoTerm": "年和月均設為 0 表示無期限。",
+    "type": {
+      "label": "抵押貸款類型",
+      "ANNUITY": "本息平均攤還",
+      "CANADIAN_FIXED": "加拿大固定利率",
+      "LINEAR": "本金平均攤還",
+      "INTEREST_ONLY": "只付利息",
+      "help": {
+        "ANNUITY": "每月還款總額相同。浮動利率抵押貸款也選此項。",
+        "CANADIAN_FIXED": "加拿大固定利率合約；利息每年複利兩次。",
+        "LINEAR": "每月本金部分相同，還款總額逐月減少。",
+        "INTEREST_ONLY": "只支付利息，餘額不變。"
+      }
+    },
+    "rateChangesLoanDetailsLink": "在<link>貸款詳情</link>中記錄利率變更。",
+    "termLength": "固定利率期限",
+    "termLengthHelp": "利率或合約期限的持續時間，例如 5 年固定利率。Monize 可以在到期前提醒您。年和月均設為 0 表示無期限。",
     "amortizationPeriod": "攤還期（必填）",
     "years": "年",
     "months": "月",
@@ -333,6 +345,68 @@
       "memoLabel": "超額還款備註文字",
       "memoPlaceholder": "例如 超額還款",
       "memoHelp": "對付款備註、其來源交易備註或拆分備註進行不區分大小寫的子字串比對。"
+    },
+    "prepaymentMode": {
+      "label": "提前還款的效果",
+      "SHORTEN_TERM": "縮短期限（每月本金相同）",
+      "LOWER_INSTALLMENT": "降低月付額（結束日期不變）",
+      "help": "請向貸款機構確認。提前還款後，若對帳單上的本金部分不變，即表示期限已縮短。"
+    },
+    "previewFirstInstallment": "首期還款：",
+    "detect": {
+      "toggle": "不確定？輸入幾期還款",
+      "title": "找出您的抵押貸款類型",
+      "intro": "從對帳單中複製連續兩到三期還款，從最早的一期開始。餘額為選填：有了餘額和利率，Monize 就能判斷利息是否每年複利兩次。",
+      "installment": "第 {number} 期",
+      "principal": "本金",
+      "interest": "利息",
+      "balance": "還款前餘額（選填）",
+      "rowIncomplete": "請同時輸入本金和利息，或將此列留空。",
+      "rate": "已與上方輸入的利率 {rate} 核對。",
+      "noRate": "上方未輸入利率，因此無法檢查複利方式。",
+      "needsFrequency": "請先在下方選擇還款頻率：將依該頻率讀取這些還款。",
+      "submit": "建議類型",
+      "close": "關閉",
+      "suggested": "建議類型：{type}",
+      "noSuggestion": "未建議類型。",
+      "lowConfidence": "可信度低：使用前請與合約核對，或洽詢貸款機構。",
+      "use": "使用此類型",
+      "failed": "請求失敗，無法檢查這些還款。請重試。",
+      "reason": {
+        "TOO_FEW_SAMPLES": "至少需要連續兩期還款才能比較。",
+        "INVALID_SAMPLE": "某期還款的金額為負數或無法讀取。",
+        "NO_PAYMENT": "這些還款既未償還本金，也未收取利息。",
+        "AMBIGUOUS_CONSTANT_PRINCIPAL_AND_INSTALLMENT": "每期的本金和還款總額都相同，這既符合本金平均攤還，也符合本息平均攤還抵押貸款。請嘗試間隔更遠的幾期，或查看您的合約。",
+        "ACCELERATED_FREQUENCY": "這些還款看起來是本金平均攤還或只付利息，而加速還款頻率不可能是這兩種。請檢查還款頻率。",
+        "NO_RULE_FITS": "這些還款中本金和還款總額都不固定。如果利率在期間發生變化，請使用同一利率期間內的還款。",
+        "ZERO_PRINCIPAL": "未償還本金，因此餘額不變。",
+        "ZERO_PRINCIPAL_RATE_MISMATCH": "未償還本金，但利息與依所報利率對餘額計算的結果不符。請檢查利率。",
+        "CONSTANT_PRINCIPAL": "每期本金部分相同，還款總額逐期減少。",
+        "CONSTANT_PRINCIPAL_RATE_MISMATCH": "每期本金部分相同，但利息與依所報利率對餘額計算的結果不符。請檢查利率。",
+        "CONSTANT_INSTALLMENT_SEMI_ANNUAL": "每期還款總額相同，且利息與所報利率依每年複利兩次計算的結果相符。",
+        "CONSTANT_INSTALLMENT_NOMINAL": "每期還款總額相同，且利息與所報利率在不依每年複利兩次計算時相符。",
+        "CONSTANT_INSTALLMENT_RATE_UNCHECKED": "每期還款總額相同。缺少每期還款前的餘額和利率，無法檢查是否每年複利兩次。",
+        "CONSTANT_INSTALLMENT_COMPOUNDING_AMBIGUOUS": "每期還款總額相同，但餘額太小，無法區分是否每年複利兩次。加拿大固定利率合約會在條款中註明這一點。",
+        "CONSTANT_INSTALLMENT_RATE_MISMATCH": "每期還款總額相同，但在所報利率下，利息與兩種計算方式都不符。利息可能按日計算；請檢查利率。"
+      },
+      "history": {
+        "action": "偵測抵押貸款類型",
+        "title": "根據還款判斷抵押貸款類型",
+        "intro": "根據同一利率下最近已入帳的還款讀取。儲存科目之前不會有任何變更。",
+        "current": "目前類型：{type}",
+        "alreadySet": "此抵押貸款已是建議的類型。",
+        "rate": "適用利率：{rate}",
+        "noRate": "這些日期沒有記錄利率，因此未檢查複利方式。",
+        "noSamples": "找不到同時包含本金和利息部分的已入帳還款。若要使用此功能，請將還款記錄為本金和利息的拆分。",
+        "colDate": "日期",
+        "colPrincipal": "本金",
+        "colInterest": "利息",
+        "colBalance": "還款前餘額",
+        "balanceUnknown": "未知",
+        "failed": "請求失敗，無法讀取還款紀錄。請重試。",
+        "cancel": "取消",
+        "use": "以此類型編輯科目"
+      }
     }
   },
   "assetFields": {
@@ -361,7 +435,8 @@
     "paymentFrequencyRequired": "還款頻率為必填",
     "paymentStartDateRequired": "首次還款日期為必填",
     "paymentAccountRequired": "付款科目為必填",
-    "amortizationRequired": "攤還期為必填"
+    "amortizationRequired": "攤還期為必填",
+    "acceleratedNeedsAnnuity": "此房貸依加速還款計畫支付，只有本息平均攤還的房貸才有這種計畫。本金平均攤還或只付利息的房貸需要一般還款頻率，因此請保留本息平均攤還類型。"
   },
   "loanDetail": {
     "backToAccounts": "返回帳戶",
@@ -389,7 +464,12 @@
       "estRemainingInterest": "預計剩餘利息",
       "notSet": "未設定",
       "notAvailable": "無",
-      "paidOff": "已還清"
+      "paidOff": "已還清",
+      "nextInstallment": "下期還款",
+      "dueOn": "到期日 {date}",
+      "finalPayment": "最後一期還款",
+      "nextInstallmentDue": "下期還款（到期日 {date}）",
+      "finalPaymentDue": "最後一期還款（到期日 {date}）"
     },
     "schedule": {
       "title": "還款計畫",
@@ -464,8 +544,13 @@
         "reasonPaidOff": "這筆貸款沒有未償還餘額，因此沒有需要攤還的部分。",
         "reasonNoFrequency": "這筆貸款未設定還款頻率。請在帳戶設定中新增。",
         "reasonNoRate": "這筆貸款沒有已儲存的利率。請在帳戶設定中設定利率，或記錄一筆日期為今天或更早的利率變更。下方排程中依列顯示的利率是根據已計收的利息重建的，並非已儲存的利率。",
-        "reasonNoPayment": "無法確定分期金額。請將定期分期記為轉帳至貸款帳戶（本金，利息作為拆分列或單獨分類的支出），或在帳戶設定中設定還款金額。在來源帳戶記為一般支出的付款永遠不會到達貸款帳戶，因此排程無法看到它們。"
-      }
+        "reasonNoPayment": "無法確定分期金額。請將定期分期記為轉帳至貸款帳戶（本金，利息作為拆分列或單獨分類的支出），或在帳戶設定中設定還款金額。在來源帳戶記為一般支出的付款永遠不會到達貸款帳戶，因此排程無法看到它們。",
+        "reasonNoAmortization": "此房貸沒有設定攤還期間，因此無法計算其每期還款額與期限結束日期。請在帳戶設定中設定攤還期間。",
+        "reasonNoPaymentStart": "此房貸沒有設定首次還款日期，因此無法計算到期限結束前剩餘的還款期數。請在帳戶設定中設定其定期還款；您輸入的第一個到期日將成為第 1 期還款。",
+        "reasonNoPrincipal": "此房貸沒有設定原始金額，因此無法計算其本金平均攤還額。請在帳戶設定中設定房貸金額。"
+      },
+      "budgetBelowNextInstallment": "低於下期還款額（{amount}，到期日 {date}）；請調高到該金額以上才能提前還款。",
+      "shortenTermNeedsPrincipal": "此房貸沒有設定原始金額，因此無法模擬縮短期限。請選擇降低月付額，或在帳戶設定中設定房貸金額。"
     },
     "comparison": {
       "newPayoff": "新的還清日期",
@@ -481,7 +566,8 @@
       "newInstallment": "新還款額",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "每月還款",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "首次付款"
     },
     "chart": {
       "title": "還清時間軸",

@@ -299,6 +299,80 @@ describe('OverpaymentSimulator', () => {
     expect(screen.getByLabelText('After an overpayment')).toBeInTheDocument();
   });
 
+  it('names the current installment when a budget falls below it', async () => {
+    await renderSimulator({ projectionInput });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Simulation type'), { target: { value: 'BUDGET' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Total monthly payment'), { target: { value: '500' } });
+    });
+    expect(
+      screen.getByText("That's below the current installment ($600.00); raise it above to overpay."),
+    ).toBeInTheDocument();
+  });
+
+  it('names the next installment and its date for a LINEAR mortgage', async () => {
+    // `paymentAmount` is the first projected installment for these methods;
+    // the budget's extra in each row is the budget less that row's own.
+    await renderSimulator({
+      projectionInput: {
+        ...projectionInput,
+        paymentAmount: 1275,
+        mortgageType: 'LINEAR',
+        firstPaymentDate: new Date(2025, 6, 1),
+        methodTerms: {
+          prepaymentMode: 'SHORTEN_TERM',
+          constantPrincipal: 833.3333,
+          scheduledPayments: 360,
+          remainingAtFirstRow: 342,
+          termEndDate: '2053-12-01',
+        },
+      },
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Simulation type'), { target: { value: 'BUDGET' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Total monthly payment'), { target: { value: '1200' } });
+    });
+    expect(
+      screen.getByText(
+        "That's below the next installment ($1275.00, due 2025-07-01); raise it above to overpay.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('says why a shortened term cannot be simulated when the amount borrowed is unknown', async () => {
+    const linear = {
+      ...projectionInput,
+      paymentAmount: 1216.52,
+      mortgageType: 'LINEAR' as const,
+      firstPaymentDate: new Date(2025, 6, 1),
+      methodTerms: {
+        prepaymentMode: 'LOWER_INSTALLMENT' as const,
+        constantPrincipal: null,
+        scheduledPayments: 360,
+        remainingAtFirstRow: 342,
+        termEndDate: '2053-12-01',
+      },
+    };
+    const hint =
+      'This mortgage has no original amount, so a shortened term cannot be simulated. Choose to lower the installment, or set the mortgage amount in the account settings.';
+    await renderSimulator({ projectionInput: linear });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Overpayment amount'), { target: { value: '200' } });
+    });
+    // The default mode shortens the term.
+    expect(screen.getByText(hint)).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('After an overpayment'), {
+        target: { value: 'LOWER_INSTALLMENT' },
+      });
+    });
+    expect(screen.queryByText(hint)).not.toBeInTheDocument();
+  });
+
   it('carries the budget mode (shorten vs lower installment)', async () => {
     const { onPlanChange } = await renderSimulator({ projectionInput });
 

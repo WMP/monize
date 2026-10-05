@@ -413,9 +413,10 @@ export function ScheduledTransactionForm({
 
   // Re-sign the foreign amount when the category changes, so an expense
   // category flips it negative exactly as the account-currency path does.
-  const resignForeignAmount = (isIncome: boolean) => {
+  const resignForeignAmount = (category: Category) => {
+    if (category.effectiveAutoSign === false) return;
     if (foreignAmount === undefined || foreignAmount === 0) return;
-    const signed = isIncome ? Math.abs(foreignAmount) : -Math.abs(foreignAmount);
+    const signed = category.isIncome ? Math.abs(foreignAmount) : -Math.abs(foreignAmount);
     if (signed !== foreignAmount) {
       setForeignAmount(signed);
       recomputeFx(signed, fxRate);
@@ -885,10 +886,13 @@ export function ScheduledTransactionForm({
           // and let the conversion re-derive the account-currency amount.
           const category = categories.find((c) => c.id === payee.defaultCategoryId);
           if (category && isForeign) {
-            resignForeignAmount(category.isIncome);
+            resignForeignAmount(category);
           } else if (category && watchedAmount !== undefined && watchedAmount !== 0) {
             const absAmount = Math.abs(watchedAmount);
-            const newAmount = category.isIncome ? absAmount : -absAmount;
+            // Automatic sign off for this category: keep the typed sign.
+            const newAmount = category.effectiveAutoSign !== false
+              ? (category.isIncome ? absAmount : -absAmount)
+              : watchedAmount;
             if (newAmount !== watchedAmount) {
               const rounded = roundToCents(newAmount);
               setValue('amount', rounded, { shouldDirty: true });
@@ -930,10 +934,13 @@ export function ScheduledTransactionForm({
       if (mode !== 'transfer' && category && isForeign) {
         // The typed amount is the foreign one; re-sign it and let the
         // conversion re-derive the account-currency amount.
-        resignForeignAmount(category.isIncome);
+        resignForeignAmount(category);
       } else if (mode !== 'transfer' && category && watchedAmount !== undefined && watchedAmount !== 0) {
         const absAmount = Math.abs(watchedAmount);
-        const newAmount = category.isIncome ? absAmount : -absAmount;
+        // Automatic sign off for this category: keep the typed sign.
+        const newAmount = category.effectiveAutoSign !== false
+          ? (category.isIncome ? absAmount : -absAmount)
+          : watchedAmount;
         if (newAmount !== watchedAmount) {
           const rounded = roundToCents(newAmount);
           setValue('amount', rounded, { shouldDirty: true, shouldValidate: true });

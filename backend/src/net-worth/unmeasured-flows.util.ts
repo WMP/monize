@@ -92,9 +92,22 @@ export function externallySettledTradesSql(perDay: boolean): string {
                 AND NOT (it.funding_account_id = ANY($5::UUID[]))
               )
               OR EXISTS (
+                -- A cash leg that is a transfer into a valued cash account
+                -- settled inside: the QIF/CSV import writes the leg on the
+                -- brokerage and its counterpart on the sleeve, and the flow
+                -- query (given the same scope as investmentScope) leaves
+                -- that counterpart out of the flows for the same reason.
                 SELECT 1 FROM transactions ct
                  WHERE ct.id = it.transaction_id
                    AND NOT (ct.account_id = ANY($5::UUID[]))
+                   AND NOT (
+                     ct.is_transfer = true
+                     AND EXISTS (
+                       SELECT 1 FROM transactions cl
+                        WHERE cl.id = ct.linked_transaction_id
+                          AND cl.account_id = ANY($5::UUID[])
+                     )
+                   )
               )
               OR EXISTS (
                 SELECT 1 FROM transaction_splits s

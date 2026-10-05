@@ -464,3 +464,45 @@ describe("planRuleEffects: purity", () => {
     );
   });
 });
+
+describe("planRuleEffects: onEvaluate", () => {
+  const observe = (rules: PlannableRule[], f = facts()) => {
+    const seen: Array<{ ruleId: string; facts: RuleFacts }> = [];
+    const plan = planRuleEffects(f, rules, {
+      onEvaluate: (ruleId, evaluated) =>
+        seen.push({ ruleId, facts: evaluated }),
+    });
+    return { seen, plan };
+  };
+
+  it("reports each rule reached, in order, with the facts it was evaluated against", () => {
+    const first = rule([setCategory(CAT), addTags(TAG_A)]);
+    const second = rule([addTags(TAG_B)]);
+    const { seen } = observe([first, second]);
+
+    expect(seen.map((s) => s.ruleId)).toEqual([first.id, second.id]);
+    expect(seen[0].facts.categoryId).toBeNull();
+    // The second rule sees what the first one changed.
+    expect(seen[1].facts.categoryId).toBe(CAT);
+    expect(seen[1].facts.tagIds).toEqual([TAG_A]);
+  });
+
+  it("does not report a disabled or invalid rule, nor a rule after a stop", () => {
+    const disabled = rule([addTags(TAG_A)], { enabled: false });
+    const invalid = rule([], {});
+    const stop = rule([addTags(TAG_B)], { stopProcessing: true });
+    const after = rule([addTags(TAG_C)]);
+    const { seen } = observe([disabled, invalid, stop, after]);
+
+    expect(seen.map((s) => s.ruleId)).toEqual([stop.id]);
+  });
+
+  it("reports a rule whose condition does not hold, and changes nothing about the plan", () => {
+    const misses = rule([addTags(TAG_A)], {
+      condition: { field: "type", op: "eq", value: "INCOME" },
+    });
+    const { seen, plan } = observe([misses]);
+    expect(seen.map((s) => s.ruleId)).toEqual([misses.id]);
+    expect(plan).toEqual(planRuleEffects(facts(), [misses]));
+  });
+});

@@ -18,6 +18,8 @@ import {
   SpendingByCategoryParams,
   IncomeVsExpensesParams,
   CashFlowParams,
+  CashFlowSankeyParams,
+  CashFlowSankeyResponse,
 } from '@/types/built-in-reports';
 import { MonthlyComparisonResponse } from '@/types/monthly-comparison';
 
@@ -188,6 +190,26 @@ export const builtInReportsApi = {
     const response = await apiClient.get<MonthlyComparisonResponse>(
       '/built-in-reports/monthly-comparison',
       { params: { month } },
+    );
+    return response.data;
+  },
+
+  getCashFlowSankey: async (
+    params: CashFlowSankeyParams,
+  ): Promise<CashFlowSankeyResponse> => {
+    const { accountIds, ...rest } = params;
+    const response = await apiClient.get<CashFlowSankeyResponse>(
+      '/built-in-reports/cash-flow-sankey',
+      {
+        // One comma-separated value; an empty scope means the server's default
+        // cash-flow accounts, so it is left off entirely.
+        params: {
+          ...rest,
+          ...(accountIds && accountIds.length > 0
+            ? { accountIds: accountIds.join(',') }
+            : {}),
+        },
+      },
     );
     return response.data;
   },

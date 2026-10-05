@@ -294,7 +294,8 @@ test.describe('CLUSTER_MODE=multi', () => {
  * The revision is a plain JSON-RPC POST -- no session, no `initialize`, a fresh
  * server per request -- so an agent needs no SDK here, and adding one as an E2E
  * dependency to make three calls would be the tail wagging the dog. The two
- * `_meta` envelope keys and the `Mcp-Method`/`Mcp-Name` routing headers are
+ * `_meta` envelope keys, the `Mcp-Method`/`Mcp-Name` routing headers and the
+ * `MCP-Protocol-Version` header naming the same revision as the envelope are
  * what the transport validates; `docs/backend/mcp.md` describes the same wire,
  * and `mcp-eras.spec.ts` drives it through the real SDK.
  *
@@ -304,6 +305,7 @@ test.describe('CLUSTER_MODE=multi', () => {
  * a round-robin LB would answer its second request `404 Session not found`.
  */
 let nextRpcId = 1;
+const MCP_PROTOCOL_VERSION = '2026-07-28';
 
 async function mcpCall(
   agent: APIRequestContext,
@@ -318,6 +320,7 @@ async function mcpCall(
       accept: 'application/json, text/event-stream',
       'mcp-method': 'tools/call',
       'mcp-name': name,
+      'mcp-protocol-version': MCP_PROTOCOL_VERSION,
     },
     data: {
       jsonrpc: '2.0',
@@ -327,7 +330,7 @@ async function mcpCall(
         name,
         arguments: args,
         _meta: {
-          'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+          'io.modelcontextprotocol/protocolVersion': MCP_PROTOCOL_VERSION,
           'io.modelcontextprotocol/clientCapabilities': {},
         },
       },

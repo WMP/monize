@@ -134,7 +134,7 @@ const mockCategories = [
     description: null,
     icon: null,
     color: null,
-    effectiveColor: null, effectiveIcon: null,
+    effectiveColor: null, effectiveIcon: null, autoSign: null, effectiveAutoSign: true,
     isIncome: false,
     isSystem: false,
     createdAt: '2024-01-01T00:00:00Z',
@@ -149,7 +149,7 @@ const mockCategories = [
     description: null,
     icon: null,
     color: null,
-    effectiveColor: null, effectiveIcon: null,
+    effectiveColor: null, effectiveIcon: null, autoSign: null, effectiveAutoSign: true,
     isIncome: true,
     isSystem: false,
     createdAt: '2024-01-01T00:00:00Z',
@@ -162,7 +162,7 @@ const mockPayees = [
     userId: 'user-1',
     name: 'Grocery Store',
     defaultCategoryId: 'cat-1',
-    defaultCategory: { id: 'cat-1', name: 'Groceries', userId: 'user-1', parentId: null, parent: null, children: [], description: null, icon: null, color: null, effectiveColor: null, effectiveIcon: null, isIncome: false, isSystem: false, createdAt: '2024-01-01T00:00:00Z' },
+    defaultCategory: { id: 'cat-1', name: 'Groceries', userId: 'user-1', parentId: null, parent: null, children: [], description: null, icon: null, color: null, effectiveColor: null, effectiveIcon: null, autoSign: null, effectiveAutoSign: true, isIncome: false, isSystem: false, createdAt: '2024-01-01T00:00:00Z' },
     notes: null,
     createdAt: '2024-01-01T00:00:00Z',
   },
@@ -331,7 +331,8 @@ vi.mock('@/lib/format', () => ({
   formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
 }));
 
-vi.mock('@/lib/categoryUtils', () => ({
+vi.mock('@/lib/categoryUtils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/categoryUtils')>()),
   buildCategoryTree: (cats: any[]) => cats.map((c: any) => ({ category: c, children: [] })),
 }));
 
@@ -434,7 +435,7 @@ function createExistingTransaction(overrides = {}) {
     payeeName: 'Grocery Store',
     payee: null,
     categoryId: 'cat-1',
-    category: { id: 'cat-1', name: 'Groceries', userId: 'user-1', parentId: null, parent: null, children: [], description: null, icon: null, color: null, effectiveColor: null, effectiveIcon: null, isIncome: false, isSystem: false, createdAt: '2024-01-01T00:00:00Z' },
+    category: { id: 'cat-1', name: 'Groceries', userId: 'user-1', parentId: null, parent: null, children: [], description: null, icon: null, color: null, effectiveColor: null, effectiveIcon: null, autoSign: null, effectiveAutoSign: true, isIncome: false, isSystem: false, createdAt: '2024-01-01T00:00:00Z' },
     amount: -50.0,
     currencyCode: 'CAD',
     exchangeRate: 1,
@@ -647,7 +648,7 @@ describe('TransactionForm', () => {
         description: null,
         icon: null,
         color: null,
-        effectiveColor: null, effectiveIcon: null,
+        effectiveColor: null, effectiveIcon: null, autoSign: null, effectiveAutoSign: true,
         isIncome: false,
         isSystem: false,
         createdAt: '2024-01-01T00:00:00Z',
@@ -2137,7 +2138,7 @@ describe('TransactionForm', () => {
         description: null,
         icon: null,
         color: null,
-        effectiveColor: null, effectiveIcon: null,
+        effectiveColor: null, effectiveIcon: null, autoSign: null, effectiveAutoSign: true,
         isIncome: false,
         isSystem: false,
         createdAt: '2024-01-01T00:00:00Z',
@@ -2167,7 +2168,7 @@ describe('TransactionForm', () => {
         description: null,
         icon: null,
         color: null,
-        effectiveColor: null, effectiveIcon: null,
+        effectiveColor: null, effectiveIcon: null, autoSign: null, effectiveAutoSign: true,
         isIncome: false,
         isSystem: false,
         createdAt: '2024-01-01T00:00:00Z',
@@ -2771,7 +2772,7 @@ describe('TransactionForm', () => {
           description: null,
           icon: null,
           color: null,
-          effectiveColor: null, effectiveIcon: null,
+          effectiveColor: null, effectiveIcon: null, autoSign: null, effectiveAutoSign: true,
           isIncome: false,
           isSystem: false,
           createdAt: '2024-01-01T00:00:00Z',
@@ -2786,7 +2787,7 @@ describe('TransactionForm', () => {
           description: null,
           icon: null,
           color: null,
-          effectiveColor: null, effectiveIcon: null,
+          effectiveColor: null, effectiveIcon: null, autoSign: null, effectiveAutoSign: true,
           isIncome: false,
           isSystem: false,
           createdAt: '2024-01-01T00:00:00Z',
@@ -4015,6 +4016,44 @@ describe('TransactionForm', () => {
       const payload = mockCreate.mock.calls[0][0];
       expect(payload.categoryId).toBe('cat-2');
       expect(payload.amount).toBe(50);
+    });
+
+    it('keeps the typed sign when the chosen category has automatic sign off', async () => {
+      // Groceries (expense) with automatic sign turned off: selecting it must
+      // not negate the amount the way an auto-sign expense category does.
+      mockCategoriesGetAll.mockResolvedValue(
+        mockCategories.map((c) => (c.id === 'cat-1' ? { ...c, autoSign: false, effectiveAutoSign: false } : c)),
+      );
+      render(<TransactionForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} defaultAccountId="acc-1" />);
+      await waitFor(() => expect(screen.getByTestId('combobox-Category')).toBeInTheDocument());
+      await waitFor(() => expect(mockCategoriesGetAll).toHaveBeenCalled());
+
+      const amountInput = screen.getByPlaceholderText('0.00');
+      fireEvent.change(amountInput, { target: { value: '50' } });
+
+      fireEvent.change(screen.getByTestId('combobox-input-Category'), { target: { value: 'Groceries' } });
+
+      fireEvent.click(screen.getByRole('button', { name: /Create Transaction/i }));
+      await waitFor(() => expect(mockCreate).toHaveBeenCalled());
+      const payload = mockCreate.mock.calls[0][0];
+      expect(payload.categoryId).toBe('cat-1');
+      expect(payload.amount).toBe(50);
+    });
+
+    it('keeps a newly typed amount positive under an expense category with automatic sign off', async () => {
+      mockCategoriesGetAll.mockResolvedValue(
+        mockCategories.map((c) => (c.id === 'cat-1' ? { ...c, autoSign: false, effectiveAutoSign: false } : c)),
+      );
+      render(<TransactionForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} defaultAccountId="acc-1" />);
+      await waitFor(() => expect(screen.getByTestId('combobox-Category')).toBeInTheDocument());
+      await waitFor(() => expect(mockCategoriesGetAll).toHaveBeenCalled());
+
+      fireEvent.change(screen.getByTestId('combobox-input-Category'), { target: { value: 'Groceries' } });
+      fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '75' } });
+
+      fireEvent.click(screen.getByRole('button', { name: /Create Transaction/i }));
+      await waitFor(() => expect(mockCreate).toHaveBeenCalled());
+      expect(mockCreate.mock.calls[0][0].amount).toBe(75);
     });
 
     it('clears categoryId when a custom (non-matching) category value is typed', async () => {

@@ -29,8 +29,7 @@ function makeInput(
     annualRate: 5.5,
     paymentAmount: 591.67,
     frequency: 'MONTHLY',
-    isCanadian: false,
-    isVariableRate: false,
+    mortgageType: 'ANNUITY',
     firstPaymentDate: new Date('2026-09-05'),
     rateChanges: [],
     ...overrides,
@@ -69,9 +68,42 @@ describe('deriveLoanFigures', () => {
     ).toEqual({
       isSettled: false,
       currentPayment: 1500,
+      currentPaymentDate: null,
+      finalPayment: null,
       payoffDate: '2031-04-15',
       remainingInterest: 12345.67,
     });
+  });
+
+  it('carries the date of a dated installment and an interest-only bullet', () => {
+    const figures = deriveLoanFigures({
+      currentBalance: -300000,
+      currentInstallment: 500,
+      currentInstallmentDate: '2024-01-01',
+      finalPayment: { amount: 300500, date: '2053-12-01' },
+      baseline: makeBaseline(),
+    });
+    expect(figures.currentPaymentDate).toBe('2024-01-01');
+    expect(figures.finalPayment).toEqual({ amount: 300500, date: '2053-12-01' });
+  });
+
+  it('dates no installment that is unknown, and no bullet once settled', () => {
+    expect(
+      deriveLoanFigures({
+        currentBalance: -300000,
+        currentInstallment: null,
+        currentInstallmentDate: '2024-01-01',
+        baseline: makeBaseline(),
+      }).currentPaymentDate,
+    ).toBeNull();
+    expect(
+      deriveLoanFigures({
+        currentBalance: 0,
+        currentInstallment: 500,
+        finalPayment: { amount: 300500, date: '2053-12-01' },
+        baseline: null,
+      }).finalPayment,
+    ).toBeNull();
   });
 
   // A settled debt is a known end state, not an unknown one: reporting the
@@ -123,6 +155,17 @@ describe('deriveLoanFigures', () => {
 });
 
 describe('loanNotAmortizingReason', () => {
+  // docs/specs/mortgage-types.md section 5.4: these methods set the principal
+  // independently of the interest, so neither reason applies.
+  it.each(['LINEAR', 'INTEREST_ONLY'] as const)('does not apply to a %s mortgage', (type) => {
+    expect(
+      loanNotAmortizingReason(
+        makeInput({ mortgageType: type }),
+        makeBaseline({ paidOff: false, coveredInterest: false }),
+      ),
+    ).toBeNull();
+  });
+
   it('is null when there is no projection or it pays off', () => {
     expect(loanNotAmortizingReason(null, makeBaseline())).toBeNull();
     expect(loanNotAmortizingReason(makeInput(), null)).toBeNull();

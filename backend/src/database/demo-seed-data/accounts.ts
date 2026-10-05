@@ -1,3 +1,5 @@
+import { MortgageType } from "../../accounts/mortgage-type.util";
+
 export interface DemoAccount {
   key: string;
   type: string;
@@ -17,9 +19,12 @@ export interface DemoAccount {
   // Mortgage-specific
   isCanadianMortgage?: boolean;
   isVariableRate?: boolean;
+  mortgageType?: MortgageType;
   termMonths?: number;
   amortizationMonths?: number;
   originalPrincipal?: number;
+  // The category a loan's interest is booked to (`interest_category_id`)
+  interestCategoryPath?: string;
 }
 
 export const demoAccounts: DemoAccount[] = [
@@ -89,9 +94,11 @@ export const demoAccounts: DemoAccount[] = [
     institution: "Scotiabank",
     isCanadianMortgage: true,
     isVariableRate: false,
+    mortgageType: "CANADIAN_FIXED",
     termMonths: 60,
     amortizationMonths: 300,
     originalPrincipal: 400000.0,
+    interestCategoryPath: "Housing > Mortgage Interest",
   },
   {
     key: "rrsp",

@@ -23,12 +23,12 @@
     "button": "Facturen &amp; Stortingen bekijken"
   },
   "mortgageReminder": {
-    "subject": "Monize: 1 aankomende hypotheekverlenging",
-    "subjectPlural": "Monize: {{ count }} aankomende hypotheekverlengingen",
-    "heading": "Herinnering hypotheekverlenging",
+    "subject": "Monize: 1 rentevaste periode loopt binnenkort af",
+    "subjectPlural": "Monize: {{ count }} rentevaste periodes lopen binnenkort af",
+    "heading": "Herinnering einde rentevaste periode",
     "greeting": "Hoi {{ name }},",
-    "introOne": "Je hebt 1 hypotheek met een aankomende termijnverlenging. Neem contact op met je geldverstrekker om verlengingsopties te bespreken voordat de termijn afloopt:",
-    "introMany": "Je hebt {{ count }} hypotheken met een aankomende termijnverlenging. Neem contact op met je geldverstrekker om verlengingsopties te bespreken voordat de termijn afloopt:",
+    "introOne": "Je hebt 1 hypotheek waarvan de huidige rentevaste periode binnenkort afloopt. Neem voor het einde contact op met je geldverstrekker om je volgende rente of verlenging te regelen:",
+    "introMany": "Je hebt {{ count }} hypotheken waarvan de huidige rentevaste periode binnenkort afloopt. Neem voor elk einde contact op met je geldverstrekker om de volgende rente of verlenging te regelen:",
     "colMortgage": "Hypotheek",
     "colTermEndDate": "Einddatum looptijd",
     "colTimeRemaining": "Resterende tijd",
@@ -308,6 +308,22 @@
     "priceMovement": {
       "title": "Melding bij koerswijziging: {{ symbol }} ({{ percent }}%)",
       "message": "{{ symbol }}: {{ percent }}% ten opzichte van de vorige beschikbare sessie."
+    },
+    "bankSync": {
+      "expiringTitleToday": "{{ institution }}: toegang tot de bank eindigt vandaag",
+      "expiringTitleOneDay": "{{ institution }}: toegang tot de bank eindigt binnen 1 dag",
+      "expiringTitleDays": "{{ institution }}: toegang tot de bank eindigt binnen {{ days }} dagen",
+      "expiringMessage": "Uw toestemming voor Monize om {{ institution }} te lezen eindigt op {{ date }}. Verleng de koppeling in Monize om te blijven synchroniseren.",
+      "expiredTitle": "{{ institution }}: toegang tot de bank is beëindigd",
+      "expiredMessage": "Uw toestemming voor Monize om {{ institution }} te lezen is beëindigd. Verleng de koppeling in Monize om de synchronisatie te hervatten.",
+      "failedTitle": "{{ institution }}: synchronisatie mislukt",
+      "failedMessage": "De dagelijkse synchronisatie van {{ institution }} is mislukt voor: {{ accounts }}. Open de instellingen voor banksynchronisatie om te zien waarom.",
+      "failedCredentialsMessage": "De dagelijkse synchronisatie van {{ institution }} kon niet starten omdat de inloggegevens voor banksynchronisatie ontbreken of zijn geweigerd. Controleer ze in de instellingen voor banksynchronisatie.",
+      "unnamedAccount": "een rekening",
+      "importedTitle": "{{ institution }}: nieuwe transacties geïmporteerd",
+      "importedMessage": "Door de dagelijkse synchronisatie uit {{ institution }} geïmporteerde transacties: {{ imported }}.",
+      "importedNoneTitle": "{{ institution }}: geen nieuwe transacties",
+      "importedNoneMessage": "De dagelijkse synchronisatie van {{ institution }} vond geen nieuwe transacties."
     }
   },
   "backupOffsite": {

@@ -190,8 +190,16 @@ CREATE TABLE accounts (
     date_acquired DATE, -- date the asset was acquired (for net worth historical accuracy)
     linked_loan_account_id UUID, -- asset's financing loan/mortgage (self-referential FK added below; for the equity view)
     -- Mortgage-specific fields
-    is_canadian_mortgage BOOLEAN DEFAULT false, -- Canadian mortgages use semi-annual compounding for fixed rates
-    is_variable_rate BOOLEAN DEFAULT false, -- Variable rate mortgages use monthly compounding
+    is_canadian_mortgage BOOLEAN DEFAULT false, -- with is_variable_rate false: semi-annual compounding (CANADIAN_FIXED); superseded by mortgage_type
+    is_variable_rate BOOLEAN DEFAULT false, -- only cancels the Canadian semi-annual compounding (the nominal rate / payments per year); superseded by mortgage_type
+    -- Compounding convention and amortization method (docs/specs/mortgage-types.md):
+    -- 'ANNUITY' | 'CANADIAN_FIXED' | 'LINEAR' | 'INTEREST_ONLY'. Nullable until the
+    -- contract migration; a null MORTGAGE row is read from the two flags above.
+    mortgage_type VARCHAR(20),
+    -- What an extra repayment does to a LINEAR mortgage's constant principal:
+    -- 'SHORTEN_TERM' (null reads as this) or 'LOWER_INSTALLMENT'. Null on every
+    -- other type (accounts_prepayment_mode_linear_only).
+    prepayment_mode VARCHAR(20),
     term_months INTEGER, -- Mortgage term length in months (e.g., 60 for 5-year term)
     term_end_date DATE, -- When the current term ends (for renewal reminders)
     amortization_months INTEGER, -- Total amortization period in months (e.g., 300 for 25 years)
@@ -205,7 +213,21 @@ CREATE TABLE accounts (
     CONSTRAINT chk_statement_due_day_cc_only
       CHECK (account_type = 'CREDIT_CARD' OR statement_due_day IS NULL),
     CONSTRAINT chk_statement_settlement_day_cc_only
-      CHECK (account_type = 'CREDIT_CARD' OR statement_settlement_day IS NULL)
+      CHECK (account_type = 'CREDIT_CARD' OR statement_settlement_day IS NULL),
+    CONSTRAINT accounts_mortgage_type_check
+      CHECK (mortgage_type IN ('ANNUITY', 'CANADIAN_FIXED', 'LINEAR', 'INTEREST_ONLY')),
+    CONSTRAINT accounts_prepayment_mode_check
+      CHECK (prepayment_mode IN ('SHORTEN_TERM', 'LOWER_INSTALLMENT')),
+    CONSTRAINT accounts_prepayment_mode_linear_only
+      CHECK (prepayment_mode IS NULL OR mortgage_type = 'LINEAR'),
+    -- LINEAR and INTEREST_ONLY have no constant payment; each installment is
+    -- priced at its due date (docs/specs/mortgage-types.md, decision 11).
+    CONSTRAINT accounts_payment_amount_method_check
+      CHECK (
+        payment_amount IS NULL
+        OR mortgage_type IS NULL
+        OR mortgage_type IN ('ANNUITY', 'CANADIAN_FIXED')
+      )
 );
 
 CREATE INDEX idx_accounts_user ON accounts(user_id);
@@ -233,6 +255,7 @@ CREATE TABLE categories (
     icon VARCHAR(50),
     color VARCHAR(7), -- hex color
     is_income BOOLEAN DEFAULT false,
+    auto_sign BOOLEAN,
     is_system BOOLEAN DEFAULT false, -- system categories can't be deleted
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, name, parent_id)
@@ -2324,6 +2347,149 @@ CREATE UNIQUE INDEX idx_import_jobs_one_active_per_user
 
 CREATE TRIGGER update_import_jobs_updated_at BEFORE UPDATE ON import_jobs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Bank sync (Open Banking / PSD2 through a regulated aggregator; the first
+-- provider is Enable Banking): docs/specs/bank-sync.md section 4. The defaults
+-- on provider, psu_type, status, auto_sync and the counters exist for the RLS
+-- spec's generic row seeder.
+--
+-- Credentials: one row per user and provider. private_key_enc is the RSA
+-- private key encrypted with EncryptionService and never returned to a client
+-- (INV-BANKSYNC-002); it is deliberately not named api_key_enc.
+CREATE TABLE bank_sync_credentials (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(30) NOT NULL DEFAULT 'enable_banking',
+    application_id VARCHAR(100) NOT NULL,
+    private_key_enc TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ck_bank_sync_credentials_provider
+      CHECK (provider IN ('enable_banking')),
+    CONSTRAINT uq_bank_sync_credentials_user_provider
+      UNIQUE (user_id, provider)
+);
+
+-- Connections: one authorization of one user at one institution.
+-- auth_state_hash is the SHA-256 hex of the one-time OAuth state; clearing it
+-- is the claim that makes a replayed callback find nothing. psu_type is kept
+-- so a re-authorization asks for the same kind of access.
+CREATE TABLE bank_sync_connections (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(30) NOT NULL DEFAULT 'enable_banking',
+    institution_name VARCHAR(255) NOT NULL,
+    institution_country VARCHAR(2) NOT NULL,
+    psu_type VARCHAR(20) NOT NULL DEFAULT 'personal',
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    auth_state_hash VARCHAR(64),
+    auth_started_at TIMESTAMPTZ,
+    external_session_id VARCHAR(255),
+    valid_until TIMESTAMPTZ,
+    auto_sync BOOLEAN NOT NULL DEFAULT true,
+    last_error VARCHAR(500),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- How the daily sync reports a successful run (docs/specs/bank-sync-notifications.md
+    -- section 3); a column added by 20261001202917_bank_sync_notify_success.sql.
+    notify_success VARCHAR(20) NOT NULL DEFAULT 'when_imported',
+    -- Whether a synced transaction is tagged with the bank's operation type
+    -- (docs/specs/bank-sync.md section 7b); a column added by
+    -- 20261002074622_bank_sync_exceptions_and_operation_tags.sql.
+    tag_operation_type BOOLEAN NOT NULL DEFAULT true,
+    CONSTRAINT ck_bank_sync_connections_provider
+      CHECK (provider IN ('enable_banking')),
+    CONSTRAINT ck_bank_sync_connections_psu_type
+      CHECK (psu_type IN ('personal', 'business')),
+    CONSTRAINT ck_bank_sync_connections_status
+      CHECK (status IN ('pending', 'active', 'expired', 'revoked', 'failed')),
+    CONSTRAINT ck_bank_sync_connections_notify_success
+      CHECK (notify_success IN ('always', 'when_imported', 'never'))
+);
+
+CREATE INDEX idx_bank_sync_connections_user ON bank_sync_connections(user_id);
+CREATE UNIQUE INDEX uq_bank_sync_connections_auth_state
+    ON bank_sync_connections(auth_state_hash)
+    WHERE auth_state_hash IS NOT NULL;
+
+-- Bank accounts: one account a connection can read, mapped to at most one
+-- Monize account. account_id is ON DELETE SET NULL (deleting the Monize account
+-- unlinks the bank account); a linked row always has a cut-off date.
+-- bank_balance is what the bank reported, at money precision; it never writes
+-- accounts.current_balance.
+CREATE TABLE bank_sync_accounts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    connection_id UUID NOT NULL REFERENCES bank_sync_connections(id) ON DELETE CASCADE,
+    external_account_id VARCHAR(255) NOT NULL,
+    identification_hash VARCHAR(255),
+    display_name VARCHAR(255),
+    identifier_masked VARCHAR(50),
+    account_identifier VARCHAR(64),
+    cash_account_type VARCHAR(10),
+    currency_code VARCHAR(3),
+    account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
+    sync_from_date DATE,
+    last_synced_at TIMESTAMPTZ,
+    last_success_at TIMESTAMPTZ,
+    last_sync_status VARCHAR(20),
+    last_sync_error VARCHAR(500),
+    last_imported_count INTEGER NOT NULL DEFAULT 0,
+    last_skipped_count INTEGER NOT NULL DEFAULT 0,
+    last_refused_count INTEGER NOT NULL DEFAULT 0,
+    bank_balance NUMERIC(20,4),
+    bank_balance_currency VARCHAR(3),
+    bank_balance_date DATE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ck_bank_sync_accounts_last_sync_status
+      CHECK (last_sync_status IS NULL OR last_sync_status IN ('succeeded', 'failed')),
+    CONSTRAINT ck_bank_sync_accounts_linked_has_cutoff
+      CHECK (account_id IS NULL OR sync_from_date IS NOT NULL),
+    CONSTRAINT ck_bank_sync_accounts_counts
+      CHECK (last_imported_count >= 0 AND last_skipped_count >= 0 AND last_refused_count >= 0),
+    CONSTRAINT uq_bank_sync_accounts_connection_external
+      UNIQUE (connection_id, external_account_id)
+);
+
+CREATE INDEX idx_bank_sync_accounts_user ON bank_sync_accounts(user_id);
+CREATE UNIQUE INDEX uq_bank_sync_accounts_account
+    ON bank_sync_accounts(account_id)
+    WHERE account_id IS NOT NULL;
+
+-- The ledger behind INV-BANKSYNC-001 (a bank transaction is imported into a
+-- Monize account at most once): UNIQUE (account_id, external_key), keyed on the
+-- Monize account so a disconnect and reconnect does not re-import history.
+-- transaction_id is ON DELETE SET NULL, so a deleted Monize transaction keeps
+-- its ledger row and the next sync does not bring it back.
+CREATE TABLE bank_sync_imported_transactions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    external_key VARCHAR(255) NOT NULL,
+    transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
+    booking_date DATE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Set when the user added the bank transaction to the exceptions from the
+    -- preview: the row then has no transaction and still claims the key, so no
+    -- later sync imports it (docs/specs/bank-sync.md section 7b); a column added
+    -- by 20261002074622_bank_sync_exceptions_and_operation_tags.sql.
+    excluded_at TIMESTAMPTZ,
+    CONSTRAINT uq_bank_sync_imported_transactions_key
+      UNIQUE (account_id, external_key)
+);
+
+CREATE INDEX idx_bank_sync_imported_transactions_user
+    ON bank_sync_imported_transactions(user_id);
+-- The ON DELETE SET NULL above scans this column whenever a transaction row is
+-- deleted; without the index that is a sequential scan of the ledger.
+CREATE INDEX idx_bank_sync_imported_transactions_transaction
+    ON bank_sync_imported_transactions(transaction_id)
+    WHERE transaction_id IS NOT NULL;
+
+CREATE TRIGGER update_bank_sync_credentials_updated_at BEFORE UPDATE ON bank_sync_credentials FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_bank_sync_connections_updated_at BEFORE UPDATE ON bank_sync_connections FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_bank_sync_accounts_updated_at BEFORE UPDATE ON bank_sync_accounts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Durable claims on per-user work that must happen at most once (migration 140).
 --
 -- ScheduleModule lives in the API process, so every backend replica fires every
@@ -3036,6 +3202,10 @@ DECLARE
         'auto_backup_settings',
         'backup_offsite_settings',
         'backup_offsite_uploads',
+        'bank_sync_accounts',
+        'bank_sync_connections',
+        'bank_sync_credentials',
+        'bank_sync_imported_transactions',
         'budgets',
         'calendar_day_notes',
         'custom_reports',

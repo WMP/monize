@@ -1,17 +1,25 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { DataSource } from "typeorm";
-import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import {
+  createScopedDbMocks,
+  ManagerMock,
+} from "../test-helpers/scoped-db-testing";
+import { ACCOUNT_BALANCE_AS_OF_SQL } from "../common/ledger-balance.sql";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
 );
-import { BadRequestException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 import { LoanMortgageAccountService } from "./loan-mortgage-account.service";
 import { Account, AccountType } from "./entities/account.entity";
 import { Institution } from "../institutions/entities/institution.entity";
 import { CategoriesService } from "../categories/categories.service";
 import { ScheduledTransactionsService } from "../scheduled-transactions/scheduled-transactions.service";
 import { LoanRateChangesService } from "../loan-rate-changes/loan-rate-changes.service";
+import { LoanPaymentDetectorService } from "./loan-payment-detector.service";
 import { CreateAccountDto } from "./dto/create-account.dto";
 
 describe("LoanMortgageAccountService", () => {
@@ -21,6 +29,7 @@ describe("LoanMortgageAccountService", () => {
   let categoriesService: Record<string, jest.Mock>;
   let scheduledTransactionsService: Record<string, jest.Mock>;
   let loanRateChangesService: Record<string, jest.Mock>;
+  let manager: ManagerMock;
 
   const userId = "user-1";
 
@@ -69,10 +78,15 @@ describe("LoanMortgageAccountService", () => {
       ),
     };
 
-    const { dataSource } = createScopedDbMocks([
+    const mocks = createScopedDbMocks([
       [Account, accountsRepository],
       [Institution, institutionsRepository],
     ]);
+    const { dataSource } = mocks;
+    manager = mocks.manager;
+    // The dated ledger debt (`datedLoanDebt`): the as-of balance the rate
+    // update prices from, here equal to the fixture's current balance.
+    manager.query.mockResolvedValue([{ balance: "-450000" }]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -90,6 +104,7 @@ describe("LoanMortgageAccountService", () => {
           provide: LoanRateChangesService,
           useValue: loanRateChangesService,
         },
+        { provide: LoanPaymentDetectorService, useValue: {} },
       ],
     }).compile();
 
@@ -371,6 +386,7 @@ describe("LoanMortgageAccountService", () => {
           currentBalance: -500000,
           interestRate: 5.0,
           institution: "RBC",
+          mortgageType: "CANADIAN_FIXED",
           isCanadianMortgage: true,
           isVariableRate: false,
           amortizationMonths: 300,
@@ -572,8 +588,7 @@ describe("LoanMortgageAccountService", () => {
         300,
         "MONTHLY" as any,
         new Date("2025-01-01"),
-        true,
-        false,
+        "CANADIAN_FIXED",
       );
 
       expect(result).toBeDefined();
@@ -591,8 +606,7 @@ describe("LoanMortgageAccountService", () => {
         300,
         "MONTHLY" as any,
         new Date("2025-01-01"),
-        false,
-        false,
+        "ANNUITY",
       );
       const result2 = service.previewMortgageAmortization(
         -500000,
@@ -600,8 +614,7 @@ describe("LoanMortgageAccountService", () => {
         300,
         "MONTHLY" as any,
         new Date("2025-01-01"),
-        false,
-        false,
+        "ANNUITY",
       );
 
       expect(result1.paymentAmount).toBe(result2.paymentAmount);
@@ -747,6 +760,64 @@ describe("LoanMortgageAccountService", () => {
           recalculatePayment: false,
         },
       );
+    });
+
+    it("prices the split from the ledger debt through the effective date", async () => {
+      // Spec decision 5: a payment already posted for a date before the
+      // change is not owed by it, so the debt is the as-of ledger balance at
+      // the effective date, not the through-today current balance.
+      const account = makeMortgageAccount({
+        mortgageType: "ANNUITY",
+        isCanadianMortgage: false,
+        isVariableRate: false,
+      });
+      manager.query.mockResolvedValue([{ balance: "-440000" }]);
+
+      const result = await service.updateMortgageRate(
+        account,
+        userId,
+        6,
+        new Date("2025-06-01"),
+      );
+
+      expect(manager.query).toHaveBeenCalledWith(ACCOUNT_BALANCE_AS_OF_SQL, [
+        "acc-mortgage",
+        userId,
+        "2025-06-01",
+      ]);
+      // 440,000 at 6% / 12, not the 450,000 the current balance holds.
+      expect(result.interestPayment).toBe(2200);
+      expect(result.principalPayment).toBe(550.55);
+    });
+
+    it("refuses when the ledger cannot be read, rather than price from zero", async () => {
+      manager.query.mockResolvedValue([]);
+
+      await expect(
+        service.updateMortgageRate(
+          makeMortgageAccount(),
+          userId,
+          4.5,
+          new Date("2025-06-01"),
+        ),
+      ).rejects.toThrow(ServiceUnavailableException);
+      // Refused before the rate change is recorded: nothing was written.
+      expect(loanRateChangesService.create).not.toHaveBeenCalled();
+    });
+
+    it("reads the stored type over the flags", async () => {
+      const storedAnnuity = await service.updateMortgageRate(
+        makeMortgageAccount({
+          mortgageType: "ANNUITY",
+          isCanadianMortgage: true,
+          isVariableRate: false,
+        }),
+        userId,
+        6,
+        new Date("2025-06-01"),
+      );
+      // ANNUITY divides the nominal rate: 450,000 x 0.06 / 12.
+      expect(storedAnnuity.interestPayment).toBe(2250);
     });
 
     it("should handle variable rate mortgage calculation differently", async () => {

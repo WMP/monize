@@ -360,11 +360,9 @@ describe("SecurityPriceService", () => {
             securityId: securityId as string,
             priceDate: priceDate as string,
             openPrice: (openPrice ?? previous?.openPrice ?? null) as
-              | number
-              | null,
+              number | null,
             highPrice: (highPrice ?? previous?.highPrice ?? null) as
-              | number
-              | null,
+              number | null,
             lowPrice: (lowPrice ?? previous?.lowPrice ?? null) as number | null,
             closePrice: closePrice as number,
             adjustedClose: (seriesIsAdjusted

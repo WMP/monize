@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createLogger } from '@/lib/logger';
 import { SHARE_PAGE_PATH, SHARE_TARGET_PATH } from '@/lib/share-target';
+import { isPublicPath } from '@/lib/public-paths';
 import { LOCALE_COOKIE, LOCALE_HEADER } from '@/i18n/config';
 import {
   backendBaseUrl,
@@ -17,7 +18,6 @@ import {
 } from '@/lib/proxy-body-limit';
 
 const logger = createLogger('Proxy');
-const publicPaths = ['/login', '/register', '/auth/callback', '/forgot-password', '/reset-password', '/verify-email', '/confirm-email-change', '/emergency-access/claim'];
 let backendConnected = false;
 
 // Security headers that mirror next.config.js. Next's `headers()` config is
@@ -236,7 +236,7 @@ export async function proxy(request: NextRequest) {
 
   // Allow public paths - don't redirect auth pages to dashboard based on cookie alone,
   // as the cookie may reference a deleted/inactive user. Let the client handle redirects.
-  if (publicPaths.some(path => pathname.startsWith(path))) {
+  if (isPublicPath(pathname)) {
     return nextWithCsp(request);
   }
 

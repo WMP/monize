@@ -248,10 +248,8 @@
     "payeeLender": "[XX-Payee / Lender-XX]",
     "selectOrCreatePayee": "[XX-Select or create payee...-XX]",
     "mortgageDetails": "[XX-Mortgage Details-XX]",
-    "canadianMortgage": "[XX-Canadian Mortgage (semi-annual compounding)-XX]",
-    "variableRate": "[XX-Variable Rate-XX]",
     "amortizationMonths": "[XX-Amortization (months)-XX]",
-    "termMonths": "[XX-Term (months)-XX]",
+    "termMonths": "[XX-Rate-Fixed Term (months)-XX]",
     "autoPost": "[XX-Automatically post transactions when due-XX]",
     "skip": "[XX-Skip-XX]",
     "setUpPayments": "[XX-Set Up Payments-XX]",
@@ -267,17 +265,31 @@
     },
     "toasts": {
       "setupComplete": "[XX-Scheduled payments set up for {account}-XX]"
-    }
+    },
+    "firstInstallment": "[XX-First Installment-XX]",
+    "firstInstallmentHelp": "[XX-This mortgage has no fixed payment: each installment is worked out from the balance, the rate and the amortization period. This is the one due {date}, including any extra principal.-XX]",
+    "firstInstallmentPending": "[XX-Enter the next payment date to work out the first installment.-XX]",
+    "firstInstallmentCalculating": "[XX-Working out the first installment...-XX]",
+    "firstInstallmentFailed": "[XX-The first installment could not be worked out. Check the values below and try again.-XX]"
   },
   "mortgageFields": {
     "title": "[XX-Mortgage Details-XX]",
-    "canadianMortgage": "[XX-Canadian Mortgage-XX]",
-    "canadianMortgageDesc": "[XX-Uses semi-annual compounding for fixed rates (required by law in Canada)-XX]",
-    "variableRate": "[XX-Variable Rate-XX]",
-    "variableRateDesc": "[XX-Rate may change during the term (uses monthly compounding)-XX]",
-    "variableRateLoanDetailsLink": "[XX-Record rate changes in <link>Loan Details</link>.-XX]",
-    "termLength": "[XX-Term Length-XX]",
-    "termLengthNoTerm": "[XX-Leave at 0 years and 0 months for no term.-XX]",
+    "type": {
+      "label": "[XX-Mortgage Type-XX]",
+      "ANNUITY": "[XX-Annuity (Level Payment)-XX]",
+      "CANADIAN_FIXED": "[XX-Canadian Fixed Rate-XX]",
+      "LINEAR": "[XX-Linear (Constant Principal)-XX]",
+      "INTEREST_ONLY": "[XX-Interest Only-XX]",
+      "help": {
+        "ANNUITY": "[XX-Your total payment is the same every month. Choose this for a variable-rate mortgage too.-XX]",
+        "CANADIAN_FIXED": "[XX-A Canadian fixed-rate contract; interest compounds twice a year.-XX]",
+        "LINEAR": "[XX-The principal part is the same every month and the total falls.-XX]",
+        "INTEREST_ONLY": "[XX-You pay only interest and the balance does not move.-XX]"
+      }
+    },
+    "rateChangesLoanDetailsLink": "[XX-Record rate changes in <link>Loan Details</link>.-XX]",
+    "termLength": "[XX-Rate-Fixed Term-XX]",
+    "termLengthHelp": "[XX-How long your interest rate or contract term runs, for example a 5-year fixed rate. Monize can remind you before it ends. Leave at 0 years and 0 months for no term.-XX]",
     "amortizationPeriod": "[XX-Amortization Period (required)-XX]",
     "years": "[XX-Years-XX]",
     "months": "[XX-Months-XX]",
@@ -333,6 +345,68 @@
       "acceleratedBiweekly": "[XX-Accelerated Bi-Weekly-XX]",
       "weekly": "[XX-Weekly-XX]",
       "acceleratedWeekly": "[XX-Accelerated Weekly-XX]"
+    },
+    "prepaymentMode": {
+      "label": "[XX-What an Extra Repayment Does-XX]",
+      "SHORTEN_TERM": "[XX-Shortens the term (same principal each month)-XX]",
+      "LOWER_INSTALLMENT": "[XX-Lowers the installment (same end date)-XX]",
+      "help": "[XX-Check with your lender. After an extra repayment, a statement whose principal part is unchanged means the term was shortened.-XX]"
+    },
+    "previewFirstInstallment": "[XX-First Installment:-XX]",
+    "detect": {
+      "toggle": "[XX-Not sure? Enter a few installments-XX]",
+      "title": "[XX-Find your mortgage type-XX]",
+      "intro": "[XX-Copy two or three consecutive installments from a statement, oldest first. The balance is optional: with it and the interest rate, Monize can tell whether interest compounds twice a year.-XX]",
+      "installment": "[XX-Installment {number}-XX]",
+      "principal": "[XX-Principal-XX]",
+      "interest": "[XX-Interest-XX]",
+      "balance": "[XX-Balance before (optional)-XX]",
+      "rowIncomplete": "[XX-Enter both the principal and the interest, or leave the row empty.-XX]",
+      "rate": "[XX-Checked against the interest rate entered above, {rate}.-XX]",
+      "noRate": "[XX-No interest rate is entered above, so the compounding cannot be checked.-XX]",
+      "needsFrequency": "[XX-Choose the payment frequency below first: the installments are read at that cadence.-XX]",
+      "submit": "[XX-Suggest a Type-XX]",
+      "close": "[XX-Close-XX]",
+      "suggested": "[XX-Suggested type: {type}-XX]",
+      "noSuggestion": "[XX-No type suggested.-XX]",
+      "lowConfidence": "[XX-Low confidence: check this against your contract or ask your lender before using it.-XX]",
+      "use": "[XX-Use This Type-XX]",
+      "failed": "[XX-The installments could not be checked because the request failed. Try again.-XX]",
+      "reason": {
+        "TOO_FEW_SAMPLES": "[XX-At least two consecutive installments are needed to compare.-XX]",
+        "INVALID_SAMPLE": "[XX-An installment has a negative or unreadable amount.-XX]",
+        "NO_PAYMENT": "[XX-The installments repay no principal and charge no interest.-XX]",
+        "AMBIGUOUS_CONSTANT_PRINCIPAL_AND_INSTALLMENT": "[XX-The principal and the total are the same on every installment, which fits a linear and an annuity mortgage alike. Try installments further apart, or check your contract.-XX]",
+        "ACCELERATED_FREQUENCY": "[XX-These installments look linear or interest-only, which an accelerated payment frequency cannot be. Check the payment frequency.-XX]",
+        "NO_RULE_FITS": "[XX-Neither the principal nor the total stays the same across these installments. If the rate changed between them, use installments from one rate period.-XX]",
+        "ZERO_PRINCIPAL": "[XX-No principal is repaid, so the balance does not move.-XX]",
+        "ZERO_PRINCIPAL_RATE_MISMATCH": "[XX-No principal is repaid, but the interest is not the quoted rate on the balance. Check the rate.-XX]",
+        "CONSTANT_PRINCIPAL": "[XX-The principal part is the same every time and the total falls.-XX]",
+        "CONSTANT_PRINCIPAL_RATE_MISMATCH": "[XX-The principal part is the same every time, but the interest is not the quoted rate on the balance. Check the rate.-XX]",
+        "CONSTANT_INSTALLMENT_SEMI_ANNUAL": "[XX-The total is the same every time, and the interest matches the quoted rate compounded twice a year.-XX]",
+        "CONSTANT_INSTALLMENT_NOMINAL": "[XX-The total is the same every time, and the interest matches the quoted rate without twice-yearly compounding.-XX]",
+        "CONSTANT_INSTALLMENT_RATE_UNCHECKED": "[XX-The total is the same every time. Without the balance before each installment and the interest rate, twice-yearly compounding could not be checked.-XX]",
+        "CONSTANT_INSTALLMENT_COMPOUNDING_AMBIGUOUS": "[XX-The total is the same every time, but the balance is too small to tell twice-yearly compounding apart. A Canadian fixed-rate contract says so in its terms.-XX]",
+        "CONSTANT_INSTALLMENT_RATE_MISMATCH": "[XX-The total is the same every time, but the interest matches neither convention at the quoted rate. Interest may be charged by the day; check the rate.-XX]"
+      },
+      "history": {
+        "action": "[XX-Detect Mortgage Type-XX]",
+        "title": "[XX-Mortgage type from your payments-XX]",
+        "intro": "[XX-Read from the latest posted installments at one rate. Nothing changes until you save the account.-XX]",
+        "current": "[XX-Current type: {type}-XX]",
+        "alreadySet": "[XX-This mortgage already has the suggested type.-XX]",
+        "rate": "[XX-Interest rate in effect: {rate}-XX]",
+        "noRate": "[XX-No interest rate is recorded for these dates, so the compounding was not checked.-XX]",
+        "noSamples": "[XX-No posted installment with both a principal and an interest part was found. Record your payments as a split of principal and interest to use this.-XX]",
+        "colDate": "[XX-Date-XX]",
+        "colPrincipal": "[XX-Principal-XX]",
+        "colInterest": "[XX-Interest-XX]",
+        "colBalance": "[XX-Balance before-XX]",
+        "balanceUnknown": "[XX-Unknown-XX]",
+        "failed": "[XX-The payment history could not be read because the request failed. Try again.-XX]",
+        "cancel": "[XX-Cancel-XX]",
+        "use": "[XX-Edit Account With This Type-XX]"
+      }
     }
   },
   "assetFields": {
@@ -361,7 +435,8 @@
     "paymentFrequencyRequired": "[XX-Payment frequency is required-XX]",
     "paymentStartDateRequired": "[XX-First payment date is required-XX]",
     "paymentAccountRequired": "[XX-Payment account is required-XX]",
-    "amortizationRequired": "[XX-Amortization period is required-XX]"
+    "amortizationRequired": "[XX-Amortization period is required-XX]",
+    "acceleratedNeedsAnnuity": "[XX-This mortgage is paid on an accelerated schedule, which only an annuity mortgage has. A linear or interest-only mortgage needs a regular payment frequency, so keep an annuity type.-XX]"
   },
   "loanDetail": {
     "backToAccounts": "[XX-Back to Accounts-XX]",
@@ -389,7 +464,12 @@
       "estRemainingInterest": "[XX-Est. Remaining Interest-XX]",
       "notSet": "[XX-Not set-XX]",
       "notAvailable": "[XX-N/A-XX]",
-      "paidOff": "[XX-Paid off-XX]"
+      "paidOff": "[XX-Paid off-XX]",
+      "nextInstallment": "[XX-Next Installment-XX]",
+      "dueOn": "[XX-Due {date}-XX]",
+      "finalPayment": "[XX-Final Payment-XX]",
+      "nextInstallmentDue": "[XX-Next Installment (due {date})-XX]",
+      "finalPaymentDue": "[XX-Final Payment (due {date})-XX]"
     },
     "schedule": {
       "title": "[XX-Loan Schedule-XX]",
@@ -500,7 +580,10 @@
         "reasonPaidOff": "[XX-This loan has no outstanding balance, so there is nothing left to amortize.-XX]",
         "reasonNoFrequency": "[XX-This loan has no payment frequency set. Add it in the account settings.-XX]",
         "reasonNoRate": "[XX-This loan has no saved interest rate. Set the interest rate in the account settings, or record a rate change dated today or earlier. A rate shown per row in the schedule below is reconstructed from the interest charged and is not a saved rate.-XX]",
-        "reasonNoPayment": "[XX-The installment amount cannot be determined. Record the regular installments as transfers to the loan account (principal, with interest as a split line or a separate categorized expense), or set the payment amount in the account settings. Payments booked as ordinary expenses on the source account never reach the loan account, so the schedule cannot see them.-XX]"
+        "reasonNoPayment": "[XX-The installment amount cannot be determined. Record the regular installments as transfers to the loan account (principal, with interest as a split line or a separate categorized expense), or set the payment amount in the account settings. Payments booked as ordinary expenses on the source account never reach the loan account, so the schedule cannot see them.-XX]",
+        "reasonNoAmortization": "[XX-This mortgage has no amortization period, so its installments and its term end cannot be worked out. Set the amortization period in the account settings.-XX]",
+        "reasonNoPaymentStart": "[XX-This mortgage has no first payment date, so the payments left to its term end cannot be counted. Set up its scheduled payment from the account settings; the first due date you enter becomes payment 1.-XX]",
+        "reasonNoPrincipal": "[XX-This mortgage has no original amount, so its constant principal cannot be worked out. Set the mortgage amount in the account settings.-XX]"
       },
       "description": "[XX-Model extra payments to see how much sooner the loan could be paid off and how much interest you would save. Simulations do not change your real payments.-XX]",
       "reset": "[XX-Reset-XX]",
@@ -540,7 +623,9 @@
         "unreachableInterest": "[XX-Out of reach — even a very large overpayment cannot save that much interest.-XX]",
         "unreachableDate": "[XX-Out of reach — that month is earlier than the soonest possible payoff.-XX]",
         "baselineIncomplete": "[XX-This loan does not pay off within the projected period, so there is no total interest to work back from.-XX]"
-      }
+      },
+      "budgetBelowNextInstallment": "[XX-That's below the next installment ({amount}, due {date}); raise it above to overpay.-XX]",
+      "shortenTermNeedsPrincipal": "[XX-This mortgage has no original amount, so a shortened term cannot be simulated. Choose to lower the installment, or set the mortgage amount in the account settings.-XX]"
     },
     "scenarioChart": {
       "title": "[XX-Scenario comparison-XX]",
@@ -566,7 +651,8 @@
       "totalExtraContributed": "[XX-Total Extra Contributed-XX]",
       "beyondProjection": "[XX-Beyond projection-XX]",
       "unknown": "[XX-Unknown-XX]",
-      "overpaymentAtFrequency": "[XX-{frequency}: +{amount}-XX]"
+      "overpaymentAtFrequency": "[XX-{frequency}: +{amount}-XX]",
+      "firstPayment": "[XX-First Payment-XX]"
     },
     "chart": {
       "title": "[XX-Payoff Timeline-XX]",

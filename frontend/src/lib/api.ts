@@ -2,6 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import Cookies from 'js-cookie';
 import { useAuthStore } from '@/store/authStore';
 import { createLogger } from '@/lib/logger';
+import { isSigningOut } from '@/lib/logout-state';
 
 const logger = createLogger('API');
 
@@ -189,6 +190,7 @@ apiClient.interceptors.response.use(
       !originalRequest?._authRetried &&
       !originalRequest?._skipAuthRedirect &&
       !isLoggingOut &&
+      !isSigningOut() &&
       !isUnauthEndpoint(originalRequest?.url)
     ) {
       originalRequest._authRetried = true;

@@ -46,6 +46,9 @@ import {
   ScheduleRow,
 } from "@/lib/loan-schedule-types";
 import { roundMoney, roundToCents, roundToDecimals } from "@/lib/format";
+import { generateMethodSchedule } from "@/lib/loan-schedule-methods";
+import { amortizationMethodFor } from "@/lib/mortgage-type";
+import type { MortgageType } from "@/types/account";
 
 /**
  * Contractual payment for a mortgage amortized over a given period.
@@ -58,8 +61,7 @@ export function calculateMortgagePaymentAmount(
   annualRate: number,
   amortizationMonths: number,
   frequency: ScheduleFrequency,
-  isCanadian: boolean,
-  isVariableRate: boolean,
+  type: MortgageType,
 ): number {
   if (principal <= 0 || amortizationMonths <= 0) return 0;
 
@@ -67,12 +69,7 @@ export function calculateMortgagePaymentAmount(
     frequency === "ACCELERATED_BIWEEKLY" ||
     frequency === "ACCELERATED_WEEKLY"
   ) {
-    const monthlyRate = getPeriodicRate(
-      annualRate,
-      12,
-      isCanadian,
-      isVariableRate,
-    );
+    const monthlyRate = getPeriodicRate(annualRate, 12, type);
     // Accelerated payments derive from the monthly payment, rounded to
     // storage precision first as the backend does
     const monthlyPayment = roundMoney(
@@ -84,12 +81,7 @@ export function calculateMortgagePaymentAmount(
 
   const periodsPerYear = getPeriodsPerYear(frequency);
   const totalPayments = Math.round((amortizationMonths * periodsPerYear) / 12);
-  const periodicRate = getPeriodicRate(
-    annualRate,
-    periodsPerYear,
-    isCanadian,
-    isVariableRate,
-  );
+  const periodicRate = getPeriodicRate(annualRate, periodsPerYear, type);
   return roundMoney(solvePayment(principal, periodicRate, totalPayments));
 }
 
@@ -104,15 +96,13 @@ export function calculatePaymentForTerm(
   annualRate: number,
   periods: number,
   frequency: ScheduleFrequency,
-  isCanadian = false,
-  isVariableRate = false,
+  type: MortgageType,
 ): number {
   if (balance <= 0 || periods <= 0) return 0;
   const periodicRate = getPeriodicRate(
     annualRate,
     getPeriodsPerYear(frequency),
-    isCanadian,
-    isVariableRate,
+    type,
   );
   if (periodicRate === 0) return roundMoney(balance / periods);
   return roundMoney(
@@ -155,8 +145,7 @@ export function generateBudgetSchedule(
     annualRate,
     paymentAmount,
     frequency,
-    isCanadian = false,
-    isVariableRate = false,
+    mortgageType = "ANNUITY",
     firstPaymentDate,
     maxPayments,
     initialCumulativePrincipal = 0,
@@ -199,8 +188,7 @@ export function generateBudgetSchedule(
   let currentPeriodicRate = getPeriodicRate(
     currentAnnualRate,
     periodsPerYear,
-    isCanadian,
-    isVariableRate,
+    mortgageType,
   );
   let rateChangeIndex = 0;
   let lastInstallment = 0;
@@ -219,8 +207,7 @@ export function generateBudgetSchedule(
       currentPeriodicRate = getPeriodicRate(
         currentAnnualRate,
         periodsPerYear,
-        isCanadian,
-        isVariableRate,
+        mortgageType,
       );
       rateChangeIndex++;
     }
@@ -236,8 +223,7 @@ export function generateBudgetSchedule(
           currentAnnualRate,
           Math.max(1, contractualPeriods - paymentNumber),
           frequency,
-          isCanadian,
-          isVariableRate,
+          mortgageType,
         )
       : paymentAmount;
 
@@ -315,6 +301,11 @@ export function generateBudgetSchedule(
 export function generateLoanSchedule(
   input: LoanScheduleInput,
 ): LoanScheduleResult {
+  // A LINEAR or INTEREST_ONLY mortgage derives every row's principal from its
+  // method (docs/specs/mortgage-types.md, section 5.4); the annuity loops
+  // below price the remainder of a constant payment.
+  const method = amortizationMethodFor(input.mortgageType ?? "ANNUITY");
+  if (method !== "ANNUITY") return generateMethodSchedule(input, method);
   const budget = input.overpayments?.targetMonthlyPayment;
   if (budget && budget > 0) {
     return generateBudgetSchedule(
@@ -332,8 +323,7 @@ export function generateLoanSchedule(
     annualRate,
     paymentAmount,
     frequency,
-    isCanadian = false,
-    isVariableRate = false,
+    mortgageType = "ANNUITY",
     firstPaymentDate,
     overpayments,
     initialCumulativePrincipal = 0,
@@ -384,8 +374,7 @@ export function generateLoanSchedule(
   let currentPeriodicRate = getPeriodicRate(
     currentAnnualRate,
     periodsPerYear,
-    isCanadian,
-    isVariableRate,
+    mortgageType,
   );
   let rateChangeIndex = 0;
 
@@ -430,8 +419,7 @@ export function generateLoanSchedule(
       currentPeriodicRate = getPeriodicRate(
         currentAnnualRate,
         periodsPerYear,
-        isCanadian,
-        isVariableRate,
+        mortgageType,
       );
       if (change.paymentAmount != null && change.paymentAmount > 0) {
         currentPayment = change.paymentAmount;
@@ -454,8 +442,7 @@ export function generateLoanSchedule(
           currentAnnualRate,
           remaining,
           frequency,
-          isCanadian,
-          isVariableRate,
+          mortgageType,
         );
         principal = currentPayment - interest;
       }
@@ -528,8 +515,7 @@ export function generateLoanSchedule(
           currentAnnualRate,
           remaining,
           frequency,
-          isCanadian,
-          isVariableRate,
+          mortgageType,
         );
       }
     }

@@ -259,7 +259,8 @@ export function SplitEditor({
     // If changing category, adjust the amount sign based on income/expense
     if (field === 'categoryId' && value) {
       const category = findCategory(value);
-      if (category) {
+      // A category with automatic sign turned off keeps whatever sign was typed.
+      if (category && category.effectiveAutoSign !== false) {
         const currentAmount = Number(newSplits[index].amount) || 0;
         if (currentAmount !== 0) {
           const absAmount = Math.abs(currentAmount);
@@ -303,7 +304,7 @@ export function SplitEditor({
             const currentAmount = Number(newSplits[index].amount) || 0;
             const isJustSignChange = Math.abs(currentAmount) === Math.abs(newAmount) && Math.abs(currentAmount) !== 0;
 
-            if (!isJustSignChange) {
+            if (!isJustSignChange && category.effectiveAutoSign !== false) {
               const absAmount = Math.abs(newAmount);
               value = category.isIncome ? absAmount : -absAmount;
             }

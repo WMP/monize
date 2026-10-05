@@ -33,6 +33,14 @@ import {
 } from "./rule-facts";
 import { RuleStructurePlan, SplitStructurePlan } from "./rule-structure";
 import { loadRuleTargetAccounts } from "./rule-target-accounts";
+import { RuleFacts } from "./rule-condition.types";
+import { loadRuleLabels, mergeRuleLabels } from "./rule-labels";
+import {
+  ListedRule,
+  RuleRowExplanation,
+  assembleExplainedRules,
+  explainedIds,
+} from "./rule-row-explain";
 import { toRuleResponses } from "./transaction-rule-view";
 import {
   RuleApplicationSource,
@@ -104,6 +112,69 @@ export type RuleRowInput = Omit<RuleFactsInput, "categoryAncestorIds"> & {
   readonly payeeName?: string | null;
 };
 
+/** What the planner may be told besides the row: the transfer's owner and who wants to watch the evaluation. */
+export type RulePlanOptions = PlanRowContext;
+
+/**
+ * The columns of a row that a rule's facts are built from, as the row stores
+ * them. `amount` is what the column holds: a number, or the decimal string the
+ * driver returns for a `decimal(20,4)`. A row not stored yet may not know its
+ * amount or date (null): the facts then treat each as unknown.
+ */
+export type StoredRuleRow = Pick<
+  Transaction,
+  | "accountId"
+  | "currencyCode"
+  | "payeeId"
+  | "payeeName"
+  | "categoryId"
+  | "description"
+  | "isSplit"
+  | "isTransfer"
+  | "referenceNumber"
+  | "status"
+> & {
+  readonly amount: number | string | null;
+  readonly transactionDate: string | null;
+};
+
+/** What the caller knows about a stored row beyond its columns. */
+export interface StoredRuleRowExtras {
+  readonly tagIds: readonly string[];
+  /** The raw payee text of the source; the stored `payeeName` when the source has none. */
+  readonly payeeText: string | null;
+  readonly fromAccountId?: string | null;
+  readonly toAccountId?: string | null;
+}
+
+/**
+ * The input the rules are planned over for a row as it is stored. The one
+ * builder: the writer's `applyToNew` reads each stored row through it, and the
+ * import preview builds the row it would store and reads it through the same
+ * function, so the two cannot hand the rules different facts.
+ */
+export function ruleRowInputFromStored(
+  row: StoredRuleRow,
+  extras: StoredRuleRowExtras,
+): RuleRowInput {
+  return {
+    accountId: row.accountId,
+    currencyCode: row.currencyCode,
+    amount: row.amount,
+    isTransfer: row.isTransfer,
+    fromAccountId: extras.fromAccountId ?? null,
+    toAccountId: extras.toAccountId ?? null,
+    payeeId: row.payeeId,
+    payeeText: extras.payeeText,
+    payeeName: row.payeeName,
+    categoryId: row.categoryId,
+    description: row.description,
+    tagIds: extras.tagIds,
+    hasSplits: row.isSplit,
+    ...storedRowFacts(row),
+  };
+}
+
 /**
  * The X3 facts of a row this applier has just been handed: reference number,
  * date and status from the stored row. A row written in this transaction has
@@ -112,7 +183,9 @@ export type RuleRowInput = Omit<RuleFactsInput, "categoryAncestorIds"> & {
  * is not stored.
  */
 function storedRowFacts(
-  row: Pick<Transaction, "referenceNumber" | "transactionDate" | "status">,
+  row: Pick<Transaction, "referenceNumber" | "status"> & {
+    readonly transactionDate: string | null;
+  },
 ): Pick<
   RuleFactsInput,
   "referenceNumber" | "transactionDate" | "status" | "hasAttachment"
@@ -125,10 +198,13 @@ function storedRowFacts(
   };
 }
 
-/** What a caller knows about the row besides its facts: transfer ownership and the target accounts. */
+/**
+ * What a caller knows about the row besides its facts: transfer ownership, the
+ * target accounts and who wants to watch the evaluation.
+ */
 export type PlanRowContext = Pick<
   RulePlanContext,
-  "crossOwnerTransferLeg" | "accounts" | "structuralNotAllowed"
+  "crossOwnerTransferLeg" | "accounts" | "structuralNotAllowed" | "onEvaluate"
 >;
 
 /** Payee lookups made while planning; share one across the rows of a call. */
@@ -179,9 +255,18 @@ export class TransactionRulesApplierService {
       order: { position: "ASC" },
     });
     if (rules.length === 0) return [];
+    const invalid = await this.invalidRuleIds(m, userId, rules);
+    return rules.filter((rule) => !invalid.has(rule.id));
+  }
+
+  /** The ids among `rules` whose definition no longer validates or names an id that is gone. */
+  private async invalidRuleIds(
+    m: EntityManager,
+    userId: string,
+    rules: readonly TransactionRule[],
+  ): Promise<Set<string>> {
     const views = await toRuleResponses(m, userId, rules);
-    const usable = new Set(views.filter((v) => !v.invalid).map((v) => v.id));
-    return rules.filter((rule) => usable.has(rule.id));
+    return new Set(views.filter((v) => v.invalid).map((v) => v.id));
   }
 
   /**
@@ -267,6 +352,77 @@ export class TransactionRulesApplierService {
     return {
       ...effects,
       labels: await this.labelsFor(m, userId, effects, rules),
+    };
+  }
+
+  /**
+   * Why each of the user's rules for a trigger did or did not apply to one
+   * row, in the order the rules run. Read-only: it writes nothing and queues
+   * nothing.
+   *
+   * The effects are `planForRow`'s own, over the rules `loadRulesFor` would
+   * return (enabled and valid), so what is explained is what the writer does.
+   * Only the condition of each rule is added: the planner reports the facts it
+   * evaluated each condition against (`onEvaluate`, the row as the rules
+   * before it left it) and `explainRuleCondition` explains the tree over
+   * exactly those. A disabled or invalid rule is listed with the reason it was
+   * skipped; a rule after one that stopped the pass is listed as not
+   * evaluated.
+   */
+  async explainRow(
+    m: EntityManager,
+    userId: string,
+    input: RuleRowInput,
+    trigger: RuleTrigger,
+  ): Promise<RuleRowExplanation> {
+    const stored = await m.getRepository(TransactionRule).find({
+      where: { userId, triggers: ArrayContains([trigger]) },
+      order: { position: "ASC" },
+    });
+    const invalid =
+      stored.length === 0
+        ? new Set<string>()
+        : await this.invalidRuleIds(m, userId, stored);
+    const usable = stored.filter(
+      (rule) => rule.enabled && !invalid.has(rule.id),
+    );
+
+    // One pass over the rules is one run of the planner; a payee lookup the
+    // plan asks for plans again, and the facts of the last pass are the ones
+    // behind the trace it returned. A rule seen twice is a new pass.
+    let observed = new Map<string, RuleFacts>();
+    const effects = await this.planForRow(m, userId, input, usable, {
+      onEvaluate: (ruleId, facts) => {
+        if (observed.has(ruleId)) observed = new Map();
+        observed.set(ruleId, facts);
+      },
+    });
+
+    const listed: ListedRule[] = stored.map((rule) => ({
+      id: rule.id,
+      name: rule.name,
+      enabled: rule.enabled,
+      position: rule.position,
+      condition: rule.condition,
+      invalid: invalid.has(rule.id),
+    }));
+    const rules = assembleExplainedRules(listed, effects.trace, observed);
+
+    // Names for the effects (`labelsFor`), and the qualified names of every id
+    // a condition or an effect mentions; the qualified name wins.
+    const effectLabels = await this.labelsFor(m, userId, effects, usable);
+    const named = await loadRuleLabels(m, userId, explainedIds(rules));
+    return {
+      rules,
+      labels: mergeRuleLabels(
+        {
+          accounts: {},
+          payees: effectLabels.payees,
+          categories: effectLabels.categories,
+          tags: effectLabels.tags,
+        },
+        named,
+      ),
     };
   }
 
@@ -626,24 +782,14 @@ export class TransactionRulesApplierService {
       toAccountId = outgoing ? (partner?.accountId ?? null) : row.accountId;
     }
     return {
-      input: {
-        accountId: row.accountId,
-        currencyCode: row.currencyCode,
-        amount: row.amount,
-        isTransfer: row.isTransfer,
-        fromAccountId,
-        toAccountId,
-        payeeId: row.payeeId,
+      input: ruleRowInputFromStored(row, {
+        tagIds,
         payeeText: payeeTextById?.has(row.id)
           ? (payeeTextById.get(row.id) ?? null)
           : row.payeeName,
-        payeeName: row.payeeName,
-        categoryId: row.categoryId,
-        description: row.description,
-        tagIds,
-        hasSplits: row.isSplit,
-        ...storedRowFacts(row),
-      },
+        fromAccountId,
+        toAccountId,
+      }),
       context: { crossOwnerTransferLeg },
     };
   }

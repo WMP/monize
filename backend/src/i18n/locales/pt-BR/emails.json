@@ -23,12 +23,12 @@
     "button": "Ver Faturas &amp; Depósitos"
   },
   "mortgageReminder": {
-    "subject": "Monize: 1 renovação de hipoteca próxima",
-    "subjectPlural": "Monize: {{ count }} renovações de hipoteca próximas",
-    "heading": "Lembrete de renovação de hipoteca",
+    "subject": "Monize: 1 prazo de taxa de hipoteca termina em breve",
+    "subjectPlural": "Monize: {{ count }} prazos de taxa de hipoteca terminam em breve",
+    "heading": "Lembrete de fim do prazo de taxa da hipoteca",
     "greeting": "Olá {{ name }},",
-    "introOne": "Você tem 1 hipoteca com uma renovação de prazo próxima. Entre em contato com seu banco para discutir as opções de renovação antes do fim do prazo:",
-    "introMany": "Você tem {{ count }} hipotecas com uma renovação de prazo próxima. Entre em contato com seu banco para discutir as opções de renovação antes do fim do prazo:",
+    "introOne": "Você tem 1 hipoteca cujo prazo de taxa atual termina em breve. Entre em contato com seu banco antes do fim para combinar a próxima taxa ou a renovação:",
+    "introMany": "Você tem {{ count }} hipotecas cujo prazo de taxa atual termina em breve. Entre em contato com seu banco antes do fim de cada uma para combinar a próxima taxa ou a renovação:",
     "colMortgage": "Hipoteca",
     "colTermEndDate": "Data de fim do prazo",
     "colTimeRemaining": "Tempo restante",
@@ -308,6 +308,22 @@
     "priceMovement": {
       "title": "Alerta de variação do preço: {{ symbol }} ({{ percent }}%)",
       "message": "{{ symbol }}: {{ percent }}% em relação à sessão anterior disponível."
+    },
+    "bankSync": {
+      "expiringTitleToday": "{{ institution }}: o acesso bancário termina hoje",
+      "expiringTitleOneDay": "{{ institution }}: o acesso bancário termina em até 1 dia",
+      "expiringTitleDays": "{{ institution }}: o acesso bancário termina em até {{ days }} dias",
+      "expiringMessage": "Seu consentimento para o Monize ler {{ institution }} termina em {{ date }}. Renove a conexão no Monize para continuar sincronizando.",
+      "expiredTitle": "{{ institution }}: o acesso bancário terminou",
+      "expiredMessage": "Seu consentimento para o Monize ler {{ institution }} terminou. Renove a conexão no Monize para retomar a sincronização.",
+      "failedTitle": "{{ institution }}: falha na sincronização",
+      "failedMessage": "A sincronização diária de {{ institution }} falhou para: {{ accounts }}. Abra as configurações da sincronização bancária para ver o motivo.",
+      "failedCredentialsMessage": "A sincronização diária de {{ institution }} não pôde começar porque as credenciais da sincronização bancária estão ausentes ou foram rejeitadas. Verifique-as nas configurações da sincronização bancária.",
+      "unnamedAccount": "uma conta",
+      "importedTitle": "{{ institution }}: novas transações importadas",
+      "importedMessage": "Transações importadas de {{ institution }} pela sincronização diária: {{ imported }}.",
+      "importedNoneTitle": "{{ institution }}: nenhuma transação nova",
+      "importedNoneMessage": "A sincronização diária de {{ institution }} não encontrou transações novas."
     }
   },
   "backupOffsite": {

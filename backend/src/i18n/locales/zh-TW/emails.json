@@ -23,12 +23,12 @@
     "button": "查看帳單與存款"
   },
   "mortgageReminder": {
-    "subject": "Monize：1 筆即將到期的抵押貸款續約",
-    "subjectPlural": "Monize：{{ count }} 筆即將到期的抵押貸款續約",
-    "heading": "抵押貸款續約提醒",
+    "subject": "Monize：1 筆抵押貸款的利率期限即將結束",
+    "subjectPlural": "Monize：{{ count }} 筆抵押貸款的利率期限即將結束",
+    "heading": "抵押貸款利率期限提醒",
     "greeting": "您好，{{ name }}，",
-    "introOne": "您有 1 筆抵押貸款即將到期需要續約。請在期限結束前聯絡您的貸款機構討論續約選項：",
-    "introMany": "您有 {{ count }} 筆抵押貸款即將到期需要續約。請在期限結束前聯絡您的貸款機構討論續約選項：",
+    "introOne": "您有 1 筆抵押貸款的目前利率期限即將結束。請在結束前聯絡您的貸款機構，安排下一期利率或續約：",
+    "introMany": "您有 {{ count }} 筆抵押貸款的目前利率期限即將結束。請在每筆結束前聯絡您的貸款機構，安排下一期利率或續約：",
     "colMortgage": "抵押貸款",
     "colTermEndDate": "期限結束日期",
     "colTimeRemaining": "剩餘時間",
@@ -308,6 +308,22 @@
     "priceMovement": {
       "title": "價格變動提醒: {{ symbol }} ({{ percent }}%)",
       "message": "{{ symbol }}：相對於上一個有資料的交易日變動 {{ percent }}%。"
+    },
+    "bankSync": {
+      "expiringTitleToday": "{{ institution }}：銀行存取權限今天到期",
+      "expiringTitleOneDay": "{{ institution }}：銀行存取權限將在 1 天內到期",
+      "expiringTitleDays": "{{ institution }}：銀行存取權限將在 {{ days }} 天內到期",
+      "expiringMessage": "您授權 Monize 讀取 {{ institution }} 的有效期至 {{ date }} 結束。請在 Monize 中續期連線以繼續同步。",
+      "expiredTitle": "{{ institution }}：銀行存取權限已到期",
+      "expiredMessage": "您授權 Monize 讀取 {{ institution }} 的有效期已結束。請在 Monize 中續期連線以恢復同步。",
+      "failedTitle": "{{ institution }}：同步失敗",
+      "failedMessage": "{{ institution }} 的每日同步在以下科目失敗：{{ accounts }}。請開啟銀行同步設定查看原因。",
+      "failedCredentialsMessage": "由於銀行同步憑證遺失或被拒絕，{{ institution }} 的每日同步無法啟動。請在銀行同步設定中檢查憑證。",
+      "unnamedAccount": "一個科目",
+      "importedTitle": "{{ institution }}：已匯入新交易",
+      "importedMessage": "每日同步從 {{ institution }} 匯入的交易：{{ imported }} 筆。",
+      "importedNoneTitle": "{{ institution }}：沒有新交易",
+      "importedNoneMessage": "{{ institution }} 的每日同步沒有發現新交易。"
     }
   },
   "backupOffsite": {

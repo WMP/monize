@@ -34,7 +34,15 @@ import { TransactionsService } from "../transactions/transactions.service";
 import { InvestmentTransactionsService } from "../securities/investment-transactions.service";
 import { InvestmentAction } from "../securities/entities/investment-transaction.entity";
 import { FUNDING_ACCOUNT_ACTIONS } from "../securities/investment-replay.util";
-import { Account, AccountSubType } from "../accounts/entities/account.entity";
+import {
+  Account,
+  AccountSubType,
+  AccountType,
+} from "../accounts/entities/account.entity";
+import {
+  mortgageTypeOf,
+  storesConstantPayment,
+} from "../accounts/mortgage-type.util";
 import {
   SECURITY_REQUIRED_ACTIONS,
   QUANTITY_PRICE_ACTIONS,
@@ -91,11 +99,7 @@ import { tr } from "../i18n/translate";
  * support (issue #1247 re-audit).
  */
 export type LlmScheduledKind =
-  | "bill"
-  | "deposit"
-  | "transfer"
-  | "investment"
-  | "unknown";
+  "bill" | "deposit" | "transfer" | "investment" | "unknown";
 
 export interface LlmScheduledItem {
   id: string;
@@ -2278,9 +2282,7 @@ export class ScheduledTransactionsService {
         FUNDING_ACCOUNT_ACTIONS.has(effectiveInvestmentAction)
           ? suppliedOrStored(
               updateData.investmentFundingAccountId as
-                | string
-                | null
-                | undefined,
+                string | null | undefined,
               scheduled.investmentFundingAccountId,
             )
           : null;
@@ -2318,8 +2320,7 @@ export class ScheduledTransactionsService {
       //     so record the current pair.
       if (fieldsToUpdate.investmentExchangeRate !== undefined) {
         const writtenRate = fieldsToUpdate.investmentExchangeRate as
-          | number
-          | null;
+          number | null;
         const rateUnchanged =
           writtenRate !== null &&
           scheduled.investmentExchangeRate !== null &&
@@ -2451,7 +2452,17 @@ export class ScheduledTransactionsService {
         });
         if (loanAccount) {
           const accountUpdate: Partial<Account> = {};
-          if (updateData.amount !== undefined) {
+          // A LINEAR or INTEREST_ONLY mortgage has no constant payment to
+          // record (spec decision 11; the column's CHECK refuses one): the
+          // edit stands for the template only, and the next advancement
+          // reprices it to the method's installment.
+          if (
+            updateData.amount !== undefined &&
+            !(
+              loanAccount.accountType === AccountType.MORTGAGE &&
+              !storesConstantPayment(mortgageTypeOf(loanAccount))
+            )
+          ) {
             accountUpdate.paymentAmount = Math.abs(Number(updateData.amount));
           }
           if (Array.isArray(splits)) {
@@ -3902,6 +3913,11 @@ export class ScheduledTransactionsService {
     return this.loanService.recalculateLoanPaymentSplits(
       scheduledTransactionId,
     );
+  }
+
+  /** See `ScheduledTransactionLoanService.repriceLoanTemplate`. */
+  async repriceLoanTemplate(scheduledTransactionId: string): Promise<void> {
+    return this.loanService.repriceLoanTemplate(scheduledTransactionId);
   }
 
   async getLoanProjectionAnchor(

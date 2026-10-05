@@ -135,7 +135,6 @@
     "investmentResult": "Resultado de la inversión",
     "investmentReturn": "Rentabilidad",
     "investmentResultTooltip": "Lo que ganaron sus inversiones en este período. Se dejan fuera los depósitos, los retiros y el efectivo sin invertir, y el porcentaje junto a la cifra es una rentabilidad ponderada por tiempo, de modo que comprar y vender no lo mueve.",
-    "unmeasuredFlowTooltip": "Una operación liquidada fuera de estas cuentas, o un desglose que mezcla una línea de inversión con un gasto ordinario, significa que el resultado no se puede separar del dinero movido.",
     "netInvestedLine": "Inversión neta {amount}",
     "incomeLine": "Dividendos e intereses {amount}",
     "measuredFromClose": "Desde el cierre de la sesión del {date}",
@@ -331,8 +330,7 @@
     "reasons": {
       "incompletePrices": "Un periodo retenido empieza en un día en que una posición no tenía precio. Actualice los precios o añada uno en el historial de precios del valor.",
       "incompleteCash": "Un periodo retenido empieza en un día en que una cuenta de efectivo de esta vista no informó saldo, así que lo que contenía es desconocido, no cero.",
-      "missingRatePairs": "Un periodo retenido necesita un tipo de cambio que el historial guardado no tiene. Añada historial de tipos para la moneda en la página Monedas.",
-      "unmeasuredFlow": "Un periodo retenido contiene un movimiento que no se puede distinguir de un depósito o una retirada: una operación liquidada fuera de estas cuentas, o un desglose que mezcla efectivo e inversiones."
+      "missingRatePairs": "Un periodo retenido necesita un tipo de cambio que el historial guardado no tiene. Añada historial de tipos para la moneda en la página Monedas."
     }
   }
 }

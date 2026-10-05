@@ -76,6 +76,10 @@ INV-LOAN-002's entry names the missing source scan while its row said `--`.
 | INV-IMPORT-001 one active import | supporting | -- | required | **required** | required | supporting | -- | optional |
 | INV-IMPORT-002 retry never doubles | supporting | -- | required | required | -- | **required** | -- | required |
 | INV-IMPORT-003 category collision | supporting | -- | required | **required** | -- | -- | -- | -- |
+| INV-BANKSYNC-001 imported at most once | supporting | -- | **required** | required | supporting | -- | -- | -- |
+| INV-BANKSYNC-002 key never leaves the server | **required** | supporting | -- | -- | -- | -- | -- | -- |
+| INV-BANKSYNC-003 account currency or nothing | **required** | -- | required | -- | -- | -- | -- | -- |
+| INV-BANKSYNC-004 no import before the preview | required | -- | **required** | -- | -- | -- | -- | -- |
 | INV-BALANCE-001 balance equals ledger | supporting | -- | required | **required** | optional | required | -- | required |
 | INV-HOLDING-001 holding replay | supporting | -- | required | **required** | optional | required | -- | optional |
 | INV-HOLDING-002 one reducer | required | **required** | supporting | -- | -- | -- | -- | required |
@@ -95,12 +99,19 @@ INV-LOAN-002's entry names the missing source scan while its row said `--`.
 | INV-PORTCHART-001 a portfolio chart opens and closes on its figures' closes | **required** | -- | supporting | -- | -- | -- | -- | optional |
 | INV-REPORT-001 report account scope | supporting | **required** | **required** | -- | -- | -- | -- | optional |
 | INV-REPORT-002 chart reduction | **required** | **required** | -- | -- | -- | -- | -- | -- |
+| INV-REPORT-003 a transfer leg is a named flow | **required** | -- | required | -- | -- | -- | -- | optional |
+| INV-SANKEY-001 the Sankey closes | **required** | -- | required | -- | -- | -- | -- | -- |
+| INV-SANKEY-002 a leg counts once, by scope and class | required | -- | **required** | -- | -- | -- | -- | -- |
+| INV-SANKEY-003 linkage and VOID out of every branch | supporting | **required** | required | -- | -- | -- | -- | -- |
+| INV-SANKEY-004 a Sankey total is complete or null | **required** | -- | required | -- | -- | -- | -- | -- |
+| INV-SANKEY-005 the Other merge is drawing only | **required** | **required** | -- | -- | -- | -- | -- | -- |
 | INV-LOAN-001 overpayment cadence | **required** | -- | -- | -- | -- | -- | -- | optional |
 | INV-LOAN-002 no truncated total | **required** | **required** (not yet met) | -- | -- | -- | -- | -- | optional |
 | INV-LOAN-003 compounding convention | **required** | **required** | -- | -- | -- | -- | -- | -- |
 | INV-LOAN-004 residual final payment | **required** | -- | -- | -- | -- | -- | -- | -- |
 | INV-LOAN-005 first payment is payment 1 | **required** | **required** | -- | -- | -- | -- | -- | -- |
 | INV-LOAN-006 dated installment pricing | **required** | **required** | required | -- | -- | -- | -- | optional |
+| INV-LOAN-007 one method per mortgage type | **required** | **required** | required | -- | -- | -- | -- | optional |
 | INV-LOAN-HISTORY-001 ledger-backed loan interest | **required** | required | -- | -- | -- | -- | -- | optional |
 | INV-OCCURRENCE-001 one effect | supporting | -- | required | required | **required** | required | -- | required |
 | INV-OCCURRENCE-002 override price | required | -- | -- | -- | -- | -- | -- | required |
@@ -450,6 +461,16 @@ differences produce failures that look like regressions and are not.
   `roots: ["<rootDir>/src"]` and `test/jest-e2e.json` pins `maxWorkers: 1`, both
   asserted by `backend/src/common/jest-config.guard.spec.ts`. The default command
   therefore needs a reachable PostgreSQL; `npm run test:unit` is the offline path.
+- `npm run test:changed` (backend and frontend) is the loop for an agent or a
+  developer between commits: the tests related to files changed since
+  `origin/main`, plus every guard test, with only failures printed and no
+  coverage. Guards are always added because they scan source text and so never
+  appear in an import graph. It selects from `git`, so a new file needs
+  `git add -N` first (the backend script; the frontend script also reads
+  untracked files). It does not run the integration specs, and it proves no
+  coverage threshold, because a threshold over a subset means nothing. The full
+  `test:cov` gate stays CI's, which runs it before merge. The rule is held by
+  `backend/src/common/test-changed.guard.spec.ts`.
 - `--workers=1` for the whole E2E suite. `playwright.config.ts` sets one worker
   only when `CI` is set, and `e2e/tests/zz-danger-zone.spec.ts` deletes the
   shared account -- the `zz-` prefix orders it last, which only means anything

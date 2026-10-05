@@ -29,5 +29,6 @@ export function rechartsMock() {
     Tooltip: Noop,
     Legend: Noop,
     ReferenceLine: Noop,
+    Sankey: ({ data, children }: { data?: { nodes: Array<{ name: string }>; links: unknown[] }; children?: ReactNode }) => <div data-testid="sankey" data-nodes={JSON.stringify(data?.nodes.map((n) => n.name) ?? [])} data-links={data?.links.length ?? 0}>{children}</div>,
   };
 }

@@ -23,12 +23,12 @@
     "button": "Visualizza fatture &amp; versamenti"
   },
   "mortgageReminder": {
-    "subject": "Monize: 1 rinnovo mutuo imminente",
-    "subjectPlural": "Monize: {{ count }} rinnovi mutuo imminenti",
-    "heading": "Promemoria rinnovo mutuo",
+    "subject": "Monize: 1 periodo di tasso del mutuo in scadenza",
+    "subjectPlural": "Monize: {{ count }} periodi di tasso del mutuo in scadenza",
+    "heading": "Promemoria scadenza periodo di tasso del mutuo",
     "greeting": "Ciao {{ name }},",
-    "introOne": "Hai 1 mutuo con un rinnovo del termine imminente. Contatta il tuo istituto di credito per discutere le opzioni di rinnovo prima della scadenza del termine:",
-    "introMany": "Hai {{ count }} mutui con un rinnovo del termine imminente. Contatta il tuo istituto di credito per discutere le opzioni di rinnovo prima della scadenza del termine:",
+    "introOne": "Hai 1 mutuo il cui periodo di tasso attuale scade a breve. Contatta il tuo istituto di credito prima della scadenza per concordare il prossimo tasso o il rinnovo:",
+    "introMany": "Hai {{ count }} mutui il cui periodo di tasso attuale scade a breve. Contatta il tuo istituto di credito prima di ciascuna scadenza per concordare il prossimo tasso o il rinnovo:",
     "colMortgage": "Mutuo",
     "colTermEndDate": "Data fine termine",
     "colTimeRemaining": "Tempo rimanente",
@@ -308,6 +308,22 @@
     "priceMovement": {
       "title": "Avviso variazione prezzo: {{ symbol }} ({{ percent }}%)",
       "message": "{{ symbol }}: {{ percent }}% rispetto alla precedente seduta disponibile."
+    },
+    "bankSync": {
+      "expiringTitleToday": "{{ institution }}: l'accesso bancario termina oggi",
+      "expiringTitleOneDay": "{{ institution }}: l'accesso bancario termina entro 1 giorno",
+      "expiringTitleDays": "{{ institution }}: l'accesso bancario termina entro {{ days }} giorni",
+      "expiringMessage": "Il tuo consenso a Monize per leggere {{ institution }} termina il {{ date }}. Rinnova il collegamento in Monize per continuare a sincronizzare.",
+      "expiredTitle": "{{ institution }}: l'accesso bancario è terminato",
+      "expiredMessage": "Il tuo consenso a Monize per leggere {{ institution }} è terminato. Rinnova il collegamento in Monize per riprendere la sincronizzazione.",
+      "failedTitle": "{{ institution }}: sincronizzazione non riuscita",
+      "failedMessage": "La sincronizzazione giornaliera di {{ institution }} non è riuscita per: {{ accounts }}. Apri le impostazioni della sincronizzazione bancaria per vedere il motivo.",
+      "failedCredentialsMessage": "La sincronizzazione giornaliera di {{ institution }} non ha potuto avviarsi perché le credenziali della sincronizzazione bancaria mancano o sono state rifiutate. Controllale nelle impostazioni della sincronizzazione bancaria.",
+      "unnamedAccount": "un conto",
+      "importedTitle": "{{ institution }}: nuove transazioni importate",
+      "importedMessage": "Transazioni importate da {{ institution }} dalla sincronizzazione giornaliera: {{ imported }}.",
+      "importedNoneTitle": "{{ institution }}: nessuna nuova transazione",
+      "importedNoneMessage": "La sincronizzazione giornaliera di {{ institution }} non ha trovato nuove transazioni."
     }
   },
   "backupOffsite": {

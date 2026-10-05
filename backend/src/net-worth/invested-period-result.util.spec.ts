@@ -247,23 +247,6 @@ describe("investedPeriodResult (spec section 10.5)", () => {
     expect(result.investedReasons).toContain("missingRatePairs");
   });
 
-  it("withholds both figures when the window holds an uncountable movement", () => {
-    const result = run(
-      [0, 8_000, 8_800],
-      { 1: { capitalIn: 8_000 } },
-      {
-        unmeasuredFlows: {
-          externallySettledTrades: 1,
-          externalShareTransfers: 0,
-          mixedSplitParents: 0,
-        },
-      },
-    );
-
-    expect(result.investmentPnl).toBeNull();
-    expect(result.investedReasons).toContain("externallySettledTrade");
-  });
-
   it("reports the boundary's own causes when the start day is a subtotal", () => {
     const points = series([0, 8_000]);
     points[0] = day(START, 0, { fxComplete: false });
@@ -422,24 +405,12 @@ describe("investedPeriodResult, investedValueChange", () => {
     expect(result.investedValueChange).toBe(8_800);
   });
 
-  it("is known when a flow did not convert or a movement was uncountable", () => {
+  it("is known when a flow did not convert", () => {
     const unconverted = run([0, 8_000, 8_800], {
       1: { capitalIn: 8_000, complete: false, missingPairs: ["EUR->CAD"] },
     });
-    const uncountable = run(
-      [0, 8_000, 8_800],
-      { 1: { capitalIn: 8_000 } },
-      {
-        unmeasuredFlows: {
-          externallySettledTrades: 1,
-          externalShareTransfers: 0,
-          mixedSplitParents: 0,
-        },
-      },
-    );
 
     expect(unconverted.investedValueChange).toBe(8_800);
-    expect(uncountable.investedValueChange).toBe(8_800);
   });
 
   it.each([

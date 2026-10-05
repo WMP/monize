@@ -36,6 +36,7 @@ describe("TaxRecurringReportsService", () => {
     icon: null,
     color: "#5733FF",
     isIncome: true,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-01"),
   };
@@ -51,6 +52,7 @@ describe("TaxRecurringReportsService", () => {
     icon: null,
     color: "#FF5733",
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-02"),
   };
@@ -66,6 +68,7 @@ describe("TaxRecurringReportsService", () => {
     icon: null,
     color: "#33FF57",
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-03"),
   };
@@ -81,6 +84,7 @@ describe("TaxRecurringReportsService", () => {
     icon: null,
     color: "#3357FF",
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-04"),
   };
@@ -96,6 +100,7 @@ describe("TaxRecurringReportsService", () => {
     icon: null,
     color: "#FF3357",
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-05"),
   };
@@ -111,6 +116,7 @@ describe("TaxRecurringReportsService", () => {
     icon: null,
     color: "#57FF33",
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-06"),
   };

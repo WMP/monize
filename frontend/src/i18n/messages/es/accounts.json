@@ -248,10 +248,8 @@
     "payeeLender": "Beneficiario / Prestamista",
     "selectOrCreatePayee": "Seleccionar o crear beneficiario...",
     "mortgageDetails": "Detalles de la Hipoteca",
-    "canadianMortgage": "Hipoteca canadiense (capitalización semestral)",
-    "variableRate": "Tasa Variable",
     "amortizationMonths": "Amortización (meses)",
-    "termMonths": "Plazo (meses)",
+    "termMonths": "Plazo de tasa fija (meses)",
     "autoPost": "Publicar transacciones automáticamente al vencer",
     "skip": "Omitir",
     "setUpPayments": "Configurar Pagos",
@@ -267,17 +265,31 @@
     },
     "toasts": {
       "setupComplete": "Pagos planificados configurados para {account}"
-    }
+    },
+    "firstInstallment": "Primera cuota",
+    "firstInstallmentHelp": "Esta hipoteca no tiene un pago fijo: cada cuota se calcula a partir del saldo, el tipo de interés y el periodo de amortización. Esta es la que vence el {date}, incluido cualquier capital adicional.",
+    "firstInstallmentPending": "Introduce la fecha del próximo pago para calcular la primera cuota.",
+    "firstInstallmentCalculating": "Calculando la primera cuota...",
+    "firstInstallmentFailed": "No se pudo calcular la primera cuota. Revisa los valores de abajo e inténtalo de nuevo."
   },
   "mortgageFields": {
     "title": "Detalles de la Hipoteca",
-    "canadianMortgage": "Hipoteca Canadiense",
-    "canadianMortgageDesc": "Usa capitalización semestral para tasas fijas (obligatorio por ley en Canadá)",
-    "variableRate": "Tasa Variable",
-    "variableRateDesc": "La tasa puede cambiar durante el plazo (usa capitalización mensual)",
-    "variableRateLoanDetailsLink": "Registra los cambios de tasa en los <link>detalles del préstamo</link>.",
-    "termLength": "Duración del Plazo",
-    "termLengthNoTerm": "Deja en 0 años y 0 meses si no hay plazo.",
+    "type": {
+      "label": "Tipo de hipoteca",
+      "ANNUITY": "Anualidad (cuota constante)",
+      "CANADIAN_FIXED": "Tasa fija canadiense",
+      "LINEAR": "Lineal (capital constante)",
+      "INTEREST_ONLY": "Solo intereses",
+      "help": {
+        "ANNUITY": "Tu pago total es el mismo cada mes. Elígelo también para una hipoteca de tasa variable.",
+        "CANADIAN_FIXED": "Un contrato canadiense de tasa fija; el interés se capitaliza dos veces al año.",
+        "LINEAR": "La parte de capital es la misma cada mes y el total baja.",
+        "INTEREST_ONLY": "Solo pagas intereses y el saldo no cambia."
+      }
+    },
+    "rateChangesLoanDetailsLink": "Registra los cambios de tasa en los <link>detalles del préstamo</link>.",
+    "termLength": "Plazo de tasa fija",
+    "termLengthHelp": "Cuánto dura tu tasa de interés o el plazo del contrato, por ejemplo una tasa fija a 5 años. Monize puede recordártelo antes de que termine. Deja en 0 años y 0 meses si no hay plazo.",
     "amortizationPeriod": "Período de Amortización (obligatorio)",
     "years": "Años",
     "months": "Meses",
@@ -333,6 +345,68 @@
       "memoLabel": "Texto de nota de amortización anticipada",
       "memoPlaceholder": "p. ej. amortización",
       "memoHelp": "Coincidencia de subcadena sin distinguir mayúsculas con la nota del pago, la nota de la transacción de origen o la nota de un desglose."
+    },
+    "prepaymentMode": {
+      "label": "Qué hace una amortización anticipada",
+      "SHORTEN_TERM": "Acorta el plazo (mismo capital cada mes)",
+      "LOWER_INSTALLMENT": "Reduce la cuota (misma fecha final)",
+      "help": "Consúltalo con tu entidad. Si tras una amortización anticipada el extracto muestra la misma parte de capital, se acortó el plazo."
+    },
+    "previewFirstInstallment": "Primera cuota:",
+    "detect": {
+      "toggle": "¿No estás seguro? Introduce algunas cuotas",
+      "title": "Averigua tu tipo de hipoteca",
+      "intro": "Copia dos o tres cuotas consecutivas de un extracto, de la más antigua a la más reciente. El saldo es opcional: con él y la tasa de interés, Monize puede saber si el interés se capitaliza dos veces al año.",
+      "installment": "Cuota {number}",
+      "principal": "Capital",
+      "interest": "Interés",
+      "balance": "Saldo anterior (opcional)",
+      "rowIncomplete": "Introduce tanto el capital como el interés, o deja la fila vacía.",
+      "rate": "Comprobado con la tasa de interés indicada arriba, {rate}.",
+      "noRate": "No se ha indicado ninguna tasa de interés arriba, así que no se puede comprobar la capitalización.",
+      "needsFrequency": "Elige primero la frecuencia de pago más abajo: las cuotas se leen con esa periodicidad.",
+      "submit": "Sugerir un tipo",
+      "close": "Cerrar",
+      "suggested": "Tipo sugerido: {type}",
+      "noSuggestion": "No se sugiere ningún tipo.",
+      "lowConfidence": "Confianza baja: compruébalo con tu contrato o consúltalo con tu entidad antes de usarlo.",
+      "use": "Usar este tipo",
+      "failed": "No se pudieron comprobar las cuotas porque la solicitud falló. Inténtalo de nuevo.",
+      "reason": {
+        "TOO_FEW_SAMPLES": "Se necesitan al menos dos cuotas consecutivas para comparar.",
+        "INVALID_SAMPLE": "Una cuota tiene un importe negativo o ilegible.",
+        "NO_PAYMENT": "Las cuotas no amortizan capital ni cobran intereses.",
+        "AMBIGUOUS_CONSTANT_PRINCIPAL_AND_INSTALLMENT": "El capital y el total son iguales en todas las cuotas, lo que encaja tanto con una hipoteca lineal como con una de anualidad. Prueba con cuotas más separadas en el tiempo o revisa tu contrato.",
+        "ACCELERATED_FREQUENCY": "Estas cuotas parecen lineales o de solo intereses, lo que no es posible con una frecuencia de pago acelerada. Revisa la frecuencia de pago.",
+        "NO_RULE_FITS": "Ni el capital ni el total se mantienen iguales en estas cuotas. Si la tasa cambió entre ellas, usa cuotas de un mismo periodo de tasa.",
+        "ZERO_PRINCIPAL": "No se amortiza capital, así que el saldo no cambia.",
+        "ZERO_PRINCIPAL_RATE_MISMATCH": "No se amortiza capital, pero el interés no corresponde a la tasa indicada sobre el saldo. Revisa la tasa.",
+        "CONSTANT_PRINCIPAL": "La parte de capital es la misma cada vez y el total baja.",
+        "CONSTANT_PRINCIPAL_RATE_MISMATCH": "La parte de capital es la misma cada vez, pero el interés no corresponde a la tasa indicada sobre el saldo. Revisa la tasa.",
+        "CONSTANT_INSTALLMENT_SEMI_ANNUAL": "El total es el mismo cada vez y el interés corresponde a la tasa indicada capitalizada dos veces al año.",
+        "CONSTANT_INSTALLMENT_NOMINAL": "El total es el mismo cada vez y el interés corresponde a la tasa indicada sin capitalización semestral.",
+        "CONSTANT_INSTALLMENT_RATE_UNCHECKED": "El total es el mismo cada vez. Sin el saldo anterior a cada cuota y la tasa de interés, no se pudo comprobar la capitalización semestral.",
+        "CONSTANT_INSTALLMENT_COMPOUNDING_AMBIGUOUS": "El total es el mismo cada vez, pero el saldo es demasiado pequeño para distinguir la capitalización semestral. Un contrato canadiense de tasa fija lo indica en sus condiciones.",
+        "CONSTANT_INSTALLMENT_RATE_MISMATCH": "El total es el mismo cada vez, pero el interés no corresponde a ninguna de las dos convenciones con la tasa indicada. Puede que el interés se cobre por días; revisa la tasa."
+      },
+      "history": {
+        "action": "Detectar tipo de hipoteca",
+        "title": "Tipo de hipoteca a partir de tus pagos",
+        "intro": "Leído de las últimas cuotas registradas con una misma tasa. No cambia nada hasta que guardes la cuenta.",
+        "current": "Tipo actual: {type}",
+        "alreadySet": "Esta hipoteca ya tiene el tipo sugerido.",
+        "rate": "Tasa de interés vigente: {rate}",
+        "noRate": "No hay ninguna tasa de interés registrada para estas fechas, así que no se comprobó la capitalización.",
+        "noSamples": "No se encontró ninguna cuota registrada con parte de capital y parte de interés. Registra tus pagos divididos en capital e interés para usar esta función.",
+        "colDate": "Fecha",
+        "colPrincipal": "Capital",
+        "colInterest": "Interés",
+        "colBalance": "Saldo anterior",
+        "balanceUnknown": "Desconocido",
+        "failed": "No se pudo leer el historial de pagos porque la solicitud falló. Inténtalo de nuevo.",
+        "cancel": "Cancelar",
+        "use": "Editar cuenta con este tipo"
+      }
     }
   },
   "assetFields": {
@@ -361,7 +435,8 @@
     "paymentFrequencyRequired": "La frecuencia de pago es obligatoria",
     "paymentStartDateRequired": "La fecha del primer pago es obligatoria",
     "paymentAccountRequired": "La cuenta de pago es obligatoria",
-    "amortizationRequired": "El período de amortización es obligatorio"
+    "amortizationRequired": "El período de amortización es obligatorio",
+    "acceleratedNeedsAnnuity": "Esta hipoteca se paga con un calendario acelerado, que solo tiene una hipoteca de anualidad. Una hipoteca lineal o de solo intereses necesita una frecuencia de pago normal, así que mantén un tipo de anualidad."
   },
   "loanDetail": {
     "backToAccounts": "Volver a las cuentas",
@@ -389,7 +464,12 @@
       "estRemainingInterest": "Intereses restantes est.",
       "notSet": "Sin definir",
       "notAvailable": "N/D",
-      "paidOff": "Liquidado"
+      "paidOff": "Liquidado",
+      "nextInstallment": "Próxima cuota",
+      "dueOn": "Vence el {date}",
+      "finalPayment": "Pago final",
+      "nextInstallmentDue": "Próxima cuota (vence el {date})",
+      "finalPaymentDue": "Pago final (vence el {date})"
     },
     "schedule": {
       "title": "Calendario de amortización",
@@ -464,8 +544,13 @@
         "reasonPaidOff": "Este préstamo no tiene saldo pendiente, así que no queda nada por amortizar.",
         "reasonNoFrequency": "Este préstamo no tiene una frecuencia de pago configurada. Añádela en la configuración de la cuenta.",
         "reasonNoRate": "Este préstamo no tiene un tipo de interés guardado. Establece el tipo de interés en la configuración de la cuenta o registra un cambio de tipo con fecha de hoy o anterior. Un tipo mostrado por fila en el calendario de abajo se reconstruye a partir del interés cobrado y no es un tipo guardado.",
-        "reasonNoPayment": "No se puede determinar el importe de la cuota. Registra las cuotas regulares como transferencias a la cuenta del préstamo (capital, con el interés como línea de desglose o como un gasto categorizado aparte), o establece el importe del pago en la configuración de la cuenta. Los pagos registrados como gastos normales en la cuenta de origen nunca llegan a la cuenta del préstamo, por lo que el calendario no puede verlos."
-      }
+        "reasonNoPayment": "No se puede determinar el importe de la cuota. Registra las cuotas regulares como transferencias a la cuenta del préstamo (capital, con el interés como línea de desglose o como un gasto categorizado aparte), o establece el importe del pago en la configuración de la cuenta. Los pagos registrados como gastos normales en la cuenta de origen nunca llegan a la cuenta del préstamo, por lo que el calendario no puede verlos.",
+        "reasonNoAmortization": "Esta hipoteca no tiene periodo de amortización, por lo que no se pueden calcular sus cuotas ni el final de su plazo. Establece el periodo de amortización en la configuración de la cuenta.",
+        "reasonNoPaymentStart": "Esta hipoteca no tiene fecha del primer pago, por lo que no se pueden contar los pagos que quedan hasta el final de su plazo. Configura su pago programado desde la configuración de la cuenta; la primera fecha de vencimiento que indiques será el pago 1.",
+        "reasonNoPrincipal": "Esta hipoteca no tiene importe original, por lo que no se puede calcular su amortización constante. Establece el importe de la hipoteca en la configuración de la cuenta."
+      },
+      "budgetBelowNextInstallment": "Es inferior a la próxima cuota ({amount}, vence el {date}); auméntalo por encima para hacer amortizaciones anticipadas.",
+      "shortenTermNeedsPrincipal": "Esta hipoteca no tiene importe original, por lo que no se puede simular un plazo más corto. Elige reducir la cuota o establece el importe de la hipoteca en la configuración de la cuenta."
     },
     "comparison": {
       "newPayoff": "Nueva fecha de liquidación",
@@ -481,7 +566,8 @@
       "newInstallment": "Nueva cuota",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "Cuota mensual",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "Primer pago"
     },
     "chart": {
       "title": "Cronología de liquidación",

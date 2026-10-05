@@ -89,6 +89,7 @@
     "stackedChart": "Гистограмма 100%",
     "lineChart": "Линейный график",
     "areaChart": "Диаграмма с областями",
+    "sankeyChart": "Диаграмма потоков",
     "table": "Таблица"
   },
   "formActions": {

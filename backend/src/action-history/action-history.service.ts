@@ -166,6 +166,8 @@ const ALLOWED_COLUMNS: Record<string, Set<string>> = {
     "date_acquired",
     "is_canadian_mortgage",
     "is_variable_rate",
+    "mortgage_type",
+    "prepayment_mode",
     "term_months",
     "term_end_date",
     "amortization_months",
@@ -1059,8 +1061,7 @@ export class ActionHistoryService {
   ): Promise<void> {
     const before = action.beforeData;
     const linkedBefore = before?.linkedTransferLeg as
-      | Record<string, any>
-      | undefined;
+      Record<string, any> | undefined;
 
     // Only linked security-transfer edits capture both legs' pre-edit state,
     // which is what we need to reverse. Regular investment edits remain
@@ -1189,8 +1190,7 @@ export class ActionHistoryService {
       ? { ...raw.transferOut, linkedTransferLeg: raw.transferIn }
       : raw;
     const linkedLeg = before.linkedTransferLeg as
-      | Record<string, any>
-      | undefined;
+      Record<string, any> | undefined;
 
     // Re-insert linked cash transaction first (investment_transactions.transaction_id references it)
     if (before.linkedCashTransaction) {

@@ -36,6 +36,7 @@ describe("ComparisonReportsService", () => {
     icon: null,
     color: "#FF5733",
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-01"),
   };
@@ -51,6 +52,7 @@ describe("ComparisonReportsService", () => {
     icon: null,
     color: "#33FF57",
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-02"),
   };
@@ -66,6 +68,7 @@ describe("ComparisonReportsService", () => {
     icon: null,
     color: "#3357FF",
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-03"),
   };
@@ -577,6 +580,7 @@ describe("ComparisonReportsService", () => {
         icon: null,
         color: null,
         isIncome: false,
+        autoSign: null,
         isSystem: false,
         createdAt: new Date(),
       }));

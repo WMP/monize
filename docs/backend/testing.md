@@ -40,6 +40,30 @@ only when each worker owns its own database or schema; until that exists, one
 worker is the mechanism, and `--runInBand` at a call site is not a substitute
 for the config pinning it.
 
+## The unit config transpiles; `npm run typecheck` is what type-checks
+
+The root Jest config runs ts-jest with `isolatedModules: true` (and
+`module: commonjs`, so a dynamic `import()` of a mocked ESM-only package becomes
+a `require` Jest can intercept). Each file is transpiled on its own, with no
+type information. With full per-file type-checking a 12-suite slice took about
+5 minutes; transpiling, it takes about 15 seconds. Type errors in `src/` and
+`test/` are caught by `npx tsc --noEmit` and `npm run typecheck`, which CI runs
+in the lint job, not by the unit run.
+
+Transpiling without type information has one trap: a name that is imported only
+as a type cannot also stand for a global value. `cause instanceof Response`,
+with `Response` imported from `express`, works under `tsc` but is rewritten to
+the import's (undefined) binding when a file is transpiled alone; write
+`globalThis.Response`.
+
+**A unit run's output is its results, not the services' logs.**
+`src/test-helpers/silence-nest-logger.setup.ts` (a `setupFiles` entry) removes
+Nest's static logger and keeps `TestingModuleBuilder.compile()` from installing
+its error-printing `TestingLogger`. Spies on `Logger.prototype` or on a
+service's `logger` still record every call. A spec that loads a fresh module
+registry (`jest.isolateModules`) gets its own `@nestjs/common` and silences that
+copy itself.
+
 ## `test/*.e2e-spec.ts` is not a gate, and three of the five suites are broken
 
 CI runs `test:unit` and `test:integration` (filtered to `test/integration/*.spec.ts`). Nothing runs `test:e2e`, and separate rot accumulated behind a since-fixed compile error (`npm run typecheck` now closes the compile half in CI):

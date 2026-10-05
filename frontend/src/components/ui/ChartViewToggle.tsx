@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
-type ChartView = 'pie' | 'bar' | 'stacked' | 'line' | 'area' | 'table';
+type ChartView = 'pie' | 'bar' | 'stacked' | 'line' | 'area' | 'sankey' | 'table';
 
 interface ChartViewToggleProps {
   value: ChartView;
@@ -19,6 +19,7 @@ const CHART_ICON_PATHS: Record<ChartView, string> = {
   stacked: 'M5 4 H10 V20 H5 Z M5 12 H10 M14 4 H19 V20 H14 Z M14 9 H19',
   line: 'M3 17l4-4 4 4 4-8 4 4',
   area: 'M3 17l4-4 4 4 4-8 4 4V21H3z',
+  sankey: 'M3 5h4c6 0 6 6 14 6M3 5v4M3 19h4c6 0 6-8 14-8M3 15v4',
   table: 'M3 10h18M3 14h18M3 6h18M3 18h18',
 };
 
@@ -38,6 +39,7 @@ export function ChartViewToggle({
     stacked: t('chartViewToggle.stackedChart'),
     line: t('chartViewToggle.lineChart'),
     area: t('chartViewToggle.areaChart'),
+    sankey: t('chartViewToggle.sankeyChart'),
     table: t('chartViewToggle.table'),
   };
 

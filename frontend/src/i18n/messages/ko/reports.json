@@ -60,6 +60,7 @@
       "spending-anomalies": "지출 이상 징후",
       "weekend-weekday-spending": "주말 대 평일 지출",
       "monthly-comparison": "월별 비교",
+      "cash-flow-sankey": "현금 흐름 생키",
       "foreign-currency-fees": "해외 거래 수수료",
       "uncategorized-transactions": "미분류 거래",
       "duplicate-transactions": "중복 거래 탐색기",
@@ -108,6 +109,7 @@
       "spending-anomalies": "주의가 필요한 비정상적으로 큰 거래와 지출 급증을 감지하세요.",
       "weekend-weekday-spending": "습관을 이해하기 위해 요일별 지출 패턴을 분석하세요.",
       "monthly-comparison": "수익, 지출, 순자산가액 및 투자 전반에 걸쳐 이번 달과 전 달을 비교하세요.",
+      "cash-flow-sankey": "돈이 어디서 들어와 어디로 나갔는지 확인하세요. 수입이 지출, 저축, 투자, 부채 상환으로 흐르는 모습과 남은 금액을 보여 줍니다.",
       "foreign-currency-fees": "환전 수수료를 적용하는 계정 전반에 걸쳐 청구된 해외 거래 수수료를 추적하세요.",
       "uncategorized-transactions": "카테고리가 누락된 거래를 찾아 분류하세요.",
       "duplicate-transactions": "검토나 삭제가 필요한 잠재적 중복 항목을 식별하세요.",
@@ -468,7 +470,8 @@
     "seriesPrincipalPaid": "납부된 원금",
     "seriesInterestPaid": "납부된 이자",
     "seriesPrincipal": "원금",
-    "seriesInterest": "이자"
+    "seriesInterest": "이자",
+    "installmentAndFinal": "{installment}; 최종 납입 {final}"
   },
   "dividendIncome": {
     "pdfTitle": "이익, 배당금 및 이자",
@@ -882,7 +885,10 @@
     "typeLoan": "대출",
     "typeMortgage": "주택 담보 대출",
     "pdfSubtitlePaymentsSummary": "{count}건의 납부 완료, 총 이자 {interest}",
-    "pdfSubtitlePaymentsProjection": "{count}회 상환 완료, 예상 기간 이자 {interest}"
+    "pdfSubtitlePaymentsProjection": "{count}회 상환 완료, 예상 기간 이자 {interest}",
+    "nextInstallment": "다음 할부금",
+    "finalPayment": "최종 납입금",
+    "amountDueOn": "{amount}, 기일 {date}"
   },
   "monteCarlo": {
     "toasts": {
@@ -1202,7 +1208,6 @@
     "investmentReturnTooltip": "유가증권만을 대상으로 한 시간가중 수익률입니다. 특정일에 입금하거나 출금한 금액은 이 값을 움직이지 않으며, 미투자 현금은 결과에도 그 비교 기준에도 포함되지 않습니다.",
     "incompleteTooltip": "이 기간의 일부 날짜에 가격, 환율 또는 현금 잔액이 없어서 모든 날짜에 의존하는 수치는 표시되지 않습니다.",
     "measuredFromClose": "{date} 거래 마감 시점부터",
-    "unmeasuredFlowTooltip": "이 계좌들에 입금되거나 출금된 돈 중 일부는 여기서 집계할 수 없는 방식으로 이동했습니다. 이 계좌 밖의 계좌에서 결제된 거래이거나, 투자 항목과 일반 지출이 섞인 분할 항목일 수 있습니다. 투자 결과의 일부가 본인의 자금일 수 있으므로 투자 결과는 표시되지 않습니다.",
     "notAvailable": "N/A",
     "intradayUnavailable": "상세 당일 가격 정보를 이용할 수 없습니다",
     "intradayUnavailableTitle": "이 계정 조합에 대한 당일 보기를 이용할 수 없습니다",
@@ -1842,5 +1847,52 @@
   },
   "foreignCurrencyFees": {
     "noEligibleAccounts": "해외 거래 수수료가 설정된 계정이 없습니다. 계정에 수수료 비율을 설정하면 해당 외화 수수료를 여기에서 추적할 수 있습니다."
+  },
+  "sankey": {
+    "help": "들어온 돈은 가운데를 거쳐 지출, 저축 또는 투자, 부채 상환으로 흘러갑니다. 기본적으로 이 보고서는 열려 있는 입출금, 저축, 현금, 신용카드, 신용한도 계좌를 대상으로 하며, 이 계좌들 사이의 이체는 표시되지 않습니다. 저축 계좌로 옮긴 금액을 보려면 계좌 필터에서 해당 계좌를 빼세요. 신용카드 대금 결제는 부채 상환이 아닙니다. 결제되는 구매는 이미 지출로 집계되어 있습니다.",
+    "depthLabel": "세부 수준",
+    "depthCategories": "카테고리",
+    "depthSubcategories": "하위 카테고리",
+    "cardIncome": "수입",
+    "cardInflows": "들어온 이체",
+    "cardExpenses": "지출",
+    "cardOutflows": "나간 이체",
+    "unknown": "알 수 없음",
+    "knownPartOnly": "환산할 수 있는 부분만 표시합니다.",
+    "netRefund": "순환불: 이 하위 카테고리는 지출보다 받은 금액이 더 많습니다.",
+    "excludedCount": "{count, plural, other {#개의 금액을 환산할 수 없어 위 수치에서 제외했습니다.}}",
+    "noData": "이 기간에 수입, 지출 또는 이체가 없습니다",
+    "range": "{start} ~ {end}",
+    "ariaLabel": "현금 흐름 다이어그램. 수입 {income}, 들어온 이체 {inflows}, 지출 {expenses}, 나간 이체 {outflows}, {residualLabel} {residual}.",
+    "other": "기타",
+    "noSubcategory": "(하위 카테고리 없음)",
+    "linkLabel": "{source} → {target}",
+    "colFlow": "흐름",
+    "colSide": "방향",
+    "colAmount": "금액",
+    "sideIn": "들어온 돈",
+    "sideOut": "나간 돈",
+    "sideDetail": "{parent}의 일부",
+    "pdfTitle": "현금 흐름 생키",
+    "csvNodes": "흐름",
+    "csvLinks": "연결",
+    "csvSource": "출발",
+    "csvTarget": "도착",
+    "csvTotal": "금액",
+    "csvKnownTotal": "환산된 금액",
+    "nodes": {
+      "hub": "수입",
+      "classSavings": "저축 및 투자",
+      "classDebt": "부채 상환",
+      "classOtherAccounts": "기타 계좌",
+      "inflowSavings": "저축 및 투자에서",
+      "inflowBorrowed": "차입",
+      "inflowOtherAccounts": "기타 계좌에서",
+      "uncategorizedIncome": "미분류 수입",
+      "uncategorizedExpense": "미분류 지출",
+      "residualUnspent": "미사용",
+      "residualDeficit": "잔액에서 인출",
+      "unlinkedAccount": "(연결되지 않은 계좌)"
+    }
   }
 }

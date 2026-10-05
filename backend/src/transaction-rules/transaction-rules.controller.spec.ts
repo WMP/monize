@@ -12,6 +12,8 @@ import { validate } from "class-validator";
 import { PreviewDraftRuleDto } from "./dto/rule-run.dto";
 import { CreateTransactionRuleDto } from "./dto/create-transaction-rule.dto";
 import { UpdateTransactionRuleDto } from "./dto/update-transaction-rule.dto";
+import { ExplainRuleRowDto } from "./dto/explain-rule-row.dto";
+import { BadRequestException, ValidationPipe } from "@nestjs/common";
 
 describe("TransactionRulesController", () => {
   let controller: TransactionRulesController;
@@ -32,6 +34,7 @@ describe("TransactionRulesController", () => {
     runService = {
       previewRun: jest.fn(),
       previewDraft: jest.fn(),
+      explainRow: jest.fn(),
       run: jest.fn(),
       applications: jest.fn(),
     };
@@ -65,6 +68,67 @@ describe("TransactionRulesController", () => {
     await controller.previewDraft(req, dto);
 
     expect(runService.previewDraft).toHaveBeenCalledWith("user-1", dto);
+  });
+
+  it("explains a row for the JWT user, with the body the pipe validated", async () => {
+    runService.explainRow.mockResolvedValue({ rules: [], labels: {} });
+    const dto = {
+      trigger: "import",
+      input: { accountId: "a" },
+    } as unknown as ExplainRuleRowDto;
+
+    await expect(controller.explainRow(req, dto)).resolves.toEqual({
+      rules: [],
+      labels: {},
+    });
+
+    expect(runService.explainRow).toHaveBeenCalledWith("user-1", dto);
+  });
+
+  describe("explain-row body, through the app's validation pipe", () => {
+    // The settings of main.ts: whitelist + forbidNonWhitelisted + transform.
+    const pipe = new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    });
+    const meta = { type: "body", metatype: ExplainRuleRowDto } as const;
+    const row = {
+      accountId: "a0000000-0000-4000-8000-000000000001",
+      currencyCode: "PLN",
+      amount: "-1.0000",
+      isTransfer: false,
+      payeeId: null,
+      payeeText: "Sklep",
+      categoryId: null,
+      description: null,
+      tagIds: [],
+      hasSplits: false,
+    };
+
+    it("lets a bounded row through", async () => {
+      await expect(
+        pipe.transform({ trigger: "import", input: row }, meta),
+      ).resolves.toMatchObject({ trigger: "import" });
+    });
+
+    it("refuses an oversized row before the service is reached", async () => {
+      const tooManyTags = Array.from(
+        { length: 51 },
+        (_v, i) => `a0000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+      );
+      for (const input of [
+        { ...row, tagIds: tooManyTags },
+        { ...row, payeeText: "x".repeat(256) },
+        { ...row, description: "x".repeat(100000) },
+        { ...row, userId: "a0000000-0000-4000-8000-000000000002" },
+      ]) {
+        await expect(
+          pipe.transform({ trigger: "import", input }, meta),
+        ).rejects.toBeInstanceOf(BadRequestException);
+      }
+      expect(runService.explainRow).not.toHaveBeenCalled();
+    });
   });
 
   it("forwards the ruleId of a saved rule's draft to the service untouched", async () => {
@@ -205,6 +269,10 @@ describe("TransactionRulesController", () => {
         path: "preview-draft",
         method: RequestMethod.POST,
       });
+      expect(route("explainRow")).toEqual({
+        path: "explain-row",
+        method: RequestMethod.POST,
+      });
       expect(route("previewRun")).toEqual({
         path: ":id/preview-run",
         method: RequestMethod.POST,
@@ -231,6 +299,13 @@ describe("TransactionRulesController", () => {
     it("registers preview-draft before the :id routes so it is not read as a UUID", () => {
       const order = Object.getOwnPropertyNames(proto);
       expect(order.indexOf("previewDraft")).toBeLessThan(
+        order.indexOf("findOne"),
+      );
+    });
+
+    it("registers explain-row before the :id routes so it is not read as a UUID", () => {
+      const order = Object.getOwnPropertyNames(proto);
+      expect(order.indexOf("explainRow")).toBeLessThan(
         order.indexOf("findOne"),
       );
     });

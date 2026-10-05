@@ -205,8 +205,7 @@
     "refresh": "Huidige waarde vernieuwen",
     "investmentResult": "Beleggingsresultaat",
     "periodBreakdownInvestedTooltip": "De waarde van de effecten veranderde in deze periode met {valueChange}. Daarvan werd {netInvested} ingelegd, na aftrek van verkopen, en ze keerden {income} uit aan dividenden en rente. Het bedrag hierboven is wat de beleggingen zelf hebben opgebracht, zonder niet-belegd geld.",
-    "notAvailable": "N/A",
-    "unmeasuredFlowTooltip": "Een transactie die buiten deze rekeningen is afgewikkeld, of een splitsing die een investeringsregel combineert met een gewone uitgave, betekent dat het resultaat niet kan worden gescheiden van het verplaatste geld."
+    "notAvailable": "N/A"
   },
   "spendingByPayee": {
     "title": "Uitgaven per begunstigde",
@@ -281,5 +280,14 @@
     "weekdayLabel": "Weekdag",
     "viewOverview": "Overzicht",
     "viewByDay": "Per dag"
+  },
+  "cashFlowSankey": {
+    "title": "Kasstroom-Sankey",
+    "empty": "Geen inkomsten, uitgaven of overboekingen in deze periode.",
+    "depth": "Detail",
+    "depthCategories": "Categorieën",
+    "depthSubcategories": "Subcategorieën",
+    "viewDiagram": "Diagram",
+    "viewTable": "Tabel"
   }
 }

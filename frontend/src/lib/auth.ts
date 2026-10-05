@@ -47,7 +47,10 @@ export const authApi = {
   },
 
   initiateOidc: () => {
-    // Use relative URL - Next.js rewrites handle routing to backend
+    // Use relative URL - Next.js rewrites handle routing to backend, which
+    // issues a 302 to the external IdP; router.push() would only change the
+    // client-side route and never follow that redirect.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- full browser navigation required to follow the backend's redirect to the IdP
     window.location.href = '/api/v1/auth/oidc';
   },
 
@@ -60,6 +63,7 @@ export const authApi = {
    * simply claimed the round trip had happened (P2-005).
    */
   beginOidcReauth: (purpose: string) => {
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- full browser navigation required to follow the backend's redirect to the IdP
     window.location.href = `/api/v1/auth/oidc/reauth?purpose=${encodeURIComponent(purpose)}`;
   },
 

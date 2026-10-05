@@ -321,10 +321,7 @@ export function splitTagValue(
 }
 
 export type NormalizedReconciliationStatus =
-  | "UNRECONCILED"
-  | "CLEARED"
-  | "RECONCILED"
-  | "VOID";
+  "UNRECONCILED" | "CLEARED" | "RECONCILED" | "VOID";
 
 // Lookup for the most common reconciliation status keywords seen across
 // financial exports (banks, QIF-derived CSVs, spreadsheets, etc.). Values are

@@ -248,10 +248,8 @@
     "payeeLender": "Beneficiario / Istituto mutuante",
     "selectOrCreatePayee": "Seleziona o crea beneficiario...",
     "mortgageDetails": "Dettagli mutuo",
-    "canadianMortgage": "Mutuo canadese (capitalizzazione semestrale)",
-    "variableRate": "Tasso variabile",
     "amortizationMonths": "Ammortamento (mesi)",
-    "termMonths": "Durata (mesi)",
+    "termMonths": "Periodo a tasso fisso (mesi)",
     "autoPost": "Registra automaticamente le transazioni alla scadenza",
     "skip": "Salta",
     "setUpPayments": "Configura pagamenti",
@@ -267,17 +265,31 @@
     },
     "toasts": {
       "setupComplete": "Pagamenti pianificati configurati per {account}"
-    }
+    },
+    "firstInstallment": "Prima rata",
+    "firstInstallmentHelp": "Questo mutuo non ha un pagamento fisso: ogni rata è calcolata dal saldo, dal tasso e dal periodo di ammortamento. Questa è la rata in scadenza il {date}, compreso l'eventuale capitale aggiuntivo.",
+    "firstInstallmentPending": "Inserisci la data del prossimo pagamento per calcolare la prima rata.",
+    "firstInstallmentCalculating": "Calcolo della prima rata...",
+    "firstInstallmentFailed": "Non è stato possibile calcolare la prima rata. Controlla i valori qui sotto e riprova."
   },
   "mortgageFields": {
     "title": "Dettagli mutuo",
-    "canadianMortgage": "Mutuo canadese",
-    "canadianMortgageDesc": "Usa la capitalizzazione semestrale per i tassi fissi (richiesta per legge in Canada)",
-    "variableRate": "Tasso variabile",
-    "variableRateDesc": "Il tasso può cambiare durante la durata del mutuo (usa capitalizzazione mensile)",
-    "variableRateLoanDetailsLink": "Registra le variazioni del tasso nei <link>dettagli del prestito</link>.",
-    "termLength": "Durata del termine",
-    "termLengthNoTerm": "Lascia a 0 anni e 0 mesi per nessun termine.",
+    "type": {
+      "label": "Tipo di mutuo",
+      "ANNUITY": "Alla francese (rata costante)",
+      "CANADIAN_FIXED": "Tasso fisso canadese",
+      "LINEAR": "All'italiana (quota capitale costante)",
+      "INTEREST_ONLY": "Solo interessi",
+      "help": {
+        "ANNUITY": "La rata totale è la stessa ogni mese. Sceglilo anche per un mutuo a tasso variabile.",
+        "CANADIAN_FIXED": "Un contratto canadese a tasso fisso; gli interessi si capitalizzano due volte l'anno.",
+        "LINEAR": "La quota capitale è la stessa ogni mese e la rata totale scende.",
+        "INTEREST_ONLY": "Paghi solo gli interessi e il debito residuo non cambia."
+      }
+    },
+    "rateChangesLoanDetailsLink": "Registra le variazioni del tasso nei <link>dettagli del prestito</link>.",
+    "termLength": "Periodo a tasso fisso",
+    "termLengthHelp": "Per quanto tempo vale il tuo tasso di interesse o il termine del contratto, ad esempio un tasso fisso a 5 anni. Monize può ricordartelo prima della scadenza. Lascia a 0 anni e 0 mesi per nessun termine.",
     "amortizationPeriod": "Periodo di ammortamento (obbligatorio)",
     "years": "Anni",
     "months": "Mesi",
@@ -333,6 +345,68 @@
       "memoLabel": "Testo memo di estinzione anticipata",
       "memoPlaceholder": "es. estinzione anticipata",
       "memoHelp": "Corrispondenza di sottostringa senza distinzione tra maiuscole e minuscole con il memo del pagamento, il memo della transazione di origine o il memo di una suddivisione."
+    },
+    "prepaymentMode": {
+      "label": "Effetto di un rimborso anticipato",
+      "SHORTEN_TERM": "Riduce la durata (stessa quota capitale ogni mese)",
+      "LOWER_INSTALLMENT": "Riduce la rata (stessa data di fine)",
+      "help": "Chiedi alla tua banca. Se dopo un rimborso anticipato la quota capitale nell'estratto conto resta uguale, la durata è stata ridotta."
+    },
+    "previewFirstInstallment": "Prima rata:",
+    "detect": {
+      "toggle": "Non sei sicuro? Inserisci alcune rate",
+      "title": "Scopri il tipo di mutuo",
+      "intro": "Copia due o tre rate consecutive da un estratto conto, dalla più vecchia. Il debito residuo è facoltativo: con questo e il tasso di interesse, Monize può capire se gli interessi si capitalizzano due volte l'anno.",
+      "installment": "Rata {number}",
+      "principal": "Quota capitale",
+      "interest": "Interessi",
+      "balance": "Debito residuo prima (facoltativo)",
+      "rowIncomplete": "Inserisci sia la quota capitale sia gli interessi, oppure lascia la riga vuota.",
+      "rate": "Verificato rispetto al tasso di interesse inserito sopra, {rate}.",
+      "noRate": "Non è stato inserito alcun tasso di interesse sopra, quindi la capitalizzazione non può essere verificata.",
+      "needsFrequency": "Scegli prima la frequenza di pagamento qui sotto: le rate vengono lette con quella cadenza.",
+      "submit": "Suggerisci un tipo",
+      "close": "Chiudi",
+      "suggested": "Tipo suggerito: {type}",
+      "noSuggestion": "Nessun tipo suggerito.",
+      "lowConfidence": "Affidabilità bassa: verifica con il tuo contratto o chiedi alla tua banca prima di usarlo.",
+      "use": "Usa questo tipo",
+      "failed": "Non è stato possibile verificare le rate perché la richiesta non è riuscita. Riprova.",
+      "reason": {
+        "TOO_FEW_SAMPLES": "Servono almeno due rate consecutive per il confronto.",
+        "INVALID_SAMPLE": "Una rata ha un importo negativo o illeggibile.",
+        "NO_PAYMENT": "Le rate non rimborsano capitale e non addebitano interessi.",
+        "AMBIGUOUS_CONSTANT_PRINCIPAL_AND_INSTALLMENT": "La quota capitale e la rata totale sono uguali in ogni rata, il che vale sia per un mutuo all'italiana sia per uno alla francese. Prova con rate più distanziate oppure verifica il tuo contratto.",
+        "ACCELERATED_FREQUENCY": "Queste rate sembrano all'italiana o di soli interessi, il che non è possibile con una frequenza di pagamento accelerata. Verifica la frequenza di pagamento.",
+        "NO_RULE_FITS": "Né la quota capitale né la rata totale restano uguali in queste rate. Se il tasso è cambiato tra una e l'altra, usa rate dello stesso periodo di tasso.",
+        "ZERO_PRINCIPAL": "Non viene rimborsato capitale, quindi il debito residuo non cambia.",
+        "ZERO_PRINCIPAL_RATE_MISMATCH": "Non viene rimborsato capitale, ma gli interessi non corrispondono al tasso indicato applicato al debito residuo. Verifica il tasso.",
+        "CONSTANT_PRINCIPAL": "La quota capitale è sempre la stessa e la rata totale scende.",
+        "CONSTANT_PRINCIPAL_RATE_MISMATCH": "La quota capitale è sempre la stessa, ma gli interessi non corrispondono al tasso indicato applicato al debito residuo. Verifica il tasso.",
+        "CONSTANT_INSTALLMENT_SEMI_ANNUAL": "La rata totale è sempre la stessa e gli interessi corrispondono al tasso indicato capitalizzato due volte l'anno.",
+        "CONSTANT_INSTALLMENT_NOMINAL": "La rata totale è sempre la stessa e gli interessi corrispondono al tasso indicato senza capitalizzazione semestrale.",
+        "CONSTANT_INSTALLMENT_RATE_UNCHECKED": "La rata totale è sempre la stessa. Senza il debito residuo prima di ogni rata e il tasso di interesse, non è stato possibile verificare la capitalizzazione semestrale.",
+        "CONSTANT_INSTALLMENT_COMPOUNDING_AMBIGUOUS": "La rata totale è sempre la stessa, ma il debito residuo è troppo piccolo per distinguere la capitalizzazione semestrale. Un contratto canadese a tasso fisso lo indica nelle sue condizioni.",
+        "CONSTANT_INSTALLMENT_RATE_MISMATCH": "La rata totale è sempre la stessa, ma al tasso indicato gli interessi non corrispondono a nessuna delle due convenzioni. Gli interessi potrebbero essere calcolati giornalmente; verifica il tasso."
+      },
+      "history": {
+        "action": "Rileva tipo di mutuo",
+        "title": "Tipo di mutuo dai tuoi pagamenti",
+        "intro": "Ricavato dalle ultime rate registrate a uno stesso tasso. Non cambia nulla finché non salvi il conto.",
+        "current": "Tipo attuale: {type}",
+        "alreadySet": "Questo mutuo ha già il tipo suggerito.",
+        "rate": "Tasso di interesse in vigore: {rate}",
+        "noRate": "Nessun tasso di interesse è registrato per queste date, quindi la capitalizzazione non è stata verificata.",
+        "noSamples": "Non è stata trovata alcuna rata registrata con sia una quota capitale sia una quota interessi. Registra i tuoi pagamenti divisi tra capitale e interessi per usare questa funzione.",
+        "colDate": "Data",
+        "colPrincipal": "Quota capitale",
+        "colInterest": "Interessi",
+        "colBalance": "Debito residuo prima",
+        "balanceUnknown": "Sconosciuto",
+        "failed": "Non è stato possibile leggere lo storico dei pagamenti perché la richiesta non è riuscita. Riprova.",
+        "cancel": "Annulla",
+        "use": "Modifica conto con questo tipo"
+      }
     }
   },
   "assetFields": {
@@ -361,7 +435,8 @@
     "paymentFrequencyRequired": "La frequenza di pagamento è obbligatoria",
     "paymentStartDateRequired": "La data del primo pagamento è obbligatoria",
     "paymentAccountRequired": "Il conto di pagamento è obbligatorio",
-    "amortizationRequired": "Il periodo di ammortamento è obbligatorio"
+    "amortizationRequired": "Il periodo di ammortamento è obbligatorio",
+    "acceleratedNeedsAnnuity": "Questo mutuo è pagato con un piano accelerato, che ha solo un mutuo a rata costante. Un mutuo lineare o solo interessi richiede una frequenza di pagamento regolare, quindi mantieni un tipo a rata costante."
   },
   "loanDetail": {
     "backToAccounts": "Torna ai conti",
@@ -389,7 +464,12 @@
       "estRemainingInterest": "Interessi residui stim.",
       "notSet": "Non impostato",
       "notAvailable": "N/D",
-      "paidOff": "Estinto"
+      "paidOff": "Estinto",
+      "nextInstallment": "Prossima rata",
+      "dueOn": "Scade il {date}",
+      "finalPayment": "Pagamento finale",
+      "nextInstallmentDue": "Prossima rata (scade il {date})",
+      "finalPaymentDue": "Pagamento finale (scade il {date})"
     },
     "schedule": {
       "title": "Piano di ammortamento",
@@ -464,8 +544,13 @@
         "reasonPaidOff": "Questo prestito non ha saldo residuo, quindi non c'è più nulla da ammortizzare.",
         "reasonNoFrequency": "Per questo prestito non è impostata una frequenza di pagamento. Aggiungila nelle impostazioni del conto.",
         "reasonNoRate": "Per questo prestito non è salvato un tasso di interesse. Imposta il tasso nelle impostazioni del conto oppure registra una variazione di tasso con data odierna o precedente. Un tasso mostrato per riga nel piano qui sotto è ricostruito dagli interessi addebitati e non è un tasso salvato.",
-        "reasonNoPayment": "L'importo della rata non può essere determinato. Registra le rate regolari come trasferimenti verso il conto del prestito (capitale, con gli interessi come riga di suddivisione o come spesa categorizzata separata), oppure imposta l'importo del pagamento nelle impostazioni del conto. I pagamenti registrati come spese ordinarie sul conto di origine non raggiungono mai il conto del prestito, quindi il piano non può vederli."
-      }
+        "reasonNoPayment": "L'importo della rata non può essere determinato. Registra le rate regolari come trasferimenti verso il conto del prestito (capitale, con gli interessi come riga di suddivisione o come spesa categorizzata separata), oppure imposta l'importo del pagamento nelle impostazioni del conto. I pagamenti registrati come spese ordinarie sul conto di origine non raggiungono mai il conto del prestito, quindi il piano non può vederli.",
+        "reasonNoAmortization": "Questo mutuo non ha un periodo di ammortamento, quindi non è possibile calcolarne le rate né la fine della durata. Imposta il periodo di ammortamento nelle impostazioni del conto.",
+        "reasonNoPaymentStart": "Questo mutuo non ha una data del primo pagamento, quindi non è possibile contare i pagamenti rimanenti fino alla fine della durata. Configura il suo pagamento programmato dalle impostazioni del conto; la prima data di scadenza che inserisci diventa il pagamento 1.",
+        "reasonNoPrincipal": "Questo mutuo non ha un importo originario, quindi non è possibile calcolarne la quota capitale costante. Imposta l'importo del mutuo nelle impostazioni del conto."
+      },
+      "budgetBelowNextInstallment": "È inferiore alla prossima rata ({amount}, scade il {date}); aumentalo oltre per effettuare un rimborso anticipato.",
+      "shortenTermNeedsPrincipal": "Questo mutuo non ha un importo originario, quindi non è possibile simulare una durata ridotta. Scegli di ridurre la rata oppure imposta l'importo del mutuo nelle impostazioni del conto."
     },
     "comparison": {
       "newPayoff": "Nuova data di estinzione",
@@ -481,7 +566,8 @@
       "newInstallment": "Nuova rata",
       "installmentDrop": "{payment} (−{reduction})",
       "monthlyPayment": "Rata mensile",
-      "overpaymentAtFrequency": "{frequency}: +{amount}"
+      "overpaymentAtFrequency": "{frequency}: +{amount}",
+      "firstPayment": "Primo pagamento"
     },
     "chart": {
       "title": "Cronologia di estinzione",

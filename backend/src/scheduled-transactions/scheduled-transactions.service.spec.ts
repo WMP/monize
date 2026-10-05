@@ -2152,6 +2152,62 @@ describe("ScheduledTransactionsService", () => {
       });
     });
 
+    it.each(["LINEAR", "INTEREST_ONLY"])(
+      "records no payment amount when the user edits a %s mortgage's schedule",
+      async (mortgageType) => {
+        // docs/specs/mortgage-types.md section 5.6: these methods have no
+        // constant payment (the column's CHECK refuses one). The edit stands
+        // for the template only and the next advancement reprices it; the
+        // standing extra is still the user's configuration.
+        const scheduled = makeScheduled({ amount: -1333.3333 });
+        stubFindOne(scheduled);
+        accountsRepo.findOne.mockResolvedValueOnce({
+          id: "acc-loan",
+          accountType: "MORTGAGE",
+          mortgageType,
+          scheduledTransactionId: stId,
+        });
+
+        await service.update(userId, stId, {
+          amount: -1433.3333,
+          splits: [
+            {
+              transferAccountId: "acc-loan",
+              amount: -833.3333,
+              memo: "Principal",
+            },
+            { categoryId: "cat-interest", amount: -500, memo: "Interest" },
+            {
+              transferAccountId: "acc-loan",
+              amount: -100,
+              memo: "Extra Principal",
+            },
+          ],
+        });
+
+        expect(accountsRepo.update).toHaveBeenCalledWith("acc-loan", {
+          extraPaymentAmount: 100,
+        });
+      },
+    );
+
+    it("still records the payment of an annuity mortgage's edited schedule", async () => {
+      const scheduled = makeScheduled({ amount: -1000 });
+      stubFindOne(scheduled);
+      accountsRepo.findOne.mockResolvedValueOnce({
+        id: "acc-loan",
+        accountType: "MORTGAGE",
+        mortgageType: "ANNUITY",
+        scheduledTransactionId: stId,
+      });
+
+      await service.update(userId, stId, { amount: -1100 });
+
+      expect(accountsRepo.update).toHaveBeenCalledWith("acc-loan", {
+        paymentAmount: 1100,
+      });
+    });
+
     it("does not touch any account when the schedule is not a loan payment", async () => {
       const scheduled = makeScheduled();
       stubFindOne(scheduled);
@@ -5566,6 +5622,24 @@ describe("ScheduledTransactionsService", () => {
 
       // Both splits should have been saved with updated amounts
       expect(splitsRepo.save).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("repriceLoanTemplate", () => {
+    it("reprices through the loan service, which skips an inactive schedule", async () => {
+      scheduledRepo.findOne.mockResolvedValue(
+        makeScheduled({ isActive: false }),
+      );
+
+      await service.repriceLoanTemplate(stId);
+
+      expect(scheduledRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: stId },
+          lock: { mode: "pessimistic_write" },
+        }),
+      );
+      expect(splitsRepo.save).not.toHaveBeenCalled();
     });
   });
 

@@ -64,6 +64,7 @@ const mockAccounts: Account[] = [
     isFavourite: false, favouriteSortOrder: 0, excludeFromNetWorth: false, paymentAmount: null, paymentFrequency: null, paymentStartDate: null,
     sourceAccountId: null, principalCategoryId: null, interestCategoryId: null, overpaymentCategoryId: null, overpaymentMemo: null, overpaymentPayeeId: null, fxFeePercent: null,
     scheduledTransactionId: null, assetCategoryId: null, dateAcquired: null, linkedLoanAccountId: null,
+    mortgageType: null,
     isCanadianMortgage: false, isVariableRate: false, termMonths: null, termEndDate: null,
     amortizationMonths: null, originalPrincipal: null,
     statementDueDay: null, statementSettlementDay: null,
@@ -74,7 +75,7 @@ const mockAccounts: Account[] = [
 const mockCategories: Category[] = [
   {
     id: 'cat-1', userId: 'user-1', parentId: null, parent: null, children: [],
-    name: 'Interest Expenses', description: null, icon: null, color: null, effectiveColor: null, effectiveIcon: null,
+    name: 'Interest Expenses', description: null, icon: null, color: null, effectiveColor: null, effectiveIcon: null, autoSign: null, effectiveAutoSign: true,
     isIncome: false, isSystem: false, createdAt: '2024-01-01T00:00:00Z',
   },
 ];

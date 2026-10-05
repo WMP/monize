@@ -10,8 +10,7 @@
  *    so adding the source figure would be a foreign number on this balance.
  */
 export type BalanceForecastGapReason =
-  | "unresolvedSettlementRate"
-  | "crossCurrencyTransfer";
+  "unresolvedSettlementRate" | "crossCurrencyTransfer";
 
 /** One schedule the projection could not price, and why. */
 export interface BalanceForecastGap {

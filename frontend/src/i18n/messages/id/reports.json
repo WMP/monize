@@ -60,6 +60,7 @@
       "spending-anomalies": "Anomali Pengeluaran",
       "weekend-weekday-spending": "Pengeluaran Akhir Pekan vs Hari Kerja",
       "monthly-comparison": "Perbandingan Bulanan",
+      "cash-flow-sankey": "Sankey Arus Kas",
       "foreign-currency-fees": "Biaya Transaksi Mata Uang Asing",
       "uncategorized-transactions": "Transaksi Belum Dikategorikan",
       "duplicate-transactions": "Pencari Transaksi Duplikat",
@@ -108,6 +109,7 @@
       "spending-anomalies": "Deteksi transaksi yang sangat besar dan lonjakan pengeluaran yang perlu diperhatikan.",
       "weekend-weekday-spending": "Analisis pola pengeluaran Anda berdasarkan hari dalam seminggu untuk memahami kebiasaan.",
       "monthly-comparison": "Bandingkan bulan apa pun dengan bulan sebelumnya di seluruh pendapatan, pengeluaran, nilai bersih, dan investasi.",
+      "cash-flow-sankey": "Lihat dari mana uang Anda berasal dan ke mana perginya: pemasukan ke pengeluaran, tabungan, investasi, dan pembayaran utang, beserta sisanya.",
       "foreign-currency-fees": "Lacak biaya transaksi luar negeri yang dikenakan di seluruh akun yang menerapkan biaya konversi.",
       "uncategorized-transactions": "Temukan dan kategorikan transaksi yang tidak memiliki kategori.",
       "duplicate-transactions": "Identifikasi entri duplikat potensial yang mungkin perlu ditinjau atau dihapus.",
@@ -468,7 +470,8 @@
     "seriesPrincipalPaid": "Pokok Dibayar",
     "seriesInterestPaid": "Bunga Dibayar",
     "seriesPrincipal": "Pokok",
-    "seriesInterest": "Bunga"
+    "seriesInterest": "Bunga",
+    "installmentAndFinal": "{installment}; pembayaran akhir {final}"
   },
   "dividendIncome": {
     "pdfTitle": "Laba Modal, Dividen & Bunga",
@@ -882,7 +885,10 @@
     "typeLoan": "Pinjaman",
     "typeMortgage": "Hipotek",
     "pdfSubtitlePaymentsSummary": "{count} pembayaran dilakukan, {interest} total bunga",
-    "pdfSubtitlePaymentsProjection": "{count} pembayaran dilakukan, bunga {interest} selama proyeksi"
+    "pdfSubtitlePaymentsProjection": "{count} pembayaran dilakukan, bunga {interest} selama proyeksi",
+    "nextInstallment": "Angsuran Berikutnya",
+    "finalPayment": "Pembayaran Akhir",
+    "amountDueOn": "{amount}, jatuh tempo {date}"
   },
   "monteCarlo": {
     "toasts": {
@@ -1202,7 +1208,6 @@
     "investmentReturnTooltip": "Imbal hasil yang dibobot berdasarkan waktu hanya untuk sekuritas. Uang yang disetorkan atau ditarik pada suatu hari tidak mengubahnya, dan tunai yang belum diinvestasikan tidak termasuk dalam hasil maupun dalam nilai yang dijadikan pembandingnya.",
     "incompleteTooltip": "Beberapa hari dalam periode ini tidak memiliki harga, kurs, atau saldo kas, sehingga angka yang bergantung pada setiap hari tidak ditampilkan.",
     "measuredFromClose": "Sejak penutupan perdagangan pada {date}",
-    "unmeasuredFlowTooltip": "Uang berpindah masuk atau keluar dari akun-akun ini dengan cara yang tidak dapat dihitung di sini: sebuah transaksi yang diselesaikan dari akun di luar kelompok ini, atau pemisahan yang mencampur baris investasi dengan pengeluaran biasa. Hasil investasi tidak ditampilkan, karena sebagian darinya adalah uang Anda sendiri.",
     "notAvailable": "T/A",
     "intradayUnavailable": "Harga intraday terperinci tidak tersedia",
     "intradayUnavailableTitle": "Tampilan intraday tidak tersedia untuk campuran akun ini",
@@ -1842,5 +1847,52 @@
   },
   "foreignCurrencyFees": {
     "noEligibleAccounts": "Tidak ada akun yang memiliki biaya transaksi luar negeri yang dikonfigurasi. Tetapkan persentase biaya pada akun untuk melacak biaya mata uang asingnya di sini."
+  },
+  "sankey": {
+    "help": "Uang yang masuk mengalir melalui bagian tengah ke tempat uang itu dibelanjakan, yang ditabung atau diinvestasikan, dan yang membayar utang. Secara bawaan, laporan mencakup rekening giro, tabungan, tunai, kartu kredit, dan jalur kredit Anda yang masih terbuka, dan transfer antara dua di antaranya tidak ditampilkan. Keluarkan rekening tabungan dari filter rekening untuk melihat berapa yang Anda pindahkan ke sana. Pembayaran kartu kredit tidak pernah dianggap pembayaran utang: pembelian yang dilunasinya sudah dihitung sebagai pengeluaran.",
+    "depthLabel": "Rincian",
+    "depthCategories": "Kategori",
+    "depthSubcategories": "Subkategori",
+    "cardIncome": "Pemasukan",
+    "cardInflows": "Transfer masuk",
+    "cardExpenses": "Pengeluaran",
+    "cardOutflows": "Transfer keluar",
+    "unknown": "Tidak diketahui",
+    "knownPartOnly": "Hanya bagian yang dapat dikonversi yang digambar.",
+    "netRefund": "Pengembalian bersih: subkategori ini menerima lebih banyak daripada yang dibelanjakan.",
+    "excludedCount": "{count, plural, other {# jumlah tidak dapat dikonversi dan tidak termasuk dalam angka di atas.}}",
+    "noData": "Tidak ada pemasukan, pengeluaran, atau transfer pada periode ini",
+    "range": "{start} sampai {end}",
+    "ariaLabel": "Diagram arus kas. Pemasukan {income}, transfer masuk {inflows}, pengeluaran {expenses}, transfer keluar {outflows}, {residualLabel} {residual}.",
+    "other": "Lainnya",
+    "noSubcategory": "(tanpa subkategori)",
+    "linkLabel": "{source} ke {target}",
+    "colFlow": "Arus",
+    "colSide": "Arah",
+    "colAmount": "Jumlah",
+    "sideIn": "Uang masuk",
+    "sideOut": "Uang keluar",
+    "sideDetail": "Bagian dari {parent}",
+    "pdfTitle": "Sankey Arus Kas",
+    "csvNodes": "Arus",
+    "csvLinks": "Tautan",
+    "csvSource": "Dari",
+    "csvTarget": "Ke",
+    "csvTotal": "Jumlah",
+    "csvKnownTotal": "Jumlah terkonversi",
+    "nodes": {
+      "hub": "Pemasukan",
+      "classSavings": "Tabungan & investasi",
+      "classDebt": "Pembayaran utang",
+      "classOtherAccounts": "Rekening lain",
+      "inflowSavings": "Dari tabungan & investasi",
+      "inflowBorrowed": "Pinjaman",
+      "inflowOtherAccounts": "Dari rekening lain",
+      "uncategorizedIncome": "Pemasukan tanpa kategori",
+      "uncategorizedExpense": "Pengeluaran tanpa kategori",
+      "residualUnspent": "Tidak terpakai",
+      "residualDeficit": "Diambil dari saldo",
+      "unlinkedAccount": "(rekening tidak tertaut)"
+    }
   }
 }
