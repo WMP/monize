@@ -195,7 +195,7 @@ export function AccountFormModal({
         onClose={close}
         {...modalProps}
         maxWidth="4xl"
-        className="p-6 !max-w-[50.4rem]"
+        className="p-6 !max-w-[55em]"
       >
         <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
           {isEditing ? t('page.editAccountModal') : t('page.newAccountModal')}
