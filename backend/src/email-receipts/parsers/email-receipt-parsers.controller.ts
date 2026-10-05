@@ -20,9 +20,13 @@ import {
   ApproveEmailReceiptParserDto,
   CreateEmailReceiptParserDto,
   DraftParserWithAiDto,
+  GenerateParserWithAiDto,
+  PreviewEmailReceiptParserDto,
   TestEmailReceiptParserDto,
   UpdateEmailReceiptParserDto,
 } from "./dto/email-receipt-parser.dto";
+import { EmailReceiptParserGenerateService } from "./email-receipt-parser-generate.service";
+import { EmailReceiptParserPreviewService } from "./email-receipt-parser-preview.service";
 import { EmailReceiptParsersService } from "./email-receipt-parsers.service";
 
 /**
@@ -36,7 +40,11 @@ import { EmailReceiptParsersService } from "./email-receipt-parsers.service";
 @OwnerOnly()
 @ApiBearerAuth()
 export class EmailReceiptParsersController {
-  constructor(private readonly parsers: EmailReceiptParsersService) {}
+  constructor(
+    private readonly parsers: EmailReceiptParsersService,
+    private readonly generator: EmailReceiptParserGenerateService,
+    private readonly previews: EmailReceiptParserPreviewService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: "List my receipt parsers" })
@@ -70,6 +78,21 @@ export class EmailReceiptParsersController {
     @Body() dto: DraftParserWithAiDto,
   ) {
     return this.parsers.requestAiDraft(req.user.id, dto.receiptIds);
+  }
+
+  // Declared before `:id`, so the literal segment is matched first.
+  @Post("generate-with-ai")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  @ApiOperation({
+    summary:
+      "Run the assistant now over 1 to 5 sample emails of a domain and the transactions they paid for; it saves (or, with parserId, updates) a draft parser. 422 with the assistant's answer when it saved none",
+  })
+  generateWithAi(
+    @Request() req: { user: { id: string } },
+    @Body() dto: GenerateParserWithAiDto,
+  ) {
+    return this.generator.generate(req.user.id, dto);
   }
 
   @Get(":id")
@@ -115,6 +138,21 @@ export class EmailReceiptParsersController {
     @Param("id", ParseUUIDPipe) id: string,
   ): Promise<void> {
     await this.parsers.remove(req.user.id, id);
+  }
+
+  @Post(":id/preview")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60000, limit: 30 } })
+  @ApiOperation({
+    summary:
+      "Run a parser (draft or approved) over the stored emails of its domains, read-only: the selected samples and the newest others, each with what the pipeline would do",
+  })
+  preview(
+    @Request() req: { user: { id: string } },
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: PreviewEmailReceiptParserDto,
+  ) {
+    return this.previews.preview(req.user.id, id, dto);
   }
 
   @Post(":id/approve")

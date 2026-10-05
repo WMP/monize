@@ -19,6 +19,7 @@ describe("EmailReceiptsController", () => {
   const receipts = {
     list: jest.fn(),
     listDomains: jest.fn(),
+    listUncoveredDomains: jest.fn(),
     overview: jest.fn(),
     statusCounts: jest.fn(),
     processBatch: jest.fn(),
@@ -105,6 +106,23 @@ describe("EmailReceiptsController", () => {
     expect(names.indexOf("domains")).toBeGreaterThan(-1);
     expect(names.indexOf("domains")).toBeLessThan(names.indexOf("get"));
     expect(Reflect.getMetadata("path", proto.domains)).toBe("domains");
+  });
+
+  it("answers the uncovered domains for the JWT user, on a literal route declared before :id", async () => {
+    receipts.listUncoveredDomains.mockResolvedValue([
+      { domain: "a.example.com", count: 3, draftParserId: null },
+    ]);
+    await expect(controller.uncoveredDomains(req)).resolves.toEqual([
+      { domain: "a.example.com", count: 3, draftParserId: null },
+    ]);
+    expect(receipts.listUncoveredDomains).toHaveBeenCalledWith("user-1");
+    const names = Object.getOwnPropertyNames(EmailReceiptsController.prototype);
+    expect(names.indexOf("uncoveredDomains")).toBeLessThan(
+      names.indexOf("get"),
+    );
+    expect(Reflect.getMetadata("path", proto.uncoveredDomains)).toBe(
+      "domains/uncovered",
+    );
   });
 
   describe("the domains and status-counts queries", () => {
@@ -367,6 +385,7 @@ describe("EmailReceiptsController", () => {
           "constructor",
           "list",
           "domains",
+          "uncoveredDomains",
           "overview",
           "statusCounts",
           "processBatch",

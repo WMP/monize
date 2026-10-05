@@ -128,6 +128,70 @@ describe("ToolExecutorService email_receipt_parsers", () => {
     expect(result.pendingAction).toBeUndefined();
   });
 
+  it("tests samples that carry the expected transaction and reports whether they agree", async () => {
+    tools.testDefinition.mockResolvedValue({
+      valid: true,
+      errors: [],
+      unknownCategoryIds: [],
+      emails: [{ receiptId: R1 }],
+      allComplete: true,
+      allAgree: false,
+    });
+    const T1 = "e0000000-0000-4000-8000-0000000000a1";
+
+    const result = await service.execute(USER, "email_receipt_parsers", {
+      operation: "test",
+      definition: DEFINITION,
+      samples: [{ receiptId: R1, transactionId: T1 }],
+    });
+
+    expect(tools.testDefinition).toHaveBeenCalledWith(USER, {
+      definition: DEFINITION,
+      samples: [{ receiptId: R1, transactionId: T1 }],
+    });
+    expect(result.summary).toContain("not every one agrees");
+  });
+
+  it("updates a named draft: parserId and expectedRevision reach saveDraft", async () => {
+    tools.saveDraft.mockResolvedValue({
+      parserId: "p1",
+      name: "Shop",
+      status: "draft",
+      revision: 5,
+      fromDomains: ["shop.example.com"],
+      payee: null,
+      requestProposed: false,
+    });
+    const P1 = "e0000000-0000-4000-8000-0000000000b1";
+
+    await service.execute(USER, "email_receipt_parsers", {
+      operation: "save_draft",
+      parserId: P1,
+      expectedRevision: 4,
+      name: "Shop",
+      fromDomains: ["shop.example.com"],
+      definition: DEFINITION,
+    });
+
+    expect(tools.saveDraft).toHaveBeenCalledWith(
+      USER,
+      ASSISTANT_CLAIM_KEY,
+      expect.objectContaining({ parserId: P1, expectedRevision: 4 }),
+    );
+  });
+
+  it("refuses parserId without expectedRevision before reaching the service", async () => {
+    const result = await service.execute(USER, "email_receipt_parsers", {
+      operation: "save_draft",
+      parserId: "e0000000-0000-4000-8000-0000000000b1",
+      name: "Shop",
+      fromDomains: ["shop.example.com"],
+      definition: DEFINITION,
+    });
+    expect(result.isError).toBe(true);
+    expect(tools.saveDraft).not.toHaveBeenCalled();
+  });
+
   it("says an invalid definition is invalid, as a result the model can fix", async () => {
     tools.testDefinition.mockResolvedValue({
       valid: false,

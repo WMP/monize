@@ -76,6 +76,16 @@ export class EmailReceiptsController {
   }
 
   // Declared before `:id`, so the literal segment is matched first.
+  @Get("domains/uncovered")
+  @ApiOperation({
+    summary:
+      "The sender domains of my stored emails that no approved profile covers, with their counts and the draft profile for each, if any (at most 200)",
+  })
+  uncoveredDomains(@Request() req: { user: { id: string } }) {
+    return this.receipts.listUncoveredDomains(req.user.id);
+  }
+
+  // Declared before `:id`, so the literal segment is matched first.
   @Get("status-counts")
   @ApiOperation({
     summary:

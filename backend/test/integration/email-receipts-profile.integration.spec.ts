@@ -9,6 +9,7 @@ import {
   AiWriteLimiter,
 } from "@/ai/actions/ai-write-limiter";
 import { AiModule } from "@/ai/ai.module";
+import { AiQueryService } from "@/ai/query/ai-query.service";
 import { AiReviewModule } from "@/ai-review/ai-review.module";
 import { AiReviewApprovalService } from "@/ai-review/ai-review-approval.service";
 import { AiReviewRequestsService } from "@/ai-review/ai-review-requests.service";
@@ -22,9 +23,15 @@ import { EncryptionService } from "@/common/encryption/encryption.service";
 import { EmailReceiptCategoryAiService } from "@/email-receipts/ai/email-receipt-category-ai.service";
 import { EmailReceiptsModule } from "@/email-receipts/email-receipts.module";
 import { EmailReceiptPipelineService } from "@/email-receipts/pipeline/email-receipt-pipeline.service";
+import { EmailReceiptParserGenerateService } from "@/email-receipts/parsers/email-receipt-parser-generate.service";
+import { EmailReceiptParserPreviewService } from "@/email-receipts/parsers/email-receipt-parser-preview.service";
 import { EmailReceiptParserToolsService } from "@/email-receipts/parsers/email-receipt-parser-tools.service";
 import { EmailReceiptParsersService } from "@/email-receipts/parsers/email-receipt-parsers.service";
 import { EmailReceiptsService } from "@/email-receipts/receipts/email-receipts.service";
+import {
+  NotFoundException,
+  UnprocessableEntityException,
+} from "@nestjs/common";
 import { TransactionRulesModule } from "@/transaction-rules/transaction-rules.module";
 import { TransactionsModule } from "@/transactions/transactions.module";
 import { TransactionsService } from "@/transactions/transactions.service";
@@ -76,6 +83,9 @@ describe("email receipts: what a profile configures (integration)", () => {
   let limiter: AiWriteLimiter;
   let categoryAi: EmailReceiptCategoryAiService;
   let encryption: EncryptionService;
+  let previews: EmailReceiptParserPreviewService;
+  let generator: EmailReceiptParserGenerateService;
+  let aiQuery: AiQueryService;
 
   let aliceId: string;
   let bobId: string;
@@ -234,6 +244,9 @@ describe("email receipts: what a profile configures (integration)", () => {
     limiter = module.get(AiWriteLimiter);
     categoryAi = module.get(EmailReceiptCategoryAiService);
     encryption = module.get(EncryptionService);
+    previews = module.get(EmailReceiptParserPreviewService);
+    generator = module.get(EmailReceiptParserGenerateService);
+    aiQuery = module.get(AiQueryService);
   });
 
   afterAll(async () => {
@@ -759,6 +772,276 @@ describe("email receipts: what a profile configures (integration)", () => {
         proposalsToApprove: 0,
         domainsWithoutProfile: [],
       });
+    });
+  });
+
+  describe("the profile wizard", () => {
+    const draftFor = (domain: string) =>
+      asAlice(() =>
+        parserTools.saveDraft(aliceId, "assistant", {
+          name: "Draft",
+          fromDomains: [domain],
+          definition: profile(),
+        }),
+      );
+
+    it("lists the domains no approved profile covers, with the draft naming each; sub-domains of a covered domain are covered", async () => {
+      await createParser(profile());
+      const draft = await draftFor("pay.example.org");
+      await insertEmail({ domain: "shop.example.com" });
+      await insertEmail({ domain: "mail.shop.example.com" });
+      await insertEmail({ domain: "notshop.example.com" });
+      await insertEmail({ domain: "pay.example.org" });
+      await insertEmail({ domain: "pay.example.org", status: "review" });
+      const [bobBox] = await db.query(
+        `INSERT INTO email_receipt_mailboxes (user_id, host, username, password_enc)
+         VALUES ($1, 'h', 'u', 'p') RETURNING id`,
+        [bobId],
+      );
+      await insertEmail({
+        userId: bobId,
+        box: bobBox.id,
+        domain: "bob.example.org",
+      });
+
+      const mine = await asAlice(() => receipts.listUncoveredDomains(aliceId));
+
+      expect(mine).toEqual([
+        { domain: "pay.example.org", count: 2, draftParserId: draft.parserId },
+        { domain: "notshop.example.com", count: 1, draftParserId: null },
+      ]);
+      await expect(
+        asBob(() => receipts.listUncoveredDomains(bobId)),
+      ).resolves.toEqual([
+        { domain: "bob.example.org", count: 1, draftParserId: null },
+      ]);
+    });
+
+    it("counts the emails a parser could read again: processable, of its domains, last processed before its last change; drafts and other users' emails never", async () => {
+      const reprocessable = await insertEmail({ status: "no_parser" });
+      await insertEmail({ status: "review" });
+      await insertEmail({
+        domain: "mail.shop.example.com",
+        status: "parse_failed",
+      });
+      await insertEmail({ domain: "other.example.org", status: "no_parser" });
+      const [bobBox] = await db.query(
+        `INSERT INTO email_receipt_mailboxes (user_id, host, username, password_enc)
+         VALUES ($1, 'h', 'u', 'p') RETURNING id`,
+        [bobId],
+      );
+      await insertEmail({ userId: bobId, box: bobBox.id, status: "no_parser" });
+      const draft = await draftFor("shop.example.com");
+      const approved = await createParser(profile());
+
+      const list = await asAlice(() => parsers.list(aliceId));
+
+      expect(
+        list.find((p) => p.id === draft.parserId)?.reprocessableCount,
+      ).toBe(0);
+      expect(list.find((p) => p.id === approved.id)?.reprocessableCount).toBe(
+        2,
+      );
+      expect(
+        (await asAlice(() => parsers.get(aliceId, approved.id)))
+          .reprocessableCount,
+      ).toBe(2);
+
+      // processing the emails moves their updated_at past the parser's: nothing left to read again
+      await asAlice(() =>
+        receipts.processBatch(aliceId, { domain: "shop.example.com" }),
+      );
+      expect(
+        (await asAlice(() => parsers.get(aliceId, approved.id)))
+          .reprocessableCount,
+      ).toBe(0);
+      expect((await receiptRow(reprocessable)).updated_at).toBeDefined();
+
+      // a change to the parser makes the emails stale again
+      await asAlice(() =>
+        parsers.update(aliceId, approved.id, {
+          expectedRevision: approved.revision,
+          name: "Shop renamed",
+        } as never),
+      );
+      expect(
+        (await asAlice(() => parsers.get(aliceId, approved.id)))
+          .reprocessableCount,
+      ).toBeGreaterThan(0);
+    });
+
+    it("previews a draft over the domain's emails, agrees with the expected transaction, and writes nothing", async () => {
+      const txId = await createTx();
+      const sample = await insertEmail({ status: "no_parser" });
+      const other = await insertEmail({
+        status: "no_parser",
+        body: "nothing to read here",
+      });
+      const draft = await draftFor("shop.example.com");
+      const before = {
+        emails: await db.query(
+          `SELECT id, status, updated_at FROM email_receipts ORDER BY id`,
+        ),
+        requests: (await requestRows()).length,
+        parsers: await db.query(
+          `SELECT id, revision, updated_at FROM email_receipt_parsers ORDER BY id`,
+        ),
+      };
+
+      const result = await asAlice(() =>
+        previews.preview(aliceId, draft.parserId, {
+          selectedReceiptIds: [sample],
+          expected: [{ receiptId: sample, transactionId: txId }],
+        }),
+      );
+
+      expect(result.selected).toHaveLength(1);
+      expect(result.selected[0]).toMatchObject({
+        receiptId: sample,
+        outcome: "matched",
+        agrees: true,
+        match: { transactionId: txId },
+        expected: { transactionId: txId },
+        parsed: { total: 15, date: "2026-09-10" },
+      });
+      expect(result.others.map((o) => [o.receiptId, o.outcome])).toEqual([
+        [other, "parse_failed"],
+      ]);
+      expect(result.othersTotal).toBe(1);
+      expect(
+        await db.query(
+          `SELECT id, status, updated_at FROM email_receipts ORDER BY id`,
+        ),
+      ).toEqual(before.emails);
+      expect((await requestRows()).length).toBe(before.requests);
+      expect(
+        await db.query(
+          `SELECT id, revision, updated_at FROM email_receipt_parsers ORDER BY id`,
+        ),
+      ).toEqual(before.parsers);
+    });
+
+    it("another user's parser, email and transaction read as not found", async () => {
+      const txId = await createTx();
+      const sample = await insertEmail({ status: "no_parser" });
+      const draft = await draftFor("shop.example.com");
+      await expect(
+        asBob(() =>
+          previews.preview(bobId, draft.parserId, { selectedReceiptIds: [] }),
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        asAlice(() =>
+          previews.preview(aliceId, draft.parserId, {
+            selectedReceiptIds: [sample],
+            expected: [
+              {
+                receiptId: sample,
+                transactionId: "00000000-0000-4000-8000-000000000000",
+              },
+            ],
+          }),
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(txId).toBeDefined();
+    });
+
+    it("generate-with-ai refuses another user's data before the provider is called", async () => {
+      const txId = await createTx();
+      const sample = await insertEmail({ status: "no_parser" });
+      const run = jest.spyOn(aiQuery, "executeQuery");
+      await expect(
+        asBob(() =>
+          generator.generate(bobId, {
+            domain: "shop.example.com",
+            samples: [{ receiptId: sample, transactionId: txId }],
+          } as never),
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(run).not.toHaveBeenCalled();
+    });
+
+    it("generate-with-ai returns the draft the run saved, updates it in place on a revision, and is a 422 when none was saved", async () => {
+      const txId = await createTx();
+      const sample = await insertEmail({ status: "no_parser" });
+      const body = {
+        domain: "shop.example.com",
+        samples: [{ receiptId: sample, transactionId: txId }],
+      };
+      const run = jest
+        .spyOn(aiQuery, "executeQuery")
+        .mockImplementationOnce(async () => {
+          await asAlice(() =>
+            parserTools.saveDraft(aliceId, "assistant", {
+              name: "Shop",
+              fromDomains: ["shop.example.com"],
+              definition: profile(),
+            }),
+          );
+          return { answer: "Saved." } as never;
+        });
+
+      const created = await asAlice(() =>
+        generator.generate(aliceId, body as never),
+      );
+      expect(created).toMatchObject({ revision: 1, answer: "Saved." });
+      expect(
+        await db.query(`SELECT status, source FROM email_receipt_parsers`),
+      ).toEqual([{ status: "draft", source: "ai" }]);
+
+      // a revision: the same draft is updated, never a second one
+      run.mockImplementationOnce(async () => {
+        await asAlice(() =>
+          parserTools.saveDraft(aliceId, "assistant", {
+            parserId: created.parserId,
+            expectedRevision: created.revision,
+            name: "Shop v2",
+            fromDomains: ["shop.example.com"],
+            definition: profile(),
+          }),
+        );
+        return { answer: "Updated." } as never;
+      });
+      const revised = await asAlice(() =>
+        generator.generate(aliceId, {
+          ...body,
+          parserId: created.parserId,
+          feedback: "more",
+        } as never),
+      );
+      expect(revised).toMatchObject({
+        parserId: created.parserId,
+        revision: 2,
+      });
+      expect(
+        await db.query(`SELECT name, revision FROM email_receipt_parsers`),
+      ).toEqual([{ name: "Shop v2", revision: 2 }]);
+
+      // a stale revision is refused by the compare-and-swap, writing nothing
+      await expect(
+        asAlice(() =>
+          parserTools.saveDraft(aliceId, "assistant", {
+            parserId: created.parserId,
+            expectedRevision: 1,
+            name: "Stale",
+            fromDomains: ["shop.example.com"],
+            definition: profile(),
+          }),
+        ),
+      ).rejects.toThrow();
+      expect(
+        (await db.query(`SELECT name FROM email_receipt_parsers`))[0].name,
+      ).toBe("Shop v2");
+
+      run.mockResolvedValueOnce({ answer: "I could not." } as never);
+      await expect(
+        asAlice(() =>
+          generator.generate(aliceId, {
+            ...body,
+            parserId: created.parserId,
+          } as never),
+        ),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
     });
   });
 

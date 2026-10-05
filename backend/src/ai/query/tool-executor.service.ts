@@ -1582,13 +1582,15 @@ export class ToolExecutorService {
       if (operation === "test") {
         const tested = await this.receiptParsers.testDefinition(userId, {
           definition: input.definition,
-          receiptIds: input.receiptIds as string[],
+          receiptIds: input.receiptIds as string[] | undefined,
+          samples: input.samples as
+            Array<{ receiptId: string; transactionId?: string }> | undefined,
           payeeName: input.payeeName as string | undefined,
         });
         return {
           data: tested,
           summary: tested.valid
-            ? `Tested the parser on ${tested.emails.length} email${tested.emails.length === 1 ? "" : "s"}: ${tested.allComplete ? "every one reads complete" : "not every one reads complete"}. Nothing was saved.`
+            ? `Tested the parser on ${tested.emails.length} email${tested.emails.length === 1 ? "" : "s"}: ${tested.allComplete ? "every one reads complete" : "not every one reads complete"}${tested.allAgree === null ? "" : tested.allAgree ? "; every one agrees with its expected transaction" : "; not every one agrees with its expected transaction"}. Nothing was saved.`
             : "The parser definition is not valid; see errors. Nothing was saved.",
           sources,
         };
@@ -1598,6 +1600,8 @@ export class ToolExecutorService {
         ASSISTANT_CLAIM_KEY,
         {
           requestId: input.requestId as string | undefined,
+          parserId: input.parserId as string | undefined,
+          expectedRevision: input.expectedRevision as number | undefined,
           name: input.name as string,
           fromDomains: input.fromDomains as string[],
           subjectContains: input.subjectContains as string[] | undefined,

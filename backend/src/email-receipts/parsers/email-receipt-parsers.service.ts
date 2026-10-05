@@ -7,27 +7,20 @@ import {
 import { DataSource, EntityManager, In, QueryDeepPartialEntity } from "typeorm";
 import { AiReviewRequestsService } from "../../ai-review/ai-review-requests.service";
 import { loadQualifiedCategoryNames } from "../../categories/category-name.util";
+import { returnedRows } from "../../common/db/query-result";
 import { withScopedDb } from "../../common/db/scoped-db";
 import { tr } from "../../i18n/translate";
 import { Payee } from "../../payees/entities/payee.entity";
 import { EmailReceiptParser } from "../entities/email-receipt-parser.entity";
 import { EmailReceipt } from "../entities/email-receipt.entity";
-import {
-  matchReceipt,
-  type ReceiptMatchResult,
-} from "../matching/match-receipt";
+import type { ReceiptMatchResult } from "../matching/match-receipt";
 import {
   buildMatchTrace,
   type ReceiptMatchTrace,
 } from "../matching/match-trace";
-import { resolveMatchConfig } from "../parsing/receipt-match-config";
-import { effectiveReceiptDate } from "../imap/forwarded-receipt";
-import { loadReceiptCandidates } from "../pipeline/receipt-candidates";
-import { ReceiptSourceLines } from "../pipeline/receipt-source-lines";
-import {
-  parseReceiptLinesTraced,
-  type ReceiptOutcome,
-} from "../parsing/parse-receipt";
+import type { ReceiptOutcome } from "../parsing/parse-receipt";
+import { EMAIL_RECEIPT_PROCESSABLE_STATUSES } from "../receipts/dto/email-receipts.dto";
+import { dryRunReceipt } from "./receipt-dry-run";
 import type {
   ParsedReceipt,
   ReceiptParserDefinition,
@@ -137,7 +130,10 @@ export class EmailReceiptParsersService {
         take: MAX_PARSERS_PER_USER * 5,
       });
       const names = await loadQualifiedCategoryNames(m, userId);
-      return rows.map((row) => toParserView(row, names));
+      const counts = await reprocessableCounts(m, userId);
+      return rows.map((row) =>
+        toParserView(row, names, counts.get(row.id) ?? 0),
+      );
     });
   }
 
@@ -147,7 +143,7 @@ export class EmailReceiptParsersService {
         .getRepository(EmailReceiptParser)
         .findOne({ where: { id, userId } });
       if (!row) throw parserNotFound(id);
-      return toParserView(row, await loadQualifiedCategoryNames(m, userId));
+      return this.view(m, userId, row);
     });
   }
 
@@ -189,7 +185,7 @@ export class EmailReceiptParsersService {
           approvedAt: new Date(),
         }),
       );
-      return toParserView(saved, await loadQualifiedCategoryNames(m, userId));
+      return this.view(m, userId, saved);
     });
   }
 
@@ -243,10 +239,7 @@ export class EmailReceiptParsersService {
           revision: () => "revision + 1",
         },
       );
-      return toParserView(
-        await repo.findOneByOrFail({ id, userId }),
-        await loadQualifiedCategoryNames(m, userId),
-      );
+      return this.view(m, userId, await repo.findOneByOrFail({ id, userId }));
     });
   }
 
@@ -340,7 +333,9 @@ export class EmailReceiptParsersService {
       ) {
         throw revisionConflict();
       }
-      if (existing.status === "approved") return toParserView(existing, names);
+      if (existing.status === "approved") {
+        return this.view(m, userId, existing, names);
+      }
       const definition = validDefinition(existing.definition);
       await assertParserReferencesOwned(m, userId, {
         payeeId: existing.payeeId,
@@ -358,7 +353,12 @@ export class EmailReceiptParsersService {
       // the same transaction as the approval, so the two commit or roll back
       // together. Nothing matching is fine (a draft written by hand).
       await this.requests.markParserDraftApplied(m, userId, id);
-      return toParserView(await repo.findOneByOrFail({ id, userId }), names);
+      return this.view(
+        m,
+        userId,
+        await repo.findOneByOrFail({ id, userId }),
+        names,
+      );
     });
   }
 
@@ -398,45 +398,16 @@ export class EmailReceiptParsersService {
           ),
         );
       }
-      // The lines of the source the definition chose (`text` or `html`); the
-      // trace's line numbers refer to them. `no_html`: it reads HTML, the email has none.
-      const { parsed, trace, outcome } = parseReceiptLinesTraced(
-        definition,
-        receipt.subject,
-        new ReceiptSourceLines(receipt).forSource(definition.source),
-        payee?.defaultCategoryId ?? null,
-      );
-      // Centred on the day the shop sent the order when a forward carried it.
-      const purchaseDate = effectiveReceiptDate(receipt)
-        .toISOString()
-        .slice(0, 10);
-      const matchConfig = resolveMatchConfig(definition.match);
-      const candidates = await loadReceiptCandidates(
-        m,
-        userId,
-        purchaseDate,
-        receipt.id,
-        matchConfig,
-      );
-      const match = matchReceipt(
-        parsed,
-        purchaseDate,
-        candidates,
-        payee?.id ?? null,
-        matchConfig,
-      );
-      const hit =
-        match.kind === "matched"
-          ? candidates.find((c) => c.id === match.transactionId)
-          : undefined;
+      const run = await dryRunReceipt(m, userId, definition, receipt, payee);
+      const { parsed, trace, outcome, match, candidates, hit } = run;
       return {
         parsed,
         trace,
         outcome,
         match,
         matchTrace: buildMatchTrace(
-          purchaseDate,
-          matchConfig,
+          run.purchaseDate,
+          run.matchConfig,
           candidates,
           match,
         ),
@@ -453,6 +424,21 @@ export class EmailReceiptParsersService {
     });
   }
 
+  /** One parser as a client sees it, with the count of emails it could read again. */
+  private async view(
+    m: EntityManager,
+    userId: string,
+    row: EmailReceiptParser,
+    names?: ReadonlyMap<string, string>,
+  ): Promise<EmailReceiptParserView> {
+    const counts = await reprocessableCounts(m, userId, [row.id]);
+    return toParserView(
+      row,
+      names ?? (await loadQualifiedCategoryNames(m, userId)),
+      counts.get(row.id) ?? 0,
+    );
+  }
+
   private async lockParser(
     m: EntityManager,
     userId: string,
@@ -465,6 +451,43 @@ export class EmailReceiptParsersService {
     if (!row) throw parserNotFound(id);
     return row;
   }
+}
+
+/**
+ * For the user's APPROVED parsers (or only `ids`), how many stored emails of
+ * the parser's sender domains (a sub-domain matches, as in the pipeline) are in
+ * a processable status and were last updated before the parser's last change:
+ * the emails reading them again can change something. ONE statement however
+ * many parsers; a parser with none is absent from the map. A draft reads no
+ * mail, so it never counts.
+ */
+export async function reprocessableCounts(
+  m: EntityManager,
+  userId: string,
+  ids: readonly string[] | null = null,
+): Promise<Map<string, number>> {
+  const rows = returnedRows<{ id: string; n: number | string }>(
+    await m.query(
+      `SELECT p.id, COUNT(r.id)::int AS n
+         FROM email_receipt_parsers p
+         JOIN email_receipts r
+           ON r.user_id = p.user_id
+          AND r.status = ANY($2::varchar[])
+          AND r.updated_at < p.updated_at
+          AND EXISTS (
+                SELECT 1
+                  FROM unnest(p.from_domains) AS pd(domain)
+                 WHERE r.from_domain = pd.domain
+                    OR right(r.from_domain, length(pd.domain) + 1)
+                       = '.' || pd.domain)
+        WHERE p.user_id = $1
+          AND p.status = 'approved'
+          AND ($3::uuid[] IS NULL OR p.id = ANY($3::uuid[]))
+        GROUP BY p.id`,
+      [userId, [...EMAIL_RECEIPT_PROCESSABLE_STATUSES], ids ? [...ids] : null],
+    ),
+  );
+  return new Map(rows.map((row) => [row.id, Number(row.n)]));
 }
 
 /** The definition, or the 400 that lists every code the validator found. Never throws otherwise. */

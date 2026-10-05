@@ -39,6 +39,23 @@ describe("email_receipt_parsers schema", () => {
         definition: DEFINITION,
       },
     ],
+    [
+      {
+        operation: "test",
+        definition: DEFINITION,
+        samples: [{ receiptId: R1, transactionId: REQ }, { receiptId: R1 }],
+      },
+    ],
+    [
+      {
+        operation: "save_draft",
+        parserId: REQ,
+        expectedRevision: 3,
+        name: "Shop",
+        fromDomains: ["shop.example.com"],
+        definition: DEFINITION,
+      },
+    ],
   ])("accepts %j", (input) => {
     expect(emailReceiptParsersSchema.safeParse(input).success).toBe(true);
   });
@@ -62,6 +79,43 @@ describe("email_receipt_parsers schema", () => {
     [
       "test with a non-uuid email",
       { operation: "test", definition: DEFINITION, receiptIds: ["nope"] },
+    ],
+    [
+      "test with six samples",
+      {
+        operation: "test",
+        definition: DEFINITION,
+        samples: Array.from({ length: 6 }, () => ({ receiptId: R1 })),
+      },
+    ],
+    [
+      "test with a sample that has a bad transaction id",
+      {
+        operation: "test",
+        definition: DEFINITION,
+        samples: [{ receiptId: R1, transactionId: "nope" }],
+      },
+    ],
+    [
+      "save_draft with a parserId and no expectedRevision",
+      {
+        operation: "save_draft",
+        parserId: REQ,
+        name: "Shop",
+        fromDomains: ["shop.example.com"],
+        definition: DEFINITION,
+      },
+    ],
+    [
+      "an expectedRevision of zero",
+      {
+        operation: "save_draft",
+        parserId: REQ,
+        expectedRevision: 0,
+        name: "Shop",
+        fromDomains: ["shop.example.com"],
+        definition: DEFINITION,
+      },
     ],
     [
       "a non-object definition",

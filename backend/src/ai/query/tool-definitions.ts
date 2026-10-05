@@ -1221,6 +1221,28 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
           maxItems: 5,
           description: "test: stored emails.",
         },
+        samples: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              receiptId: { type: "string" },
+              transactionId: { type: "string" },
+            },
+            required: ["receiptId"],
+          },
+          minItems: 1,
+          maxItems: 5,
+        },
+        parserId: {
+          type: "string",
+        },
+        expectedRevision: {
+          type: "integer",
+          minimum: 1,
+          description:
+            "save_draft with parserId: the draft's current revision.",
+        },
         requestId: {
           type: "string",
           description: "save_draft: the claimed request.",

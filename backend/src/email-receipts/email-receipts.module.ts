@@ -20,6 +20,7 @@ import { EmailReceiptOAuthController } from "./oauth/email-receipt-oauth.control
 import { EmailReceiptOAuthService } from "./oauth/email-receipt-oauth.service";
 import { EmailReceiptOAuthConfig } from "./oauth/oauth-config.service";
 import { OAuthTokenClient } from "./oauth/oauth-token.client";
+import { EmailReceiptParserGenerateService } from "./parsers/email-receipt-parser-generate.service";
 import { EmailReceiptParsersController } from "./parsers/email-receipt-parsers.controller";
 import { EmailReceiptParsersModule } from "./parsers/email-receipt-parsers.module";
 import { EmailReceiptPipelineService } from "./pipeline/email-receipt-pipeline.service";
@@ -86,6 +87,9 @@ import { EmailReceiptsService } from "./receipts/email-receipts.service";
     EmailReceiptsService,
     EmailReceiptAiService,
     EmailReceiptCategoryAiService,
+    // Runs the assistant over the wizard's samples; needs AiQueryService, so it
+    // lives here and not in the leaf parsers module (see the service).
+    EmailReceiptParserGenerateService,
   ],
   exports: [EmailReceiptMailboxService, ImapMailboxClient],
 })

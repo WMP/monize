@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { DataSource, EntityManager, In } from "typeorm";
+import { DataSource, EntityManager, In, QueryDeepPartialEntity } from "typeorm";
 import { AiReviewRequestsService } from "../../ai-review/ai-review-requests.service";
 import { loadQualifiedCategoryNames } from "../../categories/category-name.util";
 import { returnedRows } from "../../common/db/query-result";
@@ -18,20 +18,16 @@ import {
 } from "../entities/email-receipt-parser.entity";
 import { EmailReceipt } from "../entities/email-receipt.entity";
 import { EMAIL_RECEIPT_PARSER_LANGUAGE_GUIDE } from "./parser-tool.guide";
-import { effectiveReceiptDate } from "../imap/forwarded-receipt";
-import { ReceiptSourceLines } from "../pipeline/receipt-source-lines";
-import { loadReceiptCandidates } from "../pipeline/receipt-candidates";
-import { matchReceipt } from "../matching/match-receipt";
-import {
-  effectiveMatchDefinition,
-  resolveMatchConfig,
-} from "../parsing/receipt-match-config";
+import { effectiveMatchDefinition } from "../parsing/receipt-match-config";
 import { resolveParserCategoryNames } from "./parser-category-names.util";
 import type { ReceiptMatchStrategy } from "../parsing/receipt-parser.types";
+import type { ReceiptOutcome } from "../parsing/parse-receipt";
 import {
-  parseReceiptLinesTraced,
-  type ReceiptOutcome,
-} from "../parsing/parse-receipt";
+  compareWithExpected,
+  dryRunReceipt,
+  loadTransactionSummaries,
+  type ExpectedAgreement,
+} from "./receipt-dry-run";
 import {
   RECEIPT_PARSER_VERSION,
   type ParsedReceipt,
@@ -133,6 +129,24 @@ export interface ParserToolTestEmail {
   trace: ReceiptTrace;
   /** What the definition's `match` section would do with this email (design 5.5). */
   match: ParserToolMatch;
+  /**
+   * The transaction the caller says this email paid for and whether the parsed
+   * date and total agree with it; null when the sample named none.
+   */
+  expected: {
+    transactionId: string;
+    date: string;
+    amount: number;
+    currencyCode: string;
+    payeeName: string | null;
+  } | null;
+  agreement: ExpectedAgreement | null;
+}
+
+/** One sample of a `test` call: an email, and optionally the transaction it paid for. */
+export interface ParserToolSample {
+  receiptId: string;
+  transactionId?: string;
 }
 
 /** Items a `test` result traces (the rest are counted in `parsed`). */
@@ -147,6 +161,11 @@ export interface ParserToolTestResult {
   emails: ParserToolTestEmail[];
   /** True only when the definition is valid and every email reads complete. */
   allComplete: boolean;
+  /**
+   * Whether every sample that named an expected transaction agrees with it on
+   * date and total; null when no sample named one.
+   */
+  allAgree: boolean | null;
 }
 
 export interface ParserToolCategories {
@@ -160,6 +179,13 @@ export interface ParserToolCategories {
 export interface ParserToolSaveInput {
   /** The claimed parser-draft request this draft answers, when there is one. */
   requestId?: string;
+  /**
+   * Update this DRAFT parser instead of creating one; `expectedRevision` is then
+   * required and must still be the draft's revision (compare-and-swap under the
+   * row lock). An approved parser is never changed by the tool.
+   */
+  parserId?: string;
+  expectedRevision?: number;
   name: string;
   fromDomains: string[];
   subjectContains?: string[];
@@ -172,6 +198,8 @@ export interface ParserToolSaveResult {
   parserId: string;
   name: string;
   status: "draft";
+  /** The draft's revision after this save (1 for a new draft). */
+  revision: number;
   fromDomains: string[];
   /** The payee the name resolved to, or null when none did (nothing is created). */
   payee: { id: string; name: string } | null;
@@ -273,14 +301,16 @@ export class EmailReceiptParserToolsService {
     userId: string,
     input: {
       definition: unknown;
-      receiptIds: readonly string[];
+      /** Emails to read; `samples` (which may also name the expected transaction) takes precedence. */
+      receiptIds?: readonly string[];
+      samples?: readonly ParserToolSample[];
       payeeName?: string;
     },
   ): Promise<ParserToolTestResult> {
-    if (
-      input.receiptIds.length < 1 ||
-      input.receiptIds.length > PARSER_TOOL_MAX_RECEIPTS
-    ) {
+    const samples: readonly ParserToolSample[] =
+      input.samples ??
+      (input.receiptIds ?? []).map((receiptId) => ({ receiptId }));
+    if (samples.length < 1 || samples.length > PARSER_TOOL_MAX_RECEIPTS) {
       throw new ConflictException(
         tr(
           "errors.emailReceipts.parserToolReceiptCount",
@@ -298,6 +328,7 @@ export class EmailReceiptParserToolsService {
         unknownCategoryIds: [],
         emails: [],
         allComplete: false,
+        allAgree: null,
       };
     }
     const definition: ReceiptParserDefinition = validation.definition;
@@ -307,7 +338,7 @@ export class EmailReceiptParserToolsService {
 
     return withScopedDb(this.dataSource, async (m) => {
       const receipts = await m.getRepository(EmailReceipt).find({
-        where: { userId, id: In([...input.receiptIds]) },
+        where: { userId, id: In(samples.map((sample) => sample.receiptId)) },
         select: {
           id: true,
           subject: true,
@@ -319,41 +350,35 @@ export class EmailReceiptParserToolsService {
       });
       const byId = new Map(receipts.map((r) => [r.id, r]));
       const categoryNames = await loadQualifiedCategoryNames(m, userId);
+      const expectedIds = samples.flatMap((sample) =>
+        sample.transactionId ? [sample.transactionId] : [],
+      );
+      const transactions = await loadTransactionSummaries(
+        m,
+        userId,
+        expectedIds,
+      );
       const emails: ParserToolTestEmail[] = [];
-      for (const id of input.receiptIds) {
-        const receipt = byId.get(id);
-        if (!receipt) throw receiptNotFound(id);
-        const { parsed, trace, outcome } = parseReceiptLinesTraced(
-          definition,
-          receipt.subject,
-          new ReceiptSourceLines(receipt).forSource(definition.source),
-          payee?.defaultCategoryId ?? null,
-        );
-        const effectiveDate = effectiveReceiptDate(receipt);
-        const purchaseDate = effectiveDate.toISOString().slice(0, 10);
-        const matchConfig = resolveMatchConfig(definition.match);
-        const candidates = await loadReceiptCandidates(
-          m,
-          userId,
-          purchaseDate,
-          receipt.id,
-          matchConfig,
-        );
-        const matched = matchReceipt(
-          parsed,
-          purchaseDate,
-          candidates,
-          payee?.id ?? null,
-          matchConfig,
-        );
-        const hit =
-          matched.kind === "matched"
-            ? candidates.find((c) => c.id === matched.transactionId)
-            : undefined;
+      for (const sample of samples) {
+        const receipt = byId.get(sample.receiptId);
+        if (!receipt) throw receiptNotFound(sample.receiptId);
+        const expectedTx = sample.transactionId
+          ? transactions.get(sample.transactionId)
+          : undefined;
+        if (sample.transactionId && !expectedTx) {
+          throw new NotFoundException(
+            tr(
+              "errors.emailReceipts.transactionNotFound",
+              "That transaction was not found.",
+            ),
+          );
+        }
+        const run = await dryRunReceipt(m, userId, definition, receipt, payee);
+        const { parsed, trace, outcome, match: matched, hit } = run;
         emails.push({
           receiptId: receipt.id,
           subject: receipt.subject,
-          effectiveDate: effectiveDate.toISOString(),
+          effectiveDate: run.effectiveDate.toISOString(),
           parsed: toLlmParsed(parsed, categoryNames),
           outcome,
           trace: { ...trace, items: trace.items.slice(0, TRACE_MAX_ITEMS) },
@@ -374,6 +399,23 @@ export class EmailReceiptParserToolsService {
               count: attempt.count,
             })),
           },
+          expected: expectedTx
+            ? {
+                transactionId: expectedTx.id,
+                date: expectedTx.date,
+                amount: expectedTx.amount,
+                currencyCode: expectedTx.currencyCode,
+                payeeName: expectedTx.payeeName,
+              }
+            : null,
+          agreement: expectedTx
+            ? compareWithExpected(
+                parsed,
+                run.purchaseDate,
+                run.matchConfig,
+                expectedTx,
+              )
+            : null,
         });
       }
       const unknownCategoryIds = collectParserCategoryIds(definition).filter(
@@ -387,6 +429,9 @@ export class EmailReceiptParserToolsService {
         allComplete:
           unknownCategoryIds.length === 0 &&
           emails.every((email) => email.parsed.complete),
+        allAgree: emails.some((email) => email.agreement !== null)
+          ? emails.every((email) => email.agreement?.agrees !== false)
+          : null,
       };
     });
   }
@@ -453,7 +498,18 @@ export class EmailReceiptParserToolsService {
         await this.lockClaimedRequest(m, userId, caller, input.requestId);
       }
       const repo = m.getRepository(EmailReceiptParser);
-      if ((await repo.count({ where: { userId } })) >= MAX_PARSERS_PER_USER) {
+      const existing = input.parserId
+        ? await this.lockDraft(
+            m,
+            userId,
+            input.parserId,
+            input.expectedRevision,
+          )
+        : null;
+      if (
+        !existing &&
+        (await repo.count({ where: { userId } })) >= MAX_PARSERS_PER_USER
+      ) {
         throw new ConflictException(
           tr(
             "errors.emailReceipts.tooManyParsers",
@@ -466,19 +522,36 @@ export class EmailReceiptParserToolsService {
         payeeId: payee?.id ?? null,
         categoryIds: collectParserCategoryIds(definition),
       });
-      const saved = await repo.save(
-        repo.create({
-          userId,
-          name,
-          payeeId: payee?.id ?? null,
-          fromDomains,
-          subjectContains,
-          definition: definition as unknown as Record<string, unknown>,
-          status: "draft",
-          source: "ai",
-          approvedAt: null,
-        }),
-      );
+      let saved: EmailReceiptParser;
+      if (existing) {
+        await repo.update(
+          { id: existing.id, userId },
+          {
+            name,
+            payeeId: payee?.id ?? null,
+            fromDomains,
+            subjectContains,
+            definition:
+              definition as unknown as QueryDeepPartialEntity<EmailReceiptParser>["definition"],
+            revision: () => "revision + 1",
+          },
+        );
+        saved = await repo.findOneByOrFail({ id: existing.id, userId });
+      } else {
+        saved = await repo.save(
+          repo.create({
+            userId,
+            name,
+            payeeId: payee?.id ?? null,
+            fromDomains,
+            subjectContains,
+            definition: definition as unknown as Record<string, unknown>,
+            status: "draft",
+            source: "ai",
+            approvedAt: null,
+          }),
+        );
+      }
       let requestProposed = false;
       if (input.requestId) {
         requestProposed = await this.requests.proposeParserDraft(
@@ -496,12 +569,57 @@ export class EmailReceiptParserToolsService {
         parserId: saved.id,
         name: saved.name,
         status: "draft" as const,
+        revision: saved.revision,
         fromDomains: saved.fromDomains,
         payee: payee ? { id: payee.id, name: payee.name } : null,
         match: effectiveMatchDefinition(definition),
         requestProposed,
       };
     });
+  }
+
+  /**
+   * Lock the draft an update targets and refuse unless it is the user's, still a
+   * draft (an approved parser reads mail and is only ever changed by a person)
+   * and still at `expectedRevision`. Runs in the transaction of the write, under
+   * the row lock, so a refusal has written nothing.
+   */
+  private async lockDraft(
+    m: EntityManager,
+    userId: string,
+    parserId: string,
+    expectedRevision: number | undefined,
+  ): Promise<EmailReceiptParser> {
+    const row = await m.getRepository(EmailReceiptParser).findOne({
+      where: { id: parserId, userId },
+      lock: { mode: "pessimistic_write" },
+    });
+    if (!row) {
+      throw new NotFoundException(
+        tr(
+          "errors.emailReceipts.parserNotFound",
+          `Receipt parser ${parserId} not found`,
+          { id: parserId },
+        ),
+      );
+    }
+    if (row.status !== "draft") {
+      throw new ConflictException(
+        tr(
+          "errors.emailReceipts.parserNotDraft",
+          "Only a draft parser can be updated by the assistant. This one is approved.",
+        ),
+      );
+    }
+    if (expectedRevision === undefined || row.revision !== expectedRevision) {
+      throw new ConflictException(
+        tr(
+          "errors.emailReceipts.parserRevisionConflict",
+          "This parser was changed since you opened it. Reload it and try again.",
+        ),
+      );
+    }
+    return row;
   }
 
   /**

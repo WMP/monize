@@ -2,6 +2,7 @@ import { Module, forwardRef } from "@nestjs/common";
 import { AiReviewModule } from "../../ai-review/ai-review.module";
 import { PayeesModule } from "../../payees/payees.module";
 import { EmailReceiptParserToolsService } from "./email-receipt-parser-tools.service";
+import { EmailReceiptParserPreviewService } from "./email-receipt-parser-preview.service";
 import { EmailReceiptParsersService } from "./email-receipt-parsers.service";
 
 /**
@@ -18,7 +19,15 @@ import { EmailReceiptParsersService } from "./email-receipt-parsers.service";
  */
 @Module({
   imports: [forwardRef(() => PayeesModule), AiReviewModule],
-  providers: [EmailReceiptParsersService, EmailReceiptParserToolsService],
-  exports: [EmailReceiptParsersService, EmailReceiptParserToolsService],
+  providers: [
+    EmailReceiptParsersService,
+    EmailReceiptParserToolsService,
+    EmailReceiptParserPreviewService,
+  ],
+  exports: [
+    EmailReceiptParsersService,
+    EmailReceiptParserToolsService,
+    EmailReceiptParserPreviewService,
+  ],
 })
 export class EmailReceiptParsersModule {}
