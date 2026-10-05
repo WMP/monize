@@ -194,14 +194,9 @@ export const NOTIFICATION_CATEGORY_DEFAULTS: Readonly<
     unifiedpush: false,
   },
   [NotificationCategory.BANK_SYNC_ACTIVITY]: GLOBAL_DEFAULTS,
-  // Receipts waiting for a profile or a fix: user-facing, so every channel is a
-  // live control (the producer goes through the dispatch seam).
-  [NotificationCategory.EMAIL_RECEIPTS]: {
-    email: true,
-    emailNotification: true,
-    push: true,
-    unifiedpush: true,
-  },
+  // Receipts waiting for a profile or a fix keep the global rule: the bell and
+  // the report email, nothing interrupting until the user turns it on.
+  [NotificationCategory.EMAIL_RECEIPTS]: GLOBAL_DEFAULTS,
 };
 
 /**
