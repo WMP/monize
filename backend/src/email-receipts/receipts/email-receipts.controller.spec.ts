@@ -388,8 +388,7 @@ describe("EmailReceiptsController", () => {
   it("throttles the AI routes tightly", () => {
     const limitOf = (name: string) =>
       Reflect.getMetadata("THROTTLER:LIMITdefault", proto[name]) as
-        | number
-        | undefined;
+        number | undefined;
     expect(limitOf("askAi")).toBe(10);
   });
 });

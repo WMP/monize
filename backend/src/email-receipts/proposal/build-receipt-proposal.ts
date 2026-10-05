@@ -28,15 +28,10 @@ const ELLIPSIS = "...";
 const DESCRIPTION_SEPARATOR = " | ";
 
 export type ReceiptProposalKind =
-  | "itemized"
-  | "single_category"
-  | "description_only"
-  | "none";
+  "itemized" | "single_category" | "description_only" | "none";
 
 export type ReceiptProposalReason =
-  | ParsedReceiptReason
-  | "amount_differs"
-  | "category_missing";
+  ParsedReceiptReason | "amount_differs" | "category_missing";
 
 export interface ReceiptProposalTransaction {
   /** Signed, as stored. */

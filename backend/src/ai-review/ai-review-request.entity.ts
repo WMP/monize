@@ -23,9 +23,7 @@ import { EmailReceipt } from "../email-receipts/entities/email-receipt.entity";
  * `ck_ai_review_requests_kind`.
  */
 export type AiReviewRequestKind =
-  | "transaction_review"
-  | "email_receipt"
-  | "email_parser_draft";
+  "transaction_review" | "email_receipt" | "email_parser_draft";
 
 /** Most emails one parser-draft request names (the schema's CHECK). */
 export const MAX_PARSER_DRAFT_EMAILS = 5;

@@ -315,11 +315,7 @@ export function readLineGuards(
  * HTML part (`source: "html"`) and the email has none (`no_html`).
  */
 export type ReceiptOutcome =
-  | "read"
-  | "not_applicable"
-  | "skip_line"
-  | "wait_line"
-  | "no_html";
+  "read" | "not_applicable" | "skip_line" | "wait_line" | "no_html";
 
 /** `requireLine` unmet: another parser would be tried; else `skipIfLine`, then `waitIfLine`, else the email is read. */
 export function receiptOutcome(guards: ReceiptLineGuards): ReceiptOutcome {

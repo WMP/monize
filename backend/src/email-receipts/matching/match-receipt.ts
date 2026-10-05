@@ -47,10 +47,7 @@ export interface ReceiptMatchCandidate {
 
 /** The match kind a strategy stores (spec 3a): `orderId` is stored as `order_id`. */
 export type ReceiptMatchKind =
-  | "order_id"
-  | "reference"
-  | "amount_payee"
-  | "amount_date";
+  "order_id" | "reference" | "amount_payee" | "amount_date";
 
 const MATCH_KIND_OF: Record<ReceiptMatchStrategy, ReceiptMatchKind> = {
   reference: "reference",

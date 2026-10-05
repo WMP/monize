@@ -47,8 +47,7 @@ export interface EmailReceiptMailboxView {
 
 /** The outcome of a connection test. A failure carries a bounded, secret-free line. */
 export type EmailReceiptMailboxTestResult =
-  | { ok: true; messages: number }
-  | { ok: false; error: string };
+  { ok: true; messages: number } | { ok: false; error: string };
 
 const iso = (value: Date | null): string | null =>
   value ? value.toISOString() : null;
