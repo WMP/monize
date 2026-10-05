@@ -254,6 +254,7 @@ export default function RegisterPage() {
             // Full document load so every layout segment re-renders in
             // the newly chosen language; a client-side push would reuse
             // the cached root layout (and its catalogs) in the old one.
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- intentional full reload, not a client-side route change
             window.location.assign('/dashboard');
           } else {
             router.push('/dashboard');
