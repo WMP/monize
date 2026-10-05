@@ -392,6 +392,11 @@
     "parserToolReceiptCount": "Indica da 1 a 5 email su cui provare il parser.",
     "parserToolInvalidSender": "Una bozza richiede un nome e da uno a dieci domini mittente come shop.example.com.",
     "parserDraftRequestNotClaimed": "Questa richiesta di bozza di parser non è stata presa in carico da te. Prendila prima in carico con ai_review_requests, oppure salva la bozza senza requestId.",
+    "parserNotDraft": "L'assistente può aggiornare solo un parser in bozza. Questo è approvato.",
+    "generateNoDraft": "L'assistente non ha salvato un parser in bozza. Leggi la sua risposta, modifica i campioni o aggiungi una nota e riprova.",
+    "generateReceiptOutsideDomain": "Un'email non proviene dal dominio del mittente a cui è destinato il parser.",
+    "previewExpectedNotSelected": "È stata indicata una transazione attesa per un'email che non è tra quelle selezionate.",
+    "previewReceiptOutsideDomain": "Un'email non proviene da un dominio mittente di questo parser.",
     "parserCategoryNameUnknown": "La categoria \"{{ name }}\" non è stata trovata. Utilizzare il nome di una delle tue categorie.",
     "parserCategoryNameAmbiguous": "La categoria \"{{ name }}\" corrisponde a diverse categorie ({{ candidates }}). Utilizzare il nome completo, ad esempio \"Parent: Child\"."
   },

@@ -176,7 +176,8 @@
       "message": "{domains} göndericisinden gelen {count, plural, one {# saklanan e-posta} other {# saklanan e-posta}} şimdi işlensin mi? Her biri bu profille yeniden okunur; önerdikleri, otomatik uygulama açık değilse inceleme kutusunda bekler.",
       "confirm": "Şimdi işle",
       "later": "Şimdi değil"
-    }
+    },
+    "reparse": "E-postaları yeniden ayrıştır ({count})"
   },
   "editor": {
     "createTitle": "Yeni ayrıştırıcı",
@@ -318,16 +319,16 @@
       "ruleCategory": "kategori",
       "defaultCategory": "Varsayılan kategori",
       "shippingCategory": "Kargo kategorisi",
-      "feesCategory": "Fees category",
-      "balanceTolerance": "Balance tolerance",
-      "fees": "Fees patterns",
+      "feesCategory": "Ücret kategorisi",
+      "balanceTolerance": "Bakiye toleransı",
+      "fees": "Ücret desenleri",
       "skipLines": "Atlanacak satırlar",
       "record": "Kayıt",
-      "label": "label",
-      "value": "value",
-      "within": "within",
-      "line": "line",
-      "optional": "optional",
+      "label": "etiket",
+      "value": "değer",
+      "within": "içinde",
+      "line": "satır",
+      "optional": "isteğe bağlı",
       "paid": "Ödenen tutar desenleri",
       "payee": "Satıcı desenleri",
       "requireLine": "Zorunlu satırlar",
@@ -337,7 +338,7 @@
       "single": "Tek kalem",
       "singleName": "Tek kalem adı",
       "joinWrapped": "Bölünmüş satırları birleştir",
-      "ruleField": "field",
+      "ruleField": "alan",
       "reference": "Referans desenleri",
       "match": "Eşleştirme bölümü",
       "matchBy": "Eşleştirme stratejileri",
@@ -530,14 +531,6 @@
       "state": "Durum",
       "actions": "Eylemler"
     },
-    "guide": {
-      "heading": "Profil oluşturma",
-      "buttonName": "Yapay Zeka ile profil hazırla",
-      "stepSender": "Gönderici etki alanı bulutundan bir gönderici seçin.",
-      "stepTransaction": "Her bir e-postasına ödediği işlemi verin: e-postayı açın ve işlemi seçin.",
-      "stepSelect": "Bu e-postaları işaretleyin.",
-      "stepPrepare": "{button} tuşuna basın. Asistan profili yazacak ve siz onu profillerde test edip onaylayacaksınız."
-    },
     "transactionSummary": "{date}, {amount}, {payee}",
     "noPayee": "alıcı yok",
     "noTransaction": "Henüz yok",
@@ -719,6 +712,11 @@
       "heading": "Yapay zekâ için işlemi seçin",
       "help": "Bunlar, aşağıdaki tarih aralığındaki işlemleriniz; aralık başlangıçta satın alma çevresindeki günlerdir. Yapay zekânın e-postadaki ürünlere göre bölmesini istediğiniz işlemi seçin veya daha uzağa bakmak için tarihleri değiştirin.",
       "linkButton": "Bu işlemi kullan"
+    },
+    "sample": {
+      "heading": "Bu e-postanın ödediği işlemi seçin",
+      "help": "Bunlar, aşağıdaki tarih aralığındaki işlemleriniz; aralık başlangıçta alışverişin çevresindeki günlerdir. Seçim sihirbazda saklanır ve profili denetlemek için kullanılır; e-postaya hiçbir şey bağlanmaz. Daha uzağa bakmak için tarihleri değiştirin.",
+      "linkButton": "Bu işlemi kullan"
     }
   },
   "callback": {
@@ -782,14 +780,7 @@
     }
   },
   "process": {
-    "button": "Tümünü işle",
-    "buttonCount": "Tümünü işle ({count})",
-    "dialog": {
-      "title": "{count, plural, one {# saklanan e-posta işlensin mi?} other {# saklanan e-posta işlensin mi?}}",
-      "message": "Henüz okunmamış ya da yeni bir profil veya işlemin değiştirebileceği her saklanan e-posta yeniden okunur. Önerdikleri, otomatik uygulama açık değilse inceleme kutusunda bekler.",
-      "messageDomain": "{domain} göndericisinden gelen, henüz okunmamış ya da yeni bir profil veya işlemin değiştirebileceği her saklanan e-posta yeniden okunur. Önerdikleri, otomatik uygulama açık değilse inceleme kutusunda bekler.",
-      "confirm": "İşle"
-    },
+    "retryFailed": "Başarısız e-postaları yeniden dene ({count})",
     "starting": "Başlatılıyor...",
     "progress": "{processed, plural, one {# e-posta işlendi} other {# e-posta işlendi}}, {remaining} kaldı.",
     "cancel": "İptal",
@@ -849,10 +840,10 @@
     },
     "uncovered": {
       "title": "Profili olmayan göndericiler",
-      "help": "Bu göndericilerin e-postalarını hiçbir profil okumuyor. Birine profil oluşturun ya da asistandan taslağını hazırlamasını isteyin.",
+      "help": "Bu göndericilerin e-postalarını hiçbir profil okumuyor. Birine profil oluşturun: Profiller sekmesindeki sihirbaz size yol gösterir.",
       "none": "Saklanan e-postaların her göndericisi bir profille karşılanıyor.",
       "row": "{domain} ({count, plural, one {# e-posta} other {# e-posta}})",
-      "show": "E-postaları göster"
+      "create": "Profil oluştur"
     }
   },
   "wizard": {
@@ -879,6 +870,119 @@
         "title": "Önerileri inceleyin",
         "body": "Her e-posta, bir işlem için öneriye dönüşür. Siz onaylamadan hiçbir şey değişmez.",
         "action": "İnceleme kutusunu aç"
+      }
+    }
+  },
+  "profileWizard": {
+    "heading": "{domain} için profil oluştur",
+    "stepsLabel": "Sihirbaz adımları",
+    "stepName": "{number}. {name}",
+    "steps": {
+      "samples": "Örnekler",
+      "generate": "Oluştur",
+      "preview": "Önizleme ve kabul"
+    },
+    "cancel": "İptal",
+    "existingDraft": "Bu alan adının zaten bir taslak profili var.",
+    "useExistingDraft": "Önizlemede taslakla başla",
+    "uncovered": {
+      "heading": "Bir alan adı için profil oluştur",
+      "help": "Saklanan e-postaları olan ve onaylı profili bulunmayan gönderici alan adları. Sihirbazı başlatmak için birini seçin.",
+      "loading": "Gönderici alan adları yükleniyor",
+      "error": "Gönderici alan adları yüklenemedi.",
+      "retry": "Yeniden dene",
+      "none": "Saklanan e-postaların her göndericisinin bir profili var."
+    },
+    "samples": {
+      "loading": "E-postalar yükleniyor",
+      "error": "E-postalar yüklenemedi.",
+      "retry": "Yeniden dene",
+      "empty": {
+        "title": "Bu alan adından e-posta yok",
+        "body": "Saklanan hiçbir e-postanın göndericisi {domain} alan adında değil."
+      },
+      "help": "Bir e-postayı okumak için açın ve ödediği işlemi seçin. Ardından profili yazmak için en fazla {max} e-posta işaretleyin; bir e-posta ancak işlemi olduktan sonra işaretlenebilir.",
+      "columns": {
+        "select": "Kullan",
+        "received": "Alındı",
+        "email": "E-posta",
+        "transaction": "İşlem",
+        "actions": "Eylemler"
+      },
+      "select": "{subject} e-postasını örnek olarak kullan",
+      "needsTransaction": "Önce bu e-posta için bir işlem seçin.",
+      "limitReached": "En fazla {max} örnek. Başka birini seçmek için birinin işaretini kaldırın.",
+      "noTransaction": "Seçilmedi",
+      "viewEmail": "E-postayı görüntüle",
+      "chooseTransaction": "İşlem seç",
+      "changeTransaction": "İşlemi değiştir",
+      "selectedCount": "{max} örnekten {count} tanesi işaretlendi",
+      "continue": "Asistana geç",
+      "emailTitle": "{subject}",
+      "emailLoading": "E-posta yükleniyor",
+      "emailError": "E-posta yüklenemedi.",
+      "transactionTitle": "{subject} için işlem"
+    },
+    "generate": {
+      "help": "Asistan bu e-postaları ve ödedikleri işlemleri okur ve {domain} için bir profil taslağı yazar. Henüz hiçbir şey onaylanmadı.",
+      "reviseHelp": "Asistana neyi değiştireceğini söyleyin. Aynı taslağı bu e-postalar ve işlemlerden yeniden günceller.",
+      "feedbackLabel": "Neyin değişmesi gerekiyor",
+      "feedbackPlaceholder": "Örneğin: toplam, ara toplam değil, Ödenen tutar yazan satırdır.",
+      "send": "Yapay zekâya gönder",
+      "sendFeedback": "Yapay zekâya not gönder",
+      "retry": "Yapay zekâya yeniden gönder",
+      "back": "Geri",
+      "running": "Asistan profili yazıyor...",
+      "runningHint": "Bu bir dakika sürebilir. Bu sayfayı açık tutun.",
+      "noDraft": "Asistan bir taslak kaydetmedi.",
+      "tryAgain": "Yeniden gönderebilir ya da geri dönüp örnekleri değiştirebilirsiniz.",
+      "failed": "Asistana ulaşılamadı."
+    },
+    "preview": {
+      "loading": "E-postalar taslakla okunuyor...",
+      "error": "Önizleme çalıştırılamadı.",
+      "retry": "Yeniden dene",
+      "assistantSaid": "Asistan diyor ki",
+      "help": "Taslak, bu alan adının e-postalarına bunu yapardı. Hiçbir şey kaydedilmedi veya bağlanmadı.",
+      "selectedHeading": "Seçilen e-postalar",
+      "othersHeading": "Bu alan adından diğer e-postalar",
+      "othersCapped": "Diğer {total} e-postanın en yeni {shown} tanesi gösteriliyor.",
+      "columns": {
+        "email": "E-posta",
+        "expected": "Beklenen işlem",
+        "parsed": "Taslağın okuduğu",
+        "agrees": "Uyuşuyor",
+        "outcome": "Sonuç",
+        "matched": "Eşleşen işlem"
+      },
+      "nothingRead": "Hiçbir şey okunamadı",
+      "notStated": "belirtilmemiş",
+      "parsedDate": "Tarih: {date}",
+      "parsedTotal": "Toplam: {total}",
+      "parsedLines": "{count, plural, one {# satır} other {# satır}}",
+      "noExpectation": "Yok",
+      "noMatch": "İşlem yok",
+      "agreesYes": "Evet",
+      "agreesNo": "Hayır",
+      "agreesUnknown": "Denetlenmedi",
+      "nothingToShow": "Taslakta gösterilecek e-posta yok.",
+      "backToSamples": "Örneklere dön",
+      "backToAi": "Yapay zekâya dön",
+      "accept": "Kabul et ve işle",
+      "approved": "Profil onaylandı",
+      "changedElsewhere": "Profil başka bir yerde değiştirildi. Önizlemeyi yeniden yükleyin.",
+      "approveFailed": "Profil onaylanamadı.",
+      "approvedProcessing": "Profil onaylandı. {domain} alan adının saklanan e-postaları şimdi bununla okunuyor.",
+      "done": "Bitti",
+      "outcomes": {
+        "matched": "Bir işlemle eşleşti",
+        "ambiguous": "Birden çok işlem eşleşiyor",
+        "unmatched": "Hiçbir işlemle eşleşmedi",
+        "parse_failed": "Okunamadı",
+        "not_applicable": "Bu profil tarafından okunmadı",
+        "skip_line": "Atlandı (atlama satırı bulundu)",
+        "wait_line": "Beklemede (sipariş kesin değil)",
+        "no_html": "HTML bölümü yok"
       }
     }
   }

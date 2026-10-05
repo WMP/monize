@@ -392,6 +392,11 @@
     "parserToolReceiptCount": "Ayrıştırıcıyı denemek için 1 ile 5 arasında e-posta belirtin.",
     "parserToolInvalidSender": "Bir taslak için bir ad ve shop.example.com gibi bir ila on gönderen alan adı gerekir.",
     "parserDraftRequestNotClaimed": "Bu ayrıştırıcı taslağı isteğini siz üstlenmediniz. Önce ai_review_requests ile üstlenin veya taslağı requestId olmadan kaydedin.",
+    "parserNotDraft": "Asistan yalnızca taslak bir ayrıştırıcıyı güncelleyebilir. Bu ayrıştırıcı onaylanmış.",
+    "generateNoDraft": "Asistan taslak bir ayrıştırıcı kaydetmedi. Yanıtını okuyun, örnekleri düzenleyin veya bir not ekleyin ve yeniden deneyin.",
+    "generateReceiptOutsideDomain": "Bir e-posta, ayrıştırıcının hedeflediği gönderen alan adından gelmiyor.",
+    "previewExpectedNotSelected": "Seçilenler arasında olmayan bir e-posta için beklenen bir işlem belirtildi.",
+    "previewReceiptOutsideDomain": "Bir e-posta, bu ayrıştırıcının gönderen alan adlarından birinden gelmiyor.",
     "parserCategoryNameUnknown": "\"{{ name }}\" kategorisi bulunamadı. Kategorilerinizden birinin adını kullanın.",
     "parserCategoryNameAmbiguous": "\"{{ name }}\" kategorisi birkaç kategoriye ({{ candidates }}) eşleşiyor. Tam adı kullanın, örneğin \"Üst: Alt\"."
   },

@@ -176,7 +176,8 @@
       "message": "Processar agora {count, plural, one {o # e-mail guardado} other {os # e-mails guardados}} de {domains}? Cada um é lido de novo com este perfil; o que propuser aguarda na caixa de revisão, a não ser que a aplicação automática esteja ativa.",
       "confirm": "Processar agora",
       "later": "Agora não"
-    }
+    },
+    "reparse": "Voltar a analisar os e-mails ({count})"
   },
   "editor": {
     "createTitle": "Novo analisador",
@@ -318,16 +319,16 @@
       "ruleCategory": "categoria",
       "defaultCategory": "Categoria predefinida",
       "shippingCategory": "Categoria dos portes de envio",
-      "feesCategory": "Fees category",
-      "balanceTolerance": "Balance tolerance",
-      "fees": "Fees patterns",
+      "feesCategory": "Categoria das taxas",
+      "balanceTolerance": "Tolerância do saldo",
+      "fees": "Padrões de taxas",
       "skipLines": "Linhas a ignorar",
-      "record": "Record",
-      "label": "label",
-      "value": "value",
-      "within": "within",
-      "line": "line",
-      "optional": "optional",
+      "record": "Registo",
+      "label": "etiqueta",
+      "value": "valor",
+      "within": "dentro de",
+      "line": "linha",
+      "optional": "opcional",
       "paid": "Padrões do montante pago",
       "payee": "Padrões do comerciante",
       "requireLine": "Linhas obrigatórias",
@@ -337,7 +338,7 @@
       "single": "Artigo único",
       "singleName": "Nome do artigo único",
       "joinWrapped": "Juntar linhas quebradas",
-      "ruleField": "field",
+      "ruleField": "campo",
       "reference": "Padrões de referência",
       "match": "A secção de correspondência",
       "matchBy": "Estratégias de correspondência",
@@ -530,14 +531,6 @@
       "state": "Estado",
       "actions": "Ações"
     },
-    "guide": {
-      "heading": "Como criar um perfil",
-      "buttonName": "Preparar um perfil com IA",
-      "stepSender": "Escolha um remetente na nuvem de domínios de remetentes.",
-      "stepTransaction": "Dê a cada um de seus e-mails a transação que pagou: abra o e-mail e escolha a transação.",
-      "stepSelect": "Selecione esses e-mails.",
-      "stepPrepare": "Pressione {button}. O assistente escreve o perfil e você o testa e aprova nos perfis."
-    },
     "transactionSummary": "{date}, {amount}, {payee}",
     "noPayee": "sem beneficiário",
     "noTransaction": "Ainda nenhuma",
@@ -719,6 +712,11 @@
       "heading": "Escolha a transação para a IA",
       "help": "Estas são as suas transações do intervalo de datas abaixo, que começa pelos dias em torno da compra. Escolha aquela que a IA deve dividir pelos produtos do e-mail ou altere as datas para procurar mais longe.",
       "linkButton": "Usar esta transação"
+    },
+    "sample": {
+      "heading": "Escolha a transação que este e-mail pagou",
+      "help": "Estas são as suas transações no intervalo de datas abaixo, que começa pelos dias em torno da compra. A escolha fica guardada no guia e serve para verificar o perfil; nada é associado ao e-mail. Altere as datas para procurar mais longe.",
+      "linkButton": "Usar esta transação"
     }
   },
   "callback": {
@@ -782,14 +780,7 @@
     }
   },
   "process": {
-    "button": "Processar todos",
-    "buttonCount": "Processar todos ({count})",
-    "dialog": {
-      "title": "{count, plural, one {Processar # e-mail guardado?} other {Processar # e-mails guardados?}}",
-      "message": "Cada e-mail guardado que ainda não foi lido, ou que um novo perfil ou uma nova transação pode alterar, é lido de novo. O que propuser aguarda na caixa de revisão, a não ser que a aplicação automática esteja ativa.",
-      "messageDomain": "Cada e-mail guardado de {domain} que ainda não foi lido, ou que um novo perfil ou uma nova transação pode alterar, é lido de novo. O que propuser aguarda na caixa de revisão, a não ser que a aplicação automática esteja ativa.",
-      "confirm": "Processar"
-    },
+    "retryFailed": "Repetir os e-mails com falha ({count})",
     "starting": "A iniciar...",
     "progress": "{processed, plural, one {# e-mail processado} other {# e-mails processados}}, faltam {remaining}.",
     "cancel": "Cancelar",
@@ -849,10 +840,10 @@
     },
     "uncovered": {
       "title": "Remetentes sem perfil",
-      "help": "Estes remetentes enviaram e-mails que nenhum perfil lê. Crie um perfil para um deles ou peça ao assistente que o redija.",
+      "help": "Estes remetentes enviaram e-mails que nenhum perfil lê. Crie um perfil para um deles: o guia no separador Perfis acompanha-o ao longo do processo.",
       "none": "Todos os remetentes dos e-mails guardados estão cobertos por um perfil.",
       "row": "{domain} ({count, plural, one {# e-mail} other {# e-mails}})",
-      "show": "Mostrar os e-mails"
+      "create": "Criar um perfil"
     }
   },
   "wizard": {
@@ -879,6 +870,119 @@
         "title": "Rever as propostas",
         "body": "Cada e-mail torna-se uma proposta sobre uma transação. Nada é alterado até a aprovar.",
         "action": "Abrir a caixa de revisão de IA"
+      }
+    }
+  },
+  "profileWizard": {
+    "heading": "Criar um perfil para {domain}",
+    "stepsLabel": "Passos do guia",
+    "stepName": "{number}. {name}",
+    "steps": {
+      "samples": "Amostras",
+      "generate": "Gerar",
+      "preview": "Pré-visualizar e aceitar"
+    },
+    "cancel": "Cancelar",
+    "existingDraft": "Este domínio já tem um perfil em rascunho.",
+    "useExistingDraft": "Começar na pré-visualização com o rascunho",
+    "uncovered": {
+      "heading": "Criar um perfil para um domínio",
+      "help": "Domínios de remetentes com e-mails guardados e sem perfil aprovado. Escolha um para iniciar o guia.",
+      "loading": "A carregar os domínios dos remetentes",
+      "error": "Não foi possível carregar os domínios dos remetentes.",
+      "retry": "Tentar novamente",
+      "none": "Todos os remetentes dos e-mails guardados estão cobertos por um perfil."
+    },
+    "samples": {
+      "loading": "A carregar os e-mails",
+      "error": "Não foi possível carregar os e-mails.",
+      "retry": "Tentar novamente",
+      "empty": {
+        "title": "Nenhum e-mail deste domínio",
+        "body": "Nenhum e-mail guardado tem um remetente em {domain}."
+      },
+      "help": "Abra um e-mail para o ler e escolha a transação que ele pagou. Depois assinale até {max} e-mails a partir dos quais escrever o perfil; um e-mail só pode ser assinalado depois de ter uma transação.",
+      "columns": {
+        "select": "Usar",
+        "received": "Recebido",
+        "email": "E-mail",
+        "transaction": "Transação",
+        "actions": "Ações"
+      },
+      "select": "Usar o e-mail {subject} como amostra",
+      "needsTransaction": "Escolha primeiro uma transação para este e-mail.",
+      "limitReached": "No máximo {max} amostras. Desassinale uma para escolher outra.",
+      "noTransaction": "Nenhuma escolhida",
+      "viewEmail": "Ver e-mail",
+      "chooseTransaction": "Escolher transação",
+      "changeTransaction": "Alterar transação",
+      "selectedCount": "{count} de {max} amostras assinaladas",
+      "continue": "Continuar para o assistente",
+      "emailTitle": "{subject}",
+      "emailLoading": "A carregar o e-mail",
+      "emailError": "Não foi possível carregar o e-mail.",
+      "transactionTitle": "Transação de {subject}"
+    },
+    "generate": {
+      "help": "O assistente lê estes e-mails e as transações que eles pagaram e escreve um rascunho de perfil para {domain}. Ainda nada está aprovado.",
+      "reviseHelp": "Diga ao assistente o que alterar. Ele atualiza o mesmo rascunho a partir destes e-mails e transações.",
+      "feedbackLabel": "O que deve mudar",
+      "feedbackPlaceholder": "Por exemplo: o total é a linha que diz Montante pago, não o subtotal.",
+      "send": "Enviar à IA",
+      "sendFeedback": "Enviar nota à IA",
+      "retry": "Enviar à IA novamente",
+      "back": "Voltar",
+      "running": "O assistente está a escrever o perfil...",
+      "runningHint": "Isto pode demorar um minuto. Mantenha esta página aberta.",
+      "noDraft": "O assistente não guardou um rascunho.",
+      "tryAgain": "Pode enviá-lo novamente ou voltar atrás e alterar as amostras.",
+      "failed": "Não foi possível contactar o assistente."
+    },
+    "preview": {
+      "loading": "A ler os e-mails com o rascunho...",
+      "error": "Não foi possível executar a pré-visualização.",
+      "retry": "Tentar novamente",
+      "assistantSaid": "O assistente diz",
+      "help": "Isto é o que o rascunho faria com os e-mails deste domínio. Nada foi guardado nem associado.",
+      "selectedHeading": "E-mails selecionados",
+      "othersHeading": "Outros e-mails deste domínio",
+      "othersCapped": "A mostrar os {shown} mais recentes de {total} outros e-mails.",
+      "columns": {
+        "email": "E-mail",
+        "expected": "Transação esperada",
+        "parsed": "Lido pelo rascunho",
+        "agrees": "Coincide",
+        "outcome": "Resultado",
+        "matched": "Transação correspondente"
+      },
+      "nothingRead": "Não foi possível ler nada",
+      "notStated": "não indicado",
+      "parsedDate": "Data: {date}",
+      "parsedTotal": "Total: {total}",
+      "parsedLines": "{count, plural, one {# linha} other {# linhas}}",
+      "noExpectation": "Nenhuma",
+      "noMatch": "Sem transação",
+      "agreesYes": "Sim",
+      "agreesNo": "Não",
+      "agreesUnknown": "Não verificado",
+      "nothingToShow": "O rascunho não tem e-mails para mostrar.",
+      "backToSamples": "Voltar às amostras",
+      "backToAi": "Voltar à IA",
+      "accept": "Aceitar e processar",
+      "approved": "Perfil aprovado",
+      "changedElsewhere": "O perfil foi alterado noutro local. Volte a carregar a pré-visualização.",
+      "approveFailed": "Não foi possível aprovar o perfil.",
+      "approvedProcessing": "O perfil está aprovado. Os e-mails guardados de {domain} estão a ser lidos com ele.",
+      "done": "Concluído",
+      "outcomes": {
+        "matched": "Correspondeu a uma transação",
+        "ambiguous": "Várias transações correspondem",
+        "unmatched": "Nenhuma transação correspondeu",
+        "parse_failed": "Não foi possível ler",
+        "not_applicable": "Não lido por este perfil",
+        "skip_line": "Ignorado (linha a ignorar encontrada)",
+        "wait_line": "Em espera (encomenda não final)",
+        "no_html": "Sem parte HTML"
       }
     }
   }

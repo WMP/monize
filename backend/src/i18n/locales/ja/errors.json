@@ -392,6 +392,11 @@
     "parserToolReceiptCount": "プロフィールをテストするメールを 1 通から 5 通まで指定してください。",
     "parserToolInvalidSender": "下書きには、名前と、shop.example.com のような送信元ドメインを 1 つから 10 個まで指定する必要があります。",
     "parserDraftRequestNotClaimed": "このプロフィール下書きリクエストはあなたが担当していません。先に ai_review_requests で担当するか、requestId なしで下書きを保存してください。",
+    "parserNotDraft": "アシスタントが更新できるのは下書きのプロフィールだけです。このプロフィールは承認済みです。",
+    "generateNoDraft": "アシスタントはプロフィールの下書きを保存しませんでした。回答を読み、サンプルを調整するかメモを追加して、もう一度お試しください。",
+    "generateReceiptOutsideDomain": "メールの 1 通が、プロフィールの対象である送信元ドメインから届いたものではありません。",
+    "previewExpectedNotSelected": "選択されたメールに含まれていないメールに対して、期待される取引が指定されました。",
+    "previewReceiptOutsideDomain": "メールの 1 通が、このプロフィールの送信元ドメインから届いたものではありません。",
     "parserCategoryNameUnknown": "カテゴリ「{{ name }}」が見つかりません。あなたのカテゴリの1つの名前を使用してください。",
     "parserCategoryNameAmbiguous": "カテゴリ「{{ name }}」は複数のカテゴリと一致しています（{{ candidates }}）。完全な名前を使用してください（例：「Parent: Child」）。"
   },

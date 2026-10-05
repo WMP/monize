@@ -176,7 +176,8 @@
       "message": "{count, plural, one {Przetworzyć teraz # zapisaną wiadomość} few {Przetworzyć teraz # zapisane wiadomości} many {Przetworzyć teraz # zapisanych wiadomości} other {Przetworzyć teraz # zapisanej wiadomości}} od {domains}? Każda zostanie odczytana ponownie za pomocą tego profilu; to, co zaproponuje, czeka w skrzynce przeglądów, chyba że włączono automatyczne stosowanie.",
       "confirm": "Przetwórz teraz",
       "later": "Nie teraz"
-    }
+    },
+    "reparse": "Przeanalizuj ponownie wiadomości ({count})"
   },
   "editor": {
     "createTitle": "Nowy parser",
@@ -318,16 +319,16 @@
       "ruleCategory": "kategoria",
       "defaultCategory": "Kategoria domyślna",
       "shippingCategory": "Kategoria wysyłki",
-      "feesCategory": "Fees category",
-      "balanceTolerance": "Balance tolerance",
-      "fees": "Fees patterns",
+      "feesCategory": "Kategoria opłat",
+      "balanceTolerance": "Tolerancja salda",
+      "fees": "Wzorce opłat",
       "skipLines": "Wiersze do pominięcia",
-      "record": "Record",
-      "label": "label",
-      "value": "value",
-      "within": "within",
-      "line": "line",
-      "optional": "optional",
+      "record": "Rekord",
+      "label": "etykieta",
+      "value": "wartość",
+      "within": "w obrębie",
+      "line": "wiersz",
+      "optional": "opcjonalne",
       "paid": "Wzorce zapłaconej kwoty",
       "payee": "Wzorce sprzedawcy",
       "requireLine": "Wymagane wiersze",
@@ -337,7 +338,7 @@
       "single": "Pojedyncza pozycja",
       "singleName": "Nazwa pojedynczej pozycji",
       "joinWrapped": "Łączenie zawiniętych wierszy",
-      "ruleField": "field",
+      "ruleField": "pole",
       "reference": "Wzorce referencji",
       "match": "Sekcja dopasowania",
       "matchBy": "Strategie dopasowania",
@@ -530,14 +531,6 @@
       "state": "Status",
       "actions": "Akcje"
     },
-    "guide": {
-      "heading": "Jak utworzyć profil",
-      "buttonName": "Przygotuj profil za pomocą AI",
-      "stepSender": "Wybierz nadawcę z chmury domeny nadawcy.",
-      "stepTransaction": "Przypisz do każdej jej wiadomości transakcję, którą zapłaciła: otwórz wiadomość i wybierz transakcję.",
-      "stepSelect": "Zaznacz te wiadomości.",
-      "stepPrepare": "Naciśnij {button}. Asystent przygotuje profil, a ty go przetestuj i zatwierdź w profilach."
-    },
     "transactionSummary": "{date}, {amount}, {payee}",
     "noPayee": "brak odbiorcy",
     "noTransaction": "Jeszcze brak",
@@ -719,6 +712,11 @@
       "heading": "Wybierz transakcję dla AI",
       "help": "To Twoje transakcje z zakresu dat poniżej, który początkowo obejmuje dni wokół zakupu. Wybierz tę, którą AI ma podzielić według produktów z wiadomości, albo zmień daty, aby szukać dalej.",
       "linkButton": "Użyj tej transakcji"
+    },
+    "sample": {
+      "heading": "Wybierz transakcję, którą opłacono tą wiadomością",
+      "help": "To Twoje transakcje z zakresu dat poniżej, który początkowo obejmuje dni wokół zakupu. Wybór jest zapamiętany w kreatorze i służy do sprawdzenia profilu; nic nie jest powiązane z wiadomością. Zmień daty, aby szukać dalej.",
+      "linkButton": "Użyj tej transakcji"
     }
   },
   "callback": {
@@ -782,14 +780,7 @@
     }
   },
   "process": {
-    "button": "Przetwórz wszystkie",
-    "buttonCount": "Przetwórz wszystkie ({count})",
-    "dialog": {
-      "title": "{count, plural, one {Przetworzyć # zapisaną wiadomość?} few {Przetworzyć # zapisane wiadomości?} many {Przetworzyć # zapisanych wiadomości?} other {Przetworzyć # zapisanej wiadomości?}}",
-      "message": "Każda zapisana wiadomość, która nie została jeszcze odczytana albo którą może zmienić nowy profil lub nowa transakcja, zostanie odczytana ponownie. To, co zaproponuje, czeka w skrzynce przeglądów, chyba że włączono automatyczne stosowanie.",
-      "messageDomain": "Każda zapisana wiadomość od {domain}, która nie została jeszcze odczytana albo którą może zmienić nowy profil lub nowa transakcja, zostanie odczytana ponownie. To, co zaproponuje, czeka w skrzynce przeglądów, chyba że włączono automatyczne stosowanie.",
-      "confirm": "Przetwórz"
-    },
+    "retryFailed": "Ponów nieudane wiadomości ({count})",
     "starting": "Uruchamianie...",
     "progress": "{processed, plural, one {Przetworzono # wiadomość} few {Przetworzono # wiadomości} many {Przetworzono # wiadomości} other {Przetworzono # wiadomości}}, zostało: {remaining}.",
     "cancel": "Anuluj",
@@ -849,10 +840,10 @@
     },
     "uncovered": {
       "title": "Nadawcy bez profilu",
-      "help": "Ci nadawcy przysłali wiadomości, których nie odczytuje żaden profil. Utwórz profil dla jednego z nich albo poproś asystenta o przygotowanie szkicu.",
+      "help": "Ci nadawcy przysłali wiadomości, których nie odczytuje żaden profil. Utwórz profil dla jednego z nich: kreator na karcie Profile przeprowadzi Cię przez ten proces.",
       "none": "Każdy nadawca zapisanych wiadomości ma profil.",
       "row": "{domain} ({count, plural, one {# wiadomość} few {# wiadomości} many {# wiadomości} other {# wiadomości}})",
-      "show": "Pokaż wiadomości"
+      "create": "Utwórz profil"
     }
   },
   "wizard": {
@@ -879,6 +870,119 @@
         "title": "Przejrzyj propozycje",
         "body": "Każda wiadomość staje się propozycją dotyczącą transakcji. Nic nie zostanie zmienione, dopóki jej nie zatwierdzisz.",
         "action": "Otwórz skrzynkę przeglądów AI"
+      }
+    }
+  },
+  "profileWizard": {
+    "heading": "Utwórz profil dla {domain}",
+    "stepsLabel": "Kroki kreatora",
+    "stepName": "{number}. {name}",
+    "steps": {
+      "samples": "Próbki",
+      "generate": "Generowanie",
+      "preview": "Podgląd i akceptacja"
+    },
+    "cancel": "Anuluj",
+    "existingDraft": "Ta domena ma już szkic profilu.",
+    "useExistingDraft": "Zacznij od podglądu ze szkicem",
+    "uncovered": {
+      "heading": "Utwórz profil dla domeny",
+      "help": "Domeny nadawców z zapisanymi wiadomościami i bez zatwierdzonego profilu. Wybierz jedną, aby uruchomić kreator.",
+      "loading": "Wczytywanie domen nadawców",
+      "error": "Nie udało się wczytać domen nadawców.",
+      "retry": "Spróbuj ponownie",
+      "none": "Każdy nadawca zapisanych wiadomości ma profil."
+    },
+    "samples": {
+      "loading": "Wczytywanie wiadomości",
+      "error": "Nie udało się wczytać wiadomości.",
+      "retry": "Spróbuj ponownie",
+      "empty": {
+        "title": "Brak wiadomości z tej domeny",
+        "body": "Żadna zapisana wiadomość nie ma nadawcy w domenie {domain}."
+      },
+      "help": "Otwórz wiadomość, aby ją przeczytać, i wybierz transakcję, którą opłacono. Następnie zaznacz do {max} wiadomości, z których powstanie profil; wiadomość można zaznaczyć dopiero, gdy ma transakcję.",
+      "columns": {
+        "select": "Użyj",
+        "received": "Odebrano",
+        "email": "Wiadomość",
+        "transaction": "Transakcja",
+        "actions": "Akcje"
+      },
+      "select": "Użyj wiadomości {subject} jako próbki",
+      "needsTransaction": "Najpierw wybierz transakcję dla tej wiadomości.",
+      "limitReached": "Najwyżej {max} próbek. Odznacz jedną, aby wybrać inną.",
+      "noTransaction": "Nie wybrano",
+      "viewEmail": "Pokaż wiadomość",
+      "chooseTransaction": "Wybierz transakcję",
+      "changeTransaction": "Zmień transakcję",
+      "selectedCount": "Zaznaczono {count} z {max} próbek",
+      "continue": "Przejdź do asystenta",
+      "emailTitle": "{subject}",
+      "emailLoading": "Wczytywanie wiadomości",
+      "emailError": "Nie udało się wczytać wiadomości.",
+      "transactionTitle": "Transakcja dla: {subject}"
+    },
+    "generate": {
+      "help": "Asystent czyta te wiadomości oraz transakcje, którymi je opłacono, i pisze szkic profilu dla {domain}. Nic nie jest jeszcze zatwierdzone.",
+      "reviseHelp": "Powiedz asystentowi, co zmienić. Zaktualizuje ten sam szkic na podstawie tych wiadomości i transakcji.",
+      "feedbackLabel": "Co należy zmienić",
+      "feedbackPlaceholder": "Na przykład: suma to wiersz z napisem Kwota zapłacona, a nie suma częściowa.",
+      "send": "Wyślij do AI",
+      "sendFeedback": "Wyślij uwagę do AI",
+      "retry": "Wyślij do AI ponownie",
+      "back": "Wstecz",
+      "running": "Asystent pisze profil...",
+      "runningHint": "To może potrwać minutę. Nie zamykaj tej strony.",
+      "noDraft": "Asystent nie zapisał szkicu.",
+      "tryAgain": "Możesz wysłać go ponownie albo wrócić i zmienić próbki.",
+      "failed": "Nie udało się połączyć z asystentem."
+    },
+    "preview": {
+      "loading": "Odczytywanie wiadomości za pomocą szkicu...",
+      "error": "Nie udało się uruchomić podglądu.",
+      "retry": "Spróbuj ponownie",
+      "assistantSaid": "Asystent mówi",
+      "help": "Tak szkic potraktowałby wiadomości z tej domeny. Nic nie zostało zapisane ani powiązane.",
+      "selectedHeading": "Wybrane wiadomości",
+      "othersHeading": "Pozostałe wiadomości z tej domeny",
+      "othersCapped": "Pokazano {shown} najnowszych spośród {total} pozostałych wiadomości.",
+      "columns": {
+        "email": "Wiadomość",
+        "expected": "Oczekiwana transakcja",
+        "parsed": "Odczytane przez szkic",
+        "agrees": "Zgodność",
+        "outcome": "Wynik",
+        "matched": "Dopasowana transakcja"
+      },
+      "nothingRead": "Nic nie udało się odczytać",
+      "notStated": "nie podano",
+      "parsedDate": "Data: {date}",
+      "parsedTotal": "Suma: {total}",
+      "parsedLines": "{count, plural, one {# wiersz} few {# wiersze} many {# wierszy} other {# wierszy}}",
+      "noExpectation": "Brak",
+      "noMatch": "Brak transakcji",
+      "agreesYes": "Tak",
+      "agreesNo": "Nie",
+      "agreesUnknown": "Nie sprawdzono",
+      "nothingToShow": "Szkic nie ma wiadomości do pokazania.",
+      "backToSamples": "Wróć do próbek",
+      "backToAi": "Wróć do AI",
+      "accept": "Zaakceptuj i przetwórz",
+      "approved": "Profil zatwierdzony",
+      "changedElsewhere": "Profil został zmieniony gdzie indziej. Wczytaj podgląd ponownie.",
+      "approveFailed": "Nie udało się zatwierdzić profilu.",
+      "approvedProcessing": "Profil jest zatwierdzony. Zapisane wiadomości z {domain} są właśnie przez niego odczytywane.",
+      "done": "Gotowe",
+      "outcomes": {
+        "matched": "Dopasowano transakcję",
+        "ambiguous": "Pasuje kilka transakcji",
+        "unmatched": "Żadna transakcja nie pasuje",
+        "parse_failed": "Nie udało się odczytać",
+        "not_applicable": "Nie odczytane przez ten profil",
+        "skip_line": "Pominięto (znaleziono wiersz do pominięcia)",
+        "wait_line": "Wstrzymano (zamówienie niefinalne)",
+        "no_html": "Brak części HTML"
       }
     }
   }

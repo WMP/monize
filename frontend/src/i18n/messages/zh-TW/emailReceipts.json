@@ -176,7 +176,8 @@
       "message": "現在處理來自 {domains} 的{count, plural, one {# 封已儲存郵件} other {# 封已儲存郵件}}嗎？每封郵件都會用此設定檔重新讀取；除非開啟了自動套用，否則它提出的提議會在審核收件匣中等待。",
       "confirm": "立即處理",
       "later": "暫不處理"
-    }
+    },
+    "reparse": "重新解析郵件（{count}）"
   },
   "editor": {
     "createTitle": "新增解析器",
@@ -318,16 +319,16 @@
       "ruleCategory": "類別",
       "defaultCategory": "預設類別",
       "shippingCategory": "運費類別",
-      "feesCategory": "Fees category",
-      "balanceTolerance": "Balance tolerance",
-      "fees": "Fees patterns",
+      "feesCategory": "費用類別",
+      "balanceTolerance": "餘額容差",
+      "fees": "費用模式",
       "skipLines": "要略過的行",
       "record": "記錄",
-      "label": "label",
-      "value": "value",
-      "within": "within",
-      "line": "line",
-      "optional": "optional",
+      "label": "標籤",
+      "value": "值",
+      "within": "範圍內",
+      "line": "行",
+      "optional": "選用",
       "paid": "已付金額模式",
       "payee": "商家模式",
       "requireLine": "必要的行",
@@ -337,7 +338,7 @@
       "single": "單一明細",
       "singleName": "單一明細名稱",
       "joinWrapped": "合併折行",
-      "ruleField": "field",
+      "ruleField": "欄位",
       "reference": "參考號碼模式",
       "match": "比對區段",
       "matchBy": "比對策略",
@@ -530,14 +531,6 @@
       "state": "狀態",
       "actions": "操作"
     },
-    "guide": {
-      "heading": "如何建立設定檔",
-      "buttonName": "使用 AI 準備設定檔",
-      "stepSender": "從寄件者網域雲端選擇寄件者。",
-      "stepTransaction": "為每個電子郵件提供它支付的交易：開啟電子郵件並選擇交易。",
-      "stepSelect": "勾選這些電子郵件。",
-      "stepPrepare": "按 {button}。助理將撰寫設定檔，您可以在設定檔中測試並核准。"
-    },
     "transactionSummary": "{date}，{amount}，{payee}",
     "noPayee": "無收款人",
     "noTransaction": "尚無",
@@ -719,6 +712,11 @@
       "heading": "選擇供 AI 使用的交易",
       "help": "以下是下方日期範圍內的交易，範圍起初為購買前後幾天。請選擇 AI 應依郵件中的商品拆分的那一筆，或修改日期以查看更早或更晚的交易。",
       "linkButton": "使用此交易"
+    },
+    "sample": {
+      "heading": "選擇這封郵件所支付的交易",
+      "help": "以下是您在下方日期範圍內的交易，範圍起初為購買前後的幾天。所選交易會保留在精靈中，用於檢查設定檔；不會與郵件建立任何連結。可變更日期以查找更早或更晚的交易。",
+      "linkButton": "使用此交易"
     }
   },
   "callback": {
@@ -782,14 +780,7 @@
     }
   },
   "process": {
-    "button": "全部處理",
-    "buttonCount": "全部處理（{count}）",
-    "dialog": {
-      "title": "{count, plural, one {處理 # 封已儲存郵件？} other {處理 # 封已儲存郵件？}}",
-      "message": "每封尚未讀取、或可能因新的設定檔或交易而改變結果的已儲存郵件，都會被重新讀取。除非開啟了自動套用，否則它提出的提議會在審核收件匣中等待。",
-      "messageDomain": "來自 {domain} 的每封尚未讀取、或可能因新的設定檔或交易而改變結果的已儲存郵件，都會被重新讀取。除非開啟了自動套用，否則它提出的提議會在審核收件匣中等待。",
-      "confirm": "處理"
-    },
+    "retryFailed": "重試失敗的郵件（{count}）",
     "starting": "正在開始...",
     "progress": "{processed, plural, one {已處理 # 封郵件} other {已處理 # 封郵件}}，剩餘 {remaining} 封。",
     "cancel": "取消",
@@ -849,10 +840,10 @@
     },
     "uncovered": {
       "title": "沒有設定檔的寄件者",
-      "help": "這些寄件者寄來的郵件沒有任何設定檔讀取。請為其中之一建立設定檔，或請助理起草。",
+      "help": "這些寄件者寄來的郵件沒有任何設定檔讀取。請為其中之一建立設定檔：「設定檔」分頁上的精靈會逐步引導您。",
       "none": "已儲存郵件的每個寄件者都有設定檔涵蓋。",
       "row": "{domain}（{count, plural, one {# 封郵件} other {# 封郵件}}）",
-      "show": "顯示郵件"
+      "create": "建立設定檔"
     }
   },
   "wizard": {
@@ -879,6 +870,119 @@
         "title": "審核提議",
         "body": "每封郵件都會成為針對某筆交易的提議。在您核准之前不會變更任何內容。",
         "action": "開啟審核收件匣"
+      }
+    }
+  },
+  "profileWizard": {
+    "heading": "為 {domain} 建立設定檔",
+    "stepsLabel": "精靈步驟",
+    "stepName": "{number}. {name}",
+    "steps": {
+      "samples": "樣本",
+      "generate": "產生",
+      "preview": "預覽並接受"
+    },
+    "cancel": "取消",
+    "existingDraft": "此網域已有設定檔草稿。",
+    "useExistingDraft": "從預覽開始，使用該草稿",
+    "uncovered": {
+      "heading": "為網域建立設定檔",
+      "help": "已儲存郵件但沒有已核准設定檔的寄件者網域。選擇一個以啟動精靈。",
+      "loading": "正在載入寄件者網域",
+      "error": "無法載入寄件者網域。",
+      "retry": "重試",
+      "none": "已儲存郵件的每個寄件者都有設定檔。"
+    },
+    "samples": {
+      "loading": "正在載入郵件",
+      "error": "無法載入郵件。",
+      "retry": "重試",
+      "empty": {
+        "title": "此網域沒有郵件",
+        "body": "沒有任何已儲存的郵件的寄件者位於 {domain}。"
+      },
+      "help": "開啟郵件進行閱讀，並選擇它所支付的交易。然後勾選最多 {max} 封郵件，用來撰寫設定檔；郵件只有在有了交易之後才能勾選。",
+      "columns": {
+        "select": "使用",
+        "received": "接收時間",
+        "email": "郵件",
+        "transaction": "交易",
+        "actions": "操作"
+      },
+      "select": "將郵件 {subject} 用作樣本",
+      "needsTransaction": "請先為這封郵件選擇交易。",
+      "limitReached": "最多 {max} 個樣本。取消勾選一個後才能選擇其他的。",
+      "noTransaction": "未選擇",
+      "viewEmail": "檢視郵件",
+      "chooseTransaction": "選擇交易",
+      "changeTransaction": "變更交易",
+      "selectedCount": "已勾選 {count}/{max} 個樣本",
+      "continue": "繼續前往助理",
+      "emailTitle": "{subject}",
+      "emailLoading": "正在載入郵件",
+      "emailError": "無法載入郵件。",
+      "transactionTitle": "{subject} 的交易"
+    },
+    "generate": {
+      "help": "助理會閱讀這些郵件及其所支付的交易，並為 {domain} 撰寫設定檔草稿。目前尚未核准任何內容。",
+      "reviseHelp": "告訴助理需要變更什麼。它會根據這些郵件和交易更新同一份草稿。",
+      "feedbackLabel": "需要變更什麼",
+      "feedbackPlaceholder": "例如：合計是標有「實付金額」的那一行，而不是小計。",
+      "send": "傳送給 AI",
+      "sendFeedback": "向 AI 傳送備註",
+      "retry": "再次傳送給 AI",
+      "back": "返回",
+      "running": "助理正在撰寫設定檔...",
+      "runningHint": "這可能需要一分鐘。請保持此頁面開啟。",
+      "noDraft": "助理沒有儲存草稿。",
+      "tryAgain": "您可以再次傳送，或返回並變更樣本。",
+      "failed": "無法連線到助理。"
+    },
+    "preview": {
+      "loading": "正在用草稿讀取郵件...",
+      "error": "無法執行預覽。",
+      "retry": "重試",
+      "assistantSaid": "助理說",
+      "help": "這是草稿對此網域郵件的處理結果。尚未儲存或連結任何內容。",
+      "selectedHeading": "所選郵件",
+      "othersHeading": "此網域的其他郵件",
+      "othersCapped": "顯示另外 {total} 封郵件中最新的 {shown} 封。",
+      "columns": {
+        "email": "郵件",
+        "expected": "預期交易",
+        "parsed": "草稿讀取到的內容",
+        "agrees": "是否一致",
+        "outcome": "結果",
+        "matched": "相符的交易"
+      },
+      "nothingRead": "未能讀取任何內容",
+      "notStated": "未說明",
+      "parsedDate": "日期：{date}",
+      "parsedTotal": "合計：{total}",
+      "parsedLines": "{count, plural, one {# 行} other {# 行}}",
+      "noExpectation": "無",
+      "noMatch": "無交易",
+      "agreesYes": "是",
+      "agreesNo": "否",
+      "agreesUnknown": "未檢查",
+      "nothingToShow": "草稿沒有可顯示的郵件。",
+      "backToSamples": "返回樣本",
+      "backToAi": "返回 AI",
+      "accept": "接受並處理",
+      "approved": "設定檔已核准",
+      "changedElsewhere": "設定檔已在其他地方變更。請重新載入預覽。",
+      "approveFailed": "無法核准設定檔。",
+      "approvedProcessing": "設定檔已核准。{domain} 的已儲存郵件正在用它讀取。",
+      "done": "完成",
+      "outcomes": {
+        "matched": "已符合交易",
+        "ambiguous": "有多筆交易相符",
+        "unmatched": "沒有相符的交易",
+        "parse_failed": "無法讀取",
+        "not_applicable": "此設定檔未讀取",
+        "skip_line": "已略過（發現略過行）",
+        "wait_line": "已擱置（訂單尚未最終確定）",
+        "no_html": "沒有 HTML 部分"
       }
     }
   }

@@ -392,6 +392,11 @@
     "parserToolReceiptCount": "Sebutkan 1 sampai 5 surel untuk menguji parser.",
     "parserToolInvalidSender": "Draf memerlukan nama dan satu sampai sepuluh domain pengirim seperti shop.example.com.",
     "parserDraftRequestNotClaimed": "Permintaan draf parser ini tidak Anda ambil. Ambil dulu dengan ai_review_requests, atau simpan draf tanpa requestId.",
+    "parserNotDraft": "Asisten hanya dapat memperbarui parser draf. Parser ini sudah disetujui.",
+    "generateNoDraft": "Asisten tidak menyimpan parser draf. Baca jawabannya, sesuaikan contoh atau tambahkan catatan, lalu coba lagi.",
+    "generateReceiptOutsideDomain": "Sebuah surel bukan berasal dari domain pengirim yang menjadi tujuan parser ini.",
+    "previewExpectedNotSelected": "Transaksi yang diharapkan disebutkan untuk surel yang tidak termasuk surel terpilih.",
+    "previewReceiptOutsideDomain": "Sebuah surel bukan berasal dari domain pengirim parser ini.",
     "parserCategoryNameUnknown": "Kategori \"{{ name }}\" tidak ditemukan. Gunakan nama salah satu kategori Anda.",
     "parserCategoryNameAmbiguous": "Kategori \"{{ name }}\" cocok dengan beberapa kategori ({{ candidates }}). Gunakan nama lengkap, misalnya \"Parent: Child\"."
   },

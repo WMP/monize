@@ -6,11 +6,11 @@
 
 | ID | Task | Depends on | Status |
 |----|------|-----------|--------|
-| W1 | Backend: `GET /email-receipts/domains/uncovered` | - | todo |
-| W2 | Backend: `process-batch` `statuses`, parser `reprocessableCount` | - | todo |
-| W3 | Backend: `testDefinition` expected transactions | - | todo |
-| W4 | Backend: `generate-with-ai` (synchronous assistant run, create or revise a draft) | W3 | todo |
-| W5 | Backend: `POST /email-receipt-parsers/:id/preview` | - | todo |
-| W6 | Frontend: tab order; processing button only for failures and stale profiles | W2 | todo |
-| W7 | Frontend: Profiles tab domain cloud and the four-step wizard; remove `ProfileCreationGuide` | W1, W4, W5 | todo |
-| W8 | i18n: English, pseudo-locale, every other locale | W6, W7 | todo |
+| W1 | Backend: `GET /email-receipts/domains/uncovered` | - | done |
+| W2 | Backend: `process-batch` `statuses`, parser `reprocessableCount` | - | done |
+| W3 | Backend: `testDefinition` expected transactions | - | done |
+| W4 | Backend: `generate-with-ai` (synchronous assistant run, create or revise a draft) | W3 | done |
+| W5 | Backend: `POST /email-receipt-parsers/:id/preview` | - | done |
+| W6 | Frontend: tab order; processing button only for failures and stale profiles | W2 | done |
+| W7 | Frontend: Profiles tab domain cloud and the four-step wizard; remove `ProfileCreationGuide` | W1, W4, W5 | done |
+| W8 | i18n: English, pseudo-locale, every other locale | W6, W7 | done |
