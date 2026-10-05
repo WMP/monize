@@ -6,10 +6,11 @@
     "^.+\\.(t|j)s$": "ts-jest"
   },
   "moduleNameMapper": {
-    "^@/(.*)$": "<rootDir>/src/$1"
+    "^@/(.*)$": "<rootDir>/src/$1",
+    "^\\.{1,2}/(.*/)?typeorm-compat\\.js$": "<rootDir>/src/test-helpers/nestjs-typeorm-compat.ts"
   },
   "transformIgnorePatterns": [
-    "node_modules/(?!(@scure|@otplib|otplib|@noble|openid-client|oauth4webapi|jose|uuid|mdb-reader|@nestjs/passport)/)"
+    "node_modules/(?!(@scure|@otplib|otplib|@noble|openid-client|oauth4webapi|jose|uuid|mdb-reader|@nestjs/passport|@nestjs/typeorm)/)"
   ],
   "testEnvironment": "node",
   "testTimeout": 30000,
