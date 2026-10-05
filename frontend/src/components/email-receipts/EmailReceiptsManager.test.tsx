@@ -271,27 +271,36 @@ describe('EmailReceiptsManager', () => {
     });
   });
 
-  describe('Process all', () => {
-    it('counts what the overview says can be processed, for every sender', async () => {
+  describe('Retry failed emails', () => {
+    it('is not offered when no email failed to parse', async () => {
       await renderManager();
-      expect(screen.getByRole('button', { name: 'Process all (6)' })).toBeEnabled();
+      expect(screen.queryByRole('button', { name: /Retry failed emails/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Process all/ })).not.toBeInTheDocument();
     });
 
-    it('counts the filtered sender\'s own processable emails, and runs for that sender only', async () => {
-      nav.params = new URLSearchParams('domain=shop.example.com');
+    it('is offered while the counts report parse_failed emails, and processes only those', async () => {
+      api.getStatusCounts.mockResolvedValue({ pending: 1, parse_failed: 2, review: 3 });
       api.processBatch.mockResolvedValue({ processed: 2, byOutcome: { review: 2 }, failed: 0, remaining: 0, since: 'T' });
       await renderManager();
-      await click(screen.getByRole('button', { name: 'Process all (2)' }));
-      await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Process' }));
-      expect(api.processBatch).toHaveBeenCalledWith({ domain: 'shop.example.com' });
+      await click(screen.getByRole('button', { name: 'Retry failed emails (2)' }));
+      expect(api.processBatch).toHaveBeenCalledWith({ statuses: ['parse_failed'] });
       // The list and the counts are read again after the run.
-      expect(api.listDomains.mock.calls.length).toBeGreaterThan(1);
+      expect(api.getStatusCounts.mock.calls.length).toBeGreaterThan(1);
     });
 
-    it('is off until the count is known, never zero', async () => {
-      api.overview.mockRejectedValue(new Error('down'));
+    it('keeps the run to the filtered sender', async () => {
+      nav.params = new URLSearchParams('domain=shop.example.com');
+      api.getStatusCounts.mockResolvedValue({ parse_failed: 1 });
+      api.processBatch.mockResolvedValue({ processed: 1, byOutcome: { review: 1 }, failed: 0, remaining: 0, since: 'T' });
       await renderManager();
-      expect(screen.getByRole('button', { name: 'Process all' })).toBeDisabled();
+      await click(screen.getByRole('button', { name: 'Retry failed emails (1)' }));
+      expect(api.processBatch).toHaveBeenCalledWith({ domain: 'shop.example.com', statuses: ['parse_failed'] });
+    });
+
+    it('is not shown while the counts are unknown', async () => {
+      api.getStatusCounts.mockRejectedValue(new Error('down'));
+      await renderManager();
+      expect(screen.queryByRole('button', { name: /Retry failed emails/ })).not.toBeInTheDocument();
     });
   });
 

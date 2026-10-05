@@ -271,4 +271,21 @@ describe('ReceiptTransactionPicker', () => {
       expect(onLink).toHaveBeenCalledWith('tx-1');
     });
   });
+  describe('sample mode (the profile wizard)', () => {
+    it('hands the chosen row to onChoose before onLink, with its own copy', async () => {
+      const onChoose = vi.fn();
+      await act(async () => {
+        render(
+          <ReceiptTransactionPicker effectiveDate="2026-09-01T10:00:00.000Z" linkingId={null} onLink={onLink} onChoose={onChoose} mode="sample" />,
+        );
+      });
+      await act(async () => {});
+      expect(screen.getByRole('heading', { name: 'Choose the transaction this email paid for' })).toBeInTheDocument();
+      await act(async () => {
+        fireEvent.click(screen.getAllByRole('button', { name: 'Use this transaction' })[0]);
+      });
+      expect(onChoose).toHaveBeenCalledWith(expect.objectContaining({ id: 'tx-1' }));
+      expect(onLink).toHaveBeenCalledWith('tx-1');
+    });
+  });
 });

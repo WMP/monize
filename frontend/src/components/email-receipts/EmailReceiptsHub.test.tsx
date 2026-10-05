@@ -15,7 +15,16 @@ vi.mock('@/components/email-receipts/EmailReceiptsManager', () => ({
   EmailReceiptsManager: () => <div data-testid="emails" />,
 }));
 vi.mock('@/components/email-receipts/ParsersSection', () => ({
-  ParsersSection: () => <div data-testid="profiles" />,
+  ParsersSection: ({ wizardDomain, onWizardDomainChange }: { wizardDomain?: string | null; onWizardDomainChange?: (d: string | null) => void }) => (
+    <div data-testid="profiles" data-wizard={wizardDomain ?? ''}>
+      <button type="button" onClick={() => onWizardDomainChange?.('shop.example.com')}>
+        start wizard
+      </button>
+      <button type="button" onClick={() => onWizardDomainChange?.(null)}>
+        close wizard
+      </button>
+    </div>
+  ),
 }));
 vi.mock('@/components/email-receipts/MailboxSection', () => ({
   MailboxSection: () => <div data-testid="mailbox" />,
@@ -67,6 +76,28 @@ describe('EmailReceiptsHub', () => {
   ])('opens the tab a link names (%s)', async (search, testId) => {
     await renderHub(search);
     expect(screen.getByTestId(testId)).toBeInTheDocument();
+  });
+
+  it('orders the tabs overview, mailbox, profiles, emails', async () => {
+    await renderHub();
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Overview', 'Mailbox', 'Profiles', 'Emails']);
+  });
+
+  it('keeps the wizard domain in the URL and reads it back', async () => {
+    await renderHub('tab=profiles');
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'start wizard' }));
+    });
+    expect(nav.replace).toHaveBeenCalledWith('/email-receipts?tab=profiles&wizard=shop.example.com', { scroll: false });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'close wizard' }));
+    });
+    expect(nav.replace).toHaveBeenLastCalledWith('/email-receipts?tab=profiles', { scroll: false });
+  });
+
+  it('hands the wizard domain of the URL to the Profiles tab', async () => {
+    await renderHub('tab=profiles&wizard=Shop.Example.com');
+    expect(screen.getByTestId('profiles')).toHaveAttribute('data-wizard', 'shop.example.com');
   });
 
   it('writes the chosen tab to the URL', async () => {

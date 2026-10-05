@@ -1,0 +1,169 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { ReceiptStateBadge } from '@/components/email-receipts/ReceiptStateBadge';
+import { WIZARD_MAX_SAMPLES, type ChosenTransaction } from '@/components/email-receipts/profile-wizard-types';
+import { SampleEmailDialog, SampleTransactionDialog } from '@/components/email-receipts/WizardSampleDialogs';
+import { Button } from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { TABLE_BODY_CLASS, TABLE_CLASS, Td, Th } from '@/components/ui/Table';
+import { useDateFormat } from '@/hooks/useDateFormat';
+import { emailReceiptsApi } from '@/lib/email-receipts-api';
+import { createLogger } from '@/lib/logger';
+import type { EmailReceiptListItem } from '@/types/email-receipts';
+
+const logger = createLogger('WizardSamplesStep');
+
+const CHECKBOX_CLASS =
+  'h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600';
+
+interface WizardSamplesStepProps {
+  domain: string;
+  /** The transaction chosen for each email, by receipt id. Held by the wizard; nothing is written. */
+  picks: Readonly<Record<string, ChosenTransaction>>;
+  selected: ReadonlySet<string>;
+  onPick: (receiptId: string, chosen: ChosenTransaction) => void;
+  onToggle: (receiptId: string) => void;
+  onContinue: () => void;
+}
+
+type ListState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; items: EmailReceiptListItem[] };
+
+/**
+ * Step 1: the domain's stored emails. Each can be opened (read-only) and paired with
+ * the transaction it paid for; an email can be ticked as a sample only once it has one,
+ * and at most five are ticked. The pairs live in the wizard's state.
+ */
+export function WizardSamplesStep({ domain, picks, selected, onPick, onToggle, onContinue }: WizardSamplesStepProps) {
+  const t = useTranslations('emailReceipts.profileWizard.samples');
+  const { formatDateTime } = useDateFormat();
+  const [list, setList] = useState<ListState>({ status: 'loading' });
+  const [attempt, setAttempt] = useState(0);
+  const [viewing, setViewing] = useState<EmailReceiptListItem | null>(null);
+  const [choosing, setChoosing] = useState<EmailReceiptListItem | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    emailReceiptsApi.receipts
+      .list(undefined, undefined, domain)
+      .then((items) => {
+        if (!cancelled) setList({ status: 'ready', items });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        logger.error(error);
+        setList({ status: 'error' });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [domain, attempt]);
+
+  if (list.status === 'loading') return <LoadingSpinner text={t('loading')} />;
+  if (list.status === 'error') {
+    return (
+      <div role="alert" className="space-y-2">
+        <p className="text-sm text-red-600 dark:text-red-400">{t('error')}</p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setList({ status: 'loading' });
+            setAttempt((n) => n + 1);
+          }}
+        >
+          {t('retry')}
+        </Button>
+      </div>
+    );
+  }
+  if (list.items.length === 0) return <EmptyState title={t('empty.title')} description={t('empty.body', { domain })} />;
+
+  const full = selected.size >= WIZARD_MAX_SAMPLES;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-gray-600 dark:text-gray-400">{t('help', { max: WIZARD_MAX_SAMPLES })}</p>
+      <div className="overflow-x-auto">
+        <table className={TABLE_CLASS}>
+          <thead>
+            <tr>
+              <Th className="w-8 px-2 sm:px-4">{t('columns.select')}</Th>
+              <Th className="px-2 sm:px-4">{t('columns.received')}</Th>
+              <Th className="px-2 sm:px-4">{t('columns.email')}</Th>
+              <Th className="px-2 sm:px-4">{t('columns.transaction')}</Th>
+              <Th align="right" className="px-2 sm:px-4">
+                {t('columns.actions')}
+              </Th>
+            </tr>
+          </thead>
+          <tbody className={TABLE_BODY_CLASS}>
+            {list.items.map((receipt) => {
+              const pick = picks[receipt.id];
+              const isSelected = selected.has(receipt.id);
+              const blockedReason = pick === undefined ? t('needsTransaction') : !isSelected && full ? t('limitReached', { max: WIZARD_MAX_SAMPLES }) : undefined;
+              return (
+                <tr key={receipt.id}>
+                  <Td className="px-2 align-top sm:px-4">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      disabled={blockedReason !== undefined}
+                      title={blockedReason}
+                      onChange={() => onToggle(receipt.id)}
+                      aria-label={t('select', { subject: receipt.subject })}
+                      className={CHECKBOX_CLASS}
+                    />
+                  </Td>
+                  <Td className="px-2 align-top whitespace-nowrap sm:px-4">{formatDateTime(receipt.receivedAt)}</Td>
+                  <Td className="min-w-0 px-2 align-top break-words sm:px-4">
+                    <div className="font-medium">{receipt.subject}</div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                      <span>{receipt.fromAddress}</span>
+                      <ReceiptStateBadge receipt={receipt} />
+                    </div>
+                  </Td>
+                  <Td className="min-w-0 px-2 align-top break-words sm:px-4">
+                    {pick ? pick.summary : <span className="text-gray-500 dark:text-gray-400">{t('noTransaction')}</span>}
+                  </Td>
+                  <Td align="right" className="px-2 align-top sm:px-4">
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setViewing(receipt)}>
+                        {t('viewEmail')}
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => setChoosing(receipt)}>
+                        {pick ? t('changeTransaction') : t('chooseTransaction')}
+                      </Button>
+                    </div>
+                  </Td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-sm text-gray-700 dark:text-gray-300">
+          {t('selectedCount', { count: selected.size, max: WIZARD_MAX_SAMPLES })}
+        </span>
+        <Button disabled={selected.size === 0} onClick={onContinue}>
+          {t('continue')}
+        </Button>
+      </div>
+
+      {viewing !== null && <SampleEmailDialog receipt={viewing} onClose={() => setViewing(null)} />}
+      {choosing !== null && (
+        <SampleTransactionDialog
+          receipt={choosing}
+          onClose={() => setChoosing(null)}
+          onChosen={(chosen) => {
+            onPick(choosing.id, { ...chosen, subject: choosing.subject });
+            setChoosing(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}

@@ -176,7 +176,8 @@
       "message": "{count, plural, one {Process the # stored email} other {Process the # stored emails}} from {domains} now? Each one is read with this profile again; what it proposes waits in the review inbox unless auto-apply is on.",
       "confirm": "Process now",
       "later": "Not now"
-    }
+    },
+    "reparse": "Re-parse emails ({count})"
   },
   "editor": {
     "createTitle": "New profile",
@@ -530,14 +531,6 @@
       "state": "State",
       "actions": "Actions"
     },
-    "guide": {
-      "heading": "How to create a profile",
-      "buttonName": "Prepare a profile with AI",
-      "stepSender": "Choose a sender in the cloud of sender domains.",
-      "stepTransaction": "Give each of its emails the transaction it paid for: open the email and choose the transaction.",
-      "stepSelect": "Tick those emails.",
-      "stepPrepare": "Press {button}. The assistant writes the profile, and you test and approve it in the profiles."
-    },
     "transactionSummary": "{date}, {amount}, {payee}",
     "noPayee": "no payee",
     "noTransaction": "None yet",
@@ -719,6 +712,11 @@
       "heading": "Choose the transaction for the AI",
       "help": "These are your transactions in the date range below, which starts as the days around the purchase. Choose the one the AI should split by the products in the email, or change the dates to look further.",
       "linkButton": "Use this transaction"
+    },
+    "sample": {
+      "heading": "Choose the transaction this email paid for",
+      "help": "These are your transactions in the date range below, which starts as the days around the purchase. The choice is kept in the wizard and is used to check the profile; nothing is linked to the email. Change the dates to look further.",
+      "linkButton": "Use this transaction"
     }
   },
   "callback": {
@@ -782,14 +780,7 @@
     }
   },
   "process": {
-    "button": "Process all",
-    "buttonCount": "Process all ({count})",
-    "dialog": {
-      "title": "{count, plural, one {Process # stored email?} other {Process # stored emails?}}",
-      "message": "Every stored email that has not been read yet, or that a new profile or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
-      "messageDomain": "Every stored email from {domain} that has not been read yet, or that a new profile or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
-      "confirm": "Process"
-    },
+    "retryFailed": "Retry failed emails ({count})",
     "starting": "Starting...",
     "progress": "{processed, plural, one {# email processed} other {# emails processed}}, {remaining} left.",
     "cancel": "Cancel",
@@ -849,10 +840,10 @@
     },
     "uncovered": {
       "title": "Senders without a profile",
-      "help": "These senders sent emails no profile reads. Create a profile for one, or ask the assistant to draft it.",
+      "help": "These senders sent emails no profile reads. Create a profile for one: the wizard on the Profiles tab walks you through it.",
       "none": "Every sender of the stored emails is covered by a profile.",
       "row": "{domain} ({count, plural, one {# email} other {# emails}})",
-      "show": "Show the emails"
+      "create": "Create a profile"
     }
   },
   "wizard": {
@@ -879,6 +870,119 @@
         "title": "Review the proposals",
         "body": "Each email becomes a proposal on a transaction. Nothing is changed until you approve it.",
         "action": "Open the review inbox"
+      }
+    }
+  },
+  "profileWizard": {
+    "heading": "Create a profile for {domain}",
+    "stepsLabel": "Wizard steps",
+    "stepName": "{number}. {name}",
+    "steps": {
+      "samples": "Samples",
+      "generate": "Generate",
+      "preview": "Preview and accept"
+    },
+    "cancel": "Cancel",
+    "existingDraft": "This domain already has a draft profile.",
+    "useExistingDraft": "Start at the preview with the draft",
+    "uncovered": {
+      "heading": "Create a profile for a domain",
+      "help": "Sender domains with stored emails and no approved profile. Choose one to start the wizard.",
+      "loading": "Loading sender domains",
+      "error": "The sender domains could not be loaded.",
+      "retry": "Try again",
+      "none": "Every sender of the stored emails is covered by a profile."
+    },
+    "samples": {
+      "loading": "Loading the emails",
+      "error": "The emails could not be loaded.",
+      "retry": "Try again",
+      "empty": {
+        "title": "No emails from this domain",
+        "body": "No stored email has a sender at {domain}."
+      },
+      "help": "Open an email to read it, and choose the transaction it paid for. Then tick up to {max} emails to write the profile from; an email can be ticked only once it has a transaction.",
+      "columns": {
+        "select": "Use",
+        "received": "Received",
+        "email": "Email",
+        "transaction": "Transaction",
+        "actions": "Actions"
+      },
+      "select": "Use the email {subject} as a sample",
+      "needsTransaction": "Choose a transaction for this email first.",
+      "limitReached": "At most {max} samples. Untick one to choose another.",
+      "noTransaction": "None chosen",
+      "viewEmail": "View email",
+      "chooseTransaction": "Choose transaction",
+      "changeTransaction": "Change transaction",
+      "selectedCount": "{count} of {max} samples ticked",
+      "continue": "Continue to the assistant",
+      "emailTitle": "{subject}",
+      "emailLoading": "Loading the email",
+      "emailError": "The email could not be loaded.",
+      "transactionTitle": "Transaction for {subject}"
+    },
+    "generate": {
+      "help": "The assistant reads these emails and the transactions they paid for and writes a draft profile for {domain}. Nothing is approved yet.",
+      "reviseHelp": "Tell the assistant what to change. It updates the same draft from these emails and transactions.",
+      "feedbackLabel": "What should change",
+      "feedbackPlaceholder": "For example: the total is the line that says Amount paid, not the subtotal.",
+      "send": "Send to AI",
+      "sendFeedback": "Send note to AI",
+      "retry": "Send to AI again",
+      "back": "Back",
+      "running": "The assistant is writing the profile...",
+      "runningHint": "This can take a minute. Keep this page open.",
+      "noDraft": "The assistant did not save a draft.",
+      "tryAgain": "You can send it again, or go back and change the samples.",
+      "failed": "The assistant could not be reached."
+    },
+    "preview": {
+      "loading": "Reading the emails with the draft...",
+      "error": "The preview could not be run.",
+      "retry": "Try again",
+      "assistantSaid": "The assistant says",
+      "help": "This is what the draft would do with the emails of this domain. Nothing has been saved or linked.",
+      "selectedHeading": "Selected emails",
+      "othersHeading": "Other emails from this domain",
+      "othersCapped": "Showing the newest {shown} of {total} other emails.",
+      "columns": {
+        "email": "Email",
+        "expected": "Expected transaction",
+        "parsed": "Read by the draft",
+        "agrees": "Agrees",
+        "outcome": "Outcome",
+        "matched": "Matched transaction"
+      },
+      "nothingRead": "Nothing could be read",
+      "notStated": "not stated",
+      "parsedDate": "Date: {date}",
+      "parsedTotal": "Total: {total}",
+      "parsedLines": "{count, plural, one {# line} other {# lines}}",
+      "noExpectation": "None",
+      "noMatch": "No transaction",
+      "agreesYes": "Yes",
+      "agreesNo": "No",
+      "agreesUnknown": "Not checked",
+      "nothingToShow": "The draft has no emails to show.",
+      "backToSamples": "Back to samples",
+      "backToAi": "Back to AI",
+      "accept": "Accept and process",
+      "approved": "Profile approved",
+      "changedElsewhere": "The profile changed elsewhere. Reload the preview.",
+      "approveFailed": "The profile could not be approved.",
+      "approvedProcessing": "The profile is approved. The stored emails of {domain} are being read with it.",
+      "done": "Done",
+      "outcomes": {
+        "matched": "Matched a transaction",
+        "ambiguous": "Several transactions match",
+        "unmatched": "No transaction matched",
+        "parse_failed": "Could not be read",
+        "not_applicable": "Not read by this profile",
+        "skip_line": "Skipped (skip line found)",
+        "wait_line": "On hold (order not final)",
+        "no_html": "No HTML part"
       }
     }
   }

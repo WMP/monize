@@ -15,6 +15,11 @@ import type {
   EmailReceiptParserTestResult,
   EmailReceiptPollResult,
   EmailReceiptsOverview,
+  GenerateParserWithAiPayload,
+  GenerateParserWithAiResult,
+  ParserPreviewResult,
+  PreviewEmailReceiptParserPayload,
+  UncoveredDomain,
   EmailReceiptStatusCounts,
   EmailReceiptStatus,
   ProcessEmailReceiptsPayload,
@@ -124,6 +129,15 @@ export const emailReceiptsApi = {
       const response = await apiClient.get<EmailReceiptDomainCount[]>(`${RECEIPTS}/domains`, {
         params: status ? { status } : undefined,
       });
+      return response.data;
+    },
+
+    /**
+     * Sender domains of stored emails that no approved profile covers, most
+     * emails first (at most 200); `draftParserId` names a draft already written.
+     */
+    listUncovered: async (): Promise<UncoveredDomain[]> => {
+      const response = await apiClient.get<UncoveredDomain[]>(`${RECEIPTS}/domains/uncovered`);
       return response.data;
     },
 
@@ -248,6 +262,24 @@ export const emailReceiptsApi = {
       const response = await apiClient.post<EmailReceiptParserDraftRequestResult>(`${PARSERS}/draft-with-ai`, {
         receiptIds,
       });
+      return response.data;
+    },
+
+    /**
+     * Run the assistant now over 1 to 5 emails paired with their transactions; it saves a
+     * draft (or, with `parserId` and `feedback`, revises one). A run that saved no draft is a
+     * 422 carrying the assistant's answer. Can take a minute.
+     */
+    generateWithAi: async (payload: GenerateParserWithAiPayload): Promise<GenerateParserWithAiResult> => {
+      const response = await apiClient.post<GenerateParserWithAiResult>(`${PARSERS}/generate-with-ai`, payload, {
+        timeout: 180_000,
+      });
+      return response.data;
+    },
+
+    /** Run a draft over the domain's emails, read-only: the selected samples and the newest others. */
+    preview: async (id: string, payload: PreviewEmailReceiptParserPayload): Promise<ParserPreviewResult> => {
+      const response = await apiClient.post<ParserPreviewResult>(`${PARSERS}/${id}/preview`, payload);
       return response.data;
     },
 

@@ -8,8 +8,9 @@ import { MailboxSection } from '@/components/email-receipts/MailboxSection';
 import { ParsersSection } from '@/components/email-receipts/ParsersSection';
 import { TabPanel, Tabs } from '@/components/ui/Tabs';
 import { useDemoMode } from '@/hooks/useDemoMode';
+import { normalizeDomainFilter } from '@/lib/email-receipts-format';
 
-export const EMAIL_RECEIPTS_TABS = ['overview', 'emails', 'profiles', 'mailbox'] as const;
+export const EMAIL_RECEIPTS_TABS = ['overview', 'mailbox', 'profiles', 'emails'] as const;
 export type EmailReceiptsTab = (typeof EMAIL_RECEIPTS_TABS)[number];
 
 /**
@@ -42,6 +43,16 @@ export function EmailReceiptsHub() {
 
   const tab = tabFromSearch(searchParams.get('tab'), searchParams.has('domain'));
 
+  // `?tab=profiles&wizard=<domain>` keeps the profile wizard's domain in the URL.
+  const wizardDomain = tab === 'profiles' ? normalizeDomainFilter(searchParams.get('wizard')) || null : null;
+
+  const setWizardDomain = (next: string | null) => {
+    const params = new URLSearchParams();
+    params.set('tab', 'profiles');
+    if (next) params.set('wizard', next);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
   const selectTab = (next: EmailReceiptsTab) => {
     if (next === tab) return;
     // The sender filter belongs to the Emails tab; no other tab carries it away.
@@ -70,14 +81,14 @@ export function EmailReceiptsHub() {
         <TabPanel idPrefix={ID_PREFIX} tabKey="overview" isActive={tab === 'overview'}>
           <EmailReceiptsOverview />
         </TabPanel>
-        <TabPanel idPrefix={ID_PREFIX} tabKey="emails" isActive={tab === 'emails'}>
-          <EmailReceiptsManager />
-        </TabPanel>
-        <TabPanel idPrefix={ID_PREFIX} tabKey="profiles" isActive={tab === 'profiles'}>
-          {isDemoMode ? demoNote : <ParsersSection />}
-        </TabPanel>
         <TabPanel idPrefix={ID_PREFIX} tabKey="mailbox" isActive={tab === 'mailbox'}>
           {isDemoMode ? demoNote : <MailboxSection />}
+        </TabPanel>
+        <TabPanel idPrefix={ID_PREFIX} tabKey="profiles" isActive={tab === 'profiles'}>
+          {isDemoMode ? demoNote : <ParsersSection wizardDomain={wizardDomain} onWizardDomainChange={setWizardDomain} />}
+        </TabPanel>
+        <TabPanel idPrefix={ID_PREFIX} tabKey="emails" isActive={tab === 'emails'}>
+          <EmailReceiptsManager />
         </TabPanel>
       </div>
     </div>

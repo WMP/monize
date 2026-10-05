@@ -35,6 +35,16 @@ describe('useProcessStoredEmails', () => {
     expect(result.current.state).toEqual({ status: 'idle' });
   });
 
+  it('sends the statuses it was given on every call of the run', async () => {
+    api.processBatch.mockResolvedValueOnce(answer({ remaining: 1, since: 'T1' })).mockResolvedValueOnce(answer({ remaining: 0 }));
+    const { result } = renderHook(() => useProcessStoredEmails());
+    await act(async () => {
+      await result.current.run(['shop.example.com'], ['parse_failed']);
+    });
+    expect(api.processBatch).toHaveBeenNthCalledWith(1, { domain: 'shop.example.com', statuses: ['parse_failed'] });
+    expect(api.processBatch).toHaveBeenNthCalledWith(2, { domain: 'shop.example.com', statuses: ['parse_failed'], since: 'T1' });
+  });
+
   it('loops on the server\'s remaining, sending back since, and sums the answers', async () => {
     api.processBatch
       .mockResolvedValueOnce(answer({ remaining: 3, since: 'T1' }))

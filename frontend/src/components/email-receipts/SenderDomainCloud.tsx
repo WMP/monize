@@ -11,6 +11,8 @@ interface SenderDomainCloudProps {
   /** The domain being filtered on, `''` for all senders. */
   selected: string;
   onSelect: (domain: string) => void;
+  /** Offer "All senders" first (the Emails tab's filter); off where a domain must be chosen. */
+  showAll?: boolean;
 }
 
 const TAG_BASE =
@@ -31,7 +33,7 @@ function sizeClass(count: number, max: number): string {
  * one toggle button per domain with its email count, and "All senders" first.
  * The filtered domain stays on screen even when the state has none of its emails.
  */
-export function SenderDomainCloud({ domains, selected, onSelect }: SenderDomainCloudProps) {
+export function SenderDomainCloud({ domains, selected, onSelect, showAll = true }: SenderDomainCloudProps) {
   const t = useTranslations('emailReceipts.receipts.domainFilter');
   const { formatNumber } = useNumberFormat();
   const list = domains ?? [];
@@ -40,14 +42,16 @@ export function SenderDomainCloud({ domains, selected, onSelect }: SenderDomainC
 
   return (
     <div role="group" aria-label={t('label')} className="flex flex-wrap items-center gap-2">
-      <button
-        type="button"
-        aria-pressed={selected === ''}
-        onClick={() => onSelect('')}
-        className={`${TAG_BASE} text-sm ${selected === '' ? TAG_ON : TAG_IDLE}`}
-      >
-        {t('all')}
-      </button>
+      {showAll && (
+        <button
+          type="button"
+          aria-pressed={selected === ''}
+          onClick={() => onSelect('')}
+          className={`${TAG_BASE} text-sm ${selected === '' ? TAG_ON : TAG_IDLE}`}
+        >
+          {t('all')}
+        </button>
+      )}
       {selectedMissing && (
         <button type="button" aria-pressed onClick={() => onSelect('')} className={`${TAG_BASE} text-sm ${TAG_ON}`}>
           {selected}
