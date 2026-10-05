@@ -392,6 +392,11 @@
     "parserToolReceiptCount": "Podaj od 1 do 5 wiadomości, na których przetestować parser.",
     "parserToolInvalidSender": "Szkic wymaga nazwy i od jednej do dziesięciu domen nadawcy, takich jak shop.example.com.",
     "parserDraftRequestNotClaimed": "Ten wniosek o szkic parsera nie został przez Ciebie przejęty. Najpierw przejmij go przez ai_review_requests albo zapisz szkic bez requestId.",
+    "parserNotDraft": "Asystent może aktualizować tylko szkic parsera. Ten parser jest zatwierdzony.",
+    "generateNoDraft": "Asystent nie zapisał szkicu parsera. Przeczytaj jego odpowiedź, dostosuj próbki lub dodaj notatkę i spróbuj ponownie.",
+    "generateReceiptOutsideDomain": "Wiadomość nie pochodzi z domeny nadawcy, dla której przeznaczony jest parser.",
+    "previewExpectedNotSelected": "Podano oczekiwaną transakcję dla wiadomości, której nie ma wśród wybranych.",
+    "previewReceiptOutsideDomain": "Wiadomość nie pochodzi z żadnej domeny nadawcy tego parsera.",
     "parserCategoryNameUnknown": "Kategoria \"{{ name }}\" nie została znaleziona. Użyj nazwy jednej z Twoich kategorii.",
     "parserCategoryNameAmbiguous": "Kategoria \"{{ name }}\" pasuje do kilku kategorii ({{ candidates }}). Użyj pełnej nazwy, na przykład \"Nadrzędna: Podrzędna\"."
   },

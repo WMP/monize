@@ -392,6 +392,11 @@
     "parserToolReceiptCount": "請指定 1 至 5 封郵件來測試解析器。",
     "parserToolInvalidSender": "草稿需要名稱，以及一到十個寄件者網域，例如 shop.example.com。",
     "parserDraftRequestNotClaimed": "此解析器草稿請求不是由您認領的。請先用 ai_review_requests 認領，或不帶 requestId 儲存草稿。",
+    "parserNotDraft": "助理只能更新草稿狀態的解析器。此解析器已核准。",
+    "generateNoDraft": "助理沒有儲存解析器草稿。請閱讀它的回答，調整樣本或新增備註，然後重試。",
+    "generateReceiptOutsideDomain": "有一封郵件並非來自該解析器所針對的寄件者網域。",
+    "previewExpectedNotSelected": "為一封不在所選郵件之列的郵件指定了預期交易。",
+    "previewReceiptOutsideDomain": "有一封郵件並非來自此解析器的任何寄件者網域。",
     "parserCategoryNameUnknown": "找不到類別\"{{ name }}\"。請使用您的其中一個類別的名稱。",
     "parserCategoryNameAmbiguous": "類別\"{{ name }}\"符合多個類別({{ candidates }})。請使用完整名稱，例如\"父級：子級\"。"
   },

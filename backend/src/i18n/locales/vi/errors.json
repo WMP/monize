@@ -392,6 +392,11 @@
     "parserToolReceiptCount": "Hãy nêu 1 đến 5 email để thử trình phân tích.",
     "parserToolInvalidSender": "Một bản nháp cần có tên và từ một đến mười miền người gửi, chẳng hạn shop.example.com.",
     "parserDraftRequestNotClaimed": "Bạn chưa nhận yêu cầu soạn trình phân tích này. Hãy nhận nó trước bằng ai_review_requests, hoặc lưu bản nháp mà không có requestId.",
+    "parserNotDraft": "Trợ lý chỉ có thể cập nhật trình phân tích ở dạng bản nháp. Trình phân tích này đã được duyệt.",
+    "generateNoDraft": "Trợ lý chưa lưu trình phân tích bản nháp nào. Hãy đọc câu trả lời của trợ lý, điều chỉnh các mẫu hoặc thêm ghi chú, rồi thử lại.",
+    "generateReceiptOutsideDomain": "Một email không đến từ miền người gửi mà trình phân tích này dành cho.",
+    "previewExpectedNotSelected": "Đã nêu một giao dịch dự kiến cho một email không nằm trong số email được chọn.",
+    "previewReceiptOutsideDomain": "Một email không đến từ miền người gửi nào của trình phân tích này.",
     "parserCategoryNameUnknown": "Không tìm thấy danh mục \"{{ name }}\". Sử dụng tên của một trong các danh mục của bạn.",
     "parserCategoryNameAmbiguous": "Danh mục \"{{ name }}\" khớp với nhiều danh mục ({{ candidates }}). Sử dụng tên đầy đủ, ví dụ \"Cha mẹ: Con\"."
   },

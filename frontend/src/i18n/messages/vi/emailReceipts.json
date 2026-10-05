@@ -176,7 +176,8 @@
       "message": "Xử lý {count, plural, one {# email đã lưu} other {# email đã lưu}} từ {domains} ngay bây giờ? Mỗi email sẽ được đọc lại bằng hồ sơ này; những gì nó đề xuất sẽ chờ trong hộp thư xem xét, trừ khi tự động áp dụng đang bật.",
       "confirm": "Xử lý ngay",
       "later": "Để sau"
-    }
+    },
+    "reparse": "Phân tích lại email ({count})"
   },
   "editor": {
     "createTitle": "Trình phân tích mới",
@@ -318,16 +319,16 @@
       "ruleCategory": "danh mục",
       "defaultCategory": "Danh mục mặc định",
       "shippingCategory": "Danh mục phí vận chuyển",
-      "feesCategory": "Fees category",
-      "balanceTolerance": "Balance tolerance",
-      "fees": "Fees patterns",
+      "feesCategory": "Danh mục phí",
+      "balanceTolerance": "Dung sai số dư",
+      "fees": "Mẫu phí",
       "skipLines": "Các dòng cần bỏ qua",
       "record": "Bản ghi",
-      "label": "label",
-      "value": "value",
-      "within": "within",
-      "line": "line",
-      "optional": "optional",
+      "label": "nhãn",
+      "value": "giá trị",
+      "within": "trong phạm vi",
+      "line": "dòng",
+      "optional": "tùy chọn",
       "paid": "Mẫu số tiền đã trả",
       "payee": "Mẫu người bán",
       "requireLine": "Các dòng bắt buộc",
@@ -337,7 +338,7 @@
       "single": "Một mục hàng duy nhất",
       "singleName": "Tên mục hàng duy nhất",
       "joinWrapped": "Nối các dòng bị ngắt",
-      "ruleField": "field",
+      "ruleField": "trường",
       "reference": "Mẫu tham chiếu",
       "match": "Phần đối chiếu",
       "matchBy": "Các chiến lược đối chiếu",
@@ -365,11 +366,11 @@
       "capture_conflict": "lấy cả tổng của dòng lẫn đơn giá. Hãy chỉ dùng một trong hai.",
       "invalid_uuid": "không phải là một danh mục hợp lệ",
       "out_of_range": "phải là số nguyên từ 1 đến {max}",
-      "items_patterns_and_record": "có cả patterns lẫn record. Hãy chỉ dùng một trong hai.",
-      "items_shape_missing": "cần patterns hoặc record",
-      "skip_lines_need_record": "chỉ dùng được cùng với record",
+      "items_patterns_and_record": "có cả mẫu lẫn bản ghi. Hãy chỉ dùng một trong hai.",
+      "items_shape_missing": "cần mẫu hoặc bản ghi",
+      "skip_lines_need_record": "chỉ dùng được cùng với bản ghi",
       "record_name_missing": "phải lấy {capture} ở một trong các bước của nó",
-      "items_single_conflict": "có một mục hàng duy nhất bên cạnh patterns hoặc record. Hãy chỉ dùng một trong hai.",
+      "items_single_conflict": "có một mục hàng duy nhất bên cạnh mẫu hoặc bản ghi. Hãy chỉ dùng một trong hai.",
       "join_wrapped_needs_patterns": "chỉ hoạt động với các mẫu mục hàng",
       "invalid_value": "có giá trị mà trường này không chấp nhận",
       "duplicate_entry": "liệt kê cùng một mục hai lần",
@@ -529,14 +530,6 @@
       "transaction": "Giao dịch",
       "state": "Trạng thái",
       "actions": "Thao tác"
-    },
-    "guide": {
-      "heading": "Cách tạo hồ sơ",
-      "buttonName": "Chuẩn bị hồ sơ với AI",
-      "stepSender": "Chọn người gửi từ đám mây miền người gửi.",
-      "stepTransaction": "Cung cấp cho mỗi email của nó giao dịch mà nó đã thanh toán: mở email và chọn giao dịch.",
-      "stepSelect": "Tích các email này.",
-      "stepPrepare": "Nhấn {button}. Trợ lý sẽ viết hồ sơ và bạn sẽ kiểm tra và phê duyệt nó trong các hồ sơ."
     },
     "transactionSummary": "{date}, {amount}, {payee}",
     "noPayee": "không có người nhận",
@@ -719,6 +712,11 @@
       "heading": "Chọn giao dịch cho AI",
       "help": "Đây là các giao dịch của bạn trong khoảng ngày bên dưới, ban đầu là những ngày quanh thời điểm mua hàng. Hãy chọn giao dịch mà AI nên chia theo các sản phẩm trong email, hoặc đổi ngày để tìm xa hơn.",
       "linkButton": "Dùng giao dịch này"
+    },
+    "sample": {
+      "heading": "Chọn giao dịch mà email này đã thanh toán",
+      "help": "Đây là các giao dịch của bạn trong khoảng ngày bên dưới, ban đầu là những ngày quanh thời điểm mua hàng. Lựa chọn được giữ trong trình hướng dẫn và dùng để kiểm tra hồ sơ; không có gì được liên kết với email. Hãy đổi ngày để tìm xa hơn.",
+      "linkButton": "Dùng giao dịch này"
     }
   },
   "callback": {
@@ -782,14 +780,7 @@
     }
   },
   "process": {
-    "button": "Xử lý tất cả",
-    "buttonCount": "Xử lý tất cả ({count})",
-    "dialog": {
-      "title": "{count, plural, one {Xử lý # email đã lưu?} other {Xử lý # email đã lưu?}}",
-      "message": "Mọi email đã lưu chưa được đọc, hoặc có thể thay đổi do một hồ sơ hay giao dịch mới, sẽ được đọc lại. Những gì nó đề xuất sẽ chờ trong hộp thư xem xét, trừ khi tự động áp dụng đang bật.",
-      "messageDomain": "Mọi email đã lưu từ {domain} chưa được đọc, hoặc có thể thay đổi do một hồ sơ hay giao dịch mới, sẽ được đọc lại. Những gì nó đề xuất sẽ chờ trong hộp thư xem xét, trừ khi tự động áp dụng đang bật.",
-      "confirm": "Xử lý"
-    },
+    "retryFailed": "Thử lại các email thất bại ({count})",
     "starting": "Đang bắt đầu...",
     "progress": "{processed, plural, one {Đã xử lý # email} other {Đã xử lý # email}}, còn {remaining}.",
     "cancel": "Hủy",
@@ -849,10 +840,10 @@
     },
     "uncovered": {
       "title": "Người gửi chưa có hồ sơ",
-      "help": "Không hồ sơ nào đọc email của những người gửi này. Hãy tạo hồ sơ cho một người gửi, hoặc nhờ trợ lý soạn bản nháp.",
+      "help": "Không hồ sơ nào đọc email của những người gửi này. Hãy tạo hồ sơ cho một người gửi: trình hướng dẫn trên tab Hồ sơ sẽ dẫn bạn đi từng bước.",
       "none": "Mọi người gửi của các email đã lưu đều đã có hồ sơ.",
       "row": "{domain} ({count, plural, one {# email} other {# email}})",
-      "show": "Hiển thị email"
+      "create": "Tạo hồ sơ"
     }
   },
   "wizard": {
@@ -879,6 +870,119 @@
         "title": "Xem xét các đề xuất",
         "body": "Mỗi email trở thành một đề xuất cho một giao dịch. Sẽ không có gì thay đổi cho đến khi bạn phê duyệt.",
         "action": "Mở hộp thư xem xét"
+      }
+    }
+  },
+  "profileWizard": {
+    "heading": "Tạo hồ sơ cho {domain}",
+    "stepsLabel": "Các bước của trình hướng dẫn",
+    "stepName": "{number}. {name}",
+    "steps": {
+      "samples": "Mẫu",
+      "generate": "Tạo",
+      "preview": "Xem trước và chấp nhận"
+    },
+    "cancel": "Hủy",
+    "existingDraft": "Tên miền này đã có một hồ sơ nháp.",
+    "useExistingDraft": "Bắt đầu ở bước xem trước với bản nháp",
+    "uncovered": {
+      "heading": "Tạo hồ sơ cho một tên miền",
+      "help": "Các tên miền người gửi có email đã lưu nhưng chưa có hồ sơ được duyệt. Chọn một tên miền để bắt đầu trình hướng dẫn.",
+      "loading": "Đang tải các tên miền người gửi",
+      "error": "Không thể tải các tên miền người gửi.",
+      "retry": "Thử lại",
+      "none": "Mọi người gửi của các email đã lưu đều đã có hồ sơ."
+    },
+    "samples": {
+      "loading": "Đang tải các email",
+      "error": "Không thể tải các email.",
+      "retry": "Thử lại",
+      "empty": {
+        "title": "Không có email nào từ tên miền này",
+        "body": "Không có email đã lưu nào có người gửi tại {domain}."
+      },
+      "help": "Mở một email để đọc và chọn giao dịch mà email đó đã thanh toán. Sau đó đánh dấu tối đa {max} email để viết hồ sơ; chỉ có thể đánh dấu một email khi nó đã có giao dịch.",
+      "columns": {
+        "select": "Dùng",
+        "received": "Nhận lúc",
+        "email": "Email",
+        "transaction": "Giao dịch",
+        "actions": "Thao tác"
+      },
+      "select": "Dùng email {subject} làm mẫu",
+      "needsTransaction": "Hãy chọn giao dịch cho email này trước.",
+      "limitReached": "Tối đa {max} mẫu. Bỏ đánh dấu một mẫu để chọn mẫu khác.",
+      "noTransaction": "Chưa chọn",
+      "viewEmail": "Xem email",
+      "chooseTransaction": "Chọn giao dịch",
+      "changeTransaction": "Đổi giao dịch",
+      "selectedCount": "Đã đánh dấu {count}/{max} mẫu",
+      "continue": "Tiếp tục đến trợ lý",
+      "emailTitle": "{subject}",
+      "emailLoading": "Đang tải email",
+      "emailError": "Không thể tải email.",
+      "transactionTitle": "Giao dịch cho {subject}"
+    },
+    "generate": {
+      "help": "Trợ lý đọc các email này cùng các giao dịch mà chúng đã thanh toán và soạn bản nháp hồ sơ cho {domain}. Chưa có gì được duyệt.",
+      "reviseHelp": "Hãy cho trợ lý biết cần thay đổi gì. Trợ lý sẽ cập nhật cùng bản nháp đó từ các email và giao dịch này.",
+      "feedbackLabel": "Cần thay đổi gì",
+      "feedbackPlaceholder": "Ví dụ: tổng cộng là dòng ghi Số tiền đã thanh toán, không phải tạm tính.",
+      "send": "Gửi cho AI",
+      "sendFeedback": "Gửi ghi chú cho AI",
+      "retry": "Gửi lại cho AI",
+      "back": "Quay lại",
+      "running": "Trợ lý đang viết hồ sơ...",
+      "runningHint": "Việc này có thể mất một phút. Hãy giữ trang này mở.",
+      "noDraft": "Trợ lý chưa lưu bản nháp nào.",
+      "tryAgain": "Bạn có thể gửi lại, hoặc quay lại và đổi các mẫu.",
+      "failed": "Không thể kết nối với trợ lý."
+    },
+    "preview": {
+      "loading": "Đang đọc các email bằng bản nháp...",
+      "error": "Không thể chạy bản xem trước.",
+      "retry": "Thử lại",
+      "assistantSaid": "Trợ lý cho biết",
+      "help": "Đây là những gì bản nháp sẽ làm với các email của tên miền này. Chưa có gì được lưu hoặc liên kết.",
+      "selectedHeading": "Các email đã chọn",
+      "othersHeading": "Các email khác từ tên miền này",
+      "othersCapped": "Hiển thị {shown} email mới nhất trong tổng số {total} email khác.",
+      "columns": {
+        "email": "Email",
+        "expected": "Giao dịch dự kiến",
+        "parsed": "Bản nháp đọc được",
+        "agrees": "Khớp",
+        "outcome": "Kết quả",
+        "matched": "Giao dịch khớp"
+      },
+      "nothingRead": "Không đọc được gì",
+      "notStated": "không nêu",
+      "parsedDate": "Ngày: {date}",
+      "parsedTotal": "Tổng cộng: {total}",
+      "parsedLines": "{count, plural, one {# dòng} other {# dòng}}",
+      "noExpectation": "Không có",
+      "noMatch": "Không có giao dịch",
+      "agreesYes": "Có",
+      "agreesNo": "Không",
+      "agreesUnknown": "Chưa kiểm tra",
+      "nothingToShow": "Bản nháp không có email nào để hiển thị.",
+      "backToSamples": "Quay lại các mẫu",
+      "backToAi": "Quay lại AI",
+      "accept": "Chấp nhận và xử lý",
+      "approved": "Hồ sơ đã được duyệt",
+      "changedElsewhere": "Hồ sơ đã được thay đổi ở nơi khác. Hãy tải lại bản xem trước.",
+      "approveFailed": "Không thể duyệt hồ sơ.",
+      "approvedProcessing": "Hồ sơ đã được duyệt. Các email đã lưu của {domain} đang được đọc bằng hồ sơ này.",
+      "done": "Xong",
+      "outcomes": {
+        "matched": "Đã khớp một giao dịch",
+        "ambiguous": "Có nhiều giao dịch khớp",
+        "unmatched": "Không có giao dịch nào khớp",
+        "parse_failed": "Không đọc được",
+        "not_applicable": "Hồ sơ này không đọc",
+        "skip_line": "Đã bỏ qua (có dòng bỏ qua)",
+        "wait_line": "Đang chờ (đơn hàng chưa chốt)",
+        "no_html": "Không có phần HTML"
       }
     }
   }

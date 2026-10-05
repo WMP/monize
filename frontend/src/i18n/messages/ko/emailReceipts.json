@@ -81,7 +81,7 @@
       "enabledLabel": "메일함 자동 읽기",
       "enabledHelp": "자동 읽기만 제어합니다. 켜면 Monize가 15분마다 메일함을 읽습니다. 끄더라도 메일함 연결은 해제되지 않으며, 지금 확인은 이 설정이 켜져 있든 꺼져 있든 메일함을 읽습니다.",
       "aiModeLabel": "AI 모드",
-      "aiModeHelp": "Whether the poll may use the AI provider you configured on receipts. Recognize with AI and AI로 프로필 준비 ask the assistant in the chat whatever the mode, and an AI answer is always a proposal or a draft that you approve.",
+      "aiModeHelp": "확인할 때 영수증용으로 설정한 AI 제공업체를 사용할 수 있는지 여부입니다. “AI로 인식”과 “AI로 프로필 준비”는 모드와 관계없이 채팅에서 어시스턴트에게 요청하며, AI의 답변은 항상 사용자가 승인하는 제안 또는 초안입니다.",
       "aiModes": {
         "off": "끔",
         "on_demand": "요청 시",
@@ -89,13 +89,13 @@
       },
       "aiModeDescriptions": {
         "off": "확인할 때 영수증에 AI를 호출하지 않습니다.",
-        "on_demand": "The poll never calls the AI. You ask the assistant yourself with Recognize with AI or AI로 프로필 준비.",
-        "automatic": "The poll asks the AI about a matched receipt that no approved 프로필 could read completely, and drafts a 프로필 for a sender that has none."
+        "on_demand": "확인은 AI를 호출하지 않습니다. “AI로 인식” 또는 “AI로 프로필 준비”로 사용자가 직접 어시스턴트에게 요청합니다.",
+        "automatic": "승인된 프로필이 완전히 읽지 못한 일치한 영수증에 대해 확인 시 AI에 문의하고, 프로필이 없는 발신자에게는 프로필 초안을 작성합니다."
       },
       "autoApplyLabel": "제안 자동 적용",
-      "autoApplyHelp": "Off by default. A proposal is applied without asking only when all of these hold: an approved 프로필 read the whole email, the transaction was found by an order number or a reference, or by exact amount and payee, with a single candidate, and the proposal adds up to the cent. Everything else waits for your approval.",
-      "profileLimitLabel": "Count 프로필 proposals toward the daily AI limit",
-      "profileLimitHelp": "On by default: an edit a 프로필 proposes from an email is counted in the daily limit of AI-proposed changes, like any other AI proposal. Turn it off when a large batch of stored emails would otherwise use the limit up. Only proposals from 프로필 are exempt; every proposal still waits for your approval."
+      "autoApplyHelp": "기본값은 꺼짐입니다. 제안은 다음이 모두 충족될 때만 묻지 않고 적용됩니다. 승인된 프로필이 메일 전체를 읽었고, 거래가 주문 번호나 참조 번호 또는 정확한 금액과 거래처로 후보 하나만 남은 상태에서 발견되었으며, 제안이 끝자리까지 정확히 맞아떨어질 때입니다. 그 외는 모두 사용자의 승인을 기다립니다.",
+      "profileLimitLabel": "프로필 제안을 일일 AI 한도에 포함",
+      "profileLimitHelp": "기본값은 켜짐입니다. 프로필이 메일에서 제안한 수정은 다른 AI 제안과 마찬가지로 AI가 제안하는 변경의 일일 한도에 포함됩니다. 저장된 메일이 대량으로 있어 한도가 소진될 때는 끄세요. 프로필의 제안만 제외되며, 모든 제안은 여전히 사용자의 승인을 기다립니다."
     },
     "status": {
       "lastPolled": "마지막 확인",
@@ -117,17 +117,17 @@
     }
   },
   "parsers": {
-    "heading": "프로필s",
-    "description": "A 프로필 reads the order confirmations of one sender with patterns you write or review, and says how the bank transaction is found. Once approved it runs without the AI.",
-    "newButton": "New 프로필",
-    "loading": "Loading 프로필",
+    "heading": "프로필",
+    "description": "프로필은 직접 작성하거나 검토한 패턴으로 한 발신자의 주문 확인 메일을 읽고, 은행 거래를 찾는 방법을 지정합니다. 승인되면 AI 없이 실행됩니다.",
+    "newButton": "새 프로필",
+    "loading": "프로필을 불러오는 중",
     "error": {
-      "title": "The 프로필 could not be loaded",
+      "title": "프로필을 불러오지 못했습니다",
       "body": "요청이 실패했습니다. 다시 시도하세요.",
       "retry": "다시 시도"
     },
     "empty": {
-      "title": "No 프로필 yet",
+      "title": "아직 프로필이 없습니다",
       "body": "주문 확인 메일 발신자별로 프로필를 만들거나, 이메일 영수증 페이지에서 저장된 이메일로 초안을 작성하세요."
     },
     "columns": {
@@ -153,19 +153,19 @@
       "viewJson": "JSON 보기"
     },
     "toasts": {
-      "approved": "프로필 approved",
-      "approveFailed": "Could not approve the 프로필",
-      "changedElsewhere": "This 프로필 was changed elsewhere. The list has been reloaded.",
-      "deleted": "프로필 deleted",
-      "deleteFailed": "Could not delete the 프로필"
+      "approved": "프로필 승인됨",
+      "approveFailed": "프로필을 승인하지 못했습니다",
+      "changedElsewhere": "이 프로필이 다른 곳에서 변경되었습니다. 목록을 다시 불러왔습니다.",
+      "deleted": "프로필 삭제됨",
+      "deleteFailed": "프로필을 삭제하지 못했습니다"
     },
     "deleteDialog": {
-      "title": "Delete the 프로필?",
-      "message": "The 프로필 {name} will be deleted. Emails it already read keep their results."
+      "title": "프로필을 삭제할까요?",
+      "message": "프로필 {name}을(를) 삭제합니다. 이미 읽은 메일의 결과는 그대로 유지됩니다."
     },
     "jsonDialog": {
       "title": "{name}의 정의",
-      "help": "The 프로필 definition as it is stored. The matching section shows the settings in effect, defaults included. It is read-only here; use Edit to change it.",
+      "help": "저장된 그대로의 프로필 정의입니다. 매칭 섹션에는 기본값을 포함해 적용 중인 설정이 표시됩니다. 여기서는 읽기 전용이며, 변경하려면 편집을 사용하세요.",
       "contentLabel": "정의 JSON",
       "copy": "복사",
       "copied": "JSON을 복사했습니다",
@@ -173,22 +173,23 @@
     },
     "processOffer": {
       "title": "저장된 메일을 지금 처리할까요?",
-      "message": "{count, plural, one {Process the # stored email} other {Process the # stored emails}} from {domains} now? Each one is read with this 프로필 again; what it proposes waits in the review inbox unless auto-apply is on.",
+      "message": "{domains}의 저장된 메일 {count, plural, one {#건} other {#건}}을 지금 처리할까요? 각 메일은 이 프로필로 다시 읽히며, 제안 내용은 자동 적용이 켜져 있지 않으면 검토 수신함에서 대기합니다.",
       "confirm": "지금 처리",
       "later": "나중에"
-    }
+    },
+    "reparse": "메일 다시 분석 ({count})"
   },
   "editor": {
-    "createTitle": "New 프로필",
-    "editTitle": "Edit 프로필",
+    "createTitle": "새 프로필",
+    "editTitle": "프로필 편집",
     "loading": "수취인과 카테고리를 불러오는 중",
     "lookupsError": {
       "title": "수취인과 카테고리를 불러오지 못했습니다",
       "body": "선택 항목에 필요하므로 편집기를 아직 열 수 없습니다. 다시 시도하세요.",
       "retry": "다시 시도"
     },
-    "draftNote": "This 프로필 is a draft. It reads nothing until you approve it.",
-    "draftAiNote": "The AI drafted this 프로필 from your sample emails. Test it against each of them and check every pattern, then approve it from the list. It reads nothing until you do.",
+    "draftNote": "이 프로필은 초안입니다. 승인하기 전에는 아무것도 읽지 않습니다.",
+    "draftAiNote": "AI가 샘플 메일로 이 프로필의 초안을 작성했습니다. 각 메일로 테스트하고 모든 패턴을 확인한 다음 목록에서 승인하세요. 승인하기 전에는 아무것도 읽지 않습니다.",
     "identityHeading": "읽을 이메일",
     "nameLabel": "이름",
     "payeeLabel": "수취인",
@@ -197,12 +198,12 @@
     "domainsHelp": "한 줄에 하나씩, 최대 {max}개입니다. 목록에 있는 도메인의 하위 도메인도 일치합니다.",
     "subjectLabel": "제목에 포함된 문구",
     "subjectHelp": "선택 사항이며 한 줄에 하나씩, 최대 {max}개입니다. 제목에 이 중 하나 이상이 포함되어야 하며 대소문자는 구분하지 않습니다.",
-    "saveButton": "Save 프로필",
-    "created": "프로필 created",
-    "updated": "프로필 saved",
-    "saveFailed": "Could not save the 프로필",
-    "conflict": "This 프로필 was changed elsewhere since you opened it. Reload it to see the current version. Your edits here are not saved.",
-    "conflictReload": "Reload the 프로필",
+    "saveButton": "프로필 저장",
+    "created": "프로필 생성됨",
+    "updated": "프로필 저장됨",
+    "saveFailed": "프로필을 저장하지 못했습니다",
+    "conflict": "이 프로필을 연 뒤 다른 곳에서 변경되었습니다. 현재 버전을 보려면 다시 불러오세요. 여기서 수정한 내용은 저장되지 않았습니다.",
+    "conflictReload": "프로필 다시 불러오기",
     "patterns": {
       "sourceLabel": "줄 소스",
       "sourceHint": "아래 패턴을 이메일의 어떤 표현과 비교할지 정합니다. 텍스트는 이메일의 텍스트 부분이며 줄바꿈마다 한 줄이 됩니다. HTML은 HTML 부분을 읽으며, 모든 블록과 표 셀이 각각 한 줄이 되므로 텍스트에서는 여러 줄로 나뉘는 상품명도 한 줄로 유지됩니다. 이메일의 줄 보기에서 각 소스가 내는 결과를 그대로 볼 수 있습니다.",
@@ -217,27 +218,27 @@
       "amountHint": "{capture}을(를) 가져와야 합니다. 예: 주문 합계 {capture}",
       "shippingLabel": "배송비 패턴",
       "discountLabel": "할인 패턴",
+      "feesLabel": "수수료 패턴",
       "itemsHeading": "품목",
       "startAfterLabel": "품목 시작 위치",
       "startAfterHint": "선택 사항입니다. 이 텍스트가 처음 나오는 줄의 다음 줄부터 품목을 읽습니다.",
       "stopAtLabel": "품목 종료 위치",
       "stopAtHint": "선택 사항입니다. 이 텍스트가 처음 나오는 줄 앞에서 품목이 끝납니다.",
       "itemPatternsLabel": "품목 패턴",
-      "itemPatternsHint": "{name}과(와) 함께 {amount}(줄 합계) 또는 {price}(단가, {qty}와 함께 사용 가능) 중 하나를 가져와야 하며, 둘 다 가져올 수는 없습니다. 예: {name} x {qty} {price}",
-      "feesLabel": "Fees patterns"
+      "itemPatternsHint": "{name}과(와) 함께 {amount}(줄 합계) 또는 {price}(단가, {qty}와 함께 사용 가능) 중 하나를 가져와야 하며, 둘 다 가져올 수는 없습니다. 예: {name} x {qty} {price}"
     },
     "categories": {
+      "heading": "카테고리",
+      "help": "카테고리 이름을 입력하고 목록에서 선택하세요. 이름은 프로필에 저장되며, 프로필을 저장할 때 해당 카테고리가 존재해야 합니다.",
       "categoryPlaceholder": "카테고리 없음",
       "defaultLabel": "기본 카테고리",
       "defaultHelp": "어떤 규칙과도 일치하지 않는 품목에 사용됩니다.",
       "shippingLabel": "배송비 카테고리",
       "shippingHelp": "배송비 줄의 카테고리입니다.",
-      "heading": "Categories",
-      "help": "Type a category name and pick it from the list. The name is stored in the 프로필, and the category must exist when the 프로필 is saved.",
-      "feesLabel": "Fees category",
-      "feesHelp": "The category of the fees line.",
-      "unknownCategory": "There is no category named {name}. Pick one from the list, or create it first.",
-      "rulesInJson": "Category rules by item name are an advanced option: add them to the 프로필 definition in the JSON mode."
+      "feesLabel": "수수료 카테고리",
+      "feesHelp": "수수료 줄의 카테고리입니다.",
+      "unknownCategory": "{name} 카테고리가 없습니다. 목록에서 선택하거나 먼저 만드세요.",
+      "rulesInJson": "품목 이름별 카테고리 규칙은 고급 옵션입니다. JSON 모드에서 프로필 정의에 추가하세요."
     },
     "mode": {
       "label": "편집 모드",
@@ -247,13 +248,14 @@
       "jsonInvalid": "JSON이 아직 올바르지 않아 양식을 표시할 수 없습니다. 먼저 수정하세요."
     },
     "json": {
-      "label": "프로필 definition (JSON)",
+      "label": "프로필 정의 (JSON)",
       "help": "양식이 만드는 것과 같은 정의입니다. 저장할 때 서버가 확인하며, 아래 테스트는 지금 내용 그대로 읽습니다.",
-      "parseError": "This is not valid JSON, or it is not a JSON object. Fix it to save or test the 프로필."
+      "parseError": "올바른 JSON이 아니거나 JSON 객체가 아닙니다. 프로필을 저장하거나 테스트하려면 수정하세요."
     },
     "matching": {
       "heading": "일치",
       "help": "메일이 결제한 은행 거래를 찾는 방법입니다. 방식은 순서대로 시도되며, 거래가 정확히 하나만 남는 첫 방식이 결정합니다. 여러 개가 남으면 모호한 것이고, 하나도 남지 않으면 다음 방식으로 넘어갑니다.",
+      "instruction": "가장 좋은 것은 은행 거래 설명에서 가져온 참조 번호입니다. 없으면 날짜와 금액을 사용합니다. 기본적으로 전략은 다음 순서로 시도합니다. 참조 번호(프로필에 참조 패턴이 있을 때), 주문 번호, 금액과 거래처, 금액과 날짜.",
       "referenceLabel": "참조 패턴",
       "referenceHint": "상점이나 결제 게이트웨이가 은행 거래에 넣는 식별자입니다. 예를 들어 명세서 문구나 이체 제목입니다. {capture}을(를) 가져와야 합니다.",
       "strategiesLabel": "일치 방식 (시도하는 순서)",
@@ -279,12 +281,11 @@
       "daysAfterLabel": "구매 후 일수",
       "daysHint": "구매일 전후의 기간입니다. 기본값 {default}, 최대 {max}.",
       "toleranceLabel": "금액 허용 오차",
-      "toleranceHint": "은행 금액이 메일의 합계와 얼마나 다를 수 있는지입니다. 기본값 0, 최대 {max}.",
-      "instruction": "Best is a reference number taken from the bank operation description. If there is none, the date and the amount are used. By default the strategies are tried in this order: reference (when the 프로필 has reference patterns), order number, amount and payee, amount and date."
+      "toleranceHint": "은행 금액이 메일의 합계와 얼마나 다를 수 있는지입니다. 기본값 0, 최대 {max}."
     },
     "proposal": {
       "heading": "제안",
-      "tagLabel": "Add a tag to the transactions this 프로필 categorizes",
+      "tagLabel": "이 프로필이 분류하는 거래에 태그 추가",
       "tagHelp": "같은 이름의 태그가 없으면 새로 만듭니다. 태그는 제안에 표시되며, 승인하기 전에는 아무것도 기록되지 않습니다.",
       "tagNameLabel": "태그 이름",
       "aiCategoriesLabel": "어떤 규칙에도 해당하지 않는 품목의 카테고리를 AI가 고르게 하기",
@@ -292,7 +293,7 @@
     }
   },
   "problems": {
-    "heading": "The 프로필 definition is not valid:",
+    "heading": "프로필 정의가 올바르지 않습니다:",
     "item": "{where}: {problem}",
     "paths": {
       "definition": "정의",
@@ -318,13 +319,16 @@
       "ruleCategory": "카테고리",
       "defaultCategory": "기본 카테고리",
       "shippingCategory": "배송비 카테고리",
+      "feesCategory": "수수료 카테고리",
+      "balanceTolerance": "잔액 허용 오차",
+      "fees": "수수료 패턴",
       "skipLines": "건너뛸 줄",
       "record": "레코드",
-      "label": "label",
-      "value": "value",
-      "within": "within",
-      "line": "line",
-      "optional": "optional",
+      "label": "레이블",
+      "value": "값",
+      "within": "범위 내",
+      "line": "줄",
+      "optional": "선택 사항",
       "paid": "결제 금액 패턴",
       "payee": "판매처 패턴",
       "requireLine": "필수 줄",
@@ -334,7 +338,7 @@
       "single": "단일 품목",
       "singleName": "단일 품목 이름",
       "joinWrapped": "줄바꿈된 줄 합치기",
-      "ruleField": "field",
+      "ruleField": "필드",
       "reference": "참조 패턴",
       "match": "일치 섹션",
       "matchBy": "일치 방식",
@@ -343,14 +347,11 @@
       "matchDaysAfter": "구매 후 일수",
       "matchTolerance": "금액 허용 오차",
       "tag": "태그",
-      "aiCategories": "AI 카테고리",
-      "feesCategory": "Fees category",
-      "balanceTolerance": "Balance tolerance",
-      "fees": "Fees patterns"
+      "aiCategories": "AI 카테고리"
     },
     "codes": {
       "not_object": "은(는) 유효한 정의가 아닙니다",
-      "unknown_key": "is not something a 프로필 can have",
+      "unknown_key": "은(는) 프로필에 넣을 수 없는 항목입니다",
       "unsupported_version": "은(는) 이 서버가 읽을 수 없는 버전입니다 (버전 2를 사용하세요)",
       "invalid_type": "의 값 종류가 올바르지 않습니다",
       "empty": "은(는) 비워 둘 수 없습니다",
@@ -365,11 +366,11 @@
       "capture_conflict": "에서 줄 합계와 단가를 모두 가져옵니다. 둘 중 하나만 사용하세요.",
       "invalid_uuid": "은(는) 유효한 카테고리가 아닙니다",
       "out_of_range": "은(는) 1부터 {max}까지의 정수여야 합니다",
-      "items_patterns_and_record": "에 patterns와 record가 모두 있습니다. 둘 중 하나만 사용하세요.",
-      "items_shape_missing": "에는 patterns 또는 record 중 하나가 필요합니다",
-      "skip_lines_need_record": "은(는) record와 함께만 사용할 수 있습니다",
+      "items_patterns_and_record": "에 패턴과 레코드가 모두 있습니다. 둘 중 하나만 사용하세요.",
+      "items_shape_missing": "에는 패턴 또는 레코드 중 하나가 필요합니다",
+      "skip_lines_need_record": "은(는) 레코드와 함께만 사용할 수 있습니다",
       "record_name_missing": "은(는) 단계 중 하나에서 {capture}을(를) 가져와야 합니다",
-      "items_single_conflict": "에 patterns 또는 record 외에 단일 품목이 있습니다. 둘 중 하나만 사용하세요.",
+      "items_single_conflict": "에 패턴 또는 레코드 외에 단일 품목이 있습니다. 둘 중 하나만 사용하세요.",
       "join_wrapped_needs_patterns": "은(는) 품목 패턴에서만 작동합니다",
       "invalid_value": "에 이 필드가 받아들이지 않는 값이 있습니다",
       "duplicate_entry": "에 같은 항목이 두 번 있습니다",
@@ -403,10 +404,10 @@
     "unmatched": "{count, plural, one {후보 #건} other {후보 #건}} 중 일치하는 거래가 없습니다.",
     "jsonInvalid": "JSON이 올바르지 않아 아직 테스트할 내용이 없습니다.",
     "outcome": {
-      "not_applicable": "This 프로필 would not read this email: none of its required lines is in it, so the next 프로필 for the sender would be tried.",
-      "skip_line": "This 프로필 would set this email aside: a line it skips on is in it.",
-      "wait_line": "This 프로필 would hold this email: a line says the order is not final, so it is read again later.",
-      "no_html": "This 프로필 reads the HTML part of the email, and this email has none, so it would be marked as unreadable (no HTML)."
+      "not_applicable": "이 프로필은 이 메일을 읽지 않습니다. 필수 줄이 하나도 없으므로 해당 발신자의 다음 프로필을 시도합니다.",
+      "skip_line": "이 프로필은 이 메일을 제외합니다. 건너뛰기 대상 줄이 포함되어 있습니다.",
+      "wait_line": "이 프로필은 이 메일을 보류합니다. 주문이 최종이 아니라는 줄이 있어 나중에 다시 읽습니다.",
+      "no_html": "이 프로필은 메일의 HTML 부분을 읽는데 이 메일에는 없으므로, 읽을 수 없음(HTML 없음)으로 표시됩니다."
     },
     "matchedBy": {
       "heading": "일치한 항목",
@@ -503,6 +504,7 @@
     },
     "filter": {
       "label": "상태별 필터",
+      "option": "{label} ({count})",
       "all": "전체",
       "pending": "읽기 대기 중",
       "skipped": "건너뜀",
@@ -512,15 +514,14 @@
       "ambiguous": "여러 거래가 일치",
       "review_conflict": "다른 요청이 진행 중",
       "review": "검토 중",
-      "ignored": "제외됨",
-      "option": "{label} ({count})"
+      "ignored": "제외됨"
     },
     "domainFilter": {
       "label": "발신자 도메인",
       "all": "모든 발신자",
       "option": "{domain} ({count})",
-      "help": "Showing emails from {domain} and its sub-domains. Select several of them to draft one 프로필 for the sender.",
-      "unknown": "The sender counts could not be loaded."
+      "unknown": "발신자별 개수를 불러오지 못했습니다.",
+      "help": "{domain}과(와) 그 하위 도메인의 메일을 표시합니다. 발신자의 프로필 초안을 하나 작성하려면 여러 개를 선택하세요."
     },
     "columns": {
       "select": "선택",
@@ -551,20 +552,20 @@
       "reprocess": "다시 처리",
       "link": "거래 선택",
       "recognizeAi": "AI로 인식",
+      "approve": "승인",
       "draftParser": "AI로 프로필 준비",
-      "createParser": "Create 프로필",
-      "ignore": "제외",
-      "approve": "Approve"
+      "createParser": "프로필 만들기",
+      "ignore": "제외"
     },
     "toasts": {
+      "approved": "제안을 승인했습니다",
+      "approveFailed": "제안을 승인하지 못했습니다",
       "reprocessed": "이메일을 다시 처리했습니다",
       "reprocessFailed": "이메일을 다시 처리하지 못했습니다",
       "ignored": "이메일을 제외했습니다",
       "ignoreFailed": "이메일을 제외하지 못했습니다",
       "deleted": "이메일을 삭제했습니다",
-      "deleteFailed": "이메일을 삭제하지 못했습니다",
-      "approved": "Proposal approved",
-      "approveFailed": "Could not approve the proposal"
+      "deleteFailed": "이메일을 삭제하지 못했습니다"
     },
     "ignoreDialog": {
       "title": "이 이메일을 제외할까요?",
@@ -578,27 +579,19 @@
     "selection": {
       "label": "선택한 이메일",
       "select": "{subject} 선택",
+      "selectAll": "이 목록의 모든 메일 선택 (최대 {max}개)",
       "count": "{count, plural, one {이메일 #개 선택됨} other {이메일 #개 선택됨}} (최대 {max}개)",
       "draftButton": "AI로 프로필 준비 ({count})",
       "clear": "선택 해제",
-      "differentSenders": "The selected emails come from different senders ({domains}). A 프로필 reads one sender's emails, so select emails from one sender.",
-      "selectAll": "Select all emails on this list (at most {max})"
+      "differentSenders": "선택한 메일이 서로 다른 발신자({domains})에게서 온 것입니다. 프로필은 한 발신자의 메일을 읽으므로, 한 발신자의 메일만 선택하세요."
     },
     "draft": {
-      "failed": "Could not start drafting a 프로필",
+      "failed": "프로필 초안 작성을 시작하지 못했습니다",
       "queued": "대기열에 추가됨: 요청이 AI 검토 수신함에서 에이전트를 기다립니다. 지금 응답할 수 있는 어시스턴트가 없습니다.",
       "handoffFailed": "요청은 대기열에 추가되었지만 채팅에서 이메일을 열 수 없었습니다. AI 검토 수신함에서 에이전트를 기다립니다.",
       "inboxLink": "AI 검토 수신함 열기",
       "opened": "이메일을 첨부한 채로 채팅을 열었습니다. 메시지를 읽고 보내기를 누르세요.",
       "chatPrompt": "{domain}에서 온 {count, plural, one {주문 이메일 #통} other {주문 이메일 #통}}으로 이메일 영수증 프로필를 만들어 주세요. AI 검토 요청 {requestId}을(를) 맡아서, email_receipt_profiles 도구로 첨부한 모든 이메일에서 프로필를 테스트하고, 각 이메일이 끝까지 읽힐 때까지 고친 다음, 요청 {requestId}의 초안으로 저장해 주세요."
-    },
-    "guide": {
-      "heading": "How to create a 프로필",
-      "buttonName": "AI로 프로필 준비",
-      "stepSender": "Choose a sender in the cloud of sender domains.",
-      "stepTransaction": "Give each of its emails the transaction it paid for: open the email and choose the transaction.",
-      "stepSelect": "Tick those emails.",
-      "stepPrepare": "Press {button}. The assistant writes the 프로필, and you test and approve it in the 프로필."
     }
   },
   "detail": {
@@ -635,10 +628,10 @@
     "reasons": {
       "too_large": "이메일이 크기 제한을 넘어 읽지 않고 저장했습니다.",
       "undecodable": "이메일을 디코딩할 수 없어 읽지 않고 저장했습니다.",
-      "draft_failed": "The AI could not draft a 프로필 for this sender.",
-      "parser_invalid": "The 프로필 for this sender is not valid. Edit it in the 프로필 settings.",
-      "no_total": "The 프로필 found no total in this email.",
-      "no_items": "The 프로필 found no line items.",
+      "draft_failed": "AI가 이 발신자의 프로필 초안을 작성하지 못했습니다.",
+      "parser_invalid": "이 발신자의 프로필이 올바르지 않습니다. 프로필 설정에서 편집하세요.",
+      "no_total": "프로필이 이 메일에서 합계를 찾지 못했습니다.",
+      "no_items": "프로필이 품목 줄을 찾지 못했습니다.",
       "items_unbalanced": "품목의 합이 합계와 맞지 않습니다.",
       "items_uncategorized": "카테고리가 없는 품목이 있습니다.",
       "shipping_uncategorized": "배송비 줄에 카테고리가 없습니다.",
@@ -646,15 +639,15 @@
       "proposal_fallback": "품목별 제안이 거부되어 설명만 제안합니다.",
       "nothing_to_propose": "이 이메일은 이 거래에 추가할 내용이 없습니다.",
       "proposal_refused": "제안이 거부되어 아무것도 제안하지 않았습니다.",
-      "skip_line": "A line this 프로필 skips on was found, so the email was ignored.",
+      "skip_line": "이 프로필이 건너뛰기 대상으로 삼는 줄이 발견되어 메일을 무시했습니다.",
       "wait_line": "주문이 아직 확정되지 않았다는 줄이 있어 이메일을 나중에 다시 읽습니다.",
-      "no_html": "This 프로필 reads the HTML part of the email, and this email has none.",
-      "schema_org": "No 프로필 was needed: the order was read from the structured data (schema.org) in the email.",
+      "no_html": "이 프로필은 메일의 HTML 부분을 읽는데 이 메일에는 없습니다.",
+      "schema_org": "프로필이 필요하지 않았습니다. 주문은 메일의 구조화된 데이터(schema.org)에서 읽었습니다.",
       "item_amount_missing": "품목에 금액이 없고, 이메일에도 그 금액을 정할 단일 합계가 없습니다."
     },
     "reasonUnknown": "사유: {reason}",
     "requestNote": "검토 요청 ({state}): {note}",
-    "parsedHeading": "What the 프로필 read",
+    "parsedHeading": "프로필이 읽은 내용",
     "notParsed": "이 이메일에서는 아직 아무것도 읽지 않았습니다.",
     "candidatesHeading": "일치하는 거래",
     "candidatesHelp": "이 이메일과 똑같이 잘 맞는 거래가 여러 건 있습니다. 이 이메일이 결제한 거래를 선택하세요.",
@@ -674,7 +667,7 @@
     "htmlFrameTitle": "발신자가 서식을 지정한 그대로의 이메일",
     "structured": {
       "heading": "구조화된 데이터(schema.org)",
-      "help": "An order or invoice that the email carries as markup for mail clients. It is read only when no 프로필 applies or the 프로필 finds no total.",
+      "help": "메일 클라이언트용 마크업으로 메일에 포함된 주문 또는 청구서입니다. 적용되는 프로필이 없거나 프로필이 합계를 찾지 못할 때만 읽습니다.",
       "found": "찾음",
       "notFound": "찾지 못함",
       "notFoundHelp": "이메일에 주문 마크업이 없거나, 마크업에 합계도 품목도 없습니다.",
@@ -684,13 +677,13 @@
       "unitPrice": "단가"
     },
     "lines": {
-      "help": "The lines a 프로필's patterns are matched against, numbered as a test's \"Matched by\" list numbers them.",
+      "help": "프로필의 패턴과 비교되는 줄입니다. 테스트의 “일치한 항목” 목록과 같은 방식으로 번호가 매겨집니다.",
       "sourceLabel": "줄 소스",
       "sources": {
         "text": "텍스트",
         "html": "HTML"
       },
-      "noHtml": "This email has no HTML part, so a 프로필 that reads HTML cannot read it.",
+      "noHtml": "이 메일에는 HTML 부분이 없으므로 HTML을 읽는 프로필은 읽을 수 없습니다.",
       "capped": "처음 {max}줄만 읽습니다.",
       "empty": "줄이 없습니다.",
       "listLabel": "이메일의 번호가 매겨진 줄"
@@ -718,6 +711,11 @@
     "ai": {
       "heading": "AI가 사용할 거래 선택",
       "help": "아래 날짜 범위의 거래입니다. 범위는 처음에 구매 전후의 날짜로 설정됩니다. 이메일에 적힌 상품별로 AI가 나눌 거래를 선택하거나, 날짜를 바꿔 더 넓게 찾아보세요.",
+      "linkButton": "이 거래 사용"
+    },
+    "sample": {
+      "heading": "이 메일이 결제한 거래 선택",
+      "help": "아래 날짜 범위의 거래입니다. 범위는 처음에 구매 전후의 날짜로 설정됩니다. 선택한 내용은 마법사에 유지되며 프로필을 확인하는 데 사용됩니다. 메일에는 아무것도 연결되지 않습니다. 더 넓게 찾으려면 날짜를 바꾸세요.",
       "linkButton": "이 거래 사용"
     }
   },
@@ -773,23 +771,16 @@
       "ariaLabel": "이메일 영수증 섹션",
       "overview": "개요",
       "emails": "메일",
-      "profiles": "프로필s",
+      "profiles": "프로필",
       "mailbox": "메일함"
     },
     "demoRestricted": {
       "heading": "데모 모드에서는 사용할 수 없습니다",
-      "body": "Connecting a mailbox and writing 프로필 are disabled in demo mode."
+      "body": "데모 모드에서는 메일함 연결과 프로필 작성이 비활성화됩니다."
     }
   },
   "process": {
-    "button": "모두 처리",
-    "buttonCount": "모두 처리 ({count})",
-    "dialog": {
-      "title": "{count, plural, one {저장된 메일 #건을 처리할까요?} other {저장된 메일 #건을 처리할까요?}}",
-      "message": "Every stored email that has not been read yet, or that a new 프로필 or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
-      "messageDomain": "Every stored email from {domain} that has not been read yet, or that a new 프로필 or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
-      "confirm": "처리"
-    },
+    "retryFailed": "실패한 메일 다시 시도 ({count})",
     "starting": "시작하는 중...",
     "progress": "{processed, plural, one {메일 #건 처리됨} other {메일 #건 처리됨}}, {remaining}건 남음.",
     "cancel": "취소",
@@ -842,17 +833,17 @@
       "open": "검토 수신함 열기"
     },
     "profiles": {
-      "title": "프로필s",
+      "title": "프로필",
       "approved": "승인됨",
       "drafts": "{count, plural, one {초안 #건이 승인을 기다리고 있습니다} other {초안 #건이 승인을 기다리고 있습니다}}.",
-      "manage": "Open the 프로필"
+      "manage": "프로필 열기"
     },
     "uncovered": {
-      "title": "Senders without a 프로필",
-      "help": "These senders sent emails no 프로필 reads. Create a 프로필 for one, or ask the assistant to draft it.",
-      "none": "Every sender of the stored emails is covered by a 프로필.",
+      "title": "프로필이 없는 발신자",
+      "help": "이 발신자들이 보낸 메일은 어떤 프로필도 읽지 않습니다. 그중 하나의 프로필을 만드세요. 프로필 탭의 마법사가 단계별로 안내합니다.",
+      "none": "저장된 메일의 모든 발신자가 프로필로 처리됩니다.",
       "row": "{domain} ({count, plural, one {메일 #건} other {메일 #건}})",
-      "show": "메일 표시"
+      "create": "프로필 만들기"
     }
   },
   "wizard": {
@@ -871,14 +862,127 @@
         "action": "메일 열기"
       },
       "profile": {
-        "title": "Create a 프로필 for a sender",
-        "body": "A 프로필 tells Monize how to read one sender's order confirmations. Write one, or draft it from a stored email.",
-        "action": "Open the 프로필"
+        "title": "발신자용 프로필 만들기",
+        "body": "프로필은 한 발신자의 주문 확인 메일을 Monize가 어떻게 읽을지 알려 줍니다. 직접 작성하거나 저장된 메일로 초안을 작성하세요.",
+        "action": "프로필 열기"
       },
       "review": {
         "title": "제안 검토",
         "body": "각 메일은 거래에 대한 제안이 됩니다. 승인하기 전에는 아무것도 변경되지 않습니다.",
         "action": "검토 수신함 열기"
+      }
+    }
+  },
+  "profileWizard": {
+    "heading": "{domain} 프로필 만들기",
+    "stepsLabel": "마법사 단계",
+    "stepName": "{number}. {name}",
+    "steps": {
+      "samples": "샘플",
+      "generate": "생성",
+      "preview": "미리 보기 및 수락"
+    },
+    "cancel": "취소",
+    "existingDraft": "이 도메인에는 이미 초안 프로필이 있습니다.",
+    "useExistingDraft": "초안으로 미리 보기부터 시작",
+    "uncovered": {
+      "heading": "도메인용 프로필 만들기",
+      "help": "저장된 메일이 있고 승인된 프로필이 없는 발신자 도메인입니다. 하나를 선택하면 마법사가 시작됩니다.",
+      "loading": "발신자 도메인을 불러오는 중",
+      "error": "발신자 도메인을 불러오지 못했습니다.",
+      "retry": "다시 시도",
+      "none": "저장된 메일의 모든 발신자가 프로필로 처리됩니다."
+    },
+    "samples": {
+      "loading": "메일을 불러오는 중",
+      "error": "메일을 불러오지 못했습니다.",
+      "retry": "다시 시도",
+      "empty": {
+        "title": "이 도메인의 메일이 없습니다",
+        "body": "{domain}에서 보낸 저장된 메일이 없습니다."
+      },
+      "help": "메일을 열어 읽고, 그 메일이 결제한 거래를 선택하세요. 그런 다음 프로필을 작성할 메일을 최대 {max}개까지 체크하세요. 메일은 거래가 있어야만 체크할 수 있습니다.",
+      "columns": {
+        "select": "사용",
+        "received": "수신 시각",
+        "email": "메일",
+        "transaction": "거래",
+        "actions": "작업"
+      },
+      "select": "메일 {subject}을(를) 샘플로 사용",
+      "needsTransaction": "먼저 이 메일의 거래를 선택하세요.",
+      "limitReached": "샘플은 최대 {max}개입니다. 다른 것을 선택하려면 하나의 체크를 해제하세요.",
+      "noTransaction": "선택 안 함",
+      "viewEmail": "메일 보기",
+      "chooseTransaction": "거래 선택",
+      "changeTransaction": "거래 변경",
+      "selectedCount": "샘플 {max}개 중 {count}개 체크됨",
+      "continue": "어시스턴트로 계속",
+      "emailTitle": "{subject}",
+      "emailLoading": "메일을 불러오는 중",
+      "emailError": "메일을 불러오지 못했습니다.",
+      "transactionTitle": "{subject}의 거래"
+    },
+    "generate": {
+      "help": "어시스턴트가 이 메일들과 그 메일이 결제한 거래를 읽고 {domain}의 프로필 초안을 작성합니다. 아직 아무것도 승인되지 않았습니다.",
+      "reviseHelp": "어시스턴트에게 바꿀 내용을 알려 주세요. 이 메일과 거래를 바탕으로 같은 초안을 업데이트합니다.",
+      "feedbackLabel": "바꿀 내용",
+      "feedbackPlaceholder": "예: 합계는 소계가 아니라 “결제 금액”이라고 적힌 줄입니다.",
+      "send": "AI에게 보내기",
+      "sendFeedback": "AI에게 메모 보내기",
+      "retry": "AI에게 다시 보내기",
+      "back": "뒤로",
+      "running": "어시스턴트가 프로필을 작성하는 중...",
+      "runningHint": "1분 정도 걸릴 수 있습니다. 이 페이지를 열어 두세요.",
+      "noDraft": "어시스턴트가 초안을 저장하지 않았습니다.",
+      "tryAgain": "다시 보내거나, 뒤로 가서 샘플을 바꿀 수 있습니다.",
+      "failed": "어시스턴트에 연결하지 못했습니다."
+    },
+    "preview": {
+      "loading": "초안으로 메일을 읽는 중...",
+      "error": "미리 보기를 실행하지 못했습니다.",
+      "retry": "다시 시도",
+      "assistantSaid": "어시스턴트의 답변",
+      "help": "이 도메인의 메일에 초안이 적용되는 결과입니다. 저장되거나 연결된 것은 없습니다.",
+      "selectedHeading": "선택한 메일",
+      "othersHeading": "이 도메인의 다른 메일",
+      "othersCapped": "다른 메일 {total}개 중 최신 {shown}개를 표시합니다.",
+      "columns": {
+        "email": "메일",
+        "expected": "예상 거래",
+        "parsed": "초안이 읽은 내용",
+        "agrees": "일치 여부",
+        "outcome": "결과",
+        "matched": "일치한 거래"
+      },
+      "nothingRead": "아무것도 읽지 못했습니다",
+      "notStated": "명시되지 않음",
+      "parsedDate": "날짜: {date}",
+      "parsedTotal": "합계: {total}",
+      "parsedLines": "{count, plural, one {#줄} other {#줄}}",
+      "noExpectation": "없음",
+      "noMatch": "거래 없음",
+      "agreesYes": "예",
+      "agreesNo": "아니요",
+      "agreesUnknown": "확인하지 않음",
+      "nothingToShow": "초안에 표시할 메일이 없습니다.",
+      "backToSamples": "샘플로 돌아가기",
+      "backToAi": "AI로 돌아가기",
+      "accept": "수락하고 처리",
+      "approved": "프로필 승인됨",
+      "changedElsewhere": "프로필이 다른 곳에서 변경되었습니다. 미리 보기를 다시 불러오세요.",
+      "approveFailed": "프로필을 승인하지 못했습니다.",
+      "approvedProcessing": "프로필이 승인되었습니다. {domain}의 저장된 메일을 이 프로필로 읽는 중입니다.",
+      "done": "완료",
+      "outcomes": {
+        "matched": "거래와 일치함",
+        "ambiguous": "여러 거래가 일치함",
+        "unmatched": "일치하는 거래 없음",
+        "parse_failed": "읽을 수 없음",
+        "not_applicable": "이 프로필에서 읽지 않음",
+        "skip_line": "건너뜀 (건너뛰기 줄 발견)",
+        "wait_line": "보류 (주문이 최종 아님)",
+        "no_html": "HTML 부분 없음"
       }
     }
   }

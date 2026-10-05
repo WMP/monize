@@ -392,6 +392,11 @@
     "parserToolReceiptCount": "पार्सर को परखने के लिए 1 से 5 ईमेल बताएँ।",
     "parserToolInvalidSender": "ड्राफ़्ट के लिए एक नाम और shop.example.com जैसे एक से दस प्रेषक डोमेन चाहिए।",
     "parserDraftRequestNotClaimed": "यह पार्सर ड्राफ़्ट अनुरोध आपने नहीं लिया है। पहले इसे ai_review_requests से लें, या ड्राफ़्ट को requestId के बिना सहेजें।",
+    "parserNotDraft": "सहायक केवल ड्राफ़्ट पार्सर को अपडेट कर सकता है। यह पार्सर मंज़ूर हो चुका है।",
+    "generateNoDraft": "सहायक ने कोई ड्राफ़्ट पार्सर नहीं सहेजा। उसका जवाब पढ़ें, नमूने समायोजित करें या नोट जोड़ें, और फिर कोशिश करें।",
+    "generateReceiptOutsideDomain": "कोई ईमेल उस प्रेषक डोमेन से नहीं है जिसके लिए यह पार्सर है।",
+    "previewExpectedNotSelected": "ऐसे ईमेल के लिए अपेक्षित लेन-देन बताया गया जो चुने गए ईमेल में नहीं है।",
+    "previewReceiptOutsideDomain": "कोई ईमेल इस पार्सर के किसी प्रेषक डोमेन से नहीं है।",
     "parserCategoryNameUnknown": "श्रेणी \"{{ name }}\" नहीं मिली। अपनी किसी श्रेणी का नाम उपयोग करें।",
     "parserCategoryNameAmbiguous": "\"{{ name }}\" श्रेणी कई श्रेणियों से मेल खाती है ({{ candidates }})। पूरा नाम उपयोग करें, उदाहरण के लिए \"Parent: Child\"।"
   },

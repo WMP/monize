@@ -392,6 +392,11 @@
     "parserToolReceiptCount": "Indiquez de 1 à 5 e-mails sur lesquels tester l'profil.",
     "parserToolInvalidSender": "Un brouillon nécessite un nom et un à dix domaines d'expéditeur tels que shop.example.com.",
     "parserDraftRequestNotClaimed": "Cette demande de brouillon d'profil n'est pas prise en charge par vous. Prenez-la d'abord en charge avec ai_review_requests, ou enregistrez le brouillon sans requestId.",
+    "parserNotDraft": "Seul un profil brouillon peut être mis à jour par l'assistant. Celui-ci est approuvé.",
+    "generateNoDraft": "L'assistant n'a pas enregistré de profil brouillon. Lisez sa réponse, ajustez les échantillons ou ajoutez une note, puis réessayez.",
+    "generateReceiptOutsideDomain": "Un e-mail ne provient pas du domaine d'expéditeur auquel le profil est destiné.",
+    "previewExpectedNotSelected": "Une transaction attendue a été indiquée pour un e-mail qui ne fait pas partie des e-mails sélectionnés.",
+    "previewReceiptOutsideDomain": "Un e-mail ne provient pas d'un domaine d'expéditeur de ce profil.",
     "parserCategoryNameUnknown": "La catégorie \"{{ name }}\" n'a pas été trouvée. Utilisez le nom de l'une de vos catégories.",
     "parserCategoryNameAmbiguous": "La catégorie \"{{ name }}\" correspond à plusieurs catégories ({{ candidates }}). Utilisez le nom complet, par exemple \"Parent: Child\"."
   },

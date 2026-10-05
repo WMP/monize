@@ -176,7 +176,8 @@
       "message": "现在处理来自 {domains} 的{count, plural, one {# 封已保存邮件} other {# 封已保存邮件}}吗？每封邮件都会用此配置文件重新读取；除非开启了自动应用，否则它提出的提议会在审核收件箱中等待。",
       "confirm": "立即处理",
       "later": "暂不处理"
-    }
+    },
+    "reparse": "重新解析邮件（{count}）"
   },
   "editor": {
     "createTitle": "新建解析器",
@@ -318,16 +319,16 @@
       "ruleCategory": "类别",
       "defaultCategory": "默认类别",
       "shippingCategory": "运费类别",
-      "feesCategory": "Fees category",
-      "balanceTolerance": "Balance tolerance",
-      "fees": "Fees patterns",
+      "feesCategory": "费用类别",
+      "balanceTolerance": "余额容差",
+      "fees": "费用模式",
       "skipLines": "要跳过的行",
       "record": "记录",
-      "label": "label",
-      "value": "value",
-      "within": "within",
-      "line": "line",
-      "optional": "optional",
+      "label": "标签",
+      "value": "值",
+      "within": "范围内",
+      "line": "行",
+      "optional": "可选",
       "paid": "已付金额模式",
       "payee": "商家模式",
       "requireLine": "必需的行",
@@ -337,7 +338,7 @@
       "single": "单个明细",
       "singleName": "单个明细名称",
       "joinWrapped": "合并折行",
-      "ruleField": "field",
+      "ruleField": "字段",
       "reference": "参考号模式",
       "match": "匹配部分",
       "matchBy": "匹配策略",
@@ -530,14 +531,6 @@
       "state": "状态",
       "actions": "操作"
     },
-    "guide": {
-      "heading": "如何创建配置文件",
-      "buttonName": "使用 AI 准备配置文件",
-      "stepSender": "从发件人域云中选择发件人。",
-      "stepTransaction": "为每个电子邮件提供它支付的交易：打开电子邮件并选择交易。",
-      "stepSelect": "勾选这些电子邮件。",
-      "stepPrepare": "按 {button}。助手将编写配置文件，您可以在配置文件中测试并批准。"
-    },
     "transactionSummary": "{date}，{amount}，{payee}",
     "noPayee": "无收款人",
     "noTransaction": "暂无",
@@ -719,6 +712,11 @@
       "heading": "选择供 AI 使用的交易",
       "help": "以下是下方日期范围内的交易，范围起初为购买前后几天。请选择 AI 应按邮件中的商品拆分的那一笔，或修改日期以查看更早或更晚的交易。",
       "linkButton": "使用此交易"
+    },
+    "sample": {
+      "heading": "选择这封邮件所支付的交易",
+      "help": "以下是您在下方日期范围内的交易，范围起初为购买前后的几天。所选交易会保留在向导中，用于检查配置文件；不会与邮件建立任何关联。可更改日期以查找更早或更晚的交易。",
+      "linkButton": "使用此交易"
     }
   },
   "callback": {
@@ -782,14 +780,7 @@
     }
   },
   "process": {
-    "button": "全部处理",
-    "buttonCount": "全部处理（{count}）",
-    "dialog": {
-      "title": "{count, plural, one {处理 # 封已保存邮件？} other {处理 # 封已保存邮件？}}",
-      "message": "每封尚未读取、或可能因新的配置文件或交易而改变结果的已保存邮件，都会被重新读取。除非开启了自动应用，否则它提出的提议会在审核收件箱中等待。",
-      "messageDomain": "来自 {domain} 的每封尚未读取、或可能因新的配置文件或交易而改变结果的已保存邮件，都会被重新读取。除非开启了自动应用，否则它提出的提议会在审核收件箱中等待。",
-      "confirm": "处理"
-    },
+    "retryFailed": "重试失败的邮件（{count}）",
     "starting": "正在开始...",
     "progress": "{processed, plural, one {已处理 # 封邮件} other {已处理 # 封邮件}}，剩余 {remaining} 封。",
     "cancel": "取消",
@@ -849,10 +840,10 @@
     },
     "uncovered": {
       "title": "没有配置文件的发件人",
-      "help": "这些发件人发来的邮件没有任何配置文件读取。请为其中之一创建配置文件，或让助手起草。",
+      "help": "这些发件人发来的邮件没有任何配置文件读取。请为其中之一创建配置文件：“配置文件”标签页上的向导会逐步引导您。",
       "none": "已保存邮件的每个发件人都有配置文件覆盖。",
       "row": "{domain}（{count, plural, one {# 封邮件} other {# 封邮件}}）",
-      "show": "显示邮件"
+      "create": "创建配置文件"
     }
   },
   "wizard": {
@@ -879,6 +870,119 @@
         "title": "审核提议",
         "body": "每封邮件都会成为针对某笔交易的提议。在您批准之前不会更改任何内容。",
         "action": "打开审核收件箱"
+      }
+    }
+  },
+  "profileWizard": {
+    "heading": "为 {domain} 创建配置文件",
+    "stepsLabel": "向导步骤",
+    "stepName": "{number}. {name}",
+    "steps": {
+      "samples": "样本",
+      "generate": "生成",
+      "preview": "预览并接受"
+    },
+    "cancel": "取消",
+    "existingDraft": "此域名已有配置文件草稿。",
+    "useExistingDraft": "从预览开始，使用该草稿",
+    "uncovered": {
+      "heading": "为域名创建配置文件",
+      "help": "已保存邮件但没有已批准配置文件的发件人域名。选择一个以启动向导。",
+      "loading": "正在加载发件人域名",
+      "error": "无法加载发件人域名。",
+      "retry": "重试",
+      "none": "已保存邮件的每个发件人都有配置文件。"
+    },
+    "samples": {
+      "loading": "正在加载邮件",
+      "error": "无法加载邮件。",
+      "retry": "重试",
+      "empty": {
+        "title": "此域名没有邮件",
+        "body": "没有任何已保存的邮件的发件人位于 {domain}。"
+      },
+      "help": "打开邮件进行阅读，并选择它所支付的交易。然后勾选最多 {max} 封邮件，用来编写配置文件；邮件只有在有了交易之后才能勾选。",
+      "columns": {
+        "select": "使用",
+        "received": "接收时间",
+        "email": "邮件",
+        "transaction": "交易",
+        "actions": "操作"
+      },
+      "select": "将邮件 {subject} 用作样本",
+      "needsTransaction": "请先为这封邮件选择交易。",
+      "limitReached": "最多 {max} 个样本。取消勾选一个后才能选择其他的。",
+      "noTransaction": "未选择",
+      "viewEmail": "查看邮件",
+      "chooseTransaction": "选择交易",
+      "changeTransaction": "更改交易",
+      "selectedCount": "已勾选 {count}/{max} 个样本",
+      "continue": "继续前往助手",
+      "emailTitle": "{subject}",
+      "emailLoading": "正在加载邮件",
+      "emailError": "无法加载邮件。",
+      "transactionTitle": "{subject} 的交易"
+    },
+    "generate": {
+      "help": "助手会阅读这些邮件及其所支付的交易，并为 {domain} 编写配置文件草稿。目前尚未批准任何内容。",
+      "reviseHelp": "告诉助手需要更改什么。它会根据这些邮件和交易更新同一份草稿。",
+      "feedbackLabel": "需要更改什么",
+      "feedbackPlaceholder": "例如：合计是标有“实付金额”的那一行，而不是小计。",
+      "send": "发送给 AI",
+      "sendFeedback": "向 AI 发送备注",
+      "retry": "再次发送给 AI",
+      "back": "返回",
+      "running": "助手正在编写配置文件...",
+      "runningHint": "这可能需要一分钟。请保持此页面打开。",
+      "noDraft": "助手没有保存草稿。",
+      "tryAgain": "您可以再次发送，或返回并更改样本。",
+      "failed": "无法连接到助手。"
+    },
+    "preview": {
+      "loading": "正在用草稿读取邮件...",
+      "error": "无法运行预览。",
+      "retry": "重试",
+      "assistantSaid": "助手说",
+      "help": "这是草稿对此域名邮件的处理结果。尚未保存或关联任何内容。",
+      "selectedHeading": "所选邮件",
+      "othersHeading": "此域名的其他邮件",
+      "othersCapped": "显示另外 {total} 封邮件中最新的 {shown} 封。",
+      "columns": {
+        "email": "邮件",
+        "expected": "预期交易",
+        "parsed": "草稿读取到的内容",
+        "agrees": "是否一致",
+        "outcome": "结果",
+        "matched": "匹配的交易"
+      },
+      "nothingRead": "未能读取任何内容",
+      "notStated": "未说明",
+      "parsedDate": "日期：{date}",
+      "parsedTotal": "合计：{total}",
+      "parsedLines": "{count, plural, one {# 行} other {# 行}}",
+      "noExpectation": "无",
+      "noMatch": "无交易",
+      "agreesYes": "是",
+      "agreesNo": "否",
+      "agreesUnknown": "未检查",
+      "nothingToShow": "草稿没有可显示的邮件。",
+      "backToSamples": "返回样本",
+      "backToAi": "返回 AI",
+      "accept": "接受并处理",
+      "approved": "配置文件已批准",
+      "changedElsewhere": "配置文件已在其他地方更改。请重新加载预览。",
+      "approveFailed": "无法批准配置文件。",
+      "approvedProcessing": "配置文件已批准。{domain} 的已保存邮件正在用它读取。",
+      "done": "完成",
+      "outcomes": {
+        "matched": "已匹配交易",
+        "ambiguous": "有多笔交易匹配",
+        "unmatched": "没有匹配的交易",
+        "parse_failed": "无法读取",
+        "not_applicable": "此配置文件未读取",
+        "skip_line": "已跳过（发现跳过行）",
+        "wait_line": "已搁置（订单未最终确定）",
+        "no_html": "没有 HTML 部分"
       }
     }
   }

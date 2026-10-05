@@ -81,7 +81,7 @@
       "enabledLabel": "Lire la boîte mail automatiquement",
       "enabledHelp": "Ne contrôle que la lecture automatique : lorsque cette option est activée, Monize relève la boîte mail toutes les 15 minutes. La désactiver ne déconnecte pas la boîte mail, et Relever maintenant la relève qu'elle soit activée ou non.",
       "aiModeLabel": "Mode IA",
-      "aiModeHelp": "Whether the poll may use the AI provider you configured on receipts. Recognize with AI and Préparer un profil avec l'IA ask the assistant in the chat whatever the mode, and an AI answer is always a proposal or a draft that you approve.",
+      "aiModeHelp": "Indique si la relève peut utiliser le fournisseur d'IA que vous avez configuré pour les reçus. Reconnaître avec l'IA et Préparer un profil avec l'IA sollicitent l'assistant dans le chat quel que soit le mode, et une réponse de l'IA est toujours une proposition ou un brouillon que vous approuvez.",
       "aiModes": {
         "off": "Désactivé",
         "on_demand": "À la demande",
@@ -89,13 +89,13 @@
       },
       "aiModeDescriptions": {
         "off": "La relève ne sollicite jamais l'IA pour les reçus.",
-        "on_demand": "The poll never calls the AI. You ask the assistant yourself with Recognize with AI or Préparer un profil avec l'IA.",
-        "automatic": "The poll asks the AI about a matched receipt that no approved profil could read completely, and drafts a profil for a sender that has none."
+        "on_demand": "La relève n'appelle jamais l'IA. Vous sollicitez vous-même l'assistant avec Reconnaître avec l'IA ou Préparer un profil avec l'IA.",
+        "automatic": "La relève interroge l'IA sur un reçu associé qu'aucun profil approuvé n'a pu lire entièrement, et rédige un profil pour un expéditeur qui n'en a pas."
       },
       "autoApplyLabel": "Appliquer les propositions automatiquement",
-      "autoApplyHelp": "Off by default. A proposal is applied without asking only when all of these hold: an approved profil read the whole email, the transaction was found by an order number or a reference, or by exact amount and payee, with a single candidate, and the proposal adds up to the cent. Everything else waits for your approval.",
-      "profileLimitLabel": "Count profil proposals toward the daily AI limit",
-      "profileLimitHelp": "On by default: an edit a profil proposes from an email is counted in the daily limit of AI-proposed changes, like any other AI proposal. Turn it off when a large batch of stored emails would otherwise use the limit up. Only proposals from profils are exempt; every proposal still waits for your approval."
+      "autoApplyHelp": "Désactivé par défaut. Une proposition est appliquée sans demander uniquement lorsque toutes ces conditions sont réunies : un profil approuvé a lu l'e-mail en entier, la transaction a été trouvée par un numéro de commande ou une référence, ou par montant et bénéficiaire exacts, avec un seul candidat, et la proposition tombe juste au centime. Tout le reste attend votre approbation.",
+      "profileLimitLabel": "Compter les propositions des profils dans la limite quotidienne de l'IA",
+      "profileLimitHelp": "Activé par défaut : une modification qu'un profil propose à partir d'un e-mail compte dans la limite quotidienne de modifications proposées par l'IA, comme toute autre proposition de l'IA. Désactivez-le quand un gros lot d'e-mails enregistrés épuiserait la limite. Seules les propositions issues de profils sont exemptées ; chaque proposition attend toujours votre approbation."
     },
     "status": {
       "lastPolled": "Dernière relève",
@@ -118,16 +118,16 @@
   },
   "parsers": {
     "heading": "Profils",
-    "description": "A profil reads the order confirmations of one sender with patterns you write or review, and says how the bank transaction is found. Once approved it runs without the AI.",
-    "newButton": "New profil",
-    "loading": "Loading profils",
+    "description": "Un profil lit les confirmations de commande d'un expéditeur avec des motifs que vous écrivez ou vérifiez, et indique comment la transaction bancaire est retrouvée. Une fois approuvé, il fonctionne sans l'IA.",
+    "newButton": "Nouveau profil",
+    "loading": "Chargement des profils",
     "error": {
-      "title": "The profils could not be loaded",
+      "title": "Les profils n'ont pas pu être chargés",
       "body": "La requête a échoué. Réessayez.",
       "retry": "Réessayer"
     },
     "empty": {
-      "title": "No profils yet",
+      "title": "Aucun profil pour l'instant",
       "body": "Créez-en un pour un expéditeur de confirmations de commande, ou rédigez-en un à partir d'un e-mail enregistré sur la page Reçus par e-mail."
     },
     "columns": {
@@ -153,19 +153,19 @@
       "viewJson": "Afficher le JSON"
     },
     "toasts": {
-      "approved": "Profil approved",
-      "approveFailed": "Could not approve the profil",
-      "changedElsewhere": "This profil was changed elsewhere. The list has been reloaded.",
-      "deleted": "Profil deleted",
-      "deleteFailed": "Could not delete the profil"
+      "approved": "Profil approuvé",
+      "approveFailed": "Le profil n'a pas pu être approuvé",
+      "changedElsewhere": "Ce profil a été modifié ailleurs. La liste a été rechargée.",
+      "deleted": "Profil supprimé",
+      "deleteFailed": "Le profil n'a pas pu être supprimé"
     },
     "deleteDialog": {
-      "title": "Delete the profil?",
-      "message": "The profil {name} will be deleted. Emails it already read keep their results."
+      "title": "Supprimer le profil ?",
+      "message": "Le profil {name} sera supprimé. Les e-mails qu'il a déjà lus conservent leurs résultats."
     },
     "jsonDialog": {
       "title": "Définition de {name}",
-      "help": "The profil definition as it is stored. The matching section shows the settings in effect, defaults included. It is read-only here; use Edit to change it.",
+      "help": "La définition du profil telle qu'elle est enregistrée. La section de correspondance montre les réglages en vigueur, valeurs par défaut comprises. Elle est en lecture seule ici ; utilisez Modifier pour la changer.",
       "contentLabel": "JSON de la définition",
       "copy": "Copier",
       "copied": "JSON copié",
@@ -173,22 +173,23 @@
     },
     "processOffer": {
       "title": "Traiter les e-mails enregistrés maintenant ?",
-      "message": "{count, plural, one {Process the # stored email} other {Process the # stored emails}} from {domains} now? Each one is read with this profil again; what it proposes waits in the review inbox unless auto-apply is on.",
+      "message": "Traiter maintenant {count, plural, one {# e-mail enregistré} other {# e-mails enregistrés}} de {domains} ? Chacun est relu avec ce profil ; ce qu'il propose attend dans la boîte de révision, sauf si l'application automatique est activée.",
       "confirm": "Traiter maintenant",
       "later": "Pas maintenant"
-    }
+    },
+    "reparse": "Relire les e-mails ({count})"
   },
   "editor": {
-    "createTitle": "New profil",
-    "editTitle": "Edit profil",
+    "createTitle": "Nouveau profil",
+    "editTitle": "Modifier le profil",
     "loading": "Chargement des bénéficiaires et des catégories",
     "lookupsError": {
       "title": "Impossible de charger les bénéficiaires et les catégories",
       "body": "Les sélecteurs en ont besoin, l'éditeur ne peut donc pas encore s'ouvrir. Réessayez.",
       "retry": "Réessayer"
     },
-    "draftNote": "This profil is a draft. It reads nothing until you approve it.",
-    "draftAiNote": "The AI drafted this profil from your sample emails. Test it against each of them and check every pattern, then approve it from the list. It reads nothing until you do.",
+    "draftNote": "Ce profil est un brouillon. Il ne lit rien tant que vous ne l'avez pas approuvé.",
+    "draftAiNote": "L'IA a rédigé ce profil à partir de vos e-mails d'exemple. Testez-le sur chacun d'eux et vérifiez chaque motif, puis approuvez-le depuis la liste. Il ne lit rien tant que vous ne l'avez pas fait.",
     "identityHeading": "Les e-mails qu'il lit",
     "nameLabel": "Nom",
     "payeeLabel": "Bénéficiaire",
@@ -197,12 +198,12 @@
     "domainsHelp": "Un par ligne, jusqu'à {max}. Un sous-domaine d'un domaine listé correspond aussi.",
     "subjectLabel": "L'objet contient",
     "subjectHelp": "Facultatif, un par ligne, jusqu'à {max}. L'objet doit contenir au moins l'un d'eux, sans tenir compte de la casse.",
-    "saveButton": "Save profil",
-    "created": "Profil created",
-    "updated": "Profil saved",
-    "saveFailed": "Could not save the profil",
-    "conflict": "This profil was changed elsewhere since you opened it. Reload it to see the current version. Your edits here are not saved.",
-    "conflictReload": "Reload the profil",
+    "saveButton": "Enregistrer le profil",
+    "created": "Profil créé",
+    "updated": "Profil enregistré",
+    "saveFailed": "Le profil n'a pas pu être enregistré",
+    "conflict": "Ce profil a été modifié ailleurs depuis que vous l'avez ouvert. Rechargez-le pour voir la version actuelle. Vos modifications ici ne sont pas enregistrées.",
+    "conflictReload": "Recharger le profil",
     "patterns": {
       "sourceLabel": "Source des lignes",
       "sourceHint": "Avec quelle représentation de l'e-mail les motifs ci-dessous sont comparés. Texte est la partie texte de l'e-mail, une ligne par saut de ligne. HTML lit la partie HTML : chaque bloc et chaque cellule de tableau devient une ligne à part, de sorte qu'un nom de produit que le texte répartit sur plusieurs lignes reste entier. La vue Lignes de l'e-mail montre exactement ce que donne chaque source.",
@@ -217,27 +218,27 @@
       "amountHint": "Doit capturer {capture}. Exemple : Total de la commande {capture}",
       "shippingLabel": "Motifs des frais de livraison",
       "discountLabel": "Motifs de la remise",
+      "feesLabel": "Motifs des frais",
       "itemsHeading": "Lignes d'articles",
       "startAfterLabel": "Les articles commencent après",
       "startAfterHint": "Facultatif. Les articles sont lus à partir de la ligne qui suit la première ligne contenant ce texte.",
       "stopAtLabel": "Les articles s'arrêtent à",
       "stopAtHint": "Facultatif. Les articles se terminent avant la première ligne contenant ce texte.",
       "itemPatternsLabel": "Motifs des articles",
-      "itemPatternsHint": "Doit capturer {name} et soit {amount} (le total de la ligne), soit {price} (le prix unitaire, éventuellement avec {qty}), jamais les deux. Exemple : {name} x {qty} {price}",
-      "feesLabel": "Fees patterns"
+      "itemPatternsHint": "Doit capturer {name} et soit {amount} (le total de la ligne), soit {price} (le prix unitaire, éventuellement avec {qty}), jamais les deux. Exemple : {name} x {qty} {price}"
     },
     "categories": {
+      "heading": "Catégories",
+      "help": "Saisissez le nom d'une catégorie et choisissez-la dans la liste. Le nom est enregistré dans le profil, et la catégorie doit exister quand le profil est enregistré.",
       "categoryPlaceholder": "Aucune catégorie",
       "defaultLabel": "Catégorie par défaut",
       "defaultHelp": "Utilisée pour les articles qu'aucune règle ne retient.",
       "shippingLabel": "Catégorie de livraison",
       "shippingHelp": "La catégorie de la ligne de livraison.",
-      "heading": "Categories",
-      "help": "Type a category name and pick it from the list. The name is stored in the profil, and the category must exist when the profil is saved.",
-      "feesLabel": "Fees category",
-      "feesHelp": "The category of the fees line.",
-      "unknownCategory": "There is no category named {name}. Pick one from the list, or create it first.",
-      "rulesInJson": "Category rules by item name are an advanced option: add them to the profil definition in the JSON mode."
+      "feesLabel": "Catégorie des frais",
+      "feesHelp": "La catégorie de la ligne de frais.",
+      "unknownCategory": "Il n'existe aucune catégorie nommée {name}. Choisissez-en une dans la liste, ou créez-la d'abord.",
+      "rulesInJson": "Les règles de catégorie par nom d'article sont une option avancée : ajoutez-les à la définition du profil en mode JSON."
     },
     "mode": {
       "label": "Mode d'édition",
@@ -247,13 +248,14 @@
       "jsonInvalid": "Le JSON n'est pas encore valide, le formulaire ne peut donc pas être affiché. Corrigez-le d'abord."
     },
     "json": {
-      "label": "Profil definition (JSON)",
+      "label": "Définition du profil (JSON)",
       "help": "La même définition que celle construite par le formulaire. Le serveur la vérifie à l'enregistrement, et le test ci-dessous la lit telle qu'elle est maintenant.",
-      "parseError": "This is not valid JSON, or it is not a JSON object. Fix it to save or test the profil."
+      "parseError": "Ce n'est pas du JSON valide, ou ce n'est pas un objet JSON. Corrigez-le pour enregistrer ou tester le profil."
     },
     "matching": {
       "heading": "Association",
       "help": "Comment on retrouve la transaction bancaire qu'un e-mail a payée. Les stratégies sont essayées dans l'ordre : la première qui laisse exactement une transaction tranche, plusieurs transactions sont ambiguës, et aucune passe à la suivante.",
+      "instruction": "Le mieux est un numéro de référence tiré de la description de l'opération bancaire. S'il n'y en a pas, la date et le montant sont utilisés. Par défaut, les stratégies sont essayées dans cet ordre : référence (quand le profil a des motifs de référence), numéro de commande, montant et bénéficiaire, montant et date.",
       "referenceLabel": "Motifs de référence",
       "referenceHint": "L'identifiant que la boutique ou la passerelle de paiement place dans l'opération bancaire, comme un libellé de relevé ou un intitulé de virement. Doit capturer {capture}.",
       "strategiesLabel": "Stratégies, dans l'ordre où elles sont essayées",
@@ -279,12 +281,11 @@
       "daysAfterLabel": "Jours après l'achat",
       "daysHint": "La fenêtre autour de la date d'achat. Par défaut {default}, au maximum {max}.",
       "toleranceLabel": "Tolérance du montant",
-      "toleranceHint": "Écart maximal entre le montant de la banque et le total de l'e-mail. Par défaut 0, au maximum {max}.",
-      "instruction": "Best is a reference number taken from the bank operation description. If there is none, the date and the amount are used. By default the strategies are tried in this order: reference (when the profil has reference patterns), order number, amount and payee, amount and date."
+      "toleranceHint": "Écart maximal entre le montant de la banque et le total de l'e-mail. Par défaut 0, au maximum {max}."
     },
     "proposal": {
       "heading": "Proposition",
-      "tagLabel": "Add a tag to the transactions this profil categorizes",
+      "tagLabel": "Ajouter une étiquette aux transactions que ce profil catégorise",
       "tagHelp": "L'étiquette est créée si vous n'en avez pas une de ce nom. Elle est affichée sur la proposition, et rien n'est écrit tant que vous ne l'approuvez pas.",
       "tagNameLabel": "Nom de l'étiquette",
       "aiCategoriesLabel": "Laisser l'IA choisir la catégorie des articles qu'aucune règle ne couvre",
@@ -292,7 +293,7 @@
     }
   },
   "problems": {
-    "heading": "The profil definition is not valid:",
+    "heading": "La définition du profil n'est pas valide :",
     "item": "{where} : {problem}",
     "paths": {
       "definition": "La définition",
@@ -318,13 +319,16 @@
       "ruleCategory": "catégorie",
       "defaultCategory": "Catégorie par défaut",
       "shippingCategory": "Catégorie de livraison",
+      "feesCategory": "Catégorie des frais",
+      "balanceTolerance": "Tolérance du solde",
+      "fees": "Motifs des frais",
       "skipLines": "Lignes à ignorer",
-      "record": "Record",
-      "label": "label",
-      "value": "value",
-      "within": "within",
-      "line": "line",
-      "optional": "optional",
+      "record": "Enregistrement",
+      "label": "étiquette",
+      "value": "valeur",
+      "within": "dans",
+      "line": "ligne",
+      "optional": "facultatif",
       "paid": "Motifs du montant payé",
       "payee": "Motifs du commerçant",
       "requireLine": "Lignes obligatoires",
@@ -334,7 +338,7 @@
       "single": "Article unique",
       "singleName": "Nom de l'article unique",
       "joinWrapped": "Joindre les lignes coupées",
-      "ruleField": "field",
+      "ruleField": "champ",
       "reference": "Motifs de référence",
       "match": "La section d'association",
       "matchBy": "Stratégies d'association",
@@ -343,14 +347,11 @@
       "matchDaysAfter": "Jours après l'achat",
       "matchTolerance": "Tolérance du montant",
       "tag": "Étiquette",
-      "aiCategories": "Catégories de l'IA",
-      "feesCategory": "Fees category",
-      "balanceTolerance": "Balance tolerance",
-      "fees": "Fees patterns"
+      "aiCategories": "Catégories de l'IA"
     },
     "codes": {
       "not_object": "n'est pas une définition valide",
-      "unknown_key": "is not something a profil can have",
+      "unknown_key": "n'est pas quelque chose qu'un profil peut avoir",
       "unsupported_version": "est une version que ce serveur ne lit pas (utilisez la version 2)",
       "invalid_type": "a un mauvais type de valeur",
       "empty": "ne doit pas être vide",
@@ -403,10 +404,10 @@
     "unmatched": "Aucune transaction ne correspond, sur {count, plural, one {# candidate} other {# candidates}}.",
     "jsonInvalid": "Le JSON n'est pas valide, il n'y a donc encore rien à tester.",
     "outcome": {
-      "not_applicable": "This profil would not read this email: none of its required lines is in it, so the next profil for the sender would be tried.",
-      "skip_line": "This profil would set this email aside: a line it skips on is in it.",
-      "wait_line": "This profil would hold this email: a line says the order is not final, so it is read again later.",
-      "no_html": "This profil reads the HTML part of the email, and this email has none, so it would be marked as unreadable (no HTML)."
+      "not_applicable": "Ce profil ne lirait pas cet e-mail : aucune de ses lignes obligatoires n'y figure, donc le profil suivant de l'expéditeur serait essayé.",
+      "skip_line": "Ce profil mettrait cet e-mail de côté : il contient une ligne qui le fait ignorer.",
+      "wait_line": "Ce profil retiendrait cet e-mail : une ligne indique que la commande n'est pas définitive, donc il est relu plus tard.",
+      "no_html": "Ce profil lit la partie HTML de l'e-mail, et cet e-mail n'en a pas, donc il serait marqué comme illisible (pas de HTML)."
     },
     "matchedBy": {
       "heading": "Trouvé par",
@@ -503,6 +504,7 @@
     },
     "filter": {
       "label": "Filtrer par statut",
+      "option": "{label} ({count})",
       "all": "Tous",
       "pending": "En attente de lecture",
       "skipped": "Omis",
@@ -512,15 +514,14 @@
       "ambiguous": "Plusieurs transactions conviennent",
       "review_conflict": "Une autre demande est ouverte",
       "review": "En cours de révision",
-      "ignored": "Ignoré",
-      "option": "{label} ({count})"
+      "ignored": "Ignoré"
     },
     "domainFilter": {
       "label": "Domaine de l'expéditeur",
       "all": "Tous les expéditeurs",
       "option": "{domain} ({count})",
-      "help": "Showing emails from {domain} and its sub-domains. Select several of them to draft one profil for the sender.",
-      "unknown": "The sender counts could not be loaded."
+      "unknown": "Le nombre d'e-mails par expéditeur n'a pas pu être chargé.",
+      "help": "Affichage des e-mails de {domain} et de ses sous-domaines. Sélectionnez-en plusieurs pour rédiger un profil pour l'expéditeur."
     },
     "columns": {
       "select": "Sélectionner",
@@ -551,20 +552,20 @@
       "reprocess": "Retraiter",
       "link": "Choisir la transaction",
       "recognizeAi": "Reconnaître avec l'IA",
+      "approve": "Approuver",
       "draftParser": "Préparer un profil avec l'IA",
-      "createParser": "Create profil",
-      "ignore": "Ignorer",
-      "approve": "Approve"
+      "createParser": "Créer un profil",
+      "ignore": "Ignorer"
     },
     "toasts": {
+      "approved": "Proposition approuvée",
+      "approveFailed": "La proposition n'a pas pu être approuvée",
       "reprocessed": "E-mail retraité",
       "reprocessFailed": "Impossible de retraiter l'e-mail",
       "ignored": "E-mail ignoré",
       "ignoreFailed": "Impossible d'ignorer l'e-mail",
       "deleted": "E-mail supprimé",
-      "deleteFailed": "Impossible de supprimer l'e-mail",
-      "approved": "Proposal approved",
-      "approveFailed": "Could not approve the proposal"
+      "deleteFailed": "Impossible de supprimer l'e-mail"
     },
     "ignoreDialog": {
       "title": "Ignorer cet e-mail ?",
@@ -578,27 +579,19 @@
     "selection": {
       "label": "E-mails sélectionnés",
       "select": "Sélectionner {subject}",
+      "selectAll": "Sélectionner tous les e-mails de cette liste (au maximum {max})",
       "count": "{count, plural, one {# e-mail sélectionné} other {# e-mails sélectionnés}} (au plus {max})",
       "draftButton": "Préparer un profil avec l'IA ({count})",
       "clear": "Effacer la sélection",
-      "differentSenders": "The selected emails come from different senders ({domains}). A profil reads one sender's emails, so select emails from one sender.",
-      "selectAll": "Select all emails on this list (at most {max})"
+      "differentSenders": "Les e-mails sélectionnés viennent d'expéditeurs différents ({domains}). Un profil lit les e-mails d'un seul expéditeur : sélectionnez des e-mails d'un seul expéditeur."
     },
     "draft": {
-      "failed": "Could not start drafting a profil",
+      "failed": "Impossible de démarrer la rédaction d'un profil",
       "queued": "En file d'attente : la demande attend un agent dans la boîte de révision par l'IA. Aucun assistant n'est disponible pour répondre maintenant.",
       "handoffFailed": "La demande est en file d'attente, mais les e-mails n'ont pas pu être ouverts dans le chat. Elle attend un agent dans la boîte de révision par l'IA.",
       "inboxLink": "Ouvrir la boîte de révision par l'IA",
       "opened": "Le chat est ouvert avec les e-mails joints. Lisez le message et appuyez sur Envoyer.",
       "chatPrompt": "Crée un profil de reçus par e-mail pour {count, plural, one {cet e-mail de commande} other {ces # e-mails de commande}} de {domain}. Prends en charge la demande de revue IA {requestId}, teste ton profil sur chaque e-mail joint avec l'outil email_receipt_profiles, corrige-le jusqu'à ce que chacun soit lu entièrement, puis enregistre-le comme brouillon pour la demande {requestId}."
-    },
-    "guide": {
-      "heading": "How to create a profil",
-      "buttonName": "Préparer un profil avec l'IA",
-      "stepSender": "Choose a sender in the cloud of sender domains.",
-      "stepTransaction": "Give each of its emails the transaction it paid for: open the email and choose the transaction.",
-      "stepSelect": "Tick those emails.",
-      "stepPrepare": "Press {button}. The assistant writes the profil, and you test and approve it in the profils."
     }
   },
   "detail": {
@@ -635,10 +628,10 @@
     "reasons": {
       "too_large": "L'e-mail dépasse la limite de taille, il a donc été enregistré sans être lu.",
       "undecodable": "L'e-mail n'a pas pu être décodé, il a donc été enregistré sans être lu.",
-      "draft_failed": "The AI could not draft a profil for this sender.",
-      "parser_invalid": "The profil for this sender is not valid. Edit it in the profil settings.",
-      "no_total": "The profil found no total in this email.",
-      "no_items": "The profil found no line items.",
+      "draft_failed": "L'IA n'a pas pu rédiger un profil pour cet expéditeur.",
+      "parser_invalid": "Le profil de cet expéditeur n'est pas valide. Modifiez-le dans les réglages des profils.",
+      "no_total": "Le profil n'a trouvé aucun total dans cet e-mail.",
+      "no_items": "Le profil n'a trouvé aucune ligne d'article.",
       "items_unbalanced": "Les lignes d'articles ne s'additionnent pas au total.",
       "items_uncategorized": "Certaines lignes d'articles n'ont pas de catégorie.",
       "shipping_uncategorized": "La ligne de livraison n'a pas de catégorie.",
@@ -646,15 +639,15 @@
       "proposal_fallback": "La proposition détaillée a été refusée, seule une description est donc proposée.",
       "nothing_to_propose": "L'e-mail n'apporte rien à cette transaction.",
       "proposal_refused": "La proposition a été refusée, rien n'a donc été proposé.",
-      "skip_line": "A line this profil skips on was found, so the email was ignored.",
+      "skip_line": "Une ligne qui fait ignorer l'e-mail à ce profil a été trouvée, donc l'e-mail a été ignoré.",
       "wait_line": "Une ligne indique que la commande n'est pas encore définitive, l'e-mail sera donc relu plus tard.",
-      "no_html": "This profil reads the HTML part of the email, and this email has none.",
-      "schema_org": "No profil was needed: the order was read from the structured data (schema.org) in the email.",
+      "no_html": "Ce profil lit la partie HTML de l'e-mail, et cet e-mail n'en a pas.",
+      "schema_org": "Aucun profil n'était nécessaire : la commande a été lue à partir des données structurées (schema.org) de l'e-mail.",
       "item_amount_missing": "Un article n'a pas de montant, et l'e-mail n'a pas de total unique à lui attribuer."
     },
     "reasonUnknown": "Motif : {reason}",
     "requestNote": "Demande de révision ({state}) : {note}",
-    "parsedHeading": "What the profil read",
+    "parsedHeading": "Ce que le profil a lu",
     "notParsed": "Rien n'a encore été lu dans cet e-mail.",
     "candidatesHeading": "Transactions qui conviennent",
     "candidatesHelp": "Plusieurs transactions conviennent aussi bien à cet e-mail. Choisissez celle qu'il a réglée.",
@@ -674,7 +667,7 @@
     "htmlFrameTitle": "L'e-mail tel que son expéditeur l'a mis en forme",
     "structured": {
       "heading": "Données structurées (schema.org)",
-      "help": "An order or invoice that the email carries as markup for mail clients. It is read only when no profil applies or the profil finds no total.",
+      "help": "Une commande ou facture que l'e-mail contient sous forme de balisage pour les clients de messagerie. Elle n'est lue que si aucun profil ne s'applique ou si le profil ne trouve pas de total.",
       "found": "Trouvées",
       "notFound": "Introuvables",
       "notFoundHelp": "L'e-mail ne contient aucun balisage de commande, ou celui-ci n'indique ni total ni articles.",
@@ -684,13 +677,13 @@
       "unitPrice": "Prix unitaire"
     },
     "lines": {
-      "help": "The lines a profil's patterns are matched against, numbered as a test's \"Matched by\" list numbers them.",
+      "help": "Les lignes auxquelles les motifs d'un profil sont comparés, numérotées comme la liste « Trouvé par » d'un test les numérote.",
       "sourceLabel": "Source des lignes",
       "sources": {
         "text": "Texte",
         "html": "HTML"
       },
-      "noHtml": "This email has no HTML part, so a profil that reads HTML cannot read it.",
+      "noHtml": "Cet e-mail n'a pas de partie HTML, donc un profil qui lit le HTML ne peut pas le lire.",
       "capped": "Seules les {max} premières lignes sont lues.",
       "empty": "Aucune ligne.",
       "listLabel": "Lignes numérotées de l'e-mail"
@@ -718,6 +711,11 @@
     "ai": {
       "heading": "Choisir la transaction pour l'IA",
       "help": "Voici vos transactions de la plage de dates ci-dessous, qui commence par les jours autour de l'achat. Choisissez celle que l'IA doit répartir selon les produits de l'e-mail, ou modifiez les dates pour chercher plus loin.",
+      "linkButton": "Utiliser cette transaction"
+    },
+    "sample": {
+      "heading": "Choisissez la transaction réglée par cet e-mail",
+      "help": "Voici vos transactions de la plage de dates ci-dessous, qui commence par les jours autour de l'achat. Le choix est conservé dans le guide et sert à vérifier le profil ; rien n'est lié à l'e-mail. Modifiez les dates pour chercher plus loin.",
       "linkButton": "Utiliser cette transaction"
     }
   },
@@ -777,19 +775,12 @@
       "mailbox": "Boîte mail"
     },
     "demoRestricted": {
-      "heading": null,
-      "body": "Connecting a mailbox and writing profils are disabled in demo mode."
+      "heading": "Restreint en mode démo",
+      "body": "La connexion d'une boîte mail et la rédaction de profils sont désactivées en mode démo."
     }
   },
   "process": {
-    "button": "Tout traiter",
-    "buttonCount": "Tout traiter ({count})",
-    "dialog": {
-      "title": "{count, plural, one {Traiter # e-mail enregistré ?} other {Traiter # e-mails enregistrés ?}}",
-      "message": "Every stored email that has not been read yet, or that a new profil or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
-      "messageDomain": "Every stored email from {domain} that has not been read yet, or that a new profil or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
-      "confirm": "Traiter"
-    },
+    "retryFailed": "Réessayer les e-mails en échec ({count})",
     "starting": "Démarrage...",
     "progress": "{processed, plural, one {# e-mail traité} other {# e-mails traités}}, il en reste {remaining}.",
     "cancel": "Annuler",
@@ -845,14 +836,14 @@
       "title": "Profils",
       "approved": "approuvés",
       "drafts": "{count, plural, one {# brouillon attend votre approbation} other {# brouillons attendent votre approbation}}.",
-      "manage": "Open the profils"
+      "manage": "Ouvrir les profils"
     },
     "uncovered": {
-      "title": "Senders without a profil",
-      "help": "These senders sent emails no profil reads. Create a profil for one, or ask the assistant to draft it.",
-      "none": "Every sender of the stored emails is covered by a profil.",
+      "title": "Expéditeurs sans profil",
+      "help": "Ces expéditeurs ont envoyé des e-mails qu'aucun profil ne lit. Créez un profil pour l'un d'eux : le guide de l'onglet Profils vous accompagne pas à pas.",
+      "none": "Chaque expéditeur des e-mails enregistrés est couvert par un profil.",
       "row": "{domain} ({count, plural, one {# e-mail} other {# e-mails}})",
-      "show": "Afficher les e-mails"
+      "create": "Créer un profil"
     }
   },
   "wizard": {
@@ -871,14 +862,127 @@
         "action": "Ouvrir les e-mails"
       },
       "profile": {
-        "title": "Create a profil for a sender",
-        "body": "A profil tells Monize how to read one sender's order confirmations. Write one, or draft it from a stored email.",
-        "action": "Open the profils"
+        "title": "Créer un profil pour un expéditeur",
+        "body": "Un profil indique à Monize comment lire les confirmations de commande d'un expéditeur. Rédigez-en un, ou faites-en un brouillon à partir d'un e-mail enregistré.",
+        "action": "Ouvrir les profils"
       },
       "review": {
         "title": "Passer les propositions en revue",
         "body": "Chaque e-mail devient une proposition sur une transaction. Rien n'est modifié tant que vous ne l'approuvez pas.",
         "action": "Ouvrir la boîte de révision par l'IA"
+      }
+    }
+  },
+  "profileWizard": {
+    "heading": "Créer un profil pour {domain}",
+    "stepsLabel": "Étapes du guide",
+    "stepName": "{number}. {name}",
+    "steps": {
+      "samples": "Échantillons",
+      "generate": "Générer",
+      "preview": "Aperçu et acceptation"
+    },
+    "cancel": "Annuler",
+    "existingDraft": "Ce domaine a déjà un profil brouillon.",
+    "useExistingDraft": "Commencer à l'aperçu avec le brouillon",
+    "uncovered": {
+      "heading": "Créer un profil pour un domaine",
+      "help": "Domaines d'expéditeurs avec des e-mails enregistrés et sans profil approuvé. Choisissez-en un pour lancer le guide.",
+      "loading": "Chargement des domaines d'expéditeurs",
+      "error": "Impossible de charger les domaines d'expéditeurs.",
+      "retry": "Réessayer",
+      "none": "Chaque expéditeur des e-mails enregistrés est couvert par un profil."
+    },
+    "samples": {
+      "loading": "Chargement des e-mails",
+      "error": "Impossible de charger les e-mails.",
+      "retry": "Réessayer",
+      "empty": {
+        "title": "Aucun e-mail de ce domaine",
+        "body": "Aucun e-mail enregistré n'a d'expéditeur chez {domain}."
+      },
+      "help": "Ouvrez un e-mail pour le lire et choisissez la transaction qu'il a réglée. Cochez ensuite jusqu'à {max} e-mails pour rédiger le profil ; un e-mail ne peut être coché qu'une fois qu'il a une transaction.",
+      "columns": {
+        "select": "Utiliser",
+        "received": "Reçu",
+        "email": "E-mail",
+        "transaction": "Transaction",
+        "actions": "Actions"
+      },
+      "select": "Utiliser l'e-mail {subject} comme échantillon",
+      "needsTransaction": "Choisissez d'abord une transaction pour cet e-mail.",
+      "limitReached": "{max} échantillons au maximum. Décochez-en un pour en choisir un autre.",
+      "noTransaction": "Aucune choisie",
+      "viewEmail": "Voir l'e-mail",
+      "chooseTransaction": "Choisir la transaction",
+      "changeTransaction": "Changer la transaction",
+      "selectedCount": "{count} échantillons cochés sur {max}",
+      "continue": "Continuer vers l'assistant",
+      "emailTitle": "{subject}",
+      "emailLoading": "Chargement de l'e-mail",
+      "emailError": "Impossible de charger l'e-mail.",
+      "transactionTitle": "Transaction pour {subject}"
+    },
+    "generate": {
+      "help": "L'assistant lit ces e-mails et les transactions qu'ils ont réglées, puis rédige un brouillon de profil pour {domain}. Rien n'est encore approuvé.",
+      "reviseHelp": "Dites à l'assistant ce qu'il faut changer. Il met à jour le même brouillon à partir de ces e-mails et transactions.",
+      "feedbackLabel": "Ce qui doit changer",
+      "feedbackPlaceholder": "Par exemple : le total est la ligne qui indique Montant payé, pas le sous-total.",
+      "send": "Envoyer à l'IA",
+      "sendFeedback": "Envoyer une note à l'IA",
+      "retry": "Renvoyer à l'IA",
+      "back": "Retour",
+      "running": "L'assistant rédige le profil...",
+      "runningHint": "Cela peut prendre une minute. Gardez cette page ouverte.",
+      "noDraft": "L'assistant n'a pas enregistré de brouillon.",
+      "tryAgain": "Vous pouvez le renvoyer, ou revenir en arrière et modifier les échantillons.",
+      "failed": "L'assistant n'a pas pu être joint."
+    },
+    "preview": {
+      "loading": "Lecture des e-mails avec le brouillon...",
+      "error": "L'aperçu n'a pas pu être exécuté.",
+      "retry": "Réessayer",
+      "assistantSaid": "L'assistant dit",
+      "help": "Voici ce que le brouillon ferait des e-mails de ce domaine. Rien n'a été enregistré ni lié.",
+      "selectedHeading": "E-mails sélectionnés",
+      "othersHeading": "Autres e-mails de ce domaine",
+      "othersCapped": "Affichage des {shown} plus récents sur {total} autres e-mails.",
+      "columns": {
+        "email": "E-mail",
+        "expected": "Transaction attendue",
+        "parsed": "Lu par le brouillon",
+        "agrees": "Concordance",
+        "outcome": "Résultat",
+        "matched": "Transaction associée"
+      },
+      "nothingRead": "Rien n'a pu être lu",
+      "notStated": "non indiqué",
+      "parsedDate": "Date : {date}",
+      "parsedTotal": "Total : {total}",
+      "parsedLines": "{count, plural, one {# ligne} other {# lignes}}",
+      "noExpectation": "Aucune",
+      "noMatch": "Aucune transaction",
+      "agreesYes": "Oui",
+      "agreesNo": "Non",
+      "agreesUnknown": "Non vérifié",
+      "nothingToShow": "Le brouillon n'a aucun e-mail à afficher.",
+      "backToSamples": "Retour aux échantillons",
+      "backToAi": "Retour à l'IA",
+      "accept": "Accepter et traiter",
+      "approved": "Profil approuvé",
+      "changedElsewhere": "Le profil a été modifié ailleurs. Rechargez l'aperçu.",
+      "approveFailed": "Le profil n'a pas pu être approuvé.",
+      "approvedProcessing": "Le profil est approuvé. Les e-mails enregistrés de {domain} sont en cours de lecture avec lui.",
+      "done": "Terminé",
+      "outcomes": {
+        "matched": "Transaction associée trouvée",
+        "ambiguous": "Plusieurs transactions correspondent",
+        "unmatched": "Aucune transaction ne correspond",
+        "parse_failed": "Lecture impossible",
+        "not_applicable": "Non lu par ce profil",
+        "skip_line": "Ignoré (ligne à ignorer trouvée)",
+        "wait_line": "En attente (commande non définitive)",
+        "no_html": "Aucune partie HTML"
       }
     }
   }

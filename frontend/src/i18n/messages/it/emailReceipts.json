@@ -81,7 +81,7 @@
       "enabledLabel": "Leggi la casella di posta automaticamente",
       "enabledHelp": "Controlla solo la lettura automatica: se attivo, Monize legge la casella di posta ogni 15 minuti. Disattivarlo non scollega la casella, e Controlla ora la legge sia che sia attivo sia che non lo sia.",
       "aiModeLabel": "Modalità IA",
-      "aiModeHelp": "Indica se il controllo può usare sulle ricevute il provider IA che hai configurato. Riconosci con l'IA e Prepara profile con l'IA chiedono all'assistente nella chat qualunque sia la modalità, e una risposta dell'IA è sempre una proposta o una bozza che approvi tu.",
+      "aiModeHelp": "Indica se il controllo può usare il provider IA che hai configurato per le ricevute. Riconosci con l'IA e Prepara un profilo con l'IA interpellano l'assistente nella chat qualunque sia la modalità, e una risposta dell'IA è sempre una proposta o una bozza che approvi tu.",
       "aiModes": {
         "off": "Disattivata",
         "on_demand": "Su richiesta",
@@ -89,13 +89,13 @@
       },
       "aiModeDescriptions": {
         "off": "Il controllo non chiama mai l'IA per le ricevute.",
-        "on_demand": "Il controllo non chiama mai l'IA. Sei tu a chiedere all'assistente con Riconosci con l'IA o Prepara profile con l'IA.",
-        "automatic": "Il controllo interroga l'IA su una ricevuta abbinata che nessun profile approvato ha potuto leggere per intero, e prepara un profile per un mittente che non ne ha."
+        "on_demand": "Il controllo non chiama mai l'IA. Interpelli tu l'assistente con Riconosci con l'IA o Prepara un profilo con l'IA.",
+        "automatic": "Il controllo interpella l'IA su una ricevuta abbinata che nessun profilo approvato ha saputo leggere per intero, e prepara una bozza di profilo per un mittente che non ne ha."
       },
       "autoApplyLabel": "Applica le proposte automaticamente",
-      "autoApplyHelp": "Off by default. A proposal is applied without asking only when all of these hold: an approved profilo read the whole email, the transaction was found by an order number or a reference, or by exact amount and payee, with a single candidate, and the proposal adds up to the cent. Everything else waits for your approval.",
-      "profileLimitLabel": "Count profilo proposals toward the daily AI limit",
-      "profileLimitHelp": "On by default: an edit a profilo proposes from an email is counted in the daily limit of AI-proposed changes, like any other AI proposal. Turn it off when a large batch of stored emails would otherwise use the limit up. Only proposals from profili are exempt; every proposal still waits for your approval."
+      "autoApplyHelp": "Disattivato per impostazione predefinita. Una proposta viene applicata senza chiedere solo quando valgono tutte queste condizioni: un profilo approvato ha letto l'intera email, la transazione è stata trovata tramite un numero d'ordine o un riferimento, oppure tramite importo e beneficiario esatti, con un solo candidato, e la proposta torna al centesimo. Tutto il resto attende la tua approvazione.",
+      "profileLimitLabel": "Conta le proposte dei profili nel limite giornaliero dell'IA",
+      "profileLimitHelp": "Attivo per impostazione predefinita: una modifica che un profilo propone da un'email conta nel limite giornaliero di modifiche proposte dall'IA, come qualsiasi altra proposta dell'IA. Disattivalo quando un grande lotto di email salvate esaurirebbe il limite. Solo le proposte dei profili sono esentate; ogni proposta attende comunque la tua approvazione."
     },
     "status": {
       "lastPolled": "Ultimo controllo",
@@ -117,21 +117,21 @@
     }
   },
   "parsers": {
-    "heading": "Profilos",
-    "description": "A profilo reads the order confirmations of one sender with patterns you write or review, and says how the bank transaction is found. Once approved it runs without the AI.",
-    "newButton": "Nuovo profile",
-    "loading": "Caricamento dei profile",
+    "heading": "Profili",
+    "description": "Un profilo legge le conferme d'ordine di un mittente con modelli che scrivi o controlli, e stabilisce come trovare la transazione bancaria. Una volta approvato, funziona senza l'IA.",
+    "newButton": "Nuovo profilo",
+    "loading": "Caricamento dei profili",
     "error": {
-      "title": "Impossibile caricare i profile",
+      "title": "Impossibile caricare i profili",
       "body": "La richiesta non è riuscita. Riprova.",
       "retry": "Riprova"
     },
     "empty": {
-      "title": "Ancora nessun profile",
+      "title": "Ancora nessun profilo",
       "body": "Creane uno per un mittente di conferme d'ordine, oppure preparane uno da un'email salvata nella pagina Ricevute via email."
     },
     "columns": {
-      "name": "Profile",
+      "name": "Profilo",
       "status": "Stato",
       "payee": "Beneficiario",
       "actions": "Azioni"
@@ -153,19 +153,19 @@
       "viewJson": "Mostra JSON"
     },
     "toasts": {
-      "approved": "Profile approvato",
-      "approveFailed": "Impossibile approvare il profile",
-      "changedElsewhere": "Questo profile è stato modificato altrove. L'elenco è stato ricaricato.",
-      "deleted": "Profile eliminato",
-      "deleteFailed": "Impossibile eliminare il profile"
+      "approved": "Profilo approvato",
+      "approveFailed": "Impossibile approvare il profilo",
+      "changedElsewhere": "Questo profilo è stato modificato altrove. L'elenco è stato ricaricato.",
+      "deleted": "Profilo eliminato",
+      "deleteFailed": "Impossibile eliminare il profilo"
     },
     "deleteDialog": {
-      "title": "Eliminare il profile?",
-      "message": "Il profile {name} verrà eliminato. Le email che ha già letto mantengono i loro risultati."
+      "title": "Eliminare il profilo?",
+      "message": "Il profilo {name} verrà eliminato. Le email che ha già letto conservano i loro risultati."
     },
     "jsonDialog": {
       "title": "Definizione di {name}",
-      "help": "La definizione del profile così come è salvata. Qui è di sola lettura; usa Modifica per cambiarla.",
+      "help": "La definizione del profilo così com'è salvata. La sezione di abbinamento mostra le impostazioni in vigore, compresi i valori predefiniti. Qui è di sola lettura; usa Modifica per cambiarla.",
       "contentLabel": "JSON della definizione",
       "copy": "Copia",
       "copied": "JSON copiato",
@@ -173,22 +173,23 @@
     },
     "processOffer": {
       "title": "Elaborare ora le email salvate?",
-      "message": "{count, plural, one {Process the # stored email} other {Process the # stored emails}} from {domains} now? Each one is read with this profilo again; what it proposes waits in the review inbox unless auto-apply is on.",
+      "message": "Elaborare ora {count, plural, one {# email salvata} other {# email salvate}} di {domains}? Ognuna viene riletta con questo profilo; ciò che propone attende nella posta di revisione IA, a meno che l'applicazione automatica non sia attiva.",
       "confirm": "Elabora ora",
       "later": "Non ora"
-    }
+    },
+    "reparse": "Rianalizza le email ({count})"
   },
   "editor": {
-    "createTitle": "Nuovo profile",
-    "editTitle": "Modifica profile",
+    "createTitle": "Nuovo profilo",
+    "editTitle": "Modifica profilo",
     "loading": "Caricamento di beneficiari e categorie",
     "lookupsError": {
       "title": "Impossibile caricare beneficiari e categorie",
       "body": "I selettori ne hanno bisogno, quindi l'editor non può ancora aprirsi. Riprova.",
       "retry": "Riprova"
     },
-    "draftNote": "Questo profile è una bozza. Non legge nulla finché non lo approvi.",
-    "draftAiNote": "L'IA ha preparato questo profile dalle tue email di esempio. Provalo su ciascuna e controlla ogni modello, poi approvalo dall'elenco. Non legge nulla finché non lo fai.",
+    "draftNote": "Questo profilo è una bozza. Non legge nulla finché non lo approvi.",
+    "draftAiNote": "L'IA ha preparato questo profilo dalle tue email di esempio. Provalo su ciascuna di esse e controlla ogni modello, poi approvalo dall'elenco. Non legge nulla finché non lo fai.",
     "identityHeading": "Quali email legge",
     "nameLabel": "Nome",
     "payeeLabel": "Beneficiario",
@@ -197,12 +198,12 @@
     "domainsHelp": "Uno per riga, fino a {max}. Corrisponde anche un sottodominio di un dominio elencato.",
     "subjectLabel": "L'oggetto contiene",
     "subjectHelp": "Facoltativo, uno per riga, fino a {max}. L'oggetto deve contenere almeno uno di essi, senza distinguere maiuscole e minuscole.",
-    "saveButton": "Salva profile",
-    "created": "Profile creato",
-    "updated": "Profile salvato",
-    "saveFailed": "Impossibile salvare il profile",
-    "conflict": "Questo profile è stato modificato altrove da quando lo hai aperto. Ricaricalo per vedere la versione attuale. Le tue modifiche qui non sono salvate.",
-    "conflictReload": "Ricarica il profile",
+    "saveButton": "Salva profilo",
+    "created": "Profilo creato",
+    "updated": "Profilo salvato",
+    "saveFailed": "Impossibile salvare il profilo",
+    "conflict": "Questo profilo è stato modificato altrove da quando l'hai aperto. Ricaricalo per vedere la versione attuale. Le tue modifiche qui non sono salvate.",
+    "conflictReload": "Ricarica il profilo",
     "patterns": {
       "sourceLabel": "Origine delle righe",
       "sourceHint": "Con quale rappresentazione dell'email vengono confrontati i modelli seguenti. Testo è la parte di testo dell'email, una riga per ogni a capo. HTML legge la parte HTML: ogni blocco e ogni cella di tabella diventa una riga a sé, così il nome di un prodotto che il testo divide su più righe resta intero. La vista Righe dell'email mostra esattamente ciò che fornisce ogni origine.",
@@ -217,27 +218,27 @@
       "amountHint": "Deve catturare {capture}. Esempio: Totale dell'ordine {capture}",
       "shippingLabel": "Modelli della spedizione",
       "discountLabel": "Modelli dello sconto",
+      "feesLabel": "Modelli delle commissioni",
       "itemsHeading": "Righe degli articoli",
       "startAfterLabel": "Gli articoli iniziano dopo",
       "startAfterHint": "Facoltativo. Gli articoli vengono letti dalla riga successiva alla prima riga che contiene questo testo.",
       "stopAtLabel": "Gli articoli terminano a",
       "stopAtHint": "Facoltativo. Gli articoli terminano prima della prima riga che contiene questo testo.",
       "itemPatternsLabel": "Modelli degli articoli",
-      "itemPatternsHint": "Deve catturare {name} e anche {amount} (il totale della riga) oppure {price} (il prezzo unitario, facoltativamente con {qty}), mai entrambi. Esempio: {name} x {qty} {price}",
-      "feesLabel": "Fees patterns"
+      "itemPatternsHint": "Deve catturare {name} e anche {amount} (il totale della riga) oppure {price} (il prezzo unitario, facoltativamente con {qty}), mai entrambi. Esempio: {name} x {qty} {price}"
     },
     "categories": {
+      "heading": "Categorie",
+      "help": "Digita il nome di una categoria e sceglila dall'elenco. Il nome viene salvato nel profilo e la categoria deve esistere quando il profilo viene salvato.",
       "categoryPlaceholder": "Nessuna categoria",
       "defaultLabel": "Categoria predefinita",
       "defaultHelp": "Usata per gli articoli a cui non corrisponde nessuna regola.",
       "shippingLabel": "Categoria della spedizione",
       "shippingHelp": "La categoria della riga di spedizione.",
-      "heading": "Categories",
-      "help": "Type a category name and pick it from the list. The name is stored in the profilo, and the category must exist when the profilo is saved.",
-      "feesLabel": "Fees category",
-      "feesHelp": "The category of the fees line.",
-      "unknownCategory": "There is no category named {name}. Pick one from the list, or create it first.",
-      "rulesInJson": "Category rules by item name are an advanced option: add them to the profilo definition in the JSON mode."
+      "feesLabel": "Categoria delle commissioni",
+      "feesHelp": "La categoria della riga delle commissioni.",
+      "unknownCategory": "Non esiste alcuna categoria chiamata {name}. Scegline una dall'elenco oppure creala prima.",
+      "rulesInJson": "Le regole di categoria per nome dell'articolo sono un'opzione avanzata: aggiungile alla definizione del profilo in modalità JSON."
     },
     "mode": {
       "label": "Modalità di modifica",
@@ -247,13 +248,14 @@
       "jsonInvalid": "Il JSON non è ancora valido, quindi il modulo non può essere mostrato. Correggilo prima."
     },
     "json": {
-      "label": "Definizione del profile (JSON)",
+      "label": "Definizione del profilo (JSON)",
       "help": "La stessa definizione che costruisce il modulo. Il server la controlla al salvataggio, e il test qui sotto la legge così com'è ora.",
-      "parseError": "Questo non è un JSON valido oppure non è un oggetto JSON. Correggilo per salvare o testare il profile."
+      "parseError": "Non è un JSON valido, oppure non è un oggetto JSON. Correggilo per salvare o provare il profilo."
     },
     "matching": {
       "heading": "Corrispondenza",
       "help": "Come si trova la transazione bancaria che un'email ha pagato. Le strategie vengono provate in ordine: decide la prima che lascia esattamente una transazione, più transazioni sono ambigue e nessuna passa alla successiva.",
+      "instruction": "Il meglio è un numero di riferimento preso dalla descrizione dell'operazione bancaria. Se non ce n'è nessuno, si usano la data e l'importo. Per impostazione predefinita le strategie vengono provate in quest'ordine: riferimento (quando il profilo ha modelli di riferimento), numero d'ordine, importo e beneficiario, importo e data.",
       "referenceLabel": "Modelli di riferimento",
       "referenceHint": "L'identificativo che il negozio o il gateway di pagamento inserisce nell'operazione bancaria, come un testo dell'estratto conto o la causale di un bonifico. Deve catturare {capture}.",
       "strategiesLabel": "Strategie, nell'ordine in cui vengono provate",
@@ -279,12 +281,11 @@
       "daysAfterLabel": "Giorni dopo l'acquisto",
       "daysHint": "La finestra attorno alla data dell'acquisto. Predefinito {default}, al massimo {max}.",
       "toleranceLabel": "Tolleranza dell'importo",
-      "toleranceHint": "Di quanto l'importo della banca può differire dal totale dell'email. Predefinito 0, al massimo {max}.",
-      "instruction": "Best is a reference number taken from the bank operation description. If there is none, the date and the amount are used. By default the strategies are tried in this order: reference (when the profilo has reference patterns), order number, amount and payee, amount and date."
+      "toleranceHint": "Di quanto l'importo della banca può differire dal totale dell'email. Predefinito 0, al massimo {max}."
     },
     "proposal": {
       "heading": "Proposta",
-      "tagLabel": "Add a tag to the transactions this profilo categorizes",
+      "tagLabel": "Aggiungi un tag alle transazioni che questo profilo categorizza",
       "tagHelp": "L'etichetta viene creata se non ne hai una con quel nome. Viene mostrata nella proposta e non viene scritto nulla finché non la approvi.",
       "tagNameLabel": "Nome dell'etichetta",
       "aiCategoriesLabel": "Lascia che l'IA scelga la categoria degli articoli che nessuna regola copre",
@@ -292,7 +293,7 @@
     }
   },
   "problems": {
-    "heading": "La definizione del profile non è valida:",
+    "heading": "La definizione del profilo non è valida:",
     "item": "{where}: {problem}",
     "paths": {
       "definition": "La definizione",
@@ -318,13 +319,16 @@
       "ruleCategory": "categoria",
       "defaultCategory": "Categoria predefinita",
       "shippingCategory": "Categoria della spedizione",
+      "feesCategory": "Categoria delle commissioni",
+      "balanceTolerance": "Tolleranza del saldo",
+      "fees": "Modelli delle commissioni",
       "skipLines": "Righe da saltare",
       "record": "Record",
-      "label": "label",
-      "value": "value",
-      "within": "within",
-      "line": "line",
-      "optional": "optional",
+      "label": "etichetta",
+      "value": "valore",
+      "within": "entro",
+      "line": "riga",
+      "optional": "facoltativo",
       "paid": "Modelli dell'importo pagato",
       "payee": "Modelli dell'esercente",
       "requireLine": "Righe obbligatorie",
@@ -334,7 +338,7 @@
       "single": "Articolo singolo",
       "singleName": "Nome dell'articolo singolo",
       "joinWrapped": "Unisci le righe spezzate",
-      "ruleField": "field",
+      "ruleField": "campo",
       "reference": "Modelli di riferimento",
       "match": "La sezione della corrispondenza",
       "matchBy": "Strategie di corrispondenza",
@@ -343,14 +347,11 @@
       "matchDaysAfter": "Giorni dopo l'acquisto",
       "matchTolerance": "Tolleranza dell'importo",
       "tag": "Etichetta",
-      "aiCategories": "Categorie dell'IA",
-      "feesCategory": "Fees category",
-      "balanceTolerance": "Balance tolerance",
-      "fees": "Fees patterns"
+      "aiCategories": "Categorie dell'IA"
     },
     "codes": {
       "not_object": "non è una definizione valida",
-      "unknown_key": "non è qualcosa che un profile può avere",
+      "unknown_key": "non è qualcosa che un profilo può avere",
       "unsupported_version": "è una versione che questo server non legge (usa la versione 2)",
       "invalid_type": "ha un tipo di valore sbagliato",
       "empty": "non deve essere vuoto",
@@ -403,10 +404,10 @@
     "unmatched": "Nessuna transazione corrisponde, su {count, plural, one {# candidata} other {# candidate}}.",
     "jsonInvalid": "Il JSON non è valido, quindi non c'è ancora nulla da testare.",
     "outcome": {
-      "not_applicable": "Questo profile non leggerebbe questa email: nessuna delle sue righe obbligatorie è presente, quindi verrebbe provato il profile successivo per il mittente.",
-      "skip_line": "Questo profile metterebbe da parte questa email: contiene una riga su cui la salta.",
-      "wait_line": "Questo profile tratterrebbe questa email: una riga indica che l'ordine non è ancora definitivo, quindi verrà riletta più tardi.",
-      "no_html": "Questo profile legge la parte HTML dell'email e questa email non ne ha una, quindi verrebbe contrassegnata come non leggibile (nessun HTML)."
+      "not_applicable": "Questo profilo non leggerebbe questa email: nessuna delle sue righe obbligatorie è presente, quindi si proverebbe il profilo successivo del mittente.",
+      "skip_line": "Questo profilo metterebbe da parte questa email: contiene una riga che il profilo salta.",
+      "wait_line": "Questo profilo trattiene questa email: una riga indica che l'ordine non è definitivo, quindi viene riletta più tardi.",
+      "no_html": "Questo profilo legge la parte HTML dell'email e questa email non ne ha, quindi verrebbe contrassegnata come illeggibile (nessun HTML)."
     },
     "matchedBy": {
       "heading": "Trovato tramite",
@@ -503,6 +504,7 @@
     },
     "filter": {
       "label": "Filtra per stato",
+      "option": "{label} ({count})",
       "all": "Tutte",
       "pending": "In attesa di lettura",
       "skipped": "Saltata",
@@ -512,15 +514,14 @@
       "ambiguous": "Corrispondono più transazioni",
       "review_conflict": "Un'altra richiesta è aperta",
       "review": "In revisione",
-      "ignored": "Ignorata",
-      "option": "{label} ({count})"
+      "ignored": "Ignorata"
     },
     "domainFilter": {
       "label": "Dominio del mittente",
       "all": "Tutti i mittenti",
       "option": "{domain} ({count})",
-      "help": "Vengono mostrate le email di {domain} e dei suoi sottodomini. Selezionane diverse per redigere un profile per il mittente.",
-      "unknown": "The sender counts could not be loaded."
+      "unknown": "Non è stato possibile caricare il numero di email per mittente.",
+      "help": "Visualizzazione delle email di {domain} e dei suoi sottodomini. Selezionane diverse per preparare un profilo per il mittente."
     },
     "columns": {
       "select": "Seleziona",
@@ -551,20 +552,20 @@
       "reprocess": "Rielabora",
       "link": "Scegli transazione",
       "recognizeAi": "Riconosci con l'IA",
-      "draftParser": "Prepara profile con l'IA",
-      "createParser": "Crea profile",
-      "ignore": "Ignora",
-      "approve": "Approve"
+      "approve": "Approva",
+      "draftParser": "Prepara un profilo con l'IA",
+      "createParser": "Crea profilo",
+      "ignore": "Ignora"
     },
     "toasts": {
+      "approved": "Proposta approvata",
+      "approveFailed": "Impossibile approvare la proposta",
       "reprocessed": "Email rielaborata",
       "reprocessFailed": "Impossibile rielaborare l'email",
       "ignored": "Email ignorata",
       "ignoreFailed": "Impossibile ignorare l'email",
       "deleted": "Email eliminata",
-      "deleteFailed": "Impossibile eliminare l'email",
-      "approved": "Proposal approved",
-      "approveFailed": "Could not approve the proposal"
+      "deleteFailed": "Impossibile eliminare l'email"
     },
     "ignoreDialog": {
       "title": "Ignorare questa email?",
@@ -578,27 +579,19 @@
     "selection": {
       "label": "Email selezionate",
       "select": "Seleziona {subject}",
+      "selectAll": "Seleziona tutte le email di questo elenco (al massimo {max})",
       "count": "{count, plural, one {# email selezionata} other {# email selezionate}} (al massimo {max})",
-      "draftButton": "Prepara profile con l'IA ({count})",
+      "draftButton": "Prepara un profilo con l'IA ({count})",
       "clear": "Cancella selezione",
-      "differentSenders": "Le email selezionate provengono da mittenti diversi ({domains}). Un profile legge le email di un solo mittente, quindi seleziona email di un unico mittente.",
-      "selectAll": "Select all emails on this list (at most {max})"
+      "differentSenders": "Le email selezionate provengono da mittenti diversi ({domains}). Un profilo legge le email di un solo mittente, quindi seleziona email di un solo mittente."
     },
     "draft": {
-      "failed": "Impossibile avviare la preparazione di un profile",
+      "failed": "Impossibile avviare la preparazione di un profilo",
       "queued": "In coda: la richiesta attende un agente nella posta di revisione IA. Nessun assistente è disponibile a rispondere ora.",
       "handoffFailed": "La richiesta è in coda, ma non è stato possibile aprire le email nella chat. Attende un agente nella posta di revisione IA.",
       "inboxLink": "Apri la posta di revisione IA",
       "opened": "Chat aperta con le email allegate. Leggi il messaggio e premi Invia.",
       "chatPrompt": "Crea un profile per le ricevute via email per {count, plural, one {questa email di ordine} other {queste # email di ordine}} di {domain}. Prendi in carico la richiesta di revisione IA {requestId}, prova il tuo profile su ogni email allegata con lo strumento email_receipt_profiles, correggilo finché ciascuna viene letta per intero, poi salvalo come bozza per la richiesta {requestId}."
-    },
-    "guide": {
-      "heading": "How to create a profilo",
-      "buttonName": "Prepara un profilo con l'IA",
-      "stepSender": "Choose a sender in the cloud of sender domains.",
-      "stepTransaction": "Give each of its emails the transaction it paid for: open the email and choose the transaction.",
-      "stepSelect": "Tick those emails.",
-      "stepPrepare": "Press {button}. The assistant writes the profilo, and you test and approve it in the profili."
     }
   },
   "detail": {
@@ -615,7 +608,7 @@
     "originalSent": "Inviata dal negozio",
     "subject": "Oggetto",
     "state": "Stato",
-    "parser": "Profile",
+    "parser": "Profilo",
     "noParser": "Nessuno",
     "structuredSource": "Dati strutturati",
     "matchedBy": "Abbinata tramite",
@@ -635,10 +628,10 @@
     "reasons": {
       "too_large": "L'email supera il limite di dimensione, quindi è stata salvata senza essere letta.",
       "undecodable": "L'email non ha potuto essere decodificata, quindi è stata salvata senza essere letta.",
-      "draft_failed": "L'IA non ha potuto preparare un profile per questo mittente.",
-      "parser_invalid": "Il profile per questo mittente non è valido. Modificalo nelle impostazioni dei profile.",
-      "no_total": "Il profile non ha trovato alcun totale in questa email.",
-      "no_items": "Il profile non ha trovato alcuna riga di articolo.",
+      "draft_failed": "L'IA non è riuscita a preparare un profilo per questo mittente.",
+      "parser_invalid": "Il profilo per questo mittente non è valido. Modificalo nelle impostazioni dei profili.",
+      "no_total": "Il profilo non ha trovato alcun totale in questa email.",
+      "no_items": "Il profilo non ha trovato righe di articoli.",
       "items_unbalanced": "Le righe degli articoli non sommano al totale.",
       "items_uncategorized": "Alcune righe degli articoli non hanno una categoria.",
       "shipping_uncategorized": "La riga di spedizione non ha una categoria.",
@@ -646,15 +639,15 @@
       "proposal_fallback": "La proposta dettagliata è stata rifiutata, quindi viene proposta solo una descrizione.",
       "nothing_to_propose": "L'email non aggiunge nulla a questa transazione.",
       "proposal_refused": "La proposta è stata rifiutata, quindi non è stato proposto nulla.",
-      "skip_line": "È stata trovata una riga su cui questo profile salta, quindi l'email è stata ignorata.",
+      "skip_line": "È stata trovata una riga su cui questo profilo salta, quindi l'email è stata ignorata.",
       "wait_line": "Una riga indica che l'ordine non è ancora definitivo, quindi l'email verrà riletta più tardi.",
-      "no_html": "Questo profile legge la parte HTML dell'email e questa email non ne ha una.",
-      "schema_org": "Non è stato necessario alcun profile: l'ordine è stato letto dai dati strutturati (schema.org) dell'email.",
+      "no_html": "Questo profilo legge la parte HTML dell'email e questa email non ne ha.",
+      "schema_org": "Non serviva alcun profilo: l'ordine è stato letto dai dati strutturati (schema.org) dell'email.",
       "item_amount_missing": "Un articolo non ha un importo, e l'email non ha un totale unico da assegnargli."
     },
     "reasonUnknown": "Motivo: {reason}",
     "requestNote": "Richiesta di revisione ({state}): {note}",
-    "parsedHeading": "Che cosa ha letto il profile",
+    "parsedHeading": "Cosa ha letto il profilo",
     "notParsed": "Da questa email non è ancora stato letto nulla.",
     "candidatesHeading": "Transazioni che corrispondono",
     "candidatesHelp": "Più transazioni corrispondono ugualmente bene a questa email. Scegli quella che ha pagato.",
@@ -674,7 +667,7 @@
     "htmlFrameTitle": "L'email come l'ha formattata il mittente",
     "structured": {
       "heading": "Dati strutturati (schema.org)",
-      "help": "Un ordine o una fattura che l'email contiene come markup per i client di posta. Viene letto solo quando nessun profile si applica o il profile non trova un totale.",
+      "help": "Un ordine o una fattura che l'email contiene come markup per i client di posta. Viene letto solo quando nessun profilo si applica o il profilo non trova un totale.",
       "found": "Trovati",
       "notFound": "Non trovati",
       "notFoundHelp": "L'email non contiene markup di ordine, oppure non indica né un totale né righe d'ordine.",
@@ -684,13 +677,13 @@
       "unitPrice": "Prezzo unitario"
     },
     "lines": {
-      "help": "Le righe con cui vengono confrontati i modelli di un profile, numerate come le numera l'elenco «Trovato tramite» di un test.",
+      "help": "Le righe con cui vengono confrontati i modelli di un profilo, numerate come le numera l'elenco «Trovato tramite» di un test.",
       "sourceLabel": "Origine delle righe",
       "sources": {
         "text": "Testo",
         "html": "HTML"
       },
-      "noHtml": "Questa email non ha una parte HTML, quindi un profile che legge l'HTML non può leggerla.",
+      "noHtml": "Questa email non ha una parte HTML, quindi un profilo che legge l'HTML non può leggerla.",
       "capped": "Vengono lette solo le prime {max} righe.",
       "empty": "Nessuna riga.",
       "listLabel": "Righe numerate dell'email"
@@ -718,6 +711,11 @@
     "ai": {
       "heading": "Scegli la transazione per l'IA",
       "help": "Queste sono le tue transazioni nell'intervallo di date qui sotto, che parte dai giorni intorno all'acquisto. Scegli quella che l'IA deve suddividere in base ai prodotti dell'email, oppure cambia le date per cercare più lontano.",
+      "linkButton": "Usa questa transazione"
+    },
+    "sample": {
+      "heading": "Scegli la transazione pagata da questa email",
+      "help": "Queste sono le tue transazioni nell'intervallo di date qui sotto, che inizia con i giorni attorno all'acquisto. La scelta viene mantenuta nella guida e serve a verificare il profilo; nulla viene collegato all'email. Cambia le date per cercare più lontano.",
       "linkButton": "Usa questa transazione"
     }
   },
@@ -773,23 +771,16 @@
       "ariaLabel": "Sezioni delle ricevute via email",
       "overview": "Panoramica",
       "emails": "Email",
-      "profiles": "Profilos",
+      "profiles": "Profili",
       "mailbox": "Casella di posta"
     },
     "demoRestricted": {
       "heading": "Limitato in modalità demo",
-      "body": "Connecting a mailbox and writing profili are disabled in demo mode."
+      "body": "Collegare una casella di posta e scrivere profili sono disattivati in modalità demo."
     }
   },
   "process": {
-    "button": "Elabora tutte",
-    "buttonCount": "Elabora tutte ({count})",
-    "dialog": {
-      "title": "{count, plural, one {Elaborare # email salvata?} other {Elaborare # email salvate?}}",
-      "message": "Every stored email that has not been read yet, or that a new profilo or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
-      "messageDomain": "Every stored email from {domain} that has not been read yet, or that a new profilo or transaction can change, is read again. What it proposes waits in the review inbox unless auto-apply is on.",
-      "confirm": "Elabora"
-    },
+    "retryFailed": "Riprova le email non riuscite ({count})",
     "starting": "Avvio in corso...",
     "progress": "{processed, plural, one {# email elaborata} other {# email elaborate}}, ne restano {remaining}.",
     "cancel": "Annulla",
@@ -842,17 +833,17 @@
       "open": "Apri la posta di revisione IA"
     },
     "profiles": {
-      "title": "Profilos",
+      "title": "Profili",
       "approved": "approvati",
       "drafts": "{count, plural, one {# bozza attende la tua approvazione} other {# bozze attendono la tua approvazione}}.",
-      "manage": "Open the profili"
+      "manage": "Apri i profili"
     },
     "uncovered": {
-      "title": "Senders without a profilo",
-      "help": "These senders sent emails no profilo reads. Create a profilo for one, or ask the assistant to draft it.",
-      "none": "Every sender of the stored emails is covered by a profilo.",
+      "title": "Mittenti senza profilo",
+      "help": "Questi mittenti hanno inviato email che nessun profilo legge. Crea un profilo per uno di loro: la guida nella scheda Profili ti accompagna passo dopo passo.",
+      "none": "Ogni mittente delle email salvate è coperto da un profilo.",
       "row": "{domain} ({count, plural, one {# email} other {# email}})",
-      "show": "Mostra le email"
+      "create": "Crea un profilo"
     }
   },
   "wizard": {
@@ -871,14 +862,127 @@
         "action": "Apri le email"
       },
       "profile": {
-        "title": "Create a profilo for a sender",
-        "body": "A profilo tells Monize how to read one sender's order confirmations. Write one, or draft it from a stored email.",
-        "action": "Open the profili"
+        "title": "Crea un profilo per un mittente",
+        "body": "Un profilo dice a Monize come leggere le conferme d'ordine di un mittente. Scrivine uno oppure preparane una bozza da un'email salvata.",
+        "action": "Apri i profili"
       },
       "review": {
         "title": "Rivedi le proposte",
         "body": "Ogni email diventa una proposta su una transazione. Non viene modificato nulla finché non la approvi.",
         "action": "Apri la posta di revisione IA"
+      }
+    }
+  },
+  "profileWizard": {
+    "heading": "Crea un profilo per {domain}",
+    "stepsLabel": "Passaggi della guida",
+    "stepName": "{number}. {name}",
+    "steps": {
+      "samples": "Campioni",
+      "generate": "Genera",
+      "preview": "Anteprima e accettazione"
+    },
+    "cancel": "Annulla",
+    "existingDraft": "Questo dominio ha già un profilo in bozza.",
+    "useExistingDraft": "Inizia dall'anteprima con la bozza",
+    "uncovered": {
+      "heading": "Crea un profilo per un dominio",
+      "help": "Domini dei mittenti con email salvate e senza un profilo approvato. Scegline uno per avviare la guida.",
+      "loading": "Caricamento dei domini dei mittenti",
+      "error": "Impossibile caricare i domini dei mittenti.",
+      "retry": "Riprova",
+      "none": "Ogni mittente delle email salvate è coperto da un profilo."
+    },
+    "samples": {
+      "loading": "Caricamento delle email",
+      "error": "Impossibile caricare le email.",
+      "retry": "Riprova",
+      "empty": {
+        "title": "Nessuna email da questo dominio",
+        "body": "Nessuna email salvata ha un mittente su {domain}."
+      },
+      "help": "Apri un'email per leggerla e scegli la transazione che ha pagato. Poi seleziona fino a {max} email da cui scrivere il profilo; un'email può essere selezionata solo dopo che ha una transazione.",
+      "columns": {
+        "select": "Usa",
+        "received": "Ricevuta",
+        "email": "Email",
+        "transaction": "Transazione",
+        "actions": "Azioni"
+      },
+      "select": "Usa l'email {subject} come campione",
+      "needsTransaction": "Scegli prima una transazione per questa email.",
+      "limitReached": "Al massimo {max} campioni. Deseleziona un campione per sceglierne un altro.",
+      "noTransaction": "Nessuna scelta",
+      "viewEmail": "Visualizza email",
+      "chooseTransaction": "Scegli transazione",
+      "changeTransaction": "Cambia transazione",
+      "selectedCount": "{count} campioni su {max} selezionati",
+      "continue": "Continua con l'assistente",
+      "emailTitle": "{subject}",
+      "emailLoading": "Caricamento dell'email",
+      "emailError": "Impossibile caricare l'email.",
+      "transactionTitle": "Transazione per {subject}"
+    },
+    "generate": {
+      "help": "L'assistente legge queste email e le transazioni che hanno pagato e scrive una bozza di profilo per {domain}. Nulla è ancora approvato.",
+      "reviseHelp": "Di' all'assistente cosa cambiare. Aggiorna la stessa bozza a partire da queste email e transazioni.",
+      "feedbackLabel": "Cosa deve cambiare",
+      "feedbackPlaceholder": "Ad esempio: il totale è la riga che dice Importo pagato, non il subtotale.",
+      "send": "Invia all'IA",
+      "sendFeedback": "Invia una nota all'IA",
+      "retry": "Invia di nuovo all'IA",
+      "back": "Indietro",
+      "running": "L'assistente sta scrivendo il profilo...",
+      "runningHint": "Può volerci un minuto. Tieni aperta questa pagina.",
+      "noDraft": "L'assistente non ha salvato una bozza.",
+      "tryAgain": "Puoi inviarla di nuovo oppure tornare indietro e cambiare i campioni.",
+      "failed": "Non è stato possibile raggiungere l'assistente."
+    },
+    "preview": {
+      "loading": "Lettura delle email con la bozza...",
+      "error": "Non è stato possibile eseguire l'anteprima.",
+      "retry": "Riprova",
+      "assistantSaid": "L'assistente dice",
+      "help": "Questo è ciò che la bozza farebbe con le email di questo dominio. Nulla è stato salvato o collegato.",
+      "selectedHeading": "Email selezionate",
+      "othersHeading": "Altre email di questo dominio",
+      "othersCapped": "Mostrate le {shown} più recenti su {total} altre email.",
+      "columns": {
+        "email": "Email",
+        "expected": "Transazione attesa",
+        "parsed": "Letto dalla bozza",
+        "agrees": "Coincide",
+        "outcome": "Esito",
+        "matched": "Transazione abbinata"
+      },
+      "nothingRead": "Non è stato possibile leggere nulla",
+      "notStated": "non indicato",
+      "parsedDate": "Data: {date}",
+      "parsedTotal": "Totale: {total}",
+      "parsedLines": "{count, plural, one {# riga} other {# righe}}",
+      "noExpectation": "Nessuna",
+      "noMatch": "Nessuna transazione",
+      "agreesYes": "Sì",
+      "agreesNo": "No",
+      "agreesUnknown": "Non verificato",
+      "nothingToShow": "La bozza non ha email da mostrare.",
+      "backToSamples": "Torna ai campioni",
+      "backToAi": "Torna all'IA",
+      "accept": "Accetta ed elabora",
+      "approved": "Profilo approvato",
+      "changedElsewhere": "Il profilo è stato modificato altrove. Ricarica l'anteprima.",
+      "approveFailed": "Impossibile approvare il profilo.",
+      "approvedProcessing": "Il profilo è approvato. Le email salvate di {domain} vengono lette con esso.",
+      "done": "Fatto",
+      "outcomes": {
+        "matched": "Transazione abbinata",
+        "ambiguous": "Più transazioni corrispondono",
+        "unmatched": "Nessuna transazione corrisponde",
+        "parse_failed": "Impossibile da leggere",
+        "not_applicable": "Non letta da questo profilo",
+        "skip_line": "Saltata (trovata una riga da saltare)",
+        "wait_line": "In attesa (ordine non definitivo)",
+        "no_html": "Nessuna parte HTML"
       }
     }
   }
