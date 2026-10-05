@@ -120,9 +120,7 @@ export function normalizeBankBalance(
 
 function isUniqueViolation(error: unknown): boolean {
   const candidate = error as
-    | { code?: unknown; driverError?: { code?: unknown } }
-    | null
-    | undefined;
+    { code?: unknown; driverError?: { code?: unknown } } | null | undefined;
   return (candidate?.driverError?.code ?? candidate?.code) === "23505";
 }
 

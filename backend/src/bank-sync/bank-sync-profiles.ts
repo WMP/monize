@@ -80,8 +80,7 @@ export interface DirectedOperationType {
 }
 
 export type ProfileOperationType =
-  | LabelledOperationType
-  | DirectedOperationType;
+  LabelledOperationType | DirectedOperationType;
 
 /** How much a note matters to the reader: `warning` names a problem to act on. */
 export type ProfileNoteSeverity = "info" | "warning";

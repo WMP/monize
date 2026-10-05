@@ -29,11 +29,7 @@ const MONEY_SCALE = 10000;
  * `weekday` (`MON`..`SUN`), and that is what is reported.
  */
 export type RuleLeafActual =
-  | string
-  | number
-  | boolean
-  | readonly string[]
-  | null;
+  string | number | boolean | readonly string[] | null;
 
 /** One condition leaf, with what it expected and what the row had. */
 export interface RuleLeafExplanation {
@@ -72,9 +68,7 @@ export interface RuleOmittedExplanation {
 }
 
 export type RuleConditionExplanation =
-  | RuleLeafExplanation
-  | RuleGroupExplanation
-  | RuleOmittedExplanation;
+  RuleLeafExplanation | RuleGroupExplanation | RuleOmittedExplanation;
 
 const scaledToDecimal = (scaled: number): string =>
   (scaled / MONEY_SCALE).toFixed(4);

@@ -160,6 +160,7 @@ describe("BankSyncPreviewService", () => {
     aiReviewRequests: [],
   };
   const NO_LABELS: RuleEffectsLabels = {
+    accounts: {},
     categories: {},
     payees: {},
     tags: {},

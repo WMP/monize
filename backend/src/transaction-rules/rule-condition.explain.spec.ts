@@ -96,6 +96,7 @@ const VALUES: Record<string, Record<string, RuleLeafValue[]>> = {
     currency: ["pln", "EUR"],
     boolean: [true, false],
     dayOfMonth: [1, 28, 31],
+    date: ["2026-03-01", "2026-02-28", "2026-03-02"],
   },
   list: {
     accountId: [[A1, A2], [A2]],
@@ -115,6 +116,10 @@ const VALUES: Record<string, Record<string, RuleLeafValue[]>> = {
     dayOfMonth: [
       [1, 15],
       [20, 31],
+    ],
+    date: [
+      ["2026-01-01", "2026-03-31"],
+      ["2026-04-01", "2026-04-30"],
     ],
   },
 };

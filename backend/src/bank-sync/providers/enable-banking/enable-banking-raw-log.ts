@@ -137,7 +137,7 @@ export function rawLogLines(input: {
   const text = JSON.stringify(maskRawPayload(input.payload)) ?? "null";
   const size = Math.max(2, input.chunkChars ?? RAW_LOG_CHUNK_CHARS);
   const parts: string[] = [];
-  for (let start = 0; start < text.length; ) {
+  for (let start = 0; start < text.length;) {
     let end = Math.min(text.length, start + size);
     const last = text.charCodeAt(end - 1);
     if (end < text.length && last >= 0xd800 && last <= 0xdbff) end -= 1;

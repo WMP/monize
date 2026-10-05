@@ -581,8 +581,7 @@ export class YahooFinanceService implements QuoteProvider {
         // the first non-null open in the indicators series (today's open
         // for range=1d&interval=1d).
         const openSeries = result.indicators?.quote?.[0]?.open as
-          | (number | null | undefined)[]
-          | undefined;
+          (number | null | undefined)[] | undefined;
         const openFromSeries = openSeries?.find(
           (v): v is number => v != null && !Number.isNaN(v),
         );

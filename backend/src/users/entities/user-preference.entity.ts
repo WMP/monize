@@ -173,12 +173,7 @@ export class UserPreference {
     default: "device",
   })
   defaultMapProvider:
-    | "device"
-    | "openstreetmap"
-    | "google"
-    | "apple"
-    | "bing"
-    | "waze";
+    "device" | "openstreetmap" | "google" | "apple" | "bing" | "waze";
 
   @Column({
     name: "recent_transactions_limit",
