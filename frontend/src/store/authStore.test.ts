@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useAuthStore } from './authStore';
+import { beginSignOut, isSigningOut } from '@/lib/logout-state';
 
 // A single top-level mock for @/lib/auth -- the rehydration tests each
 // reconfigure rehydrateGetProfileMock to control how getProfile
@@ -85,6 +86,12 @@ describe('authStore', () => {
       expect(state.token).toBe('httpOnly');
       expect(state.error).toBeNull();
       expect(state.isLoading).toBe(false);
+    });
+
+    it('ends an earlier sign-out so 401 recovery applies again', () => {
+      beginSignOut();
+      useAuthStore.getState().login(mockUser, 'httpOnly');
+      expect(isSigningOut()).toBe(false);
     });
   });
 

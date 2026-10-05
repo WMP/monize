@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@/test/render';
 import { AppHeader } from './AppHeader';
 import toast from 'react-hot-toast';
+import { endSignOut, isSigningOut } from '@/lib/logout-state';
 
 // Mock next/image
 vi.mock('next/image', () => ({
@@ -147,6 +148,25 @@ describe('AppHeader', () => {
     expect(window.sessionStorage.getItem('monize:logout-incomplete')).toBeNull();
     expect(toast.success).toHaveBeenCalled();
     expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  // The page still mounted here keeps polling after the session is revoked.
+  // Without the flag those 401s drive the interceptor's own hard redirect to
+  // /login, which aborts this router.push mid-flight.
+  it('marks the sign-out before revoking the session', async () => {
+    endSignOut();
+    let signingOutAtRevoke: boolean | undefined;
+    mockApiLogout.mockImplementationOnce(async () => {
+      signingOutAtRevoke = isSigningOut();
+    });
+    render(<AppHeader />);
+    fireEvent.click(screen.getByRole('button', { name: /logout/i }));
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/login');
+    });
+    expect(signingOutAtRevoke).toBe(true);
+    endSignOut();
   });
 
   // Only the server can clear the HttpOnly refresh cookie, so a failed request

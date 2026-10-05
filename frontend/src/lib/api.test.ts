@@ -354,6 +354,23 @@ describe('apiClient interceptors', () => {
       expect(replaceSpy).toHaveBeenCalledWith('/login');
     });
 
+    it('leaves a 401 alone while a sign-out is under way', async () => {
+      const { beginSignOut, endSignOut } = await import('./logout-state');
+      beginSignOut();
+      try {
+        const error = makeError({
+          config: { url: '/protected', headers: {} },
+          response: { status: 401 },
+        });
+        await expect(responseHandlers.onRejected!(error)).rejects.toBe(error);
+        expect(mockAxiosPost).not.toHaveBeenCalled();
+        expect(logoutSpy).not.toHaveBeenCalled();
+        expect(window.location.replace).not.toHaveBeenCalled();
+      } finally {
+        endSignOut();
+      }
+    });
+
     it('does not refresh on 401 for an unauth (business) endpoint', async () => {
       const error = makeError({
         config: { url: '/auth/login', headers: {} },
