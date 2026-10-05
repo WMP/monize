@@ -62,7 +62,7 @@ describe('EmailReceiptsPage', () => {
     });
     await act(async () => {});
     expect(screen.getByRole('heading', { level: 1, name: 'Email Receipts' })).toBeInTheDocument();
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Overview', 'Emails', 'Profiles', 'Mailbox']);
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Overview', 'Mailbox', 'Profiles', 'Emails']);
     expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('heading', { name: 'Get started with email receipts' })).toBeInTheDocument();
   });

@@ -510,6 +510,11 @@ export interface EmailReceiptParser {
   source: EmailReceiptParserSource;
   approvedAt: string | null;
   revision: number;
+  /**
+   * Stored emails of the profile's domains, in a processable state, last processed
+   * before the profile's last change. Absent from a server that predates it.
+   */
+  reprocessableCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -656,4 +661,77 @@ export interface EmailReceiptParserTestResult {
   candidateCount: number;
   /** The matched transaction, when there is one (an ordinary amount, no currency). */
   transaction: { id: string; date: string; amount: number; payeeName: string | null } | null;
+}
+
+/** One sender domain with stored emails and no approved profile (`GET /email-receipts/domains/uncovered`). */
+export interface UncoveredDomain {
+  domain: string;
+  count: number;
+  /** A draft profile already written for the domain, or null. */
+  draftParserId: string | null;
+}
+
+/** One email of the domain paired with the transaction it paid for (a wizard sample). */
+export interface ParserSamplePair {
+  receiptId: string;
+  transactionId: string;
+}
+
+/** `POST /email-receipt-parsers/generate-with-ai`: 1 to 5 samples; `parserId` and `feedback` revise an existing draft. */
+export interface GenerateParserWithAiPayload {
+  domain: string;
+  samples: ParserSamplePair[];
+  parserId?: string;
+  feedback?: string;
+}
+
+export interface GenerateParserWithAiResult {
+  parserId: string;
+  revision: number;
+  /** What the assistant said about its work. */
+  answer: string;
+}
+
+/** `POST /email-receipt-parsers/:id/preview`. */
+export interface PreviewEmailReceiptParserPayload {
+  selectedReceiptIds: string[];
+  expected?: ParserSamplePair[];
+}
+
+export interface ParserPreviewTransaction {
+  transactionId: string;
+  summary: string;
+}
+
+export const PARSER_PREVIEW_OUTCOMES = [
+  'matched',
+  'ambiguous',
+  'unmatched',
+  'parse_failed',
+  'not_applicable',
+  'skip_line',
+  'wait_line',
+  'no_html',
+] as const;
+export type ParserPreviewOutcome = (typeof PARSER_PREVIEW_OUTCOMES)[number];
+
+export interface ParserPreviewItem {
+  receiptId: string;
+  subject: string;
+  receivedAt: string;
+  /** How the draft would read the email; the server's `ParserPreviewOutcome`. */
+  outcome: ParserPreviewOutcome;
+  statusReason: string | null;
+  parsed: { date: string | null; total: number | null; currency: string | null; lineCount: number } | null;
+  match: ParserPreviewTransaction | null;
+  expected: ParserPreviewTransaction | null;
+  /** Whether the parsed date and total agree with the expected transaction; null without an expectation. */
+  agrees: boolean | null;
+}
+
+export interface ParserPreviewResult {
+  selected: ParserPreviewItem[];
+  others: ParserPreviewItem[];
+  /** How many other emails the domain has; `others` holds the newest 100. */
+  othersTotal: number;
 }

@@ -43,9 +43,12 @@ interface ReceiptTransactionPickerProps {
    * `link` (the default) is the detail dialog's "choose the transaction this
    * email paid for". `ai` is "Recognize with AI": the same list, the same
    * exclusions, but the choice is handed to the AI rather than stored as a
-   * link, and the copy says so.
+   * link, and the copy says so. `sample` is the profile wizard's "the transaction
+   * this email paid for": kept in the wizard, written nowhere.
    */
-  mode?: 'link' | 'ai';
+  mode?: 'link' | 'ai' | 'sample';
+  /** Called with the chosen row just before `onLink`, for a caller that shows what was chosen (the profile wizard). */
+  onChoose?: (transaction: Transaction) => void;
 }
 
 /**
@@ -66,7 +69,7 @@ interface ReceiptTransactionPickerProps {
  * The default window is calendar arithmetic on the `YYYY-MM-DD` day
  * (`shiftDate`), never a `Date` built from it.
  */
-export function ReceiptTransactionPicker({ effectiveDate, linkingId, onLink, mode = 'link' }: ReceiptTransactionPickerProps) {
+export function ReceiptTransactionPicker({ effectiveDate, linkingId, onLink, mode = 'link', onChoose }: ReceiptTransactionPickerProps) {
   const t = useTranslations('emailReceipts.picker');
   const { formatDate } = useDateFormat();
   const { formatCurrency } = useNumberFormat();
@@ -119,9 +122,9 @@ export function ReceiptTransactionPicker({ effectiveDate, linkingId, onLink, mod
   return (
     <section aria-labelledby="receipt-picker-heading" className="space-y-2">
       <h3 id="receipt-picker-heading" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-        {t(mode === 'ai' ? 'ai.heading' : 'heading')}
+        {t(mode === 'link' ? 'heading' : `${mode}.heading`)}
       </h3>
-      <p className="text-xs text-gray-500 dark:text-gray-400">{t(mode === 'ai' ? 'ai.help' : 'help')}</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400">{t(mode === 'link' ? 'help' : `${mode}.help`)}</p>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <DateInput
@@ -202,9 +205,12 @@ export function ReceiptTransactionPicker({ effectiveDate, linkingId, onLink, mod
                   size="sm"
                   isLoading={linkingId === row.id}
                   disabled={linkingId !== null}
-                  onClick={() => onLink(row.id)}
+                  onClick={() => {
+                    onChoose?.(row);
+                    onLink(row.id);
+                  }}
                 >
-                  {t(mode === 'ai' ? 'ai.linkButton' : 'linkButton')}
+                  {t(mode === 'link' ? 'linkButton' : `${mode}.linkButton`)}
                 </Button>
               </li>
             ))}

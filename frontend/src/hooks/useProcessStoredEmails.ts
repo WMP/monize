@@ -6,7 +6,7 @@ import { clearAllCache } from '@/lib/apiCache';
 import { emailReceiptsApi } from '@/lib/email-receipts-api';
 import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
-import type { EmailReceiptStatus } from '@/types/email-receipts';
+import type { EmailReceiptProcessableStatus, EmailReceiptStatus } from '@/types/email-receipts';
 
 const logger = createLogger('ProcessStoredEmails');
 
@@ -39,7 +39,8 @@ const add = (totals: ProcessTotals, answer: Awaited<ReturnType<typeof emailRecei
 /**
  * "Process all": runs the server's bulk call in a loop until nothing is left, the
  * person cancels (the call in flight finishes first, the next is not sent) or a call
- * fails. One run covers each of `domains` in turn (`undefined` is every sender). The
+ * fails. One run covers each of `domains` in turn (`undefined` is every sender), optionally
+ * limited to `statuses`. The
  * loop ends on the server's own `remaining` (0), and also when a call touched
  * nothing, so a server that stopped making progress cannot keep it going. The cache
  * is dropped when anything was processed: a run can apply what an email proposed.
@@ -64,7 +65,10 @@ export function useProcessStoredEmails() {
   }, []);
 
   const run = useCallback(
-    async (domains: ReadonlyArray<string | undefined>): Promise<ProcessTotals> => {
+    async (
+      domains: ReadonlyArray<string | undefined>,
+      statuses?: readonly EmailReceiptProcessableStatus[],
+    ): Promise<ProcessTotals> => {
       if (running.current) return EMPTY;
       running.current = true;
       cancelRequested.current = false;
@@ -77,6 +81,7 @@ export function useProcessStoredEmails() {
             if (cancelRequested.current) break;
             const answer = await emailReceiptsApi.receipts.processBatch({
               ...(domain ? { domain } : {}),
+              ...(statuses ? { statuses } : {}),
               ...(since ? { since } : {}),
             });
             totals = add(totals, answer);

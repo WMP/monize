@@ -196,17 +196,4 @@ describe('EmailReceiptsManager: the cards', () => {
       expect(inlineActions('Order 1')[0]).toBe('Prepare a profile with AI');
     });
   });
-
-  describe('how to create a profile', () => {
-    it('explains the steps, with the button\'s new name, until emails are selected', async () => {
-      await renderManager();
-      const guide = screen.getByRole('region', { name: 'How to create a profile' });
-      expect(within(guide).getAllByRole('listitem')).toHaveLength(4);
-      expect(guide).toHaveTextContent('Choose a sender in the cloud of sender domains.');
-      expect(guide).toHaveTextContent('Give each of its emails the transaction it paid for');
-      expect(guide).toHaveTextContent('Press Prepare a profile with AI.');
-      await click(screen.getByRole('checkbox', { name: 'Select Order 1' }));
-      expect(screen.queryByRole('region', { name: 'How to create a profile' })).not.toBeInTheDocument();
-    });
-  });
 });

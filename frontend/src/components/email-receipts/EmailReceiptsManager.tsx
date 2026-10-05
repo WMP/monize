@@ -7,8 +7,7 @@ import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { EnvelopeIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { EmailReceiptDetailDialog } from '@/components/email-receipts/EmailReceiptDetailDialog';
-import { ProcessAllButton } from '@/components/email-receipts/ProcessAllButton';
-import { ProfileCreationGuide } from '@/components/email-receipts/ProfileCreationGuide';
+import { RetryFailedEmailsButton } from '@/components/email-receipts/RetryFailedEmailsButton';
 import { SelectAllCheckbox } from '@/components/email-receipts/SelectAllCheckbox';
 import { SenderDomainCloud } from '@/components/email-receipts/SenderDomainCloud';
 import { ParserEditorDialog } from '@/components/email-receipts/ParserEditorDialog';
@@ -33,7 +32,6 @@ import {
   distinctSenderDomains,
   isReceiptActionable,
   normalizeDomainFilter,
-  processableForDomains,
   senderDomain,
 } from '@/lib/email-receipts-format';
 import { getErrorMessage } from '@/lib/errors';
@@ -116,8 +114,6 @@ export function EmailReceiptsManager() {
   const [cloud, setCloud] = useState<DomainCloudState | null>(null);
   // How many emails are in each state, printed on the filter buttons; null while unknown or failed (no number is shown then).
   const [counts, setCounts] = useState<EmailReceiptStatusCounts | null>(null);
-  // How many stored emails "Process all" runs over, from the overview (the domain list is capped, so it cannot be summed); null while unknown or failed.
-  const [processableTotal, setProcessableTotal] = useState<number | null>(null);
   const [loaded, setLoaded] = useState<LoadedList | null>(null);
   const [mailbox, setMailbox] = useState<MailboxState>({ status: 'loading' });
   // The emails ticked for "Draft parser with AI", by id. Only ids of the list on
@@ -164,21 +160,13 @@ export function EmailReceiptsManager() {
   const loadDomains = useCallback(async () => {
     const request = ++latestDomains.current;
     try {
-      const [found, overview] = await Promise.all([
-        emailReceiptsApi.receipts.listDomains(),
-        emailReceiptsApi.receipts.overview().catch((error) => {
-          logger.error(error);
-          return null;
-        }),
-      ]);
+      const found = await emailReceiptsApi.receipts.listDomains();
       if (request !== latestDomains.current) return;
       setDomains(found);
-      setProcessableTotal(overview === null ? null : overview.processable);
     } catch (error) {
       if (request !== latestDomains.current) return;
       logger.error(error);
       setDomains(null);
-      setProcessableTotal(null);
     }
   }, []);
 
@@ -492,13 +480,8 @@ export function EmailReceiptsManager() {
     return t('filter.option', { label, count: formatNumber(count, 0) });
   };
 
-  // "Process all" for the sender being looked at, or every sender; unknown (and the button off) until the counts are read.
-  const processCount =
-    domain === ''
-      ? processableTotal
-      : domains === null
-        ? null
-        : processableForDomains(domains, [domain]);
+  // "Retry failed emails" is offered only while the counts say some email could not be read.
+  const failedCount = counts?.parse_failed ?? 0;
 
   let body;
   if (current !== null && current.items === null) {
@@ -654,13 +637,13 @@ export function EmailReceiptsManager() {
       </div>
       {domain !== '' && <p className="text-xs text-gray-500 dark:text-gray-400">{t('domainFilter.help', { domain })}</p>}
 
-      {selected.length === 0 && <ProfileCreationGuide />}
-
-      <ProcessAllButton
-        count={processCount}
-        domain={domain === '' ? undefined : domain}
-        onFinished={() => void reload()}
-      />
+      {failedCount > 0 && (
+        <RetryFailedEmailsButton
+          count={failedCount}
+          domain={domain === '' ? undefined : domain}
+          onFinished={() => void reload()}
+        />
+      )}
 
       {notice && (
         <div

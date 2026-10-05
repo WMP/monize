@@ -8,6 +8,8 @@ import { DocumentTextIcon, ExclamationTriangleIcon } from '@heroicons/react/24/o
 import { ParserEditorDialog } from '@/components/email-receipts/ParserEditorDialog';
 import { ParserJsonDialog } from '@/components/email-receipts/ParserJsonDialog';
 import { ProcessStatus } from '@/components/email-receipts/ProcessStatus';
+import { ProfileWizard } from '@/components/email-receipts/ProfileWizard';
+import { UncoveredDomainsSection } from '@/components/email-receipts/UncoveredDomainsSection';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -39,7 +41,13 @@ const isConflict = (error: unknown): boolean => error instanceof AxiosError && e
  * asks whether to run the stored emails of its sender domains through it now, so
  * emails that arrived before the profile do not wait for a manual reprocess.
  */
-export function ParsersSection() {
+interface ParsersSectionProps {
+  /** The domain the profile wizard is open for (the hub keeps it in `?wizard=`); `null` or absent when closed. */
+  wizardDomain?: string | null;
+  onWizardDomainChange?: (domain: string | null) => void;
+}
+
+export function ParsersSection({ wizardDomain = null, onWizardDomainChange }: ParsersSectionProps = {}) {
   const t = useTranslations('emailReceipts.parsers');
   const tc = useTranslations('common');
   const { state: lookups, reload: reloadLookups } = useReceiptParserLookups();
@@ -55,6 +63,8 @@ export function ParsersSection() {
   // Only the newest load may write the list (a reload after a 409 must not be
   // overwritten by a slower answer to an earlier request).
   const latestLoad = useRef(0);
+  // Bumped when the wizard finishes, so the cloud of uncovered domains is read again.
+  const [uncoveredAttempt, setUncoveredAttempt] = useState(0);
 
   const load = useCallback(async () => {
     const request = ++latestLoad.current;
@@ -128,6 +138,12 @@ export function ParsersSection() {
     } finally {
       setBusyId(null);
     }
+  };
+
+  /** Run the profile's domains through the pipeline again; the row's count is read again afterwards. */
+  const handleReparse = async (parser: EmailReceiptParser) => {
+    await runProcess(parser.fromDomains);
+    void load();
   };
 
   const handleSaved = () => {
@@ -221,6 +237,17 @@ export function ParsersSection() {
                 <Td className="px-2 align-top sm:px-4 break-words">
                   <div className="font-medium">{parser.name}</div>
                   <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{parser.fromDomains.join(', ')}</div>
+                  {parser.status === 'approved' && (parser.reprocessableCount ?? 0) > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      disabled={processState.status === 'running'}
+                      onClick={() => void handleReparse(parser)}
+                    >
+                      {t('reparse', { count: parser.reprocessableCount ?? 0 })}
+                    </Button>
+                  )}
                 </Td>
                 <Td className="px-2 align-top sm:px-4">
                   <div className="flex flex-wrap items-center gap-1">
@@ -267,6 +294,22 @@ export function ParsersSection() {
           {t('newButton')}
         </Button>
       </div>
+      {wizardDomain !== null && onWizardDomainChange ? (
+        <ProfileWizard
+          domain={wizardDomain}
+          onClose={() => onWizardDomainChange(null)}
+          onFinished={() => {
+            void load();
+            setUncoveredAttempt((n) => n + 1);
+          }}
+        />
+      ) : (
+        <UncoveredDomainsSection
+          refreshKey={uncoveredAttempt}
+          onSelect={(domain) => onWizardDomainChange?.(domain)}
+          disabled={!onWizardDomainChange}
+        />
+      )}
       {processState.status !== 'idle' && (
         <div className="mb-3">
           <ProcessStatus state={processState} onCancel={cancelProcess} onDismiss={dismissProcess} />

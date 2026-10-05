@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { FirstRunWizard } from '@/components/email-receipts/FirstRunWizard';
-import { ProcessAllButton } from '@/components/email-receipts/ProcessAllButton';
 import { Badge, type BadgeVariant } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -61,7 +60,7 @@ export function EmailReceiptsOverview() {
   const { formatDateTime } = useDateFormat();
   const [overview, setOverview] = useState<EmailReceiptsOverview | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
-  // Bumped to read the overview again (the retry button, the end of a "Process all" run); each value is one request.
+  // Bumped to read the overview again (the retry button); each value is one request.
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -149,7 +148,6 @@ export function EmailReceiptsOverview() {
               {t('emails.open')}
             </Link>
           </div>
-          {processable > 0 && <ProcessAllButton count={processable} onFinished={() => setAttempt((n) => n + 1)} />}
         </OverviewCard>
 
         <OverviewCard title={t('proposals.title')}>
@@ -186,10 +184,10 @@ export function EmailReceiptsOverview() {
                         {t('uncovered.row', { domain: entry.domain, count: entry.count })}
                       </span>
                       <Link
-                        href={`/email-receipts?tab=emails&domain=${encodeURIComponent(entry.domain)}`}
+                        href={`/email-receipts?tab=profiles&wizard=${encodeURIComponent(entry.domain)}`}
                         className={LINK_CLASS}
                       >
-                        {t('uncovered.show')}
+                        {t('uncovered.create')}
                       </Link>
                     </li>
                   ))}

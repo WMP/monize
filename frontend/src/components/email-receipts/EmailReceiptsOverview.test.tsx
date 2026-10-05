@@ -3,7 +3,7 @@ import { render, screen, fireEvent, act, within } from '@/test/render';
 import { EmailReceiptsOverview } from './EmailReceiptsOverview';
 import { makeOverview } from './email-receipts-fixtures';
 
-const api = vi.hoisted(() => ({ overview: vi.fn(), processBatch: vi.fn() }));
+const api = vi.hoisted(() => ({ overview: vi.fn() }));
 vi.mock('@/lib/email-receipts-api', () => ({ emailReceiptsApi: { receipts: api } }));
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }),
@@ -115,16 +115,16 @@ describe('EmailReceiptsOverview', () => {
     expect(screen.queryByRole('heading', { name: 'Get started with email receipts' })).not.toBeInTheDocument();
   });
 
-  it('lists the senders no profile covers, each linking to its emails', async () => {
+  it('lists the senders no profile covers, each linking to the profile wizard', async () => {
     api.overview.mockResolvedValue(
       established({ domainsWithoutProfile: [{ domain: 'shop.example.com', count: 3 }, { domain: 'x.example', count: 1 }] }),
     );
     await renderOverview();
     expect(screen.getByText('shop.example.com (3 emails)')).toBeInTheDocument();
     expect(screen.getByText('x.example (1 email)')).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: 'Show the emails' })[0]).toHaveAttribute(
+    expect(screen.getAllByRole('link', { name: 'Create a profile' })[0]).toHaveAttribute(
       'href',
-      '/email-receipts?tab=emails&domain=shop.example.com',
+      '/email-receipts?tab=profiles&wizard=shop.example.com',
     );
   });
 
@@ -140,18 +140,8 @@ describe('EmailReceiptsOverview', () => {
     expect(screen.getByText('1 draft waits for your approval.')).toBeInTheDocument();
   });
 
-  it('offers Process all only when something can be processed, and reads the figures again after it', async () => {
+  it('has no manual processing button: parsing is automatic', async () => {
     api.overview.mockResolvedValue(established());
-    api.processBatch.mockResolvedValue({ processed: 5, byOutcome: { review: 5 }, failed: 0, remaining: 0, since: 'T' });
-    await renderOverview();
-    await click(screen.getByRole('button', { name: 'Process all (5)' }));
-    await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Process' }));
-    expect(api.processBatch).toHaveBeenCalledWith({});
-    expect(api.overview).toHaveBeenCalledTimes(2);
-  });
-
-  it('has no Process all button when nothing can be processed', async () => {
-    api.overview.mockResolvedValue(established({ processable: 0 }));
     await renderOverview();
     expect(screen.queryByRole('button', { name: /Process all/ })).not.toBeInTheDocument();
   });

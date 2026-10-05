@@ -14,6 +14,7 @@ const api = vi.hoisted(() => ({
   test: vi.fn(),
   receiptsList: vi.fn(),
   listDomains: vi.fn(),
+  listUncovered: vi.fn(),
   processBatch: vi.fn(),
 }));
 const payeesApi = vi.hoisted(() => ({ getAll: vi.fn() }));
@@ -22,7 +23,7 @@ const categoriesApi = vi.hoisted(() => ({ getAll: vi.fn() }));
 vi.mock('@/lib/email-receipts-api', () => ({
   emailReceiptsApi: {
     parsers: { list: api.list, approve: api.approve, remove: api.remove, create: api.create, update: api.update, test: api.test },
-    receipts: { list: api.receiptsList, listDomains: api.listDomains, processBatch: api.processBatch },
+    receipts: { list: api.receiptsList, listDomains: api.listDomains, listUncovered: api.listUncovered, processBatch: api.processBatch },
   },
 }));
 vi.mock('@/lib/payees', async (importOriginal) => ({
@@ -33,6 +34,19 @@ vi.mock('@/lib/categories', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/categories')>()),
   categoriesApi,
 }));
+vi.mock('@/components/email-receipts/ProfileWizard', () => ({
+  ProfileWizard: ({ domain, onClose, onFinished }: { domain: string; onClose: () => void; onFinished: () => void }) => (
+    <div data-testid="wizard">
+      wizard for {domain}
+      <button type="button" onClick={onFinished}>
+        finish wizard
+      </button>
+      <button type="button" onClick={onClose}>
+        close wizard
+      </button>
+    </div>
+  ),
+}));
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }),
 }));
@@ -41,9 +55,9 @@ function conflict() {
   return new AxiosError('conflict', '409', undefined, undefined, { status: 409, data: { message: 'moved' } } as never);
 }
 
-async function renderSection() {
+async function renderSection(props: React.ComponentProps<typeof ParsersSection> = {}) {
   await act(async () => {
-    render(<ParsersSection />);
+    render(<ParsersSection {...props} />);
   });
   await act(async () => {});
 }
@@ -64,6 +78,7 @@ describe('ParsersSection', () => {
     api.list.mockResolvedValue([approved, draft]);
     api.receiptsList.mockResolvedValue([]);
     api.listDomains.mockResolvedValue([]);
+    api.listUncovered.mockResolvedValue([]);
     payeesApi.getAll.mockResolvedValue([{ id: 'payee-1', name: 'Allegro' }]);
     categoriesApi.getAll.mockResolvedValue([]);
   });
@@ -311,5 +326,64 @@ describe('ParsersSection', () => {
     // A payee list that failed to load is not a payee that does not exist.
     expect(within(row).queryByText('Payee not found')).not.toBeInTheDocument();
     expect(within(row).getByText('Payee list unavailable')).toBeInTheDocument();
+  });
+  describe('Re-parse emails', () => {
+    it('is offered on an approved profile with emails to re-parse, and not otherwise', async () => {
+      api.list.mockResolvedValue([
+        makeParser({ reprocessableCount: 3 }),
+        makeParser({ id: 'p-3', name: 'Zero parser', reprocessableCount: 0 }),
+        makeParser({ id: 'p-4', name: 'Absent parser' }),
+        makeParser({ id: 'p-5', name: 'Draft parser', status: 'draft', reprocessableCount: 2 }),
+      ]);
+      await renderSection();
+      expect(screen.getAllByRole('button', { name: /Re-parse emails/ })).toHaveLength(1);
+      expect(within(screen.getByRole('row', { name: /Allegro parser/ })).getByRole('button', { name: 'Re-parse emails (3)' })).toBeInTheDocument();
+    });
+
+    it('processes the profile\'s domains and reads the profiles again', async () => {
+      api.list.mockResolvedValue([makeParser({ reprocessableCount: 3 })]);
+      api.processBatch.mockResolvedValue({ processed: 3, byOutcome: { review: 3 }, failed: 0, remaining: 0, since: 'T' });
+      await renderSection();
+      await click(screen.getByRole('button', { name: 'Re-parse emails (3)' }));
+      expect(api.processBatch).toHaveBeenCalledWith({ domain: 'allegro.pl' });
+      expect(api.list).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('Create a profile for a domain', () => {
+    it('lists the uncovered domains and starts the wizard for the one clicked', async () => {
+      api.listUncovered.mockResolvedValue([
+        { domain: 'shop.example.com', count: 4, draftParserId: null },
+        { domain: 'x.example', count: 1, draftParserId: 'p-9' },
+      ]);
+      const onWizardDomainChange = vi.fn();
+      await renderSection({ onWizardDomainChange });
+      expect(screen.getByRole('heading', { name: 'Create a profile for a domain' })).toBeInTheDocument();
+      await click(screen.getByRole('button', { name: 'shop.example.com (4)' }));
+      expect(onWizardDomainChange).toHaveBeenCalledWith('shop.example.com');
+    });
+
+    it('says so when every domain is covered', async () => {
+      await renderSection();
+      expect(screen.getByText('Every sender of the stored emails is covered by a profile.')).toBeInTheDocument();
+    });
+
+    it('does not show a failed read as an empty cloud', async () => {
+      api.listUncovered.mockRejectedValue(new Error('down'));
+      await renderSection();
+      expect(screen.getByText('The sender domains could not be loaded.')).toBeInTheDocument();
+      expect(screen.queryByText('Every sender of the stored emails is covered by a profile.')).not.toBeInTheDocument();
+    });
+
+    it('shows the wizard in place of the cloud while a domain is open, and reads both lists again when it finishes', async () => {
+      const onWizardDomainChange = vi.fn();
+      await renderSection({ wizardDomain: 'shop.example.com', onWizardDomainChange });
+      expect(screen.getByTestId('wizard')).toHaveTextContent('wizard for shop.example.com');
+      expect(screen.queryByRole('heading', { name: 'Create a profile for a domain' })).not.toBeInTheDocument();
+      await click(screen.getByRole('button', { name: 'finish wizard' }));
+      expect(api.list).toHaveBeenCalledTimes(2);
+      await click(screen.getByRole('button', { name: 'close wizard' }));
+      expect(onWizardDomainChange).toHaveBeenCalledWith(null);
+    });
   });
 });
