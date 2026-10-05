@@ -1076,7 +1076,7 @@ export class NetWorthService {
     const start = startDate || "1990-01-01";
     const end = endDate || new Date().toISOString().slice(0, 10);
 
-    let accountFilter = "";
+    let accountFilter: string;
     const params: unknown[] = [userId, start, end];
 
     if (accountIds && accountIds.length > 0) {
@@ -1611,7 +1611,7 @@ export class NetWorthService {
     // `todayYMD()` reads the request timezone where one is set.
     const end = endDate || todayYMD();
 
-    let accountFilter = "";
+    let accountFilter: string;
     const acctParams: unknown[] = [userId];
 
     if (accountIds && accountIds.length > 0) {
@@ -2334,7 +2334,7 @@ export class NetWorthService {
     userId: string,
     accountIds?: string[],
   ): Promise<ScopedInvestmentAccountRow[]> {
-    let accountFilter = "";
+    let accountFilter: string;
     const acctParams: unknown[] = [userId];
 
     if (accountIds && accountIds.length > 0) {

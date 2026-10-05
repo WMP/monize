@@ -2028,7 +2028,7 @@ export class SecurityPriceService {
       userCtx.defaultQuoteProvider,
     )) {
       const opts = this.optsFor(provider, security, userCtx);
-      let series: HistoricalSeries | null = null;
+      let series: HistoricalSeries | null;
       try {
         series = provider.fetchHistoricalWindowSeries
           ? await provider.fetchHistoricalWindowSeries(
@@ -2357,7 +2357,6 @@ export class SecurityPriceService {
     );
 
     let created = 0;
-    let skipped = 0;
     const batchSize = 500;
 
     for (let i = 0; i < pairs.length; i += batchSize) {
@@ -2397,7 +2396,7 @@ export class SecurityPriceService {
       created += affected;
     }
 
-    skipped = pairs.length - created;
+    const skipped = pairs.length - created;
 
     this.logger.log(
       `Transaction price backfill completed: ${pairs.length} processed, ${created} created/updated, ${skipped} skipped`,

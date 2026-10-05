@@ -713,13 +713,13 @@ export class UsersService {
     deleted.securityPrices = result[1] ?? 0;
 
     // Scheduled transactions (before securities: they reference investment_security_id)
-    result = await manager.query(
+    await manager.query(
       `DELETE FROM scheduled_transaction_overrides WHERE scheduled_transaction_id IN
          (SELECT id FROM scheduled_transactions WHERE user_id = $1)`,
       [userId],
     );
 
-    result = await manager.query(
+    await manager.query(
       `DELETE FROM scheduled_transaction_splits WHERE scheduled_transaction_id IN
          (SELECT id FROM scheduled_transactions WHERE user_id = $1)`,
       [userId],
@@ -797,7 +797,7 @@ export class UsersService {
     deleted.budgets = result[1] ?? 0;
 
     // Transaction tags
-    result = await manager.query(
+    await manager.query(
       `DELETE FROM transaction_split_tags WHERE transaction_split_id IN
          (SELECT ts.id FROM transaction_splits ts
           JOIN transactions t ON ts.transaction_id = t.id
@@ -805,7 +805,7 @@ export class UsersService {
       [userId],
     );
 
-    result = await manager.query(
+    await manager.query(
       `DELETE FROM transaction_tags WHERE transaction_id IN
          (SELECT id FROM transactions WHERE user_id = $1)`,
       [userId],
@@ -859,18 +859,16 @@ export class UsersService {
     ]);
     deleted.aiInsights = result[1] ?? 0;
 
-    result = await manager.query(
-      "DELETE FROM ai_usage_logs WHERE user_id = $1",
-      [userId],
-    );
+    await manager.query("DELETE FROM ai_usage_logs WHERE user_id = $1", [
+      userId,
+    ]);
 
     // Optional: delete payees (before accounts, since payee default_category_id
     // references categories, and accounts may reference payee-related data)
     if (opts.deletePayees) {
-      result = await manager.query(
-        "DELETE FROM payee_aliases WHERE user_id = $1",
-        [userId],
-      );
+      await manager.query("DELETE FROM payee_aliases WHERE user_id = $1", [
+        userId,
+      ]);
       result = await manager.query("DELETE FROM payees WHERE user_id = $1", [
         userId,
       ]);

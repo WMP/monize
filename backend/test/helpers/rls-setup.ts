@@ -371,6 +371,7 @@ export async function applyRlsPolicies(
       // Name the file: a bare Postgres error in a 6-file apply is unhelpful.
       throw new Error(
         `Failed applying RLS migration ${path.basename(file)}: ${(err as Error).message}`,
+        { cause: err },
       );
     }
     for (const table of declaredPolicyTables(sql)) {
@@ -429,6 +430,7 @@ export async function applyRlsPolicies(
     } catch (err) {
       throw new Error(
         `Failed applying trigger migration ${path.basename(file)}: ${(err as Error).message}`,
+        { cause: err },
       );
     }
   }

@@ -95,6 +95,7 @@ export async function acquireDbLifecycleLock(
           "another session holds it and did not finish. Inspect pg_locks " +
           `(locktype = 'advisory', objid = ${DB_LIFECYCLE_LOCK_KEY}) to find ` +
           "the holder; startup will retry on the next restart.",
+        { cause: error },
       );
     }
     throw error;

@@ -110,6 +110,7 @@ describe("production migration path (baseline schema + migrations)", () => {
           `migration ${file} failed against the baseline schema: ${
             error instanceof Error ? error.message : String(error)
           }`,
+          { cause: error },
         );
       }
     }

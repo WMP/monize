@@ -233,13 +233,12 @@ export class DataQualityReportsService {
     const checkPayee = sensitivity !== "low";
 
     const params: string[] = [userId, endDate];
-    let paramIndex = 3;
+    const paramIndex = 3;
 
     let dateFilter = `AND t.transaction_date <= $2`;
     if (startDate) {
       dateFilter = `AND t.transaction_date >= $${paramIndex} AND t.transaction_date <= $2`;
       params.push(startDate);
-      paramIndex++;
     }
 
     const query = `
@@ -392,7 +391,7 @@ export class DataQualityReportsService {
           );
 
           let confidence: "high" | "medium" | "low" = "low";
-          let reason = "Same amount";
+          let reason: string;
 
           if (allSameDate && allSamePayee) {
             confidence = "high";
