@@ -282,7 +282,7 @@ describe('SettingsPage', () => {
     });
   });
 
-  it('links the Email Receipts card at its hub page, right after AI Settings in both places', async () => {
+  it('links the Email Receipts card at its hub page, right after Bank Sync in both places', async () => {
     const { container } = render(<SettingsPage />);
     await waitFor(() => {
       const card = screen
@@ -294,7 +294,7 @@ describe('SettingsPage', () => {
     const anchors = Array.from(container.querySelectorAll('[id].scroll-mt-32'))
       .filter((el) => !el.parentElement?.closest('[id].scroll-mt-32'))
       .map((el) => el.id);
-    expect(anchors.indexOf('email-receipts')).toBe(anchors.indexOf('ai-settings') + 1);
+    expect(anchors.indexOf('email-receipts')).toBe(anchors.indexOf('bank-sync') + 1);
   });
 
   it('links the Bank Sync card at the bank sync page', async () => {
