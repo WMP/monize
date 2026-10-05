@@ -19,8 +19,9 @@
  * own sources never use `import.meta`.
  *
  * Native ESM (`--experimental-vm-modules`) loads the packages unchanged but ran
- * a three-file sample about forty times slower, which is why this is a
- * transform rather than a loader switch.
+ * a three-file sample (module-graph, accounts service, two-factor) in 282 s
+ * against 98 s with this transform, and needs the existing allowlist entries
+ * removed, which is why this is a transform rather than a loader switch.
  */
 const { TsJestTransformer } = require("ts-jest");
 
