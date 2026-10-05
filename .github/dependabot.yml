@@ -30,6 +30,12 @@ updates:
       # their breaking changes are reviewed on their own.
       minor-and-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      # TypeScript 7 (the native compiler) ships no JS compiler API, which
+      # ts-jest, typescript-eslint and @nestjs/cli still need. 6.0 is the
+      # bridge release; lift this once those support 7.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directory: "/frontend"
@@ -44,6 +50,16 @@ updates:
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      # Same TypeScript 7 blocker as the backend, plus Next's build typecheck.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # eslint-plugin-react, eslint-plugin-jsx-a11y and eslint-plugin-import
+      # (all pulled in by eslint-config-next) do not support ESLint 10, and
+      # the Next parser lacks the ESLint 10 scope-manager API. Lift this once
+      # eslint-config-next supports ESLint 10.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directory: "/e2e"
