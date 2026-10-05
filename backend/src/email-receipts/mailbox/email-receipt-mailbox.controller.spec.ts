@@ -85,8 +85,7 @@ describe("EmailReceiptMailboxController", () => {
   it("throttles the connection test, the save and poll now", () => {
     const limitOf = (name: string) =>
       Reflect.getMetadata("THROTTLER:LIMITdefault", (proto as never)[name]) as
-        | number
-        | undefined;
+        number | undefined;
     expect(limitOf("test")).toBe(5);
     expect(limitOf("pollNow")).toBe(3);
     expect(limitOf("upsert")).toBe(10);

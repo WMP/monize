@@ -141,10 +141,7 @@ export const RECEIPT_LINES_SOURCES: readonly ReceiptLinesSource[] = [
  * tolerance inside the date window.
  */
 export type ReceiptMatchStrategy =
-  | "reference"
-  | "orderId"
-  | "amount_payee"
-  | "amount_date";
+  "reference" | "orderId" | "amount_payee" | "amount_date";
 export const RECEIPT_MATCH_STRATEGIES: readonly ReceiptMatchStrategy[] = [
   "reference",
   "orderId",
