@@ -36,6 +36,12 @@ updates:
       # bridge release; lift this once those support 7.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
+      # TypeORM 1 changes query semantics (a null or undefined `where` value
+      # now throws) as well as the find-option syntax, so it lands as the
+      # planned series in docs/future-plans/typeorm-1.md, not as a bump.
+      # Remove this when that plan's last task merges.
+      - dependency-name: "typeorm"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directory: "/frontend"
