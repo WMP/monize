@@ -44,16 +44,16 @@
     "@aws-sdk/client-s3": "^3.1141.0",
     "@modelcontextprotocol/node": "^2.1.0",
     "@modelcontextprotocol/server": "^2.0.0",
-    "@nestjs/common": "^11.1.12",
-    "@nestjs/config": "^4.0.2",
-    "@nestjs/core": "^11.1.12",
-    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/common": "^12.1.1",
+    "@nestjs/config": "^12.0.1",
+    "@nestjs/core": "^12.1.1",
+    "@nestjs/jwt": "^12.0.2",
     "@nestjs/passport": "^12.0.0",
-    "@nestjs/platform-express": "^11.1.12",
-    "@nestjs/schedule": "^6.1.0",
-    "@nestjs/swagger": "^11.2.5",
+    "@nestjs/platform-express": "^12.1.1",
+    "@nestjs/schedule": "^12.0.2",
+    "@nestjs/swagger": "^12.0.2",
     "@nestjs/throttler": "^6.7.1",
-    "@nestjs/typeorm": "^11.0.0",
+    "@nestjs/typeorm": "^12.0.2",
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
@@ -162,7 +162,7 @@
     ],
     "transform": {
       "^.+\\.(t|j)s$": [
-        "ts-jest",
+        "<rootDir>/scripts/esm-interop-transformer.cjs",
         {
           "tsconfig": {
             "isolatedModules": true,
@@ -195,7 +195,7 @@
     ],
     "coverageDirectory": "./coverage",
     "transformIgnorePatterns": [
-      "node_modules/(?!(@scure|@otplib|otplib|@noble|openid-client|oauth4webapi|jose|uuid|mdb-reader|@nestjs/passport)/)"
+      "node_modules/(?!(@scure|@otplib|otplib|@noble|openid-client|oauth4webapi|jose|uuid|mdb-reader|@nestjs)/)"
     ],
     "coverageThreshold": {
       "global": {
