@@ -14,6 +14,7 @@ import {
   Min,
   MinLength,
   ValidateIf,
+  ValidateNested,
 } from "class-validator";
 import { SanitizeHtml } from "../../../common/decorators/sanitize-html.decorator";
 import {
@@ -175,4 +176,95 @@ export class DraftParserWithAiDto {
   @ArrayUnique()
   @IsUUID("all", { each: true })
   receiptIds: string[];
+}
+
+/** An email and the transaction a person says it paid for (the wizard's sample pair). */
+export class ReceiptTransactionPairDto {
+  @ApiProperty({ description: "The stored email." })
+  @IsUUID()
+  receiptId: string;
+
+  @ApiProperty({ description: "The transaction this email paid for." })
+  @IsUUID()
+  transactionId: string;
+}
+
+/** Most samples the wizard sends (the assistant tool's own bound). */
+export const PARSER_GENERATE_MAX_SAMPLES = 5;
+/** Longest note a person adds when asking for a revision. */
+export const PARSER_GENERATE_FEEDBACK_MAX_LENGTH = 2000;
+
+/**
+ * Body of `POST /email-receipt-parsers/generate-with-ai`: the sender domain,
+ * the sample emails with the transactions they paid for, and, to revise a
+ * draft, its id and a note. Ownership of every email and transaction and the
+ * domain of every email are checked by the service before anything is written.
+ */
+export class GenerateParserWithAiDto {
+  @ApiProperty({ example: "shop.example.com" })
+  @Transform(({ value }) => normalizeReceiptDomain(value))
+  @IsReceiptDomain()
+  domain: string;
+
+  @ApiProperty({
+    type: [ReceiptTransactionPairDto],
+    minItems: 1,
+    maxItems: PARSER_GENERATE_MAX_SAMPLES,
+    description:
+      "1 to 5 emails of the domain, each with the transaction it paid for; an email at most once.",
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(PARSER_GENERATE_MAX_SAMPLES)
+  @ArrayUnique((sample: ReceiptTransactionPairDto) => sample?.receiptId)
+  @ValidateNested({ each: true })
+  @Type(() => ReceiptTransactionPairDto)
+  samples: ReceiptTransactionPairDto[];
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: "The draft to revise; the assistant updates it in place.",
+  })
+  @IsOptional()
+  @ValidateIf(notBlank)
+  @IsUUID()
+  parserId?: string | null;
+
+  @ApiPropertyOptional({
+    maxLength: PARSER_GENERATE_FEEDBACK_MAX_LENGTH,
+    description: "What the person wants changed in the draft.",
+  })
+  @IsOptional()
+  @Transform(trimmed)
+  @IsString()
+  @MaxLength(PARSER_GENERATE_FEEDBACK_MAX_LENGTH)
+  feedback?: string;
+}
+
+/** Body of `POST /email-receipt-parsers/:id/preview`. */
+export class PreviewEmailReceiptParserDto {
+  @ApiProperty({
+    type: [String],
+    maxItems: PARSER_GENERATE_MAX_SAMPLES,
+    description: "The sample emails: listed in `selected`, not in `others`.",
+  })
+  @IsArray()
+  @ArrayMaxSize(PARSER_GENERATE_MAX_SAMPLES)
+  @ArrayUnique()
+  @IsUUID("all", { each: true })
+  selectedReceiptIds: string[];
+
+  @ApiPropertyOptional({
+    type: [ReceiptTransactionPairDto],
+    maxItems: PARSER_GENERATE_MAX_SAMPLES,
+    description:
+      "The transaction each selected email paid for; the preview says whether the parse agrees with it.",
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(PARSER_GENERATE_MAX_SAMPLES)
+  @ArrayUnique((sample: ReceiptTransactionPairDto) => sample?.receiptId)
+  @ValidateNested({ each: true })
+  @Type(() => ReceiptTransactionPairDto)
+  expected?: ReceiptTransactionPairDto[];
 }

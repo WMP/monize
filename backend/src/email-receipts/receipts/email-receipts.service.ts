@@ -48,6 +48,14 @@ export const EMAIL_RECEIPTS_OVERVIEW_DOMAINS = 10;
  */
 export const EMAIL_RECEIPTS_BATCH_AI_CATEGORY_CALLS = 25;
 
+/** A sender domain no approved profile covers (the profile wizard's cloud). */
+export interface UncoveredDomain {
+  domain: string;
+  count: number;
+  /** The newest draft profile naming the domain, or null. */
+  draftParserId: string | null;
+}
+
 /** What "process in bulk" did (design 8): the emails it ran, where they ended and what is left. */
 export interface ProcessBatchResult {
   /** Emails the pipeline acted on in this call. */
@@ -248,6 +256,59 @@ export class EmailReceiptsService {
       domain: row.domain,
       count: Number(row.count),
       processable: Number(row.processable),
+    }));
+  }
+
+  /**
+   * The sender domains of the user's stored emails that no APPROVED profile
+   * covers (a profile covers its domains and their sub-domains, as the pipeline
+   * reads them; a draft reads no mail), each with its count and the id of the
+   * newest draft profile naming it, if any: what the profile wizard offers.
+   * Most emails first, then by name, at most 200. One statement.
+   */
+  async listUncoveredDomains(userId: string): Promise<UncoveredDomain[]> {
+    const rows = await withScopedDb(this.dataSource, async (m) =>
+      returnedRows<{
+        domain: string;
+        count: string | number;
+        draft_parser_id: string | null;
+      }>(
+        await m.query(
+          `SELECT d.domain, d.count,
+                  (SELECT p.id
+                     FROM email_receipt_parsers p,
+                          unnest(p.from_domains) AS pd(domain)
+                    WHERE p.user_id = $1
+                      AND p.status = 'draft'
+                      AND (d.domain = pd.domain
+                           OR right(d.domain, length(pd.domain) + 1)
+                              = '.' || pd.domain)
+                    ORDER BY p.updated_at DESC, p.id DESC
+                    LIMIT 1) AS draft_parser_id
+             FROM (SELECT r.from_domain AS domain, COUNT(*)::int AS count
+                     FROM email_receipts r
+                    WHERE r.user_id = $1
+                      AND r.from_domain <> ''
+                      AND NOT EXISTS (
+                            SELECT 1
+                              FROM email_receipt_parsers p,
+                                   unnest(p.from_domains) AS pd(domain)
+                             WHERE p.user_id = r.user_id
+                               AND p.status = 'approved'
+                               AND (r.from_domain = pd.domain
+                                    OR right(r.from_domain, length(pd.domain) + 1)
+                                       = '.' || pd.domain))
+                    GROUP BY r.from_domain) d
+            ORDER BY d.count DESC, d.domain ASC
+            LIMIT $2`,
+          [userId, EMAIL_RECEIPTS_MAX_DOMAINS],
+        ),
+      ),
+    );
+    return rows.map((row) => ({
+      domain: row.domain,
+      count: Number(row.count),
+      draftParserId: row.draft_parser_id,
     }));
   }
 

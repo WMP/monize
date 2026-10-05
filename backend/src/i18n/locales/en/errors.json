@@ -393,7 +393,12 @@
     "settingsEmpty": "Send at least one setting to change.",
     "parserToolReceiptCount": "Name 1 to 5 emails to test the parser on.",
     "parserToolInvalidSender": "A draft needs a name and one to ten sender domains such as shop.example.com.",
-    "parserDraftRequestNotClaimed": "This parser draft request is not claimed by you. Claim it first with ai_review_requests, or save the draft without a requestId."
+    "parserDraftRequestNotClaimed": "This parser draft request is not claimed by you. Claim it first with ai_review_requests, or save the draft without a requestId.",
+    "parserNotDraft": "Only a draft parser can be updated by the assistant. This one is approved.",
+    "generateNoDraft": "The assistant did not save a draft parser. Read its answer, adjust the samples or add a note, and try again.",
+    "generateReceiptOutsideDomain": "An email is not from the sender domain the profile is for.",
+    "previewExpectedNotSelected": "An expected transaction was named for an email that is not among the selected ones.",
+    "previewReceiptOutsideDomain": "An email is not from a sender domain of this parser."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "Email is not configured. Emergency access cannot be enabled until SMTP is set up.",

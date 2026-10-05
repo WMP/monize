@@ -5,7 +5,11 @@ import { ALLOW_DELEGATE_KEY } from "../../delegation/decorators/delegate-access.
 import "reflect-metadata";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
-import { DraftParserWithAiDto } from "./dto/email-receipt-parser.dto";
+import {
+  DraftParserWithAiDto,
+  GenerateParserWithAiDto,
+  PreviewEmailReceiptParserDto,
+} from "./dto/email-receipt-parser.dto";
 import { EmailReceiptParsersController } from "./email-receipt-parsers.controller";
 
 describe("EmailReceiptParsersController", () => {
@@ -20,7 +24,13 @@ describe("EmailReceiptParsersController", () => {
     test: jest.fn(),
     requestAiDraft: jest.fn(),
   };
-  const controller = new EmailReceiptParsersController(parsers as never);
+  const generator = { generate: jest.fn() };
+  const previews = { preview: jest.fn() };
+  const controller = new EmailReceiptParsersController(
+    parsers as never,
+    generator as never,
+    previews as never,
+  );
   const ID = "0b9c6b1e-0f3a-4a55-9d57-0c5d3d9f1a11";
 
   beforeEach(() => jest.clearAllMocks());
@@ -48,6 +58,27 @@ describe("EmailReceiptParsersController", () => {
     expect(parsers.test).toHaveBeenCalledWith("user-1", body);
   });
 
+  it("generates and previews for the JWT user, never the body's", async () => {
+    const body = { userId: "someone-else" } as never;
+    await controller.generateWithAi(req, body);
+    await controller.preview(req, ID, body);
+    expect(generator.generate).toHaveBeenCalledWith("user-1", body);
+    expect(previews.preview).toHaveBeenCalledWith("user-1", ID, body);
+  });
+
+  it("declares generate-with-ai before :id", () => {
+    const names = Object.getOwnPropertyNames(
+      EmailReceiptParsersController.prototype,
+    );
+    expect(names.indexOf("generateWithAi")).toBeLessThan(names.indexOf("get"));
+    expect(
+      Reflect.getMetadata(
+        "path",
+        EmailReceiptParsersController.prototype.generateWithAi,
+      ),
+    ).toBe("generate-with-ai");
+  });
+
   it("is under the JWT guard and refuses a delegate session on every route", () => {
     expect(
       Reflect.getMetadata(GUARDS_METADATA, EmailReceiptParsersController),
@@ -68,7 +99,7 @@ describe("EmailReceiptParsersController", () => {
   });
 
   it("parses every :id with ParseUUIDPipe", () => {
-    const routes = ["get", "update", "remove", "approve"];
+    const routes = ["get", "update", "remove", "approve", "preview"];
     for (const name of routes) {
       const args = Reflect.getMetadata(
         ROUTE_ARGS_METADATA,
@@ -78,6 +109,15 @@ describe("EmailReceiptParsersController", () => {
       const idArg = Object.values(args).find((a) => a.data === "id");
       expect(idArg?.pipes).toContain(ParseUUIDPipe);
     }
+  });
+
+  it("throttles the provider-backed route tightly", () => {
+    expect(
+      Reflect.getMetadata(
+        "THROTTLER:LIMITdefault",
+        EmailReceiptParsersController.prototype.generateWithAi,
+      ),
+    ).toBe(5);
   });
 
   it("throttles the draft request route tightly", () => {
@@ -123,6 +163,105 @@ describe("EmailReceiptParsersController", () => {
       expect((await check({})).length).toBeGreaterThan(0);
       expect(
         (await check({ receiptIds: [U1], userId: U2 })).length,
+      ).toBeGreaterThan(0);
+    });
+  });
+});
+
+describe("the profile wizard bodies", () => {
+  const U = (n: number) =>
+    `0b9c6b1e-0f3a-4a55-9d57-${String(n).padStart(12, "0")}`;
+  const pair = (n: number) => ({ receiptId: U(n), transactionId: U(n + 5) });
+  const check = <T extends object>(cls: new () => T, body: object) =>
+    validate(plainToInstance(cls, body), {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    });
+
+  describe("generate-with-ai", () => {
+    const body = (over: Record<string, unknown> = {}) => ({
+      domain: "Shop.Example.com ",
+      samples: [pair(1)],
+      ...over,
+    });
+
+    it("accepts one to five samples, a draft id and a note", async () => {
+      expect(await check(GenerateParserWithAiDto, body())).toHaveLength(0);
+      expect(
+        await check(
+          GenerateParserWithAiDto,
+          body({
+            samples: [1, 2, 3, 4, 5].map(pair),
+            parserId: U(9),
+            feedback: "x".repeat(2000),
+          }),
+        ),
+      ).toHaveLength(0);
+      expect(
+        await check(GenerateParserWithAiDto, body({ parserId: "" })),
+      ).toHaveLength(0);
+    });
+
+    it("normalizes the domain", () => {
+      expect(plainToInstance(GenerateParserWithAiDto, body()).domain).toBe(
+        "shop.example.com",
+      );
+    });
+
+    it.each([
+      ["no samples", { samples: [] }],
+      ["six samples", { samples: [1, 2, 3, 4, 5, 6].map(pair) }],
+      ["a repeated email", { samples: [pair(1), pair(1)] }],
+      ["a sample with no transaction", { samples: [{ receiptId: U(1) }] }],
+      ["a sample with a bad id", { samples: [{ ...pair(1), receiptId: "x" }] }],
+      ["an extra sample field", { samples: [{ ...pair(1), userId: "x" }] }],
+      ["a bad domain", { domain: "not a domain" }],
+      ["no domain", { domain: undefined }],
+      ["a bad draft id", { parserId: "nope" }],
+      ["a note over 2000", { feedback: "x".repeat(2001) }],
+      ["a non-string note", { feedback: 5 }],
+      ["an unknown field", { userId: "someone-else" }],
+    ])("refuses %s", async (_name, over) => {
+      expect(
+        (await check(GenerateParserWithAiDto, body(over))).length,
+      ).toBeGreaterThan(0);
+    });
+  });
+
+  describe("preview", () => {
+    it("accepts none to five selected emails and their expected transactions", async () => {
+      expect(
+        await check(PreviewEmailReceiptParserDto, { selectedReceiptIds: [] }),
+      ).toHaveLength(0);
+      expect(
+        await check(PreviewEmailReceiptParserDto, {
+          selectedReceiptIds: [1, 2, 3, 4, 5].map(U),
+          expected: [pair(1)],
+        }),
+      ).toHaveLength(0);
+    });
+
+    it.each([
+      ["no selection field", {}],
+      ["six selected", { selectedReceiptIds: [1, 2, 3, 4, 5, 6].map(U) }],
+      ["a repeated email", { selectedReceiptIds: [U(1), U(1)] }],
+      ["a bad id", { selectedReceiptIds: ["x"] }],
+      [
+        "six expected",
+        { selectedReceiptIds: [], expected: [1, 2, 3, 4, 5, 6].map(pair) },
+      ],
+      [
+        "a repeated expected email",
+        { selectedReceiptIds: [], expected: [pair(1), pair(1)] },
+      ],
+      [
+        "an expected pair with no transaction",
+        { selectedReceiptIds: [], expected: [{ receiptId: U(1) }] },
+      ],
+      ["an unknown field", { selectedReceiptIds: [], userId: "x" }],
+    ])("refuses %s", async (_name, body) => {
+      expect(
+        (await check(PreviewEmailReceiptParserDto, body)).length,
       ).toBeGreaterThan(0);
     });
   });

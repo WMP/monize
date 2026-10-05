@@ -107,6 +107,14 @@ import { EmailReceiptParsersModule } from "../email-receipts/parsers/email-recei
   ],
   // AiActionsService: the MCP rule tools commit a descriptor a client's own
   // dialog approved through the same executors `/ai/actions/confirm` uses.
-  exports: [AiService, AiUsageService, EncryptionModule, AiActionsService],
+  exports: [
+    AiService,
+    AiUsageService,
+    EncryptionModule,
+    AiActionsService,
+    // The profile wizard runs the assistant synchronously
+    // (`EmailReceiptParserGenerateService`).
+    AiQueryService,
+  ],
 })
 export class AiModule {}

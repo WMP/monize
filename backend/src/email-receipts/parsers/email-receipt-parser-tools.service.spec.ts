@@ -65,6 +65,9 @@ const receipt = (over: Partial<EmailReceipt> = {}) =>
 function setup() {
   const parserRepo = {
     count: jest.fn().mockResolvedValue(0),
+    findOne: jest.fn(),
+    findOneByOrFail: jest.fn(),
+    update: jest.fn().mockResolvedValue({ affected: 1 }),
     create: jest.fn((v: Partial<EmailReceiptParser>) =>
       Object.assign(new EmailReceiptParser(), v),
     ),
@@ -791,5 +794,230 @@ describe("EmailReceiptParserToolsService.saveDraft", () => {
       expect(manager.query).not.toHaveBeenCalled();
       expect(requests.proposeParserDraft).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("EmailReceiptParserToolsService.testDefinition with expected transactions", () => {
+  const T1 = "40000000-0000-4000-8000-000000000001";
+  const T2 = "40000000-0000-4000-8000-000000000002";
+
+  /** The three statements a sample test runs: the transactions, their splits, the candidates. */
+  function withTransactions(
+    manager: ReturnType<typeof setup>["manager"],
+    rows: Array<Record<string, unknown>>,
+  ) {
+    manager.query.mockImplementation(async (sql: string) => {
+      const text = String(sql);
+      if (text.includes("FROM transaction_splits")) return [];
+      if (text.includes("JOIN accounts")) return [];
+      if (text.includes("t.currency_code")) return rows;
+      return [];
+    });
+  }
+  const txRow = (id: string, date: string, amount: string) => ({
+    id,
+    date,
+    amount,
+    currency_code: "USD",
+    payee_name: "Shop",
+    description: null,
+    category_id: null,
+  });
+
+  it("reports per email whether the parsed date and total agree with its transaction", async () => {
+    const { service, manager, receiptRepo } = setup();
+    receiptRepo.find.mockResolvedValue([
+      receipt(),
+      receipt({ id: R2, subject: "Second" }),
+    ]);
+    withTransactions(manager, [
+      txRow(T1, "2026-09-11", "-15.0000"),
+      txRow(T2, "2026-09-11", "-20.0000"),
+    ]);
+
+    const result = await service.testDefinition(USER, {
+      definition: DEFINITION,
+      samples: [
+        { receiptId: R1, transactionId: T1 },
+        { receiptId: R2, transactionId: T2 },
+      ],
+    });
+
+    expect(result.emails[0]).toMatchObject({
+      receiptId: R1,
+      expected: {
+        transactionId: T1,
+        date: "2026-09-11",
+        amount: -15,
+        currencyCode: "USD",
+      },
+      agreement: { date: true, total: true, agrees: true },
+    });
+    expect(result.emails[1].agreement).toEqual({
+      date: true,
+      total: false,
+      agrees: false,
+    });
+    expect(result.allAgree).toBe(false);
+    expect(result.allComplete).toBe(true);
+  });
+
+  it("flags a date outside the profile's window even when the total agrees", async () => {
+    const { service, manager } = setup();
+    withTransactions(manager, [txRow(T1, "2026-12-01", "-15.0000")]);
+    const result = await service.testDefinition(USER, {
+      definition: DEFINITION,
+      samples: [{ receiptId: R1, transactionId: T1 }],
+    });
+    expect(result.emails[0].agreement).toEqual({
+      date: false,
+      total: true,
+      agrees: false,
+    });
+  });
+
+  it("is allAgree true when every sample agrees, and reads the transactions through the user's scope", async () => {
+    const { service, manager } = setup();
+    withTransactions(manager, [txRow(T1, "2026-09-11", "-15.0000")]);
+    const result = await service.testDefinition(USER, {
+      definition: DEFINITION,
+      samples: [{ receiptId: R1, transactionId: T1 }],
+    });
+    expect(result.allAgree).toBe(true);
+    const txCall = manager.query.mock.calls.find(([sql]) =>
+      String(sql).includes("t.currency_code"),
+    );
+    expect(String(txCall?.[0])).toContain("t.user_id = $1");
+    expect(txCall?.[1]).toEqual([USER, [T1]]);
+  });
+
+  it("is a 404 for an expected transaction that is not the user's", async () => {
+    const { service, manager } = setup();
+    withTransactions(manager, []);
+    await expect(
+      service.testDefinition(USER, {
+        definition: DEFINITION,
+        samples: [{ receiptId: R1, transactionId: T1 }],
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("stays backward compatible: receiptIds alone name no expectation and allAgree is null", async () => {
+    const { service } = setup();
+    const result = await service.testDefinition(USER, {
+      definition: DEFINITION,
+      receiptIds: [R1],
+    });
+    expect(result.emails[0]).toMatchObject({
+      expected: null,
+      agreement: null,
+    });
+    expect(result.allAgree).toBeNull();
+  });
+
+  it("takes the emails from samples when both are sent, and refuses six", async () => {
+    const { service, receiptRepo } = setup();
+    await service.testDefinition(USER, {
+      definition: DEFINITION,
+      receiptIds: [R2],
+      samples: [{ receiptId: R1 }],
+    });
+    expect(
+      (receiptRepo.find.mock.calls[0][0].where.id as { _value: string[] })
+        ._value,
+    ).toEqual([R1]);
+    await expect(
+      service.testDefinition(USER, {
+        definition: DEFINITION,
+        samples: Array.from({ length: 6 }, () => ({ receiptId: R1 })),
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+});
+
+describe("EmailReceiptParserToolsService.saveDraft updating a draft", () => {
+  const input = {
+    name: "Example Shop",
+    fromDomains: ["shop.example.com"],
+    definition: DEFINITION,
+  };
+  const existing = (over: Partial<EmailReceiptParser> = {}) =>
+    Object.assign(new EmailReceiptParser(), {
+      id: "p-old",
+      userId: USER,
+      status: "draft",
+      revision: 4,
+      fromDomains: ["shop.example.com"],
+      ...over,
+    });
+
+  it("updates the named draft in place under the row lock and bumps the revision, creating nothing", async () => {
+    const { service, parserRepo } = setup();
+    parserRepo.findOne.mockResolvedValue(existing());
+    parserRepo.findOneByOrFail.mockResolvedValue(
+      existing({ name: "Example Shop", revision: 5 }),
+    );
+
+    const result = await service.saveDraft(USER, CALLER, {
+      ...input,
+      parserId: "p-old",
+      expectedRevision: 4,
+    });
+
+    expect(parserRepo.findOne).toHaveBeenCalledWith({
+      where: { id: "p-old", userId: USER },
+      lock: { mode: "pessimistic_write" },
+    });
+    expect(parserRepo.save).not.toHaveBeenCalled();
+    expect(parserRepo.count).not.toHaveBeenCalled();
+    const [where, patch] = parserRepo.update.mock.calls[0];
+    expect(where).toEqual({ id: "p-old", userId: USER });
+    expect(patch).toMatchObject({
+      name: "Example Shop",
+      fromDomains: ["shop.example.com"],
+    });
+    expect(patch.revision()).toBe("revision + 1");
+    expect(result).toMatchObject({
+      parserId: "p-old",
+      revision: 5,
+      status: "draft",
+    });
+  });
+
+  it.each([
+    ["a stale revision", { revision: 9 }, ConflictException],
+    ["an approved parser", { status: "approved" }, ConflictException],
+  ])("refuses %s and writes nothing", async (_name, over, error) => {
+    const { service, parserRepo } = setup();
+    parserRepo.findOne.mockResolvedValue(existing(over as never));
+    await expect(
+      service.saveDraft(USER, CALLER, {
+        ...input,
+        parserId: "p-old",
+        expectedRevision: 4,
+      }),
+    ).rejects.toBeInstanceOf(error);
+    expect(parserRepo.update).not.toHaveBeenCalled();
+    expect(parserRepo.save).not.toHaveBeenCalled();
+  });
+
+  it("refuses a missing expectedRevision (the compare-and-swap is not optional)", async () => {
+    const { service, parserRepo } = setup();
+    parserRepo.findOne.mockResolvedValue(existing());
+    await expect(
+      service.saveDraft(USER, CALLER, { ...input, parserId: "p-old" }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it("is a 404 for a draft that is not the user's", async () => {
+    const { service, parserRepo } = setup();
+    parserRepo.findOne.mockResolvedValue(null);
+    await expect(
+      service.saveDraft(USER, CALLER, {
+        ...input,
+        parserId: "p-old",
+        expectedRevision: 1,
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

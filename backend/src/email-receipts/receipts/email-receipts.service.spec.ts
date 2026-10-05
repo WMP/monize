@@ -339,6 +339,36 @@ describe("EmailReceiptsService.listDomains", () => {
   });
 });
 
+describe("EmailReceiptsService.listUncoveredDomains", () => {
+  it("lists the domains no approved profile covers, with the newest draft naming each, in one statement", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([
+      { domain: "a.example.com", count: "5", draft_parser_id: "p-draft" },
+      { domain: "b.example.com", count: 2, draft_parser_id: null },
+    ]);
+    await expect(service.listUncoveredDomains(USER)).resolves.toEqual([
+      { domain: "a.example.com", count: 5, draftParserId: "p-draft" },
+      { domain: "b.example.com", count: 2, draftParserId: null },
+    ]);
+    expect(manager.query).toHaveBeenCalledTimes(1);
+    const [sql, params] = manager.query.mock.calls[0];
+    // only an approved profile covers a domain; a draft reads no mail
+    expect(sql).toContain("p.status = 'approved'");
+    expect(sql).toContain("p.status = 'draft'");
+    // the pipeline's sub-domain rule
+    expect(sql).toContain("right(r.from_domain, length(pd.domain) + 1)");
+    expect(sql).toContain("ORDER BY d.count DESC, d.domain ASC");
+    expect(sql).toContain("r.user_id = $1");
+    expect(params).toEqual([USER, EMAIL_RECEIPTS_MAX_DOMAINS]);
+  });
+
+  it("is empty when every domain is covered", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([]);
+    await expect(service.listUncoveredDomains(USER)).resolves.toEqual([]);
+  });
+});
+
 describe("EmailReceiptsService.statusCounts", () => {
   it("counts the user's emails per status and their total", async () => {
     const { service, manager } = setup();

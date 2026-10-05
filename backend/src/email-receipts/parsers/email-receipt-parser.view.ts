@@ -29,6 +29,12 @@ export interface EmailReceiptParserView {
   source: EmailReceiptParserSource;
   approvedAt: string | null;
   revision: number;
+  /**
+   * Approved parsers only (0 for a draft): stored emails of the parser's sender
+   * domains in a processable status that were last processed before the
+   * parser's last change, so processing them again can change something.
+   */
+  reprocessableCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -65,6 +71,7 @@ function viewDefinition(
 export function toParserView(
   row: EmailReceiptParser,
   categoryNames: ReadonlyMap<string, string> = new Map(),
+  reprocessableCount = 0,
 ): EmailReceiptParserView {
   const validation = validateReceiptParserDefinition(row.definition);
   return {
@@ -80,6 +87,7 @@ export function toParserView(
     source: row.source,
     approvedAt: row.approvedAt ? row.approvedAt.toISOString() : null,
     revision: row.revision,
+    reprocessableCount,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

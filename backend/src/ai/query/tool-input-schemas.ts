@@ -987,8 +987,31 @@ export const emailReceiptParsersFields = z.object({
   payeeName: z.string().max(100).optional(),
 });
 
-export const emailReceiptParsersSchema = emailReceiptParsersFields.superRefine(
-  (value, ctx) => {
+/**
+ * The assistant's form of the tool: the shared fields plus the profile wizard's
+ * `samples` (each email with the transaction it paid for), and `parserId` with
+ * `expectedRevision` (update a draft in place). They are not in the MCP tool's
+ * schema: its `tools/list` entry is held to a byte budget that has no room for
+ * them (`mcp/tools-list-budget.spec.ts`).
+ */
+export const emailReceiptParsersAssistantFields =
+  emailReceiptParsersFields.extend({
+    samples: z
+      .array(
+        z.object({
+          receiptId: z.string().uuid(),
+          transactionId: z.string().uuid().optional(),
+        }),
+      )
+      .min(1)
+      .max(EMAIL_RECEIPT_PARSER_TOOL_MAX_RECEIPTS)
+      .optional(),
+    parserId: z.string().uuid().optional(),
+    expectedRevision: z.number().int().min(1).optional(),
+  });
+
+export const emailReceiptParsersSchema =
+  emailReceiptParsersAssistantFields.superRefine((value, ctx) => {
     const need = (field: string, message: string): void => {
       ctx.addIssue({ code: "custom", path: [field], message });
     };
@@ -996,7 +1019,7 @@ export const emailReceiptParsersSchema = emailReceiptParsersFields.superRefine(
       if (value.definition === undefined) {
         need("definition", "definition is required.");
       }
-      if (value.receiptIds === undefined) {
+      if (value.receiptIds === undefined && value.samples === undefined) {
         need("receiptIds", "receiptIds is required: name 1 to 5 emails.");
       }
     }
@@ -1008,9 +1031,17 @@ export const emailReceiptParsersSchema = emailReceiptParsersFields.superRefine(
       if (value.fromDomains === undefined) {
         need("fromDomains", "fromDomains is required.");
       }
+      if (
+        value.parserId !== undefined &&
+        value.expectedRevision === undefined
+      ) {
+        need(
+          "expectedRevision",
+          "expectedRevision is required with parserId: the draft's current revision.",
+        );
+      }
     }
-  },
-);
+  });
 
 export const toolInputSchemas: Record<string, z.ZodSchema> = {
   list_transactions: listTransactionsSchema,

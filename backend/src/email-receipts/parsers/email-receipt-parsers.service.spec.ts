@@ -248,6 +248,70 @@ describe("EmailReceiptParsersService reads", () => {
   });
 });
 
+describe("EmailReceiptParsersService reprocessableCount", () => {
+  it("adds the count of emails to read again to each parser, from ONE statement for the whole list", async () => {
+    const { service, manager, parserRepo } = setup();
+    parserRepo.find.mockResolvedValue([
+      stored({ id: "p1", status: "approved" }),
+      stored({ id: "p2", status: "approved" }),
+      stored({ id: "p3", status: "draft" }),
+    ]);
+    manager.query.mockResolvedValue([{ id: "p1", n: "7" }]);
+
+    const views = await service.list(USER);
+
+    expect(views.map((v) => [v.id, v.reprocessableCount])).toEqual([
+      ["p1", 7],
+      ["p2", 0],
+      ["p3", 0],
+    ]);
+    expect(manager.query).toHaveBeenCalledTimes(1);
+    const [sql, params] = manager.query.mock.calls[0];
+    // approved parsers only; processable statuses; processed before the parser's last change
+    expect(sql).toContain("p.status = 'approved'");
+    expect(sql).toContain("r.updated_at < p.updated_at");
+    expect(sql).toContain("r.status = ANY($2::varchar[])");
+    // the pipeline's sub-domain rule
+    expect(sql).toContain("right(r.from_domain, length(pd.domain) + 1)");
+    expect(sql).toContain("p.user_id = $1");
+    expect(sql).toContain("r.user_id = p.user_id");
+    expect(params).toEqual([
+      USER,
+      [
+        "pending",
+        "no_parser",
+        "parse_failed",
+        "unmatched",
+        "ambiguous",
+        "review_conflict",
+      ],
+      null,
+    ]);
+  });
+
+  it("counts for the one parser a get, create, update or approve answers with", async () => {
+    const { service, manager, parserRepo } = setup();
+    parserRepo.findOne.mockResolvedValue(
+      stored({ id: "p1", status: "approved" }),
+    );
+    manager.query.mockResolvedValue([{ id: "p1", n: 2 }]);
+
+    const view = await service.get(USER, "p1");
+
+    expect(view.reprocessableCount).toBe(2);
+    expect(manager.query.mock.calls[0][1][2]).toEqual(["p1"]);
+  });
+
+  it("is 0 for a parser with no emails to read again", async () => {
+    const { service, manager, parserRepo } = setup();
+    parserRepo.findOne.mockResolvedValue(stored({ status: "approved" }));
+    manager.query.mockResolvedValue([]);
+    await expect(service.get(USER, "p1")).resolves.toMatchObject({
+      reprocessableCount: 0,
+    });
+  });
+});
+
 describe("EmailReceiptParsersService.update", () => {
   const dto = (over: Record<string, unknown> = {}) =>
     ({ expectedRevision: 3, ...over }) as never;
