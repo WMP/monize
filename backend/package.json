@@ -67,7 +67,7 @@
     "nestjs-i18n": "^10.8.5",
     "nodemailer": "^10.0.12",
     "oidc-provider": "^9.12.2",
-    "openai": "^6.22.0",
+    "openai": "^7.23.0",
     "openid-client": "^6.8.8",
     "otplib": "^13.5.0",
     "passport": "^0.7.0",
