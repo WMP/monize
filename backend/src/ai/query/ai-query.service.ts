@@ -49,11 +49,7 @@ import {
  * promising work it cannot do once the turn is over.
  */
 export type QueryCutoffReason =
-  | "iterations"
-  | "toolCalls"
-  | "tokens"
-  | "timeout"
-  | "stalled";
+  "iterations" | "toolCalls" | "tokens" | "timeout" | "stalled";
 
 /**
  * The note prefixed to a synthesized answer, one per budget. Each says which

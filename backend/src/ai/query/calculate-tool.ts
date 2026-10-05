@@ -15,11 +15,7 @@ import { todayYMD } from "../../common/date-utils";
 import { roundToDecimals, sumMoney } from "../../common/round.util";
 
 export type CalculateOperation =
-  | "percentage"
-  | "difference"
-  | "ratio"
-  | "sum"
-  | "average";
+  "percentage" | "difference" | "ratio" | "sum" | "average";
 
 /**
  * The one operation that is not arithmetic on the caller's own numbers: a

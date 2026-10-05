@@ -400,18 +400,9 @@ export class ToolExecutorService {
     const minAmount = input.minAmount as number | undefined;
     const maxAmount = input.maxAmount as number | undefined;
     const direction = input.direction as
-      | "expenses"
-      | "income"
-      | "both"
-      | undefined;
+      "expenses" | "income" | "both" | undefined;
     const groupBy = input.groupBy as
-      | "category"
-      | "payee"
-      | "year"
-      | "month"
-      | "week"
-      | "none"
-      | undefined;
+      "category" | "payee" | "year" | "month" | "week" | "none" | undefined;
     const transfersOnly = input.transfersOnly as boolean | undefined;
     const includeTransactions =
       (input.includeTransactions as boolean | undefined) ?? false;
@@ -1372,17 +1363,15 @@ export class ToolExecutorService {
     input: Record<string, unknown>,
   ): Promise<ToolResult> {
     const operation = input.operation as
-      | "create"
-      | "update"
-      | "delete"
-      | "run"
-      | "test";
+      "create" | "update" | "delete" | "run" | "test";
     const rule: RuleToolInput = {
       ruleId: input.ruleId as string | undefined,
       name: input.name as string | undefined,
       enabled: input.enabled as boolean | undefined,
       triggers: input.triggers as RuleToolInput["triggers"],
       stopProcessing: input.stopProcessing as boolean | undefined,
+      activeFrom: input.activeFrom as string | null | undefined,
+      activeTo: input.activeTo as string | null | undefined,
       condition: input.condition as Record<string, unknown> | undefined,
       actions: input.actions as Record<string, unknown>[] | undefined,
     };
@@ -1594,11 +1583,9 @@ export class ToolExecutorService {
       isFavourite: item.isFavourite as boolean | undefined,
       currencyCode: item.currencyCode as string | undefined,
       countryWeightings: item.countryWeightings as
-        | { name: string; weight: number }[]
-        | undefined,
+        { name: string; weight: number }[] | undefined,
       assetWeightings: item.assetWeightings as
-        | { name: string; weight: number }[]
-        | undefined,
+        { name: string; weight: number }[] | undefined,
     };
   }
 
@@ -1801,12 +1788,7 @@ export class ToolExecutorService {
     const query = input.search as string;
     const exchange = input.exchange as string | undefined;
     const provider = input.provider as
-      | "yahoo"
-      | "msn"
-      | "lse"
-      | "deutsche_boerse"
-      | "auto"
-      | undefined;
+      "yahoo" | "msn" | "lse" | "deutsche_boerse" | "auto" | undefined;
 
     let data;
     try {

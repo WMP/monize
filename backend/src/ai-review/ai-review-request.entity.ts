@@ -15,12 +15,7 @@ import { TransactionRule } from "../transaction-rules/transaction-rule.entity";
 export type AiReviewRequestKind = "transaction_review";
 
 export type AiReviewRequestStatus =
-  | "pending"
-  | "claimed"
-  | "proposed"
-  | "applied"
-  | "rejected"
-  | "expired";
+  "pending" | "claimed" | "proposed" | "applied" | "rejected" | "expired";
 
 /** The states in which a request still waits for someone; the dedupe covers exactly these. */
 export const OPEN_AI_REVIEW_STATUSES = [

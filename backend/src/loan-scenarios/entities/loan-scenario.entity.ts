@@ -25,11 +25,7 @@ export const OVERPAYMENT_MODES: OverpaymentMode[] = [
 
 /** Cadence of a recurring overpayment (ONE_OFF is stored as a lump sum). */
 export type OverpaymentFrequency =
-  | "WEEKLY"
-  | "BIWEEKLY"
-  | "MONTHLY"
-  | "QUARTERLY"
-  | "ANNUALLY";
+  "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "ANNUALLY";
 export const OVERPAYMENT_FREQUENCIES: OverpaymentFrequency[] = [
   "WEEKLY",
   "BIWEEKLY",

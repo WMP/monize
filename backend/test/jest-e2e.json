@@ -10,7 +10,7 @@
     "^\\.{1,2}/(.*/)?typeorm-compat\\.js$": "<rootDir>/src/test-helpers/nestjs-typeorm-compat.ts"
   },
   "transformIgnorePatterns": [
-    "node_modules/(?!(@scure|@otplib|otplib|@noble|openid-client|oauth4webapi|jose|uuid|mdb-reader|@nestjs/passport|@nestjs/typeorm)/)"
+    "node_modules/(?!(@scure|@otplib|otplib|@noble|openid-client|oauth4webapi|jose|uuid|mdb-reader|@nestjs/passport|@nestjs/jwt|@nestjs/typeorm)/)"
   ],
   "testEnvironment": "node",
   "testTimeout": 30000,

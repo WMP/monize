@@ -62,6 +62,7 @@ function setup() {
     {} as unknown as TransactionRulesService,
     applier,
     {} as unknown as ActionHistoryService,
+    {} as never,
   );
   return { service, manager, dataSource, applier, explanation };
 }

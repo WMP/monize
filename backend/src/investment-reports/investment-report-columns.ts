@@ -16,13 +16,7 @@
  */
 
 export type InvestmentColumnType =
-  | "text"
-  | "shares"
-  | "currency"
-  | "percent"
-  | "integer"
-  | "number"
-  | "date";
+  "text" | "shares" | "currency" | "percent" | "integer" | "number" | "date";
 
 export interface InvestmentColumnDef {
   /** Stable identifier persisted in the report definition. */

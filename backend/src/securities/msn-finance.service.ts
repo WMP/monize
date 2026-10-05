@@ -1034,8 +1034,7 @@ export class MsnFinanceService implements QuoteProvider {
         item.volume,
     );
     const currency = (item.currency ?? item.Currency ?? undefined) as
-      | string
-      | undefined;
+      string | undefined;
     const time =
       typeof item.timeLastTraded === "string"
         ? Math.floor(Date.parse(item.timeLastTraded) / 1000)

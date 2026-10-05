@@ -186,7 +186,10 @@ describe("LocalBackupStorageTarget", () => {
       await target.publish(location, ARTIFACT, Buffer.from("mine"));
       const entries = await target.list(location);
 
-      await target.remove(location, entries.find((e) => e.legacy)!);
+      await target.remove(
+        location,
+        entries.find((e) => e.legacy)!,
+      );
 
       // The legacy copy went; the user's own is untouched. Routing by anything
       // other than the entry's own `legacy` flag would have deleted whichever

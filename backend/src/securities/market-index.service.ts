@@ -469,7 +469,7 @@ export class MarketIndexService implements OnApplicationBootstrap {
   ): Promise<void> {
     try {
       const chunks: Array<{ start: string; end: string }> = [];
-      for (let start = from; start <= to; ) {
+      for (let start = from; start <= to;) {
         const end = addDays(start, FETCH_CHUNK_DAYS - 1);
         chunks.push({ start, end: end < to ? end : to });
         start = addDays(end, 1);
