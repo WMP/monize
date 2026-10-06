@@ -15,7 +15,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { SplitEditor, SplitRow, createEmptySplits, toSplitRows } from '@/components/transactions/SplitEditor';
 import { toOverrideSplits } from './splitSerialization';
-import { bookSplitsAtMinorUnit, minorUnitAbsorbIndex } from '@/lib/minor-unit-booking';
+import { bookSplitRowsAtMinorUnit } from '@/lib/minor-unit-booking';
 import { ScheduledTransaction, PostScheduledTransactionData } from '@/types/scheduled-transaction';
 import { Category } from '@/types/category';
 import { Account } from '@/types/account';
@@ -402,7 +402,7 @@ export function PostTransactionDialog({
       // which is what the bank debits (issue #1581).
       const decimals = getDecimalPlacesForCurrency(scheduledTransaction.currencyCode);
       const rawAmount = Number(nextOverride?.amount ?? scheduledTransaction.amount);
-      let amt = roundToDecimals(rawAmount, decimals);
+      const amt = roundToDecimals(rawAmount, decimals);
       // Foreign-currency schedule: the field the user edits is the biller's
       // amount in its own currency. An occurrence override deliberately stays
       // an account-currency figure (see resolveFxForPosting on the backend), so
@@ -436,26 +436,17 @@ export function PostTransactionDialog({
             : scheduledTransaction.splits && scheduledTransaction.splits.length > 0
               ? toSplitRows(scheduledTransaction.splits)
               : null;
-        if (rows && !rows.some((row) => row.splitType === 'investment')) {
-          // The lines are booked in the same unit as the parent, the rounding
-          // difference on the loan's principal line, so they sum to the amount
-          // shown. Rounding the parent alone left 4dp lines under a cents
-          // parent, which the server refused. The server recognises exactly
-          // this booking of the stored template as an unchanged echo and
-          // re-prices it from the ledger.
-          const accountTypeById = new Map(
-            (scheduledTransaction.splits ?? [])
-              .filter((split) => split.transferAccount)
-              .map((split) => [split.transferAccountId ?? '', split.transferAccount!.accountType]),
-          );
-          const booked = bookSplitsAtMinorUnit(
-            rows.map((row) => row.amount),
-            rawAmount,
-            decimals,
-            minorUnitAbsorbIndex(rows, accountTypeById),
-          );
-          amt = booked.parentAmount;
-          setSplits(rows.map((row, index) => ({ ...row, amount: booked.amounts[index] })));
+        // The lines are booked in the same unit as the parent, the rounding
+        // difference on the loan's principal line, so they sum to the amount
+        // shown. Rounding the parent alone left 4dp lines under a cents
+        // parent, which the server refused. The server recognises exactly
+        // this booking of the stored template as an unchanged echo and
+        // re-prices it from the ledger.
+        const booked = rows
+          ? bookSplitRowsAtMinorUnit(rows, rawAmount, scheduledTransaction.currencyCode, scheduledTransaction.splits)
+          : null;
+        if (booked) {
+          setSplits(booked.rows);
         } else {
           setSplits(rows ?? createEmptySplits(amt));
         }

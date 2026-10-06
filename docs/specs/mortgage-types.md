@@ -117,10 +117,24 @@ Decisions 1 to 6 were agreed in #1486; 7 to 11 are made here.
    installment of 864.5833 principal and 306.0625 interest posts as 1,170.65
    = 864.59 + 306.06. The template stays at 4dp, so the method still
    reproduces the #1501 tables; the ledger it then accumulates is the cents
-   ledger of section 7.2, which decision 8's residue bound already covers.
-   The Post dialog pre-fills the same booking (`bookSplitsAtMinorUnit`, one
-   per layer, same cases), and the server recognises that pre-fill as an
-   unchanged echo of the template
+   ledger of section 7.2.
+
+   Booking never retires more than the debt. A ledger booked in cents owes
+   a whole number of cents, so its final installment retires it exactly. A
+   ledger posted at 4dp before #1581 can owe a sub-cent tail (833.3449);
+   rounding its final principal could overshoot into credit, so that
+   principal is cut down to the cent at or below the debt (833.34). The
+   residue left, under one cent, is not decision 8's leftover: the next
+   occurrence reads a debt of 0.01 or less as paid off and retires the
+   schedule, and the account shows a balance under one cent rather than a
+   credit. Asserted by `loan-payment-waterfall.util.spec.ts` ("never retires
+   more than the debt").
+
+   The Post dialog, the occurrence override editor and the template form
+   pre-fill the same booking (`bookSplitRowsAtMinorUnit`;
+   `bookSplitsAtMinorUnit` per layer, held together by the parity fixture
+   `backend/src/common/minor-unit-booking-cases.json`), and the server
+   recognises the dialog's pre-fill as an unchanged echo of the template
    (`docs/specs/scheduled-loan-installment-pricing.md` section 3).
 8. **The final LINEAR SHORTEN_TERM installment absorbs a small leftover.**
    An installment is the final one, and its principal is the whole

@@ -18,6 +18,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { TagForm } from '@/components/tags/TagForm';
 import { SplitEditor, SplitRow, createEmptySplits, toSplitRows, toCreateSplitData } from '@/components/transactions/SplitEditor';
+import { bookSplitRowsAtMinorUnit } from '@/lib/minor-unit-booking';
 import { CurrencyPickerButton } from '@/components/transactions/CurrencyPickerButton';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { exchangeRatesApi } from '@/lib/exchange-rates';
@@ -227,12 +228,28 @@ export function ScheduledTransactionForm({
     scheduledTransaction?.occurrencesRemaining !== null &&
     scheduledTransaction?.occurrencesRemaining !== undefined
   );
-  const [splits, setSplits] = useState<SplitRow[]>(
+  // A stored template is priced at 4dp (a LINEAR mortgage installment is
+  // 864.5833 + 306.0625 = 1,170.6458); the form edits it in the currency's
+  // smallest unit, lines and parent alike, or saving a cents parent over the
+  // 4dp lines is refused (issue #1581).
+  const [bookedTemplate] = useState(() =>
     scheduledTransaction?.splits && scheduledTransaction.splits.length > 0 && !isScheduledTransfer(scheduledTransaction)
-      ? toSplitRows(scheduledTransaction.splits)
-      : templateTransaction?.splits && templateTransaction.splits.length > 0 && !templateTransaction.isTransfer
-        ? toSplitRows(templateTransaction.splits)
-        : []
+      ? bookSplitRowsAtMinorUnit(
+          toSplitRows(scheduledTransaction.splits),
+          Number(scheduledTransaction.amount),
+          scheduledTransaction.currencyCode,
+          scheduledTransaction.splits,
+        )
+      : null,
+  );
+  const [splits, setSplits] = useState<SplitRow[]>(
+    bookedTemplate
+      ? bookedTemplate.rows
+      : scheduledTransaction?.splits && scheduledTransaction.splits.length > 0 && !isScheduledTransfer(scheduledTransaction)
+        ? toSplitRows(scheduledTransaction.splits)
+        : templateTransaction?.splits && templateTransaction.splits.length > 0 && !templateTransaction.isTransfer
+          ? toSplitRows(templateTransaction.splits)
+          : []
   );
 
   const {
@@ -253,7 +270,7 @@ export function ScheduledTransactionForm({
           categoryId: scheduledTransaction.categoryId || '',
           amount: isScheduledTransfer(scheduledTransaction)
             ? Math.abs(Math.round(Number(scheduledTransaction.amount) * 100) / 100)
-            : Math.round(Number(scheduledTransaction.amount) * 100) / 100,
+            : (bookedTemplate?.parentAmount ?? Math.round(Number(scheduledTransaction.amount) * 100) / 100),
           currencyCode: scheduledTransaction.currencyCode,
           description: scheduledTransaction.description || '',
           referenceNumber: '',

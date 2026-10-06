@@ -1,4 +1,5 @@
 import { roundMoney, roundToDecimals, sumMoney } from "./round.util";
+import { AccountType } from "../accounts/entities/account.entity";
 
 /**
  * The number of decimals a currency's smallest unit has: 2 for EUR (cents),
@@ -36,10 +37,15 @@ export function currencyMinorUnitDecimals(
  * lines sum to the parent exactly and the split validator's 4dp equality
  * holds.
  *
+ * Only a rounding difference is moved: when the lines did not already sum to
+ * the parent at 4dp (an occurrence override that changed the amount and not
+ * the lines), the gap is not this function's to place, so the lines are only
+ * rounded and the split editor shows the imbalance for the user to settle.
+ *
  * Mirrored by `bookSplitsAtMinorUnit` in `frontend/src/lib/minor-unit-booking.ts`;
- * the two must return the same figures for the same input, because the
- * server recognises an unchanged Post dialog by comparing what it sent with
- * this function's answer for the stored template.
+ * both suites run `minor-unit-booking-cases.json`, because the server
+ * recognises an unchanged Post dialog by comparing what it sent with this
+ * function's answer for the stored template.
  */
 export function bookSplitsAtMinorUnit(
   amounts: readonly number[],
@@ -51,7 +57,9 @@ export function bookSplitsAtMinorUnit(
   const rounded = amounts.map((amount) =>
     roundToDecimals(Number(amount), decimals),
   );
-  if (absorbIndex < 0 || absorbIndex >= rounded.length) {
+  const balanced =
+    sumMoney(amounts.map(Number)) === roundMoney(Number(parentAmount));
+  if (!balanced || absorbIndex < 0 || absorbIndex >= rounded.length) {
     return { amounts: rounded, parentAmount: parent };
   }
   const residual = roundMoney(parent - sumMoney(rounded));
@@ -61,4 +69,61 @@ export function bookSplitsAtMinorUnit(
     ),
     parentAmount: parent,
   };
+}
+
+/**
+ * The account types a scheduled loan payment amortizes against. The loan
+ * recalculation (`ScheduledTransactionLoanService`) and the booking below both
+ * read this one list; the client's copy is held to it by
+ * `minor-unit-booking-cases.json`.
+ */
+export const LOAN_LIKE_ACCOUNT_TYPES: ReadonlySet<string> = new Set<string>([
+  AccountType.LOAN,
+  AccountType.MORTGAGE,
+  AccountType.LINE_OF_CREDIT,
+]);
+
+interface BookableLine {
+  amount: number | string;
+  transferAccountId?: string | null;
+  memo?: string | null;
+}
+
+/**
+ * Which line takes the rounding difference when a split set is booked in the
+ * currency's unit.
+ *
+ * On a loan payment it is the principal line: the first line transferring to
+ * a loan-like account whose memo does not name it the extra principal, the
+ * line `resolveInstallment` treats as principal. Interest is the period's
+ * charge; principal is what retires the loan. Any other split set gives it to
+ * its largest line, where a cent moves the least.
+ *
+ * Mirrored by `minorUnitAbsorbIndex` in `frontend/src/lib/minor-unit-booking.ts`.
+ */
+export function minorUnitAbsorbIndex(
+  lines: readonly BookableLine[],
+  accountTypeById: ReadonlyMap<string, string>,
+): number {
+  const loanAccountId = lines
+    .map((line) => line.transferAccountId)
+    .find(
+      (id) =>
+        !!id && LOAN_LIKE_ACCOUNT_TYPES.has(accountTypeById.get(id) ?? ""),
+    );
+  if (loanAccountId) {
+    const principalIndex = lines.findIndex(
+      (line) =>
+        line.transferAccountId === loanAccountId &&
+        !(line.memo ?? "").toLowerCase().includes("extra"),
+    );
+    if (principalIndex >= 0) return principalIndex;
+  }
+  return lines.reduce(
+    (best, line, index) =>
+      Math.abs(Number(line.amount)) > Math.abs(Number(lines[best].amount))
+        ? index
+        : best,
+    0,
+  );
 }

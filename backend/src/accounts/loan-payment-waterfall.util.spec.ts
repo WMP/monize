@@ -213,4 +213,73 @@ describe("bookLoanAllocation", () => {
     };
     expect(bookLoanAllocation(allocation, 2)).toEqual(allocation);
   });
+
+  describe("never retires more than the debt", () => {
+    it("cuts a final installment on a 4dp ledger down to the unit, never into credit", () => {
+      // A ledger posted at 4dp before #1581 owes 833.3449. Rounding would
+      // book 833.35 of principal and leave the loan 0.0051 in credit.
+      const booked = bookLoanAllocation(
+        {
+          principal: 833.3449,
+          interest: 2.7749,
+          extraPrincipal: 0,
+          total: 836.1198,
+        },
+        2,
+        833.3449,
+      );
+      expect(booked).toEqual({
+        principal: 833.34,
+        interest: 2.77,
+        extraPrincipal: 0,
+        total: 836.11,
+      });
+      // The residue is under one cent: the next occurrence reads it as
+      // paid off (`debt <= 0.01`).
+      expect(833.3449 - booked.principal).toBeLessThan(0.01);
+      expect(booked.principal).toBeLessThanOrEqual(833.3449);
+    });
+
+    it("retires a ledger booked in cents exactly", () => {
+      expect(
+        bookLoanAllocation(
+          {
+            principal: 833.34,
+            interest: 2.7778,
+            extraPrincipal: 0,
+            total: 836.1178,
+          },
+          2,
+          833.34,
+        ),
+      ).toEqual({
+        principal: 833.34,
+        interest: 2.78,
+        extraPrincipal: 0,
+        total: 836.12,
+      });
+    });
+
+    it("cuts principal and extra together when both retire the debt", () => {
+      const booked = bookLoanAllocation(
+        {
+          principal: 800.0049,
+          interest: 2.0049,
+          extraPrincipal: 33.34,
+          total: 835.3498,
+        },
+        2,
+        833.3449,
+      );
+      expect(booked.principal + booked.extraPrincipal).toBeLessThanOrEqual(
+        833.3449,
+      );
+      expect(booked).toEqual({
+        principal: 800,
+        interest: 2,
+        extraPrincipal: 33.34,
+        total: 835.34,
+      });
+    });
+  });
 });

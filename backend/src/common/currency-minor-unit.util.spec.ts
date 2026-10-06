@@ -1,7 +1,36 @@
+import { readFileSync } from "fs";
+import { join } from "path";
 import {
   bookSplitsAtMinorUnit,
   currencyMinorUnitDecimals,
+  minorUnitAbsorbIndex,
 } from "./currency-minor-unit.util";
+
+interface BookingCase {
+  name: string;
+  amounts: number[];
+  parentAmount: number;
+  decimals: number;
+  absorbIndex: number;
+  expected: { amounts: number[]; parentAmount: number };
+}
+
+interface AbsorbCase {
+  name: string;
+  lines: {
+    amount: number;
+    transferAccountId: string | null;
+    memo: string | null;
+  }[];
+  accountTypes: Record<string, string>;
+  expected: number;
+}
+
+// The parity fixture: `frontend/src/lib/minor-unit-booking.test.ts` runs the
+// same cases against the client's copy of both functions.
+const cases = JSON.parse(
+  readFileSync(join(__dirname, "minor-unit-booking-cases.json"), "utf8"),
+) as { booking: BookingCase[]; absorbIndex: AbsorbCase[] };
 
 describe("currencyMinorUnitDecimals", () => {
   it.each([
@@ -21,39 +50,26 @@ describe("currencyMinorUnitDecimals", () => {
   });
 });
 
-describe("bookSplitsAtMinorUnit", () => {
-  it("books the issue #1581 installment in cents, principal taking the rounding", () => {
-    // 864.5833 + 306.0625 = 1,170.6458: rounded line by line the lines make
-    // 1,170.64 against a 1,170.65 bill, and the split validator refused it.
+describe("bookSplitsAtMinorUnit (minor-unit-booking-cases.json)", () => {
+  it.each(cases.booking.map((c) => [c.name, c] as const))("%s", (_name, c) => {
     expect(
-      bookSplitsAtMinorUnit([-864.5833, -306.0625], -1170.6458, 2, 0),
-    ).toEqual({ amounts: [-864.59, -306.06], parentAmount: -1170.65 });
+      bookSplitsAtMinorUnit(
+        c.amounts,
+        c.parentAmount,
+        c.decimals,
+        c.absorbIndex,
+      ),
+    ).toEqual(c.expected);
   });
+});
 
-  it("books whole units for a currency without a minor unit", () => {
-    expect(
-      bookSplitsAtMinorUnit([-86458.33, -30606.25], -117064.58, 0, 0),
-    ).toEqual({ amounts: [-86459, -30606], parentAmount: -117065 });
-  });
-
-  it("leaves a set already in the unit unchanged", () => {
-    expect(bookSplitsAtMinorUnit([-500, -1000], -1500, 2, 0)).toEqual({
-      amounts: [-500, -1000],
-      parentAmount: -1500,
-    });
-  });
-
-  it("puts a negative residual on the absorbing line too", () => {
-    // 0.335 + 0.665 round to 0.34 + 0.67 = 1.01 against a 1.00 parent.
-    expect(bookSplitsAtMinorUnit([0.335, 0.665], 1, 2, 1)).toEqual({
-      amounts: [0.34, 0.66],
-      parentAmount: 1,
-    });
-  });
-
-  it("only rounds when no line is named to absorb the difference", () => {
-    expect(
-      bookSplitsAtMinorUnit([-864.5833, -306.0625], -1170.6458, 2, -1),
-    ).toEqual({ amounts: [-864.58, -306.06], parentAmount: -1170.65 });
-  });
+describe("minorUnitAbsorbIndex (minor-unit-booking-cases.json)", () => {
+  it.each(cases.absorbIndex.map((c) => [c.name, c] as const))(
+    "%s",
+    (_name, c) => {
+      expect(
+        minorUnitAbsorbIndex(c.lines, new Map(Object.entries(c.accountTypes))),
+      ).toBe(c.expected);
+    },
+  );
 });

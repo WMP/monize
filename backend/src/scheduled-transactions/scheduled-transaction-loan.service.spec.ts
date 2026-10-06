@@ -1571,10 +1571,10 @@ describe("ScheduledTransactionLoanService", () => {
     });
   });
 
-  describe("bookedTemplateAmounts", () => {
+  describe("bookTemplateAtMinorUnit", () => {
     it("books the stored template the way the Post dialog pre-fills it", async () => {
       accountsRepository.findOne.mockResolvedValue(makeLoanAccount());
-      const booked = await service.bookedTemplateAmounts(
+      const booked = await service.bookTemplateAtMinorUnit(
         makeScheduledTransaction({ amount: -1170.6458, currencyCode: "EUR" }),
         [
           {
@@ -1602,24 +1602,39 @@ describe("ScheduledTransactionLoanService", () => {
       });
     });
 
-    it("is null for a split set that pays no loan", async () => {
+    it("gives the rounding to the largest line of a split set that pays no loan", async () => {
       accountsRepository.findOne.mockResolvedValue({
         id: "acc-savings",
         accountType: "SAVINGS",
       });
-      const booked = await service.bookedTemplateAmounts(
-        makeScheduledTransaction({ amount: -100 }),
+      const booked = await service.bookTemplateAtMinorUnit(
+        makeScheduledTransaction({ amount: -100, currencyCode: "EUR" }),
         [
           {
             id: "split-a",
             transferAccountId: "acc-savings",
             categoryId: null,
-            amount: -100,
+            amount: -33.335,
+            memo: null,
+          },
+          {
+            id: "split-b",
+            transferAccountId: null,
+            categoryId: "cat-x",
+            amount: -66.665,
             memo: null,
           },
         ] as unknown as ScheduledTransactionSplit[],
       );
-      expect(booked).toBeNull();
+      // 33.34 + 66.67 = 100.01 against a 100.00 parent: the cent comes
+      // back off the larger line.
+      expect(booked).toEqual({
+        amountsBySplitId: new Map([
+          ["split-a", -33.34],
+          ["split-b", -66.66],
+        ]),
+        parentAmount: -100,
+      });
     });
   });
 

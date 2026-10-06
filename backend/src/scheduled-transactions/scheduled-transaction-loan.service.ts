@@ -26,6 +26,8 @@ import {
 import {
   bookSplitsAtMinorUnit,
   currencyMinorUnitDecimals,
+  LOAN_LIKE_ACCOUNT_TYPES,
+  minorUnitAbsorbIndex,
 } from "../common/currency-minor-unit.util";
 import { withScopedDb } from "../common/db/scoped-db";
 import { ensureYMD } from "../common/recurrence";
@@ -44,11 +46,8 @@ import {
 // that structure -- it accepts LOAN, MORTGAGE and LINE_OF_CREDIT, so a LOC left
 // out of the recalculation would keep billing the first installment's split
 // forever (issue #1154 re-review).
-const LOAN_LIKE_ACCOUNT_TYPES: ReadonlySet<AccountType> = new Set([
-  AccountType.LOAN,
-  AccountType.MORTGAGE,
-  AccountType.LINE_OF_CREDIT,
-]);
+// The list itself is `LOAN_LIKE_ACCOUNT_TYPES` in
+// `common/currency-minor-unit.util.ts`, shared with the minor-unit booking.
 
 /** The template's managed lines: a principal transfer, one interest line, and
  *  optionally an extra-principal transfer. */
@@ -426,6 +425,7 @@ export class ScheduledTransactionLoanService {
       const allocation = bookLoanAllocation(
         installment.allocation,
         currencyMinorUnitDecimals(scheduledTransaction.currencyCode),
+        installment.debt,
       );
       const { template } = installment;
       const amountsBySplitId = new Map<string, number>();
@@ -450,35 +450,35 @@ export class ScheduledTransactionLoanService {
   }
 
   /**
-   * The stored template as the Post dialog pre-fills it: every line and the
-   * parent in the currency's smallest unit, the rounding difference on the
-   * principal line (`bookSplitsAtMinorUnit`, mirrored by the client). The
-   * posting path compares the dialog's lines with this to tell an unchanged
-   * echo, which re-prices from the ledger, from figures the user typed, which
-   * post as given (issue #1581).
-   *
-   * Null when the split set does not transfer principal to a loan-like
-   * account: only a loan template re-prices, so nothing else needs an echo
-   * recognised.
+   * The stored template booked in the currency's smallest unit: every line and
+   * the parent rounded to it, the rounding difference on the loan's principal
+   * line, or on the largest line of a split set that pays no loan
+   * (`bookSplitsAtMinorUnit` and `minorUnitAbsorbIndex`, mirrored by the
+   * client). It is what the Post dialog pre-fills, so the posting path
+   * compares the dialog's lines with it to tell an unchanged echo, which
+   * re-prices from the ledger, from figures the user typed, which post as
+   * given; and it is what an automatic posting books when the template is not
+   * one the loan pricing re-divides (issue #1581).
    */
-  async bookedTemplateAmounts(
+  async bookTemplateAtMinorUnit(
     scheduledTransaction: ScheduledTransaction,
     splits: ScheduledTransactionSplit[],
-  ): Promise<LoanPostingAllocation | null> {
+  ): Promise<LoanPostingAllocation> {
     return withScopedDb(this.dataSource, async (m) => {
-      const loanAccount = await this.findLoanAccount(m, splits);
-      if (!loanAccount) return null;
-      const principalIndex = splits.findIndex(
-        (s) =>
-          s.transferAccountId === loanAccount.id &&
-          !s.memo?.toLowerCase().includes("extra"),
-      );
-      if (principalIndex < 0) return null;
+      const accountTypeById = new Map<string, string>();
+      for (const split of splits) {
+        const accountId = split.transferAccountId;
+        if (!accountId || accountTypeById.has(accountId)) continue;
+        const account = await m
+          .getRepository(Account)
+          .findOne({ where: { id: accountId } });
+        if (account) accountTypeById.set(account.id, account.accountType);
+      }
       const booked = bookSplitsAtMinorUnit(
         splits.map((s) => Number(s.amount)),
         Number(scheduledTransaction.amount),
         currencyMinorUnitDecimals(scheduledTransaction.currencyCode),
-        principalIndex,
+        minorUnitAbsorbIndex(splits, accountTypeById),
       );
       const amountsBySplitId = new Map<string, number>();
       splits.forEach((s, index) => {

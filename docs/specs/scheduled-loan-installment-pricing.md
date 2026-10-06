@@ -145,15 +145,25 @@ same waterfall), so the common case is byte-identical.
   unit** (issue #1581): the parent and every line rounded to it, the rounding
   difference on the principal line, so a 1,170.6458 template shows and sends
   1,170.65 = 864.59 + 306.06. That booking of the stored template
-  (`bookedTemplateAmounts`) is an echo too, compared exactly; there is no
+  (`bookTemplateAtMinorUnit`) is an echo too, compared exactly; there is no
   tolerance, so a cent the user moves between the lines is still their
   statement. Before this the dialog rounded only the parent and sent the 4dp
-  lines, and the split validator refused every such post.
+  lines, and the split validator refused every such post. The occurrence
+  override editor and the template form load a template the same way
+  (`bookSplitRowsAtMinorUnit`). Only a rounding difference is ever moved: a
+  line set that did not sum to its parent at 4dp (an override that changed
+  the amount and not the lines) is only rounded, and the split editor shows
+  the gap for the user to place.
 
 - **A posting is booked in the currency's smallest unit.** The allocation is
   priced at 4dp and booked by `bookLoanAllocation`: total and interest
   rounded to the unit, principal the remainder (the extra principal instead
-  when principal is zero). `docs/specs/mortgage-types.md` decision 7.
+  when principal is zero), never more principal than the debt.
+  `docs/specs/mortgage-types.md` decision 7. A split template the pricing
+  does not re-divide (no loan line, or an escrow line beside it) is booked by
+  `bookTemplateAtMinorUnit` on the automatic path too, so no occurrence posts
+  4dp from one button and cents from the other. An inline or override amount
+  is the user's statement and posts as given.
 
 - **A posting never grows the total.** The parent an occurrence posts is the
   bill the user was shown; re-pricing re-divides it between interest and

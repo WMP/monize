@@ -91,11 +91,11 @@ const linearInstallment = (currencyCode: string) =>
     ],
   }) as any;
 
-const renderDialog = (currencyCode: string) =>
+const renderDialog = (currencyCode: string, overrides: Record<string, unknown> = {}) =>
   render(
     <PostTransactionDialog
       isOpen
-      scheduledTransaction={linearInstallment(currencyCode)}
+      scheduledTransaction={{ ...linearInstallment(currencyCode), ...overrides }}
       categories={[{ id: 'cat-interest', name: 'Mortgage Interest', parentId: null }] as any[]}
       accounts={[checking, mortgage] as any[]}
       scheduledTransactions={[]}
@@ -131,6 +131,17 @@ describe('PostTransactionDialog: a bill priced below the cent (issue #1581)', ()
       ['11111111-1111-4111-8111-111111111111', -306.06],
       ['22222222-2222-4222-8222-222222222222', -864.59],
     ]);
+  });
+
+  it('leaves an override that changed only the amount unbalanced for the user to settle', () => {
+    // An occurrence override of 1,500 that never touched the lines: the
+    // 329.35 gap is not a rounding difference, so it is not pushed onto the
+    // principal line behind the user's back.
+    renderDialog('EUR', {
+      nextOverride: { amount: -1500, isSplit: null, splits: null, overrideDate: null },
+    });
+    expect(screen.getByTestId('parent')).toHaveTextContent('-1500');
+    expect(screen.getAllByTestId('line').map((el) => el.textContent)).toEqual(['-306.06', '-864.58']);
   });
 
   it('books whole units for a currency without a minor unit', async () => {

@@ -5973,6 +5973,40 @@ describe("ScheduledTransactionsService", () => {
         });
       });
 
+      it("books a split template the loan pricing does not re-divide in cents too", async () => {
+        // No line pays a loan, so `resolvePostingAllocation` is not
+        // applicable; the occurrence is still booked in cents, as the Post
+        // dialog pre-fills it, with the cent on the largest line.
+        const scheduled = makeScheduled({
+          amount: -100,
+          isSplit: true,
+          frequency: "ONCE",
+          splits: [
+            {
+              ...loanTemplateSplits()[1],
+              id: "ss-a",
+              categoryId: "cat-a",
+              amount: -33.335,
+            },
+            {
+              ...loanTemplateSplits()[1],
+              id: "ss-b",
+              categoryId: "cat-b",
+              amount: -66.665,
+            },
+          ],
+        });
+        arrangeLoanPost(scheduled);
+
+        await service.post(userId, stId);
+
+        const payload = transactionsService.create.mock.calls[0][1];
+        expect(payload.amount).toBe(-100);
+        expect(payload.splits.map((sp: any) => sp.amount)).toEqual([
+          -33.34, -66.66,
+        ]);
+      });
+
       it("honours a cent the user moved between the lines", async () => {
         // The bank split it 864.58 / 306.07: exact comparison, no tolerance,
         // so a typed cent is the user's statement and posts as given.
