@@ -521,7 +521,8 @@
       "all": "Tüm göndericiler",
       "option": "{domain} ({count})",
       "unknown": "Gönderici sayıları yüklenemedi.",
-      "help": "{domain} alan adından ve alt alan adlarından gelen e-postalar gösteriliyor. Gönderen için tek bir ayrıştırıcı taslağı oluşturmak üzere bunlardan birkaçını seçin."
+      "help": "{domain} alan adından ve alt alan adlarından gelen e-postalar gösteriliyor. Gönderen için tek bir ayrıştırıcı taslağı oluşturmak üzere bunlardan birkaçını seçin.",
+      "waitingForAi": "Yapay zekayı bekliyor"
     },
     "columns": {
       "select": "Seç",
@@ -932,7 +933,19 @@
       "runningHint": "Bu bir dakika sürebilir. Bu sayfayı açık tutun.",
       "noDraft": "Asistan bir taslak kaydetmedi.",
       "tryAgain": "Yeniden gönderebilir ya da geri dönüp örnekleri değiştirebilirsiniz.",
-      "failed": "Asistana ulaşılamadı."
+      "failed": "Asistana ulaşılamadı.",
+      "sendFailed": "İstek gönderilemedi."
+    },
+    "waiting": {
+      "heading": "Yapay zeka aracınız bekleniyor",
+      "body": "Yapay zeka gelen kutusuna gönderildi. Aracınız bağlandığında profili hazırlayacak; bunu kapatıp daha sonra dönebilirsiniz.",
+      "working": "Aracınız isteği aldı ve üzerinde çalışıyor.",
+      "polling": "Bu sayfa açıkken her {seconds} saniyede bir kontrol eder.",
+      "checkFailed": "İstek kontrol edilemedi. Birazdan yeniden denenecek.",
+      "ended": "İstek yeni bir taslak olmadan kapandı (reddedildi veya süresi doldu). Baştan başlayabilirsiniz.",
+      "inboxLink": "Yapay zeka gelen kutusunu aç",
+      "checkNow": "Şimdi kontrol et",
+      "startOver": "Baştan başla"
     },
     "preview": {
       "loading": "E-postalar taslakla okunuyor...",

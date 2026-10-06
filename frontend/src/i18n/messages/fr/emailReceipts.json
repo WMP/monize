@@ -521,7 +521,8 @@
       "all": "Tous les expéditeurs",
       "option": "{domain} ({count})",
       "unknown": "Le nombre d'e-mails par expéditeur n'a pas pu être chargé.",
-      "help": "Affichage des e-mails de {domain} et de ses sous-domaines. Sélectionnez-en plusieurs pour rédiger un profil pour l'expéditeur."
+      "help": "Affichage des e-mails de {domain} et de ses sous-domaines. Sélectionnez-en plusieurs pour rédiger un profil pour l'expéditeur.",
+      "waitingForAi": "En attente de l'IA"
     },
     "columns": {
       "select": "Sélectionner",
@@ -932,7 +933,19 @@
       "runningHint": "Cela peut prendre une minute. Gardez cette page ouverte.",
       "noDraft": "L'assistant n'a pas enregistré de brouillon.",
       "tryAgain": "Vous pouvez le renvoyer, ou revenir en arrière et modifier les échantillons.",
-      "failed": "L'assistant n'a pas pu être joint."
+      "failed": "L'assistant n'a pas pu être joint.",
+      "sendFailed": "La demande n'a pas pu être envoyée."
+    },
+    "waiting": {
+      "heading": "En attente de votre agent IA",
+      "body": "Envoyé à la boîte de réception IA. Votre agent préparera le profil lorsqu'il se connectera ; vous pouvez fermer cette page et revenir plus tard.",
+      "working": "Votre agent a pris la demande en charge et y travaille.",
+      "polling": "Tant que cette page est ouverte, elle vérifie toutes les {seconds} secondes.",
+      "checkFailed": "La demande n'a pas pu être vérifiée. Une nouvelle tentative aura lieu sous peu.",
+      "ended": "La demande a été fermée sans nouveau brouillon (rejetée ou expirée). Vous pouvez recommencer.",
+      "inboxLink": "Ouvrir la boîte de réception IA",
+      "checkNow": "Vérifier maintenant",
+      "startOver": "Recommencer"
     },
     "preview": {
       "loading": "Lecture des e-mails avec le brouillon...",

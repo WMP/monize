@@ -86,7 +86,7 @@ export class EmailReceiptParsersController {
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @ApiOperation({
     summary:
-      "Run the assistant now over 1 to 5 sample emails of a domain and the transactions they paid for; it saves (or, with parserId, updates) a draft parser. 422 with the assistant's answer when it saved none",
+      "Run the assistant now over 1 to 5 sample emails of a domain and the transactions they paid for; it saves (or, with parserId, updates) a draft parser ({ status: 'saved' }, 422 with the assistant's answer when it saved none). A user whose AI is their own agent over MCP gets a request in the AI inbox instead ({ status: 'queued', requestId }; 409 when the agent is already working on one for the domain)",
   })
   generateWithAi(
     @Request() req: { user: { id: string } },

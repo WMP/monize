@@ -4,6 +4,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from "@nestjs/common";
+import { AiBaseUrlRefusedError } from "../../ai/ai-base-url-policy";
 import { Category } from "../../categories/entities/category.entity";
 import { createScopedDbMocks } from "../../test-helpers/scoped-db-testing";
 import { EmailReceiptParser } from "../entities/email-receipt-parser.entity";
@@ -72,6 +73,9 @@ function setup(
     target?: EmailReceiptParser | null;
     after?: Array<Partial<EmailReceiptParser>>;
     afterTarget?: Partial<EmailReceiptParser> | null;
+    /** The user has no direct tool-capable provider. */
+    noDirectProvider?: boolean;
+    relayActive?: boolean;
   } = {},
 ) {
   const receiptRepo = {
@@ -104,11 +108,28 @@ function setup(
   const aiQuery = {
     executeQuery: jest.fn().mockResolvedValue({ answer: "Saved the draft." }),
   };
+  const ai = {
+    resolveToolUseProvider: data.noDirectProvider
+      ? jest
+          .fn()
+          .mockRejectedValue(
+            new BadRequestException("No AI provider with tool use support."),
+          )
+      : jest.fn().mockResolvedValue({ provider: {}, config: {} }),
+    getStatus: jest
+      .fn()
+      .mockResolvedValue({ relayActive: data.relayActive ?? false }),
+  };
+  const requests = {
+    queueParserDraft: jest.fn().mockResolvedValue({ id: "req-1" }),
+  };
   const service = new EmailReceiptParserGenerateService(
     dataSource as never,
     aiQuery as never,
+    ai as never,
+    requests as never,
   );
-  return { service, manager, receiptRepo, parserRepo, aiQuery };
+  return { service, manager, receiptRepo, parserRepo, aiQuery, ai, requests };
 }
 
 const dto = (over: Record<string, unknown> = {}) =>
@@ -129,6 +150,7 @@ describe("EmailReceiptParserGenerateService.generate", () => {
     });
 
     await expect(service.generate(USER, dto())).resolves.toEqual({
+      status: "saved",
       parserId: P_NEW,
       revision: 1,
       answer: "Saved the draft.",
@@ -155,6 +177,7 @@ describe("EmailReceiptParserGenerateService.generate", () => {
         dto({ parserId: P_OLD, feedback: " add shipping " }),
       ),
     ).resolves.toEqual({
+      status: "saved",
       parserId: P_OLD,
       revision: 4,
       answer: "Saved the draft.",
@@ -192,16 +215,97 @@ describe("EmailReceiptParserGenerateService.generate", () => {
     ).rejects.toBeInstanceOf(UnprocessableEntityException);
   });
 
-  it("passes on the refusal of a user with no AI provider, the assistant's own", async () => {
-    const { service, aiQuery } = setup();
-    aiQuery.executeQuery.mockRejectedValue(
-      new BadRequestException(
-        "No AI provider with tool use support configured.",
-      ),
-    );
-    await expect(service.generate(USER, dto())).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+  it("refuses a user with neither a provider nor a relay, before the assistant is called", async () => {
+    const { service, aiQuery, requests } = setup({ noDirectProvider: true });
+    const error = await service.generate(USER, dto()).catch((e) => e);
+    expect(error).toBeInstanceOf(BadRequestException);
+    expect(error.message).toContain("No AI is set up");
+    expect(aiQuery.executeQuery).not.toHaveBeenCalled();
+    expect(requests.queueParserDraft).not.toHaveBeenCalled();
+  });
+
+  it("passes on a provider refusal that is not 'no provider' (a refused base URL) when there is no relay", async () => {
+    const { service, ai } = setup({ noDirectProvider: true });
+    const refusal = new AiBaseUrlRefusedError("base URL refused");
+    ai.resolveToolUseProvider.mockRejectedValue(refusal);
+    await expect(service.generate(USER, dto())).rejects.toBe(refusal);
+  });
+
+  describe("a user whose AI is their own agent (the MCP relay)", () => {
+    it("queues a request instead of calling a provider and returns its id", async () => {
+      const { service, aiQuery, requests, ai } = setup({
+        noDirectProvider: true,
+        relayActive: true,
+      });
+      await expect(service.generate(USER, dto())).resolves.toEqual({
+        status: "queued",
+        requestId: "req-1",
+      });
+      expect(aiQuery.executeQuery).not.toHaveBeenCalled();
+      expect(ai.getStatus).toHaveBeenCalledWith(USER);
+      const [, userId, input] = requests.queueParserDraft.mock.calls[0];
+      expect(userId).toBe(USER);
+      expect(input.emailReceiptIds).toEqual([R1]);
+      expect(input.parserDomain).toBe("shop.example.com");
+      expect(input.instruction).toContain(T1);
+      expect(input.instruction).toContain("2026-09-11");
+      expect(input.instruction).toContain("-15 USD");
+      expect(input.instruction).toContain("save_draft");
+    });
+
+    it("carries the draft and the note of a revision", async () => {
+      const { service, requests } = setup({
+        noDirectProvider: true,
+        relayActive: true,
+        target: draft(),
+      });
+      await service.generate(
+        USER,
+        dto({ parserId: P_OLD, feedback: " add shipping " }),
+      );
+      const instruction = requests.queueParserDraft.mock.calls[0][2]
+        .instruction as string;
+      expect(instruction).toContain('Revise the current draft "Shop"');
+      expect(instruction).toContain("Order total: {amount}");
+      expect(instruction).toContain("Note: add shipping");
+    });
+
+    it("prefers a direct provider over the relay", async () => {
+      const { service, requests, aiQuery } = setup({
+        relayActive: true,
+        after: [{ id: P_NEW, revision: 1 }],
+      });
+      await expect(service.generate(USER, dto())).resolves.toMatchObject({
+        status: "saved",
+      });
+      expect(aiQuery.executeQuery).toHaveBeenCalledTimes(1);
+      expect(requests.queueParserDraft).not.toHaveBeenCalled();
+    });
+
+    it("checks the samples before queueing: a foreign email is a 404 and nothing is queued", async () => {
+      const { service, requests } = setup({
+        noDirectProvider: true,
+        relayActive: true,
+        receipts: [],
+      });
+      await expect(service.generate(USER, dto())).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(requests.queueParserDraft).not.toHaveBeenCalled();
+    });
+
+    it("passes on the 409 of a request the agent has claimed", async () => {
+      const { service, requests } = setup({
+        noDirectProvider: true,
+        relayActive: true,
+      });
+      requests.queueParserDraft.mockRejectedValue(
+        new ConflictException("agent is working"),
+      );
+      await expect(service.generate(USER, dto())).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
   });
 
   it("reads the emails and transactions through the user's scope", async () => {

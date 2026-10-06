@@ -494,11 +494,11 @@ export class EmailReceiptParserToolsService {
       : null;
 
     return withScopedDb(this.dataSource, async (m) => {
-      if (input.requestId) {
-        await this.lockClaimedRequest(m, userId, caller, input.requestId);
-      }
+      const requestDomain = input.requestId
+        ? await this.lockClaimedRequest(m, userId, caller, input.requestId)
+        : null;
       const repo = m.getRepository(EmailReceiptParser);
-      const existing = input.parserId
+      let existing = input.parserId
         ? await this.lockDraft(
             m,
             userId,
@@ -506,6 +506,12 @@ export class EmailReceiptParserToolsService {
             input.expectedRevision,
           )
         : null;
+      // An answer to a request must not pile up drafts: when an unapproved draft
+      // already covers the request's sender, the newest one is updated (its
+      // revision bumped) instead of a second one created.
+      if (!existing && requestDomain) {
+        existing = await this.lockNewestDraftCovering(m, userId, requestDomain);
+      }
       if (
         !existing &&
         (await repo.count({ where: { userId } })) >= MAX_PARSERS_PER_USER
@@ -623,24 +629,61 @@ export class EmailReceiptParserToolsService {
   }
 
   /**
+   * The newest DRAFT parser of the user's that covers `domain` (names it or a
+   * parent of it, as the uncovered-domains list reads `from_domains`), locked for
+   * the update, or null. No revision compare: the caller is an agent answering a
+   * request, not a person who read a revision.
+   */
+  private async lockNewestDraftCovering(
+    m: EntityManager,
+    userId: string,
+    domain: string,
+  ): Promise<EmailReceiptParser | null> {
+    const rows = returnedRows<{ id: string }>(
+      await m.query(
+        `SELECT p.id
+           FROM email_receipt_parsers p
+          WHERE p.user_id = $1
+            AND p.status = 'draft'
+            AND EXISTS (
+                  SELECT 1
+                    FROM unnest(p.from_domains) AS pd(domain)
+                   WHERE $2::varchar = pd.domain
+                      OR right($2::varchar, length(pd.domain) + 1)
+                         = '.' || pd.domain)
+          ORDER BY p.updated_at DESC, p.id DESC
+          LIMIT 1`,
+        [userId, domain],
+      ),
+    );
+    if (rows.length === 0) return null;
+    return m.getRepository(EmailReceiptParser).findOne({
+      where: { id: rows[0].id, userId, status: "draft" },
+      lock: { mode: "pessimistic_write" },
+    });
+  }
+
+  /**
    * Lock the named request and refuse unless it is the user's parser-draft
    * request, claimed by `caller` and still alive. The check runs before the
    * parser is written, in the same transaction, so a refusal has written nothing.
+   * Returns the sender domain the request is for (null for a request without one).
    */
   private async lockClaimedRequest(
     m: EntityManager,
     userId: string,
     caller: string,
     requestId: string,
-  ): Promise<void> {
+  ): Promise<string | null> {
     const rows = returnedRows<{
       kind: string;
       status: string;
       claimed_by: string | null;
+      parser_domain: string | null;
       live: boolean;
     }>(
       await m.query(
-        `SELECT kind, status, claimed_by,
+        `SELECT kind, status, claimed_by, parser_domain,
                 (expires_at > CURRENT_TIMESTAMP) AS live
            FROM ai_review_requests
           WHERE id = $1
@@ -667,6 +710,7 @@ export class EmailReceiptParserToolsService {
     ) {
       throw requestNotClaimed();
     }
+    return row.parser_domain;
   }
 }
 

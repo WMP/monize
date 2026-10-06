@@ -786,6 +786,107 @@ describe("EmailReceiptParserToolsService.saveDraft", () => {
       ).rejects.toBeInstanceOf(ConflictException);
     });
 
+    describe("a draft already covers the request's sender", () => {
+      const row = {
+        kind: "email_parser_draft",
+        status: "claimed",
+        claimed_by: CALLER,
+        live: true,
+        parser_domain: "shop.example.com",
+      };
+      const oldDraft = (over: Partial<EmailReceiptParser> = {}) =>
+        Object.assign(new EmailReceiptParser(), {
+          id: "p-old",
+          userId: USER,
+          status: "draft",
+          revision: 2,
+          fromDomains: ["shop.example.com"],
+          ...over,
+        });
+
+      it("updates the newest such draft and bumps its revision instead of creating another", async () => {
+        const { service, manager, parserRepo, requests } = setup();
+        manager.query
+          .mockResolvedValueOnce([row])
+          .mockResolvedValueOnce([{ id: "p-old" }]);
+        parserRepo.findOne.mockResolvedValue(oldDraft());
+        parserRepo.findOneByOrFail.mockResolvedValue(
+          oldDraft({ name: "Example Shop", revision: 3 }),
+        );
+
+        const result = await service.saveDraft(USER, CALLER, {
+          ...input,
+          requestId: REQ,
+        });
+
+        const [sql, params] = manager.query.mock.calls[1];
+        expect(sql).toContain("p.status = 'draft'");
+        expect(sql).toContain("p.user_id = $1");
+        expect(sql).toContain("ORDER BY p.updated_at DESC, p.id DESC");
+        expect(params).toEqual([USER, "shop.example.com"]);
+        expect(parserRepo.findOne).toHaveBeenCalledWith({
+          where: { id: "p-old", userId: USER, status: "draft" },
+          lock: { mode: "pessimistic_write" },
+        });
+        expect(parserRepo.save).not.toHaveBeenCalled();
+        expect(parserRepo.update.mock.calls[0][1].revision()).toBe(
+          "revision + 1",
+        );
+        expect(requests.proposeParserDraft).toHaveBeenCalledWith(
+          manager,
+          USER,
+          REQ,
+          CALLER,
+          "p-old",
+        );
+        expect(result).toMatchObject({ parserId: "p-old", revision: 3 });
+      });
+
+      it("creates a draft when none covers the sender", async () => {
+        const { service, manager, parserRepo } = setup();
+        manager.query.mockResolvedValueOnce([row]).mockResolvedValueOnce([]);
+
+        const result = await service.saveDraft(USER, CALLER, {
+          ...input,
+          requestId: REQ,
+        });
+
+        expect(parserRepo.save).toHaveBeenCalledTimes(1);
+        expect(parserRepo.update).not.toHaveBeenCalled();
+        expect(result.parserId).toBe("p-new");
+      });
+
+      it("keeps an explicit parserId and its revision check over the lookup", async () => {
+        const { service, manager, parserRepo } = setup();
+        manager.query.mockResolvedValueOnce([row]);
+        parserRepo.findOne.mockResolvedValue(oldDraft({ revision: 2 }));
+        parserRepo.findOneByOrFail.mockResolvedValue(oldDraft({ revision: 3 }));
+
+        await service.saveDraft(USER, CALLER, {
+          ...input,
+          requestId: REQ,
+          parserId: "p-old",
+          expectedRevision: 2,
+        });
+
+        expect(manager.query).toHaveBeenCalledTimes(1);
+      });
+
+      it("never reaches an approved parser (only drafts are looked up)", async () => {
+        const { service, manager, parserRepo } = setup();
+        manager.query
+          .mockResolvedValueOnce([row])
+          .mockResolvedValueOnce([{ id: "p-approved" }]);
+        // the locked row is no longer a draft by the time it is read
+        parserRepo.findOne.mockResolvedValue(null);
+
+        await service.saveDraft(USER, CALLER, { ...input, requestId: REQ });
+
+        expect(parserRepo.findOne.mock.calls[0][0].where.status).toBe("draft");
+        expect(parserRepo.save).toHaveBeenCalledTimes(1);
+      });
+    });
+
     it("never touches a request when none is named", async () => {
       const { service, manager, requests } = setup();
 

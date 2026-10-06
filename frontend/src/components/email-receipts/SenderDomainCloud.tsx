@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { Badge } from '@/components/ui/Badge';
 import { HOVER_ROW_ON_PAGE } from '@/components/ui/Card';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import type { EmailReceiptDomainCount } from '@/types/email-receipts';
@@ -13,6 +14,8 @@ interface SenderDomainCloudProps {
   onSelect: (domain: string) => void;
   /** Offer "All senders" first (the Emails tab's filter); off where a domain must be chosen. */
   showAll?: boolean;
+  /** Domains with a request waiting in the AI inbox: each tag carries a "waiting for AI" badge. */
+  waitingDomains?: ReadonlySet<string>;
 }
 
 const TAG_BASE =
@@ -33,7 +36,7 @@ function sizeClass(count: number, max: number): string {
  * one toggle button per domain with its email count, and "All senders" first.
  * The filtered domain stays on screen even when the state has none of its emails.
  */
-export function SenderDomainCloud({ domains, selected, onSelect, showAll = true }: SenderDomainCloudProps) {
+export function SenderDomainCloud({ domains, selected, onSelect, showAll = true, waitingDomains }: SenderDomainCloudProps) {
   const t = useTranslations('emailReceipts.receipts.domainFilter');
   const { formatNumber } = useNumberFormat();
   const list = domains ?? [];
@@ -67,6 +70,11 @@ export function SenderDomainCloud({ domains, selected, onSelect, showAll = true 
           className={`${TAG_BASE} ${sizeClass(entry.count, max)} ${selected === entry.domain ? TAG_ON : TAG_IDLE}`}
         >
           {t('option', { domain: entry.domain, count: formatNumber(entry.count, 0) })}
+          {waitingDomains?.has(entry.domain) && (
+            <Badge variant="amber" className="ml-2 align-middle">
+              {t('waitingForAi')}
+            </Badge>
+          )}
         </button>
       ))}
       {domains === null && <span className="text-xs text-gray-500 dark:text-gray-400">{t('unknown')}</span>}

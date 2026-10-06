@@ -521,7 +521,8 @@
       "all": "所有发件人",
       "option": "{domain}（{count}）",
       "unknown": "无法加载发件人计数。",
-      "help": "正在显示来自 {domain} 及其子域名的邮件。选择其中多封，可为该发件人起草一个解析器。"
+      "help": "正在显示来自 {domain} 及其子域名的邮件。选择其中多封，可为该发件人起草一个解析器。",
+      "waitingForAi": "等待 AI"
     },
     "columns": {
       "select": "选择",
@@ -932,7 +933,19 @@
       "runningHint": "这可能需要一分钟。请保持此页面打开。",
       "noDraft": "助手没有保存草稿。",
       "tryAgain": "您可以再次发送，或返回并更改样本。",
-      "failed": "无法连接到助手。"
+      "failed": "无法连接到助手。",
+      "sendFailed": "无法发送请求。"
+    },
+    "waiting": {
+      "heading": "正在等待您的 AI 代理",
+      "body": "已发送到 AI 收件箱。您的代理连接后会准备好档案;您可以关闭此页面,稍后再回来。",
+      "working": "您的代理已接收请求并正在处理。",
+      "polling": "此页面打开期间,每 {seconds} 秒检查一次。",
+      "checkFailed": "无法检查该请求,稍后将重试。",
+      "ended": "请求已关闭且没有新草稿(已被放弃或已过期)。您可以重新开始。",
+      "inboxLink": "打开 AI 收件箱",
+      "checkNow": "立即检查",
+      "startOver": "重新开始"
     },
     "preview": {
       "loading": "正在用草稿读取邮件...",

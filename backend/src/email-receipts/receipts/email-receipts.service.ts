@@ -54,6 +54,13 @@ export interface UncoveredDomain {
   count: number;
   /** The newest draft profile naming the domain, or null. */
   draftParserId: string | null;
+  /**
+   * The open request (`pending` or claimed by an agent, unexpired) that asks for
+   * a profile for this domain, or null: the wizard waits on it. A request an
+   * agent has answered is no longer waiting; its draft is `draftParserId`.
+   */
+  pendingRequestId: string | null;
+  pendingRequestStatus: "pending" | "claimed" | null;
 }
 
 /** What "process in bulk" did (design 8): the emails it ran, where they ended and what is left. */
@@ -272,6 +279,8 @@ export class EmailReceiptsService {
         domain: string;
         count: string | number;
         draft_parser_id: string | null;
+        request_id: string | null;
+        request_status: "pending" | "claimed" | null;
       }>(
         await m.query(
           `SELECT d.domain, d.count,
@@ -284,7 +293,8 @@ export class EmailReceiptsService {
                            OR right(d.domain, length(pd.domain) + 1)
                               = '.' || pd.domain)
                     ORDER BY p.updated_at DESC, p.id DESC
-                    LIMIT 1) AS draft_parser_id
+                    LIMIT 1) AS draft_parser_id,
+                  req.id AS request_id, req.status AS request_status
              FROM (SELECT r.from_domain AS domain, COUNT(*)::int AS count
                      FROM email_receipts r
                     WHERE r.user_id = $1
@@ -299,6 +309,16 @@ export class EmailReceiptsService {
                                     OR right(r.from_domain, length(pd.domain) + 1)
                                        = '.' || pd.domain))
                     GROUP BY r.from_domain) d
+             LEFT JOIN LATERAL (
+                    SELECT q.id, q.status
+                      FROM ai_review_requests q
+                     WHERE q.user_id = $1
+                       AND q.kind = 'email_parser_draft'
+                       AND q.parser_domain = d.domain
+                       AND q.status IN ('pending', 'claimed')
+                       AND q.expires_at > CURRENT_TIMESTAMP
+                     ORDER BY q.created_at DESC, q.id DESC
+                     LIMIT 1) req ON true
             ORDER BY d.count DESC, d.domain ASC
             LIMIT $2`,
           [userId, EMAIL_RECEIPTS_MAX_DOMAINS],
@@ -309,6 +329,8 @@ export class EmailReceiptsService {
       domain: row.domain,
       count: Number(row.count),
       draftParserId: row.draft_parser_id,
+      pendingRequestId: row.request_id,
+      pendingRequestStatus: row.request_status,
     }));
   }
 

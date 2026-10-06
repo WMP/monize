@@ -268,7 +268,8 @@ export const emailReceiptsApi = {
     /**
      * Run the assistant now over 1 to 5 emails paired with their transactions; it saves a
      * draft (or, with `parserId` and `feedback`, revises one). A run that saved no draft is a
-     * 422 carrying the assistant's answer. Can take a minute.
+     * 422 carrying the assistant's answer. Can take a minute. For a user whose AI is their own
+     * agent it returns `{ status: 'queued', requestId }` at once (409 while the agent works on one).
      */
     generateWithAi: async (payload: GenerateParserWithAiPayload): Promise<GenerateParserWithAiResult> => {
       const response = await apiClient.post<GenerateParserWithAiResult>(`${PARSERS}/generate-with-ai`, payload, {

@@ -28,10 +28,15 @@ interface WizardGenerateStepProps {
   /** The draft being revised; null for the first run. */
   draft: WizardDraft | null;
   onGenerated: (draft: WizardDraft, answer: string) => void;
+  /** The user's own agent answers: the request waits in the AI inbox (nothing was generated yet). */
+  onQueued: (requestId: string) => void;
   onBack: () => void;
 }
 
-type Phase = { status: 'idle' } | { status: 'running' } | { status: 'failed'; answer: string | null; message: string | null };
+type Phase =
+  | { status: 'idle' }
+  | { status: 'running' }
+  | { status: 'failed'; /** A 422: the assistant ran and saved no draft. */ refused: boolean; answer: string | null; message: string | null };
 
 /** The assistant's words in a 422 (a run that saved no draft): `answer`, else the server's `message`. */
 function readRefusal(error: unknown): { answer: string | null; message: string | null } | null {
@@ -46,11 +51,12 @@ function readRefusal(error: unknown): { answer: string | null; message: string |
 
 /**
  * Step 2: send the pairs to the assistant and wait for its draft. The call is
- * synchronous and can take a minute, so the page says so. A run that saves no draft
+ * synchronous and can take a minute, so the page says so (a user whose AI is their own
+ * agent gets a request in the AI inbox instead, `onQueued`). A run that saves no draft
  * shows what the assistant answered, and the person can send it again. With a draft
  * already (the "Back to AI" path) a note to the assistant is required.
  */
-export function WizardGenerateStep({ domain, samples, draft, onGenerated, onBack }: WizardGenerateStepProps) {
+export function WizardGenerateStep({ domain, samples, draft, onGenerated, onQueued, onBack }: WizardGenerateStepProps) {
   const t = useTranslations('emailReceipts.profileWizard.generate');
   const [phase, setPhase] = useState<Phase>({ status: 'idle' });
   const [feedback, setFeedback] = useState('');
@@ -71,12 +77,17 @@ export function WizardGenerateStep({ domain, samples, draft, onGenerated, onBack
         ...(draft ? { parserId: draft.parserId } : {}),
         ...(draft && note !== '' ? { feedback: note } : {}),
       });
+      if (result.status === 'queued') {
+        onQueued(result.requestId);
+        return;
+      }
       onGenerated({ parserId: result.parserId, revision: result.revision }, result.answer);
     } catch (error) {
       logger.error(error);
       const refusal = readRefusal(error);
       setPhase({
         status: 'failed',
+        refused: refusal !== null,
         answer: refusal?.answer ?? null,
         message: refusal === null ? getErrorMessage(error, t('failed')) : refusal.message,
       });
@@ -122,10 +133,10 @@ export function WizardGenerateStep({ domain, samples, draft, onGenerated, onBack
 
       {phase.status === 'failed' && (
         <div role="alert" className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-900/20 dark:text-red-200">
-          <p className="font-medium">{t('noDraft')}</p>
+          <p className="font-medium">{phase.refused ? t('noDraft') : t('sendFailed')}</p>
           {phase.answer !== null && <p className="whitespace-pre-wrap break-words">{phase.answer}</p>}
           {phase.message !== null && phase.answer === null && <p className="break-words">{phase.message}</p>}
-          <p>{t('tryAgain')}</p>
+          {phase.refused && <p>{t('tryAgain')}</p>}
         </div>
       )}
 

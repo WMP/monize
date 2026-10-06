@@ -521,7 +521,8 @@
       "all": "All senders",
       "option": "{domain} ({count})",
       "unknown": "The sender counts could not be loaded.",
-      "help": "Showing emails from {domain} and its sub-domains. Select several of them to draft one profile for the sender."
+      "help": "Showing emails from {domain} and its sub-domains. Select several of them to draft one profile for the sender.",
+      "waitingForAi": "Waiting for AI"
     },
     "columns": {
       "select": "Select",
@@ -932,7 +933,19 @@
       "runningHint": "This can take a minute. Keep this page open.",
       "noDraft": "The assistant did not save a draft.",
       "tryAgain": "You can send it again, or go back and change the samples.",
-      "failed": "The assistant could not be reached."
+      "failed": "The assistant could not be reached.",
+      "sendFailed": "The request could not be sent."
+    },
+    "waiting": {
+      "heading": "Waiting for your AI agent",
+      "body": "Sent to the AI inbox. Your agent will prepare the profile when it connects; you can close this and come back.",
+      "working": "Your agent has picked up the request and is working on it.",
+      "polling": "While this page is open it checks every {seconds} seconds.",
+      "checkFailed": "The request could not be checked. It will be tried again shortly.",
+      "ended": "The request was closed without a new draft (it was dismissed or expired). You can start over.",
+      "inboxLink": "Open the AI inbox",
+      "checkNow": "Check now",
+      "startOver": "Start over"
     },
     "preview": {
       "loading": "Reading the emails with the draft...",

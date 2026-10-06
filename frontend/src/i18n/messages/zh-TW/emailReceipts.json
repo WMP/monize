@@ -521,7 +521,8 @@
       "all": "所有寄件者",
       "option": "{domain}（{count}）",
       "unknown": "無法載入寄件者計數。",
-      "help": "正在顯示來自 {domain} 及其子網域的郵件。選取其中多封，可為該寄件者起草一個解析器。"
+      "help": "正在顯示來自 {domain} 及其子網域的郵件。選取其中多封，可為該寄件者起草一個解析器。",
+      "waitingForAi": "等待 AI"
     },
     "columns": {
       "select": "選取",
@@ -932,7 +933,19 @@
       "runningHint": "這可能需要一分鐘。請保持此頁面開啟。",
       "noDraft": "助理沒有儲存草稿。",
       "tryAgain": "您可以再次傳送，或返回並變更樣本。",
-      "failed": "無法連線到助理。"
+      "failed": "無法連線到助理。",
+      "sendFailed": "無法傳送請求。"
+    },
+    "waiting": {
+      "heading": "正在等待您的 AI 代理",
+      "body": "已傳送到 AI 收件匣。您的代理連線後會準備好設定檔;您可以關閉此頁面,稍後再回來。",
+      "working": "您的代理已接下請求並正在處理。",
+      "polling": "此頁面開啟期間,每 {seconds} 秒檢查一次。",
+      "checkFailed": "無法檢查該請求,稍後將重試。",
+      "ended": "請求已關閉且沒有新草稿(已被捨棄或已過期)。您可以重新開始。",
+      "inboxLink": "開啟 AI 收件匣",
+      "checkNow": "立即檢查",
+      "startOver": "重新開始"
     },
     "preview": {
       "loading": "正在用草稿讀取郵件...",

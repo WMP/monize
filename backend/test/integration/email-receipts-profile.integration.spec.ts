@@ -9,6 +9,7 @@ import {
   AiWriteLimiter,
 } from "@/ai/actions/ai-write-limiter";
 import { AiModule } from "@/ai/ai.module";
+import { AiService } from "@/ai/ai.service";
 import { AiQueryService } from "@/ai/query/ai-query.service";
 import { AiReviewModule } from "@/ai-review/ai-review.module";
 import { AiReviewApprovalService } from "@/ai-review/ai-review-approval.service";
@@ -23,12 +24,17 @@ import { EncryptionService } from "@/common/encryption/encryption.service";
 import { EmailReceiptCategoryAiService } from "@/email-receipts/ai/email-receipt-category-ai.service";
 import { EmailReceiptsModule } from "@/email-receipts/email-receipts.module";
 import { EmailReceiptPipelineService } from "@/email-receipts/pipeline/email-receipt-pipeline.service";
-import { EmailReceiptParserGenerateService } from "@/email-receipts/parsers/email-receipt-parser-generate.service";
+import {
+  EmailReceiptParserGenerateService,
+  type GenerateParserSavedResult,
+} from "@/email-receipts/parsers/email-receipt-parser-generate.service";
 import { EmailReceiptParserPreviewService } from "@/email-receipts/parsers/email-receipt-parser-preview.service";
 import { EmailReceiptParserToolsService } from "@/email-receipts/parsers/email-receipt-parser-tools.service";
 import { EmailReceiptParsersService } from "@/email-receipts/parsers/email-receipt-parsers.service";
 import { EmailReceiptsService } from "@/email-receipts/receipts/email-receipts.service";
 import {
+  BadRequestException,
+  ConflictException,
   NotFoundException,
   UnprocessableEntityException,
 } from "@nestjs/common";
@@ -86,6 +92,7 @@ describe("email receipts: what a profile configures (integration)", () => {
   let previews: EmailReceiptParserPreviewService;
   let generator: EmailReceiptParserGenerateService;
   let aiQuery: AiQueryService;
+  let aiService: AiService;
 
   let aliceId: string;
   let bobId: string;
@@ -247,6 +254,7 @@ describe("email receipts: what a profile configures (integration)", () => {
     previews = module.get(EmailReceiptParserPreviewService);
     generator = module.get(EmailReceiptParserGenerateService);
     aiQuery = module.get(AiQueryService);
+    aiService = module.get(AiService);
   });
 
   afterAll(async () => {
@@ -807,13 +815,31 @@ describe("email receipts: what a profile configures (integration)", () => {
       const mine = await asAlice(() => receipts.listUncoveredDomains(aliceId));
 
       expect(mine).toEqual([
-        { domain: "pay.example.org", count: 2, draftParserId: draft.parserId },
-        { domain: "notshop.example.com", count: 1, draftParserId: null },
+        {
+          domain: "pay.example.org",
+          count: 2,
+          draftParserId: draft.parserId,
+          pendingRequestId: null,
+          pendingRequestStatus: null,
+        },
+        {
+          domain: "notshop.example.com",
+          count: 1,
+          draftParserId: null,
+          pendingRequestId: null,
+          pendingRequestStatus: null,
+        },
       ]);
       await expect(
         asBob(() => receipts.listUncoveredDomains(bobId)),
       ).resolves.toEqual([
-        { domain: "bob.example.org", count: 1, draftParserId: null },
+        {
+          domain: "bob.example.org",
+          count: 1,
+          draftParserId: null,
+          pendingRequestId: null,
+          pendingRequestStatus: null,
+        },
       ]);
     });
 
@@ -946,10 +972,109 @@ describe("email receipts: what a profile configures (integration)", () => {
       expect(txId).toBeDefined();
     });
 
+    /** The user has a direct tool-capable provider (the synchronous path). */
+    const directProvider = () =>
+      jest
+        .spyOn(aiService, "resolveToolUseProvider")
+        .mockResolvedValue({ provider: {}, config: {} } as never);
+
+    it("generate-with-ai queues a request for a user whose AI is their own agent, replaces it while unclaimed, refuses once claimed, and the agent's answers update one draft", async () => {
+      const txId = await createTx();
+      const sample = await insertEmail({ status: "no_parser" });
+      const body = {
+        domain: "shop.example.com",
+        samples: [{ receiptId: sample, transactionId: txId }],
+      };
+      const run = jest.spyOn(aiQuery, "executeQuery");
+      jest
+        .spyOn(aiService, "resolveToolUseProvider")
+        .mockRejectedValue(new BadRequestException("no provider"));
+      jest
+        .spyOn(aiService, "getStatus")
+        .mockResolvedValue({ relayActive: true } as never);
+
+      const first = await asAlice(() =>
+        generator.generate(aliceId, body as never),
+      );
+      expect(first).toMatchObject({ status: "queued" });
+      const second = await asAlice(() =>
+        generator.generate(aliceId, {
+          ...body,
+          feedback: "again",
+        } as never),
+      );
+      // replaced in place: the same request, still the only open one
+      expect(second).toEqual(first);
+      const open = await db.query(
+        `SELECT id, status, parser_domain, email_receipt_ids
+           FROM ai_review_requests WHERE kind = 'email_parser_draft'`,
+      );
+      expect(open).toEqual([
+        {
+          id: (first as { requestId: string }).requestId,
+          status: "pending",
+          parser_domain: "shop.example.com",
+          email_receipt_ids: [sample],
+        },
+      ]);
+      expect(run).not.toHaveBeenCalled();
+
+      // the wizard waits on it
+      const waiting = await asAlice(() =>
+        receipts.listUncoveredDomains(aliceId),
+      );
+      expect(waiting).toEqual([
+        {
+          domain: "shop.example.com",
+          count: 1,
+          draftParserId: null,
+          pendingRequestId: (first as { requestId: string }).requestId,
+          pendingRequestStatus: "pending",
+        },
+      ]);
+
+      // an agent that has claimed it is not talked over
+      await db.query(
+        `UPDATE ai_review_requests
+            SET status = 'claimed', claimed_by = 'agent', claimed_at = now()`,
+      );
+      await expect(
+        asAlice(() => generator.generate(aliceId, body as never)),
+      ).rejects.toBeInstanceOf(ConflictException);
+
+      // the agent answers; a second request answered later updates the same draft
+      const answer = (requestId: string) =>
+        asAlice(() =>
+          parserTools.saveDraft(aliceId, "agent", {
+            requestId,
+            name: "Shop",
+            fromDomains: ["shop.example.com"],
+            definition: profile(),
+          }),
+        );
+      const saved = await answer((first as { requestId: string }).requestId);
+      expect(saved).toMatchObject({ revision: 1, requestProposed: true });
+      const third = (await asAlice(() =>
+        generator.generate(aliceId, body as never),
+      )) as { requestId: string };
+      await db.query(
+        `UPDATE ai_review_requests
+            SET status = 'claimed', claimed_by = 'agent', claimed_at = now()
+          WHERE id = $1`,
+        [third.requestId],
+      );
+      const again = await answer(third.requestId);
+      expect(again).toMatchObject({ parserId: saved.parserId, revision: 2 });
+      expect(
+        await db.query(`SELECT revision FROM email_receipt_parsers`),
+      ).toEqual([{ revision: 2 }]);
+    });
+
     it("generate-with-ai refuses another user's data before the provider is called", async () => {
       const txId = await createTx();
       const sample = await insertEmail({ status: "no_parser" });
       const run = jest.spyOn(aiQuery, "executeQuery");
+      directProvider();
       await expect(
         asBob(() =>
           generator.generate(bobId, {
@@ -968,6 +1093,7 @@ describe("email receipts: what a profile configures (integration)", () => {
         domain: "shop.example.com",
         samples: [{ receiptId: sample, transactionId: txId }],
       };
+      directProvider();
       const run = jest
         .spyOn(aiQuery, "executeQuery")
         .mockImplementationOnce(async () => {
@@ -981,10 +1107,14 @@ describe("email receipts: what a profile configures (integration)", () => {
           return { answer: "Saved." } as never;
         });
 
-      const created = await asAlice(() =>
+      const created = (await asAlice(() =>
         generator.generate(aliceId, body as never),
-      );
-      expect(created).toMatchObject({ revision: 1, answer: "Saved." });
+      )) as GenerateParserSavedResult;
+      expect(created).toMatchObject({
+        status: "saved",
+        revision: 1,
+        answer: "Saved.",
+      });
       expect(
         await db.query(`SELECT status, source FROM email_receipt_parsers`),
       ).toEqual([{ status: "draft", source: "ai" }]);

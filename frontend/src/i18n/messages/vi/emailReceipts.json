@@ -521,7 +521,8 @@
       "all": "Tất cả người gửi",
       "option": "{domain} ({count})",
       "unknown": "Không thể tải số lượng người gửi.",
-      "help": "Đang hiển thị email từ {domain} và các tên miền phụ của nó. Chọn nhiều email trong số đó để soạn một trình phân tích cho người gửi."
+      "help": "Đang hiển thị email từ {domain} và các tên miền phụ của nó. Chọn nhiều email trong số đó để soạn một trình phân tích cho người gửi.",
+      "waitingForAi": "Đang chờ AI"
     },
     "columns": {
       "select": "Chọn",
@@ -932,7 +933,19 @@
       "runningHint": "Việc này có thể mất một phút. Hãy giữ trang này mở.",
       "noDraft": "Trợ lý chưa lưu bản nháp nào.",
       "tryAgain": "Bạn có thể gửi lại, hoặc quay lại và đổi các mẫu.",
-      "failed": "Không thể kết nối với trợ lý."
+      "failed": "Không thể kết nối với trợ lý.",
+      "sendFailed": "Không thể gửi yêu cầu."
+    },
+    "waiting": {
+      "heading": "Đang chờ tác nhân AI của bạn",
+      "body": "Đã gửi đến hộp thư AI. Tác nhân của bạn sẽ chuẩn bị hồ sơ khi kết nối; bạn có thể đóng trang này và quay lại sau.",
+      "working": "Tác nhân của bạn đã nhận yêu cầu và đang xử lý.",
+      "polling": "Khi trang này đang mở, nó kiểm tra mỗi {seconds} giây.",
+      "checkFailed": "Không thể kiểm tra yêu cầu. Sẽ thử lại sau ít phút.",
+      "ended": "Yêu cầu đã đóng mà không có bản nháp mới (bị bỏ hoặc hết hạn). Bạn có thể bắt đầu lại.",
+      "inboxLink": "Mở hộp thư AI",
+      "checkNow": "Kiểm tra ngay",
+      "startOver": "Bắt đầu lại"
     },
     "preview": {
       "loading": "Đang đọc các email bằng bản nháp...",

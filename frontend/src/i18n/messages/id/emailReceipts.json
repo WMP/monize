@@ -521,7 +521,8 @@
       "all": "Semua pengirim",
       "option": "{domain} ({count})",
       "unknown": "Jumlah per pengirim tidak dapat dimuat.",
-      "help": "Menampilkan surel dari {domain} dan subdomainnya. Pilih beberapa untuk membuat draf satu profil bagi pengirim."
+      "help": "Menampilkan surel dari {domain} dan subdomainnya. Pilih beberapa untuk membuat draf satu profil bagi pengirim.",
+      "waitingForAi": "Menunggu AI"
     },
     "columns": {
       "select": "Pilih",
@@ -932,7 +933,19 @@
       "runningHint": "Ini bisa memakan waktu satu menit. Biarkan halaman ini tetap terbuka.",
       "noDraft": "Asisten tidak menyimpan draf.",
       "tryAgain": "Anda bisa mengirimnya lagi, atau kembali dan mengubah contoh.",
-      "failed": "Asisten tidak dapat dihubungi."
+      "failed": "Asisten tidak dapat dihubungi.",
+      "sendFailed": "Permintaan tidak dapat dikirim."
+    },
+    "waiting": {
+      "heading": "Menunggu agen AI Anda",
+      "body": "Dikirim ke kotak masuk AI. Agen Anda akan menyiapkan profil saat terhubung; Anda dapat menutup ini dan kembali nanti.",
+      "working": "Agen Anda sudah mengambil permintaan ini dan sedang mengerjakannya.",
+      "polling": "Selama halaman ini terbuka, halaman memeriksa setiap {seconds} detik.",
+      "checkFailed": "Permintaan tidak dapat diperiksa. Akan dicoba lagi sebentar lagi.",
+      "ended": "Permintaan ditutup tanpa draf baru (ditolak atau kedaluwarsa). Anda dapat memulai ulang.",
+      "inboxLink": "Buka kotak masuk AI",
+      "checkNow": "Periksa sekarang",
+      "startOver": "Mulai ulang"
     },
     "preview": {
       "loading": "Membaca surel dengan draf...",

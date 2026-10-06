@@ -140,6 +140,7 @@
     "notFound": "[XX-AI review request with ID {{ id }} not found-XX]",
     "notClaimed": "[XX-This AI review request is not claimed by you. Claim the next pending one first; a request you did not claim cannot be answered.-XX]",
     "notProposed": "[XX-This AI review request is no longer waiting for approval, so its proposal was not applied.-XX]",
+    "parserDraftClaimed": "[XX-Your AI agent is already working on a profile for this sender. Wait for it to finish, or dismiss the request in the AI inbox and send a new one.-XX]",
     "notOpen": "[XX-This AI review request is no longer open.-XX]",
     "nothingProposed": "[XX-A proposal needs at least one change: splits, categoryName, payeeName or description.-XX]",
     "splitsAndCategory": "[XX-Send either splits or categoryName, not both: a split transaction has no single category.-XX]",
@@ -396,6 +397,7 @@
     "parserDraftRequestNotClaimed": "[XX-This parser draft request is not claimed by you. Claim it first with ai_review_requests, or save the draft without a requestId.-XX]",
     "parserNotDraft": "[XX-Only a draft parser can be updated by the assistant. This one is approved.-XX]",
     "generateNoDraft": "[XX-The assistant did not save a draft parser. Read its answer, adjust the samples or add a note, and try again.-XX]",
+    "generateNoProvider": "[XX-No AI is set up to write the profile. In AI Settings, add an Anthropic, OpenAI or Ollama provider, or connect your own agent over MCP, then try again.-XX]",
     "generateReceiptOutsideDomain": "[XX-An email is not from the sender domain the profile is for.-XX]",
     "previewExpectedNotSelected": "[XX-An expected transaction was named for an email that is not among the selected ones.-XX]",
     "previewReceiptOutsideDomain": "[XX-An email is not from a sender domain of this parser.-XX]"
