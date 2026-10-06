@@ -521,7 +521,8 @@
       "all": "Alle Absender",
       "option": "{domain} ({count})",
       "unknown": "Die Absenderzahlen konnten nicht geladen werden.",
-      "help": "E-Mails von {domain} und ihren Subdomains werden angezeigt. Wähle mehrere davon aus, um ein Profil für den Absender zu entwerfen."
+      "help": "E-Mails von {domain} und ihren Subdomains werden angezeigt. Wähle mehrere davon aus, um ein Profil für den Absender zu entwerfen.",
+      "waitingForAi": "Wartet auf KI"
     },
     "columns": {
       "select": "Auswählen",
@@ -932,7 +933,19 @@
       "runningHint": "Das kann eine Minute dauern. Lass diese Seite geöffnet.",
       "noDraft": "Der Assistent hat keinen Entwurf gespeichert.",
       "tryAgain": "Du kannst es erneut senden oder zurückgehen und die Beispiele ändern.",
-      "failed": "Der Assistent war nicht erreichbar."
+      "failed": "Der Assistent war nicht erreichbar.",
+      "sendFailed": "Die Anfrage konnte nicht gesendet werden."
+    },
+    "waiting": {
+      "heading": "Warten auf deinen KI-Agenten",
+      "body": "An den KI-Posteingang gesendet. Dein Agent erstellt das Profil, sobald er sich verbindet; du kannst dies schließen und später wiederkommen.",
+      "working": "Dein Agent hat die Anfrage übernommen und arbeitet daran.",
+      "polling": "Solange diese Seite geöffnet ist, prüft sie alle {seconds} Sekunden.",
+      "checkFailed": "Die Anfrage konnte nicht geprüft werden. Es wird in Kürze erneut versucht.",
+      "ended": "Die Anfrage wurde ohne neuen Entwurf geschlossen (verworfen oder abgelaufen). Du kannst neu beginnen.",
+      "inboxLink": "KI-Posteingang öffnen",
+      "checkNow": "Jetzt prüfen",
+      "startOver": "Neu beginnen"
     },
     "preview": {
       "loading": "E-Mails werden mit dem Entwurf gelesen...",

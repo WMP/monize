@@ -1,12 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, within } from '@/test/render';
 import { ProfileWizard } from './ProfileWizard';
+import { WIZARD_WAIT_POLL_MS } from './WizardWaitingStep';
 import { makeDetail, makeReceipt } from './email-receipts-fixtures';
 
 const api = vi.hoisted(() => ({
   list: vi.fn(),
   get: vi.fn(),
   listUncovered: vi.fn(),
+  getParser: vi.fn(),
   processBatch: vi.fn(),
   generateWithAi: vi.fn(),
   preview: vi.fn(),
@@ -16,7 +18,7 @@ const txApi = vi.hoisted(() => ({ getAll: vi.fn() }));
 vi.mock('@/lib/email-receipts-api', () => ({
   emailReceiptsApi: {
     receipts: { list: api.list, get: api.get, listUncovered: api.listUncovered, processBatch: api.processBatch },
-    parsers: { generateWithAi: api.generateWithAi, preview: api.preview, approve: api.approve },
+    parsers: { generateWithAi: api.generateWithAi, preview: api.preview, approve: api.approve, get: api.getParser },
   },
 }));
 vi.mock('@/lib/transactions', async (importOriginal) => ({
@@ -144,6 +146,53 @@ describe('ProfileWizard', () => {
     expect(api.preview).toHaveBeenCalledWith('p-7', { selectedReceiptIds: [] });
     expect(screen.getByText('3. Preview and accept')).toHaveAttribute('aria-current', 'step');
     expect(screen.queryByRole('button', { name: 'Back to AI' })).not.toBeInTheDocument();
+  });
+
+  describe('when the user\'s own agent writes the profile', () => {
+    const waitingEntry = { domain: 'allegro.pl', count: 2, draftParserId: null, pendingRequestId: 'req-1', pendingRequestStatus: 'pending' };
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('shows the wait with the inbox link after the request is queued, and moves to the preview when the draft arrives', async () => {
+      vi.useFakeTimers();
+      api.generateWithAi.mockResolvedValue({ status: 'queued', requestId: 'req-1' });
+      await renderWizard();
+      await pickFirstSample();
+      await click(screen.getByRole('button', { name: 'Continue to the assistant' }));
+      await click(screen.getByRole('button', { name: 'Send to AI' }));
+
+      expect(screen.getByRole('status')).toHaveTextContent('Sent to the AI inbox.');
+      expect(screen.getByRole('link', { name: 'Open the AI inbox' })).toHaveAttribute('href', '/ai-reviews');
+      expect(screen.queryByRole('button', { name: 'Send to AI' })).not.toBeInTheDocument();
+      expect(api.preview).not.toHaveBeenCalled();
+
+      api.listUncovered.mockResolvedValue([{ ...waitingEntry, draftParserId: 'p-5', pendingRequestId: null, pendingRequestStatus: null }]);
+      api.getParser.mockResolvedValue({ id: 'p-5', revision: 1 });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(WIZARD_WAIT_POLL_MS);
+      });
+      await act(async () => {});
+      expect(api.preview).toHaveBeenCalledWith('p-5', { selectedReceiptIds: ['r-1'], expected: [{ receiptId: 'r-1', transactionId: 'tx-9' }] });
+      expect(screen.getByText('3. Preview and accept')).toHaveAttribute('aria-current', 'step');
+    });
+
+    it('opens on the wait, not step 1, for a domain that already has a request in the inbox', async () => {
+      api.listUncovered.mockResolvedValue([waitingEntry]);
+      await renderWizard();
+      expect(screen.getByRole('status')).toHaveTextContent('Waiting for your AI agent');
+      expect(screen.getByText('2. Generate')).toHaveAttribute('aria-current', 'step');
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    });
+
+    it('starts over from the wait at the samples', async () => {
+      api.listUncovered.mockResolvedValue([waitingEntry]);
+      await renderWizard();
+      await click(screen.getByRole('button', { name: 'Start over' }));
+      expect(screen.getByText('1. Samples')).toHaveAttribute('aria-current', 'step');
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
   });
 
   it('closes on Cancel', async () => {

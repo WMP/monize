@@ -521,7 +521,8 @@
       "all": "Todos os remetentes",
       "option": "{domain} ({count})",
       "unknown": "As contagens de remetentes não puderam ser carregadas.",
-      "help": "A mostrar os e-mails de {domain} e dos seus subdomínios. Selecione vários para elaborar um analisador para o remetente."
+      "help": "A mostrar os e-mails de {domain} e dos seus subdomínios. Selecione vários para elaborar um analisador para o remetente.",
+      "waitingForAi": "A aguardar a IA"
     },
     "columns": {
       "select": "Selecionar",
@@ -932,7 +933,19 @@
       "runningHint": "Isto pode demorar um minuto. Mantenha esta página aberta.",
       "noDraft": "O assistente não guardou um rascunho.",
       "tryAgain": "Pode enviá-lo novamente ou voltar atrás e alterar as amostras.",
-      "failed": "Não foi possível contactar o assistente."
+      "failed": "Não foi possível contactar o assistente.",
+      "sendFailed": "Não foi possível enviar o pedido."
+    },
+    "waiting": {
+      "heading": "A aguardar o seu agente de IA",
+      "body": "Enviado para a caixa de entrada de IA. O seu agente preparará o perfil quando se ligar; pode fechar isto e voltar mais tarde.",
+      "working": "O seu agente recebeu o pedido e está a trabalhar nele.",
+      "polling": "Enquanto esta página estiver aberta, verifica a cada {seconds} segundos.",
+      "checkFailed": "Não foi possível verificar o pedido. Será tentado novamente em breve.",
+      "ended": "O pedido foi fechado sem um novo rascunho (rejeitado ou expirado). Pode recomeçar.",
+      "inboxLink": "Abrir a caixa de entrada de IA",
+      "checkNow": "Verificar agora",
+      "startOver": "Recomeçar"
     },
     "preview": {
       "loading": "A ler os e-mails com o rascunho...",

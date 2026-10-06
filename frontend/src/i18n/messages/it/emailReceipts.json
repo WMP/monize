@@ -521,7 +521,8 @@
       "all": "Tutti i mittenti",
       "option": "{domain} ({count})",
       "unknown": "Non è stato possibile caricare il numero di email per mittente.",
-      "help": "Visualizzazione delle email di {domain} e dei suoi sottodomini. Selezionane diverse per preparare un profilo per il mittente."
+      "help": "Visualizzazione delle email di {domain} e dei suoi sottodomini. Selezionane diverse per preparare un profilo per il mittente.",
+      "waitingForAi": "In attesa dell'IA"
     },
     "columns": {
       "select": "Seleziona",
@@ -932,7 +933,19 @@
       "runningHint": "Può volerci un minuto. Tieni aperta questa pagina.",
       "noDraft": "L'assistente non ha salvato una bozza.",
       "tryAgain": "Puoi inviarla di nuovo oppure tornare indietro e cambiare i campioni.",
-      "failed": "Non è stato possibile raggiungere l'assistente."
+      "failed": "Non è stato possibile raggiungere l'assistente.",
+      "sendFailed": "Non è stato possibile inviare la richiesta."
+    },
+    "waiting": {
+      "heading": "In attesa del tuo agente IA",
+      "body": "Inviato alla casella IA. Il tuo agente preparerà il profilo quando si connetterà; puoi chiudere questa pagina e tornare più tardi.",
+      "working": "Il tuo agente ha preso in carico la richiesta e ci sta lavorando.",
+      "polling": "Finché questa pagina è aperta, controlla ogni {seconds} secondi.",
+      "checkFailed": "Non è stato possibile controllare la richiesta. Verrà riprovato a breve.",
+      "ended": "La richiesta è stata chiusa senza una nuova bozza (scartata o scaduta). Puoi ricominciare.",
+      "inboxLink": "Apri la casella IA",
+      "checkNow": "Controlla ora",
+      "startOver": "Ricomincia"
     },
     "preview": {
       "loading": "Lettura delle email con la bozza...",

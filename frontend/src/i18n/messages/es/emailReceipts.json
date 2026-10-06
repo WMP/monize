@@ -521,7 +521,8 @@
       "all": "Todos los remitentes",
       "option": "{domain} ({count})",
       "unknown": "No se pudieron cargar los recuentos de remitentes.",
-      "help": "Mostrando los correos de {domain} y sus subdominios. Selecciona varios para redactar un perfil para el remitente."
+      "help": "Mostrando los correos de {domain} y sus subdominios. Selecciona varios para redactar un perfil para el remitente.",
+      "waitingForAi": "Esperando a la IA"
     },
     "columns": {
       "select": "Seleccionar",
@@ -932,7 +933,19 @@
       "runningHint": "Esto puede tardar un minuto. Mantén esta página abierta.",
       "noDraft": "El asistente no guardó un borrador.",
       "tryAgain": "Puedes enviarlo de nuevo o volver atrás y cambiar las muestras.",
-      "failed": "No se pudo contactar con el asistente."
+      "failed": "No se pudo contactar con el asistente.",
+      "sendFailed": "No se pudo enviar la solicitud."
+    },
+    "waiting": {
+      "heading": "Esperando a tu agente de IA",
+      "body": "Enviado a la bandeja de IA. Tu agente preparará el perfil cuando se conecte; puedes cerrar esto y volver más tarde.",
+      "working": "Tu agente ha recogido la solicitud y está trabajando en ella.",
+      "polling": "Mientras esta página está abierta, comprueba cada {seconds} segundos.",
+      "checkFailed": "No se pudo comprobar la solicitud. Se volverá a intentar en breve.",
+      "ended": "La solicitud se cerró sin un nuevo borrador (se descartó o caducó). Puedes empezar de nuevo.",
+      "inboxLink": "Abrir la bandeja de IA",
+      "checkNow": "Comprobar ahora",
+      "startOver": "Empezar de nuevo"
     },
     "preview": {
       "loading": "Leyendo los correos con el borrador...",

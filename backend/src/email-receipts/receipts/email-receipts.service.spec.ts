@@ -343,12 +343,36 @@ describe("EmailReceiptsService.listUncoveredDomains", () => {
   it("lists the domains no approved profile covers, with the newest draft naming each, in one statement", async () => {
     const { service, manager } = setup();
     manager.query.mockResolvedValue([
-      { domain: "a.example.com", count: "5", draft_parser_id: "p-draft" },
-      { domain: "b.example.com", count: 2, draft_parser_id: null },
+      {
+        domain: "a.example.com",
+        count: "5",
+        draft_parser_id: "p-draft",
+        request_id: "req-1",
+        request_status: "pending",
+      },
+      {
+        domain: "b.example.com",
+        count: 2,
+        draft_parser_id: null,
+        request_id: null,
+        request_status: null,
+      },
     ]);
     await expect(service.listUncoveredDomains(USER)).resolves.toEqual([
-      { domain: "a.example.com", count: 5, draftParserId: "p-draft" },
-      { domain: "b.example.com", count: 2, draftParserId: null },
+      {
+        domain: "a.example.com",
+        count: 5,
+        draftParserId: "p-draft",
+        pendingRequestId: "req-1",
+        pendingRequestStatus: "pending",
+      },
+      {
+        domain: "b.example.com",
+        count: 2,
+        draftParserId: null,
+        pendingRequestId: null,
+        pendingRequestStatus: null,
+      },
     ]);
     expect(manager.query).toHaveBeenCalledTimes(1);
     const [sql, params] = manager.query.mock.calls[0];
@@ -359,6 +383,12 @@ describe("EmailReceiptsService.listUncoveredDomains", () => {
     expect(sql).toContain("right(r.from_domain, length(pd.domain) + 1)");
     expect(sql).toContain("ORDER BY d.count DESC, d.domain ASC");
     expect(sql).toContain("r.user_id = $1");
+    // the open parser-draft request of the domain, in the same statement
+    expect(sql).toContain("q.kind = 'email_parser_draft'");
+    expect(sql).toContain("q.parser_domain = d.domain");
+    expect(sql).toContain("q.status IN ('pending', 'claimed')");
+    expect(sql).toContain("q.expires_at > CURRENT_TIMESTAMP");
+    expect(sql).toContain("q.user_id = $1");
     expect(params).toEqual([USER, EMAIL_RECEIPTS_MAX_DOMAINS]);
   });
 

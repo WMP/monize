@@ -1,3 +1,4 @@
+import { ConflictException } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { LockScope } from "../common/db/locks";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
@@ -682,6 +683,148 @@ describe("AiReviewRequestsService.enqueueParserDraft", () => {
       expect(manager.query).not.toHaveBeenCalled();
     },
   );
+});
+
+describe("AiReviewRequestsService.queueParserDraft", () => {
+  const R1 = "40000000-0000-4000-8000-000000000001";
+  const OPEN = "60000000-0000-4000-8000-000000000001";
+  const row = (over: Record<string, unknown> = {}) => ({
+    id: OPEN,
+    user_id: USER,
+    transaction_id: null,
+    rule_id: null,
+    kind: "email_parser_draft",
+    instruction: "New text",
+    status: "pending",
+    claimed_by: null,
+    claimed_at: null,
+    proposal: null,
+    created_at: new Date("2026-10-03T10:00:00Z"),
+    updated_at: new Date("2026-10-03T10:00:00Z"),
+    expires_at: new Date("2026-11-02T10:00:00Z"),
+    email_receipt_id: null,
+    email_receipt_ids: [R1],
+    parser_domain: "shop.example.com",
+    ...over,
+  });
+  const input = {
+    emailReceiptIds: [R1],
+    parserDomain: "shop.example.com",
+    instruction: " New text ",
+  };
+
+  it("replaces an open UNCLAIMED request in place, under the sender's lock, keeping its id", async () => {
+    const { service, manager } = setup();
+    manager.query
+      .mockResolvedValueOnce([]) // the advisory lock
+      .mockResolvedValueOnce([{ id: OPEN, status: "pending" }])
+      .mockResolvedValueOnce([row()]);
+
+    const request = await service.queueParserDraft(
+      manager as never,
+      USER,
+      input,
+    );
+
+    const statements = manager.query.mock.calls.map((c) => String(c[0]));
+    expect(statements[0]).toContain("pg_advisory_xact_lock");
+    expect(manager.query.mock.calls[0][1]).toEqual([
+      LockScope.AiParserDraftRequests,
+      `${USER}:shop.example.com`,
+    ]);
+    expect(statements[1]).toMatch(/FOR UPDATE/);
+    expect(statements[1]).toMatch(/status IN \('pending', 'claimed'\)/);
+    expect(statements[2]).toMatch(/SET instruction = \$3::text/);
+    expect(statements[2]).toMatch(/status = 'pending'/);
+    expect(statements[2]).toMatch(/user_id = \$2/);
+    expect(manager.query.mock.calls[2][1]).toEqual([
+      OPEN,
+      USER,
+      "New text",
+      [R1],
+    ]);
+    expect(statements.some((s) => s.includes("INSERT INTO"))).toBe(false);
+    expect(request.id).toBe(OPEN);
+  });
+
+  it("refuses with a 409 when an agent has claimed the open request, writing nothing", async () => {
+    const { service, manager } = setup();
+    manager.query
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: OPEN, status: "claimed" }]);
+
+    await expect(
+      service.queueParserDraft(manager as never, USER, input),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    const statements = manager.query.mock.calls.map((c) => String(c[0]));
+    expect(statements.some((s) => /^\s*(UPDATE|INSERT)/.test(s))).toBe(false);
+  });
+
+  it("refuses when the replacing UPDATE matches nothing (the row left pending)", async () => {
+    const { service, manager } = setup();
+    manager.query
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: OPEN, status: "pending" }])
+      .mockResolvedValueOnce([]);
+
+    await expect(
+      service.queueParserDraft(manager as never, USER, input),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it("queues a new request when none is open or unclaimed (a proposed one is closed by the insert path)", async () => {
+    const { service, manager } = setup();
+    manager.query
+      .mockResolvedValueOnce([]) // lock
+      .mockResolvedValueOnce([]) // nothing pending or claimed
+      .mockResolvedValue([row()]);
+
+    const request = await service.queueParserDraft(
+      manager as never,
+      USER,
+      input,
+    );
+
+    const statements = manager.query.mock.calls.map((c) => String(c[0]));
+    expect(statements.some((s) => s.includes("SET status = 'rejected'"))).toBe(
+      true,
+    );
+    expect(statements.some((s) => s.includes("INSERT INTO"))).toBe(true);
+    expect(request.kind).toBe("email_parser_draft");
+  });
+
+  it("cuts the replacing instruction to the column's bound", async () => {
+    const { service, manager } = setup();
+    manager.query
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: OPEN, status: "pending" }])
+      .mockResolvedValueOnce([row()]);
+
+    await service.queueParserDraft(manager as never, USER, {
+      ...input,
+      instruction: "x".repeat(2000),
+    });
+
+    expect((manager.query.mock.calls[2][1] as unknown[])[2]).toHaveLength(1000);
+  });
+
+  it("refuses 0 or 6 emails before touching the database", async () => {
+    const { service, manager } = setup();
+    await expect(
+      service.queueParserDraft(manager as never, USER, {
+        ...input,
+        emailReceiptIds: [],
+      }),
+    ).rejects.toThrow();
+    await expect(
+      service.queueParserDraft(manager as never, USER, {
+        ...input,
+        emailReceiptIds: [R1, R1, R1, R1, R1, R1],
+      }),
+    ).rejects.toThrow();
+    expect(manager.query).not.toHaveBeenCalled();
+  });
 });
 
 describe("AiReviewRequestsService the parser draft lifecycle", () => {

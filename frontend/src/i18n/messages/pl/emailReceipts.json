@@ -521,7 +521,8 @@
       "all": "Wszyscy nadawcy",
       "option": "{domain} ({count})",
       "unknown": "Nie można było załadować liczby nadawców.",
-      "help": "Wyświetlane są wiadomości z domeny {domain} i jej poddomen. Zaznacz kilka z nich, aby przygotować jeden parser dla nadawcy."
+      "help": "Wyświetlane są wiadomości z domeny {domain} i jej poddomen. Zaznacz kilka z nich, aby przygotować jeden parser dla nadawcy.",
+      "waitingForAi": "Czeka na AI"
     },
     "columns": {
       "select": "Zaznacz",
@@ -932,7 +933,19 @@
       "runningHint": "To może potrwać minutę. Nie zamykaj tej strony.",
       "noDraft": "Asystent nie zapisał szkicu.",
       "tryAgain": "Możesz wysłać go ponownie albo wrócić i zmienić próbki.",
-      "failed": "Nie udało się połączyć z asystentem."
+      "failed": "Nie udało się połączyć z asystentem.",
+      "sendFailed": "Nie udało się wysłać prośby."
+    },
+    "waiting": {
+      "heading": "Oczekiwanie na agenta AI",
+      "body": "Wysłano do skrzynki AI. Agent przygotuje profil po połączeniu; możesz zamknąć to okno i wrócić później.",
+      "working": "Agent podjął prośbę i nad nią pracuje.",
+      "polling": "Gdy ta strona jest otwarta, sprawdza stan co {seconds} s.",
+      "checkFailed": "Nie udało się sprawdzić prośby. Zaraz spróbujemy ponownie.",
+      "ended": "Prośba została zamknięta bez nowego szkicu (odrzucona lub wygasła). Możesz zacząć od nowa.",
+      "inboxLink": "Otwórz skrzynkę AI",
+      "checkNow": "Sprawdź teraz",
+      "startOver": "Zacznij od nowa"
     },
     "preview": {
       "loading": "Odczytywanie wiadomości za pomocą szkicu...",

@@ -521,7 +521,8 @@
       "all": "Alle afzenders",
       "option": "{domain} ({count})",
       "unknown": "De aantallen per afzender konden niet worden geladen.",
-      "help": "E-mails van {domain} en de subdomeinen worden getoond. Selecteer er meerdere om één profiel voor de afzender op te stellen."
+      "help": "E-mails van {domain} en de subdomeinen worden getoond. Selecteer er meerdere om één profiel voor de afzender op te stellen.",
+      "waitingForAi": "Wacht op AI"
     },
     "columns": {
       "select": "Selecteren",
@@ -932,7 +933,19 @@
       "runningHint": "Dit kan een minuut duren. Houd deze pagina open.",
       "noDraft": "De assistent heeft geen concept opgeslagen.",
       "tryAgain": "Je kunt het opnieuw sturen, of teruggaan en de voorbeelden wijzigen.",
-      "failed": "De assistent was niet bereikbaar."
+      "failed": "De assistent was niet bereikbaar.",
+      "sendFailed": "Het verzoek kon niet worden verstuurd."
+    },
+    "waiting": {
+      "heading": "Wachten op je AI-agent",
+      "body": "Verstuurd naar de AI-inbox. Je agent maakt het profiel klaar zodra hij verbinding maakt; je kunt dit sluiten en later terugkomen.",
+      "working": "Je agent heeft het verzoek opgepakt en is ermee bezig.",
+      "polling": "Zolang deze pagina openstaat, controleert ze elke {seconds} seconden.",
+      "checkFailed": "Het verzoek kon niet worden gecontroleerd. Er wordt zo opnieuw geprobeerd.",
+      "ended": "Het verzoek is gesloten zonder nieuw concept (afgewezen of verlopen). Je kunt opnieuw beginnen.",
+      "inboxLink": "AI-inbox openen",
+      "checkNow": "Nu controleren",
+      "startOver": "Opnieuw beginnen"
     },
     "preview": {
       "loading": "E-mails lezen met het concept...",

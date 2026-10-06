@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { SenderDomainCloud } from '@/components/email-receipts/SenderDomainCloud';
 import { Button } from '@/components/ui/Button';
@@ -50,6 +50,11 @@ export function UncoveredDomainsSection({ onSelect, refreshKey = 0, disabled = f
     };
   }, [refreshKey, attempt]);
 
+  const waitingDomains = useMemo(
+    () => new Set((domains ?? []).filter((entry) => Boolean(entry.pendingRequestId)).map((entry) => entry.domain)),
+    [domains],
+  );
+
   return (
     <section aria-labelledby="email-receipts-uncovered-heading" className="mb-6 space-y-2 rounded-lg border-2 border-blue-500 bg-blue-50/60 p-4 dark:border-blue-400 dark:bg-blue-900/20">
       <h2 id="email-receipts-uncovered-heading" className="text-xl font-bold text-blue-900 dark:text-blue-100">
@@ -76,7 +81,7 @@ export function UncoveredDomainsSection({ onSelect, refreshKey = 0, disabled = f
         <p className="text-sm text-gray-600 dark:text-gray-400">{t('none')}</p>
       ) : (
         <div className={disabled ? 'pointer-events-none opacity-60' : undefined}>
-          <SenderDomainCloud domains={domains} selected="" showAll={false} onSelect={(domain) => domain !== '' && onSelect(domain)} />
+          <SenderDomainCloud domains={domains} selected="" showAll={false} waitingDomains={waitingDomains} onSelect={(domain) => domain !== '' && onSelect(domain)} />
         </div>
       )}
     </section>

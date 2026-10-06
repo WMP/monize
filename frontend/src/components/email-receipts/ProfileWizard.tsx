@@ -6,6 +6,7 @@ import { WIZARD_MAX_SAMPLES, type ChosenTransaction, type WizardDraft } from '@/
 import { WizardGenerateStep, type WizardSample } from '@/components/email-receipts/WizardGenerateStep';
 import { WizardPreviewStep } from '@/components/email-receipts/WizardPreviewStep';
 import { WizardSamplesStep } from '@/components/email-receipts/WizardSamplesStep';
+import { WizardWaitingStep, type WaitingBaseline } from '@/components/email-receipts/WizardWaitingStep';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { emailReceiptsApi } from '@/lib/email-receipts-api';
@@ -42,13 +43,22 @@ export function ProfileWizard({ domain, onClose, onFinished }: ProfileWizardProp
   const [answer, setAnswer] = useState<string | null>(null);
   // The draft the domain already has, from the uncovered list; null when there is none or it is unknown.
   const [existingDraftId, setExistingDraftId] = useState<string | null>(null);
+  // Set while the user's own agent writes the profile (a request waits in the AI inbox); null otherwise.
+  const [waiting, setWaiting] = useState<WaitingBaseline | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     emailReceiptsApi.receipts
       .listUncovered()
       .then((found) => {
-        if (!cancelled) setExistingDraftId(found.find((entry) => entry.domain === domain)?.draftParserId ?? null);
+        if (cancelled) return;
+        const entry = found.find((candidate) => candidate.domain === domain);
+        setExistingDraftId(entry?.draftParserId ?? null);
+        // A request already in the AI inbox for this domain: show the wait, not step 1.
+        if (entry?.pendingRequestId) {
+          setWaiting((current) => current ?? { parserId: entry.draftParserId, revision: null });
+          setStep((current) => (current === 'samples' ? 'generate' : current));
+        }
       })
       .catch((error) => logger.error(error));
     return () => {
@@ -102,7 +112,25 @@ export function ProfileWizard({ domain, onClose, onFinished }: ProfileWizardProp
         </Button>
       </div>
 
-      {step === 'samples' && (
+      {waiting !== null && (
+        <WizardWaitingStep
+          domain={domain}
+          baseline={waiting}
+          onArrived={(next) => {
+            setWaiting(null);
+            setDraft(next);
+            setAnswer(null);
+            setStep('preview');
+          }}
+          onStartOver={() => {
+            setWaiting(null);
+            setDraft(null);
+            setStep('samples');
+          }}
+        />
+      )}
+
+      {waiting === null && step === 'samples' && (
         <>
           {existingDraftId !== null && (
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-900/20 dark:text-amber-200">
@@ -131,11 +159,15 @@ export function ProfileWizard({ domain, onClose, onFinished }: ProfileWizardProp
         </>
       )}
 
-      {step === 'generate' && (
+      {waiting === null && step === 'generate' && (
         <WizardGenerateStep
           domain={domain}
           samples={samples}
           draft={draft}
+          onQueued={() => {
+            // The agent revises or writes the draft later: wait on what the domain has now.
+            setWaiting(draft ? { parserId: draft.parserId, revision: draft.revision } : { parserId: existingDraftId, revision: null });
+          }}
           onBack={() => setStep(draft ? 'preview' : 'samples')}
           onGenerated={(next, said) => {
             setDraft(next);
@@ -145,7 +177,7 @@ export function ProfileWizard({ domain, onClose, onFinished }: ProfileWizardProp
         />
       )}
 
-      {step === 'preview' && draft !== null && (
+      {waiting === null && step === 'preview' && draft !== null && (
         <WizardPreviewStep
           key={`${draft.parserId}:${draft.revision}`}
           domain={domain}

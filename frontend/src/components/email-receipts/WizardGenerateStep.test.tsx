@@ -26,7 +26,7 @@ async function click(element: HTMLElement) {
 }
 
 async function renderStep(draft: { parserId: string; revision: number | null } | null = null) {
-  const props = { onGenerated: vi.fn(), onBack: vi.fn() };
+  const props = { onGenerated: vi.fn(), onQueued: vi.fn(), onBack: vi.fn() };
   await act(async () => {
     render(<WizardGenerateStep domain="allegro.pl" samples={samples} draft={draft} {...props} />);
   });
@@ -102,6 +102,41 @@ describe('WizardGenerateStep', () => {
       expect.objectContaining({ parserId: 'p-1', feedback: 'Use the Amount paid line.' }),
     );
     expect(props.onGenerated).toHaveBeenCalledWith({ parserId: 'p-1', revision: 4 }, 'Fixed');
+  });
+
+  it('hands a queued request (the user\'s own agent answers) to the wizard instead of generating', async () => {
+    api.generateWithAi.mockResolvedValue({ status: 'queued', requestId: 'req-1' });
+    const props = await renderStep();
+    await click(screen.getByRole('button', { name: 'Send to AI' }));
+    expect(props.onQueued).toHaveBeenCalledWith('req-1');
+    expect(props.onGenerated).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('queues a revision with its note too', async () => {
+    api.generateWithAi.mockResolvedValue({ status: 'queued', requestId: 'req-2' });
+    const props = await renderStep({ parserId: 'p-1', revision: 3 });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('What should change'), { target: { value: 'Use the paid line' } });
+    });
+    await click(screen.getByRole('button', { name: 'Send note to AI' }));
+    expect(api.generateWithAi).toHaveBeenCalledWith(expect.objectContaining({ parserId: 'p-1', feedback: 'Use the paid line' }));
+    expect(props.onQueued).toHaveBeenCalledWith('req-2');
+  });
+
+  it('says the request could not be sent (not that the assistant saved no draft) when the agent is already working on one', async () => {
+    api.generateWithAi.mockRejectedValueOnce(
+      new AxiosError('conflict', '409', undefined, undefined, {
+        status: 409,
+        data: { message: 'Your AI agent is already working on a profile for this sender.' },
+      } as never),
+    );
+    await renderStep();
+    await click(screen.getByRole('button', { name: 'Send to AI' }));
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('The request could not be sent.');
+    expect(alert).toHaveTextContent('Your AI agent is already working on a profile for this sender.');
+    expect(alert).not.toHaveTextContent('did not save a draft');
   });
 
   it('goes back', async () => {

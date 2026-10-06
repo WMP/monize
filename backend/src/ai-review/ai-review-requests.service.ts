@@ -109,6 +109,15 @@ interface RequestRow {
   parser_domain: string | null;
 }
 
+function parserDraftClaimed(): ConflictException {
+  return new ConflictException(
+    tr(
+      "errors.aiReview.parserDraftClaimed",
+      "Your AI agent is already working on a profile for this sender. Wait for it to finish, or dismiss the request in the AI inbox and send a new one.",
+    ),
+  );
+}
+
 function toRequest(row: RequestRow): AiReviewRequest {
   return Object.assign(new AiReviewRequest(), {
     id: row.id,
@@ -353,6 +362,82 @@ export class AiReviewRequestsService {
       ),
     );
     return toRequest(row);
+  }
+
+  /**
+   * The profile wizard's "send to AI": queue a parser-draft request for the
+   * sender, or, when one is still `pending` (no agent has taken it), REPLACE its
+   * instruction and emails in place, so the id the wizard waits on stays valid. A
+   * request an agent has CLAIMED is refused (409): the agent is working from the
+   * old text, and swapping it under them would answer the wrong question. A
+   * `proposed` one (a draft already answers it) is closed and a new request
+   * queued, as {@link enqueueParserDraft} does.
+   *
+   * The mechanism is the same as {@link enqueueParserDraft}: one advisory lock
+   * on `<user>:<domain>`, held to the end of the transaction, with the check and
+   * the write inside it, so a claim that commits first is seen and a claim that
+   * arrives later finds the new text (the UPDATE is conditional on `pending`).
+   */
+  async queueParserDraft(
+    m: EntityManager,
+    userId: string,
+    input: AiReviewEnqueueParserDraftInput,
+  ): Promise<AiReviewRequest> {
+    if (
+      input.emailReceiptIds.length < 1 ||
+      input.emailReceiptIds.length > MAX_PARSER_DRAFT_EMAILS
+    ) {
+      throw new Error("A parser draft request names 1 to 5 emails");
+    }
+    await acquireAdvisoryLock(
+      m,
+      LockScope.AiParserDraftRequests,
+      `${userId}:${input.parserDomain}`,
+    );
+    const open = returnedRows<{ id: string; status: AiReviewRequestStatus }>(
+      await m.query(
+        `SELECT id, status
+           FROM ai_review_requests
+          WHERE user_id = $1
+            AND kind = 'email_parser_draft'
+            AND parser_domain = $2
+            AND status IN ('pending', 'claimed')
+            AND expires_at > CURRENT_TIMESTAMP
+          ORDER BY created_at DESC, id DESC
+            FOR UPDATE`,
+        [userId, input.parserDomain],
+      ),
+    );
+    if (open.some((row) => row.status === "claimed")) {
+      throw parserDraftClaimed();
+    }
+    const pending = open[0];
+    if (pending) {
+      const [row] = returnedRows<RequestRow>(
+        await m.query(
+          `UPDATE ai_review_requests
+              SET instruction = $3::text,
+                  email_receipt_ids = $4::uuid[]
+            WHERE id = $1
+              AND user_id = $2
+              AND status = 'pending'
+           RETURNING *`,
+          [
+            pending.id,
+            userId,
+            input.instruction.trim().slice(0, MAX_AI_REVIEW_INSTRUCTION_LENGTH),
+            [...input.emailReceiptIds],
+          ],
+        ),
+      );
+      // The row is locked above, so a miss would mean it left `pending` inside
+      // this transaction; refuse rather than report a request that is not queued.
+      if (!row) {
+        throw parserDraftClaimed();
+      }
+      return toRequest(row);
+    }
+    return this.enqueueParserDraft(m, userId, input);
   }
 
   /**

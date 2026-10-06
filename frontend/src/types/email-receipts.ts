@@ -669,6 +669,10 @@ export interface UncoveredDomain {
   count: number;
   /** A draft profile already written for the domain, or null. */
   draftParserId: string | null;
+  /** The request in the AI inbox that asks the user's agent for a profile for this domain, or null. */
+  pendingRequestId: string | null;
+  /** `pending` until an agent takes the request, `claimed` while it works; null without a request. */
+  pendingRequestStatus: 'pending' | 'claimed' | null;
 }
 
 /** One email of the domain paired with the transaction it paid for (a wizard sample). */
@@ -685,12 +689,22 @@ export interface GenerateParserWithAiPayload {
   feedback?: string;
 }
 
-export interface GenerateParserWithAiResult {
+/** The assistant ran now and saved a draft. */
+export interface GenerateParserSavedResult {
+  status: 'saved';
   parserId: string;
   revision: number;
   /** What the assistant said about its work. */
   answer: string;
 }
+
+/** The user's own agent (the MCP relay) answers: the request waits in the AI inbox. */
+export interface GenerateParserQueuedResult {
+  status: 'queued';
+  requestId: string;
+}
+
+export type GenerateParserWithAiResult = GenerateParserSavedResult | GenerateParserQueuedResult;
 
 /** `POST /email-receipt-parsers/:id/preview`. */
 export interface PreviewEmailReceiptParserPayload {

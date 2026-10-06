@@ -6,7 +6,10 @@ import {
   UnprocessableEntityException,
 } from "@nestjs/common";
 import { DataSource, EntityManager, In } from "typeorm";
+import { AiBaseUrlRefusedError } from "../../ai/ai-base-url-policy";
+import { AiService } from "../../ai/ai.service";
 import { AiQueryService } from "../../ai/query/ai-query.service";
+import { AiReviewRequestsService } from "../../ai-review/ai-review-requests.service";
 import { loadQualifiedCategoryNames } from "../../categories/category-name.util";
 import { withScopedDb } from "../../common/db/scoped-db";
 import { tr } from "../../i18n/translate";
@@ -15,6 +18,7 @@ import { EmailReceipt } from "../entities/email-receipt.entity";
 import { effectiveReceiptDate } from "../imap/forwarded-receipt";
 import { ReceiptSourceLines } from "../pipeline/receipt-source-lines";
 import type { GenerateParserWithAiDto } from "./dto/email-receipt-parser.dto";
+import { buildWizardParserDraftInstruction } from "./parser-draft-instruction";
 import { toParserView } from "./email-receipt-parser.view";
 import {
   buildGeneratePrompt,
@@ -23,13 +27,28 @@ import {
 } from "./parser-generate-prompt";
 import { loadTransactionSummaries } from "./receipt-dry-run";
 
-export interface GenerateParserResult {
+/** The assistant ran now and saved a draft. */
+export interface GenerateParserSavedResult {
+  status: "saved";
   parserId: string;
   /** The draft's revision after the run: send it as `expectedRevision` when approving. */
   revision: number;
   /** What the assistant said it did. */
   answer: string;
 }
+
+/**
+ * The user's own agent answers (the MCP relay): the request waits in the AI
+ * inbox and the agent saves the draft when it connects.
+ */
+export interface GenerateParserQueuedResult {
+  status: "queued";
+  /** The `email_parser_draft` request the agent will claim. */
+  requestId: string;
+}
+
+export type GenerateParserResult =
+  GenerateParserSavedResult | GenerateParserQueuedResult;
 
 /** What is read before the run: the samples as the prompt shows them, and the draft state to compare with. */
 interface Prepared {
@@ -62,12 +81,20 @@ export class EmailReceiptParserGenerateService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly aiQuery: AiQueryService,
+    private readonly ai: AiService,
+    private readonly requests: AiReviewRequestsService,
   ) {}
 
   async generate(
     userId: string,
     dto: GenerateParserWithAiDto,
   ): Promise<GenerateParserResult> {
+    // Decided BEFORE any provider is called: a direct tool-capable provider
+    // answers now; otherwise a user whose AI is their own agent (the MCP relay)
+    // gets a request in the AI inbox, and a user with neither is refused.
+    if ((await this.chooseRoute(userId)) === "queue") {
+      return this.queue(userId, dto);
+    }
     const prepared = await withScopedDb(this.dataSource, (m) =>
       this.prepare(m, userId, dto),
     );
@@ -92,7 +119,65 @@ export class EmailReceiptParserGenerateService {
         answer,
       });
     }
-    return { parserId: saved.id, revision: saved.revision, answer };
+    return {
+      status: "saved",
+      parserId: saved.id,
+      revision: saved.revision,
+      answer,
+    };
+  }
+
+  /**
+   * `direct` when the assistant's own provider test passes (the one
+   * `executeQuery` runs: `resolveToolUseProvider`), `queue` when it does not but
+   * the user's top provider is the MCP relay (`relayActive`, as `GET /ai/status`
+   * computes it). Otherwise the provider refusal is raised: a refused base URL
+   * as it is, "no provider" with a message that names this screen's two ways out.
+   */
+  private async chooseRoute(userId: string): Promise<"direct" | "queue"> {
+    try {
+      await this.ai.resolveToolUseProvider(userId);
+      return "direct";
+    } catch (error) {
+      if ((await this.ai.getStatus(userId)).relayActive) return "queue";
+      if (
+        error instanceof BadRequestException &&
+        !(error instanceof AiBaseUrlRefusedError)
+      ) {
+        throw new BadRequestException(
+          tr(
+            "errors.emailReceipts.generateNoProvider",
+            "No AI is set up to write the profile. In AI Settings, add an Anthropic, OpenAI or Ollama provider, or connect your own agent over MCP, then try again.",
+          ),
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Queue the wizard's request for the user's agent. The checks of the
+   * synchronous path (`prepare`) and the queueing share one transaction, so a
+   * refused request has queued nothing; a request an agent has claimed is a 409
+   * (`queueParserDraft`), a pending one is replaced in place.
+   */
+  private async queue(
+    userId: string,
+    dto: GenerateParserWithAiDto,
+  ): Promise<GenerateParserQueuedResult> {
+    return withScopedDb(this.dataSource, async (m) => {
+      const prepared = await this.prepare(m, userId, dto);
+      const request = await this.requests.queueParserDraft(m, userId, {
+        emailReceiptIds: prepared.samples.map((sample) => sample.receiptId),
+        parserDomain: dto.domain,
+        instruction: buildWizardParserDraftInstruction({
+          domain: dto.domain,
+          samples: prepared.samples,
+          revision: prepared.revision,
+        }),
+      });
+      return { status: "queued" as const, requestId: request.id };
+    });
   }
 
   private async prepare(
