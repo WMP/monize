@@ -395,13 +395,14 @@ describe("ScheduledTransactionLoanService: LINEAR and INTEREST_ONLY", () => {
         265000,
         "2027-02-01",
       );
+      // Priced at 883.3333, booked in cents (issue #1581).
       expect(decision).toEqual({
         kind: "allocation",
         amountsBySplitId: new Map([
           ["split-principal", -0],
-          ["split-interest", -883.3333],
+          ["split-interest", -883.33],
         ]),
-        parentAmount: -883.3333,
+        parentAmount: -883.33,
       });
     });
   });
@@ -414,21 +415,24 @@ describe("ScheduledTransactionLoanService: LINEAR and INTEREST_ONLY", () => {
       const stale = makeTemplate(833.3333, 393.0556, "2027-01-01");
 
       const decision = await post(account, stale, 235000.0012, "2027-01-01");
+      // Re-divided at 4dp (783.3333 interest, 443.0556 principal) and booked
+      // in cents: the 1,226.39 bill, 783.33 interest, principal the rest.
       expect(decision).toEqual({
         kind: "allocation",
         amountsBySplitId: new Map([
-          ["split-principal", -443.0556],
-          ["split-interest", -783.3333],
+          ["split-principal", -443.06],
+          ["split-interest", -783.33],
         ]),
-        parentAmount: -1226.3889,
+        parentAmount: -1226.39,
       });
 
       // The advancement after that posting prices 2027-02-01 at the method
-      // installment again: c on the debt the short posting left.
+      // installment again: c on the debt the short posting left
+      // (235,000.0012 - 443.06).
       const healed = await advance(
         account,
-        makeTemplate(443.0556, 783.3333, "2027-02-01"),
-        234556.9456,
+        makeTemplate(443.06, 783.33, "2027-02-01"),
+        234556.9412,
       );
       expect(healed).toEqual({
         principal: 833.3333,

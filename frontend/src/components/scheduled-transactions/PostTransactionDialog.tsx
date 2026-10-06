@@ -15,6 +15,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { SplitEditor, SplitRow, createEmptySplits, toSplitRows } from '@/components/transactions/SplitEditor';
 import { toOverrideSplits } from './splitSerialization';
+import { bookSplitRowsAtMinorUnit } from '@/lib/minor-unit-booking';
 import { ScheduledTransaction, PostScheduledTransactionData } from '@/types/scheduled-transaction';
 import { Category } from '@/types/category';
 import { Account } from '@/types/account';
@@ -28,6 +29,7 @@ import {
   roundToCents,
   roundToDecimals,
   getCurrencySymbol,
+  getDecimalPlacesForCurrency,
   formatAmount,
   FX_RATE_DISPLAY_DECIMALS,
 } from '@/lib/format';
@@ -394,11 +396,13 @@ export function PostTransactionDialog({
     if (isOpen) {
       const nextOverride = scheduledTransaction.nextOverride;
 
-      // Use override values if they exist, otherwise use base transaction values
-      const amt = roundToCents(
-        nextOverride?.amount ?? scheduledTransaction.amount
-      );
-      setAmount(amt);
+      // Use override values if they exist, otherwise use base transaction values.
+      // The bill is priced at storage precision (a LINEAR mortgage installment
+      // is 1,170.6458) and booked in the currency's smallest unit (1,170.65),
+      // which is what the bank debits (issue #1581).
+      const decimals = getDecimalPlacesForCurrency(scheduledTransaction.currencyCode);
+      const rawAmount = Number(nextOverride?.amount ?? scheduledTransaction.amount);
+      const amt = roundToDecimals(rawAmount, decimals);
       // Foreign-currency schedule: the field the user edits is the biller's
       // amount in its own currency. An occurrence override deliberately stays
       // an account-currency figure (see resolveFxForPosting on the backend), so
@@ -423,19 +427,33 @@ export function PostTransactionDialog({
 
       // Initialize splits
       if ((nextOverride?.isSplit ?? scheduledTransaction.isSplit)) {
-        if (nextOverride?.splits && nextOverride.splits.length > 0) {
-          setSplits(toSplitRows(nextOverride.splits.map((s, i) => ({
-            id: `override-${i}`,
-            ...s,
-          }))));
-        } else if (scheduledTransaction.splits && scheduledTransaction.splits.length > 0) {
-          setSplits(toSplitRows(scheduledTransaction.splits));
+        const rows =
+          nextOverride?.splits && nextOverride.splits.length > 0
+            ? toSplitRows(nextOverride.splits.map((s, i) => ({
+                id: `override-${i}`,
+                ...s,
+              })))
+            : scheduledTransaction.splits && scheduledTransaction.splits.length > 0
+              ? toSplitRows(scheduledTransaction.splits)
+              : null;
+        // The lines are booked in the same unit as the parent, the rounding
+        // difference on the loan's principal line, so they sum to the amount
+        // shown. Rounding the parent alone left 4dp lines under a cents
+        // parent, which the server refused. The server recognises exactly
+        // this booking of the stored template as an unchanged echo and
+        // re-prices it from the ledger.
+        const booked = rows
+          ? bookSplitRowsAtMinorUnit(rows, rawAmount, scheduledTransaction.currencyCode, scheduledTransaction.splits)
+          : null;
+        if (booked) {
+          setSplits(booked.rows);
         } else {
-          setSplits(createEmptySplits(amt));
+          setSplits(rows ?? createEmptySplits(amt));
         }
       } else {
         setSplits(createEmptySplits(amt));
       }
+      setAmount(amt);
 
       // Investment-kind: prefill from the next-occurrence override if one
       // exists, falling back to the base scheduled transaction's saved values.

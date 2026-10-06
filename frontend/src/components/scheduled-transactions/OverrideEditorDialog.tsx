@@ -14,6 +14,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { SplitEditor, SplitRow, createEmptySplits, toSplitRows } from '@/components/transactions/SplitEditor';
 import { toOverrideSplits } from './splitSerialization';
+import { bookSplitRowsAtMinorUnit } from '@/lib/minor-unit-booking';
 import { ScheduledTransaction, ScheduledTransactionOverride } from '@/types/scheduled-transaction';
 import { Category } from '@/types/category';
 import { Account } from '@/types/account';
@@ -132,6 +133,22 @@ export function OverrideEditorDialog({
 
   // Initialize form with base transaction or existing override values
   useEffect(() => {
+    // Split lines are booked in the currency's smallest unit under a parent in
+    // the same unit, the rounding difference on the loan's principal line:
+    // a cents parent over a template's 4dp lines is what the server refused
+    // (issue #1581).
+    const initSplits = (rows: SplitRow[] | null, parentAmount: number, fallbackAmount: number) => {
+      const booked =
+        rows && !scheduledTransaction.isTransfer
+          ? bookSplitRowsAtMinorUnit(rows, parentAmount, scheduledTransaction.currencyCode, scheduledTransaction.splits)
+          : null;
+      if (booked) {
+        setSplits(booked.rows);
+        setAmount(booked.parentAmount);
+      } else {
+        setSplits(rows ?? createEmptySplits(fallbackAmount));
+      }
+    };
     if (isOpen) {
       if (existingOverride) {
         // Use the existing override's date (which may differ from the original calculated date)
@@ -149,16 +166,18 @@ export function OverrideEditorDialog({
         setCategoryId(existingOverride.categoryId ?? scheduledTransaction.categoryId ?? '');
         setDescription(existingOverride.description ?? scheduledTransaction.description ?? '');
         setIsSplit(existingOverride.isSplit ?? scheduledTransaction.isSplit);
-        if (existingOverride.isSplit && existingOverride.splits) {
-          setSplits(toSplitRows(existingOverride.splits.map((s, i) => ({
-            id: `override-${i}`,
-            ...s,
-          }))));
-        } else if (scheduledTransaction.isSplit && scheduledTransaction.splits) {
-          setSplits(toSplitRows(scheduledTransaction.splits));
-        } else {
-          setSplits(createEmptySplits(amt));
-        }
+        initSplits(
+          existingOverride.isSplit && existingOverride.splits
+            ? toSplitRows(existingOverride.splits.map((s, i) => ({
+                id: `override-${i}`,
+                ...s,
+              })))
+            : scheduledTransaction.isSplit && scheduledTransaction.splits
+              ? toSplitRows(scheduledTransaction.splits)
+              : null,
+          Number(prefillAmount ?? existingOverride.amount ?? scheduledTransaction.amount),
+          amt,
+        );
       } else {
         // Use base transaction values (absolute value for transfers - sign is applied on save)
         const rawAmt = roundToCents(scheduledTransaction.amount);
@@ -167,11 +186,13 @@ export function OverrideEditorDialog({
         setCategoryId(scheduledTransaction.categoryId ?? '');
         setDescription(scheduledTransaction.description ?? '');
         setIsSplit(scheduledTransaction.isSplit);
-        if (scheduledTransaction.isSplit && scheduledTransaction.splits) {
-          setSplits(toSplitRows(scheduledTransaction.splits));
-        } else {
-          setSplits(createEmptySplits(amt));
-        }
+        initSplits(
+          scheduledTransaction.isSplit && scheduledTransaction.splits
+            ? toSplitRows(scheduledTransaction.splits)
+            : null,
+          Number(prefillAmount ?? scheduledTransaction.amount),
+          amt,
+        );
       }
 
       // Investment-mode prefill: existing override values fall back to the

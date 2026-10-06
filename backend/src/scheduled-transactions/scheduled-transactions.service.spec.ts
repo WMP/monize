@@ -5880,6 +5880,163 @@ describe("ScheduledTransactionsService", () => {
       expect(interest.amount).toBe(-1100);
     });
 
+    describe("a template priced below the cent (issue #1581)", () => {
+      // A LINEAR installment priced at storage precision: 864.5833 principal
+      // + 306.0625 interest (61,212.50 at 6% monthly) = 1,170.6458. The bank
+      // debits 1,170.65.
+      const subCentTemplate = () =>
+        makeScheduled({
+          amount: -1170.6458,
+          isSplit: true,
+          frequency: "ONCE",
+          splits: [
+            { ...loanTemplateSplits()[0], amount: -864.5833 },
+            { ...loanTemplateSplits()[1], amount: -306.0625 },
+          ],
+        });
+
+      const arrangeSubCent = (balance = "-61212.5") => {
+        arrangeLoanPost(subCentTemplate());
+        mockDataSource.query.mockImplementation(async (sql: string) => {
+          const text = String(sql);
+          if (text.includes("scheduled_transaction_postings")) {
+            return [[{ id: "posting-1" }], 1];
+          }
+          if (text.includes("opening_balance")) {
+            return [{ balance }];
+          }
+          return [
+            {
+              user_id: "11111111-1111-1111-1111-111111111111",
+              timezone: "UTC",
+            },
+          ];
+        });
+      };
+
+      const posted = () => {
+        const payload = transactionsService.create.mock.calls[0][1];
+        return {
+          amount: payload.amount,
+          principal: payload.splits.find(
+            (sp: any) => sp.transferAccountId === "loan-1",
+          ).amount,
+          interest: payload.splits.find(
+            (sp: any) => sp.categoryId === "cat-interest",
+          ).amount,
+        };
+      };
+
+      it("books the automatic posting in cents", async () => {
+        arrangeSubCent();
+
+        await service.post(userId, stId);
+
+        expect(posted()).toEqual({
+          amount: -1170.65,
+          principal: -864.59,
+          interest: -306.06,
+        });
+      });
+
+      it("posts the Post dialog's unchanged pre-fill, re-priced and booked in cents", async () => {
+        // What the dialog now sends: the template booked in cents, the
+        // rounding cent on the principal line. Before the fix it sent the
+        // 4dp lines under a 1,170.65 parent and the split validator refused
+        // the post ("Split amounts (-1170.6458) must equal transaction
+        // amount (-1170.65)"). A 212.50 principal payment has landed since
+        // the template was priced, so only a recognised echo re-prices it:
+        // 61,000 at 0.5% is 305.00 of interest.
+        arrangeSubCent("-61000");
+
+        await service.post(userId, stId, {
+          amount: -1170.65,
+          isSplit: true,
+          splits: [
+            {
+              sourceSplitId: "ss-principal",
+              transferAccountId: "loan-1",
+              amount: -864.59,
+            },
+            {
+              sourceSplitId: "ss-interest",
+              categoryId: "cat-interest",
+              amount: -306.06,
+            },
+          ],
+        } as any);
+
+        expect(posted()).toEqual({
+          amount: -1170.65,
+          principal: -865.65,
+          interest: -305,
+        });
+      });
+
+      it("books a split template the loan pricing does not re-divide in cents too", async () => {
+        // No line pays a loan, so `resolvePostingAllocation` is not
+        // applicable; the occurrence is still booked in cents, as the Post
+        // dialog pre-fills it, with the cent on the largest line.
+        const scheduled = makeScheduled({
+          amount: -100,
+          isSplit: true,
+          frequency: "ONCE",
+          splits: [
+            {
+              ...loanTemplateSplits()[1],
+              id: "ss-a",
+              categoryId: "cat-a",
+              amount: -33.335,
+            },
+            {
+              ...loanTemplateSplits()[1],
+              id: "ss-b",
+              categoryId: "cat-b",
+              amount: -66.665,
+            },
+          ],
+        });
+        arrangeLoanPost(scheduled);
+
+        await service.post(userId, stId);
+
+        const payload = transactionsService.create.mock.calls[0][1];
+        expect(payload.amount).toBe(-100);
+        expect(payload.splits.map((sp: any) => sp.amount)).toEqual([
+          -33.34, -66.66,
+        ]);
+      });
+
+      it("honours a cent the user moved between the lines", async () => {
+        // The bank split it 864.58 / 306.07: exact comparison, no tolerance,
+        // so a typed cent is the user's statement and posts as given.
+        arrangeSubCent();
+
+        await service.post(userId, stId, {
+          amount: -1170.65,
+          isSplit: true,
+          splits: [
+            {
+              sourceSplitId: "ss-principal",
+              transferAccountId: "loan-1",
+              amount: -864.58,
+            },
+            {
+              sourceSplitId: "ss-interest",
+              categoryId: "cat-interest",
+              amount: -306.07,
+            },
+          ],
+        } as any);
+
+        expect(posted()).toEqual({
+          amount: -1170.65,
+          principal: -864.58,
+          interest: -306.07,
+        });
+      });
+    });
+
     it("prices the occurrence at the date its money moves, not the abandoned slot", async () => {
       // An override moved this occurrence off its recurrence slot. Interest
       // accrues to the date the payment is actually made, so the boundary is

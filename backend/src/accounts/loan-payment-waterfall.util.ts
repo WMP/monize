@@ -1,4 +1,5 @@
-import { roundMoney } from "../common/round.util";
+import { MONEY_DECIMALS, roundMoney } from "../common/round.util";
+import { bookSplitsAtMinorUnit } from "../common/currency-minor-unit.util";
 
 export interface LoanPaymentWaterfallInput {
   /** Total configured installment, extra principal included. */
@@ -94,4 +95,77 @@ export function allocateLoanPayment(
     extraPrincipal,
     total: roundMoney(principal + interest + extraPrincipal),
   };
+}
+
+/**
+ * The installment as the bank books it: in the currency's smallest unit
+ * (`decimals`, from `currencyMinorUnitDecimals`), issue #1581.
+ *
+ * The waterfall prices at storage precision (docs/specs/mortgage-types.md,
+ * decision 7), so a LINEAR installment is 864.5833 principal + 306.0625
+ * interest = 1,170.6458; the account it is debited from moves 1,170.65. The
+ * total and the interest are each rounded to the unit and principal takes
+ * what the roundings leave (864.59), because interest is the period's charge
+ * and principal is what retires the loan. Where principal is zero (an
+ * interest-only installment carrying an extra), the extra takes it instead,
+ * so no line turns negative. The parts still sum to the total exactly.
+ *
+ * Booking never retires more than `debt`. A ledger posted at 4dp before
+ * #1581 can owe 833.3449 on its final installment, and rounding would book
+ * 833.35 and push the loan into credit; there the principal is cut down to
+ * the unit at or below the debt (833.34), leaving a residue of less than one
+ * unit that the next occurrence reads as paid off (`debt <= 0.01`). A ledger
+ * booked in the unit owes a whole number of units, so its final installment
+ * retires it exactly.
+ */
+export function bookLoanAllocation(
+  allocation: LoanPaymentAllocation,
+  decimals: number,
+  debt: number | null = null,
+): LoanPaymentAllocation {
+  const lines = [
+    allocation.principal,
+    allocation.interest,
+    allocation.extraPrincipal,
+  ];
+  let booked = bookSplitsAtMinorUnit(lines, allocation.total, decimals, 0);
+  if (booked.amounts[0] < 0) {
+    booked = bookSplitsAtMinorUnit(lines, allocation.total, decimals, 2);
+  }
+  const [principal, interest, extraPrincipal] = booked.amounts;
+  if (
+    debt !== null &&
+    roundMoney(principal + extraPrincipal) > roundMoney(debt)
+  ) {
+    const retired = towardZeroInUnit(
+      Math.min(allocation.principal + allocation.extraPrincipal, debt),
+      decimals,
+    );
+    const extra = Math.min(
+      towardZeroInUnit(allocation.extraPrincipal, decimals),
+      retired,
+    );
+    const cappedPrincipal = roundMoney(retired - extra);
+    return {
+      principal: cappedPrincipal,
+      interest,
+      extraPrincipal: extra,
+      total: roundMoney(cappedPrincipal + interest + extra),
+    };
+  }
+  return {
+    principal,
+    interest,
+    extraPrincipal,
+    total: booked.parentAmount,
+  };
+}
+
+/** A non-negative 4dp amount cut down to the unit (833.3449 -> 833.34 at 2). */
+function towardZeroInUnit(value: number, decimals: number): number {
+  const step = 10 ** Math.max(0, MONEY_DECIMALS - decimals);
+  const units = Math.round(
+    roundMoney(Math.max(0, value)) * 10 ** MONEY_DECIMALS,
+  );
+  return roundMoney((Math.floor(units / step) * step) / 10 ** MONEY_DECIMALS);
 }

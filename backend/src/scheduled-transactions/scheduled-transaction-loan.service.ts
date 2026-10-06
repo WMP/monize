@@ -20,8 +20,15 @@ import {
 import { roundMoney } from "../common/round.util";
 import {
   allocateLoanPayment,
+  bookLoanAllocation,
   LoanPaymentAllocation,
 } from "../accounts/loan-payment-waterfall.util";
+import {
+  bookSplitsAtMinorUnit,
+  currencyMinorUnitDecimals,
+  LOAN_LIKE_ACCOUNT_TYPES,
+  minorUnitAbsorbIndex,
+} from "../common/currency-minor-unit.util";
 import { withScopedDb } from "../common/db/scoped-db";
 import { ensureYMD } from "../common/recurrence";
 import { tr } from "../i18n/translate";
@@ -39,11 +46,8 @@ import {
 // that structure -- it accepts LOAN, MORTGAGE and LINE_OF_CREDIT, so a LOC left
 // out of the recalculation would keep billing the first installment's split
 // forever (issue #1154 re-review).
-const LOAN_LIKE_ACCOUNT_TYPES: ReadonlySet<AccountType> = new Set([
-  AccountType.LOAN,
-  AccountType.MORTGAGE,
-  AccountType.LINE_OF_CREDIT,
-]);
+// The list itself is `LOAN_LIKE_ACCOUNT_TYPES` in
+// `common/currency-minor-unit.util.ts`, shared with the minor-unit booking.
 
 /** The template's managed lines: a principal transfer, one interest line, and
  *  optionally an extra-principal transfer. */
@@ -353,6 +357,9 @@ export class ScheduledTransactionLoanService {
    *
    * The total is the bill the user was shown: this re-divides it between
    * interest and principal and never resizes it (see `InstallmentPurpose`).
+   * It is booked in the currency's smallest unit (`bookLoanAllocation`): the
+   * bill shows 1,170.65 for a 1,170.6458 installment, and 1,170.65 is what
+   * the bank debits (issue #1581).
    *
    * The decision distinguishes three outcomes, because two of them used to
    * share `null` and a retired loan therefore went on charging its whole stale
@@ -411,7 +418,16 @@ export class ScheduledTransactionLoanService {
         return { kind: "not-applicable" } as const;
       }
 
-      const { allocation, template } = installment;
+      // Priced at storage precision, booked in the currency's smallest unit:
+      // the account this debits moves whole cents (issue #1581). The posting
+      // path excludes a foreign-currency schedule, so the schedule's currency
+      // is the source account's.
+      const allocation = bookLoanAllocation(
+        installment.allocation,
+        currencyMinorUnitDecimals(scheduledTransaction.currencyCode),
+        installment.debt,
+      );
+      const { template } = installment;
       const amountsBySplitId = new Map<string, number>();
       if (template.principalSplit?.id) {
         amountsBySplitId.set(template.principalSplit.id, -allocation.principal);
@@ -430,6 +446,45 @@ export class ScheduledTransactionLoanService {
         amountsBySplitId,
         parentAmount: -allocation.total,
       };
+    });
+  }
+
+  /**
+   * The stored template booked in the currency's smallest unit: every line and
+   * the parent rounded to it, the rounding difference on the loan's principal
+   * line, or on the largest line of a split set that pays no loan
+   * (`bookSplitsAtMinorUnit` and `minorUnitAbsorbIndex`, mirrored by the
+   * client). It is what the Post dialog pre-fills, so the posting path
+   * compares the dialog's lines with it to tell an unchanged echo, which
+   * re-prices from the ledger, from figures the user typed, which post as
+   * given; and it is what an automatic posting books when the template is not
+   * one the loan pricing re-divides (issue #1581).
+   */
+  async bookTemplateAtMinorUnit(
+    scheduledTransaction: ScheduledTransaction,
+    splits: ScheduledTransactionSplit[],
+  ): Promise<LoanPostingAllocation> {
+    return withScopedDb(this.dataSource, async (m) => {
+      const accountTypeById = new Map<string, string>();
+      for (const split of splits) {
+        const accountId = split.transferAccountId;
+        if (!accountId || accountTypeById.has(accountId)) continue;
+        const account = await m
+          .getRepository(Account)
+          .findOne({ where: { id: accountId } });
+        if (account) accountTypeById.set(account.id, account.accountType);
+      }
+      const booked = bookSplitsAtMinorUnit(
+        splits.map((s) => Number(s.amount)),
+        Number(scheduledTransaction.amount),
+        currencyMinorUnitDecimals(scheduledTransaction.currencyCode),
+        minorUnitAbsorbIndex(splits, accountTypeById),
+      );
+      const amountsBySplitId = new Map<string, number>();
+      splits.forEach((s, index) => {
+        if (s.id) amountsBySplitId.set(s.id, booked.amounts[index]);
+      });
+      return { amountsBySplitId, parentAmount: booked.parentAmount };
     });
   }
 

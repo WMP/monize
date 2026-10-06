@@ -1571,6 +1571,73 @@ describe("ScheduledTransactionLoanService", () => {
     });
   });
 
+  describe("bookTemplateAtMinorUnit", () => {
+    it("books the stored template the way the Post dialog pre-fills it", async () => {
+      accountsRepository.findOne.mockResolvedValue(makeLoanAccount());
+      const booked = await service.bookTemplateAtMinorUnit(
+        makeScheduledTransaction({ amount: -1170.6458, currencyCode: "EUR" }),
+        [
+          {
+            id: "split-interest",
+            transferAccountId: null,
+            categoryId: "cat-interest",
+            amount: -306.0625,
+            memo: "Interest",
+          },
+          {
+            id: "split-principal",
+            transferAccountId: loanAccountId,
+            categoryId: null,
+            amount: -864.5833,
+            memo: "Principal",
+          },
+        ] as unknown as ScheduledTransactionSplit[],
+      );
+      expect(booked).toEqual({
+        amountsBySplitId: new Map([
+          ["split-interest", -306.06],
+          ["split-principal", -864.59],
+        ]),
+        parentAmount: -1170.65,
+      });
+    });
+
+    it("gives the rounding to the largest line of a split set that pays no loan", async () => {
+      accountsRepository.findOne.mockResolvedValue({
+        id: "acc-savings",
+        accountType: "SAVINGS",
+      });
+      const booked = await service.bookTemplateAtMinorUnit(
+        makeScheduledTransaction({ amount: -100, currencyCode: "EUR" }),
+        [
+          {
+            id: "split-a",
+            transferAccountId: "acc-savings",
+            categoryId: null,
+            amount: -33.335,
+            memo: null,
+          },
+          {
+            id: "split-b",
+            transferAccountId: null,
+            categoryId: "cat-x",
+            amount: -66.665,
+            memo: null,
+          },
+        ] as unknown as ScheduledTransactionSplit[],
+      );
+      // 33.34 + 66.67 = 100.01 against a 100.00 parent: the cent comes
+      // back off the larger line.
+      expect(booked).toEqual({
+        amountsBySplitId: new Map([
+          ["split-a", -33.34],
+          ["split-b", -66.66],
+        ]),
+        parentAmount: -100,
+      });
+    });
+  });
+
   describe("resolvePostingAllocation", () => {
     const templateSplits = () =>
       [
@@ -1656,6 +1723,61 @@ describe("ScheduledTransactionLoanService", () => {
       expect(result.kind).toBe("allocation");
       if (result.kind !== "allocation") throw new Error("unreachable");
       expect(result.parentAmount).toBe(-1500);
+    });
+
+    describe("books the installment in the currency's smallest unit (issue #1581)", () => {
+      // A 1,170.6458 installment priced at storage precision: 306.0625 of
+      // interest (61,212.50 at 6% monthly) and 864.5833 of principal. The
+      // account it debits moves whole cents.
+      const subCentSplits = () =>
+        [
+          {
+            id: "split-principal",
+            transferAccountId: loanAccountId,
+            categoryId: null,
+            amount: -864.5833,
+            memo: "Principal",
+          },
+          {
+            id: "split-interest",
+            transferAccountId: null,
+            categoryId: "cat-interest",
+            amount: -306.0625,
+            memo: "Interest",
+          },
+        ] as unknown as ScheduledTransactionSplit[];
+
+      const resolve = async (currencyCode: string) => {
+        accountsRepository.findOne.mockResolvedValue(
+          makeLoanAccount({
+            currentBalance: -61212.5,
+            interestRate: 6,
+            paymentFrequency: "MONTHLY",
+          }),
+        );
+        manager.query.mockResolvedValue([{ balance: "-61212.5" }]);
+        const result = await service.resolvePostingAllocation(
+          makeScheduledTransaction({ amount: -1170.6458, currencyCode }),
+          subCentSplits(),
+          "2026-06-01",
+        );
+        if (result.kind !== "allocation") throw new Error("unreachable");
+        return result;
+      };
+
+      it("posts 1,170.65 as 864.59 principal and 306.06 interest", async () => {
+        const result = await resolve("EUR");
+        expect(result.parentAmount).toBe(-1170.65);
+        expect(result.amountsBySplitId.get("split-interest")).toBe(-306.06);
+        expect(result.amountsBySplitId.get("split-principal")).toBe(-864.59);
+      });
+
+      it("posts whole units for a currency without a minor unit", async () => {
+        const result = await resolve("JPY");
+        expect(result.parentAmount).toBe(-1171);
+        expect(result.amountsBySplitId.get("split-interest")).toBe(-306);
+        expect(result.amountsBySplitId.get("split-principal")).toBe(-865);
+      });
     });
 
     it("writes nothing while resolving", async () => {

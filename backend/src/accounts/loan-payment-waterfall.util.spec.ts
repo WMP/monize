@@ -1,4 +1,7 @@
-import { allocateLoanPayment } from "./loan-payment-waterfall.util";
+import {
+  allocateLoanPayment,
+  bookLoanAllocation,
+} from "./loan-payment-waterfall.util";
 
 describe("allocateLoanPayment", () => {
   it("passes an ordinary installment through unchanged", () => {
@@ -138,5 +141,145 @@ describe("allocateLoanPayment", () => {
     expect(result.interest).toBe(33.3333);
     expect(result.principal).toBe(66.6667);
     expect(result.total).toBe(100);
+  });
+});
+
+describe("bookLoanAllocation", () => {
+  it("rounds total and interest to the unit and lets principal take the rest (issue #1581)", () => {
+    expect(
+      bookLoanAllocation(
+        {
+          principal: 864.5833,
+          interest: 306.0625,
+          extraPrincipal: 0,
+          total: 1170.6458,
+        },
+        2,
+      ),
+    ).toEqual({
+      principal: 864.59,
+      interest: 306.06,
+      extraPrincipal: 0,
+      total: 1170.65,
+    });
+  });
+
+  it("books whole units for a zero-decimal currency", () => {
+    expect(
+      bookLoanAllocation(
+        {
+          principal: 1000.4,
+          interest: 500.4,
+          extraPrincipal: 0,
+          total: 1500.8,
+        },
+        0,
+      ),
+    ).toEqual({
+      principal: 1001,
+      interest: 500,
+      extraPrincipal: 0,
+      total: 1501,
+    });
+  });
+
+  it("lets the extra take the rounding when principal is zero, so no line turns negative", () => {
+    // Interest-only with a standing extra: 100.01 + 50.01 rounded is 150.02
+    // against a 150.01 bill; principal cannot give up the cent it does not have.
+    expect(
+      bookLoanAllocation(
+        {
+          principal: 0,
+          interest: 100.005,
+          extraPrincipal: 50.005,
+          total: 150.01,
+        },
+        2,
+      ),
+    ).toEqual({
+      principal: 0,
+      interest: 100.01,
+      extraPrincipal: 50,
+      total: 150.01,
+    });
+  });
+
+  it("leaves an installment already in cents unchanged", () => {
+    const allocation = {
+      principal: 507.5,
+      interest: 992.5,
+      extraPrincipal: 100,
+      total: 1600,
+    };
+    expect(bookLoanAllocation(allocation, 2)).toEqual(allocation);
+  });
+
+  describe("never retires more than the debt", () => {
+    it("cuts a final installment on a 4dp ledger down to the unit, never into credit", () => {
+      // A ledger posted at 4dp before #1581 owes 833.3449. Rounding would
+      // book 833.35 of principal and leave the loan 0.0051 in credit.
+      const booked = bookLoanAllocation(
+        {
+          principal: 833.3449,
+          interest: 2.7749,
+          extraPrincipal: 0,
+          total: 836.1198,
+        },
+        2,
+        833.3449,
+      );
+      expect(booked).toEqual({
+        principal: 833.34,
+        interest: 2.77,
+        extraPrincipal: 0,
+        total: 836.11,
+      });
+      // The residue is under one cent: the next occurrence reads it as
+      // paid off (`debt <= 0.01`).
+      expect(833.3449 - booked.principal).toBeLessThan(0.01);
+      expect(booked.principal).toBeLessThanOrEqual(833.3449);
+    });
+
+    it("retires a ledger booked in cents exactly", () => {
+      expect(
+        bookLoanAllocation(
+          {
+            principal: 833.34,
+            interest: 2.7778,
+            extraPrincipal: 0,
+            total: 836.1178,
+          },
+          2,
+          833.34,
+        ),
+      ).toEqual({
+        principal: 833.34,
+        interest: 2.78,
+        extraPrincipal: 0,
+        total: 836.12,
+      });
+    });
+
+    it("cuts principal and extra together when both retire the debt", () => {
+      const booked = bookLoanAllocation(
+        {
+          principal: 800.0049,
+          interest: 2.0049,
+          extraPrincipal: 33.34,
+          total: 835.3498,
+        },
+        2,
+        833.3449,
+      );
+      expect(booked.principal + booked.extraPrincipal).toBeLessThanOrEqual(
+        833.3449,
+      );
+      expect(booked).toEqual({
+        principal: 800,
+        interest: 2,
+        extraPrincipal: 33.34,
+        total: 835.34,
+      });
+    });
   });
 });

@@ -3250,6 +3250,23 @@ export class ScheduledTransactionsService {
               currentSplits,
               postDate,
             );
+          // The payload rows were mapped 1:1 (in order) from the pre-lock
+          // scheduled.splits, which the basis guard above just proved
+          // identical to the locked set -- so the source split id addresses
+          // each payload row.
+          const applyLineAmounts = (amountsBySplitId: Map<string, number>) => {
+            transactionPayload.splits = transactionPayload.splits.map(
+              (payloadSplit: any, index: number) => {
+                const sourceId = scheduled.splits?.[index]?.id;
+                const resolvedAmount = sourceId
+                  ? amountsBySplitId.get(sourceId)
+                  : undefined;
+                return resolvedAmount !== undefined
+                  ? { ...payloadSplit, amount: resolvedAmount }
+                  : payloadSplit;
+              },
+            );
+          };
           if (loanAllocation.kind === "retired") {
             // Nothing is owed through this occurrence's boundary, and every
             // line of this bill is one the payoff settles. Consume the
@@ -3258,26 +3275,27 @@ export class ScheduledTransactionsService {
             // push the loan into credit.
             skipFinancialWrite = true;
           } else if (loanAllocation.kind === "allocation") {
-            // The payload rows were mapped 1:1 (in order) from the pre-lock
-            // scheduled.splits, which the basis guard above just proved
-            // identical to the locked set -- so the source split id addresses
-            // each payload row.
-            transactionPayload.splits = transactionPayload.splits.map(
-              (payloadSplit: any, index: number) => {
-                const sourceId = scheduled.splits?.[index]?.id;
-                const resolvedAmount = sourceId
-                  ? loanAllocation.amountsBySplitId.get(sourceId)
-                  : undefined;
-                return resolvedAmount !== undefined
-                  ? { ...payloadSplit, amount: resolvedAmount }
-                  : payloadSplit;
-              },
-            );
+            applyLineAmounts(loanAllocation.amountsBySplitId);
             // A re-resolved child moves the parent with it, or the split
             // validator's exact-4dp equality refuses the whole post.
             transactionPayload.amount = sumMoney(
               transactionPayload.splits.map((s: any) => Number(s.amount)),
             );
+          } else if (
+            !transactionPayload.splits.some((s: any) => s.investment)
+          ) {
+            // A template the loan pricing does not re-divide (no loan, or one
+            // carrying an escrow line) is booked in the currency's smallest
+            // unit all the same, exactly as the Post dialog pre-fills it, so
+            // the occurrence does not post 1,170.6458 from one button and
+            // 1,170.65 from the other (issue #1581). An investment line's
+            // amount is its trade's cash impact and is not rounded here.
+            const booked = await this.loanService.bookTemplateAtMinorUnit(
+              current,
+              currentSplits,
+            );
+            applyLineAmounts(booked.amountsBySplitId);
+            transactionPayload.amount = booked.parentAmount;
           }
         }
       }
@@ -3317,25 +3335,43 @@ export class ScheduledTransactionsService {
         // only surface that produces inline splits. The amount is an echo when
         // it still equals what the locked template holds; a figure the user
         // actually changed is their statement and posts as given.
-        const amountIsEcho =
-          !hasInlineAmount ||
-          roundMoney(Number(postDto?.amount)) ===
-            roundMoney(Number(current.amount));
-        // Every line must echo a stored line at its stored amount; one typed
-        // figure (or one line that names no source) makes the whole set the
-        // user's own statement, which posts as given.
-        const isUnchangedEcho =
-          amountIsEcho &&
+        const echoes = (
+          parentAmount: number,
+          lineAmounts: Map<string, number>,
+        ): boolean =>
+          (!hasInlineAmount ||
+            roundMoney(Number(postDto?.amount)) === roundMoney(parentAmount)) &&
           Array.isArray(rows) &&
           rows.length === lockedSplits.length &&
           rows.every((row, index) => {
             const sourceId = postDto?.splits?.[index]?.sourceSplitId;
             return (
               !!sourceId &&
-              storedById.has(sourceId) &&
-              storedById.get(sourceId) === roundMoney(Number(row.amount))
+              lineAmounts.has(sourceId) &&
+              lineAmounts.get(sourceId) === roundMoney(Number(row.amount))
             );
           });
+        // Every line must echo a stored line at its stored amount; one typed
+        // figure (or one line that names no source) makes the whole set the
+        // user's own statement, which posts as given. The dialog pre-fills a
+        // template priced at 4dp in the currency's smallest unit, the rounding
+        // difference on the principal line (issue #1581), so that booking of
+        // the stored template is an echo too -- compared exactly, never with a
+        // tolerance, so a cent the user typed is still theirs.
+        const exactEcho = echoes(Number(current.amount), storedById);
+        const bookedTemplate = exactEcho
+          ? null
+          : await this.loanService.bookTemplateAtMinorUnit(
+              current,
+              lockedSplits,
+            );
+        const isUnchangedEcho =
+          exactEcho ||
+          (bookedTemplate !== null &&
+            echoes(
+              bookedTemplate.parentAmount,
+              bookedTemplate.amountsBySplitId,
+            ));
         if (isUnchangedEcho) {
           await this.lockLoanLedgerForPricing(
             m,
