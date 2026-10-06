@@ -71,8 +71,8 @@ interface SampleDialogProps {
 }
 
 /**
- * One dialog for one sample email: the stored email, read-only, beside the
- * transaction picker. Choosing a transaction hands the pair to the wizard (kept
+ * One dialog for one sample email: the transaction picker above the stored
+ * email, read-only. Choosing a transaction hands the pair to the wizard (kept
  * there, written nowhere) and the caller closes the dialog.
  */
 export function SampleDialog({ receipt, domain, onClose, onChosen }: SampleDialogProps) {
@@ -83,14 +83,8 @@ export function SampleDialog({ receipt, domain, onClose, onChosen }: SampleDialo
 
   return (
     <Modal isOpen onClose={onClose} maxWidth="6xl" padding="md" title={t('dialogTitle', { subject: receipt.subject })}>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section aria-labelledby="wizard-sample-email-heading" className="min-w-0 space-y-2 lg:max-h-[70vh] lg:overflow-y-auto lg:pr-2">
-          <h3 id="wizard-sample-email-heading" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            {t('emailHeading')}
-          </h3>
-          <SampleEmailPanel receipt={receipt} />
-        </section>
-        <div className="min-w-0 lg:max-h-[70vh] lg:overflow-y-auto lg:pr-2">
+      <div className="space-y-6">
+        <div className="min-w-0">
           <ReceiptTransactionPicker
             effectiveDate={receipt.effectiveDate}
             linkingId={null}
@@ -109,6 +103,12 @@ export function SampleDialog({ receipt, domain, onClose, onChosen }: SampleDialo
             onLink={() => {}}
           />
         </div>
+        <section aria-labelledby="wizard-sample-email-heading" className="min-w-0 space-y-2">
+          <h3 id="wizard-sample-email-heading" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            {t('emailHeading')}
+          </h3>
+          <SampleEmailPanel receipt={receipt} />
+        </section>
       </div>
     </Modal>
   );
