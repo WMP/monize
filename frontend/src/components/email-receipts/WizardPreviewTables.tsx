@@ -43,7 +43,7 @@ function EmailCell({ item }: { item: ParserPreviewItem }) {
   return (
     <Td className="min-w-0 px-2 align-top break-words sm:px-4">
       <div className="font-medium">{item.subject}</div>
-      <div className={`mt-0.5 text-xs ${MUTED}`}>{formatDateTime(item.receivedAt)}</div>
+      <div className={`mt-0.5 text-xs ${MUTED}`}>{formatDateTime(item.effectiveDate)}</div>
     </Td>
   );
 }

@@ -51,6 +51,22 @@ describe('ParserTestPanel', () => {
     expect(api.test).not.toHaveBeenCalled();
   });
 
+  it('dates each option by the effective date, not the forwarding date', async () => {
+    api.list.mockResolvedValue([
+      makeReceipt({
+        id: 'r-1',
+        subject: 'Order 1',
+        fromAddress: 'a@shop.example',
+        receivedAt: '2026-09-20T10:00:00.000Z',
+        effectiveDate: '2026-08-05T10:00:00.000Z',
+      }),
+    ]);
+    await renderPanel();
+    const option = screen.getByRole('option', { name: /Order 1 from a@shop\.example/ });
+    expect(option).toHaveTextContent(/2026-08-05|08\/05\/2026|05\/08\/2026|Aug/);
+    expect(option).not.toHaveTextContent(/2026-09-20|09\/20\/2026|20\/09\/2026|Sep 20/);
+  });
+
   it('offers the stored emails and cannot test until one is chosen', async () => {
     await renderPanel();
     expect(api.list).toHaveBeenCalledWith(undefined, 50);

@@ -119,7 +119,7 @@
   "parsers": {
     "heading": "Profili",
     "description": "Un profilo legge le conferme d'ordine di un mittente con modelli che scrivi o controlli, e stabilisce come trovare la transazione bancaria. Una volta approvato, funziona senza l'IA.",
-    "newButton": "Nuovo profilo",
+    "newButton": "Crea un nuovo profilo manualmente",
     "loading": "Caricamento dei profili",
     "error": {
       "title": "Impossibile caricare i profili",
@@ -525,7 +525,7 @@
     },
     "columns": {
       "select": "Seleziona",
-      "received": "Ricevuta",
+      "date": "Data",
       "email": "Email",
       "transaction": "Transazione",
       "state": "Stato",
@@ -901,27 +901,23 @@
         "title": "Nessuna email da questo dominio",
         "body": "Nessuna email salvata ha un mittente su {domain}."
       },
-      "help": "Apri un'email per leggerla e scegli la transazione che ha pagato. Poi seleziona fino a {max} email da cui scrivere il profilo; un'email può essere selezionata solo dopo che ha una transazione.",
+      "help": "Fai clic su un'email per leggerla e scegli la transazione che ha pagato. Poi seleziona fino a {max} email da cui scrivere il profilo; un'email può essere selezionata solo dopo che ha una transazione.",
       "columns": {
         "select": "Usa",
-        "received": "Ricevuta",
+        "date": "Data",
         "email": "Email",
-        "transaction": "Transazione",
-        "actions": "Azioni"
+        "transaction": "Transazione"
       },
       "select": "Usa l'email {subject} come campione",
       "needsTransaction": "Scegli prima una transazione per questa email.",
       "limitReached": "Al massimo {max} campioni. Deseleziona un campione per sceglierne un altro.",
       "noTransaction": "Nessuna scelta",
-      "viewEmail": "Visualizza email",
-      "chooseTransaction": "Scegli transazione",
-      "changeTransaction": "Cambia transazione",
       "selectedCount": "{count} campioni su {max} selezionati",
       "continue": "Continua con l'assistente",
-      "emailTitle": "{subject}",
       "emailLoading": "Caricamento dell'email",
       "emailError": "Impossibile caricare l'email.",
-      "transactionTitle": "Transazione per {subject}"
+      "dialogTitle": "Email e transazione: {subject}",
+      "emailHeading": "Email"
     },
     "generate": {
       "help": "L'assistente legge queste email e le transazioni che hanno pagato e scrive una bozza di profilo per {domain}. Nulla è ancora approvato.",

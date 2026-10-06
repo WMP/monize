@@ -78,7 +78,7 @@ export function ParserTestPanel({ definition, payeeId, initialReceiptId, categor
         label: t('receiptOption', {
           subject: receipt.subject,
           sender: receipt.fromAddress,
-          date: formatDate(receipt.receivedAt),
+          date: formatDate(receipt.effectiveDate),
         }),
       })),
     ],

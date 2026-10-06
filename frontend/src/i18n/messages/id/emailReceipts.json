@@ -119,7 +119,7 @@
   "parsers": {
     "heading": "Profil",
     "description": "Profil membaca konfirmasi pesanan dari satu pengirim dengan pola yang Anda tulis atau tinjau, dan menentukan cara transaksi bank ditemukan. Setelah disetujui, profil berjalan tanpa AI.",
-    "newButton": "Profil baru",
+    "newButton": "Buat profil baru secara manual",
     "loading": "Memuat profil",
     "error": {
       "title": "Profil tidak dapat dimuat",
@@ -525,7 +525,7 @@
     },
     "columns": {
       "select": "Pilih",
-      "received": "Diterima",
+      "date": "Tanggal",
       "email": "Surel",
       "transaction": "Transaksi",
       "state": "Status",
@@ -901,27 +901,23 @@
         "title": "Tidak ada surel dari domain ini",
         "body": "Tidak ada surel tersimpan yang pengirimnya berada di {domain}."
       },
-      "help": "Buka surel untuk membacanya, lalu pilih transaksi yang dibayarnya. Setelah itu centang hingga {max} surel untuk dijadikan dasar penulisan profil; surel hanya dapat dicentang setelah memiliki transaksi.",
+      "help": "Klik sebuah surel untuk membacanya, lalu pilih transaksi yang dibayarnya. Setelah itu centang hingga {max} surel untuk dijadikan dasar penulisan profil; surel hanya dapat dicentang setelah memiliki transaksi.",
       "columns": {
         "select": "Gunakan",
-        "received": "Diterima",
+        "date": "Tanggal",
         "email": "Surel",
-        "transaction": "Transaksi",
-        "actions": "Tindakan"
+        "transaction": "Transaksi"
       },
       "select": "Gunakan surel {subject} sebagai contoh",
       "needsTransaction": "Pilih transaksi untuk surel ini terlebih dahulu.",
       "limitReached": "Paling banyak {max} contoh. Hapus centang satu contoh untuk memilih yang lain.",
       "noTransaction": "Belum dipilih",
-      "viewEmail": "Lihat surel",
-      "chooseTransaction": "Pilih transaksi",
-      "changeTransaction": "Ubah transaksi",
       "selectedCount": "{count} dari {max} contoh dicentang",
       "continue": "Lanjut ke asisten",
-      "emailTitle": "{subject}",
       "emailLoading": "Memuat surel",
       "emailError": "Surel tidak dapat dimuat.",
-      "transactionTitle": "Transaksi untuk {subject}"
+      "dialogTitle": "Surel dan transaksi: {subject}",
+      "emailHeading": "Surel"
     },
     "generate": {
       "help": "Asisten membaca surel-surel ini beserta transaksi yang dibayarnya, lalu menulis draf profil untuk {domain}. Belum ada yang disetujui.",

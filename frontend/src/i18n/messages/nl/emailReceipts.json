@@ -119,7 +119,7 @@
   "parsers": {
     "heading": "Profielen",
     "description": "Een profiel leest de bestelbevestigingen van één afzender met patronen die je schrijft of controleert en bepaalt hoe de banktransactie wordt gevonden. Eenmaal goedgekeurd werkt het zonder de AI.",
-    "newButton": "Nieuw profiel",
+    "newButton": "Nieuw profiel handmatig maken",
     "loading": "Profielen laden",
     "error": {
       "title": "De profielen konden niet worden geladen",
@@ -525,7 +525,7 @@
     },
     "columns": {
       "select": "Selecteren",
-      "received": "Ontvangen",
+      "date": "Datum",
       "email": "E-mail",
       "transaction": "Transactie",
       "state": "Status",
@@ -901,27 +901,23 @@
         "title": "Geen e-mails van dit domein",
         "body": "Geen enkele opgeslagen e-mail heeft een afzender bij {domain}."
       },
-      "help": "Open een e-mail om hem te lezen en kies de transactie waarmee hij is betaald. Vink daarna maximaal {max} e-mails aan om het profiel uit te schrijven; een e-mail kan pas worden aangevinkt als hij een transactie heeft.",
+      "help": "Klik op een e-mail om hem te lezen en kies de transactie waarmee hij is betaald. Vink daarna maximaal {max} e-mails aan om het profiel uit te schrijven; een e-mail kan pas worden aangevinkt als hij een transactie heeft.",
       "columns": {
         "select": "Gebruiken",
-        "received": "Ontvangen",
+        "date": "Datum",
         "email": "E-mail",
-        "transaction": "Transactie",
-        "actions": "Acties"
+        "transaction": "Transactie"
       },
       "select": "De e-mail {subject} als voorbeeld gebruiken",
       "needsTransaction": "Kies eerst een transactie voor deze e-mail.",
       "limitReached": "Maximaal {max} voorbeelden. Haal bij een het vinkje weg om een ander te kiezen.",
       "noTransaction": "Geen gekozen",
-      "viewEmail": "E-mail bekijken",
-      "chooseTransaction": "Transactie kiezen",
-      "changeTransaction": "Transactie wijzigen",
       "selectedCount": "{count} van {max} voorbeelden aangevinkt",
       "continue": "Verder naar de assistent",
-      "emailTitle": "{subject}",
       "emailLoading": "E-mail laden",
       "emailError": "De e-mail kon niet worden geladen.",
-      "transactionTitle": "Transactie voor {subject}"
+      "dialogTitle": "E-mail en transactie: {subject}",
+      "emailHeading": "E-mail"
     },
     "generate": {
       "help": "De assistent leest deze e-mails en de transacties waarmee ze zijn betaald en schrijft een conceptprofiel voor {domain}. Er is nog niets goedgekeurd.",

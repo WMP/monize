@@ -119,7 +119,7 @@
   "parsers": {
     "heading": "配置文件",
     "description": "配置文件使用您编写或审核过的模式，读取某个发件人的订单确认邮件，并说明如何找到对应的银行交易。一旦获得批准，它无需 AI 即可运行。",
-    "newButton": "新建解析器",
+    "newButton": "手动新建配置文件",
     "loading": "正在加载解析器",
     "error": {
       "title": "无法加载解析器",
@@ -525,7 +525,7 @@
     },
     "columns": {
       "select": "选择",
-      "received": "接收时间",
+      "date": "日期",
       "email": "邮件",
       "transaction": "交易",
       "state": "状态",
@@ -901,27 +901,23 @@
         "title": "此域名没有邮件",
         "body": "没有任何已保存的邮件的发件人位于 {domain}。"
       },
-      "help": "打开邮件进行阅读，并选择它所支付的交易。然后勾选最多 {max} 封邮件，用来编写配置文件；邮件只有在有了交易之后才能勾选。",
+      "help": "点击邮件进行阅读，并选择它所支付的交易。然后勾选最多 {max} 封邮件，用来编写配置文件；邮件只有在有了交易之后才能勾选。",
       "columns": {
         "select": "使用",
-        "received": "接收时间",
+        "date": "日期",
         "email": "邮件",
-        "transaction": "交易",
-        "actions": "操作"
+        "transaction": "交易"
       },
       "select": "将邮件 {subject} 用作样本",
       "needsTransaction": "请先为这封邮件选择交易。",
       "limitReached": "最多 {max} 个样本。取消勾选一个后才能选择其他的。",
       "noTransaction": "未选择",
-      "viewEmail": "查看邮件",
-      "chooseTransaction": "选择交易",
-      "changeTransaction": "更改交易",
       "selectedCount": "已勾选 {count}/{max} 个样本",
       "continue": "继续前往助手",
-      "emailTitle": "{subject}",
       "emailLoading": "正在加载邮件",
       "emailError": "无法加载邮件。",
-      "transactionTitle": "{subject} 的交易"
+      "dialogTitle": "邮件与交易：{subject}",
+      "emailHeading": "邮件"
     },
     "generate": {
       "help": "助手会阅读这些邮件及其所支付的交易，并为 {domain} 编写配置文件草稿。目前尚未批准任何内容。",

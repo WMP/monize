@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ReceiptStateBadge } from '@/components/email-receipts/ReceiptStateBadge';
 import { WIZARD_MAX_SAMPLES, type ChosenTransaction } from '@/components/email-receipts/profile-wizard-types';
-import { SampleEmailDialog, SampleTransactionDialog } from '@/components/email-receipts/WizardSampleDialogs';
+import { SampleDialog } from '@/components/email-receipts/WizardSampleDialogs';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { HOVER_ROW_ON_CARD } from '@/components/ui/Card';
 import { TABLE_BODY_CLASS, TABLE_CLASS, Td, Th } from '@/components/ui/Table';
 import { useDateFormat } from '@/hooks/useDateFormat';
+import { useLongPress } from '@/hooks/useLongPress';
 import { emailReceiptsApi } from '@/lib/email-receipts-api';
 import { createLogger } from '@/lib/logger';
 import type { EmailReceiptListItem } from '@/types/email-receipts';
@@ -41,8 +43,8 @@ export function WizardSamplesStep({ domain, picks, selected, onPick, onToggle, o
   const { formatDateTime } = useDateFormat();
   const [list, setList] = useState<ListState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const [viewing, setViewing] = useState<EmailReceiptListItem | null>(null);
-  const [choosing, setChoosing] = useState<EmailReceiptListItem | null>(null);
+  const [opened, setOpened] = useState<EmailReceiptListItem | null>(null);
+  const { getRowHandlers } = useLongPress<EmailReceiptListItem>({ onLongPress: () => {}, onClick: setOpened });
 
   useEffect(() => {
     let cancelled = false;
@@ -91,12 +93,9 @@ export function WizardSamplesStep({ domain, picks, selected, onPick, onToggle, o
           <thead>
             <tr>
               <Th className="w-8 px-2 sm:px-4">{t('columns.select')}</Th>
-              <Th className="px-2 sm:px-4">{t('columns.received')}</Th>
+              <Th className="px-2 sm:px-4">{t('columns.date')}</Th>
               <Th className="px-2 sm:px-4">{t('columns.email')}</Th>
               <Th className="px-2 sm:px-4">{t('columns.transaction')}</Th>
-              <Th align="right" className="px-2 sm:px-4">
-                {t('columns.actions')}
-              </Th>
             </tr>
           </thead>
           <tbody className={TABLE_BODY_CLASS}>
@@ -105,7 +104,18 @@ export function WizardSamplesStep({ domain, picks, selected, onPick, onToggle, o
               const isSelected = selected.has(receipt.id);
               const blockedReason = pick === undefined ? t('needsTransaction') : !isSelected && full ? t('limitReached', { max: WIZARD_MAX_SAMPLES }) : undefined;
               return (
-                <tr key={receipt.id}>
+                <tr
+                  key={receipt.id}
+                  {...getRowHandlers(receipt)}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault();
+                      setOpened(receipt);
+                    }
+                  }}
+                  className={`cursor-pointer ${HOVER_ROW_ON_CARD} focus-visible:outline-2 focus-visible:outline-blue-500`}
+                >
                   <Td className="px-2 align-top sm:px-4">
                     <input
                       type="checkbox"
@@ -113,11 +123,14 @@ export function WizardSamplesStep({ domain, picks, selected, onPick, onToggle, o
                       disabled={blockedReason !== undefined}
                       title={blockedReason}
                       onChange={() => onToggle(receipt.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
                       aria-label={t('select', { subject: receipt.subject })}
                       className={CHECKBOX_CLASS}
                     />
                   </Td>
-                  <Td className="px-2 align-top whitespace-nowrap sm:px-4">{formatDateTime(receipt.receivedAt)}</Td>
+                  <Td className="px-2 align-top whitespace-nowrap sm:px-4">{formatDateTime(receipt.effectiveDate)}</Td>
                   <Td className="min-w-0 px-2 align-top break-words sm:px-4">
                     <div className="font-medium">{receipt.subject}</div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
@@ -127,16 +140,6 @@ export function WizardSamplesStep({ domain, picks, selected, onPick, onToggle, o
                   </Td>
                   <Td className="min-w-0 px-2 align-top break-words sm:px-4">
                     {pick ? pick.summary : <span className="text-gray-500 dark:text-gray-400">{t('noTransaction')}</span>}
-                  </Td>
-                  <Td align="right" className="px-2 align-top sm:px-4">
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setViewing(receipt)}>
-                        {t('viewEmail')}
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => setChoosing(receipt)}>
-                        {pick ? t('changeTransaction') : t('chooseTransaction')}
-                      </Button>
-                    </div>
                   </Td>
                 </tr>
               );
@@ -153,14 +156,14 @@ export function WizardSamplesStep({ domain, picks, selected, onPick, onToggle, o
         </Button>
       </div>
 
-      {viewing !== null && <SampleEmailDialog receipt={viewing} onClose={() => setViewing(null)} />}
-      {choosing !== null && (
-        <SampleTransactionDialog
-          receipt={choosing}
-          onClose={() => setChoosing(null)}
+      {opened !== null && (
+        <SampleDialog
+          receipt={opened}
+          domain={domain}
+          onClose={() => setOpened(null)}
           onChosen={(chosen) => {
-            onPick(choosing.id, { ...chosen, subject: choosing.subject });
-            setChoosing(null);
+            onPick(opened.id, { ...chosen, subject: opened.subject });
+            setOpened(null);
           }}
         />
       )}

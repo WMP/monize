@@ -119,7 +119,7 @@
   "parsers": {
     "heading": "Perfiles",
     "description": "Un perfil lee las confirmaciones de pedido de un remitente con patrones que tú escribes o revisas, e indica cómo se encuentra la transacción bancaria. Una vez aprobado, funciona sin la IA.",
-    "newButton": "Nuevo perfil",
+    "newButton": "Crear un perfil nuevo manualmente",
     "loading": "Cargando los perfiles",
     "error": {
       "title": "No se pudieron cargar los perfiles",
@@ -525,7 +525,7 @@
     },
     "columns": {
       "select": "Seleccionar",
-      "received": "Recibido",
+      "date": "Fecha",
       "email": "Correo",
       "transaction": "Transacción",
       "state": "Estado",
@@ -901,27 +901,23 @@
         "title": "No hay correos de este dominio",
         "body": "Ningún correo guardado tiene un remitente en {domain}."
       },
-      "help": "Abre un correo para leerlo y elige la transacción que pagó. Después marca hasta {max} correos a partir de los cuales escribir el perfil; un correo solo se puede marcar cuando tiene una transacción.",
+      "help": "Haz clic en un correo para leerlo y elegir la transacción que pagó. Después marca hasta {max} correos a partir de los cuales escribir el perfil; un correo solo se puede marcar cuando tiene una transacción.",
       "columns": {
         "select": "Usar",
-        "received": "Recibido",
+        "date": "Fecha",
         "email": "Correo",
-        "transaction": "Transacción",
-        "actions": "Acciones"
+        "transaction": "Transacción"
       },
       "select": "Usar el correo {subject} como muestra",
       "needsTransaction": "Primero elige una transacción para este correo.",
       "limitReached": "Como máximo {max} muestras. Desmarca una para elegir otra.",
       "noTransaction": "Ninguna elegida",
-      "viewEmail": "Ver correo",
-      "chooseTransaction": "Elegir transacción",
-      "changeTransaction": "Cambiar transacción",
       "selectedCount": "{count} de {max} muestras marcadas",
       "continue": "Continuar con el asistente",
-      "emailTitle": "{subject}",
       "emailLoading": "Cargando el correo",
       "emailError": "No se pudo cargar el correo.",
-      "transactionTitle": "Transacción de {subject}"
+      "dialogTitle": "Correo y transacción: {subject}",
+      "emailHeading": "Correo"
     },
     "generate": {
       "help": "El asistente lee estos correos y las transacciones que pagaron y escribe un borrador de perfil para {domain}. Todavía no hay nada aprobado.",

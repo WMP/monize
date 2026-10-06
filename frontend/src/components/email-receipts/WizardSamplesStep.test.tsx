@@ -89,16 +89,69 @@ describe('WizardSamplesStep', () => {
     expect(screen.getByRole('button', { name: 'Continue to the assistant' })).toBeDisabled();
   });
 
-  it('opens the email read-only', async () => {
+  it('has no per-row buttons: the whole row opens the dialog', async () => {
     await renderStep();
-    await click(within(screen.getByRole('row', { name: /Order 1/ })).getByRole('button', { name: 'View email' }));
-    expect(api.get).toHaveBeenCalledWith('r-1');
-    expect(screen.getByRole('dialog')).toHaveTextContent('Hello from the shop');
+    const row = screen.getByRole('row', { name: /Order 1/ });
+    expect(within(row).queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Actions' })).not.toBeInTheDocument();
   });
 
-  it('keeps the chosen transaction for the wizard and writes nothing', async () => {
+  it('opens one dialog with the email and the transaction picker when the row is clicked', async () => {
+    await renderStep();
+    await click(screen.getByText('Order 1'));
+    expect(api.get).toHaveBeenCalledWith('r-1');
+    const dialog = screen.getByRole('dialog');
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(dialog).toHaveTextContent('Hello from the shop');
+    expect(within(dialog).getByRole('button', { name: 'Use this transaction' })).toBeInTheDocument();
+  });
+
+  it('opens the dialog from the keyboard on the focused row', async () => {
+    await renderStep();
+    const row = screen.getByRole('row', { name: /Order 1/ });
+    expect(row).toHaveAttribute('tabindex', '0');
+    await act(async () => {
+      fireEvent.keyDown(row, { key: 'Enter' });
+    });
+    await act(async () => {});
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('does not open the dialog when the row checkbox is clicked', async () => {
+    const props = await renderStep({ picks: { 'r-1': chosen('1') } });
+    await click(screen.getByRole('checkbox', { name: 'Use the email Order 1 as a sample' }));
+    expect(props.onToggle).toHaveBeenCalledWith('r-1');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('starts the transaction search with the wizard domain, and the first request uses it', async () => {
+    await renderStep();
+    await click(screen.getByText('Order 1'));
+    expect(screen.getByLabelText('Search')).toHaveValue('allegro.pl');
+    expect(txApi.getAll).toHaveBeenCalledWith(expect.objectContaining({ search: 'allegro.pl' }));
+  });
+
+  it('shows the effective date, not the date the email was forwarded', async () => {
+    api.list.mockResolvedValue([
+      makeReceipt({
+        id: 'r-1',
+        subject: 'Order 1',
+        receivedAt: '2026-09-20T10:00:00.000Z',
+        originalSentAt: '2026-08-05T10:00:00.000Z',
+        effectiveDate: '2026-08-05T10:00:00.000Z',
+      }),
+    ]);
+    await renderStep();
+    expect(screen.getByRole('columnheader', { name: 'Date' })).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Received' })).not.toBeInTheDocument();
+    const row = screen.getByRole('row', { name: /Order 1/ });
+    expect(row).toHaveTextContent(/2026-08-05|08\/05\/2026|05\/08\/2026|Aug/);
+    expect(row).not.toHaveTextContent(/2026-09-20|09\/20\/2026|20\/09\/2026|Sep/);
+  });
+
+  it('keeps the chosen transaction for the wizard, writes nothing and closes the dialog', async () => {
     const props = await renderStep();
-    await click(within(screen.getByRole('row', { name: /Order 1/ })).getByRole('button', { name: 'Choose transaction' }));
+    await click(screen.getByText('Order 1'));
     await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Use this transaction' }));
     expect(props.onPick).toHaveBeenCalledWith('r-1', {
       transactionId: 'tx-9',

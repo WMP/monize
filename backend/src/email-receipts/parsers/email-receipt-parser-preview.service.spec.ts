@@ -150,6 +150,23 @@ describe("EmailReceiptParserPreviewService.preview", () => {
     }
   });
 
+  it("dates each email by when the shop sent it, else when it arrived", async () => {
+    const { service } = setup({
+      selected: [
+        mail(R1, { original_sent_at: new Date("2026-09-03T08:00:00Z") }),
+      ],
+      others: [mail(R2)],
+    });
+    const result = await service.preview(USER, PARSER, {
+      selectedReceiptIds: [R1],
+    });
+    expect(result.selected[0]).toMatchObject({
+      receivedAt: "2026-09-10T10:00:00.000Z",
+      effectiveDate: "2026-09-03T08:00:00.000Z",
+    });
+    expect(result.others[0].effectiveDate).toBe("2026-09-10T10:00:00.000Z");
+  });
+
   it("works for a draft and an approved parser alike", async () => {
     for (const status of ["draft", "approved"] as const) {
       const { service } = setup({

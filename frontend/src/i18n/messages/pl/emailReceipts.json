@@ -119,7 +119,7 @@
   "parsers": {
     "heading": "Profile",
     "description": "Profil odczytuje potwierdzenia zamówień jednego nadawcy za pomocą wzorców, które piszesz lub sprawdzasz, i określa, jak znaleźć transakcję w banku. Po zatwierdzeniu działa bez AI.",
-    "newButton": "Nowy parser",
+    "newButton": "Utwórz nowy profil ręcznie",
     "loading": "Wczytywanie parserów",
     "error": {
       "title": "Nie udało się wczytać parserów",
@@ -525,7 +525,7 @@
     },
     "columns": {
       "select": "Zaznacz",
-      "received": "Odebrano",
+      "date": "Data",
       "email": "Wiadomość",
       "transaction": "Transakcja",
       "state": "Status",
@@ -901,27 +901,23 @@
         "title": "Brak wiadomości z tej domeny",
         "body": "Żadna zapisana wiadomość nie ma nadawcy w domenie {domain}."
       },
-      "help": "Otwórz wiadomość, aby ją przeczytać, i wybierz transakcję, którą opłacono. Następnie zaznacz do {max} wiadomości, z których powstanie profil; wiadomość można zaznaczyć dopiero, gdy ma transakcję.",
+      "help": "Kliknij wiadomość, aby ją przeczytać, i wybierz transakcję, którą opłacono. Następnie zaznacz do {max} wiadomości, z których powstanie profil; wiadomość można zaznaczyć dopiero, gdy ma transakcję.",
       "columns": {
         "select": "Użyj",
-        "received": "Odebrano",
+        "date": "Data",
         "email": "Wiadomość",
-        "transaction": "Transakcja",
-        "actions": "Akcje"
+        "transaction": "Transakcja"
       },
       "select": "Użyj wiadomości {subject} jako próbki",
       "needsTransaction": "Najpierw wybierz transakcję dla tej wiadomości.",
       "limitReached": "Najwyżej {max} próbek. Odznacz jedną, aby wybrać inną.",
       "noTransaction": "Nie wybrano",
-      "viewEmail": "Pokaż wiadomość",
-      "chooseTransaction": "Wybierz transakcję",
-      "changeTransaction": "Zmień transakcję",
       "selectedCount": "Zaznaczono {count} z {max} próbek",
       "continue": "Przejdź do asystenta",
-      "emailTitle": "{subject}",
       "emailLoading": "Wczytywanie wiadomości",
       "emailError": "Nie udało się wczytać wiadomości.",
-      "transactionTitle": "Transakcja dla: {subject}"
+      "dialogTitle": "Wiadomość i transakcja: {subject}",
+      "emailHeading": "Wiadomość"
     },
     "generate": {
       "help": "Asystent czyta te wiadomości oraz transakcje, którymi je opłacono, i pisze szkic profilu dla {domain}. Nic nie jest jeszcze zatwierdzone.",
