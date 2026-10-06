@@ -119,7 +119,7 @@
   "parsers": {
     "heading": "プロフィール",
     "description": "プロフィールは、あなたが作成または確認したパターンを使って、1つの送信者の注文確認メールを読み取り、銀行取引をどう探すかを指定します。承認されると、AIなしで動作します。",
-    "newButton": "新規プロフィール",
+    "newButton": "新規プロフィールを手動で作成",
     "loading": "プロフィールを読み込み中",
     "error": {
       "title": "プロフィールを読み込めませんでした",
@@ -525,7 +525,7 @@
     },
     "columns": {
       "select": "選択",
-      "received": "受信日時",
+      "date": "日付",
       "email": "メール",
       "transaction": "取引",
       "state": "状態",
@@ -901,27 +901,23 @@
         "title": "このドメインからのメールはありません",
         "body": "{domain} に送信者がいる保存済みメールはありません。"
       },
-      "help": "メールを開いて内容を読み、そのメールの支払いに対応する取引を選択します。次に、プロフィールの作成に使うメールを最大 {max} 件チェックします。メールをチェックできるのは、取引を選択した後だけです。",
+      "help": "メールをクリックして内容を読み、そのメールの支払いに対応する取引を選択します。次に、プロフィールの作成に使うメールを最大 {max} 件チェックします。メールをチェックできるのは、取引を選択した後だけです。",
       "columns": {
         "select": "使用",
-        "received": "受信日時",
+        "date": "日付",
         "email": "メール",
-        "transaction": "取引",
-        "actions": "操作"
+        "transaction": "取引"
       },
       "select": "メール {subject} をサンプルとして使用",
       "needsTransaction": "先にこのメールの取引を選択してください。",
       "limitReached": "サンプルは最大 {max} 件までです。別のものを選ぶには、どれかのチェックを外してください。",
       "noTransaction": "未選択",
-      "viewEmail": "メールを表示",
-      "chooseTransaction": "取引を選択",
-      "changeTransaction": "取引を変更",
       "selectedCount": "{max} 件中 {count} 件のサンプルをチェック済み",
       "continue": "アシスタントに進む",
-      "emailTitle": "{subject}",
       "emailLoading": "メールを読み込み中",
       "emailError": "メールを読み込めませんでした。",
-      "transactionTitle": "{subject} の取引"
+      "dialogTitle": "メールと取引: {subject}",
+      "emailHeading": "メール"
     },
     "generate": {
       "help": "アシスタントがこれらのメールとその支払いに対応する取引を読み取り、{domain} のプロフィールの下書きを作成します。まだ何も承認されていません。",

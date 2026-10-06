@@ -290,7 +290,7 @@ export function ParsersSection({ wizardDomain = null, onWizardDomainChange }: Pa
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400">{t('description')}</p>
         </div>
-        <Button className="w-full sm:w-auto" onClick={() => setEditor({ kind: 'new' })}>
+        <Button variant="outline" className="w-full sm:w-auto" onClick={() => setEditor({ kind: 'new' })}>
           {t('newButton')}
         </Button>
       </div>

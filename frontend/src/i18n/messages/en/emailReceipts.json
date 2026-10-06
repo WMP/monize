@@ -119,7 +119,7 @@
   "parsers": {
     "heading": "Profiles",
     "description": "A profile reads the order confirmations of one sender with patterns you write or review, and says how the bank transaction is found. Once approved it runs without the AI.",
-    "newButton": "New profile",
+    "newButton": "Create a new profile manually",
     "loading": "Loading profiles",
     "error": {
       "title": "The profiles could not be loaded",
@@ -525,7 +525,7 @@
     },
     "columns": {
       "select": "Select",
-      "received": "Received",
+      "date": "Date",
       "email": "Email",
       "transaction": "Transaction",
       "state": "State",
@@ -901,27 +901,23 @@
         "title": "No emails from this domain",
         "body": "No stored email has a sender at {domain}."
       },
-      "help": "Open an email to read it, and choose the transaction it paid for. Then tick up to {max} emails to write the profile from; an email can be ticked only once it has a transaction.",
+      "help": "Click an email to read it, and choose the transaction it paid for. Then tick up to {max} emails to write the profile from; an email can be ticked only once it has a transaction.",
       "columns": {
         "select": "Use",
-        "received": "Received",
+        "date": "Date",
         "email": "Email",
-        "transaction": "Transaction",
-        "actions": "Actions"
+        "transaction": "Transaction"
       },
       "select": "Use the email {subject} as a sample",
       "needsTransaction": "Choose a transaction for this email first.",
       "limitReached": "At most {max} samples. Untick one to choose another.",
       "noTransaction": "None chosen",
-      "viewEmail": "View email",
-      "chooseTransaction": "Choose transaction",
-      "changeTransaction": "Change transaction",
       "selectedCount": "{count} of {max} samples ticked",
       "continue": "Continue to the assistant",
-      "emailTitle": "{subject}",
       "emailLoading": "Loading the email",
       "emailError": "The email could not be loaded.",
-      "transactionTitle": "Transaction for {subject}"
+      "dialogTitle": "Email and transaction: {subject}",
+      "emailHeading": "Email"
     },
     "generate": {
       "help": "The assistant reads these emails and the transactions they paid for and writes a draft profile for {domain}. Nothing is approved yet.",

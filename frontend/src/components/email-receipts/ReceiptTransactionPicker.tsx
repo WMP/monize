@@ -49,6 +49,8 @@ interface ReceiptTransactionPickerProps {
   mode?: 'link' | 'ai' | 'sample';
   /** Called with the chosen row just before `onLink`, for a caller that shows what was chosen (the profile wizard). */
   onChoose?: (transaction: Transaction) => void;
+  /** Text the search box starts with, and the first request uses (the profile wizard passes its domain). The person can edit it. */
+  initialSearch?: string;
 }
 
 /**
@@ -69,7 +71,14 @@ interface ReceiptTransactionPickerProps {
  * The default window is calendar arithmetic on the `YYYY-MM-DD` day
  * (`shiftDate`), never a `Date` built from it.
  */
-export function ReceiptTransactionPicker({ effectiveDate, linkingId, onLink, mode = 'link', onChoose }: ReceiptTransactionPickerProps) {
+export function ReceiptTransactionPicker({
+  effectiveDate,
+  linkingId,
+  onLink,
+  mode = 'link',
+  onChoose,
+  initialSearch = '',
+}: ReceiptTransactionPickerProps) {
   const t = useTranslations('emailReceipts.picker');
   const { formatDate } = useDateFormat();
   const { formatCurrency } = useNumberFormat();
@@ -82,8 +91,8 @@ export function ReceiptTransactionPicker({ effectiveDate, linkingId, onLink, mod
   const rangeReady = from !== '' && to !== '' && from <= to;
   const rangeReversed = from !== '' && to !== '' && from > to;
 
-  const [draft, setDraft] = useState('');
-  const [search, setSearch] = useState('');
+  const [draft, setDraft] = useState(initialSearch);
+  const [search, setSearch] = useState(initialSearch.trim());
   const [answer, setAnswer] = useState<Answer | null>(null);
   // Bumped by the retry button; each value is one request.
   const [attempt, setAttempt] = useState(0);

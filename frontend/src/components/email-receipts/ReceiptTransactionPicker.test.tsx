@@ -49,6 +49,21 @@ describe('ReceiptTransactionPicker', () => {
     expect(api.getAll).toHaveBeenCalledWith({ startDate: '2026-08-29', endDate: '2026-09-15', limit: 50 });
   });
 
+  it('starts the search box, and the first request, with initialSearch, which can be edited', async () => {
+    await act(async () => {
+      render(<ReceiptTransactionPicker effectiveDate="2026-09-01T10:00:00.000Z" linkingId={null} onLink={onLink} initialSearch="allegro.pl" />);
+    });
+    await act(async () => {});
+    expect(api.getAll).toHaveBeenCalledTimes(1);
+    expect(api.getAll).toHaveBeenCalledWith({ startDate: '2026-08-29', endDate: '2026-09-15', limit: 50, search: 'allegro.pl' });
+    const box = screen.getByLabelText('Search');
+    expect(box).toHaveValue('allegro.pl');
+    await act(async () => {
+      fireEvent.change(box, { target: { value: 'shop' } });
+    });
+    expect(box).toHaveValue('shop');
+  });
+
   it('takes the window across a month and a year end without a Date', async () => {
     await renderPicker(null, '2026-12-25T10:00:00.000Z');
     expect(api.getAll).toHaveBeenCalledWith({ startDate: '2026-12-22', endDate: '2027-01-08', limit: 50 });

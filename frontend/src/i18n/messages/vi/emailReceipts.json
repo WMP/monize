@@ -119,7 +119,7 @@
   "parsers": {
     "heading": "Hồ sơ",
     "description": "Một hồ sơ đọc email xác nhận đơn hàng của một người gửi bằng các mẫu do bạn viết hoặc xem xét, và cho biết cách tìm giao dịch ngân hàng. Sau khi được duyệt, nó chạy mà không cần AI.",
-    "newButton": "Trình phân tích mới",
+    "newButton": "Tạo hồ sơ mới thủ công",
     "loading": "Đang tải các trình phân tích",
     "error": {
       "title": "Không thể tải các trình phân tích",
@@ -525,7 +525,7 @@
     },
     "columns": {
       "select": "Chọn",
-      "received": "Nhận lúc",
+      "date": "Ngày",
       "email": "Email",
       "transaction": "Giao dịch",
       "state": "Trạng thái",
@@ -901,27 +901,23 @@
         "title": "Không có email nào từ tên miền này",
         "body": "Không có email đã lưu nào có người gửi tại {domain}."
       },
-      "help": "Mở một email để đọc và chọn giao dịch mà email đó đã thanh toán. Sau đó đánh dấu tối đa {max} email để viết hồ sơ; chỉ có thể đánh dấu một email khi nó đã có giao dịch.",
+      "help": "Nhấp vào một email để đọc và chọn giao dịch mà email đó đã thanh toán. Sau đó đánh dấu tối đa {max} email để viết hồ sơ; chỉ có thể đánh dấu một email khi nó đã có giao dịch.",
       "columns": {
         "select": "Dùng",
-        "received": "Nhận lúc",
+        "date": "Ngày",
         "email": "Email",
-        "transaction": "Giao dịch",
-        "actions": "Thao tác"
+        "transaction": "Giao dịch"
       },
       "select": "Dùng email {subject} làm mẫu",
       "needsTransaction": "Hãy chọn giao dịch cho email này trước.",
       "limitReached": "Tối đa {max} mẫu. Bỏ đánh dấu một mẫu để chọn mẫu khác.",
       "noTransaction": "Chưa chọn",
-      "viewEmail": "Xem email",
-      "chooseTransaction": "Chọn giao dịch",
-      "changeTransaction": "Đổi giao dịch",
       "selectedCount": "Đã đánh dấu {count}/{max} mẫu",
       "continue": "Tiếp tục đến trợ lý",
-      "emailTitle": "{subject}",
       "emailLoading": "Đang tải email",
       "emailError": "Không thể tải email.",
-      "transactionTitle": "Giao dịch cho {subject}"
+      "dialogTitle": "Email và giao dịch: {subject}",
+      "emailHeading": "Email"
     },
     "generate": {
       "help": "Trợ lý đọc các email này cùng các giao dịch mà chúng đã thanh toán và soạn bản nháp hồ sơ cho {domain}. Chưa có gì được duyệt.",

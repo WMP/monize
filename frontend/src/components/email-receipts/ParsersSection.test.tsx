@@ -260,11 +260,22 @@ describe('ParsersSection', () => {
     });
   });
 
+  describe('the emphasis', () => {
+    it('shows the manual button as the quiet outline variant, and the domain section as the highlighted one', async () => {
+      await renderSection();
+      const button = screen.getByRole('button', { name: 'Create a new profile manually' });
+      expect(button.className).toContain('border-gray-300');
+      expect(button.className).not.toContain('bg-blue-600');
+      const heading = screen.getByRole('heading', { name: 'Create a profile for a domain' });
+      expect(heading.closest('section')?.className).toContain('border-blue-500');
+    });
+  });
+
   describe('the editor', () => {
     it('opens empty for a new profile and reloads the list after a save', async () => {
       api.create.mockResolvedValue(makeParser({ id: 'p-3' }));
       await renderSection();
-      await click(screen.getByRole('button', { name: 'New profile' }));
+      await click(screen.getByRole('button', { name: 'Create a new profile manually' }));
       expect(screen.getByRole('dialog', { name: 'New profile' })).toBeInTheDocument();
       await act(async () => {
         fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Shop' } });

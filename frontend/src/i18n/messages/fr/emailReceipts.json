@@ -119,7 +119,7 @@
   "parsers": {
     "heading": "Profils",
     "description": "Un profil lit les confirmations de commande d'un expéditeur avec des motifs que vous écrivez ou vérifiez, et indique comment la transaction bancaire est retrouvée. Une fois approuvé, il fonctionne sans l'IA.",
-    "newButton": "Nouveau profil",
+    "newButton": "Créer un nouveau profil manuellement",
     "loading": "Chargement des profils",
     "error": {
       "title": "Les profils n'ont pas pu être chargés",
@@ -525,7 +525,7 @@
     },
     "columns": {
       "select": "Sélectionner",
-      "received": "Reçu",
+      "date": "Date",
       "email": "E-mail",
       "transaction": "Transaction",
       "state": "Statut",
@@ -901,27 +901,23 @@
         "title": "Aucun e-mail de ce domaine",
         "body": "Aucun e-mail enregistré n'a d'expéditeur chez {domain}."
       },
-      "help": "Ouvrez un e-mail pour le lire et choisissez la transaction qu'il a réglée. Cochez ensuite jusqu'à {max} e-mails pour rédiger le profil ; un e-mail ne peut être coché qu'une fois qu'il a une transaction.",
+      "help": "Cliquez sur un e-mail pour le lire et choisir la transaction qu'il a réglée. Cochez ensuite jusqu'à {max} e-mails pour rédiger le profil ; un e-mail ne peut être coché qu'une fois qu'il a une transaction.",
       "columns": {
         "select": "Utiliser",
-        "received": "Reçu",
+        "date": "Date",
         "email": "E-mail",
-        "transaction": "Transaction",
-        "actions": "Actions"
+        "transaction": "Transaction"
       },
       "select": "Utiliser l'e-mail {subject} comme échantillon",
       "needsTransaction": "Choisissez d'abord une transaction pour cet e-mail.",
       "limitReached": "{max} échantillons au maximum. Décochez-en un pour en choisir un autre.",
       "noTransaction": "Aucune choisie",
-      "viewEmail": "Voir l'e-mail",
-      "chooseTransaction": "Choisir la transaction",
-      "changeTransaction": "Changer la transaction",
       "selectedCount": "{count} échantillons cochés sur {max}",
       "continue": "Continuer vers l'assistant",
-      "emailTitle": "{subject}",
       "emailLoading": "Chargement de l'e-mail",
       "emailError": "Impossible de charger l'e-mail.",
-      "transactionTitle": "Transaction pour {subject}"
+      "dialogTitle": "E-mail et transaction : {subject}",
+      "emailHeading": "E-mail"
     },
     "generate": {
       "help": "L'assistant lit ces e-mails et les transactions qu'ils ont réglées, puis rédige un brouillon de profil pour {domain}. Rien n'est encore approuvé.",

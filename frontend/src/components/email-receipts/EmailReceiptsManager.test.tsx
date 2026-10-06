@@ -180,6 +180,24 @@ describe('EmailReceiptsManager', () => {
       expect(within(rowOf('Order unmatched')).getByText('None yet')).toBeInTheDocument();
     });
 
+    it('heads the date column "Date" and shows the effective date, not the forwarding date', async () => {
+      api.list.mockResolvedValue([
+        makeReceipt({
+          id: 'r-fwd',
+          subject: 'Order forwarded',
+          receivedAt: '2026-09-20T10:00:00.000Z',
+          originalSentAt: '2026-08-05T10:00:00.000Z',
+          effectiveDate: '2026-08-05T10:00:00.000Z',
+        }),
+      ]);
+      await renderManager();
+      expect(screen.getByRole('columnheader', { name: 'Date' })).toBeInTheDocument();
+      expect(screen.queryByRole('columnheader', { name: 'Received' })).not.toBeInTheDocument();
+      const row = rowOf('Order forwarded');
+      expect(row).toHaveTextContent(/2026-08-05|08\/05\/2026|05\/08\/2026|Aug/);
+      expect(row).not.toHaveTextContent(/2026-09-20|09\/20\/2026|20\/09\/2026|Sep 20/);
+    });
+
     it('links to the review inbox and to the settings', async () => {
       await renderManager();
       expect(screen.getByRole('link', { name: 'Open the AI review inbox' })).toHaveAttribute('href', '/ai-reviews');

@@ -529,7 +529,7 @@ export function EmailReceiptsManager() {
                   onChange={toggleAll}
                 />
               </Th>
-              <Th className="px-2 sm:px-4">{t('columns.received')}</Th>
+              <Th className="px-2 sm:px-4">{t('columns.date')}</Th>
               <Th className="px-2 sm:px-4">{t('columns.email')}</Th>
               <Th className="hidden px-2 sm:table-cell sm:px-4">{t('columns.transaction')}</Th>
               <Th className="px-2 sm:px-4">{t('columns.state')}</Th>
@@ -565,7 +565,7 @@ export function EmailReceiptsManager() {
                       className="h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600"
                     />
                   </Td>
-                  <Td className="px-2 align-top whitespace-nowrap sm:px-4">{formatDateTime(receipt.receivedAt)}</Td>
+                  <Td className="px-2 align-top whitespace-nowrap sm:px-4">{formatDateTime(receipt.effectiveDate)}</Td>
                   <Td className="min-w-0 px-2 align-top break-words sm:px-4">
                     <div className="font-medium">{receipt.subject}</div>
                     <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{receipt.fromAddress}</div>

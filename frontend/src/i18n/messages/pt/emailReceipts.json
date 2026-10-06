@@ -119,7 +119,7 @@
   "parsers": {
     "heading": "Perfis",
     "description": "Um perfil lê as confirmações de encomenda de um remetente com padrões que escreve ou revê, e indica como se encontra a transação bancária. Depois de aprovado, funciona sem a IA.",
-    "newButton": "Novo analisador",
+    "newButton": "Criar um novo perfil manualmente",
     "loading": "A carregar os analisadores",
     "error": {
       "title": "Não foi possível carregar os analisadores",
@@ -525,7 +525,7 @@
     },
     "columns": {
       "select": "Selecionar",
-      "received": "Recebido",
+      "date": "Data",
       "email": "E-mail",
       "transaction": "Transação",
       "state": "Estado",
@@ -901,27 +901,23 @@
         "title": "Nenhum e-mail deste domínio",
         "body": "Nenhum e-mail guardado tem um remetente em {domain}."
       },
-      "help": "Abra um e-mail para o ler e escolha a transação que ele pagou. Depois assinale até {max} e-mails a partir dos quais escrever o perfil; um e-mail só pode ser assinalado depois de ter uma transação.",
+      "help": "Clique num e-mail para o ler e escolha a transação que ele pagou. Depois assinale até {max} e-mails a partir dos quais escrever o perfil; um e-mail só pode ser assinalado depois de ter uma transação.",
       "columns": {
         "select": "Usar",
-        "received": "Recebido",
+        "date": "Data",
         "email": "E-mail",
-        "transaction": "Transação",
-        "actions": "Ações"
+        "transaction": "Transação"
       },
       "select": "Usar o e-mail {subject} como amostra",
       "needsTransaction": "Escolha primeiro uma transação para este e-mail.",
       "limitReached": "No máximo {max} amostras. Desassinale uma para escolher outra.",
       "noTransaction": "Nenhuma escolhida",
-      "viewEmail": "Ver e-mail",
-      "chooseTransaction": "Escolher transação",
-      "changeTransaction": "Alterar transação",
       "selectedCount": "{count} de {max} amostras assinaladas",
       "continue": "Continuar para o assistente",
-      "emailTitle": "{subject}",
       "emailLoading": "A carregar o e-mail",
       "emailError": "Não foi possível carregar o e-mail.",
-      "transactionTitle": "Transação de {subject}"
+      "dialogTitle": "E-mail e transação: {subject}",
+      "emailHeading": "E-mail"
     },
     "generate": {
       "help": "O assistente lê estes e-mails e as transações que eles pagaram e escreve um rascunho de perfil para {domain}. Ainda nada está aprovado.",

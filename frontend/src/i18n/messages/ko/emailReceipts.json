@@ -119,7 +119,7 @@
   "parsers": {
     "heading": "프로필",
     "description": "프로필은 직접 작성하거나 검토한 패턴으로 한 발신자의 주문 확인 메일을 읽고, 은행 거래를 찾는 방법을 지정합니다. 승인되면 AI 없이 실행됩니다.",
-    "newButton": "새 프로필",
+    "newButton": "새 프로필 수동으로 만들기",
     "loading": "프로필을 불러오는 중",
     "error": {
       "title": "프로필을 불러오지 못했습니다",
@@ -525,7 +525,7 @@
     },
     "columns": {
       "select": "선택",
-      "received": "수신 시각",
+      "date": "날짜",
       "email": "이메일",
       "transaction": "거래",
       "state": "상태",
@@ -901,27 +901,23 @@
         "title": "이 도메인의 메일이 없습니다",
         "body": "{domain}에서 보낸 저장된 메일이 없습니다."
       },
-      "help": "메일을 열어 읽고, 그 메일이 결제한 거래를 선택하세요. 그런 다음 프로필을 작성할 메일을 최대 {max}개까지 체크하세요. 메일은 거래가 있어야만 체크할 수 있습니다.",
+      "help": "메일을 클릭해 읽고, 그 메일이 결제한 거래를 선택하세요. 그런 다음 프로필을 작성할 메일을 최대 {max}개까지 체크하세요. 메일은 거래가 있어야만 체크할 수 있습니다.",
       "columns": {
         "select": "사용",
-        "received": "수신 시각",
+        "date": "날짜",
         "email": "메일",
-        "transaction": "거래",
-        "actions": "작업"
+        "transaction": "거래"
       },
       "select": "메일 {subject}을(를) 샘플로 사용",
       "needsTransaction": "먼저 이 메일의 거래를 선택하세요.",
       "limitReached": "샘플은 최대 {max}개입니다. 다른 것을 선택하려면 하나의 체크를 해제하세요.",
       "noTransaction": "선택 안 함",
-      "viewEmail": "메일 보기",
-      "chooseTransaction": "거래 선택",
-      "changeTransaction": "거래 변경",
       "selectedCount": "샘플 {max}개 중 {count}개 체크됨",
       "continue": "어시스턴트로 계속",
-      "emailTitle": "{subject}",
       "emailLoading": "메일을 불러오는 중",
       "emailError": "메일을 불러오지 못했습니다.",
-      "transactionTitle": "{subject}의 거래"
+      "dialogTitle": "메일과 거래: {subject}",
+      "emailHeading": "메일"
     },
     "generate": {
       "help": "어시스턴트가 이 메일들과 그 메일이 결제한 거래를 읽고 {domain}의 프로필 초안을 작성합니다. 아직 아무것도 승인되지 않았습니다.",

@@ -49,6 +49,8 @@ export interface ParserPreviewItem {
   subject: string;
   /** ISO timestamp the email arrived. */
   receivedAt: string;
+  /** ISO timestamp to show: when the shop sent the email if a forward carried it (`original_sent_at`), else `receivedAt`. */
+  effectiveDate: string;
   outcome: ParserPreviewOutcome;
   /** Why a read is incomplete (`ParsedReceiptReason`); null otherwise. */
   statusReason: ParsedReceiptReason | null;
@@ -301,6 +303,7 @@ export class EmailReceiptParserPreviewService {
       receiptId: row.id,
       subject: row.subject,
       receivedAt: row.receivedAt.toISOString(),
+      effectiveDate: (row.originalSentAt ?? row.receivedAt).toISOString(),
       outcome: itemOutcome,
       statusReason: read && !parsed.complete ? parsed.reason : null,
       parsed: read

@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act, within } from '@/test/render';
 import { ProfileWizard } from './ProfileWizard';
-import { makeReceipt } from './email-receipts-fixtures';
+import { makeDetail, makeReceipt } from './email-receipts-fixtures';
 
 const api = vi.hoisted(() => ({
   list: vi.fn(),
+  get: vi.fn(),
   listUncovered: vi.fn(),
   processBatch: vi.fn(),
   generateWithAi: vi.fn(),
@@ -14,7 +15,7 @@ const api = vi.hoisted(() => ({
 const txApi = vi.hoisted(() => ({ getAll: vi.fn() }));
 vi.mock('@/lib/email-receipts-api', () => ({
   emailReceiptsApi: {
-    receipts: { list: api.list, listUncovered: api.listUncovered, processBatch: api.processBatch },
+    receipts: { list: api.list, get: api.get, listUncovered: api.listUncovered, processBatch: api.processBatch },
     parsers: { generateWithAi: api.generateWithAi, preview: api.preview, approve: api.approve },
   },
 }));
@@ -51,7 +52,7 @@ async function renderWizard() {
 
 /** Choose the one transaction the picker lists for the first email, and tick it. */
 async function pickFirstSample() {
-  await click(within(screen.getByRole('row', { name: /Order 1/ })).getByRole('button', { name: 'Choose transaction' }));
+  await click(screen.getByText('Order 1'));
   await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Use this transaction' }));
   await click(screen.getByRole('checkbox', { name: 'Use the email Order 1 as a sample' }));
 }
@@ -59,6 +60,7 @@ async function pickFirstSample() {
 describe('ProfileWizard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    api.get.mockResolvedValue(makeDetail({ id: 'r-1' }));
     api.list.mockResolvedValue([makeReceipt({ id: 'r-1', subject: 'Order 1' }), makeReceipt({ id: 'r-2', subject: 'Order 2' })]);
     api.listUncovered.mockResolvedValue([{ domain: 'allegro.pl', count: 2, draftParserId: null }]);
     api.preview.mockResolvedValue(emptyPreview);

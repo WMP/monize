@@ -119,7 +119,7 @@
   "parsers": {
     "heading": "Profiller",
     "description": "Bir profil, tek bir göndericinin sipariş onaylarını sizin yazdığınız veya incelediğiniz desenlerle okur ve banka işleminin nasıl bulunacağını belirtir. Onaylandıktan sonra yapay zekâ olmadan çalışır.",
-    "newButton": "Yeni ayrıştırıcı",
+    "newButton": "Yeni profili elle oluştur",
     "loading": "Ayrıştırıcılar yükleniyor",
     "error": {
       "title": "Ayrıştırıcılar yüklenemedi",
@@ -525,7 +525,7 @@
     },
     "columns": {
       "select": "Seç",
-      "received": "Alındı",
+      "date": "Tarih",
       "email": "E-posta",
       "transaction": "İşlem",
       "state": "Durum",
@@ -901,27 +901,23 @@
         "title": "Bu alan adından e-posta yok",
         "body": "Saklanan hiçbir e-postanın göndericisi {domain} alan adında değil."
       },
-      "help": "Bir e-postayı okumak için açın ve ödediği işlemi seçin. Ardından profili yazmak için en fazla {max} e-posta işaretleyin; bir e-posta ancak işlemi olduktan sonra işaretlenebilir.",
+      "help": "Bir e-postayı okumak için üzerine tıklayın ve ödediği işlemi seçin. Ardından profili yazmak için en fazla {max} e-posta işaretleyin; bir e-posta ancak işlemi olduktan sonra işaretlenebilir.",
       "columns": {
         "select": "Kullan",
-        "received": "Alındı",
+        "date": "Tarih",
         "email": "E-posta",
-        "transaction": "İşlem",
-        "actions": "Eylemler"
+        "transaction": "İşlem"
       },
       "select": "{subject} e-postasını örnek olarak kullan",
       "needsTransaction": "Önce bu e-posta için bir işlem seçin.",
       "limitReached": "En fazla {max} örnek. Başka birini seçmek için birinin işaretini kaldırın.",
       "noTransaction": "Seçilmedi",
-      "viewEmail": "E-postayı görüntüle",
-      "chooseTransaction": "İşlem seç",
-      "changeTransaction": "İşlemi değiştir",
       "selectedCount": "{max} örnekten {count} tanesi işaretlendi",
       "continue": "Asistana geç",
-      "emailTitle": "{subject}",
       "emailLoading": "E-posta yükleniyor",
       "emailError": "E-posta yüklenemedi.",
-      "transactionTitle": "{subject} için işlem"
+      "dialogTitle": "E-posta ve işlem: {subject}",
+      "emailHeading": "E-posta"
     },
     "generate": {
       "help": "Asistan bu e-postaları ve ödedikleri işlemleri okur ve {domain} için bir profil taslağı yazar. Henüz hiçbir şey onaylanmadı.",

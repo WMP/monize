@@ -119,7 +119,7 @@
   "parsers": {
     "heading": "Profile",
     "description": "Ein Profil liest die Bestellbestätigungen eines Absenders mit Mustern, die du schreibst oder prüfst, und legt fest, wie die Bankbuchung gefunden wird. Einmal freigegeben, läuft es ohne die KI.",
-    "newButton": "Neues Profil",
+    "newButton": "Neues Profil manuell erstellen",
     "loading": "Profile werden geladen",
     "error": {
       "title": "Die Profile konnten nicht geladen werden",
@@ -525,7 +525,7 @@
     },
     "columns": {
       "select": "Auswählen",
-      "received": "Empfangen",
+      "date": "Datum",
       "email": "E-Mail",
       "transaction": "Buchung",
       "state": "Status",
@@ -901,27 +901,23 @@
         "title": "Keine E-Mails von dieser Domain",
         "body": "Keine gespeicherte E-Mail hat einen Absender bei {domain}."
       },
-      "help": "Öffne eine E-Mail, um sie zu lesen, und wähle die Buchung, die sie bezahlt hat. Hake dann bis zu {max} E-Mails an, aus denen das Profil entstehen soll; eine E-Mail lässt sich erst anhaken, wenn sie eine Buchung hat.",
+      "help": "Klicke auf eine E-Mail, um sie zu lesen und die Buchung zu wählen, die sie bezahlt hat. Hake dann bis zu {max} E-Mails an, aus denen das Profil entstehen soll; eine E-Mail lässt sich erst anhaken, wenn sie eine Buchung hat.",
       "columns": {
         "select": "Verwenden",
-        "received": "Empfangen",
+        "date": "Datum",
         "email": "E-Mail",
-        "transaction": "Buchung",
-        "actions": "Aktionen"
+        "transaction": "Buchung"
       },
       "select": "Die E-Mail {subject} als Beispiel verwenden",
       "needsTransaction": "Wähle zuerst eine Buchung für diese E-Mail.",
       "limitReached": "Höchstens {max} Beispiele. Entferne bei einem den Haken, um ein anderes zu wählen.",
       "noTransaction": "Keine gewählt",
-      "viewEmail": "E-Mail ansehen",
-      "chooseTransaction": "Buchung wählen",
-      "changeTransaction": "Buchung ändern",
       "selectedCount": "{count} von {max} Beispielen angehakt",
       "continue": "Weiter zum Assistenten",
-      "emailTitle": "{subject}",
       "emailLoading": "E-Mail wird geladen",
       "emailError": "Die E-Mail konnte nicht geladen werden.",
-      "transactionTitle": "Buchung für {subject}"
+      "dialogTitle": "E-Mail und Buchung: {subject}",
+      "emailHeading": "E-Mail"
     },
     "generate": {
       "help": "Der Assistent liest diese E-Mails und die Buchungen, die sie bezahlt haben, und schreibt einen Profil-Entwurf für {domain}. Noch ist nichts freigegeben.",

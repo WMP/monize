@@ -22,6 +22,7 @@ const item = (over: Partial<ParserPreviewItem> = {}): ParserPreviewItem => ({
   receiptId: 'r-1',
   subject: 'Order 1',
   receivedAt: '2026-09-01T10:00:00.000Z',
+  effectiveDate: '2026-09-01T10:00:00.000Z',
   outcome: 'matched',
   statusReason: null,
   parsed: { date: '2026-09-01', total: 25, currency: 'USD', lineCount: 2 },
@@ -110,6 +111,15 @@ describe('WizardPreviewStep', () => {
     expect(row).toHaveTextContent('The email states no total.');
     expect(row).toHaveTextContent('Sep 3, 12.00, Allegro');
     expect(within(others).queryByText(/Showing the newest/)).not.toBeInTheDocument();
+  });
+
+  it('dates each email by when the shop sent it, not when it was forwarded', async () => {
+    const forwarded = item({ receivedAt: '2026-09-20T10:00:00.000Z', effectiveDate: '2026-08-05T10:00:00.000Z' });
+    api.preview.mockResolvedValue(result({ selected: [forwarded], others: [] }));
+    await renderStep();
+    const row = screen.getByRole('row', { name: /Order 1/ });
+    expect(row).toHaveTextContent(/2026-08-05|08\/05\/2026|05\/08\/2026|Aug/);
+    expect(row).not.toHaveTextContent(/2026-09-20|09\/20\/2026|20\/09\/2026|Sep 20/);
   });
 
   it('says when the other emails are capped', async () => {

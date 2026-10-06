@@ -719,6 +719,8 @@ export interface ParserPreviewItem {
   receiptId: string;
   subject: string;
   receivedAt: string;
+  /** The date to show: when the shop sent the email if a forward carried it, else when it arrived (ISO). */
+  effectiveDate: string;
   /** How the draft would read the email; the server's `ParserPreviewOutcome`. */
   outcome: ParserPreviewOutcome;
   statusReason: string | null;

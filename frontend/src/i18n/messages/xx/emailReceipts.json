@@ -119,7 +119,7 @@
   "parsers": {
     "heading": "[XX-Profiles-XX]",
     "description": "[XX-A profile reads the order confirmations of one sender with patterns you write or review, and says how the bank transaction is found. Once approved it runs without the AI.-XX]",
-    "newButton": "[XX-New profile-XX]",
+    "newButton": "[XX-Create a new profile manually-XX]",
     "loading": "[XX-Loading profiles-XX]",
     "error": {
       "title": "[XX-The profiles could not be loaded-XX]",
@@ -525,7 +525,7 @@
     },
     "columns": {
       "select": "[XX-Select-XX]",
-      "received": "[XX-Received-XX]",
+      "date": "[XX-Date-XX]",
       "email": "[XX-Email-XX]",
       "transaction": "[XX-Transaction-XX]",
       "state": "[XX-State-XX]",
@@ -901,27 +901,23 @@
         "title": "[XX-No emails from this domain-XX]",
         "body": "[XX-No stored email has a sender at {domain}.-XX]"
       },
-      "help": "[XX-Open an email to read it, and choose the transaction it paid for. Then tick up to {max} emails to write the profile from; an email can be ticked only once it has a transaction.-XX]",
+      "help": "[XX-Click an email to read it, and choose the transaction it paid for. Then tick up to {max} emails to write the profile from; an email can be ticked only once it has a transaction.-XX]",
       "columns": {
         "select": "[XX-Use-XX]",
-        "received": "[XX-Received-XX]",
+        "date": "[XX-Date-XX]",
         "email": "[XX-Email-XX]",
-        "transaction": "[XX-Transaction-XX]",
-        "actions": "[XX-Actions-XX]"
+        "transaction": "[XX-Transaction-XX]"
       },
       "select": "[XX-Use the email {subject} as a sample-XX]",
       "needsTransaction": "[XX-Choose a transaction for this email first.-XX]",
       "limitReached": "[XX-At most {max} samples. Untick one to choose another.-XX]",
       "noTransaction": "[XX-None chosen-XX]",
-      "viewEmail": "[XX-View email-XX]",
-      "chooseTransaction": "[XX-Choose transaction-XX]",
-      "changeTransaction": "[XX-Change transaction-XX]",
       "selectedCount": "[XX-{count} of {max} samples ticked-XX]",
       "continue": "[XX-Continue to the assistant-XX]",
-      "emailTitle": "[XX-{subject}-XX]",
       "emailLoading": "[XX-Loading the email-XX]",
       "emailError": "[XX-The email could not be loaded.-XX]",
-      "transactionTitle": "[XX-Transaction for {subject}-XX]"
+      "dialogTitle": "[XX-Email and transaction: {subject}-XX]",
+      "emailHeading": "[XX-Email-XX]"
     },
     "generate": {
       "help": "[XX-The assistant reads these emails and the transactions they paid for and writes a draft profile for {domain}. Nothing is approved yet.-XX]",
