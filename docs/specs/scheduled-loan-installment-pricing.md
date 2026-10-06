@@ -141,6 +141,20 @@ same waterfall), so the common case is byte-identical.
   auto-post path avoids, the same occurrence posting two different amounts
   depending on which button was pressed.
 
+  The dialog pre-fills the template **booked in the currency's smallest
+  unit** (issue #1581): the parent and every line rounded to it, the rounding
+  difference on the principal line, so a 1,170.6458 template shows and sends
+  1,170.65 = 864.59 + 306.06. That booking of the stored template
+  (`bookedTemplateAmounts`) is an echo too, compared exactly; there is no
+  tolerance, so a cent the user moves between the lines is still their
+  statement. Before this the dialog rounded only the parent and sent the 4dp
+  lines, and the split validator refused every such post.
+
+- **A posting is booked in the currency's smallest unit.** The allocation is
+  priced at 4dp and booked by `bookLoanAllocation`: total and interest
+  rounded to the unit, principal the remainder (the extra principal instead
+  when principal is zero). `docs/specs/mortgage-types.md` decision 7.
+
 - **A posting never grows the total.** The parent an occurrence posts is the
   bill the user was shown; re-pricing re-divides it between interest and
   principal. Only a template advancement may grow the parent back toward the

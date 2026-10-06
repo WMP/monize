@@ -3317,25 +3317,40 @@ export class ScheduledTransactionsService {
         // only surface that produces inline splits. The amount is an echo when
         // it still equals what the locked template holds; a figure the user
         // actually changed is their statement and posts as given.
-        const amountIsEcho =
-          !hasInlineAmount ||
-          roundMoney(Number(postDto?.amount)) ===
-            roundMoney(Number(current.amount));
-        // Every line must echo a stored line at its stored amount; one typed
-        // figure (or one line that names no source) makes the whole set the
-        // user's own statement, which posts as given.
-        const isUnchangedEcho =
-          amountIsEcho &&
+        const echoes = (
+          parentAmount: number,
+          lineAmounts: Map<string, number>,
+        ): boolean =>
+          (!hasInlineAmount ||
+            roundMoney(Number(postDto?.amount)) === roundMoney(parentAmount)) &&
           Array.isArray(rows) &&
           rows.length === lockedSplits.length &&
           rows.every((row, index) => {
             const sourceId = postDto?.splits?.[index]?.sourceSplitId;
             return (
               !!sourceId &&
-              storedById.has(sourceId) &&
-              storedById.get(sourceId) === roundMoney(Number(row.amount))
+              lineAmounts.has(sourceId) &&
+              lineAmounts.get(sourceId) === roundMoney(Number(row.amount))
             );
           });
+        // Every line must echo a stored line at its stored amount; one typed
+        // figure (or one line that names no source) makes the whole set the
+        // user's own statement, which posts as given. The dialog pre-fills a
+        // template priced at 4dp in the currency's smallest unit, the rounding
+        // difference on the principal line (issue #1581), so that booking of
+        // the stored template is an echo too -- compared exactly, never with a
+        // tolerance, so a cent the user typed is still theirs.
+        const exactEcho = echoes(Number(current.amount), storedById);
+        const bookedTemplate = exactEcho
+          ? null
+          : await this.loanService.bookedTemplateAmounts(current, lockedSplits);
+        const isUnchangedEcho =
+          exactEcho ||
+          (bookedTemplate !== null &&
+            echoes(
+              bookedTemplate.parentAmount,
+              bookedTemplate.amountsBySplitId,
+            ));
         if (isUnchangedEcho) {
           await this.lockLoanLedgerForPricing(
             m,

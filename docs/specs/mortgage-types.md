@@ -106,6 +106,22 @@ Decisions 1 to 6 were agreed in #1486; 7 to 11 are made here.
    money precision the codebase does not have. A ledger whose installments
    were recorded at statement cents (imported, or typed from the bank's
    statement) is priced from what it holds; section 7.2 asserts that case too.
+
+   **Amended (#1581): priced at 4dp, booked at the currency's unit.** The
+   precision above is the pricing precision. A posting moves real money out
+   of a bank account, which a bank debits in whole cents (whole yen for JPY),
+   so the posted installment is booked in the source currency's smallest
+   unit: the total and the interest are each rounded to it, and principal
+   takes what the two roundings leave (`bookLoanAllocation`,
+   `backend/src/accounts/loan-payment-waterfall.util.ts`). A 1,170.6458
+   installment of 864.5833 principal and 306.0625 interest posts as 1,170.65
+   = 864.59 + 306.06. The template stays at 4dp, so the method still
+   reproduces the #1501 tables; the ledger it then accumulates is the cents
+   ledger of section 7.2, which decision 8's residue bound already covers.
+   The Post dialog pre-fills the same booking (`bookSplitsAtMinorUnit`, one
+   per layer, same cases), and the server recognises that pre-fill as an
+   unchanged echo of the template
+   (`docs/specs/scheduled-loan-installment-pricing.md` section 3).
 8. **The final LINEAR SHORTEN_TERM installment absorbs a small leftover.**
    An installment is the final one, and its principal is the whole
    `debt(d)`, when `debt(d) - c <= roundMoney(N * 0.005)` (1.80 in the worked
@@ -482,7 +498,9 @@ residue bound of decision 8 is 1.80.
 Each table gives the debt two ways: **exact** (the schedule with unrounded
 principal, which is what #1501 printed) and **as posted** (the ledger after
 the engine's own 4dp postings, which is what `datedLoanDebt` returns and what
-the fixtures assert). Principal, interest and installment are the engine's 4dp
+the fixtures assert). Since #1581 a posting books cents (decision 7,
+amended), so a live ledger follows section 7.2 rather than this column; the
+column stays as the pricing fixture for a ledger recorded at 4dp. Principal, interest and installment are the engine's 4dp
 figures; the fixtures assert those, and printed at cents they are #1501's.
 
 ### 7.1 LINEAR, SHORTEN_TERM (default)

@@ -1,4 +1,5 @@
 import { roundMoney } from "../common/round.util";
+import { bookSplitsAtMinorUnit } from "../common/currency-minor-unit.util";
 
 export interface LoanPaymentWaterfallInput {
   /** Total configured installment, extra principal included. */
@@ -93,5 +94,40 @@ export function allocateLoanPayment(
     interest,
     extraPrincipal,
     total: roundMoney(principal + interest + extraPrincipal),
+  };
+}
+
+/**
+ * The installment as the bank books it: in the currency's smallest unit
+ * (`decimals`, from `currencyMinorUnitDecimals`), issue #1581.
+ *
+ * The waterfall prices at storage precision (docs/specs/mortgage-types.md,
+ * decision 7), so a LINEAR installment is 864.5833 principal + 306.0625
+ * interest = 1,170.6458; the account it is debited from moves 1,170.65. The
+ * total and the interest are each rounded to the unit and principal takes
+ * what the roundings leave (864.59), because interest is the period's charge
+ * and principal is what retires the loan. Where principal is zero (an
+ * interest-only installment carrying an extra), the extra takes it instead,
+ * so no line turns negative. The parts still sum to the total exactly.
+ */
+export function bookLoanAllocation(
+  allocation: LoanPaymentAllocation,
+  decimals: number,
+): LoanPaymentAllocation {
+  const lines = [
+    allocation.principal,
+    allocation.interest,
+    allocation.extraPrincipal,
+  ];
+  let booked = bookSplitsAtMinorUnit(lines, allocation.total, decimals, 0);
+  if (booked.amounts[0] < 0) {
+    booked = bookSplitsAtMinorUnit(lines, allocation.total, decimals, 2);
+  }
+  const [principal, interest, extraPrincipal] = booked.amounts;
+  return {
+    principal,
+    interest,
+    extraPrincipal,
+    total: booked.parentAmount,
   };
 }
