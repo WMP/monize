@@ -76,13 +76,25 @@ export class PayeeDetailService {
     const payee = await this.payeesService.findOne(userId, payeeId);
 
     return withScopedDb(this.dataSource, async (m) => {
-      const [stats, accounts, largestTransaction, overpaymentForAccounts] =
-        await Promise.all([
-          this.getStats(m, userId, payeeId, accountScope),
-          this.getAccountBreakdown(m, userId, payeeId, accountScope),
-          this.getLargestTransaction(m, userId, payeeId, accountScope),
-          this.getOverpaymentAccounts(m, userId, payeeId, accountScope),
-        ]);
+      const stats = await this.getStats(m, userId, payeeId, accountScope);
+      const accounts = await this.getAccountBreakdown(
+        m,
+        userId,
+        payeeId,
+        accountScope,
+      );
+      const largestTransaction = await this.getLargestTransaction(
+        m,
+        userId,
+        payeeId,
+        accountScope,
+      );
+      const overpaymentForAccounts = await this.getOverpaymentAccounts(
+        m,
+        userId,
+        payeeId,
+        accountScope,
+      );
 
       return {
         payee,
@@ -114,10 +126,15 @@ export class PayeeDetailService {
       accountScope,
     ).getRawOne<{ count: string; first: string | null; last: string | null }>();
 
-    const [uncategorizedCount, aliasCount] = await Promise.all([
-      countUncategorizedTransactionsForPayee(m, userId, payeeId, accountScope),
-      m.getRepository(PayeeAlias).count({ where: { userId, payeeId } }),
-    ]);
+    const uncategorizedCount = await countUncategorizedTransactionsForPayee(
+      m,
+      userId,
+      payeeId,
+      accountScope,
+    );
+    const aliasCount = await m
+      .getRepository(PayeeAlias)
+      .count({ where: { userId, payeeId } });
 
     return {
       transactionCount: parseInt(row?.count ?? "0", 10),

@@ -191,27 +191,25 @@ export class CategoriesService {
 
         const categoryIds = categories.map((c) => c.id);
 
-        const [directCounts, splitCounts] = await Promise.all([
-          m
-            .getRepository(Transaction)
-            .createQueryBuilder("t")
-            .select("t.category_id", "categoryId")
-            .addSelect("COUNT(t.id)", "count")
-            .where("t.user_id = :userId", { userId })
-            .andWhere("t.category_id IN (:...categoryIds)", { categoryIds })
-            .groupBy("t.category_id")
-            .getRawMany(),
-          m
-            .getRepository(TransactionSplit)
-            .createQueryBuilder("s")
-            .innerJoin("s.transaction", "t")
-            .select("s.category_id", "categoryId")
-            .addSelect("COUNT(s.id)", "count")
-            .where("t.user_id = :userId", { userId })
-            .andWhere("s.category_id IN (:...categoryIds)", { categoryIds })
-            .groupBy("s.category_id")
-            .getRawMany(),
-        ]);
+        const directCounts = await m
+          .getRepository(Transaction)
+          .createQueryBuilder("t")
+          .select("t.category_id", "categoryId")
+          .addSelect("COUNT(t.id)", "count")
+          .where("t.user_id = :userId", { userId })
+          .andWhere("t.category_id IN (:...categoryIds)", { categoryIds })
+          .groupBy("t.category_id")
+          .getRawMany();
+        const splitCounts = await m
+          .getRepository(TransactionSplit)
+          .createQueryBuilder("s")
+          .innerJoin("s.transaction", "t")
+          .select("s.category_id", "categoryId")
+          .addSelect("COUNT(s.id)", "count")
+          .where("t.user_id = :userId", { userId })
+          .andWhere("s.category_id IN (:...categoryIds)", { categoryIds })
+          .groupBy("s.category_id")
+          .getRawMany();
 
         const countMap = toCountMap(directCounts, { keyField: "categoryId" });
         toCountMap(splitCounts, { keyField: "categoryId", into: countMap });
@@ -660,26 +658,25 @@ export class CategoriesService {
     await this.findOne(userId, categoryId);
 
     return withScopedDb(this.dataSource, async (m) => {
-      const [transactionCount, splitCount, scheduledCount, userScheduledTxIds] =
-        await Promise.all([
-          m.getRepository(Transaction).count({ where: { userId, categoryId } }),
-          m
-            .getRepository(TransactionSplit)
-            .createQueryBuilder("split")
-            .innerJoin("split.transaction", "transaction")
-            .where("split.categoryId = :categoryId", { categoryId })
-            .andWhere("transaction.userId = :userId", { userId })
-            .getCount(),
-          m.getRepository(ScheduledTransaction).count({
-            where: { userId, categoryId },
-          }),
-          m
-            .getRepository(ScheduledTransaction)
-            .createQueryBuilder("st")
-            .select("st.id")
-            .where("st.userId = :userId", { userId })
-            .getMany(),
-        ]);
+      const transactionCount = await m
+        .getRepository(Transaction)
+        .count({ where: { userId, categoryId } });
+      const splitCount = await m
+        .getRepository(TransactionSplit)
+        .createQueryBuilder("split")
+        .innerJoin("split.transaction", "transaction")
+        .where("split.categoryId = :categoryId", { categoryId })
+        .andWhere("transaction.userId = :userId", { userId })
+        .getCount();
+      const scheduledCount = await m.getRepository(ScheduledTransaction).count({
+        where: { userId, categoryId },
+      });
+      const userScheduledTxIds = await m
+        .getRepository(ScheduledTransaction)
+        .createQueryBuilder("st")
+        .select("st.id")
+        .where("st.userId = :userId", { userId })
+        .getMany();
 
       let scheduledSplitCount = 0;
       if (userScheduledTxIds.length > 0) {
@@ -841,14 +838,12 @@ export class CategoriesService {
         };
       }
 
-      const [principalCategory, interestCategory] = await Promise.all([
-        repo.findOne({
-          where: { userId, name: "Loan Principal", parentId: loanParent.id },
-        }),
-        repo.findOne({
-          where: { userId, name: "Loan Interest", parentId: loanParent.id },
-        }),
-      ]);
+      const principalCategory = await repo.findOne({
+        where: { userId, name: "Loan Principal", parentId: loanParent.id },
+      });
+      const interestCategory = await repo.findOne({
+        where: { userId, name: "Loan Interest", parentId: loanParent.id },
+      });
 
       return { principalCategory, interestCategory };
     });

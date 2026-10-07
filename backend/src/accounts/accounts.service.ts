@@ -417,43 +417,43 @@ export class AccountsService {
 
       const today = todayYMD();
 
-      const [txCounts, invTxCounts, futureSums, currentSums] =
-        await Promise.all([
-          m
-            .getRepository(Transaction)
-            .createQueryBuilder("t")
-            .select("t.accountId", "accountId")
-            .addSelect("COUNT(t.id)", "cnt")
-            .where("t.accountId IN (:...accountIds)", { accountIds })
-            .groupBy("t.accountId")
-            .getRawMany(),
-          m
-            // includes VOID rows: records read -- an activity count, not an effect.
-            .getRepository(InvestmentTransaction)
-            .createQueryBuilder("it")
-            .select("it.accountId", "accountId")
-            .addSelect("COUNT(it.id)", "cnt")
-            .where("it.accountId IN (:...accountIds)", { accountIds })
-            .groupBy("it.accountId")
-            .getRawMany(),
-          m.query(
-            `SELECT t.account_id as "accountId",
+      const txCounts = await m
+        .getRepository(Transaction)
+        .createQueryBuilder("t")
+        .select("t.accountId", "accountId")
+        .addSelect("COUNT(t.id)", "cnt")
+        .where("t.accountId IN (:...accountIds)", { accountIds })
+        .groupBy("t.accountId")
+        .getRawMany();
+      const invTxCounts = await m
+        // includes VOID rows: records read -- an activity count, not an effect.
+        .getRepository(InvestmentTransaction)
+        .createQueryBuilder("it")
+        .select("it.accountId", "accountId")
+        .addSelect("COUNT(it.id)", "cnt")
+        .where("it.accountId IN (:...accountIds)", { accountIds })
+        .groupBy("it.accountId")
+        .getRawMany();
+      const futureSums: Array<{ accountId: string; futureSum: string }> =
+        await m.query(
+          `SELECT t.account_id as "accountId",
                 COALESCE(SUM(t.amount), 0) as "futureSum"
          FROM transactions t
          WHERE t.account_id = ANY($1)
            AND t.transaction_date > $2
            AND ${LEDGER_MOVEMENT_PREDICATE}
          GROUP BY t.account_id`,
-            [accountIds, today],
-          ) as Promise<Array<{ accountId: string; futureSum: string }>>,
-          // Compute currentBalance live rather than trusting the stored column.
-          // The stored value can lag the TZ-aware definition of "today" (e.g.
-          // after a timezone change, or after a future-dated create that ran
-          // under the old server-UTC logic), and if it does, adding it to the
-          // live futureTransactionsSum below would double-count any transactions
-          // that wandered across the boundary.
-          m.query(
-            `SELECT a.id as "accountId",
+          [accountIds, today],
+        );
+      // Compute currentBalance live rather than trusting the stored column.
+      // The stored value can lag the TZ-aware definition of "today" (e.g.
+      // after a timezone change, or after a future-dated create that ran
+      // under the old server-UTC logic), and if it does, adding it to the
+      // live futureTransactionsSum below would double-count any transactions
+      // that wandered across the boundary.
+      const currentSums: Array<{ accountId: string; currentBalance: string }> =
+        await m.query(
+          `SELECT a.id as "accountId",
                 COALESCE(a.opening_balance, 0) + COALESCE(SUM(t.amount), 0) as "currentBalance"
          FROM accounts a
          LEFT JOIN transactions t ON t.account_id = a.id
@@ -461,9 +461,8 @@ export class AccountsService {
            AND t.transaction_date <= $2
          WHERE a.id = ANY($1)
          GROUP BY a.id, a.opening_balance`,
-            [accountIds, today],
-          ) as Promise<Array<{ accountId: string; currentBalance: string }>>,
-        ]);
+          [accountIds, today],
+        );
 
       const txCountMap = new Map<string, number>();
       for (const row of txCounts)
@@ -815,17 +814,15 @@ export class AccountsService {
           updateAccountDto.currencyCode !== undefined &&
           updateAccountDto.currencyCode !== account.currencyCode
         ) {
-          const [transactionCount, investmentTransactionCount] =
-            await Promise.all([
-              m.count(Transaction, {
-                where: { accountId: id },
-              }),
-              // includes VOID rows: records read -- a VOID row still stores
-              // figures denominated in the old currency.
-              m.count(InvestmentTransaction, {
-                where: { accountId: id },
-              }),
-            ]);
+          const transactionCount = await m.count(Transaction, {
+            where: { accountId: id },
+          });
+          // includes VOID rows: records read -- a VOID row still stores
+          // figures denominated in the old currency.
+          const investmentTransactionCount = await m.count(
+            InvestmentTransaction,
+            { where: { accountId: id } },
+          );
 
           if (transactionCount > 0 || investmentTransactionCount > 0) {
             throw new BadRequestException(

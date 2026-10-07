@@ -120,53 +120,46 @@ export async function queryCategorySpending(
     (bc) => bc.isTransfer && bc.transferAccountId,
   );
 
-  // Run all independent queries in parallel
-  const queries: Promise<void>[] = [];
-
   if (categoryIds.length > 0) {
-    queries.push(
-      transactionsRepository
-        .createQueryBuilder("t")
-        .select("t.category_id", "categoryId")
-        .addSelect("COALESCE(SUM(t.amount), 0)", "total")
-        .where("t.user_id = :userId", { userId })
-        .andWhere("t.category_id IN (:...categoryIds)", { categoryIds })
-        .andWhere("t.transaction_date >= :periodStart", { periodStart })
-        .andWhere("t.transaction_date <= :periodEnd", { periodEnd })
-        .andWhere("t.status != :void", { void: "VOID" })
-        .andWhere("t.is_split = false")
-        .groupBy("t.category_id")
-        .getRawMany()
-        .then((rows) => {
-          for (const row of rows) {
-            spendingMap.set(row.categoryId, parseFloat(row.total || "0"));
-          }
-        }),
-    );
+    await transactionsRepository
+      .createQueryBuilder("t")
+      .select("t.category_id", "categoryId")
+      .addSelect("COALESCE(SUM(t.amount), 0)", "total")
+      .where("t.user_id = :userId", { userId })
+      .andWhere("t.category_id IN (:...categoryIds)", { categoryIds })
+      .andWhere("t.transaction_date >= :periodStart", { periodStart })
+      .andWhere("t.transaction_date <= :periodEnd", { periodEnd })
+      .andWhere("t.status != :void", { void: "VOID" })
+      .andWhere("t.is_split = false")
+      .groupBy("t.category_id")
+      .getRawMany()
+      .then((rows) => {
+        for (const row of rows) {
+          spendingMap.set(row.categoryId, parseFloat(row.total || "0"));
+        }
+      });
 
-    queries.push(
-      splitsRepository
-        .createQueryBuilder("s")
-        .innerJoin("s.transaction", "t")
-        .select("s.category_id", "categoryId")
-        .addSelect("COALESCE(SUM(s.amount), 0)", "total")
-        .where("t.user_id = :userId", { userId })
-        .andWhere("s.category_id IN (:...categoryIds)", { categoryIds })
-        .andWhere("t.transaction_date >= :periodStart", { periodStart })
-        .andWhere("t.transaction_date <= :periodEnd", { periodEnd })
-        .andWhere("t.status != :void", { void: "VOID" })
-        .groupBy("s.category_id")
-        .getRawMany()
-        .then((rows) => {
-          for (const row of rows) {
-            const existing = spendingMap.get(row.categoryId) || 0;
-            spendingMap.set(
-              row.categoryId,
-              existing + parseFloat(row.total || "0"),
-            );
-          }
-        }),
-    );
+    await splitsRepository
+      .createQueryBuilder("s")
+      .innerJoin("s.transaction", "t")
+      .select("s.category_id", "categoryId")
+      .addSelect("COALESCE(SUM(s.amount), 0)", "total")
+      .where("t.user_id = :userId", { userId })
+      .andWhere("s.category_id IN (:...categoryIds)", { categoryIds })
+      .andWhere("t.transaction_date >= :periodStart", { periodStart })
+      .andWhere("t.transaction_date <= :periodEnd", { periodEnd })
+      .andWhere("t.status != :void", { void: "VOID" })
+      .groupBy("s.category_id")
+      .getRawMany()
+      .then((rows) => {
+        for (const row of rows) {
+          const existing = spendingMap.get(row.categoryId) || 0;
+          spendingMap.set(
+            row.categoryId,
+            existing + parseFloat(row.total || "0"),
+          );
+        }
+      });
   }
 
   if (transferBudgetCategories.length > 0) {
@@ -190,26 +183,20 @@ export async function queryCategorySpending(
       }
     };
 
-    queries.push(
-      outgoingParentTransfers(transactionsRepository, window)
-        .select(PARENT_TRANSFER_DESTINATION, "destinationAccountId")
-        .addSelect(`COALESCE(ABS(SUM(${PARENT_TRANSFER_AMOUNT})), 0)`, "total")
-        .groupBy(PARENT_TRANSFER_DESTINATION)
-        .getRawMany()
-        .then(collect),
-    );
+    await outgoingParentTransfers(transactionsRepository, window)
+      .select(PARENT_TRANSFER_DESTINATION, "destinationAccountId")
+      .addSelect(`COALESCE(ABS(SUM(${PARENT_TRANSFER_AMOUNT})), 0)`, "total")
+      .groupBy(PARENT_TRANSFER_DESTINATION)
+      .getRawMany()
+      .then(collect);
 
-    queries.push(
-      outgoingSplitTransfers(splitsRepository, window)
-        .select(SPLIT_TRANSFER_DESTINATION, "destinationAccountId")
-        .addSelect(`COALESCE(ABS(SUM(${SPLIT_TRANSFER_AMOUNT})), 0)`, "total")
-        .groupBy(SPLIT_TRANSFER_DESTINATION)
-        .getRawMany()
-        .then(collect),
-    );
+    await outgoingSplitTransfers(splitsRepository, window)
+      .select(SPLIT_TRANSFER_DESTINATION, "destinationAccountId")
+      .addSelect(`COALESCE(ABS(SUM(${SPLIT_TRANSFER_AMOUNT})), 0)`, "total")
+      .groupBy(SPLIT_TRANSFER_DESTINATION)
+      .getRawMany()
+      .then(collect);
   }
-
-  await Promise.all(queries);
 
   return { spendingMap, transferSpendingMap };
 }

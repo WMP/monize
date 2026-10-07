@@ -321,10 +321,10 @@ export class PushConfigService implements OnApplicationBootstrap {
     const counts = await withSystemContext(() =>
       withScopedDb(this.dataSource, async (manager) => {
         const repo = manager.getRepository(PushSubscription);
-        const [live, disabled] = await Promise.all([
-          repo.count({ where: { disabledAt: IsNull() } }),
-          repo.count({ where: { disabledAt: Not(IsNull()) } }),
-        ]);
+        const live = await repo.count({ where: { disabledAt: IsNull() } });
+        const disabled = await repo.count({
+          where: { disabledAt: Not(IsNull()) },
+        });
         return { live, disabled };
       }),
     );
