@@ -53,6 +53,7 @@ Each module holds `{feature}.module.ts`, controller, service, their specs, `enti
 | Need | Use | Never |
 |---|---|---|
 | Any database access | `withScopedDb` and the identity contexts in `AGENTS.md` | an injected repository, a query runner, a bare `dataSource.query` |
+| Several queries in one transaction | `await` each in turn | `Promise.all` or `mapWithConcurrency` over the transaction's manager: one connection, and pg's client-side queue is deprecated |
 | A refusal (ownership, precondition, revision) | the check inside the same transaction as the write, before it | a check after a commit that a status code then contradicts |
 | A raw `SELECT` of a DATE or numeric | `TO_CHAR(col, 'YYYY-MM-DD')` and `Number(...)` at the boundary | trusting the entity transformer or the global DATE parser |
 | An optional DTO field with a format validator | `@ValidateIf((_o, v) => v !== null && v !== "")` beside `@IsOptional()` | `@IsOptional()` alone |

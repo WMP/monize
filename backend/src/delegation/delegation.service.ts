@@ -1148,28 +1148,21 @@ export class DelegationService {
         if (delegateUser.oidcSubject || delegateUser.role === "admin") {
           mayManageCredentials = false;
         } else {
-          const [
-            ownsAccounts,
-            ownsDelegations,
-            alreadyDelegate,
-            delegateOfAnotherOwner,
-          ] = await Promise.all([
-            manager.count(Account, {
-              where: { userId: delegateUser.id },
-            }),
-            manager.count(AccountDelegate, {
-              where: { ownerUserId: delegateUser.id },
-            }),
-            manager.count(AccountDelegate, {
-              where: { delegateUserId: delegateUser.id },
-            }),
-            manager.count(AccountDelegate, {
-              where: {
-                delegateUserId: delegateUser.id,
-                ownerUserId: Not(ownerUserId),
-              },
-            }),
-          ]);
+          const ownsAccounts = await manager.count(Account, {
+            where: { userId: delegateUser.id },
+          });
+          const ownsDelegations = await manager.count(AccountDelegate, {
+            where: { ownerUserId: delegateUser.id },
+          });
+          const alreadyDelegate = await manager.count(AccountDelegate, {
+            where: { delegateUserId: delegateUser.id },
+          });
+          const delegateOfAnotherOwner = await manager.count(AccountDelegate, {
+            where: {
+              delegateUserId: delegateUser.id,
+              ownerUserId: Not(ownerUserId),
+            },
+          });
           const isPureDelegateRow = alreadyDelegate > 0;
           if (
             ownsAccounts > 0 ||
@@ -1352,14 +1345,15 @@ export class DelegationService {
         // own right (isDelegateOnly=false). Without the isDelegateOnly
         // check a self-registered user who hasn't created any accounts yet
         // would be silently deleted on revoke.
-        const [otherDelegations, ownsAccounts, ownsDelegations] =
-          await Promise.all([
-            manager.count(AccountDelegate, { where: { delegateUserId } }),
-            manager.count(Account, { where: { userId: delegateUserId } }),
-            manager.count(AccountDelegate, {
-              where: { ownerUserId: delegateUserId },
-            }),
-          ]);
+        const otherDelegations = await manager.count(AccountDelegate, {
+          where: { delegateUserId },
+        });
+        const ownsAccounts = await manager.count(Account, {
+          where: { userId: delegateUserId },
+        });
+        const ownsDelegations = await manager.count(AccountDelegate, {
+          where: { ownerUserId: delegateUserId },
+        });
         const delegateUser = await manager.findOne(User, {
           where: { id: delegateUserId },
         });

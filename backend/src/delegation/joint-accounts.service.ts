@@ -201,9 +201,9 @@ export class JointAccountsService {
 
     const [futureSums, currentSums] = await withScopedDb(
       this.dataSource,
-      (manager) =>
-        Promise.all([
-          manager.query(
+      async (manager) => {
+        const future: Array<{ accountId: string; futureSum: string }> =
+          await manager.query(
             `SELECT t.account_id as "accountId",
                 COALESCE(SUM(t.amount), 0) as "futureSum"
              FROM transactions t
@@ -212,8 +212,9 @@ export class JointAccountsService {
                AND ${LEDGER_MOVEMENT_PREDICATE}
              GROUP BY t.account_id`,
             [accountIds, today],
-          ) as Promise<Array<{ accountId: string; futureSum: string }>>,
-          manager.query(
+          );
+        const current: Array<{ accountId: string; currentBalance: string }> =
+          await manager.query(
             `SELECT a.id as "accountId",
                 COALESCE(a.opening_balance, 0) + COALESCE(SUM(t.amount), 0) as "currentBalance"
              FROM accounts a
@@ -223,8 +224,9 @@ export class JointAccountsService {
              WHERE a.id = ANY($1)
              GROUP BY a.id, a.opening_balance`,
             [accountIds, today],
-          ) as Promise<Array<{ accountId: string; currentBalance: string }>>,
-        ]),
+          );
+        return [future, current] as const;
+      },
     );
     const futureSumMap = new Map(
       futureSums.map((r) => [r.accountId, roundMoney(Number(r.futureSum))]),
@@ -463,27 +465,27 @@ export class JointAccountsService {
     // delegation-scoped read arms cover these tables under enforcement.
     const [categories, payees] = await withScopedDb(
       this.dataSource,
-      (manager) =>
-        Promise.all([
-          manager.getRepository(Category).find({
-            where: { userId: access.ownerUserId },
-            select: [
-              "id",
-              "name",
-              "parentId",
-              "icon",
-              "color",
-              "isIncome",
-              "isSystem",
-            ],
-            order: { name: "ASC" },
-          }),
-          manager.getRepository(Payee).find({
-            where: { userId: access.ownerUserId, isActive: true },
-            select: ["id", "name", "defaultCategoryId"],
-            order: { name: "ASC" },
-          }),
-        ]),
+      async (manager) => {
+        const ownerCategories = await manager.getRepository(Category).find({
+          where: { userId: access.ownerUserId },
+          select: [
+            "id",
+            "name",
+            "parentId",
+            "icon",
+            "color",
+            "isIncome",
+            "isSystem",
+          ],
+          order: { name: "ASC" },
+        });
+        const ownerPayees = await manager.getRepository(Payee).find({
+          where: { userId: access.ownerUserId, isActive: true },
+          select: ["id", "name", "defaultCategoryId"],
+          order: { name: "ASC" },
+        });
+        return [ownerCategories, ownerPayees] as const;
+      },
     );
 
     return {

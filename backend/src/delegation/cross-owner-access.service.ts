@@ -162,13 +162,14 @@ export class CrossOwnerAccessService {
       // real user's rows; only the fields below leave this method.
       const [accounts, self] = await withSystemContext(() =>
         withScopedDb(this.dataSource, async (manager) => {
-          return Promise.all([
-            manager.getRepository(Account).find({
-              where: { userId: realUserId },
-              order: { name: "ASC" },
-            }),
-            manager.getRepository(User).findOne({ where: { id: realUserId } }),
-          ]);
+          const own = await manager.getRepository(Account).find({
+            where: { userId: realUserId },
+            order: { name: "ASC" },
+          });
+          const user = await manager
+            .getRepository(User)
+            .findOne({ where: { id: realUserId } });
+          return [own, user] as const;
         }),
       );
       const ownerLabel = self ? this.userLabel(self) : realUserId;

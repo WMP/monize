@@ -418,25 +418,31 @@ export class BudgetPeriodService {
       // live budget page for the same month (review #1131).
       const [parentActuals, splitActuals] = await withScopedDb(
         this.dataSource,
-        (m) =>
-          Promise.all([
-            outgoingParentTransfers(m.getRepository(Transaction), window)
-              .select(PARENT_TRANSFER_DESTINATION, "destinationAccountId")
-              .addSelect(
-                `COALESCE(ABS(SUM(${PARENT_TRANSFER_AMOUNT})), 0)`,
-                "total",
-              )
-              .groupBy(PARENT_TRANSFER_DESTINATION)
-              .getRawMany(),
-            outgoingSplitTransfers(m.getRepository(TransactionSplit), window)
-              .select(SPLIT_TRANSFER_DESTINATION, "destinationAccountId")
-              .addSelect(
-                `COALESCE(ABS(SUM(${SPLIT_TRANSFER_AMOUNT})), 0)`,
-                "total",
-              )
-              .groupBy(SPLIT_TRANSFER_DESTINATION)
-              .getRawMany(),
-          ]),
+        async (m) => {
+          const parents = await outgoingParentTransfers(
+            m.getRepository(Transaction),
+            window,
+          )
+            .select(PARENT_TRANSFER_DESTINATION, "destinationAccountId")
+            .addSelect(
+              `COALESCE(ABS(SUM(${PARENT_TRANSFER_AMOUNT})), 0)`,
+              "total",
+            )
+            .groupBy(PARENT_TRANSFER_DESTINATION)
+            .getRawMany();
+          const splits = await outgoingSplitTransfers(
+            m.getRepository(TransactionSplit),
+            window,
+          )
+            .select(SPLIT_TRANSFER_DESTINATION, "destinationAccountId")
+            .addSelect(
+              `COALESCE(ABS(SUM(${SPLIT_TRANSFER_AMOUNT})), 0)`,
+              "total",
+            )
+            .groupBy(SPLIT_TRANSFER_DESTINATION)
+            .getRawMany();
+          return [parents, splits] as const;
+        },
       );
 
       for (const row of [...parentActuals, ...splitActuals]) {

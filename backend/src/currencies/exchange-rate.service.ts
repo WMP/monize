@@ -1018,7 +1018,7 @@ export class ExchangeRateService implements OnModuleInit {
             where: { fromCurrency: f, toCurrency: t, ...bound },
             order: { rateDate: "DESC" },
           });
-        return Promise.all([newest(from, to), newest(to, from)]);
+        return [await newest(from, to), await newest(to, from)] as const;
       },
     );
 
