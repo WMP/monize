@@ -44,6 +44,42 @@ class FakeClient extends EventEmitter {
   }
 }
 
+/**
+ * A client whose statements stay in flight until the spec settles them, and
+ * which counts how many it was handed at once. A real `pg.Client` queues a
+ * statement issued while it is busy, and that queue is deprecated (pg@9 drops
+ * it), so the listener must never have two outstanding on one session.
+ */
+class HeldClient extends FakeClient {
+  inFlight = 0;
+  maxInFlight = 0;
+  private readonly pending: Array<{
+    resolve: (value: unknown) => void;
+    reject: (error: Error) => void;
+  }> = [];
+
+  query(sql: string, params?: unknown[]): Promise<unknown> {
+    this.queries.push(sql);
+    if (params) this.params.push(params);
+    this.inFlight += 1;
+    this.maxInFlight = Math.max(this.maxInFlight, this.inFlight);
+    return new Promise((resolve, reject) => {
+      this.pending.push({ resolve, reject });
+    }).finally(() => {
+      this.inFlight -= 1;
+    });
+  }
+
+  /** Settle the oldest outstanding statement, then let its waiter run. */
+  async settleNext(error?: Error): Promise<void> {
+    const next = this.pending.shift();
+    if (!next) throw new Error("no statement is in flight");
+    if (error) next.reject(error);
+    else next.resolve({ rows: [] });
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+}
+
 const asClient = (fake: FakeClient) => fake as unknown as Client;
 
 /** A client whose connect never succeeds. */
@@ -312,6 +348,56 @@ describe("PgListener", () => {
         PG_WAKEUP_CHANNEL,
         '{"channel":"relay:1"}',
       ]);
+      await listener.close();
+    });
+
+    it("issues one statement at a time on the session, in call order", async () => {
+      // A price refresh of several securities invalidates the portfolio memo
+      // once per security, each a fire-and-forget NOTIFY on this one session.
+      // Handed to pg together, they tripped its deprecated client-side queue.
+      const client = new HeldClient();
+      const { listener } = buildListener([client]);
+      await listener.connect();
+
+      const sent = ["a", "b", "c"].map((payload) =>
+        listener.notify(PG_WAKEUP_CHANNEL, payload),
+      );
+      const heard = listener.listen("other_channel");
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(client.inFlight).toBe(1);
+
+      for (let i = 0; i < 4; i += 1) {
+        await client.settleNext();
+      }
+      await Promise.all([...sent, heard]);
+
+      expect(client.maxInFlight).toBe(1);
+      expect(client.params).toEqual([
+        [PG_WAKEUP_CHANNEL, "a"],
+        [PG_WAKEUP_CHANNEL, "b"],
+        [PG_WAKEUP_CHANNEL, "c"],
+      ]);
+      expect(client.queries[client.queries.length - 1]).toBe(
+        "LISTEN other_channel",
+      );
+      await listener.close();
+    });
+
+    it("does not let one failed statement reject the next caller's", async () => {
+      const client = new HeldClient();
+      const { listener } = buildListener([client]);
+      await listener.connect();
+
+      const first = expect(
+        listener.notify(PG_WAKEUP_CHANNEL, "a"),
+      ).rejects.toThrow("payload rejected");
+      const second = listener.notify(PG_WAKEUP_CHANNEL, "b");
+      await new Promise((resolve) => setImmediate(resolve));
+      await client.settleNext(new Error("payload rejected"));
+      await client.settleNext();
+
+      await first;
+      await expect(second).resolves.toBeUndefined();
       await listener.close();
     });
 

@@ -234,6 +234,20 @@ export class PgListener {
    */
   private opening: Promise<void> | null = null;
 
+  /**
+   * The last statement queued on each session, so the next one waits for it.
+   *
+   * `pg` queues a statement issued while the client is busy, but that queue is
+   * deprecated and goes away in pg@9 ("Calling client.query() when the client
+   * is already executing a query"). This connection is shared by every caller in
+   * the process, and the callers do not wait for each other: one price refresh
+   * of several securities invalidates the portfolio memo once per security, and
+   * each invalidation is a fire-and-forget `NOTIFY` here. So the statements on a
+   * session are chained in issue order instead. Per client, so a statement left
+   * hanging on a lost session cannot hold up the one that replaced it.
+   */
+  private readonly statementTails = new WeakMap<Client, Promise<unknown>>();
+
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempt = 0;
   private closed = false;
@@ -309,7 +323,7 @@ export class PgListener {
       // returns. The caller's slow poll covers the gap.
       return;
     }
-    await client.query(`LISTEN ${channel}`);
+    await this.runOnSession(client, () => client.query(`LISTEN ${channel}`));
   }
 
   /**
@@ -329,7 +343,27 @@ export class PgListener {
           "sent notification as a delivered one.",
       );
     }
-    await client.query("SELECT pg_notify($1, $2)", [channel, payload]);
+    await this.runOnSession(client, () =>
+      client.query("SELECT pg_notify($1, $2)", [channel, payload]),
+    );
+  }
+
+  /**
+   * Run `statement` on `client` once every statement issued on it before has
+   * settled, whatever that statement's outcome: one failed `NOTIFY` must not
+   * reject the next caller's.
+   */
+  private runOnSession<T>(
+    client: Client,
+    statement: () => Promise<T>,
+  ): Promise<T> {
+    const tail = this.statementTails.get(client) ?? Promise.resolve();
+    const result = tail.then(statement);
+    this.statementTails.set(
+      client,
+      result.catch(() => undefined),
+    );
+    return result;
   }
 
   /**
