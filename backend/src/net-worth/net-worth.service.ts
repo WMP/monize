@@ -3122,10 +3122,10 @@ export class NetWorthService {
     stored: Map<string, PricePoint[]>;
     txFallback: Map<string, PricePoint[]>;
   }> {
-    const [stored, txFallback] = await Promise.all([
-      this.loadStoredPriceSeries(securityIds, start, end),
-      this.loadTxPriceSeries(securityIds, start, end),
-    ]);
+    // In turn, not together: on the recalculation path both loads join the
+    // caller's transaction, and so its one connection.
+    const stored = await this.loadStoredPriceSeries(securityIds, start, end);
+    const txFallback = await this.loadTxPriceSeries(securityIds, start, end);
     return { stored, txFallback };
   }
 

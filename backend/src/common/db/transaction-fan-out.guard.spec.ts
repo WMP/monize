@@ -17,13 +17,20 @@ import * as ts from "typescript";
  * Method: parse every non-spec source file and report a fan-out
  * (`Promise.all`, `Promise.allSettled`, `Promise.any`, `Promise.race`,
  * `mapWithConcurrency`) lexically inside a function that holds a transaction:
- * the callback handed to `withScopedDb`, or any function taking an
- * `EntityManager` or a `Repository<...>` parameter (a repository is always
- * obtained from a transaction's manager here). A
+ * the callback handed to `withScopedDb`; a callback handed to a local wrapper
+ * of it (a function in the same file that passes one of its own parameters
+ * into a `withScopedDb` call, such as the `scoped(entity, fn)` helpers); or any
+ * function taking an `EntityManager` or a `Repository<...>` parameter (a
+ * repository is always obtained from a transaction's manager here). A
  * `runOutsideActiveScopedManager(...)` call leaves the transaction, so its
- * argument is not scanned. Fan-out at the top of a request, where each branch
- * opens its own `withScopedDb`, is a different connection per branch and is
- * not flagged.
+ * argument is not scanned.
+ *
+ * The scan does not follow calls. A fan-out whose branches each call
+ * `withScopedDb` is not flagged, and gets a pooled connection per branch only
+ * while no transaction is open: called from inside one, every branch joins it
+ * and they share its connection again. So a method that fans out over its own
+ * `withScopedDb` calls must not be reachable from inside a transaction, and
+ * that half of the rule is the reviewer's to check.
  */
 
 const FAN_OUT_CALLS = new Set([
@@ -45,15 +52,89 @@ function isFunctionLike(node: ts.Node): node is ts.FunctionLikeDeclaration {
   );
 }
 
-function holdsTransaction(fn: ts.FunctionLikeDeclaration): boolean {
+function functionName(fn: ts.FunctionLikeDeclaration): string | null {
+  if (fn.name && ts.isIdentifier(fn.name)) return fn.name.text;
   const parent = fn.parent;
   if (
     parent &&
-    ts.isCallExpression(parent) &&
-    parent.expression.getText() === "withScopedDb" &&
-    parent.arguments[1] === fn
+    (ts.isVariableDeclaration(parent) || ts.isPropertyDeclaration(parent)) &&
+    ts.isIdentifier(parent.name)
   ) {
-    return true;
+    return parent.name.text;
+  }
+  return null;
+}
+
+/**
+ * Names of the functions in this file that run a callback parameter inside a
+ * `withScopedDb` transaction: the parameter is handed to `withScopedDb` as its
+ * callback, or called from within that callback.
+ */
+function findScopedWrappers(sourceFile: ts.SourceFile): Set<string> {
+  const wrappers = new Set<string>();
+  const visit = (node: ts.Node): void => {
+    if (isFunctionLike(node)) {
+      const name = functionName(node);
+      const params = new Set(
+        node.parameters
+          .map((p) => (ts.isIdentifier(p.name) ? p.name.text : null))
+          .filter((p): p is string => p !== null),
+      );
+      if (name && params.size > 0 && node.body) {
+        const runsParameter = (callback: ts.Node): boolean => {
+          if (ts.isIdentifier(callback) && params.has(callback.text)) {
+            return true;
+          }
+          let called = false;
+          const find = (n: ts.Node): void => {
+            if (
+              ts.isCallExpression(n) &&
+              ts.isIdentifier(n.expression) &&
+              params.has(n.expression.text)
+            ) {
+              called = true;
+            }
+            if (!called) ts.forEachChild(n, find);
+          };
+          find(callback);
+          return called;
+        };
+        const scan = (n: ts.Node): void => {
+          if (
+            ts.isCallExpression(n) &&
+            n.expression.getText() === "withScopedDb" &&
+            n.arguments[1] &&
+            runsParameter(n.arguments[1])
+          ) {
+            wrappers.add(name);
+          }
+          ts.forEachChild(n, scan);
+        };
+        scan(node.body);
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return wrappers;
+}
+
+function holdsTransaction(
+  fn: ts.FunctionLikeDeclaration,
+  wrappers: ReadonlySet<string>,
+): boolean {
+  const parent = fn.parent;
+  if (parent && ts.isCallExpression(parent)) {
+    const callee = parent.expression.getText().replace(/^this\./, "");
+    if (callee === "withScopedDb" && parent.arguments[1] === fn) {
+      return true;
+    }
+    if (
+      wrappers.has(callee) &&
+      parent.arguments.some((argument) => argument === fn)
+    ) {
+      return true;
+    }
   }
   return fn.parameters.some(
     (parameter) =>
@@ -72,6 +153,7 @@ export function findTransactionFanOuts(
     ts.ScriptTarget.Latest,
     true,
   );
+  const wrappers = findScopedWrappers(sourceFile);
   const found: Array<{ line: number; call: string }> = [];
   const visit = (node: ts.Node, inTransaction: boolean): void => {
     let inside = inTransaction;
@@ -87,7 +169,7 @@ export function findTransactionFanOuts(
         });
       }
     }
-    if (isFunctionLike(node) && holdsTransaction(node)) {
+    if (isFunctionLike(node) && holdsTransaction(node, wrappers)) {
       inside = true;
     }
     ts.forEachChild(node, (child) => visit(child, inside));
@@ -160,7 +242,31 @@ describe("no concurrent queries on one transaction", () => {
       ).toEqual(["mapWithConcurrency"]);
     });
 
+    it("flags a fan-out in a callback handed to a local withScopedDb wrapper", () => {
+      expect(
+        scan(`class S {
+                private scoped<T>(fn: (repo: any) => Promise<T>) {
+                  return withScopedDb(this.dataSource, (m) =>
+                    fn(m.getRepository(User)),
+                  );
+                }
+                run() {
+                  return this.scoped((repo) =>
+                    Promise.all([repo.count(), repo.count()]),
+                  );
+                }
+              }`),
+      ).toEqual(["Promise.all"]);
+      expect(
+        scan(`const inScope = (fn: (m: any) => Promise<unknown>) =>
+                withScopedDb(ds, fn);
+              inScope(async (m) => Promise.all([m.count(A), m.count(B)]));`),
+      ).toEqual(["Promise.all"]);
+    });
+
     it("leaves a fan-out whose branches each open their own transaction", () => {
+      // Only at the top of a request: the scan does not follow calls, so the
+      // same method reached from inside a transaction is not seen here.
       expect(
         scan(`const [a, b] = await Promise.all([
                 withScopedDb(ds, (m) => m.count(A)),

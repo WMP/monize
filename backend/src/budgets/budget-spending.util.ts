@@ -121,7 +121,7 @@ export async function queryCategorySpending(
   );
 
   if (categoryIds.length > 0) {
-    await transactionsRepository
+    const directRows = await transactionsRepository
       .createQueryBuilder("t")
       .select("t.category_id", "categoryId")
       .addSelect("COALESCE(SUM(t.amount), 0)", "total")
@@ -132,14 +132,12 @@ export async function queryCategorySpending(
       .andWhere("t.status != :void", { void: "VOID" })
       .andWhere("t.is_split = false")
       .groupBy("t.category_id")
-      .getRawMany()
-      .then((rows) => {
-        for (const row of rows) {
-          spendingMap.set(row.categoryId, parseFloat(row.total || "0"));
-        }
-      });
+      .getRawMany();
+    for (const row of directRows) {
+      spendingMap.set(row.categoryId, parseFloat(row.total || "0"));
+    }
 
-    await splitsRepository
+    const splitRows = await splitsRepository
       .createQueryBuilder("s")
       .innerJoin("s.transaction", "t")
       .select("s.category_id", "categoryId")
@@ -150,16 +148,11 @@ export async function queryCategorySpending(
       .andWhere("t.transaction_date <= :periodEnd", { periodEnd })
       .andWhere("t.status != :void", { void: "VOID" })
       .groupBy("s.category_id")
-      .getRawMany()
-      .then((rows) => {
-        for (const row of rows) {
-          const existing = spendingMap.get(row.categoryId) || 0;
-          spendingMap.set(
-            row.categoryId,
-            existing + parseFloat(row.total || "0"),
-          );
-        }
-      });
+      .getRawMany();
+    for (const row of splitRows) {
+      const existing = spendingMap.get(row.categoryId) || 0;
+      spendingMap.set(row.categoryId, existing + parseFloat(row.total || "0"));
+    }
   }
 
   if (transferBudgetCategories.length > 0) {
@@ -183,19 +176,20 @@ export async function queryCategorySpending(
       }
     };
 
-    await outgoingParentTransfers(transactionsRepository, window)
-      .select(PARENT_TRANSFER_DESTINATION, "destinationAccountId")
-      .addSelect(`COALESCE(ABS(SUM(${PARENT_TRANSFER_AMOUNT})), 0)`, "total")
-      .groupBy(PARENT_TRANSFER_DESTINATION)
-      .getRawMany()
-      .then(collect);
-
-    await outgoingSplitTransfers(splitsRepository, window)
-      .select(SPLIT_TRANSFER_DESTINATION, "destinationAccountId")
-      .addSelect(`COALESCE(ABS(SUM(${SPLIT_TRANSFER_AMOUNT})), 0)`, "total")
-      .groupBy(SPLIT_TRANSFER_DESTINATION)
-      .getRawMany()
-      .then(collect);
+    collect(
+      await outgoingParentTransfers(transactionsRepository, window)
+        .select(PARENT_TRANSFER_DESTINATION, "destinationAccountId")
+        .addSelect(`COALESCE(ABS(SUM(${PARENT_TRANSFER_AMOUNT})), 0)`, "total")
+        .groupBy(PARENT_TRANSFER_DESTINATION)
+        .getRawMany(),
+    );
+    collect(
+      await outgoingSplitTransfers(splitsRepository, window)
+        .select(SPLIT_TRANSFER_DESTINATION, "destinationAccountId")
+        .addSelect(`COALESCE(ABS(SUM(${SPLIT_TRANSFER_AMOUNT})), 0)`, "total")
+        .groupBy(SPLIT_TRANSFER_DESTINATION)
+        .getRawMany(),
+    );
   }
 
   return { spendingMap, transferSpendingMap };
