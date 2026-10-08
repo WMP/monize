@@ -36,7 +36,7 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 | B2 | #1592 | Loan core extraction into `backend/src/loan-installments/`; `advanceScheduleCursor` shared with `post()` | S1 | neutral | [x] | the PR closing #1592 |
 | B3 | #1593 | Settlement types, occurrence slots, facts loader, `datedLoanDebts`, pure planner | B1, B2 | none | [x] | the PR closing #1593 |
 | B4 | #1594 | The action in the rules engine: types, validation, references, planner, lookup rounds, skip reasons | B3 | inert | [x] | the PR closing #1594 |
-| B5 | #1595 | Write path: claim, cursor, trace, fingerprint, snapshot, undo, after-commit reprice; `post()` records its transaction | B4 | inert | [ ] | -- |
+| B5 | #1595 | Write path: claim, cursor, trace, fingerprint, snapshot, undo, after-commit reprice; `post()` records its transaction | B4 | inert | [x] | the PR closing #1595 |
 | B6 | #1596 | Chronological fold, ascending run order, import ordering, bank-sync affected accounts | B5 | neutral | [ ] | -- |
 | F1 | #1597 | Frontend action card, types, run preview, skip reasons, en + pseudo | B5 | inert | [ ] | -- |
 | B7 | #1598 | Mortgage and setup backend: payment matching, rule creation, auto-post off, original principal, endpoints | B5 | inert | [ ] | -- |
