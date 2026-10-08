@@ -2488,6 +2488,7 @@ describe("ScheduledTransactionsService", () => {
           amount: -1200,
           currencyCode: "USD",
         }),
+        { fromScheduledPosting: true },
       );
     });
 
@@ -2503,7 +2504,7 @@ describe("ScheduledTransactionsService", () => {
       expect(transactionsService.create).toHaveBeenCalledWith(
         userId,
         expect.objectContaining({ accountId: "acc-1" }),
-        { actorIsNotOwner: true },
+        { fromScheduledPosting: true, actorIsNotOwner: true },
       );
     });
 
@@ -2935,6 +2936,7 @@ describe("ScheduledTransactionsService", () => {
       expect(transactionsService.create).toHaveBeenCalledWith(
         userId,
         expect.objectContaining({ amount: -500, description: "inline desc" }),
+        { fromScheduledPosting: true },
       );
     });
 
@@ -2962,6 +2964,7 @@ describe("ScheduledTransactionsService", () => {
       expect(transactionsService.create).toHaveBeenCalledWith(
         userId,
         expect.objectContaining({ amount: -999, description: "override desc" }),
+        { fromScheduledPosting: true },
       );
     });
 
@@ -3029,6 +3032,7 @@ describe("ScheduledTransactionsService", () => {
       expect(transactionsService.create).toHaveBeenCalledWith(
         userId,
         expect.objectContaining({ accountId: "acc-1", amount: -1200 }),
+        { fromScheduledPosting: true },
       );
     });
 
@@ -3106,6 +3110,78 @@ describe("ScheduledTransactionsService", () => {
 
       expect(transactionsService.create).not.toHaveBeenCalled();
       expect(scheduledRepo.update).not.toHaveBeenCalled();
+    });
+
+    describe("the claim names the transaction that paid it (docs/specs/loan-installment-settlement.md 5.2)", () => {
+      const recordings = () =>
+        mockQueryRunner.manager.query.mock.calls.filter((c: unknown[]) =>
+          String(c[0]).includes("SET transaction_id"),
+        );
+
+      it("writes transaction_id on its own claim once the create has returned the id, in the posting transaction", async () => {
+        stubFindOne(makeScheduled({ nextDueDate: "2026-02-01" }));
+        const overrideQb = mockQueryBuilder(null);
+        overrideQb.getOne.mockResolvedValue(null);
+        overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
+
+        await service.post(userId, stId);
+
+        const [recorded] = recordings();
+        expect(recorded).toBeDefined();
+        expect(String(recorded[0])).toContain(
+          "UPDATE scheduled_transaction_postings",
+        );
+        // The created row, on the claim the INSERT returned.
+        expect(recorded[1]).toEqual(["tx-1", "posting-1"]);
+        expect(
+          mockQueryRunner.manager.query.mock.invocationCallOrder[
+            mockQueryRunner.manager.query.mock.calls.indexOf(recorded)
+          ],
+        ).toBeGreaterThan(
+          transactionsService.create.mock.invocationCallOrder[0],
+        );
+        // The row the create wrote is the one post() claimed for: its rules
+        // refuse to settle it against the same occurrence.
+        expect(transactionsService.create.mock.calls[0][2]).toEqual({
+          fromScheduledPosting: true,
+        });
+      });
+
+      it("records the source leg of a transfer post", async () => {
+        stubFindOne(
+          makeScheduled({ isTransfer: true, transferAccountId: "acc-2" }),
+        );
+        const overrideQb = mockQueryBuilder(null);
+        overrideQb.getOne.mockResolvedValue(null);
+        overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
+        accountsRepo.findOne.mockResolvedValue(null);
+
+        await service.post(userId, stId);
+
+        expect(recordings().map((c: unknown[]) => c[1])).toEqual([
+          ["tx-1", "posting-1"],
+        ]);
+      });
+
+      it("records nothing for an investment post", async () => {
+        stubFindOne(
+          makeScheduled({
+            isInvestment: true,
+            investmentAction: "BUY" as any,
+            investmentSecurityId: "sec-1",
+            investmentQuantity: 1,
+            investmentPrice: 100,
+          }),
+        );
+        const overrideQb = mockQueryBuilder(null);
+        overrideQb.getOne.mockResolvedValue(null);
+        overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
+
+        await service.post(userId, stId);
+
+        expect(investmentTransactionsService.create).toHaveBeenCalledTimes(1);
+        expect(recordings()).toEqual([]);
+      });
     });
 
     it("refuses when the schedule has already been advanced past this occurrence", async () => {
@@ -3258,6 +3334,7 @@ describe("ScheduledTransactionsService", () => {
       expect(transactionsService.create).toHaveBeenCalledWith(
         userId,
         expect.objectContaining({ transactionDate: "2025-03-01" }),
+        { fromScheduledPosting: true },
       );
     });
 
@@ -3341,6 +3418,7 @@ describe("ScheduledTransactionsService", () => {
       expect(transactionsService.create).toHaveBeenCalledWith(
         userId,
         expect.objectContaining({ referenceNumber: "CHQ-1234" }),
+        { fromScheduledPosting: true },
       );
     });
 
@@ -3778,6 +3856,7 @@ describe("ScheduledTransactionsService", () => {
       expect(transactionsService.create).toHaveBeenCalledWith(
         userId,
         expect.objectContaining({ transactionDate: "2025-03-15" }),
+        { fromScheduledPosting: true },
       );
     });
 
@@ -4712,6 +4791,7 @@ describe("ScheduledTransactionsService", () => {
           originalCurrencyCode: "USD",
           exchangeRate: 1.4,
         }),
+        { fromScheduledPosting: true },
       );
     });
 
@@ -4738,6 +4818,7 @@ describe("ScheduledTransactionsService", () => {
       expect(transactionsService.create).toHaveBeenCalledWith(
         userId,
         expect.objectContaining({ amount: -57.4 }),
+        { fromScheduledPosting: true },
       );
     });
 
@@ -4802,6 +4883,7 @@ describe("ScheduledTransactionsService", () => {
           originalAmount: -40,
           exchangeRate: 1.5,
         }),
+        { fromScheduledPosting: true },
       );
     });
 
@@ -5533,6 +5615,7 @@ describe("ScheduledTransactionsService", () => {
         expect.objectContaining({
           transactionDate: "2025-03-12",
         }),
+        { fromScheduledPosting: true },
       );
     });
   });
