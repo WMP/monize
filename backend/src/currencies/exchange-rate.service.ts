@@ -19,7 +19,7 @@ import { Currency } from "./entities/currency.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { YahooFinanceService } from "../securities/yahoo-finance.service";
 import { mapWithConcurrency } from "../common/concurrency.util";
-import { resolveFxRateOrNull } from "../common/fx-entry.util";
+import { resolveFxRateOrNull, roundFxRate } from "../common/fx-entry.util";
 import { roundMoney } from "../common/round.util";
 import { addDaysYMD, todayYMD } from "../common/date-utils";
 import { withScopedDb } from "../common/db/scoped-db";
@@ -47,6 +47,13 @@ import {
   isCanonicalOrientation,
 } from "./canonical-rate.util";
 import { isSparseRateSeries } from "./rate-gap-plan";
+import {
+  FxQuote,
+  FxQuoteChoice,
+  FxQuoteObservation,
+  chooseFxQuote,
+  quoteNeedsInverse,
+} from "./quoted-rate.util";
 
 // Cap concurrent Yahoo FX fetches so the daily refresh does not burst every
 // currency pair at once (this cron also runs alongside the security price
@@ -274,6 +281,39 @@ export class ExchangeRateService implements OnModuleInit {
     const symbol = `${from}${to}=X`;
     const quote = await this.yahooFinanceService.fetchQuote(symbol);
     return quote?.regularMarketPrice ?? null;
+  }
+
+  /**
+   * The latest quote for a pair, from whichever of its two symbols carries the
+   * rate with its digits intact (`quoted-rate.util.ts`).
+   *
+   * The provider rounds a latest quote to four decimals, so the side of a pair
+   * below 1 is the imprecise one, and is not stored without asking the inverse
+   * symbol too. A pair whose direct quote is 1 or more costs one call; any
+   * other costs two.
+   */
+  private async fetchFxQuote(from: string, to: string): Promise<FxQuoteChoice> {
+    const direct: FxQuote = {
+      from,
+      to,
+      rate: await this.fetchYahooRate(from, to),
+    };
+    const reverse: FxQuote | null = quoteNeedsInverse(direct.rate)
+      ? { from: to, to: from, rate: await this.fetchYahooRate(to, from) }
+      : null;
+    return chooseFxQuote(direct, reverse);
+  }
+
+  /**
+   * A chosen quote as the `from -> to` rate that was asked about. A quote the
+   * inverse symbol answered is reciprocated here; a pair neither symbol
+   * answered never reaches this, because `fetchFxQuote` returns a null
+   * observation for it and the caller reports the pair as unknown.
+   */
+  private rateAsAsked(from: string, observation: FxQuoteObservation): number {
+    if (observation.from === from) return observation.rate;
+    const reverse = observation.rate;
+    return roundFxRate(1 / reverse);
   }
 
   /**
@@ -545,21 +585,37 @@ export class ExchangeRateService implements OnModuleInit {
       FX_FETCH_CONCURRENCY,
       async ({ from, to }) => {
         const pairLabel = `${from}/${to}`;
-        const rate = await this.fetchYahooRate(from, to);
+        const quote = await this.fetchFxQuote(from, to);
 
-        if (rate === null) {
-          results.push({
-            pair: pairLabel,
-            success: false,
-            error: "No rate data available",
-          });
+        if (quote.observation === null) {
+          // Nothing is stored for today, so a reader resolves the pair from
+          // the last admissible day or reports it missing -- never at a quote
+          // the provider rounded to a fraction of its digits.
+          const error =
+            quote.reason === "imprecise"
+              ? `Provider quotes for ${pairLabel} are rounded too coarsely to use in either direction`
+              : "No rate data available";
+          if (quote.reason === "imprecise") this.logger.warn(error);
+          results.push({ pair: pairLabel, success: false, error });
           failed++;
           return;
         }
 
         try {
-          await this.saveRate(from, to, rate, today);
-          results.push({ pair: pairLabel, success: true, rate });
+          const { observation } = quote;
+          // Saved in the orientation the provider quoted; `saveRate` stores
+          // it in the pair's one canonical orientation either way.
+          await this.saveRate(
+            observation.from,
+            observation.to,
+            observation.rate,
+            today,
+          );
+          results.push({
+            pair: pairLabel,
+            success: true,
+            rate: this.rateAsAsked(from, observation),
+          });
           updated++;
         } catch (error) {
           results.push({
@@ -1362,9 +1418,11 @@ export class ExchangeRateService implements OnModuleInit {
 
   /**
    * Get the current spot rate for a currency pair, fetched live from the quote
-   * provider. Tries the direct pair, then the reverse pair (inverted), then the
-   * stored history when the live fetch is unavailable (rate limited,
-   * unsupported pair, offline).
+   * provider. Tries the direct pair, then the reverse pair (inverted) when the
+   * direct one failed or quoted below 1 and so lost digits to the provider's
+   * rounding (`fetchFxQuote`), then the stored history when the live fetch is
+   * unavailable (rate limited, unsupported pair, offline, or quoted too
+   * coarsely either way).
    *
    * The stored fallback is `resolveStoredRate` in `live` mode, not an
    * unbounded newest-row read: a rate quoted as "right now" is still a price,
@@ -1382,10 +1440,12 @@ export class ExchangeRateService implements OnModuleInit {
   async getLiveRate(from: string, to: string): Promise<number | null> {
     if (from === to) return 1;
     try {
-      const direct = await this.fetchYahooRate(from, to);
-      if (direct !== null && direct > 0) return direct;
-      const reverse = await this.fetchYahooRate(to, from);
-      if (reverse !== null && reverse > 0) return 1 / reverse;
+      // Either symbol, whichever carries the rate's digits; neither falls
+      // through to the stored rate and then to null.
+      const quote = await this.fetchFxQuote(from, to);
+      if (quote.observation !== null) {
+        return this.rateAsAsked(from, quote.observation);
+      }
     } catch (error) {
       this.logger.warn(
         `Live FX fetch ${from}->${to} failed, falling back to stored rate: ${

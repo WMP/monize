@@ -115,13 +115,6 @@ export const RESTORE_PLAN: ReadonlyArray<RestoreStep> = [
     scopeToUser: false,
   },
   {
-    // After `scheduled_transactions`, which it references. No user_id column of
-    // its own -- ownership comes through the schedule, like the two above.
-    table: "scheduled_transaction_postings",
-    countKey: "scheduledTransactionPostings",
-    scopeToUser: false,
-  },
-  {
     table: "scheduled_transaction_split_tags",
     countKey: "scheduledTransactionSplitTags",
     scopeToUser: false,
@@ -136,6 +129,15 @@ export const RESTORE_PLAN: ReadonlyArray<RestoreStep> = [
   { table: "holdings", countKey: "holdings", scopeToUser: false },
   { table: "security_tags", countKey: "securityTags", scopeToUser: false },
   { table: "transactions", countKey: "transactions", scopeToUser: true },
+  {
+    // After `transactions`, the latest of the three tables it references
+    // (`scheduled_transactions`, `transaction_rules`, and the transaction that
+    // paid the occurrence). No user_id column of its own -- ownership comes
+    // through the schedule, like the scheduled tables above.
+    table: "scheduled_transaction_postings",
+    countKey: "scheduledTransactionPostings",
+    scopeToUser: false,
+  },
   {
     table: "transaction_splits",
     countKey: "transactionSplits",
@@ -287,6 +289,27 @@ export const RESTORABLE_TABLES: ReadonlySet<string> = new Set(
 );
 
 /**
+ * The conflict arbiter `insertRows` names for a table that carries a
+ * `DEFERRABLE` unique constraint, as a column list.
+ *
+ * Why: the generic insert is `ON CONFLICT DO NOTHING`, and PostgreSQL refuses
+ * that statement outright on a table with a deferrable unique constraint ("ON
+ * CONFLICT does not support deferrable unique constraints/exclusion
+ * constraints as arbiters"), so a backup carrying even one row of such a table
+ * aborted the whole restore. Naming the primary key keeps the skip-on-duplicate
+ * behaviour for the row's identity and leaves the deferred constraint to be
+ * checked at commit, as it is for every other write. `restore-plan.spec.ts`
+ * fails a restored table with a deferrable constraint that has no entry here.
+ */
+export const CONFLICT_ARBITER_COLUMNS: Readonly<
+  Record<string, readonly string[]>
+> = {
+  // uq_transaction_rules_user_position is DEFERRABLE INITIALLY DEFERRED so a
+  // reorder can swap positions inside one transaction.
+  transaction_rules: ["id"],
+};
+
+/**
  * Columns stripped on insert because they reference a row that does not exist
  * yet -- a forward reference to a later table, or a reference into the row's
  * own table. Every entry here must be repaired by `DEFERRED_FK_REPAIRS`.
@@ -306,6 +329,8 @@ export const DEFERRED_FK_COLUMNS: Readonly<Record<string, readonly string[]>> =
       "principal_category_id",
       "interest_category_id",
       "asset_category_id",
+      // Forward: transaction_rules restores after accounts.
+      "payment_matching_rule_id",
       // Deferred so that legacy backups (taken before institutions were
       // included in the export) restore without violating fk_accounts_institution.
       // Phase 3 only re-applies it when the referenced institution exists.
@@ -367,6 +392,7 @@ export const DEFERRED_FK_REPAIRS: ReadonlyArray<DeferredFkRepair> = [
   { table: "accounts", column: "principal_category_id" },
   { table: "accounts", column: "interest_category_id" },
   { table: "accounts", column: "asset_category_id" },
+  { table: "accounts", column: "payment_matching_rule_id" },
   { table: "transactions", column: "linked_transaction_id" },
   { table: "transactions", column: "parent_transaction_id" },
   { table: "transaction_attachments", column: "original_of_attachment_id" },

@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import {
+  CONFLICT_ARBITER_COLUMNS,
   DEFERRED_FK_COLUMNS,
   DEFERRED_FK_REPAIRS,
   PRESERVED_ON_RESTORE,
@@ -266,6 +267,40 @@ describe("restore plan", () => {
         cleared.has(table),
       );
       expect(contradicted).toEqual([]);
+    });
+  });
+
+  describe("conflict arbiters", () => {
+    // PostgreSQL refuses a bare `ON CONFLICT DO NOTHING` on a table with a
+    // DEFERRABLE unique constraint, so such a table needs a named arbiter or
+    // every backup carrying one of its rows fails to restore.
+    const deferrableTables = (): Set<string> => {
+      const tables = new Set<string>();
+      for (const [, table, body] of readSchema().matchAll(
+        /CREATE TABLE(?: IF NOT EXISTS)?\s+(\w+)\s*\(([\s\S]*?)\n\);/g,
+      )) {
+        if (/\bDEFERRABLE\b/i.test(body)) tables.add(table);
+      }
+      return tables;
+    };
+
+    it("finds the deferrable constraint the parser is checked against", () => {
+      expect(deferrableTables().has("transaction_rules")).toBe(true);
+    });
+
+    it("names an arbiter for every restored table with a deferrable constraint", () => {
+      const missing = [...deferrableTables()].filter(
+        (table) =>
+          RESTORABLE_TABLES.has(table) && !CONFLICT_ARBITER_COLUMNS[table],
+      );
+      expect(missing).toEqual([]);
+    });
+
+    it("declares arbiters only for restored tables", () => {
+      const stray = Object.keys(CONFLICT_ARBITER_COLUMNS).filter(
+        (table) => !RESTORABLE_TABLES.has(table),
+      );
+      expect(stray).toEqual([]);
     });
   });
 });

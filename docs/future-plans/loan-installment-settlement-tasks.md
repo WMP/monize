@@ -32,7 +32,7 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 | ID | Issue | Task | Depends on | Deploy class | Status | PR |
 |----|-------|------|-----------|--------------|--------|----|
 | S1 | #1590 | Spec in `docs/specs/` and plan pair in `docs/future-plans/`; INV-LOAN-008 and INV-RULE-005 registered `unenforced` | -- | none | [x] | the PR closing #1590 |
-| B1 | #1591 | Migration: claim columns on `scheduled_transaction_postings`, `accounts.payment_matching_rule_id`; entities, backup, restore, action history | S1 | inert | [ ] | -- |
+| B1 | #1591 | Migration: claim columns on `scheduled_transaction_postings`, `accounts.payment_matching_rule_id`; entities, backup, restore, action history | S1 | inert | [x] | the PR closing #1591 |
 | B2 | #1592 | Loan core extraction into `backend/src/loan-installments/`; `advanceScheduleCursor` shared with `post()` | S1 | neutral | [ ] | -- |
 | B3 | #1593 | Settlement types, occurrence slots, facts loader, `datedLoanDebts`, pure planner | B1, B2 | none | [ ] | -- |
 | B4 | #1594 | The action in the rules engine: types, validation, references, planner, lookup rounds, skip reasons | B3 | inert | [ ] | -- |

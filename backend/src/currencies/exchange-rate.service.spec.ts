@@ -132,6 +132,17 @@ describe("ExchangeRateService", () => {
     );
   }
 
+  /**
+   * Answer `fetchQuote` per symbol, the way the provider does: a symbol absent
+   * from `prices` returns null, as `YahooFinanceService.fetchQuote` does for a
+   * failed or unknown quote.
+   */
+  function quoteBySymbol(prices: Record<string, number>): void {
+    yahooFinanceService.fetchQuote.mockImplementation(async (symbol: string) =>
+      symbol in prices ? { regularMarketPrice: prices[symbol] } : null,
+    );
+  }
+
   beforeEach(async () => {
     // The single-rate save is now one `INSERT ... ON CONFLICT DO UPDATE
     // RETURNING id` through the manager, so the spec records the statement and
@@ -410,11 +421,11 @@ describe("ExchangeRateService", () => {
     it("stores a fetch that is already canonical as it stands", async () => {
       // CAD sorts before USD, so a CAD->USD quote needs no inversion and the
       // stored rate is the fetched number itself.
+      // The inverse is asked too, because a quote below 1 is the side of the
+      // pair the provider's rounding costs digits; here it does not answer.
       routeRateQueries(["CAD", "USD"]);
 
-      yahooFinanceService.fetchQuote.mockResolvedValue({
-        regularMarketPrice: 0.72,
-      });
+      quoteBySymbol({ "CADUSD=X": 0.72 });
 
       await service.refreshAllRates();
 
@@ -426,6 +437,116 @@ describe("ExchangeRateService", () => {
           source: "yahoo_finance",
         },
       ]);
+    });
+
+    describe("a latest quote rounded to four decimals (issue #1604)", () => {
+      // Yahoo rounds `regularMarketPrice` to four decimals for every currency
+      // pair. IDR/SGD closes at 0.00007156 and is quoted 0.0001 -- a 200 with a
+      // figure 40% high, which the refresh used to store. SGD/IDR keeps the
+      // digits.
+      it("stores the inverse quote when the direct one has lost its digits", async () => {
+        routeRateQueries(["IDR", "SGD"]);
+        quoteBySymbol({ "IDRSGD=X": 0.0001, "SGDIDR=X": 13973.23 });
+
+        const result = await service.refreshAllRates();
+
+        expect(result.updated).toBe(1);
+        expect(yahooFinanceService.fetchQuote).toHaveBeenNthCalledWith(
+          1,
+          "IDRSGD=X",
+        );
+        expect(yahooFinanceService.fetchQuote).toHaveBeenNthCalledWith(
+          2,
+          "SGDIDR=X",
+        );
+        // One canonical row (IDR sorts first), at the inverse's precision.
+        expect(upsertedRates).toEqual([
+          {
+            fromCurrency: "IDR",
+            toCurrency: "SGD",
+            rate: roundFxRate(1 / 13973.23),
+            source: "yahoo_finance",
+          },
+        ]);
+        expect(upsertedRates[0].rate).not.toBe(0.0001);
+        expect(result.results[0]).toEqual({
+          pair: "IDR/SGD",
+          success: true,
+          rate: roundFxRate(1 / 13973.23),
+        });
+      });
+
+      it("refuses a pair quoted too coarsely in both directions", async () => {
+        // The same placeholder-sized figure both ways cannot be a rate and its
+        // reciprocal; nothing is stored, and the pair is reported by name.
+        routeRateQueries(["IDR", "SGD"]);
+        quoteBySymbol({ "IDRSGD=X": 0.01, "SGDIDR=X": 0.01 });
+
+        const result = await service.refreshAllRates();
+
+        expect(result.updated).toBe(0);
+        expect(result.failed).toBe(1);
+        expect(upsertedRates).toEqual([]);
+        expect(result.results[0]).toMatchObject({
+          pair: "IDR/SGD",
+          success: false,
+        });
+        expect(result.results[0].error).toContain("IDR/SGD");
+        expect(result.results[0].error).toContain("too coarsely");
+      });
+
+      it("refuses a coarse quote whose inverse did not answer", async () => {
+        routeRateQueries(["VND", "SGD"]);
+        quoteBySymbol({ "VNDSGD=X": 0.0001 });
+
+        const result = await service.refreshAllRates();
+
+        expect(result.failed).toBe(1);
+        expect(upsertedRates).toEqual([]);
+      });
+
+      it("asks the inverse when the direct quote is zero", async () => {
+        // VND/SGD is quoted 0.0 outright.
+        routeRateQueries(["VND", "SGD"]);
+        quoteBySymbol({ "VNDSGD=X": 0, "SGDVND=X": 20278.5 });
+
+        const result = await service.refreshAllRates();
+
+        expect(result.updated).toBe(1);
+        expect(upsertedRates).toEqual([
+          {
+            fromCurrency: "SGD",
+            toCurrency: "VND",
+            rate: 20278.5,
+            source: "yahoo_finance",
+          },
+        ]);
+      });
+
+      it("asks the inverse when the direct quote failed", async () => {
+        routeRateQueries(["USD", "CAD"]);
+        quoteBySymbol({ "CADUSD=X": 0.7143 });
+
+        const result = await service.refreshAllRates();
+
+        expect(result.updated).toBe(1);
+        expect(upsertedRates[0]).toMatchObject({
+          fromCurrency: "CAD",
+          toCurrency: "USD",
+          rate: 0.7143,
+        });
+        expect(result.results[0].rate).toBe(roundFxRate(1 / 0.7143));
+      });
+
+      it("takes a quote of 1 or more without asking the inverse", async () => {
+        routeRateQueries(["USD", "CAD"]);
+        quoteBySymbol({ "USDCAD=X": 1.4, "CADUSD=X": 0.7143 });
+
+        await service.refreshAllRates();
+
+        expect(yahooFinanceService.fetchQuote).toHaveBeenCalledTimes(1);
+        expect(yahooFinanceService.fetchQuote).toHaveBeenCalledWith("USDCAD=X");
+      });
     });
 
     it("handles a rate write failure gracefully", async () => {
@@ -1693,6 +1814,28 @@ describe("ExchangeRateService", () => {
         "CADUSD=X",
       );
       expect(exchangeRateRepository.findOne).not.toHaveBeenCalled();
+    });
+
+    it("prefers the inverse live quote when the direct one is rounded below 1", async () => {
+      // JPYUSD=X is quoted 0.0063 against a close of 0.006336: half a percent
+      // off on every yen holding. USDJPY=X carries the digits.
+      quoteBySymbol({ "JPYUSD=X": 0.0063, "USDJPY=X": 157.93 });
+
+      const result = await service.getLiveRate("JPY", "USD");
+
+      expect(result).toBe(roundFxRate(1 / 157.93));
+      expect(exchangeRateRepository.find).not.toHaveBeenCalled();
+    });
+
+    it("falls back to the stored rate when the only live quote is too coarse", async () => {
+      quoteBySymbol({ "JPYUSD=X": 0.0063 });
+      exchangeRateRepository.find.mockResolvedValue([
+        storedRow("JPY", "USD", 0.006336, "2026-08-15"),
+      ]);
+
+      const result = await service.getLiveRate("JPY", "USD");
+
+      expect(result).toBe(0.006336);
     });
 
     it("falls back to a recent stored rate when no live quote is available", async () => {

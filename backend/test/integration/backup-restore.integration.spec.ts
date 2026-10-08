@@ -968,6 +968,111 @@ describe("Backup export/restore round-trip (integration)", () => {
     ]);
   });
 
+  it("round-trips a rule's settlement claim with its references remapped", async () => {
+    // docs/specs/loan-installment-settlement.md section 5.2: a `rule` claim names
+    // the transaction it settled and the rule that settled it, and the loan
+    // names its payment-matching rule (5.4). All three are references into the
+    // file, so a restore must point them at the rows it inserted, never at the
+    // exporting user's.
+    const userA = await createTestUserDirect(dataSource, {
+      email: "claim-a@example.com",
+    });
+    const userB = await createTestUserDirect(dataSource, {
+      email: "claim-b@example.com",
+    });
+    const ids = await seedUserData(userA.id);
+
+    const ruleId = randomUUID();
+    const scheduleId = randomUUID();
+    await dataSource.query(
+      `INSERT INTO transaction_rules (id, user_id, name, position)
+       VALUES ($1, $2, 'Settle the mortgage', 0)`,
+      [ruleId, userA.id],
+    );
+    await dataSource.query(
+      `UPDATE accounts SET payment_matching_rule_id = $1 WHERE id = $2`,
+      [ruleId, ids.accountId],
+    );
+    await dataSource.query(
+      `INSERT INTO scheduled_transactions (id, user_id, account_id, name, amount,
+         currency_code, frequency, next_due_date, start_date)
+       VALUES ($1, $2, $3, 'Mortgage', -50, 'USD', 'MONTHLY',
+               '2026-02-15', '2026-01-15')`,
+      [scheduleId, userA.id, ids.accountId],
+    );
+    const pricing = { version: 1, dueDate: "2026-01-15", paid: "50.00" };
+    await dataSource.query(
+      `INSERT INTO scheduled_transaction_postings
+         (scheduled_transaction_id, original_due_date, posted_date,
+          transaction_id, source, rule_id, pricing)
+       VALUES ($1, '2026-01-15', '2026-01-15', $2, 'rule', $3, $4)`,
+      [scheduleId, ids.expenseTxId, ruleId, JSON.stringify(pricing)],
+    );
+
+    const { buffer: backup } = await withUserContext(userA.id, () =>
+      service.exportToBuffer(userA.id),
+    );
+    await withUserContext(userB.id, () =>
+      service.restoreData(userB.id, {
+        compressedData: backup,
+        password: PASSWORD,
+      }),
+    );
+
+    const claims: Array<{
+      source: string;
+      transaction_id: string;
+      transaction_user: string;
+      description: string;
+      rule_id: string;
+      rule_user: string;
+      rule_name: string;
+      pricing: unknown;
+    }> = await dataSource.query(
+      `SELECT stp.source, stp.transaction_id, t.user_id AS transaction_user,
+              t.description, stp.rule_id, r.user_id AS rule_user,
+              r.name AS rule_name, stp.pricing
+         FROM scheduled_transaction_postings stp
+         JOIN scheduled_transactions st ON st.id = stp.scheduled_transaction_id
+         LEFT JOIN transactions t ON t.id = stp.transaction_id
+         LEFT JOIN transaction_rules r ON r.id = stp.rule_id
+        WHERE st.user_id = $1`,
+      [userB.id],
+    );
+    expect(claims).toHaveLength(1);
+    const [claim] = claims;
+    expect(claim).toMatchObject({
+      source: "rule",
+      transaction_user: userB.id,
+      description: "Weekly shop",
+      rule_user: userB.id,
+      rule_name: "Settle the mortgage",
+      pricing,
+    });
+    expect(claim.transaction_id).not.toBe(ids.expenseTxId);
+    expect(claim.rule_id).not.toBe(ruleId);
+
+    const [loan]: Array<{ payment_matching_rule_id: string }> =
+      await dataSource.query(
+        `SELECT payment_matching_rule_id FROM accounts
+          WHERE user_id = $1 AND name = 'Checking'`,
+        [userB.id],
+      );
+    expect(loan.payment_matching_rule_id).toBe(claim.rule_id);
+
+    // The exporting user's rows are untouched.
+    const [original]: Array<{ transaction_id: string; rule_id: string }> =
+      await dataSource.query(
+        `SELECT transaction_id, rule_id FROM scheduled_transaction_postings
+          WHERE scheduled_transaction_id = $1`,
+        [scheduleId],
+      );
+    expect(original).toEqual({
+      transaction_id: ids.expenseTxId,
+      rule_id: ruleId,
+    });
+  });
+
   it("rejects a restore when the confirmation password is invalid", async () => {
     const userA = await createTestUserDirect(dataSource, {
       email: "auth-a@example.com",

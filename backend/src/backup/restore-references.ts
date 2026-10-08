@@ -56,6 +56,7 @@ export const RESTORE_REFERENCE_COLUMNS: Readonly<
     scheduled_transaction_id: "scheduled_transactions",
     asset_category_id: "categories",
     linked_loan_account_id: "accounts",
+    payment_matching_rule_id: "transaction_rules",
   },
   scheduled_transactions: {
     account_id: "accounts",
@@ -77,6 +78,8 @@ export const RESTORE_REFERENCE_COLUMNS: Readonly<
   },
   scheduled_transaction_postings: {
     scheduled_transaction_id: "scheduled_transactions",
+    transaction_id: "transactions",
+    rule_id: "transaction_rules",
   },
   scheduled_transaction_split_tags: {
     scheduled_transaction_split_id: "scheduled_transaction_splits",
