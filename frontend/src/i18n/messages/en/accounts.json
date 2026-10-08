@@ -737,6 +737,70 @@
       "utilization": "Utilization",
       "balanceHistory": "Balance History",
       "noHistory": "No balance history available."
+    },
+    "paymentMatching": {
+      "title": "Payment matching",
+      "description": "Recognises the bank's own debit of each installment and settles it against the loan's schedule as principal and interest, instead of posting the bill separately.",
+      "noSchedule": "Payment matching settles the bank's debits against the loan's scheduled payment. Set up this loan's payments first.",
+      "noRule": "No payment matching rule is linked to this loan.",
+      "createOne": "Create one",
+      "ruleLabel": "Rule:",
+      "ruleLoading": "Loading the rule",
+      "ruleFailed": "The payment matching rule could not be loaded.",
+      "scheduleLoading": "Loading the scheduled payment",
+      "scheduleFailed": "The loan's scheduled payment could not be loaded.",
+      "retry": "Try again",
+      "autoPost": {
+        "title": "The scheduled payment still posts itself",
+        "body": "Auto-post is on for this loan's bill, so an installment the rule settles from the bank's debit would also be posted by the bill. Turn auto-post off on the bill in Bills."
+      },
+      "preconditions": {
+        "openingBalance": "The loan's opening balance must be the debt at the start of the history being processed; every installment's interest is priced on it.",
+        "originalPrincipal": "The original principal must be the amount originally borrowed, not the opening balance.",
+        "scheduleStart": "Debits dated before {date}, when the scheduled payment starts, have no installment to match."
+      },
+      "process": {
+        "button": "Process history",
+        "scope": "Runs the rule over the debits in {account}, oldest first.",
+        "running": "Processing history: {count, plural, one {# installment} other {# installments}} settled so far.",
+        "done": "{count, plural, =0 {No installments were settled.} one {# installment was settled.} other {# installments were settled.}}",
+        "undo": "Each page of the run can be undone from the action history.",
+        "failed": "Processing history stopped",
+        "stuckTitle": "Processing history could not continue",
+        "stuck": "More than {limit, number} transactions are dated {date}, so the run cannot move past that day. Settle the rest from Tools > Rules with a narrower filter.",
+        "stuckUnknown": "The server did not say how far the run reached, so it cannot continue. Reload the page and try again."
+      },
+      "create": {
+        "title": "Create payment matching rule",
+        "description": "The rule settles matching debits from the loan's scheduled payment account, and the bill's auto-post is turned off.",
+        "descriptionWithAccount": "The rule settles matching debits from {account}, and the bill's auto-post is turned off.",
+        "submit": "Create rule",
+        "payeePatternRequired": "Enter a payee pattern that includes a * wildcard",
+        "descriptionPatternWildcard": "A description pattern must include a * wildcard",
+        "failed": "The payment matching rule could not be created.",
+        "done": "Rule \"{name}\" created"
+      },
+      "settled": {
+        "title": "Settled installments",
+        "colDueDate": "Due date",
+        "colTransaction": "Transaction",
+        "colPrincipal": "Principal",
+        "colInterest": "Interest",
+        "colExtra": "Extra principal",
+        "colDebtBefore": "Debt before",
+        "openTransaction": "Open the transaction",
+        "void": "Void",
+        "notRecorded": "Not recorded",
+        "empty": {
+          "title": "No installments settled yet",
+          "body": "Process history, or import the bank's debits, to settle installments."
+        },
+        "error": {
+          "title": "The settled installments could not be loaded",
+          "body": "This is not an empty list. Try again to see which installments were settled.",
+          "retry": "Try again"
+        }
+      }
     }
   }
 }

@@ -45,6 +45,23 @@ vi.mock('./SavedScenariosPanel', () => ({
   SavedScenariosPanel: () => <div data-testid="scenarios-panel" />,
 }));
 
+vi.mock('./PaymentMatchingPanel', () => ({
+  PaymentMatchingPanel: ({
+    account,
+    settlements,
+  }: {
+    account: Account;
+    settlements: { status: string };
+  }) => (
+    <div data-testid="payment-matching" data-account-id={account.id}>
+      {settlements.status}
+    </div>
+  ),
+}));
+vi.mock('./RateHistorySidebar', () => ({
+  RateHistorySidebar: () => <div data-testid="rate-history" />,
+}));
+
 let capturedOnPlanChange: ((plan: OverpaymentPlan | null) => void) | undefined;
 vi.mock('./OverpaymentSimulator', () => ({
   OverpaymentSimulator: (props: {
@@ -76,7 +93,10 @@ function makeAccount(overrides: Partial<Account> = {}): Account {
 
 const noTransactions: Transaction[] = [];
 
-function renderView(account: Account) {
+function renderView(
+  account: Account,
+  paymentMatching?: Parameters<typeof LoanDetailView>[0]['paymentMatching'],
+) {
   return render(
     <LoanDetailView
       account={account}
@@ -88,6 +108,7 @@ function renderView(account: Account) {
       // The container owns the export button and takes the handler through
       // this ref; the view itself renders none.
       exportPdfRef={{ current: null }}
+      paymentMatching={paymentMatching}
     />,
   );
 }
@@ -104,6 +125,27 @@ describe('LoanDetailView', () => {
     expect(screen.getByTestId('chart')).toBeInTheDocument();
     expect(screen.getByTestId('past-impact')).toBeInTheDocument();
     expect(screen.getByTestId('schedule')).toBeInTheDocument();
+  });
+
+  it('mounts the Payment matching panel beside the Rate History panel when the container loads settlements', () => {
+    renderView(makeAccount(), { settlements: { status: 'error' }, onChanged: vi.fn() });
+    const panel = screen.getByTestId('payment-matching');
+    expect(panel).toHaveAttribute('data-account-id', 'loan-1');
+    expect(panel).toHaveTextContent('error');
+    expect(screen.getByTestId('rate-history').nextElementSibling).toBe(panel);
+  });
+
+  it('mounts the Payment matching panel for a loan that cannot be projected too', () => {
+    renderView(makeAccount({ paymentAmount: null, interestRate: null, paymentFrequency: null }), {
+      settlements: { status: 'ready', rows: [] },
+      onChanged: vi.fn(),
+    });
+    expect(screen.getByTestId('rate-history').nextElementSibling).toBe(screen.getByTestId('payment-matching'));
+  });
+
+  it('leaves the Payment matching panel out for a container without settlements', () => {
+    renderView(makeAccount());
+    expect(screen.queryByTestId('payment-matching')).not.toBeInTheDocument();
   });
 
   it('shows the schedule even when the loan cannot be projected', () => {

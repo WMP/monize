@@ -68,8 +68,10 @@ const mockDetectLoanPayments = vi.fn();
 const mockGetDailyBalances = vi.fn();
 const mockGetBalanceForecast = vi.fn();
 const mockDetectMortgageTypeFromHistory = vi.fn();
+const mockGetLoanSettlements = vi.fn();
 vi.mock('@/lib/accounts', () => ({
   accountsApi: {
+    getLoanSettlements: (...args: unknown[]) => mockGetLoanSettlements(...args),
     detectMortgageTypeFromHistory: (...args: unknown[]) =>
       mockDetectMortgageTypeFromHistory(...args),
     getById: (...args: unknown[]) => mockGetById(...args),
@@ -128,6 +130,7 @@ vi.mock('@/lib/loan-scenarios', async (importOriginal) => {
 
 const mockGetAllRateChanges = vi.fn();
 const mockGetLoanProjectionAnchor = vi.fn();
+const mockGetScheduledById = vi.fn();
 
 vi.mock('@/lib/loan-rate-changes', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/loan-rate-changes')>()),
@@ -163,6 +166,9 @@ vi.mock('@/components/ui/LoadingSpinner', () => ({
 vi.mock('@/lib/scheduled-transactions', () => ({
   scheduledTransactionsApi: {
     getAll: () => Promise.resolve([]),
+    // The Payment matching panel reads the loan's bill for its source account
+    // and auto-post flag.
+    getById: (...args: unknown[]) => mockGetScheduledById(...args),
     // The loan detail view prints per-installment interest, so the page
     // anchors its projection on the next scheduled installment's boundary
     // (INV-LOAN-006). These fixtures have no scheduled payment, which is what
@@ -220,6 +226,14 @@ beforeEach(() => {
   mockGetLoanProjectionAnchor.mockResolvedValue({
     nextDueDate: null,
     debt: null,
+  });
+  mockGetLoanSettlements.mockResolvedValue([]);
+  mockGetScheduledById.mockResolvedValue({
+    id: 'st-1',
+    accountId: 'chq-1',
+    account: { id: 'chq-1', name: 'Chequing' },
+    autoPost: false,
+    startDate: '2024-01-01',
   });
   mockGetAllTransactions.mockResolvedValue({
     data: [
@@ -378,6 +392,61 @@ describe('AccountDetailPage', () => {
       fireEvent.click(screen.getByText('Try again'));
     });
     expect(screen.getByText('Loan Schedule')).toBeInTheDocument();
+  });
+
+  it('loads the settled installments with the loan history and hands them to the Payment matching panel', async () => {
+    mockGetById.mockResolvedValue(makeAccount({ scheduledTransactionId: 'st-1', paymentMatchingRuleId: null }));
+    mockGetLoanSettlements.mockResolvedValue([
+      {
+        claimId: 'c-1',
+        dueDate: '2024-01-01',
+        postedDate: '2024-01-03',
+        transactionId: 'tx-9',
+        transactionStatus: 'UNRECONCILED',
+        principal: 833.33,
+        interest: 500,
+        extraPrincipal: 0,
+        debtBefore: 300000,
+        installmentNumber: 1,
+        ruleId: 'rule-1',
+      },
+    ]);
+
+    await renderPage();
+
+    // One load: the settlements were asked for beside the history, for this loan.
+    expect(mockGetLoanSettlements).toHaveBeenCalledTimes(1);
+    expect(mockGetLoanSettlements).toHaveBeenCalledWith('loan-1');
+    expect(screen.getByText('Payment matching')).toBeInTheDocument();
+    expect(screen.getByText('Settled installments')).toBeInTheDocument();
+    expect(screen.getByText('$833.33')).toBeInTheDocument();
+  });
+
+  it('renders a failed settlements request as an error, never as an empty list, and keeps the page', async () => {
+    mockGetById.mockResolvedValue(makeAccount({ scheduledTransactionId: 'st-1', paymentMatchingRuleId: null }));
+    mockGetLoanSettlements.mockRejectedValue(new Error('boom'));
+
+    await renderPage();
+
+    expect(screen.getByText('Loan Schedule')).toBeInTheDocument();
+    expect(screen.getByText('The settled installments could not be loaded')).toBeInTheDocument();
+    expect(screen.queryByText('No installments settled yet')).not.toBeInTheDocument();
+
+    // Its retry reloads them.
+    mockGetLoanSettlements.mockResolvedValue([]);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    });
+    expect(mockGetLoanSettlements).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('No installments settled yet')).toBeInTheDocument();
+  });
+
+  it('does not load settlements for an account without the loan view', async () => {
+    mockGetById.mockResolvedValue(makeAccount({ accountType: 'CHEQUING' }));
+
+    await renderPage();
+
+    expect(mockGetLoanSettlements).not.toHaveBeenCalled();
   });
 
   it('projects future payments from the account terms', async () => {

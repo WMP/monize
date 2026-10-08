@@ -208,6 +208,12 @@ export interface RuleRunPreview {
   truncated: boolean;
   /** Which rows a truncated run kept; absent from a server that predates it (newest first). */
   scanOrder?: RuleRunScanOrder;
+  /**
+   * The date (YYYY-MM-DD) of the last row the scan examined; null when it
+   * examined none. A truncated oldest-first run's next page starts on it.
+   * Absent from a server that predates it.
+   */
+  scannedThrough?: string | null;
   /** Echoed back by the run to confirm this exact plan. */
   fingerprint: string;
   labels: RuleRunLabels;
