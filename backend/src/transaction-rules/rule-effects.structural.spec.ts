@@ -579,10 +579,11 @@ describe("planRuleEffects: structuralNotAllowed (a joint-account member's create
   });
 });
 
-describe("planRuleEffects: settle_loan_installment before its write path", () => {
-  it("skips a stored rule carrying it as invalid, so nothing is looked up or planned", () => {
-    // The validator answers UNKNOWN_ACTION until B5 accepts the action, so a
-    // rule restored or written around the save paths is never applied.
+describe("planRuleEffects: settle_loan_installment with its write path", () => {
+  it("plans a stored rule carrying it: the loan's facts are asked for, nothing is guessed", () => {
+    // The validator accepts the action since its write path landed (B5), so a
+    // stored rule carrying it is evaluated like any other; without the loan's
+    // facts the plan asks for them rather than refusing or writing anything.
     const effects = planRuleEffects(
       row(),
       [
@@ -598,8 +599,11 @@ describe("planRuleEffects: settle_loan_installment before its write path", () =>
       ],
       { accounts: ACCOUNTS },
     );
-    expect(effects.trace[0].skippedRule).toBe("invalid");
+    expect(effects.trace[0].skippedRule).toBeUndefined();
+    expect(effects.trace[0].skipped).toEqual([
+      { type: "settle_loan_installment", reason: "loan_facts_unresolved" },
+    ]);
     expect(effects.changes.structure).toBeUndefined();
-    expect(effects.loanFactsLookups).toBeUndefined();
+    expect(effects.loanFactsLookups).toHaveLength(1);
   });
 });

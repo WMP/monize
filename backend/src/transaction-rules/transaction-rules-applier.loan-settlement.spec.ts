@@ -24,12 +24,6 @@ import {
   TransactionRulesApplierService,
 } from "./transaction-rules-applier.service";
 
-// The validator refuses the action until its write path lands (B5), and the
-// planner skips a rule the validator refuses; these cases plan it as B5 will.
-jest.mock("./rule-action.types", () => ({
-  ...jest.requireActual("./rule-action.types"),
-  SETTLE_LOAN_INSTALLMENT_ACCEPTED: true,
-}));
 jest.mock("../loan-installments/loan-settlement-facts", () => ({
   ...jest.requireActual("../loan-installments/loan-settlement-facts"),
   loadLoanSettlementFacts: jest.fn(),

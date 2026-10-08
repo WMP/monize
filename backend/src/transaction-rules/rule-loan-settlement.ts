@@ -14,6 +14,7 @@ import {
   DateRange,
   settlementWindow,
 } from "../loan-installments/occurrence-slots";
+import type { ScheduleCursorChange } from "../scheduled-transactions/schedule-cursor";
 import { planLoanSettlement } from "../loan-installments/plan-loan-settlement";
 import { SettleLoanInstallmentAction } from "./rule-action.types";
 import { RuleFacts } from "./rule-condition.types";
@@ -61,7 +62,10 @@ export interface LoanFactsLookup {
 /**
  * What the trace records of a planned settlement (spec section 12.2): the
  * slot and its pricing record, the stored `pricing` column without its
- * `version`.
+ * `version`. The stored trace (the application row `writeEffects` inserts)
+ * adds the claim the write made: its id, whether it advanced the cursor and
+ * the cursor before and after; a plan carries none of them, and the
+ * fingerprint reads none of them (`canonicalChanges`).
  */
 export interface RuleLoanSettlementChange {
   readonly loanAccountId: string;
@@ -69,6 +73,9 @@ export interface RuleLoanSettlementChange {
   readonly dueDate: string;
   readonly installmentNumber: number;
   readonly pricing: Omit<LoanSettlementPricingRecord, "version">;
+  readonly claimId?: string;
+  readonly cursorAdvanced?: boolean;
+  readonly cursor?: Pick<ScheduleCursorChange, "before" | "after">;
 }
 
 /** What the planner knows about the row and the pass besides its facts. */

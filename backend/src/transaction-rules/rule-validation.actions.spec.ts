@@ -1,6 +1,5 @@
 import {
   RULE_ACTION_TYPES,
-  SETTLE_LOAN_INSTALLMENT_ACCEPTED,
   isLedgerAction,
   isStructuralAction,
 } from "./rule-action.types";
@@ -98,11 +97,12 @@ describe("validateRuleDefinition: actions", () => {
     ]);
   });
 
-  it("UNKNOWN_ACTION for settle_loan_installment on every save path until its write path accepts it", () => {
-    // Inert until B5 (docs/future-plans/loan-installment-settlement-tasks.md):
-    // no rule can store the action, so no create, import or run plans a
-    // split that would be written without its occurrence claim.
-    expect(SETTLE_LOAN_INSTALLMENT_ACCEPTED).toBe(false);
+  it("accepts settle_loan_installment on every save path, beside the mirrored list", () => {
+    // Accepted since its write path landed (B5 of
+    // docs/future-plans/loan-installment-settlement-tasks.md): a stored rule
+    // can carry it, and a create, import or run that plans it writes the
+    // split with its occurrence claim. It stays off RULE_ACTION_TYPES, the
+    // list the editor mirrors, until the editor offers it (F1).
     const settle = {
       type: "settle_loan_installment",
       loanAccountId: U1,
@@ -110,25 +110,8 @@ describe("validateRuleDefinition: actions", () => {
       excess: "extra_principal",
       shortfall: "refuse",
     };
-    expect(check(cond, [settle])).toEqual([
-      { path: "actions[0].type", code: "UNKNOWN_ACTION" },
-    ]);
-    // Refused as unknown, so it neither counts as the rule's structural
-    // action nor conflicts with a category.
-    expect(
-      check(cond, [
-        settle,
-        { type: "set_category", categoryId: U2, onlyIfEmpty: true },
-        {
-          type: "convert_to_transfer",
-          toAccountId: U3,
-          clearCategory: true,
-        },
-      ]),
-    ).toEqual([
-      { path: "actions[0].type", code: "UNKNOWN_ACTION" },
-      { path: "actions[2]", code: "CONFLICTING_ACTIONS" },
-    ]);
+    expect(check(cond, [settle])).toEqual([]);
+    expect(RULE_ACTION_TYPES).not.toContain("settle_loan_installment");
     expect(
       isStructuralAction({
         ...settle,

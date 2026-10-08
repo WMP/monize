@@ -2,6 +2,8 @@ import { DataSource } from "typeorm";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { AccountType } from "../accounts/entities/account.entity";
 import { loadLoanSettlementFacts } from "../loan-installments/loan-settlement-facts";
+import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
+import { LOAN_SCHEDULE } from "./rule-loan-settlement.test-helpers";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionStatus } from "../transactions/entities/transaction-status.enum";
@@ -24,12 +26,6 @@ import { TransactionRulesApplierService } from "./transaction-rules-applier.serv
 import { TransactionRulesRunService } from "./transaction-rules-run.service";
 import { TransactionRulesService } from "./transaction-rules.service";
 
-// The validator refuses the action until its write path lands (B5), and the
-// planner skips a rule the validator refuses; these cases plan it as B5 will.
-jest.mock("./rule-action.types", () => ({
-  ...jest.requireActual("./rule-action.types"),
-  SETTLE_LOAN_INSTALLMENT_ACCEPTED: true,
-}));
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
 );
@@ -51,6 +47,9 @@ jest.mock("../transactions/reconciled-lock.util", () => ({
 jest.mock("../loan-installments/loan-settlement-facts", () => ({
   ...jest.requireActual("../loan-installments/loan-settlement-facts"),
   loadLoanSettlementFacts: jest.fn(),
+}));
+jest.mock("../loan-installments/reprice-template", () => ({
+  repriceSettledLoanTemplates: jest.fn().mockResolvedValue(undefined),
 }));
 
 /**
@@ -161,7 +160,7 @@ function setup(units: CandidateUnit[]) {
     { record: jest.fn() } as unknown as ActionHistoryService,
     { triggerDebouncedRecalc: jest.fn() } as never,
   );
-  return { service };
+  return { service, applier };
 }
 
 describe("TransactionRulesRunService: settle_loan_installment in the preview", () => {
@@ -220,5 +219,76 @@ describe("TransactionRulesRunService: settle_loan_installment in the preview", (
       { transactionId: "income", reason: "row_is_income" },
     ]);
     expect(preview.conditionMatchedCount).toBe(4);
+  });
+});
+
+describe("TransactionRulesRunService: settle_loan_installment at the commit", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("re-plans under the locks, writes the settlement through the applier and reprices the schedule after the commit", async () => {
+    (loadLoanSettlementFacts as jest.Mock).mockResolvedValue(linearLoanFacts());
+    const { service, applier } = setup([
+      unit(row("settled", -1333.33, "2024-01-03")),
+    ]);
+    const order: string[] = [];
+    const writeEffects = jest
+      .spyOn(applier, "writeEffects")
+      .mockImplementation(
+        async (_m, _u, _id, effects, _s, affected, settled) => {
+          order.push("write");
+          affected?.add(LOAN_ACCOUNT);
+          settled?.add(LOAN_SCHEDULE);
+          return effects;
+        },
+      );
+    (repriceSettledLoanTemplates as jest.Mock).mockImplementation(async () => {
+      order.push("reprice");
+    });
+
+    const preview = await service.previewRun(USER, RULE_ID, {});
+    await service.run(USER, RULE_ID, { fingerprint: preview.fingerprint });
+
+    // The preview read unlocked; the commit reads under the schedule row and
+    // account locks (spec section 13), and plans once.
+    const reads = (loadLoanSettlementFacts as jest.Mock).mock.calls.map(
+      (call) => call[3],
+    );
+    expect(reads).toEqual([{ lock: false }, { lock: true }]);
+    expect(writeEffects).toHaveBeenCalledTimes(1);
+    expect(writeEffects.mock.calls[0][3].changes.loanSettlement).toMatchObject({
+      dueDate: "2024-01-01",
+      debtBefore: 300000,
+    });
+    expect(repriceSettledLoanTemplates).toHaveBeenCalledWith(
+      expect.anything(),
+      new Set([LOAN_SCHEDULE]),
+    );
+    expect(order).toEqual(["write", "reprice"]);
+  });
+
+  it("refuses the commit as a changed preview when the debt the settlement is priced on moved since the preview", async () => {
+    (loadLoanSettlementFacts as jest.Mock)
+      .mockResolvedValueOnce(linearLoanFacts())
+      // A principal payment landed in between: the slot's debt is lower.
+      .mockResolvedValueOnce({
+        ...linearLoanFacts(),
+        debtByDueDate: new Map(
+          [...linearLoanFacts().debtByDueDate.keys()].map((date) => [
+            date,
+            299000,
+          ]),
+        ),
+      });
+    const { service, applier } = setup([
+      unit(row("settled", -1333.33, "2024-01-03")),
+    ]);
+    const writeEffects = jest.spyOn(applier, "writeEffects");
+
+    const preview = await service.previewRun(USER, RULE_ID, {});
+    await expect(
+      service.run(USER, RULE_ID, { fingerprint: preview.fingerprint }),
+    ).rejects.toMatchObject({ response: { errorCode: "PREVIEW_CHANGED" } });
+    expect(writeEffects).not.toHaveBeenCalled();
+    expect(repriceSettledLoanTemplates).not.toHaveBeenCalled();
   });
 });

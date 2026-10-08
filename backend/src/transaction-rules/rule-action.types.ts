@@ -13,14 +13,15 @@
  * `isLedgerAction` tells the two groups apart for the applier;
  * `isStructuralAction` picks out the three that restructure the row.
  *
- * `RULE_ACTION_TYPES` is the list every save path accepts, and the list the
- * frontend editor mirrors. `settle_loan_installment` is typed, validated,
- * referenced and planned, but it joins that list only with its write path
- * (B5 of `docs/future-plans/loan-installment-settlement-tasks.md`): until
- * then the validator answers `UNKNOWN_ACTION` for it while
- * `SETTLE_LOAN_INSTALLMENT_ACCEPTED` is false, so no rule can store it and no
- * create, import or run can plan a split that would be written without its
- * occurrence claim.
+ * `RULE_ACTION_TYPES` is the list the frontend editor mirrors
+ * (`frontend/src/lib/rule-fields.contract.test.ts`) and the hints and name
+ * mappings are keyed on. Every save path accepts it plus
+ * `settle_loan_installment` (`isAcceptedActionType` in `rule-validation.ts`):
+ * the action is typed, validated, referenced, planned and, since its write
+ * path landed (B5 of `docs/future-plans/loan-installment-settlement-tasks.md`),
+ * written with its occurrence claim, but it joins the mirrored list only with
+ * the editor card that offers it (F1), so until then a rule carrying it is
+ * written by hand, by the mortgage form (B7), the assistant or MCP (B8).
  */
 
 export const RULE_ACTION_TYPES = [
@@ -38,13 +39,6 @@ export type RuleActionType = (typeof RULE_ACTION_TYPES)[number];
 
 /** The action that settles a bank debit against a scheduled loan installment. */
 export const SETTLE_LOAN_INSTALLMENT = "settle_loan_installment";
-
-/**
- * Whether the validator accepts `settle_loan_installment` (the file comment
- * says why it does not yet). B5 removes this flag and appends the type to
- * `RULE_ACTION_TYPES` in the commit that writes the occurrence claim.
- */
-export const SETTLE_LOAN_INSTALLMENT_ACCEPTED: boolean = false;
 
 export interface AddTagsAction {
   readonly type: "add_tags";

@@ -1,3 +1,4 @@
+import type { ClaimedLoanOccurrence } from "../loan-installments/claim-loan-occurrence";
 import type {
   LoanSettlementPlan,
   LoanSettlementRefusalDetail,
@@ -242,6 +243,12 @@ export interface RuleNetChanges {
   readonly structure?: RuleStructurePlan;
   /** The settlement `structure` carries out: the slot, its pricing and the lines. */
   readonly loanSettlement?: LoanSettlementPlan;
+  /**
+   * The claim the write made for `loanSettlement`. Absent in a plan; set by
+   * the applier on the effects it returns, so the run snapshot (and so the
+   * undo) knows the claim and what it did to the cursor.
+   */
+  readonly settlementClaim?: ClaimedLoanOccurrence;
   readonly addTagIds: readonly string[];
   readonly removeTagIds: readonly string[];
 }

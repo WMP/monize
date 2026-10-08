@@ -1,11 +1,26 @@
 import { createHash } from "node:crypto";
-import { RuleTraceChanges } from "./rule-effects";
+import { RuleFieldChange, RuleTraceChanges } from "./rule-effects";
+import { RuleLoanSettlementChange } from "./rule-loan-settlement";
+
+/** The planned part of a settlement: what the write will claim and book, never what it wrote. */
+type CanonicalSettlement = RuleFieldChange<Pick<
+  RuleLoanSettlementChange,
+  | "loanAccountId"
+  | "scheduledTransactionId"
+  | "dueDate"
+  | "installmentNumber"
+  | "pricing"
+> | null>;
 
 /**
  * The fields a rule can change, in one fixed key order, with the tag sets
  * sorted: the same plan always serialises to the same bytes. A payee the run
  * will create is part of the digest (`payeeCreated`), so a payee that appeared
  * between the preview and the commit refuses the commit as a changed preview.
+ * A settlement's plan (the slot, `debtBefore`, the booked figures, the lines
+ * and the outcome, all inside `pricing`) is part of it too (INV-RULE-003,
+ * INV-RULE-005): a fold that came out differently at the commit refuses with
+ * `PREVIEW_CHANGED`. The claim the write adds to a stored trace is not.
  */
 export function canonicalChanges(changes: RuleTraceChanges): {
   categoryId: RuleTraceChanges["categoryId"] | null;
@@ -15,6 +30,7 @@ export function canonicalChanges(changes: RuleTraceChanges): {
   payeeCreated?: true;
   description?: RuleTraceChanges["description"];
   structure?: RuleTraceChanges["structure"];
+  loanSettlement?: CanonicalSettlement;
 } {
   const sortedSet = (
     change: RuleTraceChanges["tagIds"],
@@ -36,7 +52,28 @@ export function canonicalChanges(changes: RuleTraceChanges): {
     ...(changes.description ? { description: changes.description } : {}),
     // The planned parts and amounts are part of what a run writes (INV-RULE-003).
     ...(changes.structure ? { structure: changes.structure } : {}),
+    ...(changes.loanSettlement
+      ? { loanSettlement: canonicalSettlement(changes.loanSettlement) }
+      : {}),
   };
+}
+
+function canonicalSettlement(
+  change: RuleFieldChange<RuleLoanSettlementChange | null>,
+): CanonicalSettlement {
+  const planned = (
+    value: RuleLoanSettlementChange | null,
+  ): CanonicalSettlement["after"] =>
+    value === null
+      ? null
+      : {
+          loanAccountId: value.loanAccountId,
+          scheduledTransactionId: value.scheduledTransactionId,
+          dueDate: value.dueDate,
+          installmentNumber: value.installmentNumber,
+          pricing: value.pricing,
+        };
+  return { before: planned(change.before), after: planned(change.after) };
 }
 
 /**
