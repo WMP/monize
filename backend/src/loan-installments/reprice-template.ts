@@ -147,17 +147,19 @@ export async function rewriteLoanTemplate(
   const finalExtraPrincipal = allocation.extraPrincipal;
   const requiredParentAmount = allocation.total;
 
+  // The stored cadence is deliberately not in this line: the account's
+  // payment fields are what the Bearer logger rule (CWE-532) refuses to see
+  // logged, and the rate and amounts already say what was priced.
+  const mortgageType =
+    loanAccount.accountType === "MORTGAGE"
+      ? mortgageTypeOf(loanAccount)
+      : "none";
   logger.log(
     `Recalculate loan splits: balance=${debt}, rate=${installment.annualRate}%, ` +
-      `freq=${loanAccount.paymentFrequency || scheduledTransaction.frequency}, ` +
       `basePayment=${basePaymentAmount}, ` +
       `extra=${extraPrincipalAmount} (final ${finalExtraPrincipal}), ` +
       `newPrincipal=${newPrincipal}, newInterest=${newInterest}, ` +
-      `mortgageType=${
-        loanAccount.accountType === "MORTGAGE"
-          ? mortgageTypeOf(loanAccount)
-          : "none"
-      }`,
+      `mortgageType=${mortgageType}`,
   );
 
   if (principalSplit) {
