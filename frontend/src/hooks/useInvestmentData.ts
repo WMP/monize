@@ -54,9 +54,10 @@ export function useInvestmentData() {
   } = useFormModal<InvestmentTransaction>();
   const [lastPriceUpdate, setLastPriceUpdate] = useState<string | null>(null);
   const [transactionFilters, setTransactionFilters] = useState<TransactionFilters>({});
-  // Bumped by every write on either register. The sections this hook fetches
-  // are reloaded directly; the Portfolio Value chart fetches its own series and
-  // is only reachable as a prop, so it takes this as its `refreshKey`.
+  // Bumped by every write on either register and by a price refresh that
+  // updated a quote. The sections this hook fetches are reloaded directly; the
+  // Portfolio Value chart and the performance card fetch their own figures and
+  // are only reachable as props, so they take this as their reload key.
   const [writeRefreshKey, setWriteRefreshKey] = useState(0);
 
   // Cash transaction state
@@ -169,6 +170,11 @@ export function useInvestmentData() {
   const { isRefreshing: isRefreshingPrices, triggerManualRefresh: handleRefreshPrices, triggerAutoRefresh } = usePriceRefresh({
     onRefreshComplete: (lastUpdated) => {
       loadAllPortfolioData(selectedAccountIds, currentPage, transactionFilters);
+      // New prices move every figure valued from them, not only the summary
+      // this hook fetches: the value chart and both period-result surfaces
+      // (Value change / Investment result, Portfolio performance) fetch their
+      // own and re-ask only when this key moves.
+      setWriteRefreshKey((key) => key + 1);
       // Prefer the refresh result's timestamp: savePriceData UPDATEs existing
       // rows in place, so the DB-backed lastUpdated (createdAt) wouldn't advance
       // on same-day refreshes. Fall back to the DB value if the result didn't
