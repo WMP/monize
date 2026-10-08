@@ -1108,7 +1108,7 @@ describe("planLoanSettlement", () => {
       );
     });
 
-    it("9 row_from_scheduled_posting: the server-set option, or a post claim naming the row", () => {
+    it("9 row_from_scheduled_posting: the server-set option, or a claim of either source naming the row", () => {
       expect(
         plan(-1333.33, unavailable, {}, { fromScheduledPosting: true }),
       ).toEqual({
@@ -1130,6 +1130,19 @@ describe("planLoanSettlement", () => {
       expect(plan(-1333.33, makeFacts({ postedRowIds: ["tx-other"] })).ok).toBe(
         true,
       );
+      // A rule's claim naming this row (a settlement edited down to one line,
+      // spec section 15 item 9): the row already pays an occurrence, refused
+      // before the claim's INSERT could conflict on the per-transaction index.
+      expect(
+        plan(
+          -1333.33,
+          makeFacts({
+            claims: [
+              claim("2024-01-01", { source: "rule", transactionId: "tx-row" }),
+            ],
+          }),
+        ),
+      ).toEqual({ ok: false, reason: "row_from_scheduled_posting" });
       // A rule's claim naming another row is an ordinary occupied slot.
       const other = makeFacts({
         claims: [

@@ -258,14 +258,17 @@ function settledRows(
 
 /**
  * Refuse the undo, before any write, when a schedule this run settled on
- * holds a claim on a slot later than the latest slot the run claimed on it,
- * whoever wrote that claim (a later rule run, a bill post): it was priced on
- * a debt that included this run's principal, and removing the principal
- * underneath would leave its interest priced on a debt that never existed
- * (`docs/specs/loan-installment-settlement.md` section 4.1). The schedule
- * rows are locked first (`FOR UPDATE`, ascending, after the transaction rows:
- * the order the run and `post()` take), so the claims read are the ones the
- * release acts on. A claim the run wrote itself is never "later".
+ * holds a claim on a slot later than any slot the run claimed on it (so later
+ * than the earliest), whoever wrote that claim (a later rule run, a bill
+ * post): it was priced on a debt that included this run's principal, and
+ * removing the principal underneath would leave its interest priced on a debt
+ * that never existed (`docs/specs/loan-installment-settlement.md` section
+ * 4.1). A foreign claim between two of the run's slots is the same harm: a
+ * run that settled January and March, then a February settled by a later
+ * create, is priced on January's principal. The schedule rows are locked
+ * first (`FOR UPDATE`, ascending, after the transaction rows: the order the
+ * run and `post()` take), so the claims read are the ones the release acts
+ * on. A claim the run wrote itself is never "later".
  */
 async function assertNoLaterSettlement(
   manager: EntityManager,
@@ -274,19 +277,21 @@ async function assertNoLaterSettlement(
 ): Promise<void> {
   const settled = settledRows(snapshots);
   if (settled.length === 0) return;
-  const latestBySchedule = new Map<string, string>();
+  const earliestBySchedule = new Map<string, string>();
   const runClaimIds = new Set<string>();
   for (const row of settled) {
     runClaimIds.add(row.structure.claimId);
-    const latest = latestBySchedule.get(row.structure.scheduledTransactionId);
-    if (latest === undefined || row.structure.dueDate > latest) {
-      latestBySchedule.set(
+    const earliest = earliestBySchedule.get(
+      row.structure.scheduledTransactionId,
+    );
+    if (earliest === undefined || row.structure.dueDate < earliest) {
+      earliestBySchedule.set(
         row.structure.scheduledTransactionId,
         row.structure.dueDate,
       );
     }
   }
-  const scheduleIds = [...latestBySchedule.keys()].sort();
+  const scheduleIds = [...earliestBySchedule.keys()].sort();
   await manager.query(
     `SELECT id FROM scheduled_transactions
       WHERE id = ANY($1::uuid[]) AND user_id = $2
@@ -308,8 +313,8 @@ async function assertNoLaterSettlement(
   );
   for (const claim of claims) {
     if (runClaimIds.has(claim.id)) continue;
-    const latest = latestBySchedule.get(claim.scheduled_transaction_id);
-    if (latest !== undefined && claim.original_due_date > latest) {
+    const earliest = earliestBySchedule.get(claim.scheduled_transaction_id);
+    if (earliest !== undefined && claim.original_due_date > earliest) {
       throw new ConflictException({
         message: tr(
           "errors.transactionRules.runUndoLaterSettlement",

@@ -257,17 +257,19 @@ export function planLoanSettlement(
   ) {
     return refuse("transfer_currency_mismatch");
   }
-  // Row 9: a bill `post()` created, by the server-set option or by a claim
-  // naming the row: the facts loader's lookup over the pass's row ids
-  // (`postedRowIds`, every schedule), or a claim of this schedule in the
-  // slots' span. The engine (B4) supplies both the option and the row ids.
+  // Row 9: a row that already pays an occurrence, by the server-set option
+  // (a bill `post()` created) or by a claim of either source naming the row:
+  // the facts loader's lookup over the pass's row ids (`postedRowIds`, every
+  // schedule), or a claim of this schedule in the slots' span. A `rule`
+  // claim's row that no longer reads as a split (edited down to one line,
+  // spec section 15 item 9) is refused here, before the claim's `INSERT`
+  // could conflict on the one-occurrence-per-transaction index. The engine
+  // (B4) supplies both the option and the row ids.
   if (
     row.fromScheduledPosting === true ||
     (facts.kind === "facts" &&
       (facts.postedRowIds.has(row.id) ||
-        facts.claims.some(
-          (claim) => claim.source === "post" && claim.transactionId === row.id,
-        )))
+        facts.claims.some((claim) => claim.transactionId === row.id)))
   ) {
     return refuse("row_from_scheduled_posting");
   }

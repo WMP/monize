@@ -81,6 +81,11 @@ export async function claimLoanOccurrence(
   input: ClaimLoanOccurrenceInput,
 ): Promise<ClaimedLoanOccurrence> {
   const { plan } = input;
+  // A bare ON CONFLICT covers both unique indexes (the occurrence key and the
+  // one claim per transaction), so either refuses as a 409 rather than a raw
+  // unique violation. The planner keeps both unreachable: a taken slot is
+  // `occurrence_already_posted`, and a row any claim already names is
+  // `row_from_scheduled_posting` (`loan-settlement-facts.ts`, `postedRows`).
   const inserted = returnedRows<{ id: string }>(
     await m.query(
       `INSERT INTO scheduled_transaction_postings

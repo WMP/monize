@@ -245,8 +245,11 @@ stays, section 15.) Mechanisms:
   (section 12.5).
 - **Undo is last-in, first-out per schedule:** the run undo refuses
   `RULE_RUN_UNDO_LATER_SETTLEMENT`, before any write, when the schedule has a
-  claim on a slot later than the latest slot the run claimed on it that the
-  run did not write (section 12.6). A later settlement was priced on a debt
+  claim the run did not write on a slot later than any slot the run claimed
+  on it, so later than the earliest (section 12.6). A foreign claim between
+  two of the run's slots counts: a run that settled January and March, then
+  a February settled by a later create, priced February on January's
+  principal. A later settlement was priced on a debt
   that includes this run's principal; removing it underneath would leave that
   settlement's interest priced on a debt that no longer existed.
 
@@ -765,7 +768,7 @@ action.
 | 6 | `transfer_same_account` | the loan is the row's own account | -- |
 | 7 | `transfer_account_unavailable` | the loan is not an account the planner was given (missing, or not the owner's) | -- |
 | 8 | `transfer_currency_mismatch` | the loan's currency differs from the row's | -- |
-| 9 | `row_from_scheduled_posting` | the row is a transaction `post()` created: the create carries the server-set `fromScheduledPosting` option, or a `post` claim names the row | -- |
+| 9 | `row_from_scheduled_posting` | the row already pays an occurrence: the create carries the server-set `fromScheduledPosting` option (a transaction `post()` created), or a claim of either source names the row (a posted bill; a settled row edited down to one line, section 15 item 9) | -- |
 | 10 | `row_is_income` | the row's amount is positive | -- |
 | 11 | `loan_account_unavailable` | the loan is not `MORTGAGE` or `LOAN` (a `LINE_OF_CREDIT` included), is closed, or its row or ledger cannot be read | `accountType` |
 | 12 | `loan_interest_booked_separately` | `interest_booking_mode = SEPARATE` | -- |
@@ -876,9 +879,9 @@ placeholders, as it does the counterpart ids.
 Under the schedule row lock and the existing row and reconciled-lock checks,
 before any write:
 
-- refuse `RULE_RUN_UNDO_LATER_SETTLEMENT` when a schedule has a claim on a
-  slot later than the latest slot the run claimed on it that the run did not
-  write (4.1);
+- refuse `RULE_RUN_UNDO_LATER_SETTLEMENT` when a schedule has a claim the
+  run did not write on a slot later than the earliest slot the run claimed
+  on it (4.1);
 - refuse `RULE_RUN_UNDO_STRUCTURE_CHANGED` as today when a line was replaced.
 
 Then remove the split lines and counterpart legs as a `split` undo does,
@@ -924,14 +927,16 @@ after the locks, so the debt is read under the lock that authorizes the write
 (CONC-001).
 
 - **The manual run** locks the rule `FOR SHARE`, the candidate rows ascending
-  (`lockTransactionRows`), then the schedules and accounts it may touch,
-  derived before any planning: for every rule of the run carrying the action,
-  its `loanAccountId` and that loan's `accounts.scheduled_transaction_id`.
-  It locks those schedules ascending by id, then the loans, the source
-  accounts of the candidate rows and the other target accounts in one
-  ascending-id statement, and only then plans, once, under the locks. A
-  superset is locked when a rule matches none of the rows, which costs a
-  lock and decides nothing; the plan never chooses its own locks.
+  (`lockTransactionRows`), then plans once; the facts loader, asked to lock
+  on the commit, takes the schedule row and then
+  `lockAccountsForBalanceWrite(source, loan)` before its first read, inside
+  that one plan and before any write. A rule holds at most one structural
+  action, so a run reaches one schedule and one loan, and the loader's order
+  is `post()`'s; the lock the run takes over its structure targets after the
+  plan then finds the loan already held. (An earlier draft derived the
+  schedules and loans from the rule and locked them before planning; with one
+  loan per run the loader's locks are the same set in the same order, so the
+  derivation was not built.)
 - **A REST create** runs its rules before the source account's balance write
   (`TransactionsService.create`), so the settlement's schedule lock is the
   first lock its transaction takes on either, and its order is `post()`'s.

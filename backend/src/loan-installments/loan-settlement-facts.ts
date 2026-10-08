@@ -50,7 +50,12 @@ export interface LoanSettlementFacts {
   readonly slots: readonly OccurrenceSlot[];
   /** The schedule's claims whose `original_due_date` lies in the slots' periods. */
   readonly claims: readonly LoanOccurrenceClaim[];
-  /** The ids among `input.rowIds` that a `post` claim of any schedule names: rows `post()` wrote. */
+  /**
+   * The ids among `input.rowIds` that a claim of any schedule names, whoever
+   * wrote it: a row `post()` wrote, or a row a rule settled that no longer
+   * reads as a split (edited down to one line, spec section 15 item 9). Each
+   * already pays an occurrence, so the planner refuses it.
+   */
   readonly postedRowIds: ReadonlySet<string>;
   /** `datedLoanDebt` at each slot date. */
   readonly debtByDueDate: ReadonlyMap<string, number>;
@@ -72,8 +77,9 @@ export interface LoanSettlementFactsInput {
    */
   readonly window: DateRange;
   /**
-   * The ids of the pass's rows. A `post` claim naming one of them, on any
-   * schedule, marks that row as a posted bill (spec section 11, row 9).
+   * The ids of the pass's rows. A claim naming one of them, on any schedule
+   * and of either source, marks that row as one that already pays an
+   * occurrence (spec section 11, row 9).
    */
   readonly rowIds?: readonly string[];
 }
@@ -200,7 +206,12 @@ export async function loadLoanSettlementFacts(
   };
 }
 
-/** The ids among `rowIds` that a `post` claim names, on any of the owner's schedules. */
+/**
+ * The ids among `rowIds` that a claim names, on any of the owner's schedules
+ * and of either source. A `rule` claim's row is refused before it can be
+ * planned again, so the partial unique index on `transaction_id` is never the
+ * one the claim's `INSERT` conflicts on.
+ */
 async function postedRows(
   m: EntityManager,
   rowIds: readonly string[],
@@ -209,7 +220,7 @@ async function postedRows(
   if (ids.length === 0) return new Set();
   const rows = await m.getRepository(ScheduledTransactionPosting).find({
     select: { id: true, transactionId: true },
-    where: { transactionId: In(ids), source: "post" },
+    where: { transactionId: In(ids) },
   });
   return new Set(
     rows

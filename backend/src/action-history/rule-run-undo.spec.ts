@@ -800,6 +800,37 @@ describe("undoRuleRun: settled rows", () => {
     ).toBe(false);
   });
 
+  it("refuses a foreign claim between two of the run's slots: later than the earliest released, whatever the latest", async () => {
+    // The run settled January and March (February's debit never came); a
+    // later create settled February on a debt that includes January's
+    // principal. Releasing January would leave February's interest priced on
+    // a debt that never existed.
+    const january = settled("t1", "claim-jan", "2024-01-01", {
+      cursorAdvanced: true,
+      cursor: cursor("2024-01-01", "2024-02-01"),
+    });
+    const march = settled("t3", "claim-mar", "2024-03-01");
+    const { manager, em } = arrange(
+      [january, march],
+      [
+        claimRow("claim-jan", "2024-01-01"),
+        claimRow("claim-feb", "2024-02-01"),
+        claimRow("claim-mar", "2024-03-01"),
+      ],
+    );
+
+    await expect(
+      undoRuleRun(action([january, march]), em, balances),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        errorCode: "RULE_RUN_UNDO_LATER_SETTLEMENT",
+        dueDate: "2024-02-01",
+      }),
+    });
+    expect(manager.delete).not.toHaveBeenCalled();
+    expect(rewindScheduleCursor).not.toHaveBeenCalled();
+  });
+
   it("does not refuse for a claim on an earlier slot, nor for the later slots the run claimed itself; rewinds in reverse run order", async () => {
     const january = settled("t1", "claim-jan", "2024-01-01", {
       cursorAdvanced: true,

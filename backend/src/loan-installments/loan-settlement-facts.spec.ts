@@ -219,7 +219,7 @@ describe("loadLoanSettlementFacts", () => {
     expect(result.schedule?.id).toBe(scheduleId);
   });
 
-  it("looks the pass's rows up among the post claims of every schedule", async () => {
+  it("looks the pass's rows up among the claims of every schedule, of either source", async () => {
     const result = await loadLoanSettlementFacts(m(), userId, input, {
       lock: false,
     });
@@ -231,7 +231,6 @@ describe("loadLoanSettlementFacts", () => {
           _type: "in",
           _value: ["tx-row", "tx-posted"],
         }),
-        source: "post",
       },
     });
     expect(result.postedRowIds).toEqual(new Set(["tx-posted"]));

@@ -1,6 +1,6 @@
 import { Logger } from "@nestjs/common";
 import { DataSource, EntityManager } from "typeorm";
-import { withScopedDb } from "../common/db/scoped-db";
+import { getActiveScopedManager, withScopedDb } from "../common/db/scoped-db";
 import { ScheduledTransaction } from "../scheduled-transactions/entities/scheduled-transaction.entity";
 import { ScheduledTransactionSplit } from "../scheduled-transactions/entities/scheduled-transaction-split.entity";
 import { AccountType } from "../accounts/entities/account.entity";
@@ -220,17 +220,26 @@ export async function rewriteLoanTemplate(
  * committed and correct, and the template is what `post()` reprices again at
  * the consumption boundary (INV-LOAN-006); a rule never makes a create or an
  * import fail.
+ *
+ * A caller running inside an ambient scoped transaction (a create nested in
+ * `post()`) has not committed: `withScopedDb` joins that transaction, and a
+ * statement that failed inside it has already aborted it, so the failure is
+ * rethrown rather than swallowed, which would leave the caller continuing on
+ * an aborted transaction. The ambient case is only reachable when a nested
+ * caller settles, which `post()`'s posting flag prevents today.
  */
 export async function repriceSettledLoanTemplates(
   dataSource: DataSource,
   scheduleIds: Iterable<string>,
 ): Promise<void> {
+  const nested = getActiveScopedManager() !== undefined;
   for (const scheduledTransactionId of new Set(scheduleIds)) {
     try {
       await withScopedDb(dataSource, (m) =>
         rewriteLoanTemplate(m, scheduledTransactionId, "template"),
       );
     } catch (error) {
+      if (nested) throw error;
       logger.warn(
         `Loan template reprice after a settlement failed for scheduled transaction ${scheduledTransactionId}: ` +
           `${error instanceof Error ? error.message : String(error)}. ` +

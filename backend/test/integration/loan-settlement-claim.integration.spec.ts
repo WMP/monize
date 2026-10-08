@@ -2,10 +2,16 @@ import { TestingModule } from "@nestjs/testing";
 import { DataSource } from "typeorm";
 import { Account, AccountType } from "@/accounts/entities/account.entity";
 import { AccountsService } from "@/accounts/accounts.service";
-import { settlePendingHistoryWrites } from "@/action-history/action-history.service";
+import {
+  ActionHistoryService,
+  settlePendingHistoryWrites,
+} from "@/action-history/action-history.service";
+import { ActionHistory } from "@/action-history/entities/action-history.entity";
+import { undoRuleRun } from "@/action-history/rule-run-undo";
 import { withScopedDb } from "@/common/db/scoped-db";
 import { withUserContext } from "@/common/db/with-context";
 import { ScheduledTransaction } from "@/scheduled-transactions/entities/scheduled-transaction.entity";
+import { ScheduledTransactionOverride } from "@/scheduled-transactions/entities/scheduled-transaction-override.entity";
 import { ScheduledTransactionSplit } from "@/scheduled-transactions/entities/scheduled-transaction-split.entity";
 import { TransactionRule } from "@/transaction-rules/transaction-rule.entity";
 import { TransactionRulesModule } from "@/transaction-rules/transaction-rules.module";
@@ -57,6 +63,7 @@ describe("Loan settlement claim (integration)", () => {
   let transactions: TransactionsService;
   let accounts: AccountsService;
   let runs: TransactionRulesRunService;
+  let history: ActionHistoryService;
 
   let userId: string;
   let chequingId: string;
@@ -184,6 +191,7 @@ describe("Loan settlement claim (integration)", () => {
     transactions = module.get(TransactionsService);
     accounts = module.get(AccountsService);
     runs = module.get(TransactionRulesRunService);
+    history = module.get(ActionHistoryService, { strict: false });
     // The synchronize-built schema derives `transaction_splits.transaction_id`
     // from the entity, which names no ON DELETE action; `database/schema.sql`
     // cascades it, and `TransactionsService.remove` relies on that cascade to
@@ -519,6 +527,128 @@ describe("Loan settlement claim (integration)", () => {
       const all = await claims();
       expect(all).toHaveLength(1);
       expect(all[0]).toMatchObject({ source: "rule", transaction_id: row.id });
+    });
+  });
+
+  describe("the undo of runs that settled, on the database", () => {
+    /** Run the rule over the rows in a date window; the create path never saw it (disabled). */
+    const runOver = async (filters: {
+      startDate?: string;
+      endDate?: string;
+    }) => {
+      const preview = await asUser(() =>
+        runs.previewRun(userId, ruleId, filters),
+      );
+      expect(preview.matched).toHaveLength(1);
+      await asUser(() =>
+        runs.run(userId, ruleId, {
+          ...filters,
+          fingerprint: preview.fingerprint,
+        }),
+      );
+      await settlePendingHistoryWrites();
+    };
+    const overrides = async () =>
+      db.query(
+        `SELECT TO_CHAR(original_date, 'YYYY-MM-DD') AS original_date, amount, description
+           FROM scheduled_transaction_overrides WHERE scheduled_transaction_id = $1`,
+        [scheduleId],
+      );
+
+    beforeEach(async () => {
+      await db.manager.update(TransactionRule, ruleId, { enabled: false });
+      // An override on the January occurrence: the first advance prunes it.
+      await db.manager.save(
+        db.manager.create(ScheduledTransactionOverride, {
+          scheduledTransactionId: scheduleId,
+          originalDate: "2024-01-01",
+          overrideDate: "2024-01-05",
+          amount: -1480,
+          description: "moved and trimmed",
+        } as Partial<ScheduledTransactionOverride>),
+      );
+    });
+
+    it("rewinds two advances in reverse order, restores the pruned override, and refuses the earlier run while the later stands", async () => {
+      await create("2024-01-03", -1500);
+      await create("2024-02-02", -1500);
+      expect(await count("scheduled_transaction_postings")).toBe(0);
+
+      // Run 1 settles January: X (Jan) to Y (Feb), pruning the override.
+      await runOver({ endDate: "2024-01-31" });
+      expect((await schedule()).next_due_date).toBe("2024-02-01");
+      expect(await overrides()).toEqual([]);
+      // Run 2 settles February on the debt January left: Y to Z (Mar).
+      await runOver({ startDate: "2024-02-01" });
+      expect((await schedule()).next_due_date).toBe("2024-03-01");
+      expect(await balanceOf(loanId)).toBe(-200000 + 500 + 502.5);
+      const [januaryClaim, februaryClaim] = await claims();
+      expect(januaryClaim.pricing.debtBefore).toBe("200000.0000");
+      expect(februaryClaim.pricing.debtBefore).toBe("199500.0000");
+
+      // Undoing run 1 underneath run 2 is refused before any write: February
+      // was priced on January's principal.
+      const firstRun = await db.manager.findOne(ActionHistory, {
+        where: { userId, entityType: "transaction_rule_run" },
+        order: { createdAt: "ASC" },
+      });
+      expect(firstRun).not.toBeNull();
+      const neverWrites = () => {
+        throw new Error("the refusal must precede every write");
+      };
+      await expect(
+        asUser(() =>
+          withScopedDb(db, (m) =>
+            undoRuleRun(firstRun!, m, {
+              updateBalance: neverWrites,
+              recalculateCurrentBalance: neverWrites,
+            }),
+          ),
+        ),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          errorCode: "RULE_RUN_UNDO_LATER_SETTLEMENT",
+          dueDate: "2024-02-01",
+        }),
+      });
+      expect(await count("scheduled_transaction_postings")).toBe(2);
+      expect((await schedule()).next_due_date).toBe("2024-03-01");
+
+      // Last in, first out: run 2 (Z back to Y), then run 1 (Y back to X).
+      await asUser(() => history.undo(userId));
+      expect(await claims()).toHaveLength(1);
+      expect((await claims())[0].id).toBe(januaryClaim.id);
+      expect((await schedule()).next_due_date).toBe("2024-02-01");
+      expect(await balanceOf(loanId)).toBe(-199500);
+      expect(await overrides()).toEqual([]);
+
+      await asUser(() => history.undo(userId));
+      expect(await claims()).toEqual([]);
+      expect(await schedule()).toMatchObject({
+        next_due_date: "2024-01-01",
+        is_active: true,
+        last_posted_date: null,
+      });
+      expect(await balanceOf(loanId)).toBe(-200000);
+      expect(await count("transaction_splits")).toBe(0);
+      expect(
+        (await db.query(`SELECT is_split FROM transactions`)).every(
+          (r: { is_split: boolean }) => r.is_split === false,
+        ),
+      ).toBe(true);
+      // The override the first advance pruned is back as it was.
+      expect(await overrides()).toEqual([
+        {
+          original_date: "2024-01-01",
+          amount: "-1480.0000",
+          description: "moved and trimmed",
+        },
+      ]);
+      // And the template is priced on the restored debt again.
+      expect(await templateLines()).toEqual([
+        ["Interest", -1000],
+        ["Principal", -500],
+      ]);
     });
   });
 
