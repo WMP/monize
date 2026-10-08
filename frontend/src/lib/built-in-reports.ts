@@ -19,6 +19,7 @@ import {
   IncomeVsExpensesParams,
   CashFlowParams,
   IncomeBySourceParams,
+  MonthlyCategoryBreakdownParams,
 } from '@/types/built-in-reports';
 import { MonthlyComparisonResponse } from '@/types/monthly-comparison';
 
@@ -190,11 +191,11 @@ export const builtInReportsApi = {
   },
 
   getMonthlyCategoryBreakdown: async (
-    params: ReportQueryParams,
+    params: MonthlyCategoryBreakdownParams,
   ): Promise<MonthlyCategoryBreakdownResponse> => {
     const response = await apiClient.get<MonthlyCategoryBreakdownResponse>(
       '/built-in-reports/monthly-category-breakdown',
-      { params },
+      { params: serializeAccountIds(params) },
     );
     return response.data;
   },

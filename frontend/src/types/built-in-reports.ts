@@ -239,6 +239,12 @@ export interface CashFlowParams extends ReportQueryParams {
   tagKey?: string;
 }
 
+/** Query parameters Monthly Breakdown accepts beyond the window. */
+export interface MonthlyCategoryBreakdownParams extends ReportQueryParams {
+  /** Restrict to these accounts; omit or leave empty for every account. */
+  accountIds?: string[];
+}
+
 // Monthly category breakdown types
 export interface MonthlyBreakdownCategoryRow {
   categoryId: string | null;

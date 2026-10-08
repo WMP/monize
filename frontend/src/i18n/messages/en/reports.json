@@ -343,7 +343,11 @@
     "fundsSpent": "Spent",
     "fundsLoadFailed": "The tagged transfer figures could not be loaded.",
     "notIncome": "Not income",
-    "noNetTagged": "No net tagged inflow for this value in this period."
+    "noNetTagged": "No net tagged inflow for this value in this period.",
+    "monthlySummaryTitle": "Balance by month, including tagged transfers: {value}",
+    "fundsExpenses": "Expenses",
+    "fundsPartialNote": "Some amounts could not be converted (no exchange rate for {currencies}), so Balance is a subtotal and Balance % is not shown.",
+    "fundsPartialNoteGeneric": "Some amounts could not be included, so Balance is a subtotal and Balance % is not shown."
   },
   "categoryPerformance": {
     "noBudgets": "No budgets found. Create a budget to see category performance.",
