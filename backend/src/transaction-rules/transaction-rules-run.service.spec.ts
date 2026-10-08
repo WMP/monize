@@ -335,7 +335,7 @@ describe("TransactionRulesRunService", () => {
         expect.anything(),
         USER,
         expect.objectContaining({ limit: 50 }),
-        { lock: false },
+        { lock: false, direction: "DESC" },
       );
     });
 
@@ -503,7 +503,7 @@ describe("TransactionRulesRunService", () => {
         expect.anything(),
         USER,
         expect.objectContaining({ accountIds: ["acc-1"], limit: 10 }),
-        { lock: false },
+        { lock: false, direction: "DESC" },
       );
       expect(writeEffects).not.toHaveBeenCalled();
       expect(record).not.toHaveBeenCalled();
@@ -663,7 +663,7 @@ describe("TransactionRulesRunService", () => {
         expect.anything(),
         USER,
         expect.anything(),
-        { lock: true },
+        { lock: true, direction: "DESC" },
       );
       expect(s.rulesService.getOwnedRule).toHaveBeenLastCalledWith(
         expect.anything(),

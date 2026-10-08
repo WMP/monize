@@ -8,6 +8,7 @@ import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionStatus } from "../transactions/entities/transaction-status.enum";
 import { isReconciledLockEnabled } from "../transactions/reconciled-lock.util";
+import { RuleAction } from "./rule-action.types";
 import { RuleConditionNode } from "./rule-condition.types";
 import { loadAttachmentPresence } from "./rule-facts";
 import {
@@ -66,7 +67,9 @@ const CONDITION: RuleConditionNode = {
   value: "ING",
 };
 
-const storedRule = (): TransactionRule =>
+const storedRule = (
+  actions: RuleAction[] = [settleAction()],
+): TransactionRule =>
   ({
     id: RULE_ID,
     userId: USER,
@@ -75,7 +78,7 @@ const storedRule = (): TransactionRule =>
     position: 0,
     triggers: ["create", "import"],
     condition: CONDITION,
-    actions: [settleAction()],
+    actions,
     stopProcessing: true,
     activeFrom: null,
     activeTo: null,
@@ -110,7 +113,7 @@ const unit = (r: Transaction): CandidateUnit => ({
   crossOwnerTransferLeg: false,
 });
 
-function setup(units: CandidateUnit[]) {
+function setup(units: CandidateUnit[], actions?: RuleAction[]) {
   (loadCandidateUnits as jest.Mock).mockResolvedValue({
     units,
     truncated: false,
@@ -154,7 +157,7 @@ function setup(units: CandidateUnit[]) {
   const service = new TransactionRulesRunService(
     dataSource as unknown as DataSource,
     {
-      getOwnedRule: jest.fn().mockResolvedValue(storedRule()),
+      getOwnedRule: jest.fn().mockResolvedValue(storedRule(actions)),
     } as unknown as TransactionRulesService,
     applier,
     { record: jest.fn() } as unknown as ActionHistoryService,
@@ -210,9 +213,12 @@ describe("TransactionRulesRunService: settle_loan_installment in the preview", (
       {
         transactionId: "short",
         reason: "installment_amount_shortfall",
+        // Priced on the debt the first row's planned settlement leaves
+        // (300,000 less 833.33: 833.33 + 498.61, spec section 9.1 row 5),
+        // not on the ledger's 300,000 (INV-RULE-005).
         detail: {
           dueDate: "2024-03-01",
-          expected: 1333.33,
+          expected: 1331.94,
           paid: 1300,
         },
       },
@@ -282,6 +288,168 @@ describe("TransactionRulesRunService: settle_loan_installment at the commit", ()
     const { service, applier } = setup([
       unit(row("settled", -1333.33, "2024-01-03")),
     ]);
+    const writeEffects = jest.spyOn(applier, "writeEffects");
+
+    const preview = await service.previewRun(USER, RULE_ID, {});
+    await expect(
+      service.run(USER, RULE_ID, { fingerprint: preview.fingerprint }),
+    ).rejects.toMatchObject({ response: { errorCode: "PREVIEW_CHANGED" } });
+    expect(writeEffects).not.toHaveBeenCalled();
+    expect(repriceSettledLoanTemplates).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * INV-RULE-005 through the manual run (spec sections 7.2 and 9.4): a rule
+ * that settles scans oldest first, each row is priced on the ledger debt less
+ * the principal planned for the rows before it, the preview and the commit
+ * fold through the same code and hash the same, and a payment that lands
+ * between two rows after the preview refuses the commit. Fixtures from spec
+ * section 9.1: 300,000 at 2 % LINEAR, slot 1 is 833.33 + 500.00, slot 2 on
+ * 299,166.67 is 833.33 + 498.61, slot 3 on 298,333.34 is 833.34 + 497.22
+ * (priced 1,330.5555, booked 1,330.56 with the principal taking the remainder).
+ */
+describe("TransactionRulesRunService: the chronological fold (INV-RULE-005)", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  const threeMonths = () => [
+    unit(row("jan", -1333.33, "2024-01-03")),
+    unit(row("feb", -1331.94, "2024-02-02")),
+    unit(row("mar", -1330.56, "2024-03-04")),
+  ];
+
+  it("scans oldest first for a rule that settles, and newest first for any other", async () => {
+    (loadLoanSettlementFacts as jest.Mock).mockResolvedValue(linearLoanFacts());
+    const settling = setup(threeMonths());
+    const preview = await settling.service.previewRun(USER, RULE_ID, {});
+    expect((loadCandidateUnits as jest.Mock).mock.calls[0][3]).toEqual({
+      lock: false,
+      direction: "ASC",
+    });
+    expect(preview.scanOrder).toBe("oldest_first");
+
+    (loadCandidateUnits as jest.Mock).mockClear();
+    const plain = setup(threeMonths(), [
+      {
+        type: "set_description",
+        template: "Mortgage",
+        mode: "replace",
+        onlyIfEmpty: false,
+      },
+    ]);
+    const plainPreview = await plain.service.previewRun(USER, RULE_ID, {});
+    expect((loadCandidateUnits as jest.Mock).mock.calls[0][3]).toEqual({
+      lock: false,
+      direction: "DESC",
+    });
+    expect(plainPreview.scanOrder).toBe("newest_first");
+  });
+
+  it("prices each row on the ledger debt less the principal planned for the rows before it, and keeps their slots from it", async () => {
+    (loadLoanSettlementFacts as jest.Mock).mockResolvedValue(linearLoanFacts());
+    const { service } = setup(threeMonths());
+
+    const preview = await service.previewRun(USER, RULE_ID, {});
+
+    expect(preview.skipped).toEqual([]);
+    const settlements = preview.matched.map(
+      (m) =>
+        m.changes.loanSettlement.after as {
+          dueDate: string;
+          pricing: {
+            debtLedger: string;
+            foldedPrincipal: string;
+            debtBefore: string;
+            lines: { principal: string; interest: string; extra: string };
+            outcome: string;
+          };
+        },
+    );
+    expect(settlements.map((s) => s.dueDate)).toEqual([
+      "2024-01-01",
+      "2024-02-01",
+      "2024-03-01",
+    ]);
+    // The ledger holds 300,000 at every slot (nothing is written); the fold
+    // subtracts what the earlier rows of this pass will write.
+    expect(settlements.map((s) => s.pricing.debtLedger)).toEqual([
+      "300000.0000",
+      "300000.0000",
+      "300000.0000",
+    ]);
+    expect(settlements.map((s) => s.pricing.foldedPrincipal)).toEqual([
+      "0.0000",
+      "833.3300",
+      "1666.6600",
+    ]);
+    expect(settlements.map((s) => s.pricing.debtBefore)).toEqual([
+      "300000.0000",
+      "299166.6700",
+      "298333.3400",
+    ]);
+    expect(settlements.map((s) => s.pricing.lines)).toEqual([
+      { principal: "833.33", interest: "500.00", extra: "0.00" },
+      { principal: "833.33", interest: "498.61", extra: "0.00" },
+      { principal: "833.34", interest: "497.22", extra: "0.00" },
+    ]);
+    expect(settlements.map((s) => s.pricing.outcome)).toEqual([
+      "exact",
+      "exact",
+      "exact",
+    ]);
+    // One read of the loan serves the pass; the fold needs no second one.
+    expect(loadLoanSettlementFacts).toHaveBeenCalledTimes(1);
+  });
+
+  it("commits the preview's fold under the locks: the same fingerprint, and each write priced on the chain", async () => {
+    (loadLoanSettlementFacts as jest.Mock).mockResolvedValue(linearLoanFacts());
+    const { service, applier } = setup(threeMonths());
+    const writeEffects = jest
+      .spyOn(applier, "writeEffects")
+      .mockImplementation(async (_m, _u, _id, effects) => effects);
+
+    const preview = await service.previewRun(USER, RULE_ID, {});
+    const result = await service.run(USER, RULE_ID, {
+      fingerprint: preview.fingerprint,
+    });
+
+    expect(result).toMatchObject({ changed: 3, skipped: [] });
+    expect(
+      writeEffects.mock.calls.map((call) => [
+        call[2],
+        call[3].changes.loanSettlement?.debtBefore,
+        call[3].changes.loanSettlement?.foldedPrincipal,
+      ]),
+    ).toEqual([
+      ["jan", 300000, 0],
+      ["feb", 299166.67, 833.33],
+      ["mar", 298333.34, 1666.66],
+    ]);
+    const reads = (loadLoanSettlementFacts as jest.Mock).mock.calls.map(
+      (call) => call[3],
+    );
+    expect(reads).toEqual([{ lock: false }, { lock: true }]);
+  });
+
+  it("refuses the commit as a changed preview when a payment landed between two of the rows since the preview", async () => {
+    const paidDown = (): ReturnType<typeof linearLoanFacts> => {
+      const facts = linearLoanFacts();
+      return {
+        ...facts,
+        // A 200.00 principal payment dated between the first and the second
+        // row: the debt at every slot from February on is lower.
+        debtByDueDate: new Map(
+          [...facts.debtByDueDate.keys()].map((date) => [
+            date,
+            date >= "2024-02-01" ? 299800 : 300000,
+          ]),
+        ),
+      };
+    };
+    (loadLoanSettlementFacts as jest.Mock)
+      .mockResolvedValueOnce(linearLoanFacts())
+      .mockResolvedValueOnce(paidDown());
+    const { service, applier } = setup(threeMonths());
     const writeEffects = jest.spyOn(applier, "writeEffects");
 
     const preview = await service.previewRun(USER, RULE_ID, {});

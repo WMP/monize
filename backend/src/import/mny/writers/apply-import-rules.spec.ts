@@ -110,6 +110,21 @@ describe("apply-import-rules", () => {
       expect(applier.applyToNew).not.toHaveBeenCalled();
     });
 
+    it("hands the applier the rows oldest first, keeping the file's order within a date (INV-RULE-005)", async () => {
+      await run([
+        tx("march", { transactionDate: "2024-03-01" }),
+        tx("jan-first", { transactionDate: "2024-01-05" }),
+        tx("jan-second", { transactionDate: "2024-01-05" }),
+        tx("feb", { transactionDate: "2024-02-01" }),
+      ]);
+      expect(applier.applyToNew.mock.calls[0][2]).toEqual([
+        "jan-first",
+        "jan-second",
+        "feb",
+        "march",
+      ]);
+    });
+
     it("batches the rows, so facts are read per chunk and not per row", async () => {
       const rows = Array.from({ length: INSERT_CHUNK_SIZE + 1 }, (_, i) =>
         tx(`t-${i}`),

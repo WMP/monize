@@ -45,12 +45,22 @@ export interface RuleRunSkippedRow {
   readonly detail?: LoanSettlementRefusalDetail;
 }
 
+/**
+ * The end of the register a run scanned from. `newest_first` for every rule
+ * without a `settle_loan_installment` action; `oldest_first` with one, so the
+ * settlements fold forward through time (INV-RULE-005). A truncated run's
+ * copy says which rows were kept.
+ */
+export type RuleRunScanOrder = "newest_first" | "oldest_first";
+
 /** What `preview-run` and `preview-draft` return: exactly what the commit would write. */
 export interface RuleRunPreview {
   readonly matched: RuleRunMatchedRow[];
   readonly skipped: RuleRunSkippedRow[];
   /** Transactions examined (a same-owner transfer counts once). */
   readonly scanned: number;
+  /** Which end of the register the scan started from, and so which rows a truncated run kept. */
+  readonly scanOrder: RuleRunScanOrder;
   /**
    * Scanned transactions whose rule condition matched, whether or not an
    * action would change anything or the row was skipped. `matched` lists only

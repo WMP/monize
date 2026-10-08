@@ -62,6 +62,7 @@ function runPreview(rows = 2): RuleRunPreview {
     })),
     skipped: [{ transactionId: "t-x", reason: "reconciled_locked" }],
     scanned: 40,
+    scanOrder: "newest_first",
     conditionMatchedCount: rows + 1,
     truncated: false,
     fingerprint: "f".repeat(64),
@@ -1158,6 +1159,17 @@ describe("TransactionRuleToolPrepService", () => {
       aiReviewRequests: 0,
       labels: { accounts: {}, payees: {}, categories: {}, tags: {}, rules: {} },
     };
+
+    it("names the oldest rows when the test scanned oldest first (a rule that settles loan installments)", () => {
+      const { service } = build();
+      const llm = service.toLlmTest(
+        { ...empty, scanOrder: "oldest_first" },
+        empty.labels as never,
+      );
+      expect(llm.message).toContain(
+        "This rule matches none of the 40 oldest transactions.",
+      );
+    });
 
     it("states it plainly for the model, with the advice to re-check", () => {
       const { service } = build();

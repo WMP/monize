@@ -409,3 +409,71 @@ describe("TransactionRulesApplierService: writing a settlement", () => {
     expect(applied.effects.changes.settlementClaim).toBeUndefined();
   });
 });
+
+/**
+ * INV-RULE-005 on the write path: `applyToNew` plans its rows oldest first
+ * whatever order the caller listed them in, writes each settlement before the
+ * next row plans, and reads the loan again after the write, so the next row
+ * is priced on the ledger the write left and nothing is folded twice (spec
+ * section 7.2). Fixtures from spec section 9.1.
+ */
+describe("TransactionRulesApplierService: the rows of one call, oldest first", () => {
+  it("plans the older row first though it was listed second, and prices the next on the ledger the write left, folding nothing twice", async () => {
+    // What the loader reads after January is written: its claim, and the
+    // counterpart dated 2024-01-03 in the debt of every slot from then on.
+    const afterJanuary = (): ReturnType<typeof linearLoanFacts> => {
+      const facts = linearLoanFacts({
+        claims: [
+          loanClaim("2024-01-01", { source: "rule", transactionId: TX1 }),
+        ],
+      });
+      return {
+        ...facts,
+        debtByDueDate: new Map(
+          [...facts.debtByDueDate.keys()].map((date) => [
+            date,
+            date >= "2024-01-03" ? 299166.67 : 300000,
+          ]),
+        ),
+      };
+    };
+    loader
+      .mockResolvedValueOnce(linearLoanFacts())
+      .mockResolvedValueOnce(afterJanuary());
+    const h = harness([
+      stored(TX2, "2024-02-02", { amount: "-1331.9400" as never }),
+      stored(TX1, "2024-01-03"),
+    ]);
+
+    const applied = await h.service.applyToNew(
+      h.m,
+      USER,
+      [TX2, TX1],
+      "import",
+      {
+        rules: [rule()],
+      },
+    );
+
+    expect(applied.map((row) => row.transactionId)).toEqual([TX1, TX2]);
+    expect(
+      claim.mock.calls.map((call) => [
+        call[2].transactionId,
+        call[2].plan.dueDate,
+        call[2].plan.debtLedger,
+        call[2].plan.foldedPrincipal,
+        call[2].plan.debtBefore,
+        call[2].plan.interest,
+      ]),
+    ).toEqual([
+      [TX1, "2024-01-01", 300000, 0, 300000, 500],
+      [TX2, "2024-02-01", 299166.67, 0, 299166.67, 498.61],
+    ]);
+    // The loan was read again after the first write, under the locks both times.
+    expect(loader).toHaveBeenCalledTimes(2);
+    expect(loader.mock.calls.map((call) => call[3])).toEqual([
+      { lock: true },
+      { lock: true },
+    ]);
+  });
+});

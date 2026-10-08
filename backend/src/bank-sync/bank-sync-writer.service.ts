@@ -10,6 +10,7 @@ import { Account, AccountSubType } from "../accounts/entities/account.entity";
 import { AccountsService } from "../accounts/accounts.service";
 import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { returnedRows } from "../common/db/query-result";
+import { orderByDateStable } from "../common/date-order.util";
 import { withScopedDb } from "../common/db/scoped-db";
 import { assertTransactionCurrencyMatchesAccount } from "../common/fx-entry.util";
 import { emailTranslator } from "../i18n/email-translator";
@@ -118,6 +119,13 @@ export interface BankSyncWriteOutcome {
   skipped: number;
   /** Rows added to the exceptions by this write. */
   excluded: number;
+  /**
+   * Accounts a structural rule moved money into (the loan of a settlement,
+   * the target of a conversion); the sync dispatches their net-worth
+   * recompute after the commit, as it does the synced account's
+   * (INV-CACHE-001).
+   */
+  affectedAccountIds: string[];
   /**
    * Scheduled payments a `settle_loan_installment` rule claimed an occurrence
    * of; the sync reprices each template after the commit (INV-CACHE-001).
@@ -336,6 +344,7 @@ export class BankSyncWriterService {
 
       // 5. Row by row: claim the ledger row, then write what it promises.
       const created: string[] = [];
+      const createdDateById = new Map<string, string>();
       const createdOperations: CreatedOperation[] = [];
       const payeeTextById = new Map<string, string | null>();
       const payeeCache = new Map<string, ResolvedPayee>();
@@ -396,6 +405,7 @@ export class BankSyncWriterService {
           [saved.id, claimed[0].id],
         );
         created.push(saved.id);
+        createdDateById.set(saved.id, row.transactionDate);
         createdOperations.push({
           transactionId: saved.id,
           operation: row.operation,
@@ -410,17 +420,27 @@ export class BankSyncWriterService {
         await this.tagOperations(m, userId, createdOperations, input.profile);
       }
 
-      // 6. The import rules over what was created, with the bank's raw payee text.
+      // 6. The import rules over what was created, oldest first and within a
+      //    date in the bank's order (INV-RULE-005), with the bank's raw payee
+      //    text.
+      const affectedAccountIds = new Set<string>();
       const settledScheduleIds = new Set<string>();
-      for (let start = 0; start < created.length; start += RULES_BATCH_SIZE) {
+      const forRules = orderByDateStable(
+        created,
+        (id) => createdDateById.get(id) ?? "",
+      ).map(({ row }) => row);
+      for (let start = 0; start < forRules.length; start += RULES_BATCH_SIZE) {
         const applied = await this.rulesApplier.applyToNew(
           m,
           userId,
-          created.slice(start, start + RULES_BATCH_SIZE),
+          forRules.slice(start, start + RULES_BATCH_SIZE),
           "import",
           { rules, payeeTextById },
         );
         for (const row of applied) {
+          for (const accountId of row.affectedAccountIds) {
+            affectedAccountIds.add(accountId);
+          }
           for (const scheduleId of row.settledScheduleIds) {
             settledScheduleIds.add(scheduleId);
           }
@@ -450,6 +470,7 @@ export class BankSyncWriterService {
         imported: created.length,
         skipped,
         excluded,
+        affectedAccountIds: [...affectedAccountIds],
         settledScheduleIds: [...settledScheduleIds],
       };
     });

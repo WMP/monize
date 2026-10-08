@@ -1,4 +1,5 @@
 import { EntityManager } from "typeorm";
+import { orderByDateStable } from "../../../common/date-order.util";
 import { TransactionRulesApplierService } from "../../../transaction-rules/transaction-rules-applier.service";
 import { MappedTransaction } from "../model/mny-import-model";
 import { INSERT_CHUNK_SIZE, chunk } from "./chunk";
@@ -31,21 +32,24 @@ export interface ApplyImportRulesInput {
 }
 
 /**
- * The ids a rule may evaluate: written, regular rows. A transfer leg (its own
- * flag or a link) is left to the transfer step, and the row a trade adopts as
- * its cash leg is an investment cash leg, which is exempt.
+ * The ids a rule may evaluate: written, regular rows, oldest first and within
+ * a date in the file's order (INV-RULE-005), so the chunks walk forward
+ * through time. A transfer leg (its own flag or a link) is left to the
+ * transfer step, and the row a trade adopts as its cash leg is an investment
+ * cash leg, which is exempt.
  */
 export function eligibleImportRuleIds(input: ApplyImportRulesInput): string[] {
-  return input.transactions
-    .filter(
-      (transaction) =>
-        input.writtenTransactionIds.has(transaction.id) &&
-        !transaction.isTransfer &&
-        transaction.linkedTransactionId === null &&
-        transaction.collapsedTradeHandle === null &&
-        !input.investmentCashTransactionIds.has(transaction.id),
-    )
-    .map((transaction) => transaction.id);
+  const eligible = input.transactions.filter(
+    (transaction) =>
+      input.writtenTransactionIds.has(transaction.id) &&
+      !transaction.isTransfer &&
+      transaction.linkedTransactionId === null &&
+      transaction.collapsedTradeHandle === null &&
+      !input.investmentCashTransactionIds.has(transaction.id),
+  );
+  return orderByDateStable(eligible, (row) => row.transactionDate).map(
+    ({ row }) => row.id,
+  );
 }
 
 /**

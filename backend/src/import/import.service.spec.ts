@@ -722,6 +722,41 @@ describe("ImportService", () => {
         expect(mockDataSource.transaction).toHaveBeenCalled();
       });
 
+      it("processes the file's rows oldest first, keeping the file's order within a date (INV-RULE-005)", async () => {
+        mockedParseQif.mockReturnValue({
+          accountType: "CHEQUING",
+          accountName: "",
+          transactions: [
+            makeQifTransaction({ date: "2025-02-20", payee: "February" }),
+            makeQifTransaction({ date: "2025-01-15", payee: "January first" }),
+            makeQifTransaction({ date: "2025-01-15", payee: "January second" }),
+          ],
+          categories: ["Food"],
+          transferAccounts: [],
+          securities: [],
+          detectedDateFormat: "MM/DD/YYYY",
+          sampleDates: ["02/20/2025"],
+          openingBalance: null,
+          openingBalanceDate: null,
+        });
+        const processed = jest
+          .spyOn(ImportRegularProcessorService.prototype, "processTransaction")
+          .mockResolvedValue(undefined);
+        try {
+          const result = await service.importQifFile(userId, makeBaseDto());
+          expect(result.errors).toBe(0);
+          expect(
+            processed.mock.calls.map((call) => [call[1].date, call[1].payee]),
+          ).toEqual([
+            ["2025-01-15", "January first"],
+            ["2025-01-15", "January second"],
+            ["2025-02-20", "February"],
+          ]);
+        } finally {
+          processed.mockRestore();
+        }
+      });
+
       it("creates transaction with correct properties", async () => {
         await service.importQifFile(userId, makeBaseDto());
 
@@ -3993,6 +4028,53 @@ describe("ImportService", () => {
         expect(call[3]).toBe("import");
         expect(call[4].rules).toBe(importRules);
         expect([...call[4].payeeTextById.values()]).toEqual(["Grocery"]);
+      }
+    });
+
+    it("processes each block's rows oldest first, keeping the file's order within a date (INV-RULE-005)", async () => {
+      const first = makeFullParseResult().accountBlocks[0].transactions[0];
+      mockedValidateQifContent.mockReturnValue({ valid: true });
+      mockedParseQifFull.mockReturnValue(
+        makeFullParseResult({
+          accountBlocks: [
+            {
+              ...makeFullParseResult().accountBlocks[0],
+              transactions: [
+                { ...first, date: "2025-02-20", payee: "February" },
+                { ...first, date: "2025-01-15", payee: "January first" },
+                { ...first, date: "2025-01-15", payee: "January second" },
+              ],
+            },
+          ],
+        }),
+      );
+      mockQueryRunner.manager.findOne.mockImplementation((entity, options) =>
+        Promise.resolve(
+          entity === Account && options?.where?.id
+            ? {
+                id: options.where.id,
+                userId,
+                accountType: AccountType.CHEQUING,
+                currencyCode: "CAD",
+              }
+            : null,
+        ),
+      );
+      const processed = jest
+        .spyOn(ImportRegularProcessorService.prototype, "processTransaction")
+        .mockResolvedValue(undefined);
+      try {
+        const result = await service.importQifMultiAccountFile(userId, baseDto);
+        expect(result.errorMessages).toEqual([]);
+        expect(
+          processed.mock.calls.map((call) => [call[1].date, call[1].payee]),
+        ).toEqual([
+          ["2025-01-15", "January first"],
+          ["2025-01-15", "January second"],
+          ["2025-02-20", "February"],
+        ]);
+      } finally {
+        processed.mockRestore();
       }
     });
 

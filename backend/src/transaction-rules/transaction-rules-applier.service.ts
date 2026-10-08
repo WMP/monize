@@ -257,6 +257,30 @@ const MAX_PAYEE_LOOKUP_ROUNDS = 12;
 export const MAX_LOAN_FACTS_ROUNDS = 3;
 
 /**
+ * The rows of one `applyToNew` call oldest first: by date, then by the order
+ * they were written (`created_at`, which an import spaces by file position),
+ * then by id so two rows written in one statement order the same way twice.
+ * A settlement written for an earlier row is in the ledger when the next row
+ * plans, so the fold runs forward through time whatever order the caller
+ * listed the ids in (INV-RULE-005). The same three legs, as a query, are
+ * `applyRegisterOrder(..., "ASC")`.
+ */
+function chronological(rows: readonly Transaction[]): Transaction[] {
+  const writtenAt = (row: Transaction): number =>
+    row.createdAt instanceof Date ? row.createdAt.getTime() : 0;
+  return [...rows].sort(
+    (a, b) =>
+      (a.transactionDate < b.transactionDate
+        ? -1
+        : a.transactionDate > b.transactionDate
+          ? 1
+          : 0) ||
+      writtenAt(a) - writtenAt(b) ||
+      (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+  );
+}
+
+/**
  * Applies a user's transaction rules to rows in the caller's transaction
  * (design 6.3). It never opens its own transaction: every read and write goes
  * through the `EntityManager` it is handed, so a rollback of the insert rolls
@@ -588,7 +612,9 @@ export class TransactionRulesApplierService {
       ));
     if (rules.length === 0) return [];
 
-    const rows = await m.find(Transaction, { where: { id: In(ids), userId } });
+    const rows = chronological(
+      await m.find(Transaction, { where: { id: In(ids), userId } }),
+    );
     const tagsByRow = await this.loadTagIds(m, ids);
     const chains = await this.chainsFor(
       m,

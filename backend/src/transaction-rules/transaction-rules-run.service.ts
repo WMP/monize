@@ -7,7 +7,10 @@ import {
 } from "@nestjs/common";
 import { isDeepStrictEqual } from "node:util";
 import { DataSource, EntityManager } from "typeorm";
-import { isStructuralActionType } from "./rule-action.types";
+import {
+  SETTLE_LOAN_INSTALLMENT,
+  isStructuralActionType,
+} from "./rule-action.types";
 import {
   ActionHistoryService,
   MAX_JSONB_SIZE_BYTES,
@@ -15,6 +18,7 @@ import {
 import { RULE_RUN_ENTITY_TYPE } from "../action-history/rule-run-undo";
 import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { withScopedDb } from "../common/db/scoped-db";
+import { PriorSettlement } from "../loan-installments/loan-settlement.types";
 import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { tr } from "../i18n/translate";
@@ -497,6 +501,12 @@ export class TransactionRulesRunService {
     // INV-RULE-004: the window only narrows the scan; the planner still
     // decides every row. An empty intersection scans nothing.
     const scan = narrowToActiveWindow(filters, rule);
+    // A rule that settles loan installments scans oldest first, so each row
+    // is priced on the debt the rows before it leave (INV-RULE-005); every
+    // other rule scans newest first, as it always has.
+    const settles = rule.actions.some(
+      (action) => action.type === SETTLE_LOAN_INSTALLMENT,
+    );
     const { units, truncated } =
       scan === null
         ? { units: [], truncated: false }
@@ -504,7 +514,7 @@ export class TransactionRulesRunService {
             m,
             userId,
             { ...scan, limit: effectiveRunLimit(filters.limit) },
-            { lock },
+            { lock, direction: settles ? "ASC" : "DESC" },
           );
     const legIds = units.flatMap((unit) => unit.legs.map((leg) => leg.id));
     const tagsByRow =
@@ -537,7 +547,19 @@ export class TransactionRulesRunService {
       dates: units.map((unit) => unit.primary.transactionDate),
       lock,
     });
-    const changing: PlannedUnit[] = [];
+    // The settlements planned so far and not yet written, in scan order
+    // (INV-RULE-005, spec section 7.2): a later row on the same loan is priced
+    // on the debt they leave and is never offered a slot they claim. Nothing
+    // is written while this plans, so every settlement here is unwritten and
+    // none is subtracted twice; a row the strict lock keeps is not written
+    // either, so it is not folded.
+    const prior: PriorSettlement[] = [];
+    // I6: a reconciled row is not altered while the strict lock is on. The
+    // preference is read once, and only when a reconciled row would change.
+    let strict: boolean | null = null;
+    const strictLock = async (): Promise<boolean> =>
+      (strict ??= await isReconciledLockEnabled(m, userId));
+    const writable: PlannedUnit[] = [];
     let conditionMatchedCount = 0;
     const asking: PlannedUnit[] = [];
     for (const unit of units) {
@@ -569,6 +591,7 @@ export class TransactionRulesRunService {
           crossOwnerTransferLeg: unit.crossOwnerTransferLeg,
           accounts,
           transactionId: primary.id,
+          priorSettlements: prior,
         },
         payeeLookups,
         loans,
@@ -586,33 +609,29 @@ export class TransactionRulesRunService {
         }
       }
       if (entry && Object.keys(entry.changes).length > 0) {
-        changing.push({ unit, effects });
-      }
-      if (effects.aiReviewRequests.length > 0) asking.push({ unit, effects });
-    }
-
-    // I6: a reconciled row is not altered while the strict lock is on.
-    const hasReconciled = changing.some(({ unit }) =>
-      unit.legs.some((leg) => leg.status === TransactionStatus.RECONCILED),
-    );
-    const strict = hasReconciled
-      ? await isReconciledLockEnabled(m, userId)
-      : false;
-    const writable: PlannedUnit[] = [];
-    for (const planned of changing) {
-      const locked =
-        strict &&
-        planned.unit.legs.some(
+        const reconciled = unit.legs.some(
           (leg) => leg.status === TransactionStatus.RECONCILED,
         );
-      if (locked) {
-        skipped.push({
-          transactionId: planned.unit.primary.id,
-          reason: "reconciled_locked",
-        });
-      } else {
-        writable.push(planned);
+        if (reconciled && (await strictLock())) {
+          skipped.push({
+            transactionId: primary.id,
+            reason: "reconciled_locked",
+          });
+        } else {
+          writable.push({ unit, effects });
+          const settlement = effects.changes.loanSettlement;
+          if (settlement !== undefined) {
+            prior.push({
+              loanAccountId: settlement.loanAccountId,
+              rowDate: primary.transactionDate,
+              dueDate: settlement.dueDate,
+              principal: settlement.principal,
+              extraPrincipal: settlement.extraPrincipal,
+            });
+          }
+        }
       }
+      if (effects.aiReviewRequests.length > 0) asking.push({ unit, effects });
     }
 
     const matched: RuleRunMatchedRow[] = writable.map(({ unit, effects }) => ({
@@ -638,6 +657,7 @@ export class TransactionRulesRunService {
         matched,
         skipped,
         scanned: units.length,
+        scanOrder: settles ? "oldest_first" : "newest_first",
         conditionMatchedCount,
         truncated,
         fingerprint: planFingerprint(
