@@ -46,6 +46,49 @@ export interface RuleSplitPlan {
 /** What a structural action makes of the row (`RuleStructurePlan`). */
 export type RuleStructurePlan = RuleTransferPlan | RuleSplitPlan;
 
+/** Which row of the settlement's amount policy decided the lines. */
+export type RuleLoanSettlementOutcome = 'exact' | 'tolerance' | 'extra_principal' | 'extra_shed' | 'interest_first';
+
+/**
+ * How a settlement was priced (the claim's `pricing` record without its
+ * version). Money is a fixed-decimal string so JSON never rounds it: the
+ * ledger and priced figures at 4dp, the booked, paid and written figures at
+ * the currency's unit.
+ */
+export interface RuleLoanSettlementPricing {
+  dueDate: string;
+  installmentNumber: number;
+  method: string;
+  prepaymentMode: string | null;
+  currencyCode: string;
+  debtLedger: string;
+  foldedPrincipal: string;
+  /** The debt the installment was priced on: the ledger debt less what earlier rows of the same pass repaid. */
+  debtBefore: string;
+  annualRate: string;
+  periodicRate: number;
+  priced: { principal: string; interest: string; extra: string; total: string };
+  booked: { principal: string; interest: string; extra: string; total: string };
+  paid: string;
+  difference: string;
+  outcome: RuleLoanSettlementOutcome;
+  /** The lines the split writes, unsigned. */
+  lines: { principal: string; interest: string; extra: string };
+}
+
+/** The installment a `settle_loan_installment` action pays (`RuleLoanSettlementChange`). */
+export interface RuleLoanSettlementPlan {
+  loanAccountId: string;
+  scheduledTransactionId: string;
+  /** The matched slot, `YYYY-MM-DD`. */
+  dueDate: string;
+  installmentNumber: number;
+  pricing: RuleLoanSettlementPricing;
+  /** Set once written: the occurrence claim. */
+  claimId?: string;
+  cursorAdvanced?: boolean;
+}
+
 /** What a rule changed on one row; an absent key was left alone. */
 export interface RuleRunChanges {
   categoryId?: RuleRunFieldChange<string | null>;
@@ -60,6 +103,8 @@ export interface RuleRunChanges {
   tagIds?: RuleRunFieldChange<string[]>;
   /** Set by `convert_to_transfer` and `split`: what the row becomes. */
   structure?: RuleRunFieldChange<RuleStructurePlan | null>;
+  /** Set by `settle_loan_installment` beside `structure`: the installment it pays. */
+  loanSettlement?: RuleRunFieldChange<RuleLoanSettlementPlan | null>;
 }
 
 export interface RuleRunMatchedRow {
@@ -71,30 +116,73 @@ export interface RuleRunMatchedRow {
   changes: RuleRunChanges;
 }
 
-export type RuleRunSkipReason =
-  | 'reconciled_locked'
-  | 'transfer_leg_category'
-  | 'split_category'
-  | 'cross_owner_transfer_payee'
-  | 'empty_render'
-  | 'payee_not_found'
+/** The settlement's own refusals, in the order the server checks them (loan settlement spec section 11). */
+export const RULE_LOAN_SETTLEMENT_SKIP_REASONS = [
+  'row_from_scheduled_posting',
+  'row_is_income',
+  'loan_account_unavailable',
+  'loan_interest_booked_separately',
+  'loan_not_configured',
+  'no_installment_in_window',
+  'occurrence_already_posted',
+  'loan_debt_retired',
+  'installment_amount_excess',
+  'installment_amount_shortfall',
+] as const;
+
+export type RuleLoanSettlementSkipReason = (typeof RULE_LOAN_SETTLEMENT_SKIP_REASONS)[number];
+
+/**
+ * Why a row the rule reached was left alone: every reason the server names
+ * (`RuleRunSkipReason` in `rule-run.types.ts`, held to it by
+ * `rule-fields.contract.test.ts`). A reason newer than this client still
+ * reads as "the rule cannot change it".
+ */
+export const RULE_SKIP_REASONS = [
+  'reconciled_locked',
+  'transfer_leg_category',
+  'split_category',
+  'cross_owner_transfer_payee',
+  'empty_render',
+  'payee_not_found',
   // A structural action the row cannot take (spec section 4).
-  | 'row_is_transfer_leg'
-  | 'row_has_splits'
-  | 'row_is_void'
-  | 'zero_amount'
-  | 'transfer_direction_mismatch'
-  | 'transfer_same_account'
-  | 'transfer_account_unavailable'
-  | 'transfer_currency_mismatch'
-  | 'split_amount_unparseable'
-  | 'split_sum_mismatch'
-  | 'split_too_few_parts';
+  'row_is_transfer_leg',
+  'row_has_splits',
+  'row_is_void',
+  'zero_amount',
+  'transfer_direction_mismatch',
+  'transfer_same_account',
+  'transfer_account_unavailable',
+  'transfer_currency_mismatch',
+  'split_amount_unparseable',
+  'split_sum_mismatch',
+  'split_too_few_parts',
+  ...RULE_LOAN_SETTLEMENT_SKIP_REASONS,
+] as const;
+
+export type RuleRunSkipReason = (typeof RULE_SKIP_REASONS)[number];
+
+/** What a settlement refusal names: the input to set, the slot that is taken, the amounts that differ. */
+export interface RuleRunSkipDetail {
+  accountType?: string;
+  missing?: string[];
+  dueDate?: string;
+  windowFrom?: string;
+  windowTo?: string;
+  dueDates?: string[];
+  expected?: number;
+  paid?: number;
+  debtBefore?: number;
+}
 
 export interface RuleRunSkippedRow {
   transactionId: string;
   reason: RuleRunSkipReason;
+  detail?: RuleRunSkipDetail;
 }
+
+/** Which end of the register a run scanned from: oldest first when a rule settles loan installments. */
+export type RuleRunScanOrder = 'newest_first' | 'oldest_first';
 
 /** Names for the ids `changes` mentions, so no raw id reaches the screen. */
 export interface RuleRunLabels {
@@ -118,6 +206,8 @@ export interface RuleRunPreview {
   conditionMatchedCount: number;
   /** More rows matched the filters than `limit` allowed. */
   truncated: boolean;
+  /** Which rows a truncated run kept; absent from a server that predates it (newest first). */
+  scanOrder?: RuleRunScanOrder;
   /** Echoed back by the run to confirm this exact plan. */
   fingerprint: string;
   labels: RuleRunLabels;

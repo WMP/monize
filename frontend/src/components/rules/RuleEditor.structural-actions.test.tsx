@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   categories: vi.fn(),
   tags: vi.fn(),
   currencies: vi.fn(),
+  bill: vi.fn(),
 }));
 
 vi.mock('@/lib/transaction-rules-api', () => ({ transactionRulesApi: mocks.rules }));
@@ -35,6 +36,10 @@ vi.mock('@/lib/tags', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/tags')>()),
   tagsApi: { getAll: (...args: unknown[]) => mocks.tags(...args) },
 }));
+vi.mock('@/lib/scheduled-transactions', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/scheduled-transactions')>()),
+  scheduledTransactionsApi: { getById: (...args: unknown[]) => mocks.bill(...args) },
+}));
 vi.mock('@/lib/exchange-rates', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/exchange-rates')>()),
   exchangeRatesApi: { getCurrencies: (...args: unknown[]) => mocks.currencies(...args) },
@@ -44,6 +49,8 @@ const CHECKING = '11111111-1111-4111-8111-000000000001';
 const LOAN = '11111111-1111-4111-8111-000000000002';
 const BROKERAGE = '11111111-1111-4111-8111-000000000003';
 const CLOSED = '11111111-1111-4111-8111-000000000004';
+const MORTGAGE = '11111111-1111-4111-8111-000000000005';
+const BILL = '55555555-5555-4555-8555-000000000001';
 const REPAYMENT = '22222222-2222-4222-8222-000000000001';
 const OVERPAYMENT = '22222222-2222-4222-8222-000000000002';
 const LOANS = '33333333-3333-4333-8333-000000000001';
@@ -222,7 +229,7 @@ describe('RuleEditor: a split action', () => {
     fireEvent.change(within(part(action, 2)).getByLabelText('Amount'), { target: { value: '{interest}' } });
     await save();
     expect(mocks.rules.create).toHaveBeenCalledTimes(1);
-    const message = 'A rule can have only one AI review, one transfer or split, and one split part that takes the rest.';
+    const message = 'A rule can have only one AI review, one transfer, split or loan settlement, and one split part that takes the rest.';
     expect(within(part(card('Action', 0), 2)).getByText(message)).toBeInTheDocument();
     expect(within(part(card('Action', 0), 1)).queryByText(message)).not.toBeInTheDocument();
     // The next edit clears it, like every other error.
@@ -370,5 +377,97 @@ describe('RuleEditor: a stored transfer or split', () => {
     expect(within(action).getByLabelText('Direction')).toHaveValue('from');
     expect(within(action).getByLabelText('From Account')).toHaveValue(LOAN);
     expect(within(action).getByRole('switch', { name: 'Clear the category' })).toHaveAttribute('aria-checked', 'false');
+  });
+});
+
+describe('RuleEditor: a loan settlement action', () => {
+  beforeEach(() => {
+    mocks.accounts.mockResolvedValue([
+      account(CHECKING, 'Checking account'),
+      account(LOAN, 'Loan account', { accountType: 'LOAN' }),
+      account(CLOSED, 'Old mortgage', { accountType: 'MORTGAGE', isClosed: true }),
+      account(MORTGAGE, 'Home mortgage', { accountType: 'MORTGAGE', scheduledTransactionId: BILL }),
+    ]);
+  });
+
+  it('offers only the open mortgages and loans, and saves the action with its defaults', async () => {
+    mocks.rules.create.mockResolvedValue(makeRule({ id: 'new-id' }));
+    mocks.bill.mockResolvedValue({ id: BILL, autoPost: false });
+    await renderEditor();
+    startRule();
+    const action = addAction('settle_loan_installment', 0);
+    expect(within(action).getByTestId('rule-action-guide')).toBeInTheDocument();
+    expect(optionLabels(within(action).getByLabelText('Loan account'))).toEqual([
+      'Select a mortgage or loan...',
+      'Home mortgage (PLN)',
+      'Loan account (PLN)',
+    ]);
+    expect(within(action).getByLabelText('Days before the due date')).toHaveValue('3');
+    expect(within(action).getByLabelText('Days after the due date')).toHaveValue('7');
+
+    await act(async () => {
+      fireEvent.change(within(action).getByLabelText('Loan account'), { target: { value: MORTGAGE } });
+    });
+    fireEvent.change(within(action).getByLabelText('When the debit is less than the installment'), {
+      target: { value: 'interest_first' },
+    });
+    pickCombobox(action, "The loan's own interest category", 'Loans: Interest');
+    await save();
+
+    expect(mocks.rules.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actions: [
+          {
+            type: 'settle_loan_installment',
+            loanAccountId: MORTGAGE,
+            dueDateWindow: { daysBefore: 3, daysAfter: 7 },
+            excess: 'extra_principal',
+            shortfall: 'interest_first',
+            interestCategoryId: INTEREST,
+          },
+        ],
+      }),
+    );
+  });
+
+  it('asks for the loan account before anything is sent, at the field', async () => {
+    await renderEditor();
+    startRule();
+    const action = addAction('settle_loan_installment', 0);
+    await save();
+    expect(mocks.rules.create).not.toHaveBeenCalled();
+    expect(within(action).getByText('Enter or choose a value.')).toBeInTheDocument();
+  });
+
+  it('is the one structural action: a second card lists none, and a transfer beside it is refused', async () => {
+    await renderEditor();
+    startRule();
+    addAction('settle_loan_installment', 0);
+    click('+ Add action');
+    const second = within(card('Action', 1)).getByLabelText('Action type');
+    expect(optionLabels(second)).not.toContain('Split transaction');
+    expect(optionLabels(second)).not.toContain('Settle a loan installment');
+    expect(optionLabels(within(card('Action', 0)).getByLabelText('Action type'))).toEqual(
+      expect.arrayContaining(['Split transaction', 'Convert to transfer', 'Settle a loan installment']),
+    );
+  });
+
+  it("warns when the loan's scheduled payment posts itself, and only then", async () => {
+    mocks.bill.mockResolvedValue({ id: BILL, autoPost: true });
+    await renderEditor();
+    startRule();
+    const action = addAction('settle_loan_installment', 0);
+    expect(mocks.bill).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.change(within(action).getByLabelText('Loan account'), { target: { value: MORTGAGE } });
+    });
+    expect(mocks.bill).toHaveBeenCalledWith(BILL);
+    expect(screen.getByText("The loan's scheduled payment posts itself")).toBeInTheDocument();
+
+    // A loan without a scheduled payment asks for nothing and warns about nothing.
+    await act(async () => {
+      fireEvent.change(within(action).getByLabelText('Loan account'), { target: { value: LOAN } });
+    });
+    expect(screen.queryByText("The loan's scheduled payment posts itself")).not.toBeInTheDocument();
   });
 });

@@ -9,7 +9,7 @@ const HEADING_CLASS = 'text-xs font-medium text-gray-700 dark:text-gray-300';
 /**
  * The usage guide under the action type: how a split is set up (patterns,
  * captures, parts) with a worked loan example, or the short note of a
- * conversion to a transfer. Other action types have none. The example's capture
+ * conversion to a transfer or a loan settlement. Other action types have none. The example's capture
  * names are catalog values passed as ICU arguments, so each locale's braces
  * render literally and its parts keep the pattern's own names.
  */
@@ -21,6 +21,14 @@ export function RuleActionGuide({ type }: { type: EditorAction['type'] }) {
       <div className="space-y-1" data-testid="rule-action-guide">
         <p className={HEADING_CLASS}>{t('guideTitle')}</p>
         <p className={TEXT_CLASS}>{t('convertGuide')}</p>
+      </div>
+    );
+  }
+  if (type === 'settle_loan_installment') {
+    return (
+      <div className="space-y-1" data-testid="rule-action-guide">
+        <p className={HEADING_CLASS}>{t('guideTitle')}</p>
+        <p className={TEXT_CLASS}>{t('loanGuide')}</p>
       </div>
     );
   }

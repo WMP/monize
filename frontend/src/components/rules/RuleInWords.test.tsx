@@ -137,6 +137,42 @@ describe('the actions in words: the structural actions', () => {
     ).toBeInTheDocument();
   });
 
+  it('reads a loan settlement with its loan, its window and its two policies', () => {
+    actions([
+      {
+        type: 'settle_loan_installment',
+        loanAccountId: ACCOUNT,
+        dueDateWindow: { daysBefore: 3, daysAfter: 1 },
+        excess: 'extra_principal',
+        shortfall: 'interest_first',
+      },
+      {
+        type: 'settle_loan_installment',
+        loanAccountId: ACCOUNT,
+        dueDateWindow: { daysBefore: 0, daysAfter: 7 },
+        excess: 'refuse',
+        shortfall: 'refuse',
+      },
+    ]);
+    expect(
+      screen.getByText(
+        'Settle the installment of Loan account paid by a debit up to 3 days before or 1 day after its due date; a larger debit pays extra principal, a smaller one pays the interest first',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Settle the installment of Loan account paid by a debit up to 0 days before or 7 days after its due date; a larger debit is left alone, a smaller one is left alone',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('does not read a settlement without a window as zero days', () => {
+    actions([
+      { type: 'settle_loan_installment', loanAccountId: ACCOUNT, excess: 'refuse', shortfall: 'refuse' } as unknown as RuleAction,
+    ]);
+    expect(screen.queryByText(/Settle the installment/)).not.toBeInTheDocument();
+  });
+
   it('does not name an account that is gone', () => {
     actions([{ type: 'convert_to_transfer', toAccountId: ACCOUNT, clearCategory: true }], labels);
     expect(screen.getByText(/^Turn into a transfer to /)).toBeInTheDocument();

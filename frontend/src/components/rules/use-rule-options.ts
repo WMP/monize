@@ -20,6 +20,8 @@ export interface RuleOptions {
    * brokerage account, no closed one), in the same order and labels as `accounts`.
    */
   readonly transferAccounts: RuleOption[];
+  /** The loans a settlement may pay: the open `MORTGAGE` and `LOAN` accounts, same order and labels. */
+  readonly loanAccounts: RuleOption[];
   readonly payees: RuleOption[];
   readonly categories: RuleOption[];
   readonly tags: RuleOption[];
@@ -38,6 +40,13 @@ export function useRuleOptions(lookups: RuleLookups): RuleOptions {
       transferAccounts: buildAccountDropdownOptions(
         [...lookups.accounts],
         (account) => account.accountSubType !== 'INVESTMENT_BROKERAGE' && !account.isClosed,
+        accountLabel,
+      )
+        .filter((option) => option.value !== SEPARATOR)
+        .map(({ value, label }) => ({ value, label })),
+      loanAccounts: buildAccountDropdownOptions(
+        [...lookups.accounts],
+        (account) => (account.accountType === 'MORTGAGE' || account.accountType === 'LOAN') && !account.isClosed,
         accountLabel,
       )
         .filter((option) => option.value !== SEPARATOR)

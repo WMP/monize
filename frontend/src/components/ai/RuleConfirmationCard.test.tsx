@@ -456,3 +456,30 @@ describe('RuleConfirmationCard: states and unknown values', () => {
     expect(screen.getByText('An action this version cannot show')).toBeInTheDocument();
   });
 });
+
+describe('RuleConfirmationCard: a loan settlement', () => {
+  it('reads the settlement in words with the loan named, never its id', () => {
+    renderCard(
+      makeRuleAction(
+        'create_transaction_rule',
+        makeRule({
+          actions: [
+            {
+              type: 'settle_loan_installment',
+              loanAccountId: 'acc-2',
+              dueDateWindow: { daysBefore: 3, daysAfter: 7 },
+              excess: 'extra_principal',
+              shortfall: 'refuse',
+            },
+          ],
+        }),
+      ),
+    );
+    expect(
+      screen.getByText(
+        'Settle the installment of Savings paid by a debit up to 3 days before or 7 days after its due date; a larger debit pays extra principal, a smaller one is left alone',
+      ),
+    ).toBeInTheDocument();
+    expectNoIds();
+  });
+});

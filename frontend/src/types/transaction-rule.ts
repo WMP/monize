@@ -147,8 +147,35 @@ export interface SplitAction {
   readonly parts: readonly SplitActionPart[];
 }
 
-/** The two actions that restructure the row (a transfer, a split). */
-export type StructuralRuleAction = ConvertToTransferAction | SplitAction;
+/** What a row that paid more than the priced installment becomes. */
+export type LoanSettlementExcessPolicy = 'extra_principal' | 'refuse';
+
+/** What a row that paid less than the base installment becomes. */
+export type LoanSettlementShortfallPolicy = 'refuse' | 'interest_first';
+
+/**
+ * Settles the matched bank debit against the scheduled installment of a
+ * `MORTGAGE` or `LOAN` account (`docs/specs/loan-installment-settlement.md`
+ * section 5.1): the row becomes a split of a principal transfer to the loan,
+ * an interest line and, when it paid more, an extra-principal transfer, each
+ * priced by the server. No amount is stored.
+ */
+export interface SettleLoanInstallmentAction {
+  readonly type: 'settle_loan_installment';
+  readonly loanAccountId: string;
+  /** The slots a row dated `t` may pay: `[t - daysAfter, t + daysBefore]`, each 0..31. */
+  readonly dueDateWindow: {
+    readonly daysBefore: number;
+    readonly daysAfter: number;
+  };
+  readonly excess: LoanSettlementExcessPolicy;
+  readonly shortfall: LoanSettlementShortfallPolicy;
+  /** The interest line's category; absent means the loan's own interest category. */
+  readonly interestCategoryId?: string;
+}
+
+/** The three actions that restructure the row (a transfer, a split, a loan settlement). */
+export type StructuralRuleAction = ConvertToTransferAction | SplitAction | SettleLoanInstallmentAction;
 
 /** Queues a person-approved AI review; never changes the row itself. */
 export interface RequestAiReviewAction {

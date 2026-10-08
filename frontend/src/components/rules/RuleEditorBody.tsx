@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { RuleActionCard } from '@/components/rules/RuleActionCard';
 import type { RuleTreeEnv } from '@/components/rules/RuleConditionGroup';
 import { RuleEditorBanners } from '@/components/rules/RuleEditorBanners';
+import { settlementScheduleId } from '@/components/rules/use-loan-bill-auto-post';
 import { RuleErrorList } from '@/components/rules/RuleCardShell';
 import { RuleIfSection } from '@/components/rules/RuleIfSection';
 import { RuleApplications } from '@/components/rules/RuleApplications';
@@ -198,6 +199,7 @@ export function RuleEditorBody({ rule, lookups, onSaved, onReload }: RuleEditorB
         refused={refused}
         unplaced={errors.unplaced}
         message={message}
+        loanScheduleId={settlementScheduleId(draft.actions, lookups)}
       />
       <fieldset disabled={saving} aria-busy={saving} className="m-0 min-w-0 space-y-6 border-0 p-0">
         <Card padding="md">

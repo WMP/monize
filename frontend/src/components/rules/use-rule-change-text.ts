@@ -2,8 +2,9 @@
 
 import { useCallback } from 'react';
 import { useFormatter, useTranslations } from 'next-intl';
+import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
-import type { RuleRunChanges, RuleStructurePlan } from '@/types/transaction-rule-run';
+import type { RuleLoanSettlementPlan, RuleRunChanges, RuleStructurePlan } from '@/types/transaction-rule-run';
 
 /** Names for the ids a change mentions; `undefined` means the id is not known. */
 export interface RuleChangeNames {
@@ -28,6 +29,8 @@ export interface RuleChangeTextOptions {
  * by text has no id until it exists: it reads by name, with a note when the
  * rule creates it. A description reads in quotes. A transfer reads as the
  * account it goes to, a split as one line per part with its signed amount.
+ * A loan settlement adds one line before its split: the installment it pays,
+ * its principal, interest and extra principal, and the debt it was priced on.
  */
 export function useRuleChangeText(): (
   changes: RuleRunChanges,
@@ -38,6 +41,7 @@ export function useRuleChangeText(): (
   const tw = useTranslations('rules.words');
   const format = useFormatter();
   const { formatCurrency, formatNumber } = useNumberFormat();
+  const { formatDate } = useDateFormat();
 
   return useCallback(
     (changes, names, options = {}) => {
@@ -72,6 +76,25 @@ export function useRuleChangeText(): (
             return part.memo === null || part.memo === '' ? head : `${head}${t('splitPartMemo', { memo: part.memo })}`;
           }),
         ];
+      };
+
+      const settlementLine = (plan: RuleLoanSettlementPlan, known: RuleChangeNames, done: boolean): string => {
+        const { pricing } = plan;
+        // The server sends money as fixed-decimal strings in the loan's currency; one it did not send is unknown.
+        const money = (value: string | undefined) =>
+          value === undefined || value === '' ? t('unknown') : formatCurrency(Number(value), pricing.currencyCode);
+        const extra = pricing.lines.extra;
+        return t('loanSettlement', {
+          done: done ? 'yes' : 'no',
+          number: plan.installmentNumber,
+          account: known.account(plan.loanAccountId) ?? t('unknown'),
+          dueDate: formatDate(plan.dueDate),
+          principal: money(pricing.lines.principal),
+          interest: money(pricing.lines.interest),
+          hasExtra: extra !== undefined && extra !== '' && Number(extra) !== 0 ? 'yes' : 'no',
+          extra: money(extra),
+          debtBefore: money(pricing.debtBefore),
+        });
       };
 
       if (changes.categoryId) {
@@ -122,10 +145,12 @@ export function useRuleChangeText(): (
         if (added.length > 0) lines.push(t('tagsAdded', { tags: list(added) }));
         if (removed.length > 0) lines.push(t('tagsRemoved', { tags: list(removed) }));
       }
+      const settlement = changes.loanSettlement?.after;
+      if (settlement) lines.push(settlementLine(settlement, names, options.done === true));
       const structure = changes.structure?.after;
       if (structure) lines.push(...structureLines(structure, names, options.done === true, options.currencyCode));
       return lines;
     },
-    [t, tw, format, formatCurrency, formatNumber],
+    [t, tw, format, formatCurrency, formatNumber, formatDate],
   );
 }
