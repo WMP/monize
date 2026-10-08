@@ -1,8 +1,8 @@
 import {
   ConvertToTransferAction,
   SPLIT_REST_AMOUNT,
+  SettleLoanInstallmentAction,
   SplitAction,
-  StructuralRuleAction,
 } from "./rule-action.types";
 import { parseRuleAmount } from "./rule-amount";
 import { RuleFacts } from "./rule-condition.types";
@@ -61,7 +61,11 @@ export interface SplitStructurePlan {
 
 export type RuleStructurePlan = TransferStructurePlan | SplitStructurePlan;
 
-/** The reasons a structural action is refused, in the order they are checked (spec section 4). */
+/**
+ * The reasons a structural action is refused, in the order they are checked
+ * (spec section 4), then the ones only `settle_loan_installment` gives, in
+ * the order of `docs/specs/loan-installment-settlement.md` section 11.
+ */
 export type StructuralRefusal =
   | "row_is_transfer_leg"
   | "row_has_splits"
@@ -73,7 +77,21 @@ export type StructuralRefusal =
   | "transfer_currency_mismatch"
   | "split_amount_unparseable"
   | "split_sum_mismatch"
-  | "split_too_few_parts";
+  | "split_too_few_parts"
+  | LoanSettlementSkipReason;
+
+/** The settlement's own refusals (`docs/specs/loan-installment-settlement.md` section 11, rows 9 to 19). */
+export type LoanSettlementSkipReason =
+  | "row_from_scheduled_posting"
+  | "row_is_income"
+  | "loan_account_unavailable"
+  | "loan_interest_booked_separately"
+  | "loan_not_configured"
+  | "no_installment_in_window"
+  | "occurrence_already_posted"
+  | "loan_debt_retired"
+  | "installment_amount_excess"
+  | "installment_amount_shortfall";
 
 /** Every account a plan's write will move the balance of, each once. */
 export function structureTargetAccountIds(
@@ -89,10 +107,19 @@ export function structureTargetAccountIds(
   ];
 }
 
-/** The owner's accounts a structural action may target, by id. */
+/**
+ * The owner's accounts a structural action may target, by id. The type and
+ * the interest booking mode let `settle_loan_installment` refuse an account
+ * that is not a loan without reading its facts; absent, the loan core decides
+ * from the facts instead.
+ */
 export type RuleTargetAccounts = ReadonlyMap<
   string,
-  { readonly currencyCode: string }
+  {
+    readonly currencyCode: string;
+    readonly accountType?: string;
+    readonly interestBookingMode?: string;
+  }
 >;
 
 export type StructurePlanResult =
@@ -217,12 +244,30 @@ function planSplit(
 }
 
 /**
+ * The shared refusals of a `settle_loan_installment` (spec section 4 in its
+ * order, without the direction: the action has none), against the loan as
+ * the target account. The settlement's own refusals follow in
+ * `rule-loan-settlement.ts`.
+ */
+export function settlementSharedRefusal(
+  action: SettleLoanInstallmentAction,
+  facts: RuleFacts,
+  accounts: RuleTargetAccounts | undefined,
+): StructuralRefusal | null {
+  return (
+    rowRefusal(facts) ?? targetRefusal(action.loanAccountId, facts, accounts)
+  );
+}
+
+/**
  * Plan one structural action against the row as the rules before it left it
  * (`facts` already reflects an earlier conversion or split). Pure; every
  * refusal is decided here, before anything is written (spec section 2).
+ * `settle_loan_installment` plans through `rule-loan-settlement.ts`, which
+ * needs the loan's facts.
  */
 export function planStructure(
-  action: StructuralRuleAction,
+  action: ConvertToTransferAction | SplitAction,
   facts: RuleFacts,
   accounts: RuleTargetAccounts | undefined,
   captures: GlobCaptures,

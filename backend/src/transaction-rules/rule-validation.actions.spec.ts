@@ -1,4 +1,9 @@
-import { RULE_ACTION_TYPES, isLedgerAction } from "./rule-action.types";
+import {
+  RULE_ACTION_TYPES,
+  SETTLE_LOAN_INSTALLMENT_ACCEPTED,
+  isLedgerAction,
+  isStructuralAction,
+} from "./rule-action.types";
 import {
   MAX_RULE_ACTIONS,
   MAX_RULE_AI_INSTRUCTION_LENGTH,
@@ -91,6 +96,45 @@ describe("validateRuleDefinition: actions", () => {
       "convert_to_transfer",
       "split",
     ]);
+  });
+
+  it("UNKNOWN_ACTION for settle_loan_installment on every save path until its write path accepts it", () => {
+    // Inert until B5 (docs/future-plans/loan-installment-settlement-tasks.md):
+    // no rule can store the action, so no create, import or run plans a
+    // split that would be written without its occurrence claim.
+    expect(SETTLE_LOAN_INSTALLMENT_ACCEPTED).toBe(false);
+    const settle = {
+      type: "settle_loan_installment",
+      loanAccountId: U1,
+      dueDateWindow: { daysBefore: 3, daysAfter: 7 },
+      excess: "extra_principal",
+      shortfall: "refuse",
+    };
+    expect(check(cond, [settle])).toEqual([
+      { path: "actions[0].type", code: "UNKNOWN_ACTION" },
+    ]);
+    // Refused as unknown, so it neither counts as the rule's structural
+    // action nor conflicts with a category.
+    expect(
+      check(cond, [
+        settle,
+        { type: "set_category", categoryId: U2, onlyIfEmpty: true },
+        {
+          type: "convert_to_transfer",
+          toAccountId: U3,
+          clearCategory: true,
+        },
+      ]),
+    ).toEqual([
+      { path: "actions[0].type", code: "UNKNOWN_ACTION" },
+      { path: "actions[2]", code: "CONFLICTING_ACTIONS" },
+    ]);
+    expect(
+      isStructuralAction({
+        ...settle,
+        type: "settle_loan_installment",
+      } as never),
+    ).toBe(true);
   });
 
   it("tagIds: 1..20 uuids, both tag actions", () => {
@@ -318,6 +362,32 @@ describe("collectReferencedIds", () => {
       categoryIds: [U4],
       tagIds: [U5, U1, U2],
     });
+  });
+
+  it("collects the loan account and the interest category of settle_loan_installment", () => {
+    const settle = {
+      type: "settle_loan_installment",
+      loanAccountId: U1,
+      dueDateWindow: { daysBefore: 3, daysAfter: 7 },
+      excess: "extra_principal",
+      shortfall: "refuse",
+    };
+    const definition = (interestCategoryId?: string) =>
+      ({
+        condition: leaf("accountId", "eq", U2),
+        actions: [
+          interestCategoryId === undefined
+            ? settle
+            : { ...settle, interestCategoryId },
+        ],
+      }) as unknown as RuleDefinition;
+    expect(collectReferencedIds(definition(U4))).toEqual({
+      accountIds: [U2, U1],
+      payeeIds: [],
+      categoryIds: [U4],
+      tagIds: [],
+    });
+    expect(collectReferencedIds(definition()).categoryIds).toEqual([]);
   });
 
   it("returns empty lists for a definition that names no id", () => {

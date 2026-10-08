@@ -3,7 +3,7 @@ import { Account } from "../accounts/entities/account.entity";
 import { Category } from "../categories/entities/category.entity";
 import { Payee } from "../payees/entities/payee.entity";
 import { Tag } from "../tags/entities/tag.entity";
-import { RuleAction } from "./rule-action.types";
+import { RuleAction, SETTLE_LOAN_INSTALLMENT } from "./rule-action.types";
 import {
   RULE_CONDITION_FIELDS,
   RuleConditionNode,
@@ -52,6 +52,10 @@ const toList = (value: unknown): string[] =>
  * 3), `set_description` overwrites (`onlyIfEmpty: false`, `mode: "replace"`),
  * and `set_payee_from_text` creates nothing (`createIfMissing: false`).
  * `convert_to_transfer` clears the category (`clearCategory: true`, spec 3.3).
+ * `settle_loan_installment` matches a slot up to 3 days after or 7 days before
+ * the row, turns an excess into extra principal and refuses a shortfall
+ * (`docs/specs/loan-installment-settlement.md` section 5.1); written on save,
+ * so a stored rule never depends on a default a later release changes.
  */
 const ACTION_DEFAULTS: Readonly<
   Record<string, Readonly<Record<string, unknown>>>
@@ -61,6 +65,11 @@ const ACTION_DEFAULTS: Readonly<
   set_payee_from_text: { onlyIfEmpty: true, createIfMissing: false },
   set_description: { onlyIfEmpty: false, mode: "replace" },
   convert_to_transfer: { clearCategory: true },
+  [SETTLE_LOAN_INSTALLMENT]: {
+    dueDateWindow: Object.freeze({ daysBefore: 3, daysAfter: 7 }),
+    excess: "extra_principal",
+    shortfall: "refuse",
+  },
 };
 
 /**
@@ -160,6 +169,13 @@ function actionSites(
           kind: "payeeIds",
           ids: [part.payeeId].filter(isString),
         });
+      });
+    } else if (action.type === SETTLE_LOAN_INSTALLMENT) {
+      out.push({ path, kind: "accountIds", ids: [action.loanAccountId] });
+      out.push({
+        path,
+        kind: "categoryIds",
+        ids: [action.interestCategoryId].filter(isString),
       });
     }
   });

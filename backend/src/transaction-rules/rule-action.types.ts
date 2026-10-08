@@ -3,14 +3,24 @@
  * in docs/specs/transaction-rules-structural-actions.md section 2): no action
  * changes the matched row's amount, account, date or status, and none deletes
  * or relinks a row that exists. The only balance a rule moves is the one a
- * structural action (`convert_to_transfer`, `split`) creates, by exactly the
- * counterpart leg's amount. Anything not in this union is not representable,
- * and the validator refuses it.
+ * structural action (`convert_to_transfer`, `split`,
+ * `settle_loan_installment`) creates, by exactly the counterpart leg's
+ * amount. Anything not in this union is not representable, and the validator
+ * refuses it.
  *
  * `request_ai_review` is the one action that is not a ledger write: it asks
  * for a person-approved AI review of the row and never changes the row itself.
  * `isLedgerAction` tells the two groups apart for the applier;
- * `isStructuralAction` picks out the two that restructure the row.
+ * `isStructuralAction` picks out the three that restructure the row.
+ *
+ * `RULE_ACTION_TYPES` is the list every save path accepts, and the list the
+ * frontend editor mirrors. `settle_loan_installment` is typed, validated,
+ * referenced and planned, but it joins that list only with its write path
+ * (B5 of `docs/future-plans/loan-installment-settlement-tasks.md`): until
+ * then the validator answers `UNKNOWN_ACTION` for it while
+ * `SETTLE_LOAN_INSTALLMENT_ACCEPTED` is false, so no rule can store it and no
+ * create, import or run can plan a split that would be written without its
+ * occurrence claim.
  */
 
 export const RULE_ACTION_TYPES = [
@@ -25,6 +35,16 @@ export const RULE_ACTION_TYPES = [
   "split",
 ] as const;
 export type RuleActionType = (typeof RULE_ACTION_TYPES)[number];
+
+/** The action that settles a bank debit against a scheduled loan installment. */
+export const SETTLE_LOAN_INSTALLMENT = "settle_loan_installment";
+
+/**
+ * Whether the validator accepts `settle_loan_installment` (the file comment
+ * says why it does not yet). B5 removes this flag and appends the type to
+ * `RULE_ACTION_TYPES` in the commit that writes the occurrence claim.
+ */
+export const SETTLE_LOAN_INSTALLMENT_ACCEPTED: boolean = false;
 
 export interface AddTagsAction {
   readonly type: "add_tags";
@@ -116,8 +136,43 @@ export interface SplitAction {
   readonly parts: readonly SplitActionPart[];
 }
 
+/** What a row that paid more than the priced installment becomes. */
+export const LOAN_SETTLEMENT_EXCESS_POLICIES = [
+  "extra_principal",
+  "refuse",
+] as const;
+/** What a row that paid less than the base installment becomes. */
+export const LOAN_SETTLEMENT_SHORTFALL_POLICIES = [
+  "refuse",
+  "interest_first",
+] as const;
+
+/**
+ * Settles the matched bank debit against the scheduled installment of a loan
+ * (`docs/specs/loan-installment-settlement.md` section 5.1): the row becomes a
+ * split of a principal transfer to the loan, an interest line and, when it
+ * paid more, an extra-principal transfer, priced by the installment engine for
+ * the occurrence it pays. No amount is stored: the engine prices every line.
+ * Every field is written on save (decision 19).
+ */
+export interface SettleLoanInstallmentAction {
+  readonly type: typeof SETTLE_LOAN_INSTALLMENT;
+  /** A `MORTGAGE` or `LOAN` account of the rule's owner. */
+  readonly loanAccountId: string;
+  /** The slots a row dated `t` may pay: `[t - daysAfter, t + daysBefore]`, each 0..31. */
+  readonly dueDateWindow: {
+    readonly daysBefore: number;
+    readonly daysAfter: number;
+  };
+  readonly excess: (typeof LOAN_SETTLEMENT_EXCESS_POLICIES)[number];
+  readonly shortfall: (typeof LOAN_SETTLEMENT_SHORTFALL_POLICIES)[number];
+  /** The interest line's category; absent means the loan's `interest_category_id`. */
+  readonly interestCategoryId?: string;
+}
+
 /** The actions that restructure the row: a transfer leg or a split. */
-export type StructuralRuleAction = ConvertToTransferAction | SplitAction;
+export type StructuralRuleAction =
+  ConvertToTransferAction | SplitAction | SettleLoanInstallmentAction;
 
 /**
  * The actions that change the row's tags, category, payee or description, or
@@ -140,9 +195,18 @@ export function isLedgerAction(action: RuleAction): action is LedgerRuleAction {
   return action.type !== "request_ai_review";
 }
 
-/** True for `convert_to_transfer` and `split`, the actions that restructure the row. */
+/** True for `convert_to_transfer`, `split` and `settle_loan_installment`, the actions that restructure the row. */
 export function isStructuralAction(
   action: RuleAction,
 ): action is StructuralRuleAction {
-  return action.type === "convert_to_transfer" || action.type === "split";
+  return isStructuralActionType(action.type);
+}
+
+/** The same test on a type name, for a caller holding only the type (a trace entry, an unvalidated action). */
+export function isStructuralActionType(type: unknown): boolean {
+  return (
+    type === "convert_to_transfer" ||
+    type === "split" ||
+    type === SETTLE_LOAN_INSTALLMENT
+  );
 }
