@@ -48,10 +48,20 @@ export async function advanceScheduleCursor(
   let newNextDueDateStr = ensureYMD(schedule.nextDueDate);
   let slotsConsumed = 0;
   do {
-    newNextDueDateStr = calculateNextDueDate(
-      newNextDueDateStr,
-      schedule.frequency,
-    );
+    // `calculateNextDueDate` hands back its input for ONCE and for a value
+    // outside `FrequencyType` (the column is a bare VARCHAR), and the current
+    // slot is always in the set, so a step that does not advance would loop
+    // for ever under the parent lock. Fail closed: the caller's transaction
+    // rolls back and nothing is claimed on a schedule whose cadence cannot
+    // step.
+    const previous = newNextDueDateStr;
+    newNextDueDateStr = calculateNextDueDate(previous, schedule.frequency);
+    if (newNextDueDateStr <= previous) {
+      throw new Error(
+        `advanceScheduleCursor: frequency "${schedule.frequency}" of scheduled ` +
+          `transaction ${schedule.id} does not advance ${previous}`,
+      );
+    }
     slotsConsumed += 1;
   } while (consumedSlots.has(newNextDueDateStr));
 

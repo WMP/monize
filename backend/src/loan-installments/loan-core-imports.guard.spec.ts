@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from "fs";
-import { join } from "path";
+import { join, posix, relative } from "path";
 
 /**
  * `backend/src/loan-installments/` is the neutral loan core: functions over an
@@ -50,11 +50,15 @@ export function stripComments(source: string): string {
 
 /**
  * Every module specifier `source` imports, re-exports, `import()`s or
- * `require()`s, normalised so a sibling directory reads the same whether
- * spelled `../x` or through the `@/x` alias. Same-directory (`./x`) and
- * package specifiers are returned as written.
+ * `require()`s, resolved to a path under `src/` so a sibling directory reads
+ * the same whether spelled `../x`, `../../x` from a subdirectory, or through
+ * the `@/x` alias. `fileDir` is the importing file's directory relative to
+ * `src/`. Package specifiers are returned as written.
  */
-export function importSpecifiers(source: string): string[] {
+export function importSpecifiers(
+  source: string,
+  fileDir = "loan-installments",
+): string[] {
   const stripped = stripComments(source);
   const found: string[] = [];
   const patterns = [
@@ -70,8 +74,8 @@ export function importSpecifiers(source: string): string[] {
     }
   }
   return found.map((specifier) =>
-    specifier.startsWith("../")
-      ? specifier.slice("../".length)
+    specifier.startsWith("./") || specifier.startsWith("../")
+      ? posix.normalize(posix.join(fileDir, specifier))
       : specifier.startsWith("@/")
         ? specifier.slice("@/".length)
         : specifier,
@@ -82,9 +86,12 @@ export function importSpecifiers(source: string): string[] {
  * The offences in one source: a banned import, or `Injectable` taken from
  * `@nestjs/common` (named, aliased or used as a decorator).
  */
-export function coreOffences(source: string): string[] {
+export function coreOffences(
+  source: string,
+  fileDir = "loan-installments",
+): string[] {
   const offences: string[] = [];
-  for (const specifier of importSpecifiers(source)) {
+  for (const specifier of importSpecifiers(source, fileDir)) {
     const ban = BANNED_SPECIFIERS.find(({ pattern }) =>
       pattern.test(specifier),
     );
@@ -112,12 +119,30 @@ export function coreOffences(source: string): string[] {
   return offences;
 }
 
-/** The core's production sources: every `.ts` in this directory but the specs. */
-function coreSources(): Array<[string, string]> {
-  return readdirSync(CORE_DIR)
-    .filter((name) => name.endsWith(".ts") && !name.endsWith(".spec.ts"))
+/**
+ * The core's production sources: every `.ts` under this directory but the
+ * specs, subdirectories included, as `[path relative to this directory,
+ * directory relative to src/, source]`.
+ */
+function coreSources(): Array<[string, string, string]> {
+  const srcDir = join(CORE_DIR, "..");
+  const files: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".spec.ts"))
+        files.push(full);
+    }
+  };
+  walk(CORE_DIR);
+  return files
     .sort()
-    .map((name) => [name, readFileSync(join(CORE_DIR, name), "utf8")]);
+    .map((full) => [
+      relative(CORE_DIR, full).split("\\").join("/"),
+      relative(srcDir, join(full, "..")).split("\\").join("/"),
+      readFileSync(full, "utf8"),
+    ]);
 }
 
 describe("the loan core imports no caller and declares no provider", () => {
@@ -138,9 +163,33 @@ describe("the loan core imports no caller and declares no provider", () => {
 
   it("finds every core file clean", () => {
     const offenders = coreSources()
-      .map(([name, source]) => [name, coreOffences(source)] as const)
+      .map(
+        ([name, fileDir, source]) =>
+          [name, coreOffences(source, fileDir)] as const,
+      )
       .filter(([, offences]) => offences.length > 0);
     expect(offenders).toEqual([]);
+  });
+
+  it("resolves a subdirectory's imports against its own location", () => {
+    // A file in `loan-installments/settlement/` reaches a sibling module
+    // through `../../`; one `../` from there is still inside the core.
+    const nested = "loan-installments/settlement";
+    expect(
+      coreOffences(
+        'import { x } from "../../transactions/transactions.service";',
+        nested,
+      ),
+    ).not.toEqual([]);
+    expect(
+      coreOffences('import { x } from "../price-installment";', nested),
+    ).toEqual([]);
+    expect(
+      importSpecifiers(
+        'import { x } from "../../scheduled-transactions/schedule-cursor";',
+        nested,
+      ),
+    ).toEqual(["scheduled-transactions/schedule-cursor"]);
   });
 
   it.each([

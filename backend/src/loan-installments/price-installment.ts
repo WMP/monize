@@ -488,8 +488,9 @@ export interface ResolveInstallmentInput {
  * A rate nothing records is 0 % for the template, posting and reconfigure
  * purposes, the posting path's historical default
  * (`docs/specs/loan-installment-settlement.md` section 15 item 5); a
- * settlement declines, naming the rate (decision 16). The debt is checked
- * first because a retired loan needs no rate.
+ * settlement declines, naming the rate (decision 16). The rate is read only
+ * once the shape and the debt have passed, because a retired or unmanaged
+ * template needs none.
  */
 export async function resolveInstallmentCore(
   m: EntityManager,
@@ -508,7 +509,6 @@ export async function resolveInstallmentCore(
   }
 
   const templateAmount = Math.abs(Number(scheduledTransaction.amount));
-  const recordedRate = await datedAnnualRate(m, loanAccount, asOfDate);
   const frequency =
     loanAccount.paymentFrequency || scheduledTransaction.frequency;
 
@@ -525,12 +525,20 @@ export async function resolveInstallmentCore(
     };
   }
 
+  // Read after the shape and debt checks: a retired or unmanaged template
+  // needs no rate, and the answer does not change which of those it is.
+  const recordedRate = await datedAnnualRate(m, loanAccount, asOfDate);
   if (recordedRate === null && purpose === "settlement") {
     return {
       kind: "declined",
       reason: `no interest rate is recorded for loan account ${loanAccountId} on ${asOfDate}`,
     };
   }
+  // Still owed to the settlement planner (B3/B4 of
+  // `docs/future-plans/loan-installment-settlement-tasks.md`): refusing an
+  // unknown cadence. `periodicRateFor` defaults it to DEFAULT_PERIODS_PER_YEAR
+  // for every purpose, this one included, until the planner checks
+  // `periodsPerYearForStoredFrequency` itself before calling the tail.
 
   return priceInstallment({
     debt,

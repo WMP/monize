@@ -2394,8 +2394,11 @@ Source of truth     The transactions ledger plus accounts.opening_balance
                     (INV-BALANCE-001's source) for the debt, and
                     loan_rate_changes for the rate, both bounded by the
                     installment's own date.
-Enforcement         ScheduledTransactionLoanService.resolveInstallment is the
-                    one pricing path: datedLoanDebt runs the canonical as-of
+Enforcement         resolveInstallmentCore and the pure priceInstallment
+                    (backend/src/loan-installments/price-installment.ts) are
+                    the one pricing path, and
+                    ScheduledTransactionLoanService.resolveInstallment delegates
+                    to them: datedLoanDebt runs the canonical as-of
                     ledger sum, the periodic-rate rules (the mortgage type's
                     compounding, CANADIAN_FIXED's semi-annual included) are
                     unchanged, and allocateLoanPayment stays the shared

@@ -167,6 +167,26 @@ describe("advanceScheduleCursor", () => {
     );
   });
 
+  it.each([["ONCE"], ["FORTNIGHTLY"]])(
+    "refuses a cadence that does not advance (%s) instead of looping, and writes nothing",
+    async (frequency) => {
+      // `calculateNextDueDate` returns its input for ONCE and for a string the
+      // column can hold but the type does not name; the claimed slot is always
+      // in the set, so without the refusal the loop would never exit.
+      await expect(
+        advanceScheduleCursor(
+          m(),
+          schedule({
+            frequency: frequency as ScheduledTransaction["frequency"],
+          }),
+          new Set(["2025-02-15"]),
+        ),
+      ).rejects.toThrow(/does not advance 2025-02-15/);
+      expect(manager.createQueryBuilder).not.toHaveBeenCalled();
+      expect(manager.update).not.toHaveBeenCalled();
+    },
+  );
+
   it("keeps a schedule active when the next slot is on or before its end date", async () => {
     const result = await advanceScheduleCursor(
       m(),
