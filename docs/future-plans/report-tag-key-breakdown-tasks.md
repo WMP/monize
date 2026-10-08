@@ -109,7 +109,7 @@ Spec section 11.
 - [x] Monthly Breakdown: backend `accountIds` (DTO, both queries, unit +
       integration); frontend account filter, controls, per-month summary block in
       new files (the report file only gains wiring).
-- [ ] i18n: every locale last.
+- [x] i18n: every locale last.
 
 ## Phase 3 -- Budget vs Actual funding overlay
 
@@ -117,4 +117,4 @@ Spec section 11.6.
 
 - [x] Frontend: controls, funding fetch aligned by `monthKey`, Available funds
       series, tooltip rows, completeness note; budget figures unchanged.
-- [ ] i18n: every locale last.
+- [x] i18n: every locale last.
