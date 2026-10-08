@@ -39,7 +39,7 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 | B5 | #1595 | Write path: claim, cursor, trace, fingerprint, snapshot, undo, after-commit reprice; `post()` records its transaction | B4 | inert | [x] | the PR closing #1595 |
 | B6 | #1596 | Chronological fold, ascending run order, import ordering, bank-sync affected accounts | B5 | neutral | [ ] | -- |
 | F1 | #1597 | Frontend action card, types, run preview, skip reasons, en + pseudo | B5 | inert | [ ] | -- |
-| B7 | #1598 | Mortgage and setup backend: payment matching, rule creation, auto-post off, original principal, endpoints | B5 | inert | [ ] | -- |
+| B7 | #1598 | Mortgage and setup backend: payment matching, rule creation, auto-post off, original principal, endpoints | B5 | inert | [x] | the PR closing #1598 |
 | F2 | #1599 | Mortgage form and setup dialog: Payment matching, Original principal | F1, B7 | inert | [ ] | -- |
 | F3 | #1600 | Loan Details Payment matching panel | F2, B6 | inert | [ ] | -- |
 | B8 | #1601 | Assistant and MCP name form, hints, rule language, docs | B4 | inert | [ ] | -- |
@@ -132,6 +132,7 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 - Spec decision 5: the rule through `TransactionRulesService.create`, `payment_matching_rule_id`, `auto_post = false`; `original_principal` accepted on create and edit, separate from the opening balance (spec 14.3).
 - An endpoint listing the loan's settled installments from the claims (slot, transaction, lines, `pricing`), and one creating the rule for an existing loan.
 - A rule-creation failure is reported and the account stays (spec section 15 item 6).
+- As built: `LoanPaymentMatchingService` (`backend/src/accounts/loan-payment-matching.service.ts`) builds the rule, creates it through `TransactionRulesService.create` and, in the same transaction after the schedule row lock and then the account's, sets `payment_matching_rule_id` and `auto_post = false`. The create and setup flows check the patterns with the rule validator before their first write (`assertDefinable`); a refusal after the account and schedule are committed comes back as `paymentMatchingError: { errorCode, message }` on the created account and on the setup response, beside `paymentMatchingRuleId: null`, never as a thrown error. `POST /accounts/:id/payment-matching-rule` creates the rule for an existing loan (409 when it has one); `GET /accounts/:id/loan-settlements` lists the `rule` claims on the loan's schedule, newest first, at most 200. The loan create path accepts `paymentMatching` as the mortgage path does; any other create refuses it. `originalPrincipal` is accepted on create, edit and setup (and the setup preview); a change on a LINEAR mortgage reprices its template.
 
 ### F2 -- Mortgage form and setup dialog
 
