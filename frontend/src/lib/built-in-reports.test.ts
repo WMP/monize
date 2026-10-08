@@ -60,6 +60,7 @@ describe('builtInReportsApi', () => {
     ['getCashFlow', '/built-in-reports/cash-flow'],
     ['getIncomeVsExpenses', '/built-in-reports/income-vs-expenses'],
     ['getSpendingByCategory', '/built-in-reports/spending-by-category'],
+    ['getMonthlyCategoryBreakdown', '/built-in-reports/monthly-category-breakdown'],
   ] as const)('%s sends accountIds as one comma-separated value and omits an empty selection', async (method, url) => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: {} });
     await builtInReportsApi[method]({ ...params, accountIds: ['a1', 'a2'] });
