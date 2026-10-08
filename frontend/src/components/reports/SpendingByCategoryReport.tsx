@@ -17,6 +17,13 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { builtInReportsApi } from '@/lib/built-in-reports';
+import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
+import { TaggedFundsControls } from '@/components/reports/TaggedFundsControls';
+import { TaggedFundsStrip, type FundsFigure } from '@/components/reports/TaggedFundsStrip';
+import { useReportAccountScope, nonInvestmentAccounts } from '@/hooks/useReportAccountScope';
+import { useTaggedFundsFilter } from '@/hooks/useTaggedFundsFilter';
+import { useTaggedFunding } from '@/hooks/useTaggedFunding';
+import { spendingFunds } from '@/lib/spending-funds';
 import { CategorySpendingItem } from '@/types/built-in-reports';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
@@ -105,6 +112,9 @@ const CELL_PLACEMENT: Record<SpendingCategorySortField, string> = {
 const IDENTITY_CELL =
   `${CELL_PLACEMENT.name} min-w-0 p-0 text-sm sm:table-cell sm:px-4 sm:py-3`;
 
+const ACCOUNTS_STORAGE_KEY = 'monize-reports-spending-by-category-accounts';
+const INCLUDE_TRANSFERS_STORAGE_KEY = 'monize-reports-spending-by-category-include-transfers';
+
 export function SpendingByCategoryReport() {
   const t = useTranslations('reports');
   const router = useRouter();
@@ -121,16 +131,38 @@ export function SpendingByCategoryReport() {
 
   const { start: rangeStart, end: rangeEnd } = resolvedRange;
 
+  const scope = useReportAccountScope(ACCOUNTS_STORAGE_KEY);
+  const { selectedAccountIds, accountIdsKey } = scope;
+  const fundsFilter = useTaggedFundsFilter(INCLUDE_TRANSFERS_STORAGE_KEY);
+  // A key AND a value narrow the report itself to that value's rows (spec
+  // 11.4); either alone sends nothing, so the request is today's.
+  const tagFilter = fundsFilter.active
+    ? { tagKey: fundsFilter.tagKey, tagValue: fundsFilter.tagValue }
+    : {};
+
   const { data: response, isLoading, error, reload } = useReportData(
     () =>
       isValid
         ? builtInReportsApi.getSpendingByCategory({
             startDate: rangeStart || undefined,
             endDate: rangeEnd,
+            ...(selectedAccountIds.length > 0 ? { accountIds: selectedAccountIds } : {}),
+            ...tagFilter,
           })
         : Promise.resolve(null),
-    [isValid, rangeStart, rangeEnd],
+    [isValid, rangeStart, rangeEnd, accountIdsKey, fundsFilter.active, fundsFilter.tagKey, fundsFilter.tagValue],
   );
+
+  // The Available funds / Spent / Balance strip: only with the switch on, from
+  // the Income vs Expenses answer for the same window and accounts.
+  const funding = useTaggedFunding({
+    enabled: isValid && fundsFilter.include,
+    tagKey: fundsFilter.tagKey,
+    tagValue: fundsFilter.tagValue,
+    startDate: rangeStart || undefined,
+    endDate: rangeEnd,
+    accountIds: selectedAccountIds,
+  });
 
   const chartData = useMemo<ChartDataItem[]>(() => {
     if (!response) return [];
@@ -165,6 +197,21 @@ export function SpendingByCategoryReport() {
   );
   const totalExpenses = spendingTotal.value;
   const reportingCurrency = response?.currency ?? defaultCurrency;
+
+  const funds = useMemo(
+    () => (funding.window && response ? spendingFunds(response, funding.window) : null),
+    [funding.window, response],
+  );
+  const fundsFigures: FundsFigure[] = funds
+    ? [
+        { key: 'income', label: t('tagBreakdown.fundsIncome'), value: funds.income, kind: 'money', tone: 'green', completeness: funds.incomeTotal },
+        { key: 'tagged', label: t('tagBreakdown.fundsTagged', { value: fundsFilter.tagValue }), value: funds.netTagged, kind: 'money', tone: 'indigo', completeness: funds.taggedTotal },
+        { key: 'available', label: t('tagBreakdown.fundsAvailable'), value: funds.availableFunds, kind: 'money', tone: 'blue', completeness: funds.availableTotal },
+        { key: 'spent', label: t('tagBreakdown.fundsSpent'), value: funds.spent, kind: 'money', tone: 'red', completeness: funds.spentTotal },
+        { key: 'balance', label: t('tagBreakdown.balance'), value: funds.balance, kind: 'money', tone: funds.balance !== null && funds.balance < 0 ? 'red' : 'gray', completeness: funds.balanceTotal },
+        { key: 'balancePercent', label: t('tagBreakdown.balancePercent'), value: funds.balancePercent, kind: 'percent', tone: 'purple' },
+      ]
+    : [];
 
   const sortedTableData = useMemo(() => {
     const sorted = [...chartData];
@@ -222,6 +269,9 @@ export function SpendingByCategoryReport() {
       title: t('spendingByCategory.pdfTitle'),
       summaryCards: [
         { label: t('spendingByCategory.totalExpenses'), value: formatCurrency(totalExpenses), color: '#dc2626' },
+        ...(funds && funds.availableFunds !== null
+          ? [{ label: t('tagBreakdown.fundsAvailable'), value: formatCurrency(funds.availableFunds), color: '#2563eb' }]
+          : []),
       ],
       chartContainer: chartRef.current,
       chartLegend: legendItems.length > 0 ? legendItems : undefined,
@@ -268,6 +318,12 @@ export function SpendingByCategoryReport() {
       {/* Controls -- always rendered so focus inside DateInput survives reloads */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
         <div className="flex flex-wrap gap-4 items-center justify-between">
+          <ReportAccountMultiSelect
+            accounts={scope.offeredAccounts}
+            value={selectedAccountIds}
+            onChange={scope.setSelectedAccountIds}
+            filter={nonInvestmentAccounts}
+          />
           <DateRangeSelector
             ranges={['1m', '3m', '6m', '1y', 'ytd']}
             value={dateRange}
@@ -278,6 +334,7 @@ export function SpendingByCategoryReport() {
             customEndDate={endDate}
             onCustomEndDateChange={setEndDate}
           />
+          <TaggedFundsControls filter={fundsFilter} />
           <div className="flex items-center gap-4">
             <ChartViewToggle
               value={viewType}
@@ -292,6 +349,20 @@ export function SpendingByCategoryReport() {
           />
         </div>
       </div>
+
+      {fundsFilter.include && !error && (
+        <TaggedFundsStrip
+          status={
+            funding.status === 'error'
+              ? 'error'
+              : funding.status !== 'ready' || isLoading || !funds
+                ? 'loading'
+                : 'ready'
+          }
+          figures={fundsFigures}
+          currency={reportingCurrency}
+        />
+      )}
 
       {/* Chart -- loading and error render here rather than in place of the
           whole report, so the controls above (and the date field being typed

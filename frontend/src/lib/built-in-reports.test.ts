@@ -47,6 +47,14 @@ describe('builtInReportsApi', () => {
     expect(apiClient.get).toHaveBeenCalledWith('/built-in-reports/cash-flow', { params });
   });
 
+  it('getSpendingByCategory sends the tag filter and nothing else new', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: {} });
+    await builtInReportsApi.getSpendingByCategory({ ...params, tagKey: 'scope', tagValue: 'household' });
+    expect(apiClient.get).toHaveBeenLastCalledWith('/built-in-reports/spending-by-category', {
+      params: { ...params, tagKey: 'scope', tagValue: 'household' },
+    });
+  });
+
   it.each([
     ['getIncomeBySource', '/built-in-reports/income-by-source'],
     ['getCashFlow', '/built-in-reports/cash-flow'],
