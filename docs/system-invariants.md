@@ -95,6 +95,7 @@ implied.
 | INV-LOAN-005 | The first payment date is payment number 1 | enforced |
 | INV-LOAN-006 | A scheduled loan installment prices the ledger debt, the rate, and the remaining count through its own due date | enforced |
 | INV-LOAN-007 | One amortization method per mortgage type, from preview to pricing to projection | enforced |
+| INV-LOAN-008 | One settlement per scheduled occurrence, and the claim commits with the split | unenforced |
 | INV-LOAN-HISTORY-001 | Historical loan interest counted as paid is ledger-backed | partial |
 | INV-OCCURRENCE-001 | One scheduled occurrence has at most one financial effect | enforced |
 | INV-OCCURRENCE-002 | A stored override price survives reopening | enforced |
@@ -166,6 +167,7 @@ implied.
 | INV-RULE-002 | A transaction rule applies inside the transaction that inserts the row, on every creation path | partial |
 | INV-RULE-003 | The preview, the draft test and the commit of a transaction rule are one planner, and a run commits only the plan the person previewed | partial |
 | INV-RULE-004 | A transaction rule is evaluated only for a row whose date is known and inside the rule's active window | partial |
+| INV-RULE-005 | A rule pass that settles loan installments folds chronologically, and its preview and commit fold the same | unenforced |
 
 ## Imports
 
@@ -2585,6 +2587,63 @@ Required tests      Present: mortgage-type.util.spec.ts, the CHECK and parity
                     row of docs/specs/mortgage-types.md names the spec that
                     asserts it.
 Status              enforced
+```
+
+### INV-LOAN-008 -- one settlement per occurrence, the claim commits with the split
+
+```text
+Statement           A scheduled occurrence (schedule, original due date) has at
+                    most one claim, whether post() or a settle_loan_installment
+                    rule wrote it; a transaction settles at most one
+                    occurrence; and a rule's claim exists exactly when the
+                    split it books exists: written, rolled back and deleted
+                    together. The undo of a run that settled is last in, first
+                    out per schedule. docs/specs/loan-installment-settlement.md
+                    is the authority.
+Source of truth     scheduled_transaction_postings (one row per claimed
+                    occurrence; transaction_id, source, rule_id and pricing
+                    once B1 lands), the settled transaction and its split
+                    lines.
+Enforcement         None yet for the settlement: the action, the claim columns
+                    and the write path do not exist. What exists is the
+                    occurrence key post() claims through (idx_stp_occurrence,
+                    INV-OCCURRENCE-001). The mechanism, built by the tasks of
+                    docs/future-plans/loan-installment-settlement-tasks.md:
+                    idx_stp_occurrence, claimed with INSERT ... ON CONFLICT DO
+                    NOTHING RETURNING id by post() and the settlement alike
+                    (one claim per occurrence); a partial unique index on
+                    transaction_id (one occurrence per transaction); the claim
+                    INSERT, createSplits, the counterpart legs and the cursor
+                    advance on one EntityManager in one withScopedDb
+                    transaction, the claim first, so a conflict is a skipped
+                    action and not a throw (B5); transaction_id REFERENCES
+                    transactions ON DELETE CASCADE, so deleting the settling
+                    transaction releases the claim in the same statement (B1);
+                    and the run undo's RULE_RUN_UNDO_LATER_SETTLEMENT refusal,
+                    decided before any write, when the schedule holds a later
+                    claim the run did not write (B5).
+Concurrency scope   per (schedule, occurrence); the schedule row lock, then
+                    lockAccountsForBalanceWrite(source, loan), as post() takes
+                    them, with the unique index as the backstop
+Retry semantics     Safe: a re-run or a re-import finds the slot claimed (or
+                    the row already a split) and skips; nothing is written
+                    twice.
+Crash semantics     The claim and the split share a transaction: before commit
+                    neither exists, after commit both do.
+Failure response    occurrence_already_posted (a skipped action) on a claimed
+                    slot; RULE_RUN_UNDO_LATER_SETTLEMENT (409) on an undo out
+                    of order.
+Required tests      Owed: the claim conflict skipped without a write, delete
+                    releasing the claim, void keeping it, the undo order, and a
+                    two-connection case where a bill post and a settlement of
+                    one slot leave one claim (spec section 16, B1 and B5).
+Known gaps          On the import paths the source account is held before the
+                    settlement takes the schedule row, the reverse of post(),
+                    so a bill posted by hand during an import that settles the
+                    same schedule can deadlock; PostgreSQL aborts one
+                    transaction and the index still allows one claim (spec
+                    section 15).
+Status              unenforced
 ```
 
 ### INV-LOAN-HISTORY-001 -- historical loan interest counted as paid is ledger-backed
@@ -5875,6 +5934,51 @@ Required tests      Present: rule-effects.active-window.spec.ts (both sides, an
                     none, so the Test panel's behaviour is held only by the
                     frontend test named above.
 Status              partial
+```
+
+### INV-RULE-005 -- a pass that settles folds chronologically
+
+```text
+Statement           A rule pass (a manual run's preview or commit, or
+                    applyToNew over several rows) that contains a
+                    settle_loan_installment action plans its rows oldest first,
+                    and prices each settlement on the debt the ledger will hold
+                    at its slot once every settlement planned earlier in the
+                    pass is written: datedLoanDebt at the slot, less the
+                    principal and extra principal of the earlier planned,
+                    not yet written settlements on the same loan whose rows are
+                    dated on or before the slot. A slot planned earlier in the
+                    pass is claimed for every later row. The preview and the
+                    commit fold through the same code, and the imports insert
+                    rows in date order before rules run.
+Source of truth     the transactions ledger (datedLoanDebt) and the pass's own
+                    plan; docs/specs/loan-installment-settlement.md sections 7.2
+                    and 9.4.
+Enforcement         None yet: runs scan newest first (loadCandidateUnits) and
+                    imports run rules in file order. The mechanism, built by
+                    B5 and B6 of
+                    docs/future-plans/loan-installment-settlement-tasks.md:
+                    ascending candidates (applyRegisterOrder ASC) when a rule
+                    of the run carries the action; priorSettlements threaded
+                    through TransactionRulesRunService.plan() and applyToNew
+                    into the pure planner, holding only planned, unwritten
+                    settlements so a written one is not subtracted twice;
+                    changes.loanSettlement (with debtBefore) in
+                    canonicalChanges, so a commit whose fold differs from its
+                    preview refuses with PREVIEW_CHANGED (INV-RULE-003); and a
+                    stable date sort on every import path (QIF, OFX, CSV, MNY,
+                    bank sync).
+Concurrency scope   the run (its locks, INV-RULE-003); per import transaction
+Retry semantics     A re-run plans the same fold from the same ledger; rows
+                    already settled are splits and are skipped.
+Crash semantics     -- (a planning rule; the writes are INV-LOAN-008's)
+Failure response    409 PREVIEW_CHANGED when the commit's fold differs from the
+                    preview's.
+Required tests      Owed: spec table 9.4 through preview and commit with equal
+                    fingerprints, the same rows planned newest first refused,
+                    a written settlement not subtracted twice, and the import
+                    sort on each import path (spec section 16, B3 and B6).
+Status              unenforced
 ```
 
 ### INV-RULE-002 -- a rule applies inside the inserting transaction, on every creation path

@@ -83,14 +83,15 @@ Three sources are explicitly **not** inputs:
 ## 2. Where it is priced
 
 `ScheduledTransactionLoanService.resolveInstallment` is the one pricing path.
-Three consumers resolve through it, and they must, because each one answered
-differently is a reported drift:
+Three consumers resolve through it today, and a fourth is specified, and they
+must, because each one answered differently is a reported drift:
 
 | Consumer | Boundary `d` | When |
 | --- | --- | --- |
 | `recalculateLoanPaymentSplits` | the schedule's `next_due_date` (already advanced) | after each posting; writes the template for the next occurrence |
 | `resolvePostingAllocation` | the occurrence's own due date | inside the posting transaction, under the parent lock, immediately before the financial write |
 | `getLoanProjectionAnchor` | the schedule's `next_due_date` | on demand, for the amortization report's projection (`buildLoanProjectionInput`'s `anchor`) |
+| `planLoanSettlement` (specified, not built: `docs/specs/loan-installment-settlement.md`) | the matched slot's due date, with the debt less the settlements planned earlier in the same rule pass | when a `settle_loan_installment` rule matches a bank row, inside the create's, import's or run's transaction, under the schedule row and `lockAccountsForBalanceWrite(source, loan)` |
 
 Which schedule is "the loan's payment" is the account's own statement --
 `accounts.scheduled_transaction_id`, written by the two paths that set a loan
@@ -105,6 +106,13 @@ into a loan carries no split.
 The posting boundary is the date the occurrence's money actually moves --
 `postDate`, which an override can move off the recurrence slot -- because that
 is the date interest accrues to.
+The settlement boundary is the slot the bank row pays, not the row's own
+date: the bank charges the installment for its due date, however many days
+the debit took (`docs/specs/loan-installment-settlement.md` decision 11). The
+settlement prices through the same core, which B2 of
+`docs/future-plans/loan-installment-settlement-tasks.md` extracts from
+`resolveInstallment` into `backend/src/loan-installments/`, and refuses a
+missing rate or cadence where the posting path defaults them.
 
 The debt is read under the lock that authorizes the write, not merely inside
 the same transaction (`CONC-001`). The scheduled-transaction row lock does not
