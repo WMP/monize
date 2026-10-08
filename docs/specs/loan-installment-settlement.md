@@ -143,13 +143,20 @@ review surface of this document.
     `LoanRateChangesService.resolveCurrentTimeline` applies with today, dated
     at `s`. Not the template's amount: the template is a snapshot for
     `next_due_date` that may hold a one-off clamp, and history spans payment
-    changes. `LINEAR` and `INTEREST_ONLY` installments are derived
-    (`methodPrincipal`, `docs/specs/mortgage-types.md` table 4.3) and read no
-    payment.
-13. **The standing extra is discretionary.** `E` is the configured extra
-    principal (`max(template extra line, accounts.extra_payment_amount)`, the
-    rule `resolveInstallment` applies to a template) when the schedule's
-    template carries an extra-principal line, else 0, passed through
+    changes. The two sources hold different figures: a `manual` or
+    `inferred` row's `new_payment_amount` states the base installment `B`
+    (the rate-change resync adds the standing extra on top of it), while
+    `accounts.payment_amount`, and an `initial` row's verbatim copy of it,
+    hold `B + E` as `LoanPaymentSetupService` stores them. The settlement
+    therefore prices `payment(s) + E` from a stated base and
+    `accounts.payment_amount` as it stands, so `B` is that figure less the
+    template's standing extra line. `LINEAR` and `INTEREST_ONLY`
+    installments are derived (`methodPrincipal`,
+    `docs/specs/mortgage-types.md` table 4.3) and read no payment.
+13. **The standing extra is discretionary.** `E` is the template's
+    extra-principal line as it stands (the rule the posting purpose applies;
+    only a template rewrite grows it toward `accounts.extra_payment_amount`)
+    when the schedule's template carries one, else 0, passed through
     `allocateLoanPayment` so it is clamped to the debt. A row short of `T` but
     not of `B` pays a smaller extra rather than being a shortfall, because
     `allocateLoanPayment` already sheds the extra first when a payment falls
@@ -403,8 +410,10 @@ periodic rate is the double the interest was multiplied by.
 }
 ```
 
-`method` is `amortizationMethodFor(mortgageTypeOf(account))` for a mortgage
-and `ANNUITY` for a `LOAN`; `prepaymentMode` is null off `LINEAR`. `booked` is
+`method` is `mortgageTypeOf(account)` for a mortgage (the type fixes both the
+compounding and the amortization method, so `CANADIAN_FIXED` is kept apart
+from `ANNUITY`) and `LOAN` for a `LOAN`; `prepaymentMode` is null off
+`LINEAR`. `booked` is
 what the slot charges; `lines` is what was written after the policy, which
 differs from `booked` by the absorbed tolerance, the excess or the shortfall.
 `outcome` is one of `exact`, `tolerance`, `extra_principal`, `extra_shed`,
@@ -681,7 +690,7 @@ and 510.00.
 | E13 | LOAN, JPY 30,000,000 at 1.2 %, monthly, payment 120,000 | 90,000 + 30,000 = 120,000 | -120,004 | 90,000 / 30,004 / -- (`tolerance`, `tol` = 5 JPY) |
 | E14 | as E13 | as E13 | -120,006 | 90,000 / 30,000 / 6 (`extra_principal`) |
 | E15 | `debtBefore` 0.01 | -- | any | `loan_debt_retired` |
-| E16 | ANNUITY 0 %, payment 500.00, standing extra 100.00 | 500.00 + 0.00 + 100.00 = 600.00 (`B` 500.00) | -599.97 | 500.00 / 0.00 / 99.97 (`extra_shed`: row 2 would make interest -0.03, row 6 takes it) |
+| E16 | ANNUITY 0 %, `payment_amount` 600.00 (base 500.00 plus the standing extra 100.00, decision 12) | 500.00 + 0.00 + 100.00 = 600.00 (`B` 500.00) | -599.97 | 500.00 / 0.00 / 99.97 (`extra_shed`: row 2 would make interest -0.03, row 6 takes it) |
 
 ### 9.4 The fold in one pass
 

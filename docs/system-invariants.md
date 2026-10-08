@@ -2618,10 +2618,11 @@ Source of truth     scheduled_transaction_postings (one row per claimed
                     occurrence; transaction_id, source, rule_id and pricing
                     once B1 lands), the settled transaction and its split
                     lines.
-Enforcement         None yet for the settlement: the action, the claim columns
-                    and the write path do not exist. What exists is the
-                    occurrence key post() claims through (idx_stp_occurrence,
-                    INV-OCCURRENCE-001). The mechanism, built by the tasks of
+Enforcement         None yet for the settlement: the claim columns (B1), the
+                    slot calendar, the facts loader and the pure planner (B3)
+                    exist, but the action and the write path do not, so
+                    nothing claims. What exists is the occurrence key post()
+                    claims through (idx_stp_occurrence, INV-OCCURRENCE-001). The mechanism, built by the tasks of
                     docs/future-plans/loan-installment-settlement-tasks.md:
                     idx_stp_occurrence, claimed with INSERT ... ON CONFLICT DO
                     NOTHING RETURNING id by post() and the settlement alike
@@ -5976,7 +5977,9 @@ Source of truth     the transactions ledger (datedLoanDebt) and the pass's own
                     plan; docs/specs/loan-installment-settlement.md sections 7.2
                     and 9.4.
 Enforcement         None yet: runs scan newest first (loadCandidateUnits) and
-                    imports run rules in file order. The mechanism, built by
+                    imports run rules in file order; the fold itself exists in
+                    planLoanSettlement (B3, over the priorSettlements it is
+                    handed) but nothing hands it any. The mechanism, built by
                     B5 and B6 of
                     docs/future-plans/loan-installment-settlement-tasks.md:
                     ascending candidates (applyRegisterOrder ASC) when a rule
