@@ -1,5 +1,5 @@
 import { taggedBalance } from './tagged-balance';
-import { findFundingBucket, mergeCompleteness } from './tagged-funding';
+import { findFundingBucket, fundingCompleteness } from './tagged-funding';
 import type { IncomeVsExpensesResponse } from '@/types/built-in-reports';
 
 export interface MonthlyFundsColumn {
@@ -40,14 +40,7 @@ export function monthlyFundsSummary(
 ): MonthlyFundsSummary {
   const bucket = findFundingBucket(response, tagValue);
   const flowsByPeriod = new Map((bucket?.data ?? []).map((d) => [d.period, d]));
-  const gaps = mergeCompleteness(
-    { missingCurrencies: response.missingCurrencies, excludedCount: response.excludedCount },
-    bucket
-      ? { missingCurrencies: bucket.missingCurrencies, excludedCount: bucket.excludedCount }
-      : { missingCurrencies: [], excludedCount: 0 },
-  );
-  const complete =
-    response.totals.income !== null && gaps.missingCurrencies.length === 0 && gaps.excludedCount === 0;
+  const { complete, missingCurrencies } = fundingCompleteness(response, tagValue);
 
   const itemsByPeriod = new Map(response.data.map((d) => [d.period, d]));
   const columns = months.map<MonthlyFundsColumn>((month) => {
@@ -89,6 +82,6 @@ export function monthlyFundsSummary(
     columns,
     showOutflows: columns.some((c) => c.taggedOutflows !== null && c.taggedOutflows !== 0),
     complete,
-    missingCurrencies: gaps.missingCurrencies,
+    missingCurrencies,
   };
 }

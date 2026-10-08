@@ -43,6 +43,12 @@ vi.mock('@/hooks/useChartMonthFormat', () => ({
   useChartMonthFormat: () => (monthKey: string) => `chartMonth:${monthKey}`,
 }));
 
+// The tag controls read the tag list on mount; the report is the unchanged one
+// while no key is chosen.
+vi.mock('@/lib/tags', () => ({
+  tagsApi: { getAll: () => Promise.resolve([]) },
+}));
+
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }),
 }));
