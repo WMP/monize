@@ -330,7 +330,10 @@
     "outflows": "Sorties étiquetées",
     "inflowsSeries": "Entrées étiquetées : {value}",
     "outflowsSeries": "Sorties étiquetées : {value}",
-    "stackFlows": "Empiler les flux étiquetés",
+    "includeTransfers": "Inclure les virements étiquetés",
+    "balance": "Solde",
+    "balancePercent": "Solde %",
+    "balancePercentTooltip": "Solde % : {rate}",
     "sharesExceedNote": "Une ligne étiquetée avec plusieurs valeurs pour cette clé compte pour chacune d'elles ; la somme des parts par valeur peut donc dépasser 100 %."
   },
   "categoryPerformance": {

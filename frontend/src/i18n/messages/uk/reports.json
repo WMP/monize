@@ -330,7 +330,10 @@
     "outflows": "Видатки з тегом",
     "inflowsSeries": "Надходження з тегом: {value}",
     "outflowsSeries": "Видатки з тегом: {value}",
-    "stackFlows": "Складати потоки з тегами стовпчиком",
+    "includeTransfers": "Враховувати перекази з тегами",
+    "balance": "Баланс",
+    "balancePercent": "Баланс %",
+    "balancePercentTooltip": "Баланс %: {rate}",
     "sharesExceedNote": "Рядок, позначений тегом із більш ніж одним значенням за цим ключем, зараховується до кожного з них, тому частки за значеннями можуть у сумі перевищувати 100%."
   },
   "categoryPerformance": {

@@ -330,7 +330,10 @@
     "outflows": "Wypływy z tagiem",
     "inflowsSeries": "Wpływy z tagiem: {value}",
     "outflowsSeries": "Wypływy z tagiem: {value}",
-    "stackFlows": "Układaj przepływy z tagiem w stos",
+    "includeTransfers": "Uwzględnij przelewy z tagiem",
+    "balance": "Saldo",
+    "balancePercent": "Saldo %",
+    "balancePercentTooltip": "Saldo %: {rate}",
     "sharesExceedNote": "Wiersz oznaczony więcej niż jedną wartością w ramach tego klucza jest liczony do każdej z nich, więc udziały poszczególnych wartości mogą sumować się do więcej niż 100%."
   },
   "categoryPerformance": {

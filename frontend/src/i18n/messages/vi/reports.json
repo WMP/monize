@@ -330,7 +330,10 @@
     "outflows": "Dòng ra có gắn thẻ",
     "inflowsSeries": "Dòng vào có gắn thẻ: {value}",
     "outflowsSeries": "Dòng ra có gắn thẻ: {value}",
-    "stackFlows": "Xếp chồng dòng tiền có thẻ",
+    "includeTransfers": "Bao gồm chuyển khoản có gắn thẻ",
+    "balance": "Số dư",
+    "balancePercent": "Số dư %",
+    "balancePercentTooltip": "Số dư %: {rate}",
     "sharesExceedNote": "Một dòng được gắn nhiều hơn một giá trị theo khóa này sẽ được tính vào từng giá trị đó, vì vậy tỷ lệ theo từng giá trị có thể cộng lại vượt quá 100%."
   },
   "categoryPerformance": {

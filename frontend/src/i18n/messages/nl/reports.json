@@ -330,7 +330,10 @@
     "outflows": "Gelabelde uitstroom",
     "inflowsSeries": "Gelabelde instroom: {value}",
     "outflowsSeries": "Gelabelde uitstroom: {value}",
-    "stackFlows": "Getagde stromen stapelen",
+    "includeTransfers": "Getagde overboekingen opnemen",
+    "balance": "Saldo",
+    "balancePercent": "Saldo %",
+    "balancePercentTooltip": "Saldo %: {rate}",
     "sharesExceedNote": "Een rij die onder deze sleutel met meer dan één waarde is gelabeld, telt voor elk van die waarden mee, waardoor de aandelen per waarde samen meer dan 100% kunnen zijn."
   },
   "categoryPerformance": {

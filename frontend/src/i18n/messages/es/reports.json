@@ -330,7 +330,10 @@
     "outflows": "Salidas etiquetadas",
     "inflowsSeries": "Entradas etiquetadas: {value}",
     "outflowsSeries": "Salidas etiquetadas: {value}",
-    "stackFlows": "Apilar flujos etiquetados",
+    "includeTransfers": "Incluir transferencias etiquetadas",
+    "balance": "Balance",
+    "balancePercent": "Balance %",
+    "balancePercentTooltip": "Balance %: {rate}",
     "sharesExceedNote": "Una fila etiquetada con más de un valor bajo esta clave cuenta para cada uno de ellos, por lo que los porcentajes por valor pueden sumar más del 100%."
   },
   "categoryPerformance": {

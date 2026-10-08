@@ -330,7 +330,10 @@
     "outflows": "已标记的流出",
     "inflowsSeries": "已标记的流入：{value}",
     "outflowsSeries": "已标记的流出：{value}",
-    "stackFlows": "堆叠带标签的资金流",
+    "includeTransfers": "包含带标签的转账",
+    "balance": "结余",
+    "balancePercent": "结余 %",
+    "balancePercentTooltip": "结余 %：{rate}",
     "sharesExceedNote": "如果一行在该键下被标记了多个值，则会计入每个值，因此各值的占比之和可能超过 100%。"
   },
   "categoryPerformance": {

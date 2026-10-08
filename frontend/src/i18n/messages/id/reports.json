@@ -330,7 +330,10 @@
     "outflows": "Arus keluar bertag",
     "inflowsSeries": "Arus masuk bertag: {value}",
     "outflowsSeries": "Arus keluar bertag: {value}",
-    "stackFlows": "Tumpuk arus bertag",
+    "includeTransfers": "Sertakan transfer bertag",
+    "balance": "Saldo",
+    "balancePercent": "Saldo %",
+    "balancePercentTooltip": "Saldo %: {rate}",
     "sharesExceedNote": "Baris yang diberi tag dengan lebih dari satu nilai di bawah kunci ini dihitung untuk masing-masing nilai tersebut, sehingga persentase per nilai dapat berjumlah lebih dari 100%."
   },
   "categoryPerformance": {
