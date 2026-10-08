@@ -58,7 +58,11 @@
     "unknownInvestmentAccount": "Tài khoản không xác định: {{ name }}. Hãy dùng tên chính xác từ danh sách tài khoản của người dùng.",
     "notACreditCard": "Chu kỳ sao kê chỉ khả dụng cho tài khoản thẻ tín dụng",
     "noStatementSettlementDay": "Thẻ tín dụng này chưa được cấu hình ngày chốt sao kê",
-    "loanLedgerUnreadable": "Không thể đọc số dư của khoản vay này. Vui lòng thử lại."
+    "loanLedgerUnreadable": "Không thể đọc số dư của khoản vay này. Vui lòng thử lại.",
+    "paymentMatchingLoanOnly": "Đối chiếu thanh toán chỉ áp dụng cho khoản thế chấp và khoản vay",
+    "paymentMatchingRequiresSchedule": "Đối chiếu thanh toán cần khoản thanh toán theo lịch của khoản vay. Hãy thiết lập thanh toán trước.",
+    "paymentMatchingRuleExists": "Khoản vay này đã có quy tắc đối chiếu thanh toán",
+    "paymentMatchingFailed": "Khoản vay đã được lưu, nhưng không thể tạo quy tắc đối chiếu thanh toán. Hãy tạo nó từ chi tiết khoản vay."
   },
   "actionHistory": {
     "nothingToUndo": "Không có gì để hoàn tác",

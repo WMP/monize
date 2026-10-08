@@ -58,7 +58,11 @@
     "unknownInvestmentAccount": "Conta desconhecida: {{ name }}. Use um nome exato da lista de contas do usuário.",
     "notACreditCard": "Os ciclos de fatura só estão disponíveis para contas de cartão de crédito",
     "noStatementSettlementDay": "Este cartão de crédito não tem um dia de liquidação da fatura configurado",
-    "loanLedgerUnreadable": "Não foi possível ler o saldo deste empréstimo. Tente novamente."
+    "loanLedgerUnreadable": "Não foi possível ler o saldo deste empréstimo. Tente novamente.",
+    "paymentMatchingLoanOnly": "A correspondência de pagamentos se aplica apenas a hipotecas e empréstimos",
+    "paymentMatchingRequiresSchedule": "A correspondência de pagamentos precisa do pagamento agendado do empréstimo. Configure os pagamentos primeiro.",
+    "paymentMatchingRuleExists": "Este empréstimo já tem uma regra de correspondência de pagamentos",
+    "paymentMatchingFailed": "O empréstimo foi salvo, mas não foi possível criar sua regra de correspondência de pagamentos. Crie-a nos detalhes do empréstimo."
   },
   "actionHistory": {
     "nothingToUndo": "Nada para desfazer",

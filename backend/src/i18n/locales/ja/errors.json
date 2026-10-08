@@ -58,7 +58,11 @@
     "unknownInvestmentAccount": "不明な口座: {{ name }}。ユーザーの口座リストから正確な名前を使用してください。",
     "notACreditCard": "請求サイクルはクレジットカードの勘定科目でのみ利用できます",
     "noStatementSettlementDay": "このクレジットカードには請求締め日が設定されていません",
-    "loanLedgerUnreadable": "このローンの残高を読み取れませんでした。もう一度お試しください。"
+    "loanLedgerUnreadable": "このローンの残高を読み取れませんでした。もう一度お試しください。",
+    "paymentMatchingLoanOnly": "支払い照合は住宅ローンとローンにのみ適用されます",
+    "paymentMatchingRequiresSchedule": "支払い照合にはローンの予定支払いが必要です。先に支払いを設定してください。",
+    "paymentMatchingRuleExists": "このローンには既に支払い照合ルールがあります",
+    "paymentMatchingFailed": "ローンは保存されましたが、支払い照合ルールを作成できませんでした。ローンの詳細から作成してください。"
   },
   "actionHistory": {
     "nothingToUndo": "元に戻すものがありません",
