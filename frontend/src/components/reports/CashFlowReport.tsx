@@ -39,13 +39,16 @@ import { useExchangeRates } from "@/hooks/useExchangeRates";
 import { useTagKeys } from "@/hooks/useTagKeys";
 import { TagKeyBreakdownSelect } from "@/components/reports/TagKeyBreakdownSelect";
 import { TagKeyBreakdownBuckets } from "@/components/reports/TagKeyBreakdownBuckets";
-import { StackTaggedFlowsToggle } from "@/components/reports/StackTaggedFlowsToggle";
+import { IncludeTaggedTransfersToggle } from "@/components/reports/IncludeTaggedTransfersToggle";
+import { CashFlowSummaryCards } from "@/components/reports/CashFlowSummaryCards";
+import { TaggedBalanceTooltip, type BalanceTooltipEntry } from "@/components/reports/TaggedBalanceTooltip";
+import { periodBalanceFields, taggedBalanceWindow } from "@/lib/tagged-balance";
 import { useTaggedFlowBucket } from "@/hooks/useTaggedFlowBucket";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { flowBarStack } from "@/lib/tagged-flow-stack";
 
 const ACCOUNTS_STORAGE_KEY = 'monize-reports-cash-flow-accounts';
-const STACK_FLOWS_STORAGE_KEY = 'monize-reports-cash-flow-stack-tagged';
+const INCLUDE_TRANSFERS_STORAGE_KEY = 'monize-reports-cash-flow-stack-tagged';
 
 // Same account list Income vs Expenses offers: an investment account's cash
 // legs are excluded from these reports by linkage.
@@ -57,6 +60,9 @@ interface ChartDataItem {
   Income: number;
   Expenses: number;
   Net: number;
+  /** Balance view only: `taggedBalance` of the period (spec section 10.9). */
+  Balance?: number;
+  BalancePercent?: number | null;
   /** Tagged transfer flows of the active bucket; absent when no flow series is shown. */
   TaggedInflows?: number;
   TaggedOutflows?: number;
@@ -68,7 +74,7 @@ export function CashFlowReport() {
   const t = useTranslations('reports');
   const router = useRouter();
   const chartRef = useRef<HTMLDivElement>(null);
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis } =
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent } =
     useNumberFormat();
   const formatChartDate = useChartDateFormat();
   const { defaultCurrency } = useExchangeRates();
@@ -133,12 +139,15 @@ export function CashFlowReport() {
     activeBucketValue,
   );
   const showFlows = flowBucket !== undefined;
-  // Opt-in, off by default; presentation only (net and the cards never read it).
-  const [stackFlowsPref, setStackFlowsPref] = useLocalStorage<boolean>(
-    STACK_FLOWS_STORAGE_KEY,
+  // Opt-in, off by default: stacks the tagged flows on the bars and replaces
+  // Net with Balance and Balance % (spec sections 10.7 and 10.9). Income,
+  // expenses and net stay the server's values either way (INV-REPORT-003).
+  const [includeTransfersPref, setIncludeTransfersPref] = useLocalStorage<boolean>(
+    INCLUDE_TRANSFERS_STORAGE_KEY,
     false,
   );
-  const stackFlows = showFlows && stackFlowsPref === true;
+  const balanceView = showFlows && includeTransfersPref === true;
+  const stackFlows = balanceView;
 
   // Map monthly data. `name` must be unique across the dataset (used as
   // the XAxis category key); a non-unique value like "May" causes Recharts
@@ -153,6 +162,7 @@ export function CashFlowReport() {
           Income: Math.round(item.income),
           Expenses: Math.round(item.expenses),
           Net: Math.round(item.net),
+          ...(balanceView ? periodBalanceFields(item, flowsByPeriod.get(item.period)) : {}),
           // Flows ride beside the bars and never enter income, expenses or net
           // (INV-REPORT-003). A period the bucket has no row for had no tagged
           // transfer in it, which is a known zero.
@@ -167,7 +177,7 @@ export function CashFlowReport() {
           monthEnd: item.periodEnd,
         };
       }),
-    [response, formatChartDate, flowBucket, flowsByPeriod],
+    [response, formatChartDate, flowBucket, flowsByPeriod, balanceView],
   );
 
   const incomeItems = useMemo<IncomeSourceItem[]>(
@@ -187,6 +197,33 @@ export function CashFlowReport() {
     [response],
   );
   const reportingCurrency = response?.cashFlowResponse.currency ?? defaultCurrency;
+  // The Balance view's window figure and what it is built from: the part of the
+  // All totals that converted plus the active bucket's own flows.
+  const balance = useMemo(() => {
+    const cashFlow = response?.cashFlowResponse;
+    if (!balanceView || !flowBucket || !cashFlow) return undefined;
+    const completeness = {
+      missingCurrencies: cashFlow.missingCurrencies,
+      excludedCount: cashFlow.excludedCount,
+    };
+    return {
+      bucket: flowBucket,
+      knownIncome: cashFlow.totals.knownIncome,
+      knownExpenses: cashFlow.totals.knownExpenses,
+      completeness,
+      window: taggedBalanceWindow(
+        {
+          income: cashFlow.totals.knownIncome,
+          expenses: cashFlow.totals.knownExpenses,
+          taggedInflows: flowBucket.taggedInflows,
+          taggedOutflows: flowBucket.taggedOutflows,
+        },
+        cashFlow.totals.income !== null && cashFlow.totals.expenses !== null,
+        completeness,
+        flowBucket,
+      ),
+    };
+  }, [balanceView, flowBucket, response]);
 
   const handleExportPdf = async () => {
     const { exportToPdf } = await import("@/lib/pdf-export");
@@ -196,11 +233,22 @@ export function CashFlowReport() {
 
     await exportToPdf({
       title: t('cashFlow.monthlyCashFlow'),
-      summaryCards: [
-        { label: t('cashFlow.totalInflows'), value: formatCurrency(totals.totalIncome), color: "#16a34a" },
-        { label: t('cashFlow.totalOutflows'), value: formatCurrency(totals.totalExpenses), color: "#dc2626" },
-        { label: t('cashFlow.netCashFlow'), value: `${totals.netCashFlow >= 0 ? "+" : ""}${formatCurrency(totals.netCashFlow)}`, color: totals.netCashFlow >= 0 ? "#2563eb" : "#ea580c" },
-      ],
+      summaryCards: balance
+        ? [
+            { label: t('cashFlow.totalInflows'), value: formatCurrency(balance.knownIncome), color: "#16a34a" },
+            { label: t('tagBreakdown.inflows'), value: formatCurrency(balance.bucket.taggedInflows), color: "#4f46e5" },
+            { label: t('cashFlow.totalOutflows'), value: formatCurrency(balance.knownExpenses), color: "#dc2626" },
+            ...(balance.bucket.taggedOutflows !== 0
+              ? [{ label: t('tagBreakdown.outflows'), value: formatCurrency(balance.bucket.taggedOutflows), color: "#4f46e5" }]
+              : []),
+            { label: t('tagBreakdown.balance'), value: `${formatCurrency(balance.window.balance ?? 0)}${balance.window.complete ? "" : "*"}`, color: (balance.window.balance ?? 0) >= 0 ? "#2563eb" : "#ea580c" },
+            { label: t('tagBreakdown.balancePercent'), value: balance.window.balancePercent === null ? "\u2014" : formatPercent(balance.window.balancePercent, 2), color: (balance.window.balancePercent ?? 0) >= 0 ? "#9333ea" : "#ea580c" },
+          ]
+        : [
+            { label: t('cashFlow.totalInflows'), value: formatCurrency(totals.totalIncome), color: "#16a34a" },
+            { label: t('cashFlow.totalOutflows'), value: formatCurrency(totals.totalExpenses), color: "#dc2626" },
+            { label: t('cashFlow.netCashFlow'), value: `${totals.netCashFlow >= 0 ? "+" : ""}${formatCurrency(totals.netCashFlow)}`, color: totals.netCashFlow >= 0 ? "#2563eb" : "#ea580c" },
+          ],
       chartContainer: chartRef.current,
       additionalTables: [
         ...(inflowRows.length > 0 ? [{
@@ -252,14 +300,22 @@ export function CashFlowReport() {
       color: string;
       payload: { fullName: string };
     }>;
-  }) => (
-    <ChartTooltip
-      active={active}
-      label={payload?.[0]?.payload?.fullName}
-      payload={payload}
-      formatValue={(v) => formatCurrency(v)}
-    />
-  );
+  }) =>
+    balanceView ? (
+      <TaggedBalanceTooltip
+        active={active}
+        payload={payload as unknown as BalanceTooltipEntry[]}
+        formatValue={(v) => formatCurrency(v)}
+        formatPercent={(p) => formatPercent(p, 2)}
+      />
+    ) : (
+      <ChartTooltip
+        active={active}
+        label={payload?.[0]?.payload?.fullName}
+        payload={payload}
+        formatValue={(v) => formatCurrency(v)}
+      />
+    );
 
   // Loading and error render inside this tree, never as an early return: a
   // second tree unmounts the controls block and ejects focus from the date
@@ -276,51 +332,7 @@ export function CashFlowReport() {
           <Skeleton className="h-24 w-full" />
         </div>
       ) : (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 sm:p-6">
-          <div className="text-sm text-green-600 dark:text-green-400">
-            {t('cashFlow.totalInflows')}
-          </div>
-          <div className="text-2xl font-bold text-green-700 dark:text-green-300">
-            {formatCurrency(totals.totalIncome)}
-          </div>
-        </div>
-        <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 sm:p-6">
-          <div className="text-sm text-red-600 dark:text-red-400">
-            {t('cashFlow.totalOutflows')}
-          </div>
-          <div className="text-2xl font-bold text-red-700 dark:text-red-300">
-            {formatCurrency(totals.totalExpenses)}
-          </div>
-        </div>
-        <div
-          className={`rounded-lg p-4 sm:p-6 ${
-            totals.netCashFlow >= 0
-              ? "bg-blue-50 dark:bg-blue-900/20"
-              : "bg-orange-50 dark:bg-orange-900/20"
-          }`}
-        >
-          <div
-            className={`text-sm ${
-              totals.netCashFlow >= 0
-                ? "text-blue-600 dark:text-blue-400"
-                : "text-orange-600 dark:text-orange-400"
-            }`}
-          >
-            {t('cashFlow.netCashFlow')}
-          </div>
-          <div
-            className={`text-2xl font-bold ${
-              totals.netCashFlow >= 0
-                ? "text-blue-700 dark:text-blue-300"
-                : "text-orange-700 dark:text-orange-300"
-            }`}
-          >
-            {totals.netCashFlow >= 0 ? "+" : ""}
-            {formatCurrency(totals.netCashFlow)}
-          </div>
-        </div>
-      </div>
+      <CashFlowSummaryCards totals={totals} reportingCurrency={reportingCurrency} balance={balance} />
       )}
 
       {/* Controls -- always rendered so focus inside DateInput survives reloads.
@@ -347,7 +359,7 @@ export function CashFlowReport() {
           />
           <TagKeyBreakdownSelect tagKeys={tagKeys} value={tagKey} onChange={setTagKey} />
           {showFlows && (
-            <StackTaggedFlowsToggle checked={stackFlows} onChange={setStackFlowsPref} />
+            <IncludeTaggedTransfersToggle checked={balanceView} onChange={setIncludeTransfersPref} />
           )}
           <ReportToolbarActions onExportPdf={handleExportPdf} />
         </div>
@@ -404,6 +416,16 @@ export function CashFlowReport() {
                 name={t('cashFlow.seriesOutflows')}
                 {...flowBarStack(stackFlows, 'outflows', 'base')}
               />
+              {/* Balance view: the period's Balance, drawn after the bars it
+                  is made of. */}
+              {balanceView && (
+                <Bar
+                  dataKey="Balance"
+                  fill={chartColors.primary}
+                  name={t('tagBreakdown.balance')}
+                  radius={[4, 4, 0, 0]}
+                />
+              )}
               {/* The funding series: the active tag bucket's transfer flows, in
                   the indigo pair the breakdown card uses so they never read as
                   income or expenses. Absent without a tag key or on the

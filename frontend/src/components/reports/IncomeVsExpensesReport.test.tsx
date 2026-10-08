@@ -1,5 +1,7 @@
+import { cloneElement, type ReactElement } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent, act } from "@/test/render";
+import { within } from "@testing-library/react";
 import { IncomeVsExpensesReport } from "./IncomeVsExpensesReport";
 
 const mockPush = vi.fn();
@@ -57,18 +59,31 @@ vi.mock("@/components/ui/ExportDropdown", () => ({
   ),
 }));
 
+// What the mocked chart was last given, so a case can read the rows the real
+// chart would plot and render the tooltip the real chart would show.
+let lastChartData: any[] = [];
+let lastTooltipContent: ReactElement | null = null;
+const mockExportToCsv = vi.fn();
+vi.mock("@/lib/csv-export", () => ({
+  exportToCsv: (...args: any[]) => mockExportToCsv(...args),
+}));
+
 vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: any) => (
     <div data-testid="responsive-container">{children}</div>
   ),
-  BarChart: ({ children, onClick }: any) => (
+  BarChart: ({ children, onClick, data }: any) => {
+    // The breakdown card draws a chart of its own; only the main chart rows carry monthStart.
+    if (data?.[0]?.monthStart !== undefined) lastChartData = data;
+    return (
     <div
       data-testid="bar-chart"
       onClick={() => onClick?.({ activeLabel: "2024-01" })}
     >
       {children}
     </div>
-  ),
+    );
+  },
   Bar: ({ dataKey, onClick, stackId }: any) => (
     <button
       data-testid={`bar-${dataKey}`}
@@ -85,12 +100,40 @@ vi.mock("recharts", () => ({
   XAxis: () => null,
   YAxis: () => null,
   CartesianGrid: () => null,
-  Tooltip: () => null,
+  Tooltip: ({ content }: any) => {
+    if (content?.type?.name === "CustomTooltip") lastTooltipContent = content;
+    return null;
+  },
   Legend: () => null,
   ReferenceLine: () => null,
 }));
 
 const mockGetIncomeVsExpenses = vi.fn();
+
+/** The chart card holding the summary cards (the breakdown card below has its own). */
+const mainCard = () =>
+  screen.getAllByTestId("responsive-container")[0].parentElement!.parentElement as HTMLElement;
+/** Header labels of the desktop header row, without the sort arrows. */
+const tableHeaders = () =>
+  Array.from(document.querySelectorAll("thead tr")[1].querySelectorAll("th")).map((h) =>
+    (h.textContent ?? "").replace(/[\u2191\u2193\u2195]/g, "").trim(),
+  );
+
+/** The tooltip the chart would show for one row, from the series the chart declares. */
+function renderTooltipFor(row: any, keys: string[]) {
+  const names: Record<string, string> = {
+    Income: "Income",
+    Expenses: "Expenses",
+    Savings: "Savings",
+    Balance: "Balance",
+    TaggedInflows: "Tagged inflows: household",
+    TaggedOutflows: "Tagged outflows: household",
+  };
+  const payload = keys
+    .filter((key) => row[key] !== undefined)
+    .map((key) => ({ dataKey: key, name: names[key], value: row[key], color: "#000", payload: row }));
+  render(cloneElement(lastTooltipContent as ReactElement<any>, { active: true, payload }));
+}
 
 vi.mock("@/lib/built-in-reports", () => ({
   builtInReportsApi: {
@@ -649,7 +692,7 @@ describe("IncomeVsExpensesReport", () => {
 
     describe("stacking toggle", () => {
       const STACK_KEY = "monize-reports-income-vs-expenses-stack-tagged";
-      const switchName = { name: "Stack tagged flows" };
+      const switchName = { name: "Include tagged transfers" };
       // The breakdown card below the chart draws its own Income/Expenses bars,
       // so the main chart's bar is the first of each key.
       const mainBar = (key: string) => screen.getAllByTestId(`bar-${key}`)[0];
@@ -692,7 +735,7 @@ describe("IncomeVsExpensesReport", () => {
         }
       });
 
-      it("on: inflows share the Income stack and outflows the Expenses stack; savings stays alone", async () => {
+      it("on: inflows share the Income stack and outflows the Expenses stack; Balance replaces Savings and stays alone", async () => {
         mockGetIncomeVsExpenses.mockResolvedValue(withBuckets);
         render(<IncomeVsExpensesReport />);
         fireEvent.click(await screen.findByRole("switch", switchName));
@@ -704,23 +747,26 @@ describe("IncomeVsExpensesReport", () => {
         expect(stackOf("Expenses")).toBeTruthy();
         expect(stackOf("TaggedOutflows")).toBe(stackOf("Expenses"));
         expect(stackOf("Income")).not.toBe(stackOf("Expenses"));
-        expect(stackOf("Savings")).toBeNull();
+        expect(screen.queryByTestId("bar-Savings")).toBeNull();
+        expect(stackOf("Balance")).toBeNull();
       });
 
-      it("changes no figure: summary cards and table values are the same on and off", async () => {
+      it("changes no server figure: Income and Expenses read the same on and off, Savings only goes away", async () => {
         mockGetIncomeVsExpenses.mockResolvedValue(withBuckets);
         render(<IncomeVsExpensesReport />);
         const toggle = await screen.findByRole("switch", switchName);
         fireEvent.click(screen.getByTestId("toggle-table"));
         await screen.findAllByRole("columnheader");
-        const snapshot = () => document.querySelector("table")?.textContent;
-        const off = snapshot();
+        const row = () => document.querySelector("tbody tr")?.textContent ?? "";
+        expect(row()).toContain("$5000");
+        expect(row()).toContain("$3000");
+        expect(row()).toContain("$2000");
 
         fireEvent.click(toggle);
         expect(toggle).toHaveAttribute("aria-checked", "true");
-        expect(snapshot()).toBe(off);
-        // Savings is income minus expenses only: 5000 - 3000.
-        expect(screen.getAllByText("$2000").length).toBeGreaterThan(0);
+        expect(row()).toContain("$5000");
+        expect(row()).toContain("$3000");
+        expect(row()).not.toContain("Savings");
       });
 
       it("persists the choice and reopens on it", async () => {
@@ -748,6 +794,273 @@ describe("IncomeVsExpensesReport", () => {
         await screen.findByTestId("bar-Income");
         expect(mainBar("Income")).not.toHaveAttribute("data-stack-id");
       });
+
+    describe("Balance view (spec section 10.9)", () => {
+      // The reporter's August 2026 figures: Income 3,279, Tagged inflows 4,516,
+      // Expenses 8,486 -> Balance -691, Balance % -8.86.
+      const aug = period("2026-08", "2026-08-01", "2026-08-31", 3279, 8486);
+      const augResponse = (outflows = 0, bucketOverrides: Record<string, unknown> = {}) => ({
+        data: [aug],
+        totals: { income: 3279, expenses: 8486, net: -5207, knownIncome: 3279, knownExpenses: 8486, knownNet: -5207 },
+        currency: "CAD",
+        missingCurrencies: [],
+        excludedCount: 0,
+        tagKey: "scope",
+        buckets: [
+          {
+            value: "household",
+            isUntagged: false,
+            data: [tagged(aug, 4516, outflows)],
+            totals: zeroTotals,
+            taggedInflows: 4516,
+            taggedOutflows: outflows,
+            missingCurrencies: [],
+            excludedCount: 0,
+            ...bucketOverrides,
+          },
+        ],
+      });
+      const switchOn = { name: "Include tagged transfers" };
+      const turnOn = async () =>
+        fireEvent.click(await screen.findByRole("switch", switchOn));
+
+      beforeEach(() => {
+        mockGetAllTags.mockResolvedValue([{ id: "t1", name: "scope:household" }]);
+      });
+
+      it("off: Savings and Savings Rate, no Balance anywhere", async () => {
+        mockGetIncomeVsExpenses.mockResolvedValue(augResponse());
+        render(<IncomeVsExpensesReport />);
+        await screen.findByRole("switch", switchOn);
+
+        const card = within(mainCard());
+        expect(card.getByText("Total Savings")).toBeInTheDocument();
+        expect(card.getByText("Savings Rate")).toBeInTheDocument();
+        expect(card.queryByText("Balance")).toBeNull();
+        expect(card.queryByText("Balance %")).toBeNull();
+        expect(screen.getByTestId("bar-Savings")).toBeInTheDocument();
+        expect(screen.queryByTestId("bar-Balance")).toBeNull();
+        expect(lastChartData[0]).not.toHaveProperty("Balance");
+      });
+
+      it("on: the cards read Income, Tagged inflows, Expenses, Balance and Balance %, never Savings", async () => {
+        mockGetIncomeVsExpenses.mockResolvedValue(augResponse());
+        render(<IncomeVsExpensesReport />);
+        await turnOn();
+
+        const card = within(mainCard());
+        const labels = ["Total Income", "Tagged inflows", "Total Expenses", "Balance", "Balance %"].map(
+          (label) => card.getByText(label),
+        );
+        // In reading order on the page.
+        for (let i = 1; i < labels.length; i += 1) {
+          expect(
+            labels[i - 1].compareDocumentPosition(labels[i]) & Node.DOCUMENT_POSITION_FOLLOWING,
+          ).toBeTruthy();
+        }
+        expect(card.getByText("$-691")).toBeInTheDocument();
+        expect(card.getByText("-8.86%")).toBeInTheDocument();
+        expect(card.getByText("$4516")).toBeInTheDocument();
+        expect(card.queryByText("Total Savings")).toBeNull();
+        expect(card.queryByText("Savings Rate")).toBeNull();
+        // No tagged outflows in the window, so no card for them.
+        expect(card.queryByText("Tagged outflows")).toBeNull();
+        // Income stays the server's figure (INV-REPORT-003).
+        expect(card.getByText("$3279")).toBeInTheDocument();
+        expect(lastChartData[0]).toMatchObject({ Income: 3279, Expenses: 8486, Balance: -691, BalancePercent: -8.86 });
+      });
+
+      it("on: shows the Tagged outflows card only when the window has some, and takes it off the Balance", async () => {
+        mockGetIncomeVsExpenses.mockResolvedValue(augResponse(100));
+        render(<IncomeVsExpensesReport />);
+        await turnOn();
+
+        const card = within(mainCard());
+        expect(card.getByText("Tagged outflows")).toBeInTheDocument();
+        // -691 - 100 = -791 over 7,795: -10.15%.
+        expect(card.getByText("$-791")).toBeInTheDocument();
+        expect(card.getByText("-10.15%")).toBeInTheDocument();
+      });
+
+      it("on: the window Balance is a marked subtotal with no percentage when the bucket is incomplete", async () => {
+        mockGetIncomeVsExpenses.mockResolvedValue(
+          augResponse(0, { missingCurrencies: ["JPY"], excludedCount: 1 }),
+        );
+        render(<IncomeVsExpensesReport />);
+        await turnOn();
+
+        const card = within(mainCard()).getByText("Balance").parentElement as HTMLElement;
+        expect(card.querySelector('[data-testid="partial-total"]')).not.toBeNull();
+        const percent = within(mainCard()).getByText("Balance %").parentElement as HTMLElement;
+        expect(percent.textContent).toContain("\u2014");
+        expect(percent.querySelector('[data-testid="partial-total"]')).toBeNull();
+      });
+
+      it("on: the window Balance is a marked subtotal when the All totals are incomplete", async () => {
+        mockGetIncomeVsExpenses.mockResolvedValue({
+          ...augResponse(),
+          totals: { income: null, expenses: null, net: null, knownIncome: 3279, knownExpenses: 8486, knownNet: -5207 },
+          missingCurrencies: ["EUR"],
+          excludedCount: 1,
+        });
+        render(<IncomeVsExpensesReport />);
+        await turnOn();
+
+        const card = within(mainCard()).getByText("Balance").parentElement as HTMLElement;
+        expect(card.querySelector('[data-testid="partial-total"]')).not.toBeNull();
+      });
+
+      it("on: the table lists Income, Tagged inflows, Expenses, Balance, Balance % with no Savings columns", async () => {
+        mockGetIncomeVsExpenses.mockResolvedValue(augResponse());
+        render(<IncomeVsExpensesReport />);
+        await turnOn();
+        fireEvent.click(screen.getByTestId("toggle-table"));
+
+        await screen.findAllByRole("columnheader");
+        expect(tableHeaders()).toEqual([
+          "Month",
+          "Income",
+          "Tagged inflows",
+          "Expenses",
+          "Balance",
+          "Balance %",
+        ]);
+        const cells = Array.from(document.querySelectorAll("tbody tr td")).map((c) => c.textContent);
+        expect(cells.join("|")).toContain("$-691");
+        expect(cells.join("|")).toContain("-8.86%");
+      });
+
+      it("on: the Tagged outflows column appears between Expenses and Balance when there are outflows", async () => {
+        mockGetIncomeVsExpenses.mockResolvedValue(augResponse(100));
+        render(<IncomeVsExpensesReport />);
+        await turnOn();
+        fireEvent.click(screen.getByTestId("toggle-table"));
+
+        await screen.findAllByRole("columnheader");
+        expect(tableHeaders()).toEqual([
+          "Month",
+          "Income",
+          "Tagged inflows",
+          "Expenses",
+          "Tagged outflows",
+          "Balance",
+          "Balance %",
+        ]);
+      });
+
+      it("on: a stored sort on Savings falls back to the month and Balance is sortable", async () => {
+        window.localStorage.setItem(
+          "reports.income-vs-expenses.table.sort",
+          JSON.stringify({ field: "savings", direction: "desc" }),
+        );
+        mockGetIncomeVsExpenses.mockResolvedValue(augResponse());
+        render(<IncomeVsExpensesReport />);
+        await turnOn();
+        fireEvent.click(screen.getByTestId("toggle-table"));
+        await screen.findAllByRole("columnheader");
+        const sortable = screen.getAllByRole("columnheader").find((h) => h.textContent?.includes("Balance %"));
+        expect(sortable).toBeTruthy();
+        await act(async () => {
+          fireEvent.click(sortable as HTMLElement);
+        });
+        expect(document.querySelector("tbody tr")).toBeInTheDocument();
+      });
+
+      it("on: the CSV carries the same columns in the same order as the table", async () => {
+        mockGetIncomeVsExpenses.mockResolvedValue(augResponse());
+        render(<IncomeVsExpensesReport />);
+        await turnOn();
+        await act(async () => {
+          fireEvent.click(screen.getByTestId("export-csv"));
+        });
+
+        expect(mockExportToCsv).toHaveBeenCalledTimes(1);
+        const [, headers, rows] = mockExportToCsv.mock.calls[0];
+        expect(headers).toEqual(["Month", "Income", "Tagged inflows", "Expenses", "Balance", "Balance %"]);
+        expect(rows[0].slice(1)).toEqual([3279, 4516, 8486, -691, "-8.86%"]);
+      });
+
+      it("off: the CSV keeps Savings and Savings Rate", async () => {
+        mockGetIncomeVsExpenses.mockResolvedValue(augResponse());
+        render(<IncomeVsExpensesReport />);
+        await screen.findByRole("switch", switchOn);
+        await act(async () => {
+          fireEvent.click(screen.getByTestId("export-csv"));
+        });
+
+        const [, headers] = mockExportToCsv.mock.calls[0];
+        expect(headers).toEqual([
+          "Month",
+          "Income",
+          "Expenses",
+          "Savings",
+          "Savings Rate",
+          "Tagged inflows",
+          "Tagged outflows",
+        ]);
+      });
+
+      it("on: the tooltip lists Income, Tagged inflows, Expenses, Balance, then Balance %, and hides zero outflows", async () => {
+        mockGetIncomeVsExpenses.mockResolvedValue(augResponse());
+        render(<IncomeVsExpensesReport />);
+        await turnOn();
+        // Re-render once more so the tooltip element for the balance view is the one captured.
+        renderTooltipFor(lastChartData[0], ["Income", "Expenses", "Balance", "TaggedInflows", "TaggedOutflows"]);
+
+        const lines = Array.from(document.querySelectorAll("p")).map((p) => p.textContent);
+        const tooltip = lines.filter((l) => /^(Income|Tagged|Expenses|Balance)/.test(l ?? ""));
+        expect(tooltip).toEqual([
+          "Income: $3279",
+          "Tagged inflows: household: $4516",
+          "Expenses: $8486",
+          "Balance: $-691",
+          "Balance %: -8.86%",
+        ]);
+      });
+
+      it("on: the tooltip shows Tagged outflows when the period has some, and a dash when nothing came in", async () => {
+        mockGetIncomeVsExpenses.mockResolvedValue({
+          ...augResponse(0),
+          data: [period("2026-08", "2026-08-01", "2026-08-31", 0, 40)],
+          buckets: [
+            {
+              ...augResponse(0).buckets[0],
+              data: [tagged(period("2026-08", "2026-08-01", "2026-08-31", 0, 40), 0, 25)],
+              taggedInflows: 0,
+              taggedOutflows: 25,
+            },
+          ],
+        });
+        render(<IncomeVsExpensesReport />);
+        await turnOn();
+        renderTooltipFor(lastChartData[0], ["Income", "Expenses", "Balance", "TaggedInflows", "TaggedOutflows"]);
+
+        const lines = Array.from(document.querySelectorAll("p")).map((p) => p.textContent);
+        expect(lines).toContain("Tagged outflows: household: $25");
+        expect(lines).toContain("Balance: $-65");
+        expect(lines).toContain("Balance %: \u2014");
+      });
+
+      it("switching the tab to untagged returns to Savings", async () => {
+        mockGetIncomeVsExpenses.mockResolvedValue({
+          ...augResponse(),
+          buckets: [
+            ...augResponse().buckets,
+            { ...augResponse().buckets[0], value: "__untagged__", isUntagged: true, taggedInflows: 0 },
+          ],
+        });
+        render(<IncomeVsExpensesReport />);
+        await turnOn();
+        expect(screen.getByTestId("bar-Balance")).toBeInTheDocument();
+
+        await act(async () => {
+          fireEvent.click(screen.getByRole("tab", { name: "Untagged" }));
+        });
+        expect(screen.queryByTestId("bar-Balance")).toBeNull();
+        expect(screen.getByTestId("bar-Savings")).toBeInTheDocument();
+        expect(within(mainCard()).getByText("Total Savings")).toBeInTheDocument();
+      });
+    });
     });
   });
 });
