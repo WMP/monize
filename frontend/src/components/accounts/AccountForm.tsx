@@ -27,6 +27,7 @@ import {
   MortgageType,
   PAYMENT_FREQUENCIES,
   PaymentFrequency,
+  PaymentMatching,
 } from '@/types/account';
 import {
   PREPAYMENT_MODES,
@@ -73,6 +74,10 @@ const optionalNumberWithRange = (min: number, max: number) =>
     (val: unknown) => (val === '' || val === undefined || (typeof val === 'number' && isNaN(val)) ? undefined : val),
     z.number().min(min).max(max).optional()
   );
+
+// Mirrors the backend's MAX_PAYMENT_MATCHING_PATTERN_LENGTH
+// (backend/src/accounts/dto/payment-matching.dto.ts).
+const MAX_PAYMENT_MATCHING_PATTERN_LENGTH = 200;
 
 // From @/types/account, not a local copy: `optionalEnum` below maps an unlisted
 // value to `undefined`, so a list missing a frequency the backend can store
@@ -167,6 +172,15 @@ const buildAccountSchema = (
   termMonths: optionalNumber,
   amortizationMonths: optionalNumber,
   mortgagePaymentFrequency: optionalEnum(mortgagePaymentFrequencies),
+  // The amount originally borrowed, apart from the opening balance; shown on
+  // both create and edit (`MortgageFields`).
+  originalPrincipal: optionalNumber.nullable(),
+  // Payment matching (create only): the rule that settles the bank's own
+  // debit against each installment. `excess`/`shortfall` are never collected
+  // here -- the server defaults them and they are editable in Tools > Rules.
+  paymentMatchingEnabled: z.boolean().optional(),
+  paymentMatchingPayeePattern: z.string().max(MAX_PAYMENT_MATCHING_PATTERN_LENGTH).optional(),
+  paymentMatchingDescriptionPattern: z.string().max(MAX_PAYMENT_MATCHING_PATTERN_LENGTH).optional(),
 }).superRefine((data, ctx) => {
   // Loan and mortgage payment setup is only collected when creating the account
   // (the payment fields are hidden while editing), so only enforce these on
@@ -221,6 +235,31 @@ const buildAccountSchema = (
     requireField(!data.paymentStartDate, 'paymentStartDate', 'validation.paymentStartDateRequired');
     requireField(!data.sourceAccountId, 'sourceAccountId', 'validation.paymentAccountRequired');
   }
+
+  if (data.accountType === 'MORTGAGE' && data.paymentMatchingEnabled) {
+    const payeePattern = data.paymentMatchingPayeePattern?.trim();
+    if (!payeePattern) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['paymentMatchingPayeePattern'],
+        message: t('validation.paymentMatchingPayeePatternRequired'),
+      });
+    } else if (!payeePattern.includes('*')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['paymentMatchingPayeePattern'],
+        message: t('validation.paymentMatchingPayeePatternWildcard'),
+      });
+    }
+    const descriptionPattern = data.paymentMatchingDescriptionPattern?.trim();
+    if (descriptionPattern && !descriptionPattern.includes('*')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['paymentMatchingDescriptionPattern'],
+        message: t('validation.paymentMatchingDescriptionPatternWildcard'),
+      });
+    }
+  }
 });
 
 type AccountFormData = z.infer<ReturnType<typeof buildAccountSchema>>;
@@ -247,10 +286,14 @@ export interface AccountFormInitialValues {
  * its type maps to (`flagsFromMortgageType`), which travel beside the type
  * until P3-B1 drops the booleans.
  */
-type AccountSubmitData = Omit<AccountFormData, 'prepaymentMode'> & {
+type AccountSubmitData = Omit<
+  AccountFormData,
+  'prepaymentMode' | 'paymentMatchingEnabled' | 'paymentMatchingPayeePattern' | 'paymentMatchingDescriptionPattern'
+> & {
   prepaymentMode?: PrepaymentMode | null;
   isCanadianMortgage?: boolean;
   isVariableRate?: boolean;
+  paymentMatching?: PaymentMatching;
 };
 
 /** The cash ledger's own fields as the form loads them from the stored row. */
@@ -410,6 +453,9 @@ export function AccountForm({
           termMonths: account.termMonths || undefined,
           amortizationMonths: account.amortizationMonths || undefined,
           mortgagePaymentFrequency: (account as any).mortgagePaymentFrequency || undefined,
+          originalPrincipal: account.originalPrincipal != null
+            ? Math.round(Number(account.originalPrincipal) * 100) / 100
+            : undefined,
         }
       : {
           currencyCode: initialValues?.currencyCode ?? defaultCurrency,
@@ -426,6 +472,7 @@ export function AccountForm({
           createInvestmentPair: true,
           mortgageType: 'ANNUITY',
           prepaymentMode: 'SHORTEN_TERM',
+          paymentMatchingEnabled: false,
         },
   });
 
@@ -458,7 +505,14 @@ export function AccountForm({
       // other account type sends neither. The prepayment mode belongs to a
       // LINEAR mortgage alone: every other type sends null, which is what the
       // server stores for it whatever it is sent.
-      const { mortgageType, prepaymentMode, ...withoutMortgageType } = data;
+      const {
+        mortgageType,
+        prepaymentMode,
+        paymentMatchingEnabled,
+        paymentMatchingPayeePattern,
+        paymentMatchingDescriptionPattern,
+        ...withoutMortgageType
+      } = data;
       let payload: AccountSubmitData =
         data.accountType === 'MORTGAGE' && mortgageType
           ? {
@@ -469,6 +523,20 @@ export function AccountForm({
               ...flagsFromMortgageType(mortgageType),
             }
           : withoutMortgageType;
+      // Payment matching is create-only, and the UI collects it only for a
+      // mortgage: the trimmed pattern is what the rule is built from, so a
+      // blank or whitespace-only pattern never reaches the server as one.
+      if (
+        !account &&
+        data.accountType === 'MORTGAGE' &&
+        paymentMatchingEnabled &&
+        paymentMatchingPayeePattern?.trim()
+      ) {
+        payload.paymentMatching = {
+          payeePattern: paymentMatchingPayeePattern.trim(),
+          descriptionPattern: paymentMatchingDescriptionPattern?.trim() || undefined,
+        };
+      }
       // Editing: an emptied threshold means "clear it", so send null rather than
       // omitting the field (which would leave the stored value untouched). Only
       // on edit -- CreateAccountDto does not carry these fields.
@@ -478,6 +546,13 @@ export function AccountForm({
           lowBalanceThreshold: payload.lowBalanceThreshold ?? null,
           highBalanceThreshold: payload.highBalanceThreshold ?? null,
         };
+        // Original Principal is shown for a mortgage edit; an emptied field
+        // means "fall back to the opening balance", sent as an explicit null
+        // (the update DTO's own meaning for it) rather than omitted, which
+        // would leave a previously-saved value stuck on the account forever.
+        if (data.accountType === 'MORTGAGE') {
+          payload.originalPrincipal = payload.originalPrincipal ?? null;
+        }
       }
       if (!cashLedgerChanged(data, cashHalf)) {
         const {
@@ -540,6 +615,11 @@ export function AccountForm({
   const watchedTermMonths = useWatch({ control, name: 'termMonths' });
   const watchedAmortizationMonths = useWatch({ control, name: 'amortizationMonths' });
   const watchedMortgagePaymentFrequency = useWatch({ control, name: 'mortgagePaymentFrequency' });
+  const watchedSourceAccountId = useWatch({ control, name: 'sourceAccountId' });
+  const watchedOriginalPrincipal = useWatch({ control, name: 'originalPrincipal' });
+  const watchedPaymentMatchingEnabled = useWatch({ control, name: 'paymentMatchingEnabled' });
+  const watchedPaymentMatchingPayeePattern = useWatch({ control, name: 'paymentMatchingPayeePattern' });
+  const watchedPaymentMatchingDescriptionPattern = useWatch({ control, name: 'paymentMatchingDescriptionPattern' });
 
   // Resolve the linked pair when editing an investment account. A standalone
   // or orphaned account 400s here and simply keeps the single-account form.
@@ -590,6 +670,13 @@ export function AccountForm({
     if (!accountInstitutionId) return '';
     return institutions.find((i) => i.id === accountInstitutionId)?.name || '';
   }, [accountInstitutionId, institutions]);
+
+  // The currently selected institution's name, to prefill the payment-matching
+  // payee pattern (`*<institution>*`) once the switch is turned on.
+  const selectedInstitutionName = useMemo(
+    () => institutions.find((i) => i.id === selectedInstitutionId)?.name ?? '',
+    [institutions, selectedInstitutionId],
+  );
 
   const handleInstitutionChange = (value: string) => {
     setSelectedInstitutionId(value);
@@ -1120,6 +1207,12 @@ export function AccountForm({
           categories={categories}
           formatCurrency={formatCurrency}
           isEditing={!!account}
+          sourceAccountId={watchedSourceAccountId}
+          originalPrincipal={watchedOriginalPrincipal ?? undefined}
+          paymentMatchingEnabled={watchedPaymentMatchingEnabled}
+          paymentMatchingPayeePattern={watchedPaymentMatchingPayeePattern}
+          paymentMatchingDescriptionPattern={watchedPaymentMatchingDescriptionPattern}
+          institutionName={selectedInstitutionName}
           selectedInterestCategoryId={selectedInterestCategoryId}
           handleInterestCategoryChange={handleInterestCategoryChange}
           interestBookingMode={interestBookingMode}

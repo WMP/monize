@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "Reconocer el adeudo del banco",
+    "toggleHelp": "Cuando tu banco registra un único adeudo para este pago, Monize lo compara con el calendario y lo divide automáticamente en capital e intereses, en lugar de registrar una transacción de factura por separado.",
+    "payeePattern": "Patrón del beneficiario",
+    "payeePatternPlaceholder": "p. ej. *ING HYPOTHEKEN*",
+    "descriptionPattern": "Patrón de la descripción (opcional)",
+    "descriptionPatternPlaceholder": "p. ej. *Hypotheek*",
+    "fromAccount": "Comparado con los adeudos de {account}."
+  },
   "nameSuffix": {
     "cash": "Efectivo",
     "brokerage": "Corretaje"
@@ -270,7 +279,11 @@
     "firstInstallmentHelp": "Esta hipoteca no tiene un pago fijo: cada cuota se calcula a partir del saldo, el tipo de interés y el periodo de amortización. Esta es la que vence el {date}, incluido cualquier capital adicional.",
     "firstInstallmentPending": "Introduce la fecha del próximo pago para calcular la primera cuota.",
     "firstInstallmentCalculating": "Calculando la primera cuota...",
-    "firstInstallmentFailed": "No se pudo calcular la primera cuota. Revisa los valores de abajo e inténtalo de nuevo."
+    "firstInstallmentFailed": "No se pudo calcular la primera cuota. Revisa los valores de abajo e inténtalo de nuevo.",
+    "paymentMatching": {
+      "autoPostDisabled": "Desactivado automáticamente: la coincidencia de pagos liquida esta factura a partir del propio adeudo del banco, por lo que no debe registrarse también por sí sola.",
+      "payeePatternRequired": "Introduce un patrón de beneficiario que incluya un comodín *"
+    }
   },
   "mortgageFields": {
     "title": "Detalles de la Hipoteca",
@@ -407,6 +420,10 @@
         "cancel": "Cancelar",
         "use": "Editar cuenta con este tipo"
       }
+    },
+    "originalPrincipal": {
+      "label": "Capital original",
+      "help": "El importe que pediste prestado originalmente. En una cuenta cuyo historial registrado comienza después de iniciarse la hipoteca, este es el importe prestado, no el saldo inicial, que es la deuda al comienzo de tu historial."
     }
   },
   "assetFields": {
@@ -436,7 +453,10 @@
     "paymentStartDateRequired": "La fecha del primer pago es obligatoria",
     "paymentAccountRequired": "La cuenta de pago es obligatoria",
     "amortizationRequired": "El período de amortización es obligatorio",
-    "acceleratedNeedsAnnuity": "Esta hipoteca se paga con un calendario acelerado, que solo tiene una hipoteca de anualidad. Una hipoteca lineal o de solo intereses necesita una frecuencia de pago normal, así que mantén un tipo de anualidad."
+    "acceleratedNeedsAnnuity": "Esta hipoteca se paga con un calendario acelerado, que solo tiene una hipoteca de anualidad. Una hipoteca lineal o de solo intereses necesita una frecuencia de pago normal, así que mantén un tipo de anualidad.",
+    "paymentMatchingPayeePatternRequired": "Introduce un patrón de beneficiario para identificar el adeudo del banco",
+    "paymentMatchingPayeePatternWildcard": "El patrón del beneficiario debe incluir un comodín *",
+    "paymentMatchingDescriptionPatternWildcard": "El patrón de la descripción debe incluir un comodín *"
   },
   "loanDetail": {
     "backToAccounts": "Volver a las cuentas",

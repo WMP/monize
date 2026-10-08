@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "Rozpoznaj obciążenie z banku",
+    "toggleHelp": "Gdy bank zarejestruje jedno obciążenie za tę płatność, Monize dopasowuje je do harmonogramu i automatycznie dzieli na kapitał i odsetki, zamiast rejestrować osobną transakcję rachunku.",
+    "payeePattern": "Wzorzec odbiorcy",
+    "payeePatternPlaceholder": "np. *ING HYPOTHEKEN*",
+    "descriptionPattern": "Wzorzec opisu (opcjonalnie)",
+    "descriptionPatternPlaceholder": "np. *Hypotheek*",
+    "fromAccount": "Dopasowywane do obciążeń z {account}."
+  },
   "nameSuffix": {
     "cash": "Gotówka",
     "brokerage": "Maklerskie"
@@ -270,7 +279,11 @@
     "firstInstallmentHelp": "Ten kredyt hipoteczny nie ma stałej płatności: każda rata wynika z salda, oprocentowania i okresu amortyzacji. To rata z terminem {date}, łącznie z ewentualną dodatkową spłatą kapitału.",
     "firstInstallmentPending": "Wpisz datę następnej płatności, aby obliczyć pierwszą ratę.",
     "firstInstallmentCalculating": "Obliczanie pierwszej raty...",
-    "firstInstallmentFailed": "Nie udało się obliczyć pierwszej raty. Sprawdź poniższe wartości i spróbuj ponownie."
+    "firstInstallmentFailed": "Nie udało się obliczyć pierwszej raty. Sprawdź poniższe wartości i spróbuj ponownie.",
+    "paymentMatching": {
+      "autoPostDisabled": "Wyłączone automatycznie: dopasowywanie płatności rozlicza ten rachunek na podstawie własnego obciążenia banku, więc nie może się on też księgować samodzielnie.",
+      "payeePatternRequired": "Podaj wzorzec odbiorcy zawierający symbol wieloznaczny *"
+    }
   },
   "mortgageFields": {
     "title": "Szczegóły kredytu hipotecznego",
@@ -407,6 +420,10 @@
         "cancel": "Anuluj",
         "use": "Edytuj konto z tym rodzajem"
       }
+    },
+    "originalPrincipal": {
+      "label": "Pierwotny kapitał",
+      "help": "Kwota, którą pierwotnie pożyczono. W przypadku konta, którego zapisana historia zaczyna się po rozpoczęciu kredytu, jest to pożyczona kwota, a nie saldo początkowe — czyli zadłużenie na początku historii."
     }
   },
   "assetFields": {
@@ -436,7 +453,10 @@
     "paymentStartDateRequired": "Data pierwszej płatności jest wymagana",
     "paymentAccountRequired": "Konto płatności jest wymagane",
     "amortizationRequired": "Okres spłaty jest wymagany",
-    "acceleratedNeedsAnnuity": "Ten kredyt hipoteczny jest spłacany według przyspieszonego harmonogramu, który ma tylko kredyt z ratami równymi. Kredyt z ratami malejącymi lub tylko odsetkowy wymaga zwykłej częstotliwości płatności, więc zostaw typ z ratami równymi."
+    "acceleratedNeedsAnnuity": "Ten kredyt hipoteczny jest spłacany według przyspieszonego harmonogramu, który ma tylko kredyt z ratami równymi. Kredyt z ratami malejącymi lub tylko odsetkowy wymaga zwykłej częstotliwości płatności, więc zostaw typ z ratami równymi.",
+    "paymentMatchingPayeePatternRequired": "Podaj wzorzec odbiorcy, który rozpozna obciążenie z banku",
+    "paymentMatchingPayeePatternWildcard": "Wzorzec odbiorcy musi zawierać symbol wieloznaczny *",
+    "paymentMatchingDescriptionPatternWildcard": "Wzorzec opisu musi zawierać symbol wieloznaczny *"
   },
   "loanDetail": {
     "backToAccounts": "Powrót do kont",

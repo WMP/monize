@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "Reconhecer o débito do banco",
+    "toggleHelp": "Quando seu banco registra um único débito para este pagamento, o Monize o associa ao cronograma e o divide automaticamente em principal e juros, em vez de registrar uma transação de fatura separada.",
+    "payeePattern": "Padrão do beneficiário",
+    "payeePatternPlaceholder": "ex.: *ING HYPOTHEKEN*",
+    "descriptionPattern": "Padrão da descrição (opcional)",
+    "descriptionPatternPlaceholder": "ex.: *Hypotheek*",
+    "fromAccount": "Associado aos débitos de {account}."
+  },
   "nameSuffix": {
     "cash": "Dinheiro",
     "brokerage": "Corretagem"
@@ -270,7 +279,11 @@
     "firstInstallmentHelp": "Este financiamento não tem pagamento fixo: cada parcela é calculada a partir do saldo, da taxa e do prazo de amortização. Esta é a que vence em {date}, incluindo qualquer amortização extra.",
     "firstInstallmentPending": "Informe a data do próximo pagamento para calcular a primeira parcela.",
     "firstInstallmentCalculating": "Calculando a primeira parcela...",
-    "firstInstallmentFailed": "Não foi possível calcular a primeira parcela. Verifique os valores abaixo e tente novamente."
+    "firstInstallmentFailed": "Não foi possível calcular a primeira parcela. Verifique os valores abaixo e tente novamente.",
+    "paymentMatching": {
+      "autoPostDisabled": "Desativado automaticamente: a correspondência de pagamentos liquida esta fatura a partir do próprio débito do banco, portanto ela não deve também ser lançada por si mesma.",
+      "payeePatternRequired": "Insira um padrão de beneficiário que inclua um caractere universal *"
+    }
   },
   "mortgageFields": {
     "title": "Detalhes da Hipoteca",
@@ -407,6 +420,10 @@
         "cancel": "Cancelar",
         "use": "Editar Conta com Este Tipo"
       }
+    },
+    "originalPrincipal": {
+      "label": "Principal original",
+      "help": "O valor que você originalmente tomou emprestado. Em uma conta cujo histórico registrado começa depois de o empréstimo ter começado, este é o valor emprestado, não o saldo inicial — que é a dívida no início do seu histórico."
     }
   },
   "assetFields": {
@@ -436,7 +453,10 @@
     "paymentStartDateRequired": "A data do primeiro pagamento é obrigatória",
     "paymentAccountRequired": "A conta de pagamento é obrigatória",
     "amortizationRequired": "O período de amortização é obrigatório",
-    "acceleratedNeedsAnnuity": "Este financiamento é pago em um cronograma acelerado, que só um financiamento de parcelas fixas tem. Um financiamento SAC ou só de juros precisa de uma frequência de pagamento normal, então mantenha um tipo de parcelas fixas."
+    "acceleratedNeedsAnnuity": "Este financiamento é pago em um cronograma acelerado, que só um financiamento de parcelas fixas tem. Um financiamento SAC ou só de juros precisa de uma frequência de pagamento normal, então mantenha um tipo de parcelas fixas.",
+    "paymentMatchingPayeePatternRequired": "Insira um padrão de beneficiário para associar ao débito do banco",
+    "paymentMatchingPayeePatternWildcard": "O padrão do beneficiário deve incluir um caractere universal *",
+    "paymentMatchingDescriptionPatternWildcard": "O padrão da descrição deve incluir um caractere universal *"
   },
   "loanDetail": {
     "backToAccounts": "Voltar às contas",

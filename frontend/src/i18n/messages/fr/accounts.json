@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "Reconnaître le prélèvement de la banque",
+    "toggleHelp": "Lorsque votre banque enregistre un seul prélèvement pour ce paiement, Monize le rapproche de l'échéancier et le répartit automatiquement entre capital et intérêts, au lieu d'enregistrer une opération de facture distincte.",
+    "payeePattern": "Modèle de bénéficiaire",
+    "payeePatternPlaceholder": "ex. *ING HYPOTHEKEN*",
+    "descriptionPattern": "Modèle de description (facultatif)",
+    "descriptionPatternPlaceholder": "ex. *Hypotheek*",
+    "fromAccount": "Rapproché des prélèvements de {account}."
+  },
   "nameSuffix": {
     "cash": "Espèces",
     "brokerage": "Courtage"
@@ -270,7 +279,11 @@
     "firstInstallmentHelp": "Ce prêt hypothécaire n'a pas de paiement fixe : chaque échéance est calculée à partir du solde, du taux et de la durée d'amortissement. Voici celle due le {date}, capital supplémentaire compris.",
     "firstInstallmentPending": "Saisissez la date du prochain paiement pour calculer la première échéance.",
     "firstInstallmentCalculating": "Calcul de la première échéance...",
-    "firstInstallmentFailed": "La première échéance n'a pas pu être calculée. Vérifiez les valeurs ci-dessous et réessayez."
+    "firstInstallmentFailed": "La première échéance n'a pas pu être calculée. Vérifiez les valeurs ci-dessous et réessayez.",
+    "paymentMatching": {
+      "autoPostDisabled": "Désactivé automatiquement : le rapprochement des paiements règle cette facture à partir du prélèvement de la banque lui-même, elle ne doit donc pas aussi s'enregistrer elle-même.",
+      "payeePatternRequired": "Saisissez un modèle de bénéficiaire comportant un caractère générique *"
+    }
   },
   "mortgageFields": {
     "title": "Détails du prêt hypothécaire",
@@ -407,6 +420,10 @@
         "cancel": "Annuler",
         "use": "Modifier le compte avec ce type"
       }
+    },
+    "originalPrincipal": {
+      "label": "Capital initial emprunté",
+      "help": "Le montant que vous avez emprunté à l'origine. Pour un compte dont l'historique enregistré commence après le début du prêt, il s'agit du montant emprunté, et non du solde initial — qui est la dette au début de votre historique."
     }
   },
   "assetFields": {
@@ -436,7 +453,10 @@
     "paymentStartDateRequired": "La date du premier paiement est obligatoire",
     "paymentAccountRequired": "Le compte de paiement est obligatoire",
     "amortizationRequired": "La période d'amortissement est obligatoire",
-    "acceleratedNeedsAnnuity": "Ce prêt hypothécaire est remboursé selon un calendrier accéléré, que seul un prêt à annuités possède. Un prêt linéaire ou in fine exige une fréquence de paiement régulière : conservez un type à annuités."
+    "acceleratedNeedsAnnuity": "Ce prêt hypothécaire est remboursé selon un calendrier accéléré, que seul un prêt à annuités possède. Un prêt linéaire ou in fine exige une fréquence de paiement régulière : conservez un type à annuités.",
+    "paymentMatchingPayeePatternRequired": "Saisissez un modèle de bénéficiaire pour identifier le prélèvement de la banque",
+    "paymentMatchingPayeePatternWildcard": "Le modèle de bénéficiaire doit comporter un caractère générique *",
+    "paymentMatchingDescriptionPatternWildcard": "Le modèle de description doit comporter un caractère générique *"
   },
   "loanDetail": {
     "backToAccounts": "Retour aux comptes",

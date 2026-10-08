@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "Kenali debit dari bank",
+    "toggleHelp": "Saat bank Anda mencatat satu debit untuk pembayaran ini, Monize mencocokkannya dengan jadwal dan memisahkannya secara otomatis menjadi pokok dan bunga, bukan mencatat transaksi tagihan terpisah.",
+    "payeePattern": "Pola penerima pembayaran",
+    "payeePatternPlaceholder": "mis. *ING HYPOTHEKEN*",
+    "descriptionPattern": "Pola deskripsi (opsional)",
+    "descriptionPatternPlaceholder": "mis. *Hypotheek*",
+    "fromAccount": "Dicocokkan dengan debit dari {account}."
+  },
   "nameSuffix": {
     "cash": "Tunai",
     "brokerage": "Pialang"
@@ -270,7 +279,11 @@
     "firstInstallmentHelp": "KPR ini tidak memiliki pembayaran tetap: setiap angsuran dihitung dari saldo, suku bunga, dan periode amortisasi. Ini adalah angsuran yang jatuh tempo {date}, termasuk pokok tambahan.",
     "firstInstallmentPending": "Masukkan tanggal pembayaran berikutnya untuk menghitung angsuran pertama.",
     "firstInstallmentCalculating": "Menghitung angsuran pertama...",
-    "firstInstallmentFailed": "Angsuran pertama tidak dapat dihitung. Periksa nilai di bawah dan coba lagi."
+    "firstInstallmentFailed": "Angsuran pertama tidak dapat dihitung. Periksa nilai di bawah dan coba lagi.",
+    "paymentMatching": {
+      "autoPostDisabled": "Dimatikan secara otomatis: pencocokan pembayaran melunasi tagihan ini dari debit bank itu sendiri, jadi tagihan ini tidak boleh ikut memposting dirinya sendiri.",
+      "payeePatternRequired": "Masukkan pola penerima pembayaran yang menyertakan karakter pengganti *"
+    }
   },
   "mortgageFields": {
     "title": "Detail Hipotek",
@@ -407,6 +420,10 @@
         "cancel": "Batal",
         "use": "Edit Akun dengan Jenis Ini"
       }
+    },
+    "originalPrincipal": {
+      "label": "Pokok Pinjaman Awal",
+      "help": "Jumlah yang awalnya Anda pinjam. Untuk akun yang riwayat tercatatnya dimulai setelah pinjaman dimulai, ini adalah jumlah yang dipinjam, bukan saldo awal — yaitu utang pada awal riwayat Anda."
     }
   },
   "assetFields": {
@@ -436,7 +453,10 @@
     "paymentStartDateRequired": "Tanggal pembayaran pertama wajib diisi",
     "paymentAccountRequired": "Akun pembayaran wajib dipilih",
     "amortizationRequired": "Periode amortisasi wajib diisi",
-    "acceleratedNeedsAnnuity": "KPR ini dibayar dengan jadwal dipercepat, yang hanya dimiliki KPR anuitas. KPR linear atau hanya bunga memerlukan frekuensi pembayaran biasa, jadi tetap gunakan jenis anuitas."
+    "acceleratedNeedsAnnuity": "KPR ini dibayar dengan jadwal dipercepat, yang hanya dimiliki KPR anuitas. KPR linear atau hanya bunga memerlukan frekuensi pembayaran biasa, jadi tetap gunakan jenis anuitas.",
+    "paymentMatchingPayeePatternRequired": "Masukkan pola penerima pembayaran untuk mencocokkan debit bank",
+    "paymentMatchingPayeePatternWildcard": "Pola penerima pembayaran harus menyertakan karakter pengganti *",
+    "paymentMatchingDescriptionPatternWildcard": "Pola deskripsi harus menyertakan karakter pengganti *"
   },
   "loanDetail": {
     "backToAccounts": "Kembali ke Akun",

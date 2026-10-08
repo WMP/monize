@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "Die Bankabbuchung erkennen",
+    "toggleHelp": "Wenn deine Bank eine einzelne Abbuchung für diese Zahlung bucht, gleicht Monize sie automatisch mit dem Zahlungsplan ab und teilt sie in Tilgung und Zinsen auf, statt eine separate Rechnungsbuchung zu erstellen.",
+    "payeePattern": "Zahlungsempfänger-Muster",
+    "payeePatternPlaceholder": "z. B. *ING HYPOTHEKEN*",
+    "descriptionPattern": "Beschreibungsmuster (optional)",
+    "descriptionPatternPlaceholder": "z. B. *Hypotheek*",
+    "fromAccount": "Abgeglichen mit Abbuchungen von {account}."
+  },
   "nameSuffix": {
     "cash": "Bargeld",
     "brokerage": "Depot"
@@ -270,7 +279,11 @@
     "firstInstallmentHelp": "Diese Hypothek hat keine feste Zahlung: Jede Rate ergibt sich aus dem Saldo, dem Zinssatz und der Tilgungsdauer. Dies ist die am {date} fällige Rate, einschließlich einer eventuellen Sondertilgung.",
     "firstInstallmentPending": "Gib das nächste Zahlungsdatum ein, um die erste Rate zu berechnen.",
     "firstInstallmentCalculating": "Die erste Rate wird berechnet...",
-    "firstInstallmentFailed": "Die erste Rate konnte nicht berechnet werden. Prüfe die Angaben unten und versuche es erneut."
+    "firstInstallmentFailed": "Die erste Rate konnte nicht berechnet werden. Prüfe die Angaben unten und versuche es erneut.",
+    "paymentMatching": {
+      "autoPostDisabled": "Automatisch deaktiviert: Der Zahlungsabgleich begleicht diese Rechnung anhand der eigenen Abbuchung der Bank, daher darf sie nicht zusätzlich selbst gebucht werden.",
+      "payeePatternRequired": "Gib ein Zahlungsempfänger-Muster mit einem *-Platzhalter ein"
+    }
   },
   "mortgageFields": {
     "title": "Hypothekendetails",
@@ -407,6 +420,10 @@
         "cancel": "Abbrechen",
         "use": "Konto mit dieser Art bearbeiten"
       }
+    },
+    "originalPrincipal": {
+      "label": "Ursprüngliche Darlehenssumme",
+      "help": "Der ursprünglich geliehene Betrag. Bei einem Konto, dessen erfasste Historie erst nach Beginn der Hypothek einsetzt, ist dies der geliehene Betrag und nicht der Anfangssaldo — das ist die Schuld zu Beginn deiner Historie."
     }
   },
   "assetFields": {
@@ -436,7 +453,10 @@
     "paymentStartDateRequired": "Datum der ersten Zahlung ist erforderlich",
     "paymentAccountRequired": "Zahlungskonto ist erforderlich",
     "amortizationRequired": "Tilgungszeitraum ist erforderlich",
-    "acceleratedNeedsAnnuity": "Diese Hypothek wird nach einem beschleunigten Zahlungsplan bezahlt, den nur eine Annuitätenhypothek hat. Eine lineare oder tilgungsfreie Hypothek braucht eine reguläre Zahlungsfrequenz; behalte daher eine Annuitätenart bei."
+    "acceleratedNeedsAnnuity": "Diese Hypothek wird nach einem beschleunigten Zahlungsplan bezahlt, den nur eine Annuitätenhypothek hat. Eine lineare oder tilgungsfreie Hypothek braucht eine reguläre Zahlungsfrequenz; behalte daher eine Annuitätenart bei.",
+    "paymentMatchingPayeePatternRequired": "Gib ein Zahlungsempfänger-Muster ein, das die Bankabbuchung erkennt",
+    "paymentMatchingPayeePatternWildcard": "Das Zahlungsempfänger-Muster muss einen *-Platzhalter enthalten",
+    "paymentMatchingDescriptionPatternWildcard": "Das Beschreibungsmuster muss einen *-Platzhalter enthalten"
   },
   "loanDetail": {
     "backToAccounts": "Zurück zu den Konten",

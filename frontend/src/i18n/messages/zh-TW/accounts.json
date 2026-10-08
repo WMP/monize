@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "識別銀行扣款",
+    "toggleHelp": "當您的銀行為此付款記錄一筆扣款時，Monize 會將其與排程進行比對，並自動拆分為本金和利息，而不是記錄單獨的帳單交易。",
+    "payeePattern": "收款人模式",
+    "payeePatternPlaceholder": "例如 *ING HYPOTHEKEN*",
+    "descriptionPattern": "描述模式（選用）",
+    "descriptionPatternPlaceholder": "例如 *Hypotheek*",
+    "fromAccount": "與來自 {account} 的扣款進行比對。"
+  },
   "nameSuffix": {
     "cash": "現金",
     "brokerage": "證券"
@@ -270,7 +279,11 @@
     "firstInstallmentHelp": "此房貸沒有固定還款額：每期還款依餘額、利率與攤還期間計算。這是 {date} 到期的一期，包含任何額外本金。",
     "firstInstallmentPending": "請輸入下次還款日期以計算首期還款。",
     "firstInstallmentCalculating": "正在計算首期還款...",
-    "firstInstallmentFailed": "無法計算首期還款。請檢查下方的數值後再試一次。"
+    "firstInstallmentFailed": "無法計算首期還款。請檢查下方的數值後再試一次。",
+    "paymentMatching": {
+      "autoPostDisabled": "已自動關閉：付款比對會根據銀行自身的扣款結清此帳單，因此該帳單不應再自行記帳。",
+      "payeePatternRequired": "請輸入包含 * 萬用字元的收款人模式"
+    }
   },
   "mortgageFields": {
     "title": "抵押貸款詳情",
@@ -407,6 +420,10 @@
         "cancel": "取消",
         "use": "以此類型編輯科目"
       }
+    },
+    "originalPrincipal": {
+      "label": "原始本金",
+      "help": "您最初借入的金額。對於記錄歷史晚於貸款開始日期的帳戶，這是借入的金額，而不是期初餘額——期初餘額是您歷史記錄開始時的債務。"
     }
   },
   "assetFields": {
@@ -436,7 +453,10 @@
     "paymentStartDateRequired": "首次還款日期為必填",
     "paymentAccountRequired": "付款科目為必填",
     "amortizationRequired": "攤還期為必填",
-    "acceleratedNeedsAnnuity": "此房貸依加速還款計畫支付，只有本息平均攤還的房貸才有這種計畫。本金平均攤還或只付利息的房貸需要一般還款頻率，因此請保留本息平均攤還類型。"
+    "acceleratedNeedsAnnuity": "此房貸依加速還款計畫支付，只有本息平均攤還的房貸才有這種計畫。本金平均攤還或只付利息的房貸需要一般還款頻率，因此請保留本息平均攤還類型。",
+    "paymentMatchingPayeePatternRequired": "請輸入用於識別銀行扣款的收款人模式",
+    "paymentMatchingPayeePatternWildcard": "收款人模式必須包含 * 萬用字元",
+    "paymentMatchingDescriptionPatternWildcard": "描述模式必須包含 * 萬用字元"
   },
   "loanDetail": {
     "backToAccounts": "返回帳戶",

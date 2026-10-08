@@ -632,6 +632,108 @@ describe('LoanPaymentSetupDialog', () => {
     expect(cb).toBeChecked();
   });
 
+  describe('payment matching', () => {
+    it('forces auto-post off and disables the checkbox while it is on', async () => {
+      mockDetectLoanPayments.mockResolvedValue(defaultDetected);
+      await renderDialog();
+
+      const autoPost = screen.getByLabelText(/Automatically post transactions when due/i);
+      await act(async () => fireEvent.click(autoPost));
+      expect(autoPost).toBeChecked();
+
+      await act(async () =>
+        fireEvent.click(screen.getByRole('switch', { name: "Recognise the bank's debit" })),
+      );
+
+      expect(autoPost).not.toBeChecked();
+      expect(autoPost).toBeDisabled();
+    });
+
+    it('submits paymentMatching and keeps autoPost off even though it was checked first', async () => {
+      mockDetectLoanPayments.mockResolvedValue(defaultDetected);
+      mockSetupLoanPayments.mockResolvedValue({} as any);
+      await renderDialog();
+
+      await act(async () =>
+        fireEvent.click(screen.getByLabelText(/Automatically post transactions when due/i)),
+      );
+      await act(async () =>
+        fireEvent.click(screen.getByRole('switch', { name: "Recognise the bank's debit" })),
+      );
+      await act(async () =>
+        fireEvent.change(screen.getByLabelText('Payee pattern'), {
+          target: { value: '*ING HYPOTHEKEN*' },
+        }),
+      );
+
+      const submitButton = screen.getByRole('button', { name: /Set Up Payments/i });
+      await act(async () => fireEvent.click(submitButton));
+
+      expect(mockSetupLoanPayments).toHaveBeenCalledWith('loan-1', expect.objectContaining({
+        autoPost: false,
+        paymentMatching: { payeePattern: '*ING HYPOTHEKEN*', descriptionPattern: undefined },
+      }));
+    });
+
+    it('warns when the server could not create the rule, but still reports the schedule as saved', async () => {
+      mockDetectLoanPayments.mockResolvedValue(defaultDetected);
+      mockSetupLoanPayments.mockResolvedValue({
+        paymentMatchingRuleId: null,
+        paymentMatchingError: { errorCode: 'RULE_LIMIT_REACHED', message: 'Too many rules already exist.' },
+      } as any);
+      await renderDialog();
+
+      await act(async () =>
+        fireEvent.click(screen.getByRole('switch', { name: "Recognise the bank's debit" })),
+      );
+      await act(async () =>
+        fireEvent.change(screen.getByLabelText('Payee pattern'), {
+          target: { value: '*ING HYPOTHEKEN*' },
+        }),
+      );
+
+      const submitButton = screen.getByRole('button', { name: /Set Up Payments/i });
+      await act(async () => fireEvent.click(submitButton));
+
+      // The schedule is saved either way (docs/specs/loan-installment-settlement.md
+      // decision 5): the setup-complete toast still fires, and the rule
+      // failure is reported as a second, separate warning.
+      expect(toast.success).toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith('Too many rules already exist.');
+    });
+
+    it('refuses to submit a payee pattern without a wildcard', async () => {
+      mockDetectLoanPayments.mockResolvedValue(defaultDetected);
+      await renderDialog();
+
+      await act(async () =>
+        fireEvent.click(screen.getByRole('switch', { name: "Recognise the bank's debit" })),
+      );
+      await act(async () =>
+        fireEvent.change(screen.getByLabelText('Payee pattern'), {
+          target: { value: 'ING HYPOTHEKEN' },
+        }),
+      );
+
+      const submitButton = screen.getByRole('button', { name: /Set Up Payments/i });
+      await act(async () => fireEvent.click(submitButton));
+
+      expect(toast.error).toHaveBeenCalledWith('Enter a payee pattern that includes a * wildcard');
+      expect(mockSetupLoanPayments).not.toHaveBeenCalled();
+    });
+
+    it('shows the source account the debit will be matched against', async () => {
+      mockDetectLoanPayments.mockResolvedValue(defaultDetected);
+      await renderDialog();
+
+      await act(async () =>
+        fireEvent.click(screen.getByRole('switch', { name: "Recognise the bank's debit" })),
+      );
+
+      expect(screen.getByText(/Matched against debits from My Chequing\./)).toBeInTheDocument();
+    });
+  });
+
   it('updates payment amount via CurrencyInput', async () => {
     mockDetectLoanPayments.mockResolvedValue(defaultDetected);
     await renderDialog();
