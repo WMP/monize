@@ -423,7 +423,7 @@
     },
     "originalPrincipal": {
       "label": "Oorspronkelijke hoofdsom",
-      "help": "Het bedrag dat je oorspronkelijk hebt geleend. Voor een rekening waarvan de vastgelegde geschiedenis later begint dan de lening, is dit het geleende bedrag, niet het openingssaldo -- dat is de schuld aan het begin van je geschiedenis."
+      "help": "Het bedrag dat je oorspronkelijk hebt geleend. Voor een rekening waarvan de vastgelegde geschiedenis later begint dan de lening, is dit het geleende bedrag, niet het openingssaldo — dat is de schuld aan het begin van je geschiedenis."
     }
   },
   "assetFields": {

@@ -423,7 +423,7 @@
     },
     "originalPrincipal": {
       "label": "Pokok Pinjaman Awal",
-      "help": "Jumlah yang awalnya Anda pinjam. Untuk akun yang riwayat tercatatnya dimulai setelah pinjaman dimulai, ini adalah jumlah yang dipinjam, bukan saldo awal -- yaitu utang pada awal riwayat Anda."
+      "help": "Jumlah yang awalnya Anda pinjam. Untuk akun yang riwayat tercatatnya dimulai setelah pinjaman dimulai, ini adalah jumlah yang dipinjam, bukan saldo awal — yaitu utang pada awal riwayat Anda."
     }
   },
   "assetFields": {

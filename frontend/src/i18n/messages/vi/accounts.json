@@ -423,7 +423,7 @@
     },
     "originalPrincipal": {
       "label": "Số tiền gốc ban đầu",
-      "help": "Số tiền bạn đã vay ban đầu. Đối với tài khoản có lịch sử ghi nhận bắt đầu sau khi khoản vay bắt đầu, đây là số tiền đã vay, không phải số dư đầu kỳ -- là khoản nợ vào đầu lịch sử của bạn."
+      "help": "Số tiền bạn đã vay ban đầu. Đối với tài khoản có lịch sử ghi nhận bắt đầu sau khi khoản vay bắt đầu, đây là số tiền đã vay, không phải số dư đầu kỳ — là khoản nợ vào đầu lịch sử của bạn."
     }
   },
   "assetFields": {

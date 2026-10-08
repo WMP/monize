@@ -423,7 +423,7 @@
     },
     "originalPrincipal": {
       "label": "Capital original",
-      "help": "O montante que pediu originalmente em empréstimo. Numa conta cujo histórico registado começa depois de o empréstimo ter começado, este é o montante emprestado, não o saldo inicial -- que é a dívida no início do seu histórico."
+      "help": "O montante que pediu originalmente em empréstimo. Numa conta cujo histórico registado começa depois de o empréstimo ter começado, este é o montante emprestado, não o saldo inicial — que é a dívida no início do seu histórico."
     }
   },
   "assetFields": {

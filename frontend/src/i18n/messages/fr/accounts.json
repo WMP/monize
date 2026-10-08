@@ -423,7 +423,7 @@
     },
     "originalPrincipal": {
       "label": "Capital initial emprunté",
-      "help": "Le montant que vous avez emprunté à l'origine. Pour un compte dont l'historique enregistré commence après le début du prêt, il s'agit du montant emprunté, et non du solde initial -- qui est la dette au début de votre historique."
+      "help": "Le montant que vous avez emprunté à l'origine. Pour un compte dont l'historique enregistré commence après le début du prêt, il s'agit du montant emprunté, et non du solde initial — qui est la dette au début de votre historique."
     }
   },
   "assetFields": {

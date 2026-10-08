@@ -423,7 +423,7 @@
     },
     "originalPrincipal": {
       "label": "Pierwotny kapitał",
-      "help": "Kwota, którą pierwotnie pożyczono. W przypadku konta, którego zapisana historia zaczyna się po rozpoczęciu kredytu, jest to pożyczona kwota, a nie saldo początkowe -- czyli zadłużenie na początku historii."
+      "help": "Kwota, którą pierwotnie pożyczono. W przypadku konta, którego zapisana historia zaczyna się po rozpoczęciu kredytu, jest to pożyczona kwota, a nie saldo początkowe — czyli zadłużenie na początku historii."
     }
   },
   "assetFields": {

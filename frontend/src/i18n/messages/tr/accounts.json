@@ -423,7 +423,7 @@
     },
     "originalPrincipal": {
       "label": "Orijinal Anapara",
-      "help": "Başlangıçta borç aldığınız tutar. Kaydedilen geçmişi kredinin başlangıcından sonra başlayan bir hesap için bu, borç alınan tutardır, açılış bakiyesi değildir -- açılış bakiyesi geçmişinizin başındaki borçtur."
+      "help": "Başlangıçta borç aldığınız tutar. Kaydedilen geçmişi kredinin başlangıcından sonra başlayan bir hesap için bu, borç alınan tutardır, açılış bakiyesi değildir — açılış bakiyesi geçmişinizin başındaki borçtur."
     }
   },
   "assetFields": {

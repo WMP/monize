@@ -423,7 +423,7 @@
     },
     "originalPrincipal": {
       "label": "Capitale originario",
-      "help": "L'importo originariamente preso in prestito. Per un conto il cui storico registrato inizia dopo l'avvio del mutuo, questo è l'importo preso in prestito, non il saldo iniziale -- che è il debito all'inizio del tuo storico."
+      "help": "L'importo originariamente preso in prestito. Per un conto il cui storico registrato inizia dopo l'avvio del mutuo, questo è l'importo preso in prestito, non il saldo iniziale — che è il debito all'inizio del tuo storico."
     }
   },
   "assetFields": {

@@ -342,7 +342,7 @@
     },
     "originalPrincipal": {
       "label": "[XX-Original Principal-XX]",
-      "help": "[XX-The amount you originally borrowed. For an account whose recorded history starts after the mortgage did, this is the amount borrowed, not the opening balance -- which is the debt at the start of your history.-XX]"
+      "help": "[XX-The amount you originally borrowed. For an account whose recorded history starts after the mortgage did, this is the amount borrowed, not the opening balance — which is the debt at the start of your history.-XX]"
     },
     "previewTitle": "[XX-Amortization Preview-XX]",
     "previewPaymentAmount": "[XX-Payment Amount:-XX]",

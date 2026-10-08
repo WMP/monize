@@ -423,7 +423,7 @@
     },
     "originalPrincipal": {
       "label": "Ursprüngliche Darlehenssumme",
-      "help": "Der ursprünglich geliehene Betrag. Bei einem Konto, dessen erfasste Historie erst nach Beginn der Hypothek einsetzt, ist dies der geliehene Betrag und nicht der Anfangssaldo -- das ist die Schuld zu Beginn deiner Historie."
+      "help": "Der ursprünglich geliehene Betrag. Bei einem Konto, dessen erfasste Historie erst nach Beginn der Hypothek einsetzt, ist dies der geliehene Betrag und nicht der Anfangssaldo — das ist die Schuld zu Beginn deiner Historie."
     }
   },
   "assetFields": {
