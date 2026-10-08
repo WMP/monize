@@ -34,6 +34,7 @@ import {
   MonthlyCategoryBreakdownResponse,
   CashFlowSankeyQueryDto,
   CashFlowSankeyResponse,
+  MonthlyCategoryBreakdownQueryDto,
 } from "./dto";
 
 @ApiTags("Built-in Reports")
@@ -54,7 +55,12 @@ export class BuiltInReportsController {
       req.user.id,
       query.startDate,
       query.endDate,
-      { rollupToParent: query.rollupToParent, accountIds: query.accountIds },
+      {
+        rollupToParent: query.rollupToParent,
+        accountIds: query.accountIds,
+        tagKey: query.tagKey,
+        tagValue: query.tagValue,
+      },
     );
   }
 
@@ -290,12 +296,13 @@ export class BuiltInReportsController {
   @ApiResponse({ status: 200, type: MonthlyCategoryBreakdownResponse })
   getMonthlyCategoryBreakdown(
     @Request() req,
-    @Query() query: ReportQueryDto,
+    @Query() query: MonthlyCategoryBreakdownQueryDto,
   ): Promise<MonthlyCategoryBreakdownResponse> {
     return this.reportsService.getMonthlyCategoryBreakdown(
       req.user.id,
       query.startDate,
       query.endDate,
+      { accountIds: query.accountIds },
     );
   }
 }
