@@ -440,3 +440,95 @@ callers that omit it unchanged) and on the cash-flow pass-through, plus the
 integration spec; frontend toggle visibility (no key, untagged tab), default
 off, shared `stackId` when on, savings/net unchanged, persistence, and the Cash
 Flow account filter reaching all three calls.
+
+### 10.8 Internal transfers are not tagged flows (Phase 1d)
+
+Follow-up from the reporter's test of the build (discussion #1381). He tagged a
+transfer Savings -> Checking and selected BOTH accounts in the account filter.
+The report showed it as a tagged inflow and as a tagged outflow, stacked on
+income and on expenses. Both legs are inside the selected scope, so no money
+entered or left that scope; showing it is wrong.
+
+**Rule.** Only when `accountIds` is non-empty, a transfer leg is left out of
+`taggedInflows` / `taggedOutflows` when its counterpart account is also in
+`accountIds`:
+
+- Whole transfer (`is_transfer = true`): the counterpart is the account of the
+  row `linked_transaction_id` points to, joined as `lt` only under an account
+  filter (`LEFT JOIN transactions lt ON lt.id = t.linked_transaction_id`, a
+  primary-key join that never multiplies a leg) and tested with
+  `lt.id IS NULL OR NOT (lt.account_id = ANY($n::uuid[]))`, the same
+  parameterised array as the account filter. A correlated `NOT EXISTS` over
+  `transactions` would be a second ledger read the investment-exclusion guard
+  (`backend/src/common/investment-filter.guard.spec.ts`) rightly cannot clear.
+- Split transfer leg: the counterpart is `transaction_splits.transfer_account_id`;
+  the leg is left out when it is in `accountIds`.
+- A leg with no visible counterpart (unlinked, or a cross-owner counterpart that
+  row level security hides) still counts: the report never invents an exclusion
+  it cannot prove.
+- No `accountIds` -> exactly today's behaviour (section 3.1: both legs count).
+  The categorized income/expense queries are untouched, as are the investment
+  exclusion (I5) and the VOID exclusion (I6).
+
+Truth table, transfer Savings -> Checking 500, both legs tagged
+`scope:household`:
+
+| `accountIds` | taggedInflows | taggedOutflows | Why |
+|---|---|---|---|
+| none | 500 | 500 | Today's behaviour (section 3.1). |
+| [Checking] | 500 | 0 | The Savings leg is outside the scope; the Checking leg's counterpart is outside it, so it counts. |
+| [Savings, Checking] | 0 | 0 | Both legs inside the scope: nothing crossed its boundary. |
+| [Savings] | 0 | 500 | Mirror of [Checking]. |
+
+RRSP cash -> Checking 7,066 with `accountIds=[Checking]` stays inflow 7,066 /
+outflow 0 (section 10.4). A split transfer leg follows the same table through
+`transfer_account_id`.
+
+### 10.9 Balance view (Phase 1d)
+
+The reporter wants, per month, Income, Tagged inflows, Expenses, then a Balance
+and a Balance percent in place of Savings and Savings Rate. His example (August
+2026): Income 3,279; Tagged inflows 4,516; Expenses 8,486; Balance -691; Balance
+Percent -8.86%.
+
+```text
+balance        = income + taggedInflows - expenses - taggedOutflows
+balancePercent = balance / (income + taggedInflows) * 100    (null when the denominator <= 0)
+example        = (3279 + 4516 - 8486 - 0) = -691 ;  -691 / 7795 * 100 = -8.86
+```
+
+- **Opt-in.** The existing per-report switch becomes the single switch for the
+  view and is relabelled "Include tagged transfers" (same persisted keys, same
+  visibility: a tag key and a non-untagged active bucket). OFF: everything is
+  exactly section 10.7's OFF behaviour, the labels "Savings", "Savings Rate" and
+  "Net" are unchanged. ON: the stacking of section 10.7 stays, the Savings (Cash
+  Flow: Net) bar becomes a Balance bar, and Balance % is added.
+- **Surfaces.** Chart bar, tooltip (Income, Tagged inflows, Expenses, Tagged
+  outflows only when non-zero for that period, Balance, Balance %), summary cards
+  (Income, Tagged inflows, Expenses, Tagged outflows when the window total is
+  non-zero, Balance, Balance %), the Income vs Expenses table and CSV, and Cash
+  Flow's equivalents. Every surface reads one pure helper
+  (`frontend/src/lib/tagged-balance.ts`); no component restates the formula.
+- **Money math.** The helper sums in integer cents (`sumMoney` over the four
+  figures with the signs above) and divides once; the percent is rounded to two
+  decimals; a non-finite input yields null.
+- **Completeness (financial-calculation-contract s.1.3).** Balance is a total.
+  The window Balance is null (rendered through `PartialTotal`) when the All
+  totals are null or the active bucket is incomplete (`missingCurrencies`
+  non-empty or `excludedCount` > 0). A per-period Balance uses that period's own
+  figures. Balance % is null whenever Balance is null or the denominator is not
+  positive, and a null renders as a dash, never 0.
+- **Why Savings is not renamed for everyone.** A user without tagged transfers
+  reads Savings as income minus expenses; renaming it, or folding a tagged flow
+  into it, would change a figure they did not ask to change. The new figures are
+  separately named and appear only when the reader opts in.
+- **INV-REPORT-003 still holds.** `income`, `expenses` and `net` stay the
+  server's values in every position of the switch; Balance is a new client-side
+  figure derived from them and from the tagged flows, never written back into
+  them. A tagged transfer is still not income.
+- **Tests.** Helper (the reporter's example, zero and negative denominator, float
+  drift, null input); Income vs Expenses and Cash Flow with the switch OFF
+  (unchanged labels and values) and ON (Balance and Balance % in the cards, the
+  tooltip, the table and the CSV; Tagged outflows hidden when zero; Balance null
+  when the bucket is incomplete). Backend: section 10.8's truth table, unit and
+  against PostgreSQL.
