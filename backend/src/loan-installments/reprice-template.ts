@@ -1,5 +1,6 @@
 import { Logger } from "@nestjs/common";
-import { EntityManager } from "typeorm";
+import { DataSource, EntityManager } from "typeorm";
+import { withScopedDb } from "../common/db/scoped-db";
 import { ScheduledTransaction } from "../scheduled-transactions/entities/scheduled-transaction.entity";
 import { ScheduledTransactionSplit } from "../scheduled-transactions/entities/scheduled-transaction-split.entity";
 import { AccountType } from "../accounts/entities/account.entity";
@@ -205,5 +206,36 @@ export async function rewriteLoanTemplate(
     logger.log(
       `Loan payment recalculated: scheduled amount changed from ${templateAmount} to ${requiredParentAmount} (configured payment ${paymentAmount}, outstanding balance ${debt})`,
     );
+  }
+}
+
+/**
+ * The reprice every settlement caller dispatches after its commit
+ * (`docs/specs/loan-installment-settlement.md` sections 4.7 and 12.8,
+ * INV-CACHE-001): for each schedule a `settle_loan_installment` claimed on,
+ * rewrite its template to the installment due at its (possibly advanced)
+ * `next_due_date` on the ledger the settlement left, each in a transaction
+ * of its own, never inside the one that wrote the claim. A failure is logged
+ * with the schedule it names and does not fail the caller: the rows are
+ * committed and correct, and the template is what `post()` reprices again at
+ * the consumption boundary (INV-LOAN-006); a rule never makes a create or an
+ * import fail.
+ */
+export async function repriceSettledLoanTemplates(
+  dataSource: DataSource,
+  scheduleIds: Iterable<string>,
+): Promise<void> {
+  for (const scheduledTransactionId of new Set(scheduleIds)) {
+    try {
+      await withScopedDb(dataSource, (m) =>
+        rewriteLoanTemplate(m, scheduledTransactionId, "template"),
+      );
+    } catch (error) {
+      logger.warn(
+        `Loan template reprice after a settlement failed for scheduled transaction ${scheduledTransactionId}: ` +
+          `${error instanceof Error ? error.message : String(error)}. ` +
+          `The template keeps its figures until the next recalculation; the posting path reprices at the consumption boundary.`,
+      );
+    }
   }
 }
