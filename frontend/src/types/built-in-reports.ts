@@ -35,6 +35,13 @@ export interface SpendingByCategoryParams extends ReportQueryParams {
   accountIds?: string[];
   /** Count a subcategory against its top-level ancestor. Defaults to true. */
   rollupToParent?: boolean;
+  /**
+   * Keep only rows tagged `tagKey:tagValue`
+   * (`docs/specs/report-tag-key-breakdown.md` section 11.4). Send both or
+   * neither; absent renders today's response unchanged.
+   */
+  tagKey?: string;
+  tagValue?: string;
 }
 
 export interface PayeeSpendingItem {
