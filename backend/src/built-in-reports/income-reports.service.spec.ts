@@ -1039,6 +1039,61 @@ describe("IncomeReportsService", () => {
       expect(splitFlowParams).toContainEqual(["acct-1"]);
     });
 
+    it("leaves out a transfer leg whose counterpart is also in accountIds, by the same parameter (spec 10.8)", async () => {
+      scopedManager.query.mockResolvedValue([]);
+
+      await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-01-31",
+        { tagKey: "scope", accountIds: ["acct-1", "acct-2"] },
+      );
+
+      const [wholeSql, wholeParams] = scopedManager.query.mock.calls[2];
+      const [splitSql, splitParams] = scopedManager.query.mock.calls[3];
+      const wholeIdx = wholeParams.findIndex(
+        (p: unknown) => Array.isArray(p) && p.length === 2,
+      );
+      const splitIdx = splitParams.findIndex(
+        (p: unknown) => Array.isArray(p) && p.length === 2,
+      );
+      const norm = (sql: string) => sql.replace(/\s+/g, " ");
+
+      expect(norm(wholeSql)).toContain(
+        "LEFT JOIN transactions lt ON lt.id = t.linked_transaction_id",
+      );
+      expect(norm(wholeSql)).toContain(
+        `AND (lt.id IS NULL OR NOT (lt.account_id = ANY($${wholeIdx + 1}::uuid[])))`,
+      );
+      expect(norm(splitSql)).toContain(
+        `NOT (ts.transfer_account_id = ANY($${splitIdx + 1}::uuid[]))`,
+      );
+      // The array is bound once per query and reused by both predicates.
+      expect(wholeParams.filter((p: unknown) => Array.isArray(p))).toHaveLength(
+        1,
+      );
+      expect(splitParams.filter((p: unknown) => Array.isArray(p))).toHaveLength(
+        1,
+      );
+    });
+
+    it("emits no counterpart predicate without accountIds, so both legs count (spec 10.8)", async () => {
+      scopedManager.query.mockResolvedValue([]);
+
+      await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-01-31",
+        { tagKey: "scope" },
+      );
+
+      const [wholeSql] = scopedManager.query.mock.calls[2];
+      const [splitSql] = scopedManager.query.mock.calls[3];
+      expect(wholeSql).not.toContain("linked_transaction_id");
+      expect(wholeSql).not.toContain("lt.");
+      expect(splitSql).not.toContain("NOT (ts.transfer_account_id");
+    });
+
     it("buckets by week and omits the startDate filter, on all three extra queries, when asked", async () => {
       scopedManager.query.mockResolvedValue([]);
 

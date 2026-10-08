@@ -685,6 +685,14 @@ export class IncomeReportsService {
       `$${wholeFlowParams.length}`,
     );
 
+    // The other leg of a whole transfer, joined only under an account filter:
+    // `linked_transaction_id` names at most one row, so the join never
+    // multiplies a leg.
+    const counterpartJoin =
+      accountIds && accountIds.length > 0
+        ? "LEFT JOIN transactions lt ON lt.id = t.linked_transaction_id"
+        : "";
+
     let wholeFlowQuery = `
       WITH transfer_rows AS (
         SELECT
@@ -694,6 +702,7 @@ export class IncomeReportsService {
           ${transactionTagValuesArrayExpr("t", wholeFlowKeyParam)} as tag_values
         FROM transactions t
         LEFT JOIN accounts a ON a.id = t.account_id
+        ${counterpartJoin}
         WHERE t.user_id = $1
           AND t.transaction_date <= $2
           AND (t.status IS NULL OR t.status != 'VOID')
@@ -707,8 +716,15 @@ export class IncomeReportsService {
       wholeFlowParams.push(startDate);
     }
     if (accountIds && accountIds.length > 0) {
-      wholeFlowQuery += ` AND t.account_id = ANY($${wholeFlowParams.length + 1}::uuid[])`;
+      const accountsParam = `$${wholeFlowParams.length + 1}::uuid[]`;
       wholeFlowParams.push(accountIds);
+      // A transfer whose other leg is also inside the chosen accounts moves no
+      // money into or out of the scope (spec 10.8). The counterpart is joined
+      // in the CTE below (`counterpartJoin`); a leg with no visible
+      // counterpart (unlinked, or hidden by RLS) joins nothing and still counts.
+      wholeFlowQuery += `
+          AND t.account_id = ANY(${accountsParam})
+          AND (lt.id IS NULL OR NOT (lt.account_id = ANY(${accountsParam})))`;
     }
 
     wholeFlowQuery += `
@@ -762,8 +778,12 @@ export class IncomeReportsService {
       splitFlowParams.push(startDate);
     }
     if (accountIds && accountIds.length > 0) {
-      splitFlowQuery += ` AND t.account_id = ANY($${splitFlowParams.length + 1}::uuid[])`;
+      const accountsParam = `$${splitFlowParams.length + 1}::uuid[]`;
       splitFlowParams.push(accountIds);
+      // Same internal-transfer rule as the whole-transfer query (spec 10.8).
+      splitFlowQuery += `
+          AND t.account_id = ANY(${accountsParam})
+          AND NOT (ts.transfer_account_id = ANY(${accountsParam}))`;
     }
 
     splitFlowQuery += `
