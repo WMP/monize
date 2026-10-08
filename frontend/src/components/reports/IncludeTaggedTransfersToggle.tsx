@@ -3,20 +3,22 @@
 import { useTranslations } from 'next-intl';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 
-interface StackTaggedFlowsToggleProps {
+interface IncludeTaggedTransfersToggleProps {
   checked: boolean;
   onChange: (next: boolean) => void;
 }
 
 /**
- * The opt-in switch that draws the tagged flows on top of the income and
- * expense bars instead of beside them (`docs/specs/report-tag-key-breakdown.md`
- * section 10.7). The caller renders it only while a tagged series exists, and
- * persists the choice; stacking is presentation, so no figure depends on it.
+ * The opt-in switch for the Balance view (`docs/specs/report-tag-key-breakdown.md`
+ * sections 10.7 and 10.9): the tagged flows are drawn on top of the income and
+ * expense bars, and Savings (Cash Flow: Net) gives way to Balance and Balance %.
+ * The caller renders it only while a tagged series exists, and persists the
+ * choice. Income, expenses and net are the server's values in either position
+ * (INV-REPORT-003).
  */
-export function StackTaggedFlowsToggle({ checked, onChange }: StackTaggedFlowsToggleProps) {
+export function IncludeTaggedTransfersToggle({ checked, onChange }: IncludeTaggedTransfersToggleProps) {
   const t = useTranslations('reports');
-  const label = t('tagBreakdown.stackFlows');
+  const label = t('tagBreakdown.includeTransfers');
   return (
     <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
       <ToggleSwitch checked={checked} onChange={onChange} label={label} size="sm" />
