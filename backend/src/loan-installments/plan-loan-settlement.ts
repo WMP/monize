@@ -103,22 +103,37 @@ function scalarRate(account: Pick<Account, "interestRate">): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
+/** The annuity payment at a slot, and which figure it states (spec decision 12). */
+export interface DatedAnnuityPayment {
+  readonly amount: number;
+  /**
+   * True when `amount` is the base installment `B` (a `manual` or `inferred`
+   * rate-change row); false when it already holds the standing extra
+   * (`accounts.payment_amount`, or an `initial` row's verbatim copy of it).
+   */
+  readonly statesBase: boolean;
+}
+
 /**
  * The annuity payment at `asOfDate` (spec decision 12): the `new_payment_amount`
  * of the latest rate-change row effective on or before the date that carries
- * one, else `accounts.payment_amount`; null when neither says anything.
+ * one, else `accounts.payment_amount`; null when neither says anything. The
+ * two sources hold different figures (`statesBase`): the rate-change resync
+ * adds the standing extra on top of a stated payment, while the setup path
+ * stores the total with the extra inside it, and an `initial` row copies that
+ * column.
  */
 export function datedAnnuityPayment(
   rateChanges: readonly Pick<
     LoanRateChange,
-    "effectiveDate" | "newPaymentAmount"
+    "effectiveDate" | "newPaymentAmount" | "source"
   >[],
   asOfDate: string,
   configuredPayment: number | string | null | undefined,
-): number | null {
+): DatedAnnuityPayment | null {
   let latest: Pick<
     LoanRateChange,
-    "effectiveDate" | "newPaymentAmount"
+    "effectiveDate" | "newPaymentAmount" | "source"
   > | null = null;
   for (const row of rateChanges) {
     if (row.effectiveDate > asOfDate) continue;
@@ -134,12 +149,17 @@ export function datedAnnuityPayment(
       latest = row;
     }
   }
-  if (latest !== null) return Number(latest.newPaymentAmount);
+  if (latest !== null) {
+    return {
+      amount: Number(latest.newPaymentAmount),
+      statesBase: latest.source !== "initial",
+    };
+  }
   const configured = Number(configuredPayment);
   return configuredPayment != null &&
     Number.isFinite(configured) &&
     configured > 0
-    ? configured
+    ? { amount: configured, statesBase: false }
     : null;
 }
 
@@ -237,13 +257,17 @@ export function planLoanSettlement(
   ) {
     return refuse("transfer_currency_mismatch");
   }
-  // Row 9: a bill `post()` created, by the server-set option or by a claim.
+  // Row 9: a bill `post()` created, by the server-set option or by a claim
+  // naming the row: the facts loader's lookup over the pass's row ids
+  // (`postedRowIds`, every schedule), or a claim of this schedule in the
+  // slots' span. The engine (B4) supplies both the option and the row ids.
   if (
     row.fromScheduledPosting === true ||
     (facts.kind === "facts" &&
-      facts.claims.some(
-        (claim) => claim.source === "post" && claim.transactionId === row.id,
-      ))
+      (facts.postedRowIds.has(row.id) ||
+        facts.claims.some(
+          (claim) => claim.source === "post" && claim.transactionId === row.id,
+        )))
   ) {
     return refuse("row_from_scheduled_posting");
   }
@@ -375,9 +399,20 @@ export function planLoanSettlement(
   }
 
   // Section 7.3: the one pricing path, bounded by the slot.
+  // `priceInstallment` reads `paymentAmount` as the total with the standing
+  // extra inside it; a stated base takes the template's extra on top (spec
+  // section 7.3 step 3, `payment(s) + E`).
+  const templateExtra = template.extraPrincipalSplit
+    ? Math.abs(Number(template.extraPrincipalSplit.amount))
+    : 0;
   const pricingAccount: Account =
     method === "ANNUITY" && payment !== null
-      ? ({ ...loanAccount, paymentAmount: payment } as Account)
+      ? ({
+          ...loanAccount,
+          paymentAmount: payment.statesBase
+            ? roundMoney(payment.amount + templateExtra)
+            : payment.amount,
+        } as Account)
       : loanAccount;
   const priced = priceInstallment({
     debt: debtBefore,
@@ -439,14 +474,14 @@ export function planLoanSettlement(
 
   const parts: LoanSettlementSplitPart[] = [
     {
-      amount: -fromUnits(lines.principal),
+      amount: -fromUnits(lines.principal) || 0,
       categoryId: null,
       transferAccountId: loanAccount.id,
       payeeId: null,
       memo: LOAN_SETTLEMENT_MEMOS.principal,
     },
     {
-      amount: -fromUnits(lines.interest),
+      amount: -fromUnits(lines.interest) || 0,
       categoryId: interestCategoryId,
       transferAccountId: null,
       payeeId: null,
@@ -455,7 +490,7 @@ export function planLoanSettlement(
   ];
   if (lines.extra > 0) {
     parts.push({
-      amount: -fromUnits(lines.extra),
+      amount: -fromUnits(lines.extra) || 0,
       categoryId: null,
       transferAccountId: loanAccount.id,
       payeeId: null,

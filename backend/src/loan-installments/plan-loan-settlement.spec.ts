@@ -111,6 +111,7 @@ describe("planLoanSettlement", () => {
     splits?: ScheduledTransactionSplit[];
     rateChanges?: LoanRateChange[];
     claims?: LoanOccurrenceClaim[];
+    postedRowIds?: string[];
     /** The ledger debt at every slot, or per slot date. */
     debt?: number | Record<string, number>;
     range?: { from: string; to: string };
@@ -189,6 +190,7 @@ describe("planLoanSettlement", () => {
       rateChanges: fixture.rateChanges ?? [],
       slots,
       claims: fixture.claims ?? [],
+      postedRowIds: new Set(fixture.postedRowIds ?? []),
       debtByDueDate,
     };
   };
@@ -480,9 +482,24 @@ describe("planLoanSettlement", () => {
 
     it("prices the dated payment (decision 12): a rate-change row's new payment on or before the slot, not the template", () => {
       const rateChanges = [
-        { effectiveDate: "2023-06-01", annualRate: 6, newPaymentAmount: 1600 },
-        { effectiveDate: "2024-01-01", annualRate: 6, newPaymentAmount: 1500 },
-        { effectiveDate: "2024-02-01", annualRate: 7, newPaymentAmount: 1700 },
+        {
+          effectiveDate: "2023-06-01",
+          annualRate: 6,
+          newPaymentAmount: 1600,
+          source: "manual",
+        },
+        {
+          effectiveDate: "2024-01-01",
+          annualRate: 6,
+          newPaymentAmount: 1500,
+          source: "manual",
+        },
+        {
+          effectiveDate: "2024-02-01",
+          annualRate: 7,
+          newPaymentAmount: 1700,
+          source: "inferred",
+        },
       ] as unknown as LoanRateChange[];
       const facts = makeFacts({
         account: annuityAccount({ paymentAmount: 9999 }),
@@ -496,6 +513,87 @@ describe("planLoanSettlement", () => {
       const second = planned(plan(-1700, facts, {}, { date: "2024-02-02" }));
       expect([second.annualRate, second.principal, second.interest]).toEqual([
         7, 533.33, 1166.67,
+      ]);
+    });
+
+    it("a rate-change payment states the base, so the standing extra rides on top of it (7.3 step 3)", () => {
+      const rateChanges = [
+        {
+          effectiveDate: "2024-01-01",
+          annualRate: 6,
+          newPaymentAmount: 1500,
+          source: "manual",
+        },
+      ] as unknown as LoanRateChange[];
+      const facts = makeFacts({
+        account: annuityAccount({ paymentAmount: null }),
+        principal: 400,
+        interest: 1000,
+        extra: 100,
+        rateChanges,
+      });
+      const settlement = planned(plan(-1600, facts, { excess: "refuse" }));
+      expect(settlement.priced).toEqual({
+        principal: 500,
+        interest: 1000,
+        extra: 100,
+        total: 1600,
+      });
+      expect([
+        settlement.principal,
+        settlement.interest,
+        settlement.extraPrincipal,
+        settlement.outcome,
+      ]).toEqual([500, 1000, 100, "exact"]);
+      // Without the extra the stated base is the whole installment.
+      expect(
+        lines(
+          plan(
+            -1500,
+            makeFacts({
+              account: annuityAccount({ paymentAmount: null }),
+              principal: 500,
+              interest: 1000,
+              rateChanges,
+            }),
+          ),
+        ),
+      ).toEqual([500, 1000, 0, "exact"]);
+    });
+
+    it("an initial row and accounts.payment_amount already hold the extra, so it is not added twice", () => {
+      const initial = [
+        {
+          effectiveDate: "2024-01-01",
+          annualRate: 6,
+          newPaymentAmount: 1600,
+          source: "initial",
+        },
+      ] as unknown as LoanRateChange[];
+      const fromInitial = makeFacts({
+        account: annuityAccount({ paymentAmount: null }),
+        principal: 400,
+        interest: 1000,
+        extra: 100,
+        rateChanges: initial,
+      });
+      expect(lines(plan(-1600, fromInitial, { excess: "refuse" }))).toEqual([
+        500,
+        1000,
+        100,
+        "exact",
+      ]);
+      const fromAccount = makeFacts({
+        account: annuityAccount({ paymentAmount: 1600 }),
+        principal: 400,
+        interest: 1000,
+        extra: 100,
+      });
+      expect(lines(plan(-1600, fromAccount, { excess: "refuse" }))).toEqual([
+        500,
+        1000,
+        100,
+        "exact",
       ]);
     });
   });
@@ -513,7 +611,7 @@ describe("planLoanSettlement", () => {
       expect(lines(result)).toEqual([0, 500, 0, "exact"]);
       if (!result.ok) throw new Error(result.reason);
       expect(result.structure.parts.map((p) => [p.amount, p.memo])).toEqual([
-        [-0, "Principal"],
+        [0, "Principal"],
         [-500, "Interest"],
       ]);
       expect(result.settlement.method).toBe("INTEREST_ONLY");
@@ -633,6 +731,68 @@ describe("planLoanSettlement", () => {
         principal: 90000,
         interest: 30000,
       });
+
+    /**
+     * The policy table at 0 decimals (the acceptance asks for every row at 2
+     * and at 0): LOAN JPY 30,000,000 at 1.2 %, `payment_amount` 125,000 (base
+     * 120,000 plus a standing extra of 5,000): P 90,000, I 30,000, E 5,000,
+     * T 125,000, B 120,000, `tol` 5.
+     */
+    const yenWithExtra = (debt?: number) =>
+      makeFacts({
+        account: annuityAccount({
+          currencyCode: "JPY",
+          interestRate: 1.2,
+          paymentAmount: 125000,
+          openingBalance: -30000000,
+        }),
+        principal: 90000,
+        interest: 30000,
+        extra: 5000,
+        debt,
+      });
+
+    it.each([
+      ["row 1", -125000, {}, [90000, 30000, 5000, "exact"]],
+      ["row 2", -125004, {}, [90000, 30004, 5000, "tolerance"]],
+      ["row 3", -125006, {}, [90000, 30000, 5006, "extra_principal"]],
+      ["row 5", -125006, { excess: "refuse" }, "installment_amount_excess"],
+      ["row 6", -122000, {}, [90000, 30000, 2000, "extra_shed"]],
+      ["row 7", -119997, {}, [90000, 29997, 0, "tolerance"]],
+      ["row 8", -119000, {}, "installment_amount_shortfall"],
+      [
+        "row 9",
+        -119000,
+        { shortfall: "interest_first" },
+        [89000, 30000, 0, "interest_first"],
+      ],
+    ] as Array<[string, number, Partial<LoanSettlementAction>, unknown]>)(
+      "section 8 at 0 decimals, %s: a row of %p gives %p",
+      (_name, amount, overrides, expected) => {
+        expect(
+          lines(
+            plan(amount, yenWithExtra(), overrides, { currencyCode: "JPY" }),
+          ),
+        ).toEqual(expected);
+      },
+    );
+
+    it("section 8 at 0 decimals, row 4: an excess beyond the debt is refused", () => {
+      // debtBefore 95,000: interest 95, principal clamped to 95,000, the extra
+      // shed, T 95,095; 95,200 would retire more than is owed.
+      expect(
+        plan(-95200, yenWithExtra(95000), {}, { currencyCode: "JPY" }),
+      ).toEqual({
+        ok: false,
+        reason: "installment_amount_excess",
+        detail: {
+          dueDate: "2024-01-01",
+          expected: 95095,
+          paid: 95200,
+          debtBefore: 95000,
+        },
+      });
+    });
 
     it("E13: JPY books whole yen and the tolerance is 5 yen", () => {
       expect(lines(plan(-120004, yen(), {}, { currencyCode: "JPY" }))).toEqual([
@@ -962,6 +1122,14 @@ describe("planLoanSettlement", () => {
         ok: false,
         reason: "row_from_scheduled_posting",
       });
+      // A post claim on another schedule, found by the row's id.
+      expect(plan(-1333.33, makeFacts({ postedRowIds: ["tx-row"] }))).toEqual({
+        ok: false,
+        reason: "row_from_scheduled_posting",
+      });
+      expect(plan(-1333.33, makeFacts({ postedRowIds: ["tx-other"] })).ok).toBe(
+        true,
+      );
       // A rule's claim naming another row is an ordinary occupied slot.
       const other = makeFacts({
         claims: [
@@ -1353,20 +1521,53 @@ describe("planLoanSettlement", () => {
 
   describe("the dated annuity payment (decision 12)", () => {
     const rows = [
-      { effectiveDate: "2024-01-01", newPaymentAmount: 1500 },
-      { effectiveDate: "2024-03-01", newPaymentAmount: null },
-      { effectiveDate: "2024-06-01", newPaymentAmount: "1600.0000" },
+      { effectiveDate: "2024-01-01", newPaymentAmount: 1500, source: "manual" },
+      { effectiveDate: "2024-03-01", newPaymentAmount: null, source: "manual" },
+      {
+        effectiveDate: "2024-06-01",
+        newPaymentAmount: "1600.0000",
+        source: "inferred",
+      },
     ] as unknown as LoanRateChange[];
 
-    it("is the latest row on or before the date that carries one", () => {
-      expect(datedAnnuityPayment(rows, "2024-04-01", 1000)).toBe(1500);
-      expect(datedAnnuityPayment(rows, "2024-06-01", 1000)).toBe(1600);
-      expect(datedAnnuityPayment(rows, "2024-07-15", 1000)).toBe(1600);
+    it("is the latest row on or before the date that carries one, stating the base", () => {
+      expect(datedAnnuityPayment(rows, "2024-04-01", 1000)).toEqual({
+        amount: 1500,
+        statesBase: true,
+      });
+      expect(datedAnnuityPayment(rows, "2024-06-01", 1000)).toEqual({
+        amount: 1600,
+        statesBase: true,
+      });
+      expect(datedAnnuityPayment(rows, "2024-07-15", 1000)).toEqual({
+        amount: 1600,
+        statesBase: true,
+      });
+    });
+
+    it("an initial row is a copy of accounts.payment_amount and holds the extra", () => {
+      const initial = [
+        {
+          effectiveDate: "2024-01-01",
+          newPaymentAmount: 1600,
+          source: "initial",
+        },
+      ] as unknown as LoanRateChange[];
+      expect(datedAnnuityPayment(initial, "2024-02-01", null)).toEqual({
+        amount: 1600,
+        statesBase: false,
+      });
     });
 
     it("falls back to the account's payment before any row applies, and to null without one", () => {
-      expect(datedAnnuityPayment(rows, "2023-12-31", 1000)).toBe(1000);
-      expect(datedAnnuityPayment(rows, "2023-12-31", "1200.5")).toBe(1200.5);
+      expect(datedAnnuityPayment(rows, "2023-12-31", 1000)).toEqual({
+        amount: 1000,
+        statesBase: false,
+      });
+      expect(datedAnnuityPayment(rows, "2023-12-31", "1200.5")).toEqual({
+        amount: 1200.5,
+        statesBase: false,
+      });
       expect(datedAnnuityPayment(rows, "2023-12-31", null)).toBeNull();
       expect(datedAnnuityPayment(rows, "2023-12-31", 0)).toBeNull();
       expect(datedAnnuityPayment([], "2024-01-01", undefined)).toBeNull();

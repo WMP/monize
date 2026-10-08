@@ -77,7 +77,8 @@ function periodEndOf(date: string, frequency: string): string {
  * periods (spec section 6.1):
  *
  * 1. the cursor (`next_due_date`) and the dates stepped from it, bounded by
- *    `end_date` and by `occurrences_remaining` (the cursor counts as one);
+ *    `end_date` and by `occurrences_remaining` (the cursor counts as one; a
+ *    cursor already past the end, or with none remaining, is no slot);
  * 2. history: `start_date` and each date stepped from it while the step
  *    stays on or before the cursor -- the start-calendar date whose next step
  *    passes the cursor is the installment the cursor stands for;
@@ -125,7 +126,15 @@ export function occurrenceSlotsInRange(
     }
   });
 
-  // The cursor and the slots after it.
+  // The cursor and the slots after it. A cursor past `end_date`, or with no
+  // occurrence remaining, is a schedule that has run out: nothing is due.
+  if (
+    (schedule.endDate !== null && cursor > schedule.endDate) ||
+    (schedule.occurrencesRemaining !== null &&
+      schedule.occurrencesRemaining <= 0)
+  ) {
+    return slots;
+  }
   let ordinal = history.length + 1;
   const cursorPeriodEnd = periodEndOf(cursor, frequency);
   if (cursor >= range.from && cursor <= range.to) {

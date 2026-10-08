@@ -168,9 +168,16 @@ describe("occurrence slots", () => {
       expect(dates(monthly({ occurrencesRemaining: 1 }))).toEqual([
         "2024-01-01",
       ]);
-      expect(dates(monthly({ occurrencesRemaining: 0 }))).toEqual([
-        "2024-01-01",
-      ]);
+    });
+
+    it("emits nothing due for a schedule that has run out: the history stays, the cursor is no slot", () => {
+      expect(
+        dates(monthly({ nextDueDate: "2024-03-01", occurrencesRemaining: 0 })),
+      ).toEqual(["2024-01-01", "2024-02-01"]);
+      expect(
+        dates(monthly({ nextDueDate: "2024-03-01", endDate: "2024-02-15" })),
+      ).toEqual(["2024-01-01", "2024-02-01"]);
+      expect(dates(monthly({ occurrencesRemaining: 0 }))).toEqual([]);
     });
 
     it("is the single slot next_due_date for ONCE (row 17)", () => {

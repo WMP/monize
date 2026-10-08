@@ -1,4 +1,4 @@
-import { Between, EntityManager } from "typeorm";
+import { Between, EntityManager, In } from "typeorm";
 import { Account } from "../accounts/entities/account.entity";
 import { ScheduledTransaction } from "../scheduled-transactions/entities/scheduled-transaction.entity";
 import { ScheduledTransactionSplit } from "../scheduled-transactions/entities/scheduled-transaction-split.entity";
@@ -50,6 +50,8 @@ export interface LoanSettlementFacts {
   readonly slots: readonly OccurrenceSlot[];
   /** The schedule's claims whose `original_due_date` lies in the slots' periods. */
   readonly claims: readonly LoanOccurrenceClaim[];
+  /** The ids among `input.rowIds` that a `post` claim of any schedule names: rows `post()` wrote. */
+  readonly postedRowIds: ReadonlySet<string>;
   /** `datedLoanDebt` at each slot date. */
   readonly debtByDueDate: ReadonlyMap<string, number>;
 }
@@ -69,6 +71,11 @@ export interface LoanSettlementFactsInput {
    * slots dated inside it are enumerated and priced.
    */
   readonly window: DateRange;
+  /**
+   * The ids of the pass's rows. A `post` claim naming one of them, on any
+   * schedule, marks that row as a posted bill (spec section 11, row 9).
+   */
+  readonly rowIds?: readonly string[];
 }
 
 export interface LoanSettlementFactsOptions {
@@ -129,6 +136,7 @@ export async function loadLoanSettlementFacts(
     where: { accountId: loanAccount.id },
     order: { effectiveDate: "ASC" },
   });
+  const postedRowIds = await postedRows(m, input.rowIds ?? []);
 
   if (!schedule || !schedule.isActive) {
     return {
@@ -139,6 +147,7 @@ export async function loadLoanSettlementFacts(
       rateChanges,
       slots: [],
       claims: [],
+      postedRowIds,
       debtByDueDate: new Map(),
     };
   }
@@ -186,8 +195,27 @@ export async function loadLoanSettlementFacts(
     rateChanges,
     slots,
     claims,
+    postedRowIds,
     debtByDueDate,
   };
+}
+
+/** The ids among `rowIds` that a `post` claim names, on any of the owner's schedules. */
+async function postedRows(
+  m: EntityManager,
+  rowIds: readonly string[],
+): Promise<ReadonlySet<string>> {
+  const ids = [...new Set(rowIds)];
+  if (ids.length === 0) return new Set();
+  const rows = await m.getRepository(ScheduledTransactionPosting).find({
+    select: { id: true, transactionId: true },
+    where: { transactionId: In(ids), source: "post" },
+  });
+  return new Set(
+    rows
+      .map((row) => row.transactionId)
+      .filter((id): id is string => id !== null),
+  );
 }
 
 function unavailable(loanAccountId: string): LoanFactsUnavailable {

@@ -63,6 +63,7 @@ describe("loadLoanSettlementFacts", () => {
     loanAccountId: loanId,
     sourceAccountId: chequingId,
     window: { from: "2024-01-25", to: "2024-03-08" },
+    rowIds: ["tx-row", "tx-posted"],
   };
 
   beforeEach(() => {
@@ -70,14 +71,21 @@ describe("loadLoanSettlementFacts", () => {
     schedules = { findOne: jest.fn().mockResolvedValue(schedule()) };
     splits = { find: jest.fn().mockResolvedValue([{ id: "split-principal" }]) };
     postings = {
-      find: jest.fn().mockResolvedValue([
-        {
-          id: "claim-1",
-          originalDueDate: "2024-02-01",
-          source: "post",
-          transactionId: null,
-        },
-      ]),
+      find: jest
+        .fn()
+        .mockImplementation(
+          async (options: { where: Record<string, unknown> }) =>
+            "transactionId" in options.where
+              ? [{ id: "claim-posted", transactionId: "tx-posted" }]
+              : [
+                  {
+                    id: "claim-1",
+                    originalDueDate: "2024-02-01",
+                    source: "post",
+                    transactionId: null,
+                  },
+                ],
+        ),
     };
     rateChanges = {
       find: jest
@@ -211,6 +219,40 @@ describe("loadLoanSettlementFacts", () => {
     expect(result.schedule?.id).toBe(scheduleId);
   });
 
+  it("looks the pass's rows up among the post claims of every schedule", async () => {
+    const result = await loadLoanSettlementFacts(m(), userId, input, {
+      lock: false,
+    });
+    if (result.kind !== "facts") throw new Error(result.reason);
+    expect(postings.find).toHaveBeenCalledWith({
+      select: { id: true, transactionId: true },
+      where: {
+        transactionId: expect.objectContaining({
+          _type: "in",
+          _value: ["tx-row", "tx-posted"],
+        }),
+        source: "post",
+      },
+    });
+    expect(result.postedRowIds).toEqual(new Set(["tx-posted"]));
+  });
+
+  it("reads no post claims when the pass names no rows", async () => {
+    const result = await loadLoanSettlementFacts(
+      m(),
+      userId,
+      { ...input, rowIds: undefined },
+      { lock: false },
+    );
+    if (result.kind !== "facts") throw new Error(result.reason);
+    expect(result.postedRowIds).toEqual(new Set());
+    expect(
+      postings.find.mock.calls.some(
+        ([options]) => "transactionId" in options.where,
+      ),
+    ).toBe(false);
+  });
+
   it("answers unavailable for a loan that is not the owner's", async () => {
     accounts.findOne.mockResolvedValue(null);
     const result = await loadLoanSettlementFacts(m(), "user-2", input, {
@@ -285,7 +327,11 @@ describe("loadLoanSettlementFacts", () => {
     );
     if (result.kind !== "facts") throw new Error(result.reason);
     expect(result.slots).toEqual([]);
-    expect(postings.find).not.toHaveBeenCalled();
+    expect(
+      postings.find.mock.calls.some(
+        ([options]) => "scheduledTransactionId" in options.where,
+      ),
+    ).toBe(false);
     expect(result.debtByDueDate.size).toBe(0);
   });
 
