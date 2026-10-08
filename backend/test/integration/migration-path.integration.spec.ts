@@ -395,7 +395,9 @@ describe("production migration path (baseline schema + migrations)", () => {
     await expect(claim("2024-03-01", ruleTx, "rule")).rejects.toThrow(
       /idx_stp_transaction/,
     );
-    await expect(claim("2024-03-01", null, "manual")).rejects.toThrow(
+    // A transaction of its own, so only the source can be what refuses it.
+    const unclaimedTx = await insertTransaction();
+    await expect(claim("2024-03-01", unclaimedTx, "manual")).rejects.toThrow(
       /chk_stp_source/,
     );
     await expect(claim("2024-03-01", null, "rule")).rejects.toThrow(

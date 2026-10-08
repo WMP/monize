@@ -5,6 +5,7 @@ import { tr } from "../i18n/translate";
 import { boundRestoredNotification } from "./notification-restore-bounds";
 import { BackupData, backupTables } from "./backup-format";
 import {
+  CONFLICT_ARBITER_COLUMNS,
   DEFERRED_FK_COLUMNS,
   DEFERRED_FK_REPAIRS,
   RESTORABLE_TABLES,
@@ -567,6 +568,14 @@ export class BackupRestoreDatabaseService {
         .map((r) => r.column_name),
     );
 
+    // A table with a DEFERRABLE unique constraint cannot take a bare ON
+    // CONFLICT; it names its arbiter (restore-plan.ts). Constant identifiers,
+    // never from the uploaded file.
+    const arbiter = CONFLICT_ARBITER_COLUMNS[table];
+    const conflictTarget = arbiter
+      ? `(${arbiter.map((c) => `"${c}"`).join(", ")}) `
+      : "";
+
     let count = 0;
     for (const row of rows) {
       const filteredRow =
@@ -629,7 +638,7 @@ export class BackupRestoreDatabaseService {
 
       await manager.query(
         `INSERT INTO "${table}" (${columnList}) VALUES (${placeholders})
-         ON CONFLICT DO NOTHING`,
+         ON CONFLICT ${conflictTarget}DO NOTHING`,
         values,
       );
       count++;
