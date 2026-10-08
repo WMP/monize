@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { periodBalanceFields, taggedBalance, taggedBalanceWindow } from './tagged-balance';
+import { periodBalanceFields, taggedBalance, taggedBalanceWindow, taggedFunds } from './tagged-balance';
 
 const none = { missingCurrencies: [], excludedCount: 0 };
 
@@ -110,5 +110,41 @@ describe('periodBalanceFields', () => {
       Balance: -40,
       BalancePercent: null,
     });
+  });
+});
+
+describe('taggedFunds', () => {
+  it("is income plus the net tagged inflow (the reporter's August)", () => {
+    expect(taggedFunds({ income: 3279, taggedInflows: 4516, taggedOutflows: 0 })).toEqual({
+      netTagged: 4516,
+      availableFunds: 7795,
+    });
+  });
+
+  it('nets outflows off, in integer cents', () => {
+    expect(taggedFunds({ income: 0.1, taggedInflows: 0.2, taggedOutflows: 0 })).toEqual({
+      netTagged: 0.2,
+      availableFunds: 0.3,
+    });
+    expect(taggedFunds({ income: 100, taggedInflows: 50, taggedOutflows: 80 })).toEqual({
+      netTagged: -30,
+      availableFunds: 70,
+    });
+  });
+
+  it('keeps a known zero distinct from unknown', () => {
+    expect(taggedFunds({ income: 0, taggedInflows: 0, taggedOutflows: 0 })).toEqual({
+      netTagged: 0,
+      availableFunds: 0,
+    });
+    expect(taggedFunds({ income: null, taggedInflows: 5, taggedOutflows: 0 })).toEqual({
+      netTagged: 5,
+      availableFunds: null,
+    });
+    expect(taggedFunds({ income: 1, taggedInflows: undefined, taggedOutflows: 0 })).toEqual({
+      netTagged: null,
+      availableFunds: null,
+    });
+    expect(taggedFunds({ income: 1, taggedInflows: Number.NaN, taggedOutflows: 0 }).availableFunds).toBeNull();
   });
 });
