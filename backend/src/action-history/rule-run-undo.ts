@@ -2,6 +2,10 @@ import { ConflictException } from "@nestjs/common";
 import { EntityManager } from "typeorm";
 import { LockedTransactionRow, lockTransactionRows } from "../common/db/locks";
 import { tr } from "../i18n/translate";
+import {
+  ScheduleCursorChange,
+  rewindScheduleCursor,
+} from "../scheduled-transactions/schedule-cursor";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { assertReconciledRowsMutable } from "../transactions/reconciled-lock.util";
@@ -30,7 +34,34 @@ interface RuleRunRowSnapshot {
     counterpartIds: string[];
     /** A split's lines the run created; absent on a transfer. */
     lineIds?: string[];
+    /**
+     * A settlement's claim (`docs/specs/loan-installment-settlement.md`
+     * section 12.4), absent on a transfer or a plain split: the claim to
+     * release, its schedule and slot, and the cursor advance to rewind.
+     */
+    claimId?: string;
+    scheduledTransactionId?: string;
+    dueDate?: string;
+    cursorAdvanced?: boolean;
+    cursor?: ScheduleCursorChange;
   };
+}
+
+/** A settled row of a run: its structure records the claim. */
+type SettledRowSnapshot = RuleRunRowSnapshot & {
+  structure: {
+    claimId: string;
+    scheduledTransactionId: string;
+    dueDate: string;
+  };
+};
+
+/** What the undo of a run moved and released, for the caller's after-commit work. */
+export interface RuleRunUndoResult {
+  /** The accounts whose balance a removed leg moved. */
+  readonly affectedAccountIds: Set<string>;
+  /** The schedules whose claim the undo released; their templates are repriced after the commit. */
+  readonly settledScheduleIds: Set<string>;
 }
 
 /**
@@ -74,17 +105,28 @@ export function assertRuleRunRedoable(action: ActionHistory): void {
  * contribution reversed by `removeLockedTransactionLeg` (`deletionBalanceEffect`
  * of the locked row), so a leg already gone, or relinked elsewhere, is skipped
  * and moves nothing. The split lines are deleted and the row's category and
- * structural flags come back from the snapshot. Returns the accounts whose
- * balance moved.
+ * structural flags come back from the snapshot.
+ *
+ * A settled row (`structure.claimId`) also has its occurrence claim released
+ * and, when the claim advanced the schedule's cursor, the advance rewound
+ * (`docs/specs/loan-installment-settlement.md` section 12.6): under the
+ * schedule row lock, the undo first refuses when the schedule holds a later
+ * claim the run did not write (`RULE_RUN_UNDO_LATER_SETTLEMENT`, so a
+ * settlement priced on this run's principal is never left standing on a debt
+ * that no longer exists), then walks the settled rows in reverse run order,
+ * so a schedule the run advanced twice is put back one advance at a time.
+ * Returns the accounts whose balance moved and the schedules released.
  */
 export async function undoRuleRun(
   action: ActionHistory,
   manager: EntityManager,
   balances: LegBalanceWriter,
-): Promise<Set<string>> {
+): Promise<RuleRunUndoResult> {
   const affectedAccountIds = new Set<string>();
+  const settledScheduleIds = new Set<string>();
+  const result: RuleRunUndoResult = { affectedAccountIds, settledScheduleIds };
   const rows = action.beforeData?.transactions;
-  if (!Array.isArray(rows) || rows.length === 0) return affectedAccountIds;
+  if (!Array.isArray(rows) || rows.length === 0) return result;
   const snapshots = rows as RuleRunRowSnapshot[];
 
   const counterpartIdsOf = (kind: "transfer" | "split"): string[] =>
@@ -107,8 +149,9 @@ export async function undoRuleRun(
     ...lockedSplitLegs.values(),
   ]);
 
-  // Before the first write: a row whose structure is no longer the run's
-  // refuses the whole undo.
+  // Before the first write: a settlement a later one was priced on, or a row
+  // whose structure is no longer the run's, refuses the whole undo.
+  await assertNoLaterSettlement(manager, action.userId, snapshots);
   await assertStructureUnchanged(manager, action.userId, snapshots, locked);
 
   const tagRows: { transactionId: string; tagId: string }[] = [];
@@ -163,7 +206,16 @@ export async function undoRuleRun(
     }
   }
 
-  if (tagOwners.length === 0) return affectedAccountIds;
+  for (const scheduleId of await releaseSettlementClaims(
+    manager,
+    action.userId,
+    snapshots,
+    locked,
+  )) {
+    settledScheduleIds.add(scheduleId);
+  }
+
+  if (tagOwners.length === 0) return result;
   // Two statements for the whole run: replace the tag set of every row that
   // recorded one. A tag deleted since is skipped by the join.
   await manager.query(
@@ -189,7 +241,127 @@ export async function undoRuleRun(
       ],
     );
   }
-  return affectedAccountIds;
+  return result;
+}
+
+/** The settled rows of a run, in run order: those whose structure records a claim. */
+function settledRows(
+  snapshots: readonly RuleRunRowSnapshot[],
+): SettledRowSnapshot[] {
+  return snapshots.filter(
+    (row): row is SettledRowSnapshot =>
+      row.structure?.claimId !== undefined &&
+      row.structure.scheduledTransactionId !== undefined &&
+      row.structure.dueDate !== undefined,
+  );
+}
+
+/**
+ * Refuse the undo, before any write, when a schedule this run settled on
+ * holds a claim on a slot later than the latest slot the run claimed on it,
+ * whoever wrote that claim (a later rule run, a bill post): it was priced on
+ * a debt that included this run's principal, and removing the principal
+ * underneath would leave its interest priced on a debt that never existed
+ * (`docs/specs/loan-installment-settlement.md` section 4.1). The schedule
+ * rows are locked first (`FOR UPDATE`, ascending, after the transaction rows:
+ * the order the run and `post()` take), so the claims read are the ones the
+ * release acts on. A claim the run wrote itself is never "later".
+ */
+async function assertNoLaterSettlement(
+  manager: EntityManager,
+  userId: string,
+  snapshots: readonly RuleRunRowSnapshot[],
+): Promise<void> {
+  const settled = settledRows(snapshots);
+  if (settled.length === 0) return;
+  const latestBySchedule = new Map<string, string>();
+  const runClaimIds = new Set<string>();
+  for (const row of settled) {
+    runClaimIds.add(row.structure.claimId);
+    const latest = latestBySchedule.get(row.structure.scheduledTransactionId);
+    if (latest === undefined || row.structure.dueDate > latest) {
+      latestBySchedule.set(
+        row.structure.scheduledTransactionId,
+        row.structure.dueDate,
+      );
+    }
+  }
+  const scheduleIds = [...latestBySchedule.keys()].sort();
+  await manager.query(
+    `SELECT id FROM scheduled_transactions
+      WHERE id = ANY($1::uuid[]) AND user_id = $2
+      ORDER BY id FOR UPDATE`,
+    [scheduleIds, userId],
+  );
+  const claims: {
+    id: string;
+    scheduled_transaction_id: string;
+    original_due_date: string;
+  }[] = await manager.query(
+    `SELECT stp.id, stp.scheduled_transaction_id,
+            TO_CHAR(stp.original_due_date, 'YYYY-MM-DD') AS original_due_date
+       FROM scheduled_transaction_postings stp
+       JOIN scheduled_transactions s
+         ON s.id = stp.scheduled_transaction_id AND s.user_id = $2
+      WHERE stp.scheduled_transaction_id = ANY($1::uuid[])`,
+    [scheduleIds, userId],
+  );
+  for (const claim of claims) {
+    if (runClaimIds.has(claim.id)) continue;
+    const latest = latestBySchedule.get(claim.scheduled_transaction_id);
+    if (latest !== undefined && claim.original_due_date > latest) {
+      throw new ConflictException({
+        message: tr(
+          "errors.transactionRules.runUndoLaterSettlement",
+          "A later installment of this loan was settled after this run, so the run cannot be undone. Undo the later settlement first",
+        ),
+        errorCode: "RULE_RUN_UNDO_LATER_SETTLEMENT",
+        scheduledTransactionId: claim.scheduled_transaction_id,
+        dueDate: claim.original_due_date,
+      });
+    }
+  }
+}
+
+/**
+ * Release the claims the run wrote and rewind the cursor advances it
+ * recorded, over the settled rows in reverse run order (a schedule advanced
+ * X to Y then Y to Z goes back Z to Y, then Y to X; each rewind is
+ * conditional on the cursor still standing where that advance left it). A
+ * claim already gone (its transaction deleted, which cascades) is skipped,
+ * not a change; a row deleted since the run has nothing to release. Returns
+ * the schedules a claim was released on.
+ */
+async function releaseSettlementClaims(
+  manager: EntityManager,
+  userId: string,
+  snapshots: readonly RuleRunRowSnapshot[],
+  locked: ReadonlyMap<string, LockedTransactionRow>,
+): Promise<string[]> {
+  const released: string[] = [];
+  for (const row of settledRows(snapshots).reverse()) {
+    if (!locked.has(row.id)) continue;
+    const { claimId, scheduledTransactionId, cursorAdvanced, cursor } =
+      row.structure;
+    await manager.query(
+      `DELETE FROM scheduled_transaction_postings stp
+        USING scheduled_transactions s
+        WHERE stp.id = $1
+          AND stp.scheduled_transaction_id = s.id
+          AND s.user_id = $2`,
+      [claimId, userId],
+    );
+    if (cursorAdvanced === true && cursor !== undefined) {
+      await rewindScheduleCursor(
+        manager,
+        scheduledTransactionId,
+        userId,
+        cursor,
+      );
+    }
+    released.push(scheduledTransactionId);
+  }
+  return released;
 }
 
 /**

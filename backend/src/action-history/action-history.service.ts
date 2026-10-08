@@ -37,6 +37,7 @@ import { Budget } from "../budgets/entities/budget.entity";
 import { CustomReport } from "../reports/entities/custom-report.entity";
 import { withSystemContext } from "../common/db/with-context";
 import { withScopedDb } from "../common/db/scoped-db";
+import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
 import {
   LockedTransactionRow,
   lockAccountsForBalanceWrite,
@@ -94,6 +95,18 @@ export interface UndoRedoResult {
   action: ActionHistory;
   description: string;
 }
+
+/**
+ * What an undo leaves for after its commit: the scheduled payments whose
+ * occurrence claim a rule-run undo released, repriced once the transaction
+ * has committed (INV-CACHE-001; `docs/specs/loan-installment-settlement.md`
+ * section 12.6). Empty for every other entry.
+ */
+interface UndoAfterCommit {
+  readonly settledScheduleIds: readonly string[];
+}
+
+const NOTHING_AFTER_COMMIT: UndoAfterCommit = { settledScheduleIds: [] };
 
 const MAX_HISTORY_PER_USER = 100;
 export const MAX_JSONB_SIZE_BYTES = 512 * 1024; // 500 KB
@@ -457,17 +470,24 @@ export class ActionHistoryService {
       );
     }
 
-    await withScopedDb(this.dataSource, async (manager) => {
-      await this.executeUndo(action, manager);
+    const afterCommit = await withScopedDb(this.dataSource, async (manager) => {
+      const effects = await this.executeUndo(action, manager);
       await manager.update(ActionHistory, action.id, {
         isUndone: true,
       });
+      return effects;
     });
 
     // After the commit, like every other derived-state invalidation here: a
     // replay that rolled back must not have dropped the memo that still
     // describes the committed state.
     invalidatePortfolioSummary(userId);
+    // A released settlement leaves its schedule's template priced on a debt
+    // the undo has since changed: repriced after the commit, never inside it.
+    await repriceSettledLoanTemplates(
+      this.dataSource,
+      afterCommit.settledScheduleIds,
+    );
 
     return { action, description: `Undone: ${action.description}` };
   }
@@ -501,7 +521,7 @@ export class ActionHistoryService {
   private async executeUndo(
     action: ActionHistory,
     manager: EntityManager,
-  ): Promise<void> {
+  ): Promise<UndoAfterCommit> {
     switch (action.entityType) {
       case "transaction":
         await this.undoTransaction(action, manager);
@@ -549,9 +569,14 @@ export class ActionHistoryService {
       case "bulk_transaction":
         await this.undoBulkTransaction(action, manager);
         break;
-      case RULE_RUN_ENTITY_TYPE:
-        await undoRuleRun(action, manager, this.legBalances(manager, action));
-        break;
+      case RULE_RUN_ENTITY_TYPE: {
+        const undone = await undoRuleRun(
+          action,
+          manager,
+          this.legBalances(manager, action),
+        );
+        return { settledScheduleIds: [...undone.settledScheduleIds] };
+      }
       default:
         throw new ConflictException(
           tr(
@@ -561,6 +586,7 @@ export class ActionHistoryService {
           ),
         );
     }
+    return NOTHING_AFTER_COMMIT;
   }
 
   private async executeRedo(
