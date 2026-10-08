@@ -2,6 +2,7 @@ import { TestingModule } from "@nestjs/testing";
 import { DataSource } from "typeorm";
 import { Account, AccountType } from "@/accounts/entities/account.entity";
 import { AccountsService } from "@/accounts/accounts.service";
+import { LoanPaymentMatchingService } from "@/accounts/loan-payment-matching.service";
 import {
   ActionHistoryService,
   settlePendingHistoryWrites,
@@ -13,9 +14,11 @@ import { withUserContext } from "@/common/db/with-context";
 import { ScheduledTransaction } from "@/scheduled-transactions/entities/scheduled-transaction.entity";
 import { ScheduledTransactionOverride } from "@/scheduled-transactions/entities/scheduled-transaction-override.entity";
 import { ScheduledTransactionSplit } from "@/scheduled-transactions/entities/scheduled-transaction-split.entity";
+import { NotFoundException } from "@nestjs/common";
 import { TransactionRule } from "@/transaction-rules/transaction-rule.entity";
 import { TransactionRulesModule } from "@/transaction-rules/transaction-rules.module";
 import { TransactionRulesRunService } from "@/transaction-rules/transaction-rules-run.service";
+import { TransactionRulesService } from "@/transaction-rules/transaction-rules.service";
 import { TransactionStatus } from "@/transactions/entities/transaction-status.enum";
 import { TransactionsModule } from "@/transactions/transactions.module";
 import { TransactionsService } from "@/transactions/transactions.service";
@@ -64,6 +67,8 @@ describe("Loan settlement claim (integration)", () => {
   let accounts: AccountsService;
   let runs: TransactionRulesRunService;
   let history: ActionHistoryService;
+  let matching: LoanPaymentMatchingService;
+  let rulesService: TransactionRulesService;
 
   let userId: string;
   let chequingId: string;
@@ -192,6 +197,8 @@ describe("Loan settlement claim (integration)", () => {
     accounts = module.get(AccountsService);
     runs = module.get(TransactionRulesRunService);
     history = module.get(ActionHistoryService, { strict: false });
+    matching = module.get(LoanPaymentMatchingService, { strict: false });
+    rulesService = module.get(TransactionRulesService);
     // The synchronize-built schema derives `transaction_splits.transaction_id`
     // from the entity, which names no ON DELETE action; `database/schema.sql`
     // cascades it, and `TransactionsService.remove` relies on that cascade to
@@ -665,5 +672,170 @@ describe("Loan settlement claim (integration)", () => {
       ["Interest", -997.5],
       ["Principal", -502.5],
     ]);
+  });
+
+  describe("payment matching on the loan (B7)", () => {
+    it("creates exactly one rule, last in the order and listed, with the bill's auto-post off and the loan pointing at it", async () => {
+      await db.query(
+        `UPDATE scheduled_transactions SET auto_post = true WHERE id = $1`,
+        [scheduleId],
+      );
+
+      const rule = await asUser(() =>
+        matching.createMatchingRule(userId, loanId, {
+          payeePattern: "ING HYPOTHEKEN*",
+        }),
+      );
+
+      const listed = await asUser(() => rulesService.list(userId));
+      expect(listed.map((r) => r.id)).toEqual([ruleId, rule.id]);
+      expect(listed[1]).toMatchObject({
+        name: "Loan payment - Mortgage",
+        position: 1,
+        triggers: ["create", "import"],
+        stopProcessing: true,
+        invalid: false,
+        condition: {
+          all: [
+            { field: "accountId", op: "eq", value: chequingId },
+            { field: "type", op: "eq", value: "EXPENSE" },
+            { field: "payeeText", op: "matches", value: "ING HYPOTHEKEN*" },
+          ],
+        },
+        actions: [
+          {
+            type: "settle_loan_installment",
+            loanAccountId: loanId,
+            dueDateWindow: { daysBefore: 3, daysAfter: 7 },
+            excess: "extra_principal",
+            shortfall: "refuse",
+          },
+        ],
+      });
+      const [pointer] = await db.query(
+        `SELECT payment_matching_rule_id FROM accounts WHERE id = $1`,
+        [loanId],
+      );
+      expect(pointer.payment_matching_rule_id).toBe(rule.id);
+      const [bill] = await db.query(
+        `SELECT auto_post FROM scheduled_transactions WHERE id = $1`,
+        [scheduleId],
+      );
+      expect(bill.auto_post).toBe(false);
+
+      // A second request for the loan is refused and writes no second rule.
+      await expect(
+        asUser(() =>
+          matching.createMatchingRule(userId, loanId, {
+            payeePattern: "ING*",
+          }),
+        ),
+      ).rejects.toMatchObject({ status: 409 });
+      expect(await count("transaction_rules")).toBe(2);
+    });
+
+    it("settles the bank debit it matches, and the loan's settled installments name it", async () => {
+      await db.query(`DELETE FROM transaction_rules WHERE id = $1`, [ruleId]);
+      const rule = await asUser(() =>
+        matching.createMatchingRule(userId, loanId, {
+          payeePattern: "ING HYPOTHEKEN*",
+        }),
+      );
+
+      const row = await create("2024-01-03", -1500, "ING HYPOTHEKEN 123");
+
+      const settled = await asUser(() =>
+        matching.listSettlements(userId, loanId),
+      );
+      expect(settled).toEqual([
+        {
+          claimId: expect.any(String),
+          dueDate: "2024-01-01",
+          postedDate: "2024-01-03",
+          transactionId: row.id,
+          transactionStatus: TransactionStatus.UNRECONCILED,
+          principal: 500,
+          interest: 1000,
+          extraPrincipal: 0,
+          debtBefore: 200000,
+          installmentNumber: 1,
+          ruleId: rule.id,
+        },
+      ]);
+    });
+
+    it("lists only the owner's settled installments, and another user's loan is a 404", async () => {
+      const mine = await create("2024-01-03", -1500);
+
+      // A second user with a loan, a schedule and a rule claim of their own.
+      const otherId = (await createTestUserDirect(db)).id;
+      const otherChequing = (
+        await createTestAccount(db, otherId, {
+          name: "Other chequing",
+          currencyCode: "EUR",
+          openingBalance: 5000,
+          currentBalance: 5000,
+        })
+      ).id;
+      const otherLoan = (
+        await createTestAccount(db, otherId, {
+          name: "Other loan",
+          accountType: AccountType.LOAN,
+          currencyCode: "EUR",
+          openingBalance: -1000,
+          currentBalance: -1000,
+        })
+      ).id;
+      const otherSchedule = (
+        await db.manager.save(
+          db.manager.create(ScheduledTransaction, {
+            userId: otherId,
+            accountId: otherChequing,
+            name: "Other payment",
+            amount: -100,
+            currencyCode: "EUR",
+            frequency: "MONTHLY",
+            startDate: "2024-01-01",
+            nextDueDate: "2024-01-01",
+            isActive: true,
+            autoPost: false,
+          } as Partial<ScheduledTransaction>),
+        )
+      ).id;
+      await db.manager.update(Account, otherLoan, {
+        scheduledTransactionId: otherSchedule,
+      });
+      const theirs = await withUserContext(otherId, () =>
+        transactions.create(otherId, {
+          accountId: otherChequing,
+          transactionDate: "2024-01-02",
+          amount: -100,
+          currencyCode: "EUR",
+          payeeName: "Other bank",
+        } as never),
+      );
+      await db.query(
+        `INSERT INTO scheduled_transaction_postings
+           (scheduled_transaction_id, original_due_date, posted_date,
+            transaction_id, source, pricing)
+         VALUES ($1, '2024-01-01', '2024-01-02', $2, 'rule', '{"installmentNumber": 1}'::jsonb)`,
+        [otherSchedule, theirs.id],
+      );
+
+      const own = await asUser(() => matching.listSettlements(userId, loanId));
+      expect(own.map((s) => s.transactionId)).toEqual([mine.id]);
+      await expect(
+        asUser(() => matching.listSettlements(userId, otherLoan)),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        withUserContext(otherId, () =>
+          matching.listSettlements(otherId, loanId),
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      const others = await withUserContext(otherId, () =>
+        matching.listSettlements(otherId, otherLoan),
+      );
+      expect(others.map((s) => s.transactionId)).toEqual([theirs.id]);
+    });
   });
 });

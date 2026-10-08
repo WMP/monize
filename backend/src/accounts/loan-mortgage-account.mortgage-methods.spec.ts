@@ -16,7 +16,9 @@ import { CategoriesService } from "../categories/categories.service";
 import { ScheduledTransactionsService } from "../scheduled-transactions/scheduled-transactions.service";
 import { LoanRateChangesService } from "../loan-rate-changes/loan-rate-changes.service";
 import { LoanPaymentDetectorService } from "./loan-payment-detector.service";
+import { LoanPaymentMatchingService } from "./loan-payment-matching.service";
 import { CreateAccountDto } from "./dto/create-account.dto";
+import { constantLinearPrincipal } from "./mortgage-installment.util";
 
 /**
  * Creating a LINEAR or INTEREST_ONLY mortgage, and the mortgage rate update
@@ -120,6 +122,7 @@ describe("LoanMortgageAccountService: LINEAR and INTEREST_ONLY", () => {
         },
         { provide: LoanRateChangesService, useValue: loanRateChangesService },
         { provide: LoanPaymentDetectorService, useValue: {} },
+        { provide: LoanPaymentMatchingService, useValue: {} },
       ],
     }).compile();
     service = module.get(LoanMortgageAccountService);
@@ -192,6 +195,52 @@ describe("LoanMortgageAccountService: LINEAR and INTEREST_ONLY", () => {
           prepaymentMode: null,
         }),
       );
+    });
+
+    it("prices a LINEAR constant principal from originalPrincipal, not the opening balance, when they differ", async () => {
+      // A loan of 300,000 whose ledger opens at 260,000 (docs/specs/
+      // loan-installment-settlement.md section 14.3): c is 300,000 / 360,
+      // interest is on the 260,000 owed.
+      await service.createMortgageAccount(
+        userId,
+        makeDto({ openingBalance: 260000, originalPrincipal: 300000 }),
+      );
+
+      const stored = accountsRepository.create.mock.calls[0][0];
+      expect(stored).toMatchObject({
+        openingBalance: -260000,
+        originalPrincipal: 300000,
+      });
+      const c = constantLinearPrincipal(stored);
+      expect(c).toBe(833.3333);
+      const template = scheduledTransactionsService.create.mock.calls[0][1];
+      expect(template.splits).toEqual([
+        { transferAccountId: "new-acc-id", amount: -c!, memo: "Principal" },
+        {
+          categoryId: "cat-interest",
+          amount: -433.3333,
+          memo: "Interest",
+        },
+      ]);
+      expect(template.amount).toBe(-1266.6666);
+      // Not the opening balance over the count (722.2222).
+      expect(
+        constantLinearPrincipal({ ...stored, originalPrincipal: null }),
+      ).toBe(722.2222);
+    });
+
+    it("stores the opening balance as originalPrincipal when the request names none", async () => {
+      await service.createMortgageAccount(
+        userId,
+        makeDto({ openingBalance: 260000 }),
+      );
+
+      const stored = accountsRepository.create.mock.calls[0][0];
+      expect(stored.originalPrincipal).toBe(260000);
+      expect(
+        scheduledTransactionsService.create.mock.calls[0][1].splits[0].amount,
+      ).toBe(-constantLinearPrincipal(stored)!);
+      expect(constantLinearPrincipal(stored)).toBe(722.2222);
     });
 
     it("refuses an accelerated LINEAR mortgage before writing anything", async () => {

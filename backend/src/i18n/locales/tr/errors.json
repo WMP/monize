@@ -58,7 +58,11 @@
     "unknownInvestmentAccount": "Bilinmeyen hesap: {{ name }}. Kullanıcının hesap listesinden tam bir ad kullanın.",
     "notACreditCard": "Ekstre dönemleri yalnızca kredi kartı hesapları için kullanılabilir",
     "noStatementSettlementDay": "Bu kredi kartı için yapılandırılmış bir ekstre kesim günü yok",
-    "loanLedgerUnreadable": "Bu kredinin bakiyesi okunamadı. Tekrar deneyin."
+    "loanLedgerUnreadable": "Bu kredinin bakiyesi okunamadı. Tekrar deneyin.",
+    "paymentMatchingLoanOnly": "Ödeme eşleştirme yalnızca ipotek ve krediler için geçerlidir",
+    "paymentMatchingRequiresSchedule": "Ödeme eşleştirme, kredinin planlanmış ödemesini gerektirir. Önce ödemelerini ayarlayın.",
+    "paymentMatchingRuleExists": "Bu kredinin zaten bir ödeme eşleştirme kuralı var",
+    "paymentMatchingFailed": "Kredi kaydedildi, ancak ödeme eşleştirme kuralı oluşturulamadı. Kredi ayrıntılarından oluşturun."
   },
   "actionHistory": {
     "nothingToUndo": "Geri alınacak işlem yok",

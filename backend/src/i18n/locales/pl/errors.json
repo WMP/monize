@@ -58,7 +58,11 @@
     "unknownInvestmentAccount": "Nieznane konto: {{ name }}. Użyj dokładnej nazwy z listy kont użytkownika.",
     "notACreditCard": "Cykle rozliczeniowe są dostępne tylko dla kont kart kredytowych",
     "noStatementSettlementDay": "Ta karta kredytowa nie ma skonfigurowanego dnia rozliczenia wyciągu",
-    "loanLedgerUnreadable": "Nie można odczytać salda tego kredytu. Spróbuj ponownie."
+    "loanLedgerUnreadable": "Nie można odczytać salda tego kredytu. Spróbuj ponownie.",
+    "paymentMatchingLoanOnly": "Dopasowywanie płatności dotyczy tylko kredytów hipotecznych i pożyczek",
+    "paymentMatchingRequiresSchedule": "Dopasowywanie płatności wymaga zaplanowanej płatności kredytu. Najpierw skonfiguruj jego płatności.",
+    "paymentMatchingRuleExists": "Ten kredyt ma już regułę dopasowywania płatności",
+    "paymentMatchingFailed": "Kredyt został zapisany, ale nie udało się utworzyć jego reguły dopasowywania płatności. Utwórz ją w szczegółach kredytu."
   },
   "actionHistory": {
     "nothingToUndo": "Nie ma nic do cofnięcia",

@@ -58,7 +58,11 @@
     "unknownInvestmentAccount": "Onbekende rekening: {{ name }}. Gebruik een exacte naam uit de rekeninglijst van de gebruiker.",
     "notACreditCard": "Afschriftperiodes zijn alleen beschikbaar voor creditcardrekeningen",
     "noStatementSettlementDay": "Voor deze creditcard is geen afsluitdag van het afschrift ingesteld",
-    "loanLedgerUnreadable": "Het saldo van deze lening kon niet worden gelezen. Probeer het opnieuw."
+    "loanLedgerUnreadable": "Het saldo van deze lening kon niet worden gelezen. Probeer het opnieuw.",
+    "paymentMatchingLoanOnly": "Betalingskoppeling geldt alleen voor hypotheken en leningen",
+    "paymentMatchingRequiresSchedule": "Betalingskoppeling heeft de geplande betaling van de lening nodig. Stel eerst de betalingen in.",
+    "paymentMatchingRuleExists": "Deze lening heeft al een regel voor betalingskoppeling",
+    "paymentMatchingFailed": "De lening is opgeslagen, maar de regel voor betalingskoppeling kon niet worden aangemaakt. Maak deze aan via de details van de lening."
   },
   "actionHistory": {
     "nothingToUndo": "Niets om ongedaan te maken",

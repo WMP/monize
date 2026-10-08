@@ -58,7 +58,11 @@
     "unknownInvestmentAccount": "未知账户：{{ name }}。请使用用户账户列表中的准确名称。",
     "notACreditCard": "账单周期仅适用于信用卡账户",
     "noStatementSettlementDay": "此信用卡未配置账单结算日",
-    "loanLedgerUnreadable": "无法读取此贷款的余额。请重试。"
+    "loanLedgerUnreadable": "无法读取此贷款的余额。请重试。",
+    "paymentMatchingLoanOnly": "付款匹配仅适用于抵押贷款和贷款",
+    "paymentMatchingRequiresSchedule": "付款匹配需要贷款的计划付款。请先设置其付款。",
+    "paymentMatchingRuleExists": "此贷款已有付款匹配规则",
+    "paymentMatchingFailed": "贷款已保存，但无法创建其付款匹配规则。请在贷款详情中创建。"
   },
   "actionHistory": {
     "nothingToUndo": "没有可撤销的操作",
