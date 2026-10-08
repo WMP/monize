@@ -56,6 +56,7 @@ import { ImportEntityCreatorService } from "./import-entity-creator.service";
 import { ImportPostProcessingService } from "./import-post-processing.service";
 import { ImportInvestmentProcessorService } from "./import-investment-processor.service";
 import { ImportRegularProcessorService } from "./import-regular-processor.service";
+import { orderByDateStable } from "../common/date-order.util";
 import { Security } from "../securities/entities/security.entity";
 import { HoldingsService } from "../securities/holdings.service";
 import { Tag } from "../tags/entities/tag.entity";
@@ -459,10 +460,14 @@ export class ImportService {
             );
           }
 
-          // Process transactions
-          let txIndex = 0;
-          for (const qifTx of block.transactions) {
-            txIndex++;
+          // Process transactions oldest first, and within a date in file
+          // order, so a rule that settles loan installments folds forward
+          // through time (INV-RULE-005). `txIndex` stays the row's place in
+          // the file, which the messages name.
+          for (const { row: qifTx, position: txIndex } of orderByDateStable(
+            block.transactions,
+            (row) => row.date,
+          )) {
             try {
               const savepointName = `tx_import_${txIndex}`;
               await manager.query(`SAVEPOINT ${savepointName}`);
@@ -1381,11 +1386,15 @@ export class ImportService {
           );
         }
 
-        // Import transactions
-        let txIndex = 0;
+        // Import transactions oldest first, and within a date in file order,
+        // so a rule that settles loan installments folds forward through time
+        // (INV-RULE-005). `txIndex` stays the row's place in the file, which
+        // the messages name.
         const totalTransactions = result.transactions.length;
-        for (const qifTx of result.transactions) {
-          txIndex++;
+        for (const { row: qifTx, position: txIndex } of orderByDateStable(
+          result.transactions,
+          (row) => row.date,
+        )) {
           try {
             const savepointName = `tx_import_${txIndex}`;
             await manager.query(`SAVEPOINT ${savepointName}`);

@@ -251,6 +251,7 @@ describe("BankSyncService", () => {
       imported: 0,
       skipped: 0,
       excluded: 0,
+      affectedAccountIds: [],
       settledScheduleIds: [],
     });
 
@@ -510,6 +511,7 @@ describe("BankSyncService", () => {
           imported: 1,
           skipped: 0,
           excluded: 0,
+          affectedAccountIds: [],
           settledScheduleIds: ["st-loan"],
         };
       });
@@ -526,6 +528,34 @@ describe("BankSyncService", () => {
         ["st-loan"],
       );
       expect(order).toEqual(["write", "reprice"]);
+    });
+
+    it("dispatches the net-worth recompute for every account a rule moved money into, after the write, and the synced account once (INV-CACHE-001)", async () => {
+      provider.fetchTransactions.mockResolvedValue([
+        bankTransaction({ entryReference: "ref-1" }),
+      ]);
+      const order: string[] = [];
+      writer.write.mockImplementation(async () => {
+        order.push("write");
+        return {
+          imported: 1,
+          skipped: 0,
+          excluded: 0,
+          affectedAccountIds: ["loan-1", ACCOUNT_ID, "loan-1"],
+          settledScheduleIds: [],
+        };
+      });
+      netWorth.triggerDebouncedRecalc.mockImplementation((accountId) => {
+        order.push(`recalc:${accountId}`);
+      });
+
+      await sync();
+
+      expect(order).toEqual(["write", `recalc:${ACCOUNT_ID}`, "recalc:loan-1"]);
+      expect(netWorth.triggerDebouncedRecalc).toHaveBeenCalledWith(
+        "loan-1",
+        USER_ID,
+      );
     });
 
     it("reads the bank, plans, writes once and reports the result", async () => {
@@ -545,6 +575,7 @@ describe("BankSyncService", () => {
         imported: 1,
         skipped: 0,
         excluded: 0,
+        affectedAccountIds: [],
         settledScheduleIds: [],
       });
 
@@ -631,6 +662,7 @@ describe("BankSyncService", () => {
           imported: 0,
           skipped: 0,
           excluded: 0,
+          affectedAccountIds: [],
           settledScheduleIds: [],
         };
       });
@@ -685,6 +717,7 @@ describe("BankSyncService", () => {
         imported: 2,
         skipped: 0,
         excluded: 0,
+        affectedAccountIds: [],
         settledScheduleIds: [],
       });
       await sync();
@@ -698,6 +731,7 @@ describe("BankSyncService", () => {
         imported: 0,
         skipped: 3,
         excluded: 0,
+        affectedAccountIds: [],
         settledScheduleIds: [],
       });
       await sync();
@@ -1195,6 +1229,7 @@ describe("BankSyncService", () => {
         imported: 1,
         skipped: 0,
         excluded: 3,
+        affectedAccountIds: [],
         settledScheduleIds: [],
       });
       const result = await service.syncAccount(
@@ -1212,6 +1247,7 @@ describe("BankSyncService", () => {
         imported: 0,
         skipped: 0,
         excluded: 2,
+        affectedAccountIds: [],
         settledScheduleIds: [],
       });
       await service.syncAccount(

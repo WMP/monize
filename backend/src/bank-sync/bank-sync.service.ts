@@ -483,6 +483,14 @@ export class BankSyncService {
         if (written.imported > 0) {
           this.netWorth.triggerDebouncedRecalc(account.id, userId);
         }
+        // An account a rule moved money into (the loan of a settlement) has
+        // its own derived state to refresh; the synced account was dispatched
+        // above.
+        for (const accountId of new Set(written.affectedAccountIds)) {
+          if (accountId !== account.id) {
+            this.netWorth.triggerDebouncedRecalc(accountId, userId);
+          }
+        }
         await repriceSettledLoanTemplates(
           this.dataSource,
           written.settledScheduleIds,
