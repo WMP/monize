@@ -117,6 +117,15 @@ describe('WizardSamplesStep', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
+  it('does not open the dialog when Space is pressed on the row checkbox', async () => {
+    await renderStep({ picks: { 'r-1': chosen('1') } });
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole('checkbox', { name: 'Use the email Order 1 as a sample' }), { key: ' ' });
+    });
+    await act(async () => {});
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
   it('does not open the dialog when the row checkbox is clicked', async () => {
     const props = await renderStep({ picks: { 'r-1': chosen('1') } });
     await click(screen.getByRole('checkbox', { name: 'Use the email Order 1 as a sample' }));

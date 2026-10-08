@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { DataSource } from "typeorm";
+import { hashToken, tokenHashesEqual } from "../../auth/crypto.util";
 import { withScopedDb } from "../../common/db/scoped-db";
 import { EncryptionService } from "../../common/encryption/encryption.service";
 import { tr } from "../../i18n/translate";
@@ -87,13 +88,17 @@ export class OAuthAccessTokenService {
     }
 
     const secrets = [refreshToken, grant.accessToken];
-    if (grant.refreshToken !== null && grant.refreshToken !== refreshToken) {
-      secrets.push(grant.refreshToken);
+    const rotated: string | null = grant.refreshToken;
+    if (
+      rotated !== null &&
+      !tokenHashesEqual(hashToken(rotated), hashToken(refreshToken))
+    ) {
+      secrets.push(rotated);
       await this.replaceToken(
         userId,
         mailboxId,
         refreshTokenEnc,
-        this.encryption.encrypt(grant.refreshToken),
+        this.encryption.encrypt(rotated),
       );
     }
     return { accessToken: grant.accessToken, secrets };

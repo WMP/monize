@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { HOVER_ROW_ON_CARD } from '@/components/ui/Card';
+import { INTERACTIVE_ROW_FOCUS_CLASS, activateOnKey } from '@/components/ui/interactive-row';
 import { TABLE_BODY_CLASS, TABLE_CLASS, Td, Th } from '@/components/ui/Table';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useLongPress } from '@/hooks/useLongPress';
@@ -108,13 +109,8 @@ export function WizardSamplesStep({ domain, picks, selected, onPick, onToggle, o
                   key={receipt.id}
                   {...getRowHandlers(receipt)}
                   tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
-                      e.preventDefault();
-                      setOpened(receipt);
-                    }
-                  }}
-                  className={`cursor-pointer ${HOVER_ROW_ON_CARD} focus-visible:outline-2 focus-visible:outline-blue-500`}
+                  onKeyDown={activateOnKey(() => setOpened(receipt))}
+                  className={`cursor-pointer ${HOVER_ROW_ON_CARD} ${INTERACTIVE_ROW_FOCUS_CLASS}`}
                 >
                   <Td className="px-2 align-top sm:px-4">
                     <input
@@ -126,6 +122,7 @@ export function WizardSamplesStep({ domain, picks, selected, onPick, onToggle, o
                       onClick={(e) => e.stopPropagation()}
                       onMouseDown={(e) => e.stopPropagation()}
                       onTouchStart={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
                       aria-label={t('select', { subject: receipt.subject })}
                       className={CHECKBOX_CLASS}
                     />

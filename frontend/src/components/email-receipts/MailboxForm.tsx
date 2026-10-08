@@ -67,10 +67,11 @@ export function MailboxForm({ mailbox, onSaved }: MailboxFormProps) {
   const [testResult, setTestResult] = useState<EmailReceiptMailboxTestResult | null>(null);
 
   const passwordRequired = view === null || host.trim() !== view.host || username.trim() !== view.username;
+  const hasPassword = password.length > 0;
   const hasLogin = host.trim() !== '' && port !== undefined && username.trim() !== '';
   const isDirty =
     view === null ||
-    password !== '' ||
+    hasPassword ||
     host.trim() !== view.host ||
     port !== view.port ||
     security !== view.security ||
@@ -80,7 +81,7 @@ export function MailboxForm({ mailbox, onSaved }: MailboxFormProps) {
     settings.aiMode !== view.aiMode ||
     settings.autoApply !== view.autoApply ||
     settings.profileProposalsCountTowardAiLimit !== view.profileProposalsCountTowardAiLimit;
-  const canSave = hasLogin && isDirty && !(passwordRequired && password === '');
+  const canSave = hasLogin && isDirty && !(passwordRequired && !hasPassword);
 
   const applyView = (next: EmailReceiptMailbox) => {
     setView(next);
@@ -107,7 +108,7 @@ export function MailboxForm({ mailbox, onSaved }: MailboxFormProps) {
       port,
       security,
       username: username.trim(),
-      ...(password !== '' ? { password } : {}),
+      ...(hasPassword ? { password } : {}),
       ...(settings.folder.trim() !== '' ? { folder: settings.folder.trim() } : {}),
       enabled: settings.enabled,
       aiMode: settings.aiMode,
@@ -136,7 +137,7 @@ export function MailboxForm({ mailbox, onSaved }: MailboxFormProps) {
       port,
       security,
       username: username.trim(),
-      ...(password !== '' ? { password } : {}),
+      ...(hasPassword ? { password } : {}),
       ...(settings.folder.trim() !== '' ? { folder: settings.folder.trim() } : {}),
     };
     setIsTesting(true);
@@ -240,7 +241,7 @@ export function MailboxForm({ mailbox, onSaved }: MailboxFormProps) {
           type="button"
           variant="outline"
           isLoading={isTesting}
-          disabled={!hasLogin || (passwordRequired && password === '' && view === null)}
+          disabled={!hasLogin || (passwordRequired && !hasPassword && view === null)}
           onClick={() => void handleTest()}
         >
           {t('test.button')}

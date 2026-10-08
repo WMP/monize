@@ -185,9 +185,9 @@ function tokens(
 ): string[] {
   if (value === undefined) return [];
   const out: string[] = [];
-  for (const token of value.split(/\s+/)) {
-    if (token === "") continue;
-    out.push(cutText(token, chars));
+  for (const word of value.split(/\s+/)) {
+    if (word === "") continue;
+    out.push(cutText(word, chars));
     if (out.length >= max) break;
   }
   return out;
