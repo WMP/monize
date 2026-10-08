@@ -709,8 +709,9 @@ Balance = 7,795 - 8,486 = -691        Balance % = -691 / 7,795 * 100 = -8.86
 - **Switch ON, value chosen.** The window is the first of the trend's earliest
   month to the last day of its latest month. The funding fetch (F3) feeds an
   "Available funds" series per month = `income + taggedInflows - taggedOutflows`
-  (`taggedFunds` over `periodBalanceFields` inputs), drawn as an indigo line beside
-  the Budgeted and Actual bars on the overview chart. The tooltip adds "Available
+  (`taggedFunds`), drawn as an indigo bar beside the Budgeted and Actual bars on
+  the overview chart (a bar, not a line: it keeps the chart a plain bar chart, so
+  the three series read as three amounts of the same month). The tooltip adds "Available
   funds" and "Actual vs available" (`available - actual`; positive = money left).
   The variance line, the summary table and the by-category view are unchanged.
 - Months are aligned by `monthKey` (YYYY-MM). A month missing from the funding
