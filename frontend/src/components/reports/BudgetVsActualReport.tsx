@@ -32,6 +32,16 @@ import type {
 } from '@/components/ui/Table';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { chartColors } from '@/lib/chart-colors';
+import { TaggedFundsControls } from '@/components/reports/TaggedFundsControls';
+import { BudgetFundsNote } from '@/components/reports/BudgetFundsNote';
+import { BudgetFundsTooltip } from '@/components/reports/BudgetFundsTooltip';
+import { useTaggedFundsFilter } from '@/hooks/useTaggedFundsFilter';
+import { useTaggedFunding } from '@/hooks/useTaggedFunding';
+import { budgetFundsSeries, trendWindow } from '@/lib/budget-available-funds';
+
+const INCLUDE_TRANSFERS_STORAGE_KEY = 'monize-reports-budget-vs-actual-include-transfers';
+// The budget's own actual is not account-scoped, so the funding fetch is not either.
+const NO_ACCOUNTS: string[] = [];
 
 type BudgetTrendSortField = 'month' | 'budgeted' | 'actual' | 'variance' | 'percentUsed';
 
@@ -221,6 +231,29 @@ export function BudgetVsActualReport() {
     () => reportResponse?.catTrend ?? [],
     [reportResponse],
   );
+  // The funding view (spec 11.6): an Available funds series beside Budgeted and
+  // Actual, from the Income vs Expenses answer for the months the trend covers.
+  // Only the overview chart carries it, and only with a key, a value and the
+  // switch all set; the budget figures themselves are never changed.
+  const fundsFilter = useTaggedFundsFilter(INCLUDE_TRANSFERS_STORAGE_KEY);
+  const fundsWindow = useMemo(() => trendWindow(trendData), [trendData]);
+  const showFunds = fundsFilter.include && viewMode === 'overview' && fundsWindow !== null;
+  const funding = useTaggedFunding({
+    enabled: showFunds,
+    tagKey: fundsFilter.tagKey,
+    tagValue: fundsFilter.tagValue,
+    startDate: fundsWindow?.startDate,
+    endDate: fundsWindow?.endDate ?? '',
+    accountIds: NO_ACCOUNTS,
+  });
+  const fundsSeries = useMemo(
+    () =>
+      showFunds && funding.status === 'ready' && funding.response
+        ? budgetFundsSeries(trendData, funding.response, fundsFilter.tagValue)
+        : null,
+    [showFunds, funding.status, funding.response, trendData, fundsFilter.tagValue],
+  );
+  const chartData = fundsSeries ? fundsSeries.points : trendData;
   const isLoading = budgetsLoading || reportLoading;
   const error = budgetsError || reportError;
   const reload = () => {
@@ -342,6 +375,31 @@ export function BudgetVsActualReport() {
     );
   }
 
+  const defaultTooltip = ({ active, payload, label }: { active?: boolean; payload?: readonly any[]; label?: unknown }) => {
+    if (!active || !payload || payload.length === 0) return null;
+    return (
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
+        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">{formatChartMonth(String(label))}</p>
+        {payload.map((entry, idx) => (
+          <p key={(entry.dataKey as string) ?? entry.name ?? idx} className="text-sm" style={{ color: entry.color }}>
+            {entry.name}: {formatCurrency(entry.value as number)}
+          </p>
+        ))}
+      </div>
+    );
+  };
+  const tooltipContent = fundsSeries
+    ? (props: { active?: boolean; payload?: readonly any[]; label?: unknown }) => (
+        <BudgetFundsTooltip
+          active={props.active}
+          payload={props.payload as any}
+          label={props.label === undefined ? undefined : String(props.label)}
+          formatMonth={formatChartMonth}
+          partial={!fundsSeries.complete}
+        />
+      )
+    : defaultTooltip;
+
   return (
     <div className="space-y-6">
       {/* Controls */}
@@ -370,6 +428,7 @@ export function BudgetVsActualReport() {
               <option value={24}>{t('budgetVsActual.months24')}</option>
             </select>
           </div>
+          {viewMode === 'overview' && <TaggedFundsControls filter={fundsFilter} />}
           <div className="flex items-center gap-2">
             <div className="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded-md p-0.5">
               <button
@@ -398,6 +457,14 @@ export function BudgetVsActualReport() {
         </div>
       </div>
 
+      {showFunds && (
+        <BudgetFundsNote
+          status={funding.status}
+          missingCurrencies={fundsSeries?.missingCurrencies ?? []}
+          partial={fundsSeries?.complete === false}
+        />
+      )}
+
       {/* Chart */}
       {viewMode === 'overview' ? (
         <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
@@ -409,28 +476,22 @@ export function BudgetVsActualReport() {
             <>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                  <BarChart data={trendData}>
+                  <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                     <XAxis dataKey="monthKey" tick={{ fontSize: 12 }} tickFormatter={(value: string) => formatChartMonth(value)} />
                     <YAxis tickFormatter={(v) => formatCurrency(v)} tick={{ fontSize: 12 }} />
-                    <Tooltip
-                      content={({ active, payload, label }) => {
-                        if (!active || !payload || payload.length === 0) return null;
-                        return (
-                          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
-                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">{formatChartMonth(String(label))}</p>
-                            {payload.map((entry, idx) => (
-                              <p key={(entry.dataKey as string) ?? entry.name ?? idx} className="text-sm" style={{ color: entry.color }}>
-                                {entry.name}: {formatCurrency(entry.value as number)}
-                              </p>
-                            ))}
-                          </div>
-                        );
-                      }}
-                    />
+                    <Tooltip content={tooltipContent} />
                     <Legend />
                     <Bar dataKey="budgeted" name={t('budgetVsActual.seriesBudgeted')} fill={chartColors.primary} radius={[2, 2, 0, 0]} />
                     <Bar dataKey="actual" name={t('budgetVsActual.seriesActual')} fill={chartColors.income} radius={[2, 2, 0, 0]} />
+                    {fundsSeries && (
+                      <Bar
+                        dataKey="availableFunds"
+                        name={`${t('tagBreakdown.fundsSeriesName', { value: fundsFilter.tagValue })}${fundsSeries.complete ? '' : '*'}`}
+                        fill={chartColors.inflow}
+                        radius={[2, 2, 0, 0]}
+                      />
+                    )}
                   </BarChart>
                 </ResponsiveContainer>
               </div>
