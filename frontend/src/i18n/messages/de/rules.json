@@ -251,7 +251,34 @@
       "splitGuideTip": "Tipp: Lege unter „Aktiv zwischen“ ein Startdatum fest, damit ältere abgeglichene Transaktionen nicht geändert werden, und nutze vor dem Speichern den Bereich Test.",
       "convertGuide": "Eine Ausgabe wird zu einer Überweisung auf das gewählte Konto, eine Einnahme zu einer Überweisung von diesem Konto. Nur der Kontostand des anderen Kontos ändert sich. Tipp: Nutze „Aktiv zwischen“, damit ältere Transaktionen nicht geändert werden.",
       "splitGuideName1": "tilgung",
-      "splitGuideName2": "zinsen"
+      "splitGuideName2": "zinsen",
+      "loanGuide": "Verwende dies für eine Bankabbuchung, die eine Hypotheken- oder Darlehensrate als einen Betrag bezahlt. Gleiche die Abbuchung unter „Wenn“ nach Konto, Zahlungsempfängertext oder Beschreibung ab. Die Transaktion wird zu einer Aufteilung: Die Tilgung wird auf das Darlehenskonto überwiesen, und die Zinsen gehen in die Zinskategorie, beide bewertet für die Rate, die sie bezahlen. Tipp: Schalte die automatische Buchung der geplanten Zahlung des Darlehens aus, damit die Rate nicht doppelt bezahlt wird, und nutze den Bereich Test, bevor du speicherst.",
+      "loan": {
+        "help": "Die passende Abbuchung bezahlt die nächste Rate des Darlehens, die nahe ihrem Datum fällig ist. Monize ermittelt Tilgung und Zinsen für diese Rate; du gibst nie einen Betrag ein.",
+        "account": "Darlehenskonto",
+        "accountPlaceholder": "Hypothek oder Darlehen auswählen...",
+        "noLoans": "Du hast kein offenes Hypotheken- oder Darlehenskonto zum Begleichen.",
+        "window": "Fälligkeitsfenster",
+        "windowHelp": "Wie weit vom Fälligkeitsdatum entfernt die Bank die Zahlung abbuchen darf. Eine Abbuchung bis zu dieser Anzahl von Tagen vor oder nach dem Fälligkeitsdatum einer Rate bezahlt diese Rate; eine außerhalb des Fensters wird unverändert gelassen.",
+        "daysBefore": "Tage vor dem Fälligkeitsdatum",
+        "daysAfter": "Tage nach dem Fälligkeitsdatum",
+        "excess": "Wenn die Abbuchung höher ist als die Rate",
+        "excessPolicies": {
+          "extra_principal": "Die Differenz als Sondertilgung bezahlen",
+          "refuse": "Die Transaktion unverändert lassen"
+        },
+        "shortfall": "Wenn die Abbuchung niedriger ist als die Rate",
+        "shortfallPolicies": {
+          "refuse": "Die Transaktion unverändert lassen",
+          "interest_first": "Zuerst die Zinsen bezahlen, den Rest als Tilgung"
+        },
+        "policyNote": "Eine Differenz von wenigen Cent wird von der Zinsposition aufgefangen.",
+        "policyHelp": "Banken runden jeden Teil einzeln, daher wird eine Abbuchung innerhalb von 5 der kleinsten Einheit der Währung (0,05 bei den meisten Währungen) als genau behandelt, und die Zinsposition übernimmt die Differenz. Eine größere Differenz folgt den beiden Optionen oben.",
+        "interestCategory": "Zinskategorie (optional)",
+        "interestCategoryPlaceholder": "Die eigene Zinskategorie des Darlehens",
+        "autoPostTitle": "Die geplante Zahlung des Darlehens bucht sich selbst",
+        "autoPostBody": "Die automatische Buchung ist für die geplante Zahlung dieses Darlehens aktiviert, sodass sie und die Bankabbuchung, die diese Regel begleicht, dieselbe Rate bezahlen würden. Schalte die automatische Buchung der geplanten Zahlung aus."
+      }
     },
     "actionTypes": {
       "add_tags": "Tags hinzufügen",
@@ -262,7 +289,8 @@
       "set_payee_from_text": "Zahlungsempfänger aus Text festlegen",
       "set_description": "Beschreibung festlegen",
       "convert_to_transfer": "In eine Überweisung umwandeln",
-      "split": "Transaktion aufteilen"
+      "split": "Transaktion aufteilen",
+      "settle_loan_installment": "Eine Darlehensrate begleichen"
     },
     "save": {
       "button": "Regel speichern",
@@ -311,8 +339,8 @@
         "MAX_NODES": "Es gibt zu viele Bedingungen und Gruppen. Das Limit ist {maxNodes}.",
         "NO_ACTIONS": "Fügen Sie mindestens eine Aktion hinzu.",
         "TOO_MANY_ACTIONS": "Es gibt zu viele Aktionen. Das Limit ist {maxActions}.",
-        "DUPLICATE_ACTION": "Eine Regel kann nur eine KI-Prüfung, eine Überweisung oder Aufteilung und einen Aufteilungsteil für den Rest enthalten.",
-        "CONFLICTING_ACTIONS": "Eine Überweisungs- oder Aufteilungsaktion kann nicht mit „Kategorie festlegen“ kombiniert werden, und jeder ihrer Teile hat entweder eine Kategorie oder ein Konto.",
+        "DUPLICATE_ACTION": "Eine Regel kann nur eine KI-Prüfung, eine Überweisung, Aufteilung oder Darlehensbegleichung und einen Aufteilungsteil für den Rest enthalten.",
+        "CONFLICTING_ACTIONS": "Eine Überweisungs-, Aufteilungs- oder Darlehensbegleichungsaktion kann nicht mit „Kategorie festlegen“ kombiniert werden, und jeder Teil einer Aufteilung hat entweder eine Kategorie oder ein Konto.",
         "INVALID_CAPTURE": "Ein Erfassungsname besteht aus Kleinbuchstaben und Ziffern, beginnt mit einem Buchstaben und ist höchstens 20 Zeichen lang.",
         "TOO_MANY_CAPTURES": "Ein Muster darf höchstens 5 Erfassungen enthalten.",
         "DUPLICATE_CAPTURE": "Jeder Erfassungsname darf in einer Regel nur einmal vorkommen.",
@@ -395,6 +423,7 @@
     "matchesNone": "Diese Regel trifft auf keine der geprüften Buchungen zu ({scanned}). Prüfen Sie die Bedingungen vor dem Speichern. Ein Muster ohne * trifft nur auf den gesamten Text zu.",
     "noChange": "{matched} von {scanned} geprüften Buchungen erfüllen die Bedingungen der Regel, aber es würde sich nichts ändern (zum Beispiel, weil sie den Wert schon haben und „nur wenn leer“ aktiv ist). Das ist kein Fehler.",
     "truncated": "Es passen mehr Buchungen, als das Limit zulässt. Nur die neuesten sind enthalten. Erhöhe das Limit oder grenze den Zeitraum ein, um den Rest einzubeziehen.",
+    "truncatedOldest": "Es haben mehr Transaktionen übereingestimmt, als das Limit erlaubt. Nur die ältesten sind enthalten, weil diese Regel Darlehensraten in Datumsreihenfolge begleicht. Führe sie nach diesem Lauf erneut aus, um den Rest einzuschließen.",
     "noMatches": {
       "title": "Keine Buchung würde geändert",
       "body": "Keine der geprüften Buchungen passt zur Regel, oder die Regel würde daran nichts ändern."
@@ -408,7 +437,8 @@
     },
     "skipped": {
       "title": "{count, plural, one {# Buchung wird übergangen} other {# Buchungen werden übergangen}}",
-      "line": "{count, plural, one {# Buchung} other {# Buchungen}}: {reason}"
+      "line": "{count, plural, one {# Buchung} other {# Buchungen}}: {reason}",
+      "missing": "Beim Darlehen fehlt: {inputs}."
     },
     "skipReasons": {
       "reconciled_locked": "sie ist abgeglichen und gesperrt",
@@ -428,7 +458,17 @@
       "transfer_currency_mismatch": "das Überweisungskonto hat eine andere Währung",
       "split_amount_unparseable": "ein Betrag in ihrem Text ließ sich nicht als Zahl lesen",
       "split_sum_mismatch": "die Teile ergeben zusammen nicht ihren Betrag",
-      "split_too_few_parts": "nach dem Weglassen von Nullbeträgen bleiben weniger als zwei Teile übrig"
+      "split_too_few_parts": "nach dem Weglassen von Nullbeträgen bleiben weniger als zwei Teile übrig",
+      "row_from_scheduled_posting": "sie wurde aus der geplanten Zahlung des Darlehens gebucht, die die Rate bereits bezahlt hat",
+      "row_is_income": "sie ist eine Einnahme, und nur eine Abbuchung bezahlt eine Rate",
+      "loan_account_unavailable": "das Darlehenskonto ist nicht verfügbar (es wurde gelöscht, ist geschlossen, gehört dir nicht oder ist keine Hypothek oder kein Darlehen)",
+      "loan_interest_booked_separately": "das Darlehen bucht seine Zinsen als separate Transaktionen, sodass eine Zahlung sie nicht tragen kann",
+      "loan_not_configured": "beim Darlehen fehlt, was zur Bewertung einer Rate nötig ist",
+      "no_installment_in_window": "keine Rate des Darlehens ist innerhalb des Fensters um ihr Datum fällig",
+      "occurrence_already_posted": "die im Fenster fällige Rate ist bereits bezahlt",
+      "loan_debt_retired": "das Darlehen ist bereits abbezahlt",
+      "installment_amount_excess": "sie ist höher als die Rate, und die Regel lässt höhere Abbuchungen unverändert",
+      "installment_amount_shortfall": "sie ist niedriger als die Rate, und die Regel lässt niedrigere Abbuchungen unverändert"
     },
     "change": {
       "category": "Kategorie: {before} → {after}",
@@ -448,7 +488,8 @@
       "splitToTransfer": "auf {account}",
       "splitToTransferPayee": "auf {account}, Zahlungsempfänger {payee}",
       "splitToCategory": "als {category}",
-      "splitUncategorised": "ohne Kategorie"
+      "splitUncategorised": "ohne Kategorie",
+      "loanSettlement": "{done, select, yes {Wurde Rate {number} von {account} beglichen} other {Wird Rate {number} von {account} beglichen}}, fällig {dueDate}: Tilgung {principal}, Zinsen {interest}{hasExtra, select, yes {, Sondertilgung {extra}} other {}}. Schuld vorher: {debtBefore}"
     },
     "filters": {
       "accounts": "Konten",
@@ -475,6 +516,19 @@
     "done": {
       "summary": "{count, plural, =0 {Es wurden keine Buchungen geändert.} one {# Buchung wurde geändert.} other {# Buchungen wurden geändert.}}",
       "undo": "Du kannst die Ausführung im Aktionsverlauf rückgängig machen."
+    },
+    "missingInputs": {
+      "scheduledPayment": "eine geplante Zahlung",
+      "managedTemplate": "eine in Tilgung und Zinsen aufgeteilte Zahlung",
+      "scheduleCalendar": "ein Zahlungsplan",
+      "interestCategory": "eine Zinskategorie",
+      "amortizationMonths": "der Tilgungszeitraum",
+      "paymentStartDate": "das Datum der ersten Zahlung",
+      "paymentFrequency": "das Zahlungsintervall",
+      "originalPrincipal": "der ursprüngliche Darlehensbetrag",
+      "rate": "ein Zinssatz für das Datum",
+      "payment": "der Zahlungsbetrag",
+      "other": "eine Darlehenseinstellung"
     }
   },
   "applications": {
@@ -531,7 +585,8 @@
       "set_payee_from_text": "Zahlungsempfänger aus Text festlegen: „{template}“{createIfMissing, select, yes { (angelegt, falls nicht vorhanden)} other {}}{onlyIfEmpty, select, yes { (nur wenn leer)} other {}}",
       "set_description": "Beschreibung festlegen ({mode, select, append {anfügen} prepend {voranstellen} other {ersetzen}}): „{template}“{onlyIfEmpty, select, yes { (nur wenn leer)} other {}}",
       "convert_to_transfer": "In eine Überweisung {direction, select, from {von} other {auf}} {account} umwandeln",
-      "split": "Aufteilen in: {parts}"
+      "split": "Aufteilen in: {parts}",
+      "settle_loan_installment": "Die Rate von {account} begleichen, bezahlt durch eine Abbuchung bis zu {before, plural, one {# Tag} other {# Tagen}} vor oder {after, plural, one {# Tag} other {# Tagen}} nach ihrem Fälligkeitsdatum; eine höhere Abbuchung {excess, select, refuse {wird unverändert gelassen} other {bezahlt eine Sondertilgung}}, eine niedrigere {shortfall, select, interest_first {bezahlt zuerst die Zinsen} other {wird unverändert gelassen}}"
     },
     "splitPart": {
       "transfer": "{amount} an {account}",
