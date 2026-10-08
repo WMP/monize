@@ -230,6 +230,7 @@ export const RULES: Record<string, TableRules> = {
     term_end_date: keep,
     amortization_months: keep,
     original_principal: scale,
+    payment_matching_rule_id: keep,
     created_at: keep,
     updated_at: keep,
   },
@@ -377,14 +378,22 @@ export const RULES: Record<string, TableRules> = {
     updated_at: keep,
   },
   scheduled_transaction_postings: {
-    // Every column is structure or a date: which occurrence of which schedule
-    // was posted, and when. Nothing here names a payee, an amount or free text,
-    // so there is nothing to mask or drop.
+    // Structure and dates: which occurrence of which schedule was posted, when,
+    // by whom (the bill or a rule) and through which transaction. Nothing here
+    // names a payee or free text, so there is nothing to mask.
     id: keep,
     scheduled_transaction_id: keep,
     original_due_date: keep,
     posted_date: keep,
     created_at: keep,
+    transaction_id: keep,
+    source: keep, // 'post' | 'rule'
+    rule_id: keep,
+    // The settlement's pricing record carries the loan's debt and the
+    // installment's principal and interest as unscaled money strings; kept,
+    // it would disclose the magnitudes every scaled amount column hides.
+    // Nullable, and nothing reads it back but the settled-installments list.
+    pricing: drop,
   },
   scheduled_transaction_split_tags: {
     scheduled_transaction_split_id: keep,

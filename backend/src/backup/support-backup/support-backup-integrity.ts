@@ -110,6 +110,11 @@ const REFS: Record<string, RefRule[]> = {
       refTable: "scheduled_transactions",
       onMissing: "null",
     },
+    {
+      column: "payment_matching_rule_id",
+      refTable: "transaction_rules",
+      onMissing: "null",
+    },
   ],
   transactions: [
     { column: "account_id", refTable: "accounts", onMissing: "dropRow" },
@@ -212,6 +217,15 @@ const REFS: Record<string, RefRule[]> = {
       refTable: "scheduled_transactions",
       onMissing: "dropRow",
     },
+    // `dropRow`, the scrub's form of the column's ON DELETE CASCADE: a `rule`
+    // claim cannot hold a null here (`chk_stp_rule_claim_transaction`), so
+    // nulling it would make the file unrestorable.
+    {
+      column: "transaction_id",
+      refTable: "transactions",
+      onMissing: "dropRow",
+    },
+    { column: "rule_id", refTable: "transaction_rules", onMissing: "null" },
   ],
   scheduled_transaction_split_tags: [
     {

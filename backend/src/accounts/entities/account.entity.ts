@@ -14,6 +14,7 @@ import { Payee } from "../../payees/entities/payee.entity";
 import { ScheduledTransaction } from "../../scheduled-transactions/entities/scheduled-transaction.entity";
 import { User } from "../../users/entities/user.entity";
 import { Institution } from "../../institutions/entities/institution.entity";
+import { TransactionRule } from "../../transaction-rules/transaction-rule.entity";
 import { MortgageType, PrepaymentMode } from "../mortgage-type.util";
 
 export enum AccountType {
@@ -379,6 +380,16 @@ export class Account {
   @ManyToOne(() => ScheduledTransaction, { nullable: true })
   @JoinColumn({ name: "scheduled_transaction_id" })
   scheduledTransaction: ScheduledTransaction | null;
+
+  // The rule a loan's "Payment matching" created (docs/specs/
+  // loan-installment-settlement.md 5.4). A pointer for the UI only: the
+  // planner reads the rule's action, never this column.
+  @Column({ type: "uuid", name: "payment_matching_rule_id", nullable: true })
+  paymentMatchingRuleId: string | null;
+
+  @ManyToOne(() => TransactionRule, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "payment_matching_rule_id" })
+  paymentMatchingRule?: TransactionRule | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

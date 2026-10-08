@@ -115,13 +115,6 @@ export const RESTORE_PLAN: ReadonlyArray<RestoreStep> = [
     scopeToUser: false,
   },
   {
-    // After `scheduled_transactions`, which it references. No user_id column of
-    // its own -- ownership comes through the schedule, like the two above.
-    table: "scheduled_transaction_postings",
-    countKey: "scheduledTransactionPostings",
-    scopeToUser: false,
-  },
-  {
     table: "scheduled_transaction_split_tags",
     countKey: "scheduledTransactionSplitTags",
     scopeToUser: false,
@@ -136,6 +129,15 @@ export const RESTORE_PLAN: ReadonlyArray<RestoreStep> = [
   { table: "holdings", countKey: "holdings", scopeToUser: false },
   { table: "security_tags", countKey: "securityTags", scopeToUser: false },
   { table: "transactions", countKey: "transactions", scopeToUser: true },
+  {
+    // After `transactions`, the latest of the three tables it references
+    // (`scheduled_transactions`, `transaction_rules`, and the transaction that
+    // paid the occurrence). No user_id column of its own -- ownership comes
+    // through the schedule, like the scheduled tables above.
+    table: "scheduled_transaction_postings",
+    countKey: "scheduledTransactionPostings",
+    scopeToUser: false,
+  },
   {
     table: "transaction_splits",
     countKey: "transactionSplits",
@@ -306,6 +308,8 @@ export const DEFERRED_FK_COLUMNS: Readonly<Record<string, readonly string[]>> =
       "principal_category_id",
       "interest_category_id",
       "asset_category_id",
+      // Forward: transaction_rules restores after accounts.
+      "payment_matching_rule_id",
       // Deferred so that legacy backups (taken before institutions were
       // included in the export) restore without violating fk_accounts_institution.
       // Phase 3 only re-applies it when the referenced institution exists.
@@ -367,6 +371,7 @@ export const DEFERRED_FK_REPAIRS: ReadonlyArray<DeferredFkRepair> = [
   { table: "accounts", column: "principal_category_id" },
   { table: "accounts", column: "interest_category_id" },
   { table: "accounts", column: "asset_category_id" },
+  { table: "accounts", column: "payment_matching_rule_id" },
   { table: "transactions", column: "linked_transaction_id" },
   { table: "transactions", column: "parent_transaction_id" },
   { table: "transaction_attachments", column: "original_of_attachment_id" },
