@@ -98,15 +98,15 @@ Spec sections 10.8 and 10.9.
 
 Spec section 11.
 
-- [ ] Shared: `taggedFunds` (`lib/tagged-balance.ts`), `collectTagValues`,
+- [x] Shared: `taggedFunds` (`lib/tagged-balance.ts`), `collectTagValues`,
       `useTaggedFundsFilter`, `useTaggedFunding`, `useReportAccountScope`,
       `TaggedFundsControls`, `TaggedFundsStrip`.
-- [ ] Income by Source: account filter, controls, "Tagged transfers: <value>"
+- [x] Income by Source: account filter, controls, "Tagged transfers: <value>"
       entry and Available funds, shares unchanged; i18n.
-- [ ] Spending by Category: backend `tagKey` + `tagValue` filter (DTO, shared
+- [x] Spending by Category: backend `tagKey` + `tagValue` filter (DTO, shared
       `tagValuesArrayExpr`, unit + integration); frontend account filter,
       controls, Available funds / Spent / Balance strip.
-- [ ] Monthly Breakdown: backend `accountIds` (DTO, both queries, unit +
+- [x] Monthly Breakdown: backend `accountIds` (DTO, both queries, unit +
       integration); frontend account filter, controls, per-month summary block in
       new files (the report file only gains wiring).
 - [ ] i18n: every locale last.
@@ -115,6 +115,6 @@ Spec section 11.
 
 Spec section 11.6.
 
-- [ ] Frontend: controls, funding fetch aligned by `monthKey`, Available funds
+- [x] Frontend: controls, funding fetch aligned by `monthKey`, Available funds
       series, tooltip rows, completeness note; budget figures unchanged.
 - [ ] i18n: every locale last.
