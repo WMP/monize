@@ -658,6 +658,68 @@ describe("Income vs Expenses tag-key breakdown (integration)", () => {
     });
   });
 
+  describe("internal transfers under an account filter (spec 10.8)", () => {
+    function flows(accountIds: string[]) {
+      return withUserContext(userId, async () => {
+        const result = await income.getIncomeVsExpenses(userId, START, END, {
+          tagKey: "scope",
+          accountIds,
+        });
+        const household = bucketByValue(result.buckets, "household");
+        return [household?.taggedInflows ?? 0, household?.taggedOutflows ?? 0];
+      });
+    }
+
+    async function savingsToChecking() {
+      const pair = await insertTransferPair({
+        fromAccountId: savingsId,
+        toAccountId: checkingId,
+        amount: 500,
+      });
+      await tagTransaction(pair.outLeg.id, "scope:household");
+      await tagTransaction(pair.inLeg.id, "scope:household");
+    }
+
+    it("whole transfer: no filter in 500 / out 500; one side counts; both sides count nothing", async () => {
+      await savingsToChecking();
+
+      expect(await flows([])).toEqual([500, 500]);
+      expect(await flows([checkingId])).toEqual([500, 0]);
+      expect(await flows([savingsId, checkingId])).toEqual([0, 0]);
+      expect(await flows([savingsId])).toEqual([0, 500]);
+    });
+
+    it("split transfer leg: counted from one side, not when both accounts are selected", async () => {
+      const { parent } = await insertSplitTransaction(
+        { accountId: savingsId },
+        [
+          {
+            amount: -500,
+            kind: SplitKind.TRANSFER,
+            transferAccountId: checkingId,
+          },
+        ],
+      );
+      await tagTransaction(parent.id, "scope:household");
+
+      expect(await flows([])).toEqual([0, 500]);
+      expect(await flows([savingsId])).toEqual([0, 500]);
+      expect(await flows([savingsId, checkingId])).toEqual([0, 0]);
+    });
+
+    it("an unlinked transfer leg has no counterpart to exclude and still counts", async () => {
+      const leg = await insertTransaction({
+        accountId: checkingId,
+        amount: 500,
+        isTransfer: true,
+        categoryId: null,
+      });
+      await tagTransaction(leg.id, "scope:household");
+
+      expect(await flows([savingsId, checkingId])).toEqual([500, 0]);
+    });
+  });
+
   describe("income by source and the account scope (Cash Flow page)", () => {
     function bySource(accountIds?: string[]) {
       return withUserContext(userId, () =>
