@@ -2595,11 +2595,14 @@ Status              enforced
 Statement           A scheduled occurrence (schedule, original due date) has at
                     most one claim, whether post() or a settle_loan_installment
                     rule wrote it; a transaction settles at most one
-                    occurrence; and a rule's claim exists exactly when the
-                    split it books exists: written, rolled back and deleted
-                    together. The undo of a run that settled is last in, first
-                    out per schedule. docs/specs/loan-installment-settlement.md
-                    is the authority.
+                    occurrence; a rule's claim is written and rolled back
+                    with the split it books, and released when the settling
+                    transaction is deleted; and post() and a settlement claim
+                    one installment under one key, because the slot calendar
+                    always holds next_due_date. The undo of a run that settled
+                    is last in, first out per schedule.
+                    docs/specs/loan-installment-settlement.md is the
+                    authority.
 Source of truth     scheduled_transaction_postings (one row per claimed
                     occurrence; transaction_id, source, rule_id and pricing
                     once B1 lands), the settled transaction and its split
@@ -2611,7 +2614,10 @@ Enforcement         None yet for the settlement: the action, the claim columns
                     docs/future-plans/loan-installment-settlement-tasks.md:
                     idx_stp_occurrence, claimed with INSERT ... ON CONFLICT DO
                     NOTHING RETURNING id by post() and the settlement alike
-                    (one claim per occurrence); a partial unique index on
+                    (one claim per occurrence), under one key because the
+                    slot calendar is built around next_due_date
+                    (occurrence-slots.ts, B3) and a claim off the calendar
+                    occupies the period it paid; a partial unique index on
                     transaction_id (one occurrence per transaction); the claim
                     INSERT, createSplits, the counterpart legs and the cursor
                     advance on one EntityManager in one withScopedDb
@@ -2641,8 +2647,12 @@ Known gaps          On the import paths the source account is held before the
                     settlement takes the schedule row, the reverse of post(),
                     so a bill posted by hand during an import that settles the
                     same schedule can deadlock; PostgreSQL aborts one
-                    transaction and the index still allows one claim (spec
-                    section 15).
+                    transaction and the index still allows one claim. Editing
+                    a settled row down to one line un-splits it and the claim
+                    stays; deleting one settling transaction while later
+                    settlements exist is allowed and leaves their interest
+                    priced on the older debt; a cursor moved back into a paid
+                    period lets post() pay it again (spec section 15).
 Status              unenforced
 ```
 

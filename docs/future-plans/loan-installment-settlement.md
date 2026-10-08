@@ -57,8 +57,8 @@ done.
 
 ## 3. Decisions
 
-The nineteen decisions are in spec section 3 (1 to 10 agreed on #1589, 11 to
-19 made in the spec). The ones that decide the shape of the work:
+The twenty-one decisions are in spec section 3 (1 to 10 agreed on #1589, 11
+to 21 made in the spec). The ones that decide the shape of the work:
 
 1. **A neutral loan core**, `backend/src/loan-installments/`: functions over
    `EntityManager`, no `@Injectable`, and no import from `transactions/*`,
@@ -88,9 +88,10 @@ The nineteen decisions are in spec section 3 (1 to 10 agreed on #1589, 11 to
 | 3 | F1, B7, F2, F3, B8 | The rules editor card and preview, payment matching on create and setup, the Loan Details panel, the assistant and MCP name form | Creating a mortgage with payment matching creates a rule and turns auto-post off |
 | 4 | Q | Every locale, invariants enforced, docs, release note | none |
 
-The action is reachable from a stored rule from B4 (the planner) and writes
-from B5; until B5 lands a stored action plans and previews but its write is
-refused, so B4 is inert. B6 is the only task that changes behaviour for users
+B4 adds the action to the union and the planner while `rule-validation.ts`
+still answers `UNKNOWN_ACTION` for it, so no rule can store it and B4 is
+inert; B5 accepts it in the same PR that writes the claim, and F1 follows
+B5. B6 is the only task that changes behaviour for users
 who never create the rule (the import sort).
 
 ## 5. Where each rule is held

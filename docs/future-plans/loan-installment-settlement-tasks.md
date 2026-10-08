@@ -38,12 +38,14 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 | B4 | #1594 | The action in the rules engine: types, validation, references, planner, lookup rounds, skip reasons | B3 | inert | [ ] | -- |
 | B5 | #1595 | Write path: claim, cursor, trace, fingerprint, snapshot, undo, after-commit reprice; `post()` records its transaction | B4 | inert | [ ] | -- |
 | B6 | #1596 | Chronological fold, ascending run order, import ordering, bank-sync affected accounts | B5 | neutral | [ ] | -- |
-| F1 | #1597 | Frontend action card, types, run preview, skip reasons, en + pseudo | B4 | inert | [ ] | -- |
+| F1 | #1597 | Frontend action card, types, run preview, skip reasons, en + pseudo | B5 | inert | [ ] | -- |
 | B7 | #1598 | Mortgage and setup backend: payment matching, rule creation, auto-post off, original principal, endpoints | B5 | inert | [ ] | -- |
 | F2 | #1599 | Mortgage form and setup dialog: Payment matching, Original principal | F1, B7 | inert | [ ] | -- |
 | F3 | #1600 | Loan Details Payment matching panel | F2, B6 | inert | [ ] | -- |
 | B8 | #1601 | Assistant and MCP name form, hints, rule language, docs | B4 | inert | [ ] | -- |
 | Q | #1602 | Acceptance: all locales, invariants enforced, docs, release note | F3, B8, B6 | none | [ ] | -- |
+
+**Why F1 waits for B5:** until B5 the validator refuses the action, so a card for it would offer something the server refuses to save.
 
 **Why B6 is neutral, not inert:** the import sort applies to every user (spec decision 7), whether or not they store the action; within a date the file order is kept, so a file already in date order inserts exactly as before.
 
@@ -81,7 +83,7 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 **Files:** `backend/src/loan-installments/loan-settlement.types.ts`, `backend/src/loan-installments/occurrence-slots.ts`, `backend/src/loan-installments/loan-settlement-facts.ts`, `backend/src/loan-installments/dated-loan-debts.ts`, `backend/src/loan-installments/plan-loan-settlement.ts` (all new, with specs), a PG integration spec for `datedLoanDebts`.
 
 - Types: `LoanSettlementAction` fields, `LoanSettlementPlan`, the `pricing` record (spec 5.3), the refusal reasons and `missing` codes (spec sections 10 and 11), `LOAN_SETTLEMENT_TOLERANCE_MINOR_UNITS = 5`.
-- `occurrence-slots.ts`: the pure calendar and the selection of spec section 6.
+- `occurrence-slots.ts`: the pure calendar of spec 6.1 (built around `next_due_date`, history from `start_date`, periods, `ONCE`, the cadence check) and the selection of 6.2.
 - `datedLoanDebts(m, loan, dates)`: one statement over `ACCOUNT_BALANCE_AS_OF_SQL`'s predicate for every date, equal date by date to `datedLoanDebt`.
 - `loan-settlement-facts.ts`: account, schedule and template lines, rates, payments by date (spec decision 12), claims, the dated debts; read under the caller's locks.
 - `plan-loan-settlement.ts`: pure; slot selection, the fold over `priorSettlements` (spec 7.2), pricing through `priceInstallment` (spec 7.3), the amount policy (spec section 8), refusals 11 to 19 (spec section 11); returns a `SplitStructurePlan` and a `LoanSettlementPlan`, or a refusal with its detail.
@@ -94,7 +96,7 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 - `settle_loan_installment` joins `RULE_ACTION_TYPES` and `StructuralRuleAction`; validation per spec 5.1 with defaults written on save; `MAX_LOAN_SETTLEMENT_WINDOW_DAYS`; references and target accounts.
 - `RulePlanContext` gains `loanFacts` and `fromScheduledPosting` (server-set, never from a request); `RuleEffects` gains `loanFactsLookups`; the applier and the run service answer them in a second round, as for payees.
 - `RuleSkippedAction` gains the optional `detail` (spec decision 18). Refusals in spec section 11's order; a success plans `changes.structure` (a split) and `changes.loanSettlement`.
-- Until B5, `writeEffects` refuses a plan carrying `loanSettlement` rather than writing a split without its claim.
+- Inert by construction until B5: `rule-validation.ts` answers `UNKNOWN_ACTION` for `settle_loan_installment` on every save path (REST, assistant, MCP), as it does today, so no stored rule can carry the action and no create or import can reach it. The planner and the lookup rounds are exercised by the specs directly. B5 lets the validator accept the type in the same PR that writes the claim, so a split is never written without its claim and nothing throws on a create or import path in between.
 - Acceptance: spec section 16 row B4.
 
 ### B5 -- Write path, claim, cursor, undo
@@ -102,7 +104,9 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 **Files:** `backend/src/loan-installments/claim-loan-occurrence.ts` (new), `backend/src/transaction-rules/transaction-rules-applier.service.ts`, `backend/src/transaction-rules/rule-run-fingerprint.ts`, `backend/src/transaction-rules/rule-run-snapshot.ts`, `backend/src/transaction-rules/transaction-rules-run.service.ts`, `backend/src/action-history/rule-run-undo.ts`, `backend/src/scheduled-transactions/scheduled-transactions.service.ts` (`post()` writes `transaction_id` and passes `fromScheduledPosting`), `backend/src/transactions/transactions.service.ts` (the after-commit dispatch), `backend/test/integration/loan-settlement.integration.spec.ts` (new), their specs.
 
 - Spec section 12 in full: claim, split, cursor in that order on one `EntityManager`; the conflict skipped, not thrown; the trace and `canonicalChanges`; the snapshot; undo with `RULE_RUN_UNDO_LATER_SETTLEMENT`, the conditional rewind and the overrides restored; the after-commit net-worth dispatch and `rewriteLoanTemplate` on the create and run paths.
-- Locks per spec section 13 on the create and run paths.
+- Locks per spec section 13 on the create and run paths; the run derives its schedules and loans from the rules before planning.
+- `post()` sets `transaction_id` on its claim after it creates the transaction (spec 5.2), null for investment posts; the INV-OCCURRENCE-001 entry names the release on delete for every schedule.
+- `rule-validation.ts` accepts `settle_loan_installment` (it answered `UNKNOWN_ACTION` until this task).
 - Acceptance: spec section 16 rows B5, including the two-connection case.
 
 ### B6 -- Fold, order, imports

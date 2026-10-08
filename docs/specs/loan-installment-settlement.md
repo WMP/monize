@@ -58,9 +58,10 @@ Out of scope, each refused by name:
 | source account | The row's account. The rule created by the mortgage form fixes it in the condition (decision 5). |
 | loan | The action's `loanAccountId`: a `MORTGAGE` or `LOAN` account of the same owner. |
 | schedule | The loan's scheduled payment, `accounts.scheduled_transaction_id` (`docs/specs/scheduled-loan-installment-pricing.md` section 2). Never "any schedule with a transfer into the loan". |
-| slot | One date of the schedule's calendar: `scheduled_transactions.start_date` is slot 1, and each next slot is `calculateNextDueDate(previous, frequency)` (`backend/src/common/recurrence.ts`, the function `post()` advances with), bounded by `end_date` when set and by `total_occurrences` when set. A slot is an occurrence's identity, `original_due_date`; an override's moved date is not a slot. |
-| installment number | The slot's ordinal on that calendar (slot 1 = 1). |
-| claim | A `scheduled_transaction_postings` row for `(schedule, slot)`, whoever wrote it (`post()` or a rule). |
+| slot | One date of the schedule's calendar (section 6.1): the history dates stepped from `scheduled_transactions.start_date`, then `next_due_date` and the dates stepped from it, each step `calculateNextDueDate(previous, frequency)` (`backend/src/common/recurrence.ts`, the function `post()` advances with). `next_due_date` is always a slot, so the installment `post()` would claim next and the one a settlement claims share one key. A slot is an occurrence's identity, `original_due_date`; an override's moved date is not a slot. |
+| period | The dates a slot answers for (section 6.1): from the slot to the next slot, the cursor's period also covering any gap a moved `next_due_date` left before it. |
+| installment number | The slot's ordinal on the calendar (the first slot = 1). |
+| claim | A `scheduled_transaction_postings` row of the schedule, whoever wrote it (`post()` or a rule). A claim occupies the slot whose period holds its `original_due_date`. |
 | window | For a row dated `t`: `[t - daysAfter, t + daysBefore]`, inclusive. A slot `s` is in the window when the row is at most `daysBefore` days before it or at most `daysAfter` days after it. Dates compare as `YYYY-MM-DD` calendar days, never through a `Date` with a time. |
 | pass | One planning of several rows before any of them is written: a manual run's preview or commit, or `applyToNew` over several ids. |
 | `debtLedger(s)` | `datedLoanDebt(loan, s)` (`backend/src/accounts/dated-loan-debt.util.ts`): the canonical as-of debt through `s`, inclusive. |
@@ -75,7 +76,7 @@ All money in the tables below is printed at cents unless the column says 4dp.
 
 ## 3. Decisions
 
-Decisions 1 to 10 were agreed on #1589; 11 to 19 are made here and are the
+Decisions 1 to 10 were agreed on #1589; 11 to 21 are made here and are the
 review surface of this document.
 
 1. **One typed structural action**, `settle_loan_installment` (section 5.1).
@@ -184,20 +185,37 @@ review surface of this document.
 19. **Defaults are written on save.** The validator stores every optional
     field of the action with its default, so a stored rule never depends on a
     default a later release might change.
+20. **The slot calendar is built around the cursor.** `next_due_date` is
+    always a slot, history slots step from `start_date` up to the cursor's
+    installment, and a claim occupies the period it paid (section 6.1). A
+    calendar drawn only from `start_date` would let a bill post and a
+    settlement of one installment take two keys once the user moved the
+    bill's date. `ONCE` is a single slot; a schedule whose cadence is not the
+    loan's is refused.
+21. **Deleting a posted transaction releases its claim, for every
+    schedule.** Once `post()` records `transaction_id`, the one foreign key
+    cascades for its claims as for a settlement's (section 5.2); an
+    investment post records none.
 
 ## 4. Invariants
 
 ### 4.1 INV-LOAN-008 (new): one settlement per occurrence, the claim atomic with the split
 
 An occurrence `(schedule, slot)` has at most one claim, whoever wrote it; a
-transaction settles at most one occurrence; and a settlement's claim exists
-exactly when its split exists. Mechanisms:
+transaction settles at most one occurrence; and a settlement's claim is
+written and rolled back with its split, and released when the settling
+transaction is deleted. (It is not "exists exactly when the split exists":
+a person who edits the lines down to one un-splits the row and the claim
+stays, section 15.) Mechanisms:
 
 - **One claim per occurrence:** the existing unique index `idx_stp_occurrence`
   on `(scheduled_transaction_id, original_due_date)`. `post()` and the
   settlement both claim with `INSERT ... ON CONFLICT DO NOTHING RETURNING id`
   through it, so a bill post and a settlement of the same slot cannot both
-  succeed, in either order, on any replica.
+  succeed, in either order, on any replica. The key is the same for both
+  because the calendar always holds `next_due_date` as a slot (section 6.1)
+  and a settlement of the cursor's installment claims that date; a claim at a
+  date the calendar no longer holds still occupies the period it paid.
 - **One occurrence per transaction:** a partial unique index on
   `scheduled_transaction_postings (transaction_id) WHERE transaction_id IS NOT
   NULL`.
@@ -264,11 +282,15 @@ it over the truth table's inputs.
 The settlement plan (slot, `debtBefore`, booked lines, outcome) is part of the
 planned changes and of the run fingerprint, alongside `changes.structure`.
 
-### 4.6 INV-OCCURRENCE-001 (unchanged, a second writer)
+### 4.6 INV-OCCURRENCE-001 (a second writer, and release on delete)
 
 One scheduled occurrence has at most one financial effect. The settlement is
 a second path to an occurrence's effect and goes through the same claim key
-(4.1); it adds no effect beside the row's own, which already exists.
+(4.1); it adds no effect beside the row's own, which already exists. From B5
+a claim also names its transaction, and deleting that transaction releases
+the claim for every schedule (section 5.2): the occurrence then has no
+effect, and a person can post it again only by moving the cursor back onto
+it. B5 records this in the INV-OCCURRENCE-001 entry.
 
 ### 4.7 INV-CACHE-001
 
@@ -322,10 +344,28 @@ Name form (assistant, MCP; B8): `loanAccountName`, `interestCategoryName`;
 
 | Column | Type | Meaning |
 | --- | --- | --- |
-| `transaction_id` | `UUID NULL REFERENCES transactions(id) ON DELETE CASCADE` | The transaction that paid the occurrence: the settled row (source `rule`), or the parent transaction `post()` created (source `post`). Null for a `post()` that wrote no money (a retired debt) and for every row written before B5. |
+| `transaction_id` | `UUID NULL REFERENCES transactions(id) ON DELETE CASCADE` | The transaction that paid the occurrence: the settled row (source `rule`); for source `post`, the row `post()` wrote in the schedule's own account (the transaction `TransactionsService.create` returned, or the source leg `writeTransferLegs` wrote). Null for an investment post (`postInvestment` writes through the investment service, and nothing here reads which of its rows paid), for a `post()` that wrote no money (a retired debt), and for every row written before B5. |
 | `source` | `VARCHAR(8) NOT NULL DEFAULT 'post'`, `CHECK (source IN ('post', 'rule'))` | Who claimed it. |
 | `rule_id` | `UUID NULL REFERENCES transaction_rules(id) ON DELETE SET NULL` | The rule whose action settled it; null for `post`. |
 | `pricing` | `JSONB NULL` | The settlement's pricing record (5.3); null for `post`. |
+
+`post()` inserts its claim before it creates the transaction (the claim is
+its serialization point), so B5 sets the column afterwards in the same
+transaction: `UPDATE scheduled_transaction_postings SET transaction_id = $tx
+WHERE id = $claimId`.
+
+**A change for every schedule, by decision.** Once `post()` writes
+`transaction_id`, the cascade covers its claims too: deleting a posted bill
+transaction (of any schedule, not only a loan's) deletes its claim, where
+today the claim outlives the transaction. INV-OCCURRENCE-001 still holds --
+the occurrence had one effect and now has none -- and the cursor is not
+rewound, so nothing re-posts it on its own: the auto-post cron reads the
+cursor, which has moved on. What changes is that a person who moves
+`next_due_date` back onto that date can post it again, where today `post()`
+answers "already posted" for an occurrence whose transaction is gone. The
+alternative, `ON DELETE SET NULL` for post claims only, cannot be expressed
+on one foreign key, and a second column for the same fact would let the two
+disagree. The INV-OCCURRENCE-001 entry names this when B5 lands.
 
 Plus `CREATE UNIQUE INDEX ... ON scheduled_transaction_postings
 (transaction_id) WHERE transaction_id IS NOT NULL`, and
@@ -380,16 +420,64 @@ UI only: the planner reads the rule's action, never this column.
 
 ## 6. Occurrence selection
 
-Given a row dated `t` and the schedule's slots:
+### 6.1 The calendar
+
+`post()` claims, and advances, whatever date `next_due_date` holds, and that
+column can be edited apart from `start_date` and the frequency (the schedule
+update path writes `nextDueDate` alone). A calendar drawn only from
+`start_date` would then key a settlement on `YYYY-MM-01` and the bill on
+`YYYY-MM-28` for one installment, and the unique index could not see that
+both paid it. So the calendar is built around the cursor (`occurrence-slots.ts`,
+pure):
+
+1. **The cursor and after:** `next_due_date`, then each
+   `calculateNextDueDate(previous, frequency)`, bounded by `end_date` when set
+   and by `occurrences_remaining` when set (the cursor counts as one).
+2. **History:** `start_date` and each next date stepped from it, keeping a
+   date `D` only while `calculateNextDueDate(D, frequency) <= next_due_date`.
+   The start-calendar date whose next step passes the cursor is the
+   installment the cursor now stands for, so it is not a slot of its own;
+   when the cursor is on the start calendar, history plus the cursor is the
+   start calendar exactly.
+3. **Periods:** a history slot answers for `[D, next(D))`; the cursor answers
+   for `[h, next(cursor))`, where `h` is the end of the last history period
+   (or `start_date` when there is none, or the cursor itself when
+   `start_date` is after it), so a gap a moved cursor left belongs to it; a
+   later slot `f` answers for `[f, next(f))`.
+4. **Occupied:** a slot is occupied when a claim's `original_due_date` lies
+   in its period. A claim `post()` wrote at a date the calendar no longer
+   holds (before the cursor moved) still blocks the installment it paid.
+5. **`ONCE`:** `calculateNextDueDate` returns its input, so the calendar is
+   the single slot `next_due_date`. Defensively, any step that does not move
+   forward ends the enumeration.
+6. **Cadence:** the calendar uses the schedule's current `frequency`
+   throughout. For a loan the schedule's cadence must be the loan's: when
+   `accounts.payment_frequency` is set and
+   `periodsPerYearForStoredFrequency` gives the two a different count, the
+   action refuses `loan_not_configured` with `missing: ["scheduleCalendar"]`.
+   A cadence changed on both after history began redraws the history at the
+   new cadence, which nothing records; section 15 names it.
+
+Enumeration covers only the dates the pass's windows reach.
+
+### 6.2 Selection
+
+Given a row dated `t` and the calendar:
 
 1. The candidates are the slots in the window `[t - daysAfter, t + daysBefore]`.
    None: `no_installment_in_window`.
-2. Drop every slot that has a claim, and every slot a settlement planned
-   earlier in the same pass took. None left: `occurrence_already_posted`.
+2. Drop every occupied slot, and every slot a settlement planned earlier in
+   the same pass took. None left: `occurrence_already_posted`.
 3. Take the slot nearest to `t` in calendar days; on a tie, the earlier slot.
 
-Truth table. Schedule monthly from 2024-01-01 unless the row says otherwise;
-window 3/7 unless it says otherwise.
+The settlement's claim is keyed on the chosen slot's own date, so a
+settlement of the cursor's installment claims `(schedule, next_due_date)`,
+the key `post()` would use.
+
+### 6.3 Truth table
+
+Schedule monthly with `start_date` 2024-01-01 and `next_due_date` on that
+calendar unless the row says otherwise; window 3/7 unless it says otherwise.
 
 | # | Row date `t` | Claimed | Window | Answer |
 | --- | --- | --- | --- | --- |
@@ -406,13 +494,18 @@ window 3/7 unless it says otherwise.
 | 11 | 2024-01-07, weekly from 2024-01-01 | 2024-01-08 | as row 10 | 2024-01-01 (the nearest unclaimed) |
 | 12 | 2024-01-08, biweekly from 2024-01-01, window 7/7 | none | 2024-01-01 .. 2024-01-15 | 2024-01-01 (tie of 7 days, the earlier) |
 | 13 | 2024-03-01, `end_date` 2024-02-15 | none | 2024-02-23 .. 2024-03-04 | `no_installment_in_window` (2024-03-01 is past the end) |
+| 14 | 2024-03-29; claims 2024-01-01, 2024-02-01; `next_due_date` moved from 2024-03-01 to 2024-03-28 | as stated | 2024-03-22 .. 2024-04-01 | 2024-03-28: the cursor; the claim is `(schedule, 2024-03-28)` and the cursor advances to 2024-04-28. Slots: 2024-01-01, 2024-02-01 (history), 2024-03-28, 2024-04-28, ... |
+| 15 | 2024-03-02; as row 14 | as row 14 | 2024-02-24 .. 2024-03-05 | `no_installment_in_window`: 2024-03-01 is not a slot, the cursor stands for that installment |
+| 16 | 2024-02-03; claim 2024-02-15 (a post made while the cursor was moved), `next_due_date` back on 2024-03-01 | 2024-02-15 | 2024-01-27 .. 2024-02-06 | `occurrence_already_posted`: the claim lies in 2024-02-01's period |
+| 17 | 2024-05-02; `ONCE`, `next_due_date` 2024-05-01 | none | 2024-04-25 .. 2024-05-05 | 2024-05-01, the only slot |
+| 18 | any; schedule `BIWEEKLY`, loan `payment_frequency` `MONTHLY` | -- | -- | `loan_not_configured`, `missing: ["scheduleCalendar"]` |
+| 19 | 2024-03-29; claims 2024-01-01, 2024-02-01; `next_due_date` moved from 2024-03-01 to 2024-05-28 (two installments skipped) | as stated | 2024-03-22 .. 2024-04-01 | 2024-04-01 (history slot; 2024-03-01 and 2024-04-01 are history, 2024-05-01 is the cursor's) |
 
 A claim by `post()` and a claim by a rule are the same claim for step 2. A
-slot before `next_due_date` that was never posted has no claim and can be
-settled (history); a slot after it can be settled too (an early or a skipped
-bill). Overrides are not read: a slot is its recurrence date, and an
-override's moved date is neither a slot nor a window anchor in this version
-(section 15).
+slot before the cursor that was never posted has no claim and can be settled
+(history); a slot after it can be settled too (an early bill). Overrides are
+not read: a slot is its recurrence date, and an override's moved date is
+neither a slot nor a window anchor in this version (section 15).
 
 ## 7. Pricing at the slot
 
@@ -478,13 +571,15 @@ legs in the loan are positive.
 | 3 | `d > tol` and `P + E + d <= debtBefore` | `extra_principal` | any | `P` / `I` / `E + d` | `extra_principal` |
 | 4 | `d > tol` and `P + E + d > debtBefore` | `extra_principal` | any | -- | `installment_amount_excess` |
 | 5 | `d > tol` | `refuse` | any | -- | `installment_amount_excess` |
-| 6 | `E > 0` and `B <= paid < T - tol` | any | any | `P` / `I` / `paid - B` | `extra_shed` |
+| 6 | `E > 0` and `B <= paid < T` (reached only when rows 1 and 2 did not apply: `paid < T - tol`, or a tolerance that would make interest negative) | any | any | `P` / `I` / `paid - B` | `extra_shed` |
 | 7 | `E > 0` and `B - tol <= paid < B` and `I + (paid - B) >= 0` | any | any | `P` / `I + (paid - B)` / none | `tolerance` |
 | 8 | otherwise: `paid < B - tol`, or a row 2 or 7 difference that would make interest negative | any | `refuse` | -- | `installment_amount_shortfall` |
 | 9 | as row 8 | any | `interest_first` | `paid - min(I, paid)` / `min(I, paid)` / none | `interest_first` |
 
 The table is total: rows 1 to 5 cover `d >= -tol` with interest non-negative,
-rows 6 and 7 cover a short extra, and rows 8 and 9 everything else. In every
+rows 6 and 7 cover a short extra (row 6 every `paid` from `B` up to `T` that
+rows 1 and 2 left, so a row that paid the whole base installment is never a
+shortfall, decision 13), and rows 8 and 9 everything else. In every
 written row the lines sum to `paid`.
 
 `LOAN_SETTLEMENT_TOLERANCE_MINOR_UNITS = 5`, why five minor units:
@@ -586,6 +681,7 @@ and 510.00.
 | E13 | LOAN, JPY 30,000,000 at 1.2 %, monthly, payment 120,000 | 90,000 + 30,000 = 120,000 | -120,004 | 90,000 / 30,004 / -- (`tolerance`, `tol` = 5 JPY) |
 | E14 | as E13 | as E13 | -120,006 | 90,000 / 30,000 / 6 (`extra_principal`) |
 | E15 | `debtBefore` 0.01 | -- | any | `loan_debt_retired` |
+| E16 | ANNUITY 0 %, payment 500.00, standing extra 100.00 | 500.00 + 0.00 + 100.00 = 600.00 (`B` 500.00) | -599.97 | 500.00 / 0.00 / 99.97 (`extra_shed`: row 2 would make interest -0.03, row 6 takes it) |
 
 ### 9.4 The fold in one pass
 
@@ -605,7 +701,7 @@ the fold's date condition says for a third row in the same pass.
 
 ### 9.5 Occurrence selection
 
-The issue's two cases are rows 2 and 7 of section 6: a row dated 2024-01-04
+The issue's two cases are rows 2 and 7 of section 6.3: a row dated 2024-01-04
 with window 3/7 matches 2024-01-01; a row dated 2024-01-05 with 2024-01-01
 claimed and 2024-02-01 outside the window is `occurrence_already_posted`.
 
@@ -618,6 +714,7 @@ A refusal, never a priced guess. Each names what is missing in its detail
 | --- | --- | --- |
 | The loan has no scheduled payment (`accounts.scheduled_transaction_id` null, or the row gone) | `loan_not_configured` | `missing: ["scheduledPayment"]` |
 | The schedule's template has a line beyond principal, interest and extra principal | `loan_not_configured` | `missing: ["managedTemplate"]` |
+| The schedule's cadence is not the loan's (section 6.1, item 6) | `loan_not_configured` | `missing: ["scheduleCalendar"]` |
 | No interest category on the action or the loan | `loan_not_configured` | `missing: ["interestCategory"]` |
 | A LINEAR or INTEREST_ONLY term (`missingMethodTerms`) | `loan_not_configured` | `missing: ["amortizationMonths", "paymentStartDate", "paymentFrequency", "originalPrincipal"]`, those that apply |
 | An unknown cadence on an annuity | `loan_not_configured` | `missing: ["paymentFrequency"]` |
@@ -652,9 +749,9 @@ action.
 | 10 | `row_is_income` | the row's amount is positive | -- |
 | 11 | `loan_account_unavailable` | the loan is not `MORTGAGE` or `LOAN` (a `LINE_OF_CREDIT` included), is closed, or its row or ledger cannot be read | `accountType` |
 | 12 | `loan_interest_booked_separately` | `interest_booking_mode = SEPARATE` | -- |
-| 13 | `loan_not_configured` | a static input of section 10 is missing (scheduled payment, managed template, interest category, method terms, cadence) | `missing` |
-| 14 | `no_installment_in_window` | no slot in the window (section 6 step 1) | `windowFrom`, `windowTo` |
-| 15 | `occurrence_already_posted` | every slot in the window is claimed or planned earlier in the pass (step 2) | `dueDates` |
+| 13 | `loan_not_configured` | a static input of section 10 is missing (scheduled payment, managed template, schedule calendar, interest category, method terms, cadence) | `missing` |
+| 14 | `no_installment_in_window` | no slot in the window (section 6.2 step 1) | `windowFrom`, `windowTo` |
+| 15 | `occurrence_already_posted` | every slot in the window is occupied or planned earlier in the pass (step 2) | `dueDates` |
 | 16 | `loan_not_configured` | a dated input is missing at the chosen slot (rate, annuity payment) | `missing`, `dueDate` |
 | 17 | `loan_debt_retired` | `debtBefore <= 0.01` | `dueDate` |
 | 18 | `installment_amount_excess` | section 8 rows 4 and 5 | `dueDate`, `expected` (`T`), `paid`, `debtBefore` |
@@ -706,17 +803,21 @@ keeps calling it): `next_due_date` to the next slot, `occurrences_remaining`
 decremented and the schedule deactivated at zero or past `end_date`,
 overrides with `original_date` before the new cursor pruned,
 `last_posted_date` set. It repeats while the new `next_due_date` already has
-a claim (a slot settled out of order before), so the bill never offers an
-occurrence that is already paid. A claim on any other slot leaves the cursor
+a claim on that date (a slot settled out of order before), so the bill does
+not offer an occurrence whose own key is already claimed. A claim on any other slot leaves the cursor
 where it is: a slot before it is history, and a slot after it leaves the
 earlier occurrence still due.
 
 ### 12.4 Run snapshot
 
-Per settled row: the claim id, the schedule id, the slot, the cursor columns
-before and after (`next_due_date`, `occurrences_remaining`, `is_active`,
-`last_posted_date`), and every override row the advance deleted, with the
-existing split snapshot (line and counterpart ids).
+Per settled row: the claim id, the schedule id and the slot, with the
+existing split snapshot (line and counterpart ids). Per schedule, once: the
+cursor columns (`next_due_date`, `occurrences_remaining`, `is_active`,
+`last_posted_date`) before the run's first advance and after its last, and
+every override row any advance of the run deleted. One record per schedule,
+not one per row, because a run can advance one schedule several times
+(X to Y, then Y to Z), and a per-row rewind applied in run order would test
+`next_due_date = Y` against Z and stop at Y.
 
 ### 12.5 Delete, void, edit
 
@@ -748,10 +849,11 @@ before any write:
 
 Then remove the split lines and counterpart legs as a `split` undo does,
 delete each claim the run wrote (`DELETE ... WHERE id = $claimId`; a claim
-already gone through a deletion is skipped, not a change), rewind the cursor
-with `UPDATE scheduled_transactions SET <recorded before> WHERE id = $1 AND
-next_due_date = <recorded after>` (a cursor the user has moved since is left
-as they set it), and re-insert the overrides the advance deleted. After the
+already gone through a deletion is skipped, not a change), rewind each schedule's
+cursor once, with `UPDATE scheduled_transactions SET <recorded before the
+first advance> WHERE id = $1 AND next_due_date = <recorded after the last
+advance>` (a cursor the user has moved since is left as they set it), and
+re-insert the overrides the run's advances deleted. After the
 commit, dispatch the net-worth recompute for the loan accounts and
 `rewriteLoanTemplate` for the schedules (4.7). Redo stays refused
 (`RULE_RUN_REDO_STRUCTURAL`).
@@ -785,10 +887,14 @@ after the locks, so the debt is read under the lock that authorizes the write
 (CONC-001).
 
 - **The manual run** locks the rule `FOR SHARE`, the candidate rows ascending
-  (`lockTransactionRows`), then every schedule its plan settles on ascending
-  by id, then every target account (the loans and the source accounts) in
-  one ascending-id statement, before its first write; the commit re-plans
-  under those locks.
+  (`lockTransactionRows`), then the schedules and accounts it may touch,
+  derived before any planning: for every rule of the run carrying the action,
+  its `loanAccountId` and that loan's `accounts.scheduled_transaction_id`.
+  It locks those schedules ascending by id, then the loans, the source
+  accounts of the candidate rows and the other target accounts in one
+  ascending-id statement, and only then plans, once, under the locks. A
+  superset is locked when a rule matches none of the rows, which costs a
+  lock and decides nothing; the plan never chooses its own locks.
 - **A REST create** runs its rules before the source account's balance write
   (`TransactionsService.create`), so the settlement's schedule lock is the
   first lock its transaction takes on either, and its order is `post()`'s.
@@ -842,7 +948,7 @@ file listed them in.
   create and edit forms carry the field separately from the opening balance
   (B7, F2).
 - **The schedule's calendar reaches back.** A row before the schedule's
-  `start_date` has no slot (section 6 row 6). A mortgage created through the
+  `start_date` has no slot (section 6.3 row 6). A mortgage created through the
   form starts its schedule at `payment_start_date`; a schedule set up later
   starts at its first due date, and history before it is refused
   `no_installment_in_window`. Setting up payment matching on such a loan
@@ -875,18 +981,38 @@ Stated so they are not mistaken for coverage; none is closed by this spec.
    here, not changed by this work.
 6. **`createMortgageAccount` and `setupLoanPayments` stay several commits**: a
    rule-creation failure is reported and the account stays (#1589, noted).
+7. **A cursor moved back into a paid period.** `post()` claims whatever date
+   `next_due_date` holds and does not read periods; a person who moves the
+   cursor back onto a date inside a period already claimed under another date
+   can post that installment a second time. The settlement refuses that
+   period (section 6.1, item 4); `post()` is unchanged by this work.
+8. **A cadence changed on both the schedule and the loan** after history
+   began redraws the history slots at the new cadence (section 6.1, item 6);
+   nothing records the old one.
+9. **Un-splitting a settlement.** Editing a settled row's lines down to one
+   collapses the split (`isSplit` false) and the claim stays, naming a row
+   that no longer carries the principal it was priced with. Deleting the row
+   releases it.
+10. **Deleting one settlement out of order.** The run undo is last in, first
+    out (`RULE_RUN_UNDO_LATER_SETTLEMENT`), but deleting a single settling
+    transaction, or undoing its create, while later settlements exist on the
+    same schedule is allowed: the later ones keep the interest they were
+    priced with on a debt that included the deleted principal. The ledger's
+    balance stays exact (each leg moved what it says); the later rows' split
+    between interest and principal is what is stale. Refusing or warning on
+    that delete is a separate proposal.
 
 ## 16. Test matrix
 
 | Task | Suite | What it asserts |
 | --- | --- | --- |
-| B1 | migration test, `scripts/verify-schema.sh`, `mortgage-type.contract.spec.ts`-style CHECK reconciliation | the columns, defaults, the `source` CHECK and the rule-claim CHECK; the partial unique index refuses a second claim for one transaction; deleting the transaction deletes the claim; deleting the rule nulls `rule_id` and `payment_matching_rule_id`; backup round-trips the new columns |
+| B1 | migration test, `scripts/verify-schema.sh`, `mortgage-type.contract.spec.ts`-style CHECK reconciliation | the columns, defaults, the `source` CHECK and the rule-claim CHECK; the partial unique index refuses a second claim for one transaction; deleting the transaction deletes the claim, for a `rule` and a `post` claim alike; deleting the rule nulls `rule_id` and `payment_matching_rule_id`; backup round-trips the new columns |
 | B2 | `scheduled-transaction-loan.service.spec.ts`, `scheduled-transaction-loan.mortgage-methods.spec.ts`, `scheduled-transactions.service.spec.ts` unchanged; a loan-core import guard spec | behaviour-preserving extraction; `post()` advances through `advanceScheduleCursor`; the core imports nothing from `transactions/*`, `scheduled-transactions/*.service*` or `transaction-rules/*` |
-| B3 | `occurrence-slots.spec.ts` | section 6, every row; `end_date` and `total_occurrences` bounds |
+| B3 | `occurrence-slots.spec.ts` | section 6.3, every row; the calendar of 6.1 (a moved cursor, periods, a claim off the calendar occupying its period, `ONCE`, a step that does not advance, `end_date` and `occurrences_remaining`) |
 | B3 | `plan-loan-settlement.spec.ts` | section 8, every row and the totality property (lines sum to `paid`); section 9, every row; the fold of 9.4 and the "dated on or before `s`" condition; section 10; refusals 11 to 19 in order |
 | B3 | `loan-settlement-facts.spec.ts`, a PG integration spec | `datedLoanDebts` equals `datedLoanDebt` date by date on a real ledger (VOID, split children and later rows excluded); a null rate and a missing payment reported as missing, never 0 |
 | B4 | `rule-validation.structural.spec.ts`, `rule-effects.structural.spec.ts` | the action's validation, defaults written on save, the two combination codes; refusals 1 to 10 in order; the lookup rounds; a later rule sees `hasSplits` |
-| B5 | `transaction-rules-applier.structure-write.spec.ts`, `rule-run-undo.spec.ts`, `transaction-rules-run.structure-commit.spec.ts` | claim before split; a conflict skipped, not thrown; the cursor (advance, repeat over claimed slots, no move off the cursor); trace, fingerprint, snapshot; undo, `RULE_RUN_UNDO_LATER_SETTLEMENT`, the conditional rewind, overrides restored; `post()` writes `transaction_id`; after-commit reprice and dispatch |
+| B5 | `transaction-rules-applier.structure-write.spec.ts`, `rule-run-undo.spec.ts`, `transaction-rules-run.structure-commit.spec.ts`, `scheduled-transactions.service.spec.ts` | claim before split; a conflict skipped, not thrown; the cursor (advance, repeat over claimed slots, no move off the cursor, a moved cursor's slot claimed on its own date); trace, fingerprint, snapshot; undo, `RULE_RUN_UNDO_LATER_SETTLEMENT`, one rewind per schedule after two advances (X to Y to Z back to X), overrides restored; the run's locks taken before its one plan; `post()` writes `transaction_id` after its create, null for an investment post; after-commit reprice and dispatch |
 | B5 | PG integration (`loan-settlement.integration.spec.ts`) and two connections | 9.1 L1 and L9 end to end with the loan balance; a post and a settlement of one slot on two connections leave one claim; rollback leaves no claim and no leg; delete releases the claim; void keeps it |
 | B6 | `transaction-rules-run.*.spec.ts`, import processor specs, bank sync specs | ascending order when a rule settles; 9.4 through preview and commit with equal fingerprints; `priorSettlements` never double-counts a written row; the import sort (stable within a date) on every import path; bank sync dispatches the loan account |
 | F1 | `RuleEditor.structural-actions.test.tsx`, `RuleRunPreviewTable.test.tsx`, a skip-reason contract test | the action card; the preview shows `debtBefore`, the lines and the extra per row; every reason and `missing` code worded |
