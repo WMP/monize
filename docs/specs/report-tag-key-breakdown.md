@@ -195,7 +195,7 @@ The exact TypeScript types live beside each report's existing response type in
 | Cash Flow | same service (`built-in-reports.controller.ts:120`) | value partition | yes |
 | Spending by Category | `spending-reports.service.ts:getSpendingByCategory` | value partition | no |
 | Income by Source | `income-reports.service.ts:getIncomeBySource` | value partition | no |
-| Budget vs Actual | budgets module `BudgetReportsService` | **deferred** (section 8) | n/a |
+| Budget vs Actual | budgets module `BudgetReportsService` | no partition; funding overlay (section 11.6) | n/a |
 
 Value partitioning is implemented by adding the tag key/value to the `GROUP BY`
 (the `getTransactionBreakdownByTagKey` shape: `innerJoin transaction.tags`,
@@ -247,8 +247,8 @@ sync; no backend-composed copy is added (reports are request-scoped).
 ## 8. Out of scope (recorded so absence reads as a decision)
 
 - **Budget vs Actual** breakdown: it is budget-period + category based in a
-  different module; a tag dimension there is a separate change, deferred to a
-  later phase.
+  different module, so it gets no value partition of its own. (Superseded in part
+  by section 11.6: it gains the funding overlay, frontend only.)
 - **The rules engine** (auto-adding tags by condition): explicitly NOT in scope
   by owner decision. Tags are applied manually (the transaction form's existing
   tag MultiSelect); this feature never auto-writes a tag.
@@ -532,3 +532,221 @@ example        = (3279 + 4516 - 8486 - 0) = -691 ;  -691 / 7795 * 100 = -8.86
   tooltip, the table and the CSV; Tagged outflows hidden when zero; Balance null
   when the bucket is incomplete). Backend: section 10.8's truth table, unit and
   against PostgreSQL.
+
+## 11. Phase 2/3: the other reports (funding view)
+
+Follow-up from the reporter (discussion #1381, maintainer approved): "an easy way
+to see any regular income plus any transferred moneys as my total available
+spending money for the month, and then compare my actual expenses to that total.
+Both in reports and graphs." Sections 10.7 to 10.9 answer it for Income vs
+Expenses and Cash Flow. This section carries the same view to Income by Source,
+Spending by Category, Monthly Breakdown and Budget vs Actual. It supersedes the
+"Budget vs Actual deferred" decision of section 8 and the "value partitioning
+only" wording of the Phase 2 plan: these reports need the FUNDING figure beside
+their own numbers, not a per-value copy of them.
+
+### 11.1 Rules shared by all four
+
+| # | Rule |
+|---|---|
+| F1 | **Inert by default.** With no tag key chosen, or no value chosen, or the switch off, every report, request, response and label is exactly what it is today. The only requests a report adds are the ones named below, and only while a tag key AND a value are chosen. |
+| F2 | **A tagged transfer is never income, an expense, a category total or a budget actual (INV-REPORT-003).** The funding figure is separate and separately named ("Tagged transfers", "Available funds"). No report writes it into its own totals, shares or budget figures. |
+| F3 | **One source for the funding figure.** Every surface reads the Income vs Expenses answer (`GET /built-in-reports/income-vs-expenses?tagKey=K&accountIds=...`, bucket `month`) for the same window and the same account scope, and derives the figure through `frontend/src/lib/tagged-balance.ts` (`taggedBalance`, `taggedBalanceWindow`, `periodBalanceFields`, plus the new `taggedFunds` below). No component restates the arithmetic, and the server grows no second implementation of the tagged flows. |
+| F4 | **Cents, not floats.** Sums go through `sumMoney` (integer cents); a percentage is divided once and rounded to two decimals; a non-finite input is unknown. |
+| F5 | **Unknown is not zero.** A month or window the Income vs Expenses answer does not cover is unknown (a dash, a gap in a line), never 0. A missing exchange rate leaves the figure a subtotal: it is marked through `PartialTotal` (windows) or an asterisk and the missing currencies (series). Balance % is withheld when its base is not a total. |
+| F6 | **The untagged tab never shows flows.** The value control offers the values of the chosen key and no "untagged" choice; a transfer that carries no `K:*` tag appears nowhere. |
+| F7 | **The switch, not the value, turns the funding view on.** Choosing a key and a value narrows only what the report's own server query supports (11.3 and 11.4 say which); the switch "Include tagged transfers" (persisted per report, default OFF, shown only while a key and a value are chosen) adds the funding figure. |
+| F8 | **Same account scope for every call of a page.** A page with an account filter sends one `accountIds` to its own report and to the funding fetch, or its figures would describe different sets of accounts. Internal transfers inside the scope are already left out of the tagged flows (section 10.8). |
+
+Funding arithmetic, `taggedFunds({income, taggedInflows, taggedOutflows})`:
+
+```text
+netTagged      = taggedInflows - taggedOutflows                  (integer cents)
+availableFunds = income + netTagged                              (null when an input is unknown)
+```
+
+`netTagged` is what crossed the scope boundary under the chosen value over the
+window: a tagged inflow into the selected accounts minus a tagged outflow out of
+them. It is a transfer figure, not income.
+
+### 11.2 Shared frontend pieces (one implementation each)
+
+- `useTaggedFundsFilter(storageKey)`: the key, the value (reset when the key
+  changes), the persisted switch, the key list (`useTagKeys`) and the value list
+  of the chosen key (`collectTagValues`, new, beside `collectTagKeys`, from the
+  same `GET /tags` list). `active` = key and value chosen; `include` = `active` and
+  the switch on.
+- `TaggedFundsControls`: key select (`TagKeyBreakdownSelect`), a value `Select`
+  (aria-label "Tag value"; no untagged choice, F6) and
+  `IncludeTaggedTransfersToggle`. Hidden when the user has no `KEY:VALUE` tags.
+- `useTaggedFunding({ enabled, tagKey, tagValue, startDate, endDate, accountIds })`:
+  the Income vs Expenses fetch of F3 (`tagKey` always sent, month buckets), and
+  nothing at all while `enabled` is false. It returns the response, the bucket
+  of the chosen value (`undefined` when the server found no activity under that
+  value in the window), loading and error state.
+- `useReportAccountScope(storageKey)`: the account list of the non-investment
+  accounts, the persisted selection and its request key, for the three reports
+  that gain the account filter. The existing Income vs Expenses and Cash Flow
+  wiring is left as it is.
+- `TaggedFundsStrip`: the labelled figures of one window (11.3, 11.4).
+
+A bucket the server omitted means no row in the window carries that value: the
+tagged flows are a known zero, not unknown. (The server emits a bucket per value
+it finds on a categorized row or a tagged transfer leg; a value present only on
+rows excluded by VOID or investment linkage has none, and is correctly zero.)
+
+### 11.3 Income by Source
+
+- **Account filter.** `ReportAccountMultiSelect` (non-investment accounts); the
+  server already honours `accountIds` (section 10.7). Absent = all accounts.
+- **Controls.** `TaggedFundsControls`. With a key and a value chosen, the report
+  itself does not change: income sources are not partitioned by tag value (11.7).
+- **Switch ON, value chosen.** `netTagged` of the chosen bucket (window
+  `taggedInflows - taggedOutflows`):
+  - `netTagged > 0`: the chart, legend and table gain ONE extra entry "Tagged
+    transfers: <value>" equal to `netTagged`, in the indigo `chartColors.inflow`
+    token, never the income palette, not clickable, labelled "not income" in the
+    table. A strip shows `Total income + Tagged transfers = Available funds`.
+  - `netTagged <= 0` (or the bucket absent): no entry, no Available funds, and a
+    short note: "No net tagged transfer into the selected accounts in this period."
+- **"Total income" is unchanged** (the donut centre, the bar total, the table
+  footer, the PDF card). Shares remain a share of income: the tagged entry is
+  EXCLUDED from percentage-of-income (its share cell is a dash, its tooltip and
+  legend detail show the amount only), because a share of an income total that
+  contains a transfer would be a figure the reader could mistake for income. The
+  alternative (shares over Available funds) was rejected: two denominators on one
+  chart is a misreading waiting to happen.
+- **CSV / PDF.** CSV gains the tagged row (empty share) and an "Available funds"
+  row only in this state; PDF gains an Available funds card.
+- **Completeness.** Available funds is `PartialTotal` when the bucket is
+  incomplete (`missingCurrencies`, `excludedCount`); the entry's amount is then
+  the known subtotal. Income by Source reports no completeness of its own.
+
+Truth table (Income by Source, key `scope`, value `household`; window income 3,279):
+
+| Bucket `taggedInflows` / `taggedOutflows` | `netTagged` | Entry | Available funds | Shares |
+|---|---|---|---|---|
+| 4,516 / 0 | 4,516 | "Tagged transfers: household" 4,516 | 7,795 | of 3,279, entry excluded |
+| 4,516 / 600 | 3,916 | 3,916 | 7,195 | same |
+| 500 / 500 | 0 | none, note | not shown | unchanged |
+| 0 / 1,000 | -1,000 | none, note | not shown | unchanged |
+| bucket absent | 0 | none, note | not shown | unchanged |
+| 4,516 / 0, bucket incomplete | 4,516 (subtotal) | 4,516, marked | 7,795 marked partial | unchanged |
+
+### 11.4 Spending by Category
+
+- **Account filter.** `ReportAccountMultiSelect`; the server already honours
+  `accountIds`.
+- **Server: `tagKey` and `tagValue` filter** (additive, optional, both or
+  neither). A row (a transaction, or one split of it) counts when its own `K:*`
+  tag values contain `tagValue`, read through the same per-row value expression
+  the breakdown uses (`tagValuesArrayExpr`, extracted to a shared module, rules
+  B1 and B4: transaction-level and split-level tags, a value present at both
+  levels attributes once, no fan-out). The predicate is an extra `WHERE` clause
+  on the existing query with a bound `$n = ANY(<values>)`, so the VOID, investment
+  linkage, asset-category and transfer exclusions are untouched. With neither
+  param the SQL and the response are byte-for-byte today's. `tagValue` without
+  `tagKey` (or the reverse) is a 400: a half-specified filter is never silently
+  ignored. This is the household-only view the reporter asked for ("so the user
+  can see household spending only"); it is a FILTER, not a value partition, so
+  the response shape does not change and the "shares past 100%" disclosure of B1
+  does not arise (one value, one population).
+- **Transfers do not apply** (no category on a transfer leg here).
+- **Switch ON, value chosen.** A strip above the chart:
+  `Available funds = income + tagged transfers`, `Spent`, `Balance`, from the
+  Income vs Expenses answer of F3 through `taggedBalanceWindow`:
+  - income `Y` = the All `totals.knownIncome` of that response (the same income
+    the Balance view of section 10.9 uses), tagged transfers `Z` = the bucket's
+    `taggedInflows - taggedOutflows`;
+  - `Spent` = the report's OWN total (`knownSpending`, which carries the value
+    filter), so the strip's Spent equals the donut total the reader sees;
+  - `Balance = Y + Z - Spent`, `Balance %` over `Y + taggedInflows` as in 10.9.
+  Completeness is the union of the spending response (`missingCurrencies`,
+  `excludedCount`, `totalSpending === null`), the funding response's All
+  totals and the bucket's own (F5): any gap makes Balance a subtotal and
+  withholds Balance %.
+- **Switch OFF** with a value chosen: the report is the filtered report, no
+  strip, no funding fetch.
+
+Numeric example (the reporter's August): `Y = 3,279`, bucket `taggedInflows =
+4,516`, `taggedOutflows = 0`, household spending `8,486`:
+
+```text
+Z = 4,516      Available funds = 3,279 + 4,516 = 7,795
+Balance = 7,795 - 8,486 = -691        Balance % = -691 / 7,795 * 100 = -8.86
+```
+
+### 11.5 Monthly Breakdown
+
+- **Server: `accountIds`** on `GET /built-in-reports/monthly-category-breakdown`
+  through its own query DTO (`MonthlyCategoryBreakdownQueryDto`, the same
+  validation as `IncomeVsExpensesQueryDto`: comma-separated, `@IsUUID("4", {
+  each: true })`, `@ArrayMaxSize(200)`), applied as `t.account_id =
+  ANY($n::uuid[])` on BOTH the category query and the transfer-rows query (the
+  uncategorized transfer "from/to" rows, which are rows of an account, are
+  scoped like everything else). Absent or empty = today, byte for byte.
+- **Frontend.** Account filter, `TaggedFundsControls`. All the new UI and logic
+  live in new files; the 1,630-line report receives only wiring.
+- **Switch ON, value chosen.** A summary block under the table, one column per
+  month the table shows (the in-progress month follows the report's own "include
+  current month" setting), from the Income vs Expenses answer (bucket `month`,
+  `startDate` snapped to the first of the month exactly as the report does):
+  rows Income, Tagged inflows, Expenses, Tagged outflows (only when any shown
+  month is non-zero), Balance, Balance %, each month through
+  `periodBalanceFields` / `taggedBalance`. The category rows, their subtotals and
+  the table's own Balance row never include a transfer.
+- A month the funding answer does not cover renders dashes, never zeros (F5).
+- Completeness: a funding answer with a missing rate marks every Balance cell of
+  the block with an asterisk and withholds Balance %, and says so in a note.
+
+### 11.6 Budget vs Actual
+
+- **Frontend only.** The budgets module is untouched: `budgeted`, `actual`,
+  `variance` and `percentUsed` are exactly the server's.
+- **Controls.** `TaggedFundsControls` in the report's toolbar. The report has no
+  account filter and gains none: the budget's own actual is not account-scoped, so
+  the funding fetch is not either.
+- **Switch ON, value chosen.** The window is the first of the trend's earliest
+  month to the last day of its latest month. The funding fetch (F3) feeds an
+  "Available funds" series per month = `income + taggedInflows - taggedOutflows`
+  (`taggedFunds` over `periodBalanceFields` inputs), drawn as an indigo line beside
+  the Budgeted and Actual bars on the overview chart. The tooltip adds "Available
+  funds" and "Actual vs available" (`available - actual`; positive = money left).
+  The variance line, the summary table and the by-category view are unchanged.
+- Months are aligned by `monthKey` (YYYY-MM). A month missing from the funding
+  answer has no point (a gap), and its tooltip rows show a dash. An incomplete
+  funding answer (missing rate) marks the series name and tooltip rows with an
+  asterisk and a note names the currencies.
+
+### 11.7 Deferred and open
+
+- **Income by Source value partition** (income sources split by tag value) is
+  deferred: it needs a `tagKey` partition on `income-by-source` and a decision on
+  what a multi-valued row's share means; the funding view above does not need it.
+  Opening it later reuses the Spending by Category predicate (11.4).
+- **Spending by Category value partition** (a per-value copy of the report in
+  one response, rules B1 to B4) is likewise not built; the filter of 11.4
+  answers the household question and keeps the response shape.
+- **Open question (not guessed):** in 11.4 the strip's `Y` is the All-accounts-in-
+  scope income while `Spent` is value-filtered. A reader who filters to
+  household sees household spending against ALL income plus household transfers,
+  which is the reporter's stated comparison (money available vs what the
+  household spent). If the owner wants income value-filtered too, the strip's `Y`
+  changes to the bucket's `totals.knownIncome` in one place (`taggedFunds` input),
+  with no other change.
+
+### 11.8 Test matrix
+
+Backend: spending-by-category with `tagKey`/`tagValue` (value match, a split-level
+tag attributing only its own split, a value on both levels summed once, VOID and
+investment exclusion unchanged, only one of the two params is a 400, absent =
+today's SQL and params byte for byte), monthly-category-breakdown `accountIds` (on
+both queries, absent unchanged, DTO validation, array bound), each as unit specs
+and against PostgreSQL.
+
+Frontend, per report: switch off or no key = today's calls and labels (parity;
+the funding fetch is NOT made); switch on = the figures of the numeric examples
+above (income 3,279, tagged inflows 4,516, expenses 8,486 -> Balance -691, -8.86%);
+the account filter reaches every call of the page; the untagged choice does not
+exist; a missing rate marks figures partial; months align by key. Helpers:
+`taggedFunds`, `collectTagValues`, the funding hook (no call while disabled).

@@ -94,11 +94,27 @@ Spec sections 10.8 and 10.9.
 - [x] i18n: `reports.tagBreakdown.includeTransfers` and the Balance labels; the
       old `stackFlows` key removed if unused; every locale last.
 
-## Phase 2 -- Spending by Category + Income by Source (stub)
+## Phase 2 -- Funding view on Income by Source, Spending by Category, Monthly Breakdown
 
-- [ ] Reuse the Phase 1 DTO mixin, bucket shape, control and i18n; value
-      partitioning only (no transfer flows).
+Spec section 11.
 
-## Phase 3 -- Budget vs Actual (stub)
+- [ ] Shared: `taggedFunds` (`lib/tagged-balance.ts`), `collectTagValues`,
+      `useTaggedFundsFilter`, `useTaggedFunding`, `useReportAccountScope`,
+      `TaggedFundsControls`, `TaggedFundsStrip`.
+- [ ] Income by Source: account filter, controls, "Tagged transfers: <value>"
+      entry and Available funds, shares unchanged; i18n.
+- [ ] Spending by Category: backend `tagKey` + `tagValue` filter (DTO, shared
+      `tagValuesArrayExpr`, unit + integration); frontend account filter,
+      controls, Available funds / Spent / Balance strip.
+- [ ] Monthly Breakdown: backend `accountIds` (DTO, both queries, unit +
+      integration); frontend account filter, controls, per-month summary block in
+      new files (the report file only gains wiring).
+- [ ] i18n: every locale last.
 
-- [ ] Design note first (budgets module, budget-period + category based).
+## Phase 3 -- Budget vs Actual funding overlay
+
+Spec section 11.6.
+
+- [ ] Frontend: controls, funding fetch aligned by `monthKey`, Available funds
+      series, tooltip rows, completeness note; budget figures unchanged.
+- [ ] i18n: every locale last.
