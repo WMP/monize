@@ -95,19 +95,28 @@ function unitFor(
   };
 }
 
+/** Which end of the register a run scans from. */
+export type CandidateDirection = "ASC" | "DESC";
+
 /**
- * The caller's non-investment transactions in range, newest first (register
- * order), grouped into evaluation units. Two queries however many rows: the
+ * The caller's non-investment transactions in range, in register order,
+ * grouped into evaluation units. Two queries however many rows: the
  * candidates, then the transfer partners the filters did not select. With
  * `lock`, every leg is row-locked (ascending by id, docs/concurrency-and-
  * idempotency.md section 5) and read again, so the facts the plan is built on
  * are the ones the write replaces.
+ *
+ * `direction` defaults to `"DESC"`, newest first, the order every run has
+ * scanned in. A run that settles loan installments asks for `"ASC"`, oldest
+ * first, so its fold prices each row on the debt the rows before it leave
+ * (INV-RULE-005); the cap then keeps the oldest rows and `truncated` says the
+ * newer ones wait for the next page.
  */
 export async function loadCandidateUnits(
   m: EntityManager,
   userId: string,
   filters: RuleRunFilters,
-  options: { lock: boolean },
+  options: { lock: boolean; direction?: CandidateDirection },
 ): Promise<CandidateSet> {
   const limit = effectiveRunLimit(filters.limit);
   const qb = m
@@ -133,7 +142,9 @@ export async function loadCandidateUnits(
       endDate: filters.endDate,
     });
   }
-  applyRegisterOrder(qb, "transaction", "DESC").take(limit + 1);
+  applyRegisterOrder(qb, "transaction", options.direction ?? "DESC").take(
+    limit + 1,
+  );
   const found = await qb.getMany();
   const truncated = found.length > limit;
   const rows = found.slice(0, limit);

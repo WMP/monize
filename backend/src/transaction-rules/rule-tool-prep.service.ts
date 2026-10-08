@@ -37,7 +37,7 @@ import {
 import { withActionDefaults } from "./rule-references";
 import type { RuleStructurePlan } from "./rule-structure";
 import { RuleHintDefinition, ruleErrorHints } from "./rule-validation-hints";
-import { RuleRunPreview } from "./rule-run.types";
+import { RuleRunPreview, RuleRunScanOrder } from "./rule-run.types";
 import {
   MAX_RULE_NAME_LENGTH,
   MIN_RULE_NAME_LENGTH,
@@ -208,10 +208,15 @@ export interface LlmRuleTest {
 export function zeroMatchWarning(test: {
   conditionMatchedCount?: number;
   scanned: number;
+  scanOrder?: RuleRunScanOrder;
 }): string | null {
   if (test.conditionMatchedCount !== 0 || test.scanned === 0) return null;
-  return `This rule matches none of the ${test.scanned} latest transactions.`;
+  return `This rule matches none of the ${test.scanned} ${scannedRowsWord(test)} transactions.`;
 }
+
+/** Which rows a test examined: the oldest for a rule that settles loan installments, the latest otherwise. */
+const scannedRowsWord = (test: { scanOrder?: RuleRunScanOrder }): string =>
+  test.scanOrder === "oldest_first" ? "oldest" : "latest";
 
 /** Appended for the model: a condition that matches nothing is usually wrong. */
 export const ZERO_MATCH_ADVICE =
@@ -225,10 +230,11 @@ export function noChangeNote(test: {
   matchedCount: number;
   conditionMatchedCount?: number;
   scanned: number;
+  scanOrder?: RuleRunScanOrder;
 }): string | null {
   const matched = test.conditionMatchedCount ?? 0;
   if (matched === 0 || test.matchedCount !== 0) return null;
-  return `The condition matches ${matched} of the ${test.scanned} latest transactions, but nothing would change (for example they already have the value and only-if-empty is on, or they are locked or reconciled). This is not an error.`;
+  return `The condition matches ${matched} of the ${test.scanned} ${scannedRowsWord(test)} transactions, but nothing would change (for example they already have the value and only-if-empty is on, or they are locked or reconciled). This is not an error.`;
 }
 
 /** Zero-match warning plus advice, or the no-change note, or an empty string. */
@@ -236,6 +242,7 @@ export function zeroMatchNote(test: {
   matchedCount: number;
   conditionMatchedCount?: number;
   scanned: number;
+  scanOrder?: RuleRunScanOrder;
 }): string {
   const warning = zeroMatchWarning(test);
   return warning
@@ -1085,6 +1092,7 @@ function toCardTest(preview: RuleRunPreview): AiActionRuleTestPreview {
     matchedCount: preview.matched.length,
     conditionMatchedCount: preview.conditionMatchedCount,
     scanned: preview.scanned,
+    scanOrder: preview.scanOrder,
     truncated: preview.truncated,
     rows: preview.matched.slice(0, RULE_CARD_PREVIEW_ROWS),
     skipped: preview.skipped.slice(0, RULE_CARD_PREVIEW_ROWS),

@@ -6011,37 +6011,57 @@ Statement           A rule pass (a manual run's preview or commit, or
 Source of truth     the transactions ledger (datedLoanDebt) and the pass's own
                     plan; docs/specs/loan-installment-settlement.md sections 7.2
                     and 9.4.
-Enforcement         Partly: changes.loanSettlement (with debtBefore) is in
-                    canonicalChanges (rule-run-fingerprint.ts, B5), so a
-                    commit whose fold differs from its preview refuses with
-                    PREVIEW_CHANGED (INV-RULE-003); and applyToNew drops a
-                    loan's cached facts after each settlement it writes
-                    (transaction-rules-applier.service.ts, B5), so the next
-                    row of the same call reads the claim and the debt the
-                    write left rather than planning the same slot again. Not
-                    yet: runs scan newest first (loadCandidateUnits), nothing
-                    hands the pure planner any priorSettlements, so a manual
-                    run over two rows of one slot reaches the claim's backstop
-                    conflict (a 409, nothing written) instead of refusing the
-                    second row; and imports run rules in file order. The rest
-                    of the mechanism, B6 of
-                    docs/future-plans/loan-installment-settlement-tasks.md:
-                    ascending candidates (applyRegisterOrder ASC) when a rule
-                    of the run carries the action; priorSettlements threaded
-                    through TransactionRulesRunService.plan() into the pure
-                    planner, holding only planned, unwritten settlements so a
-                    written one is not subtracted twice; and a stable date
-                    sort on every import path (QIF, OFX, CSV, MNY, bank sync).
+Enforcement         Built (B6 of
+                    docs/future-plans/loan-installment-settlement-tasks.md):
+                    loadCandidateUnits takes direction "ASC" when a rule of
+                    the run carries the action and "DESC" otherwise
+                    (TransactionRulesRunService.plan, rule-run-candidates.ts),
+                    and the preview reports scanOrder; plan() threads
+                    priorSettlements, the settlements planned so far in the
+                    pass and none of them written, into the pure planner, so
+                    each row is priced on datedLoanDebt at its slot less the
+                    principal of the earlier planned rows dated on or before
+                    it, in the preview and the commit alike; a row the strict
+                    reconciled lock keeps is not folded. changes.loanSettlement
+                    (with debtBefore) is in canonicalChanges
+                    (rule-run-fingerprint.ts), so a commit whose fold differs
+                    from its preview refuses with PREVIEW_CHANGED
+                    (INV-RULE-003). applyToNew orders its rows by
+                    (transaction_date, created_at, id), writes each settlement
+                    before the next row plans and drops the loan's cached
+                    facts after each write
+                    (transaction-rules-applier.service.ts), so the next row
+                    reads the claim and the debt the write left and
+                    priorSettlements stays empty there: a written settlement
+                    is never subtracted twice. Every import path orders its
+                    rows by date, stable within a date, through
+                    orderByDateStable (backend/src/common/date-order.util.ts):
+                    the QIF, OFX and CSV loops of ImportService,
+                    eligibleImportRuleIds for a Money file, and the rules
+                    batches of BankSyncWriterService, which also returns the
+                    accounts a rule moved for the after-commit recompute
+                    (INV-CACHE-001). The status flips in the acceptance task
+                    Q, with the locales and the release note.
 Concurrency scope   the run (its locks, INV-RULE-003); per import transaction
 Retry semantics     A re-run plans the same fold from the same ledger; rows
                     already settled are splits and are skipped.
 Crash semantics     -- (a planning rule; the writes are INV-LOAN-008's)
 Failure response    409 PREVIEW_CHANGED when the commit's fold differs from the
                     preview's.
-Required tests      Owed: spec table 9.4 through preview and commit with equal
-                    fingerprints, the same rows planned newest first refused,
-                    a written settlement not subtracted twice, and the import
-                    sort on each import path (spec section 16, B3 and B6).
+Required tests      transaction-rules-run.loan-settlement.spec.ts (ASC only
+                    with the action, DESC without; three rows chained through
+                    preview and commit with one fingerprint; a payment landing
+                    between two rows after the preview refused);
+                    transaction-rules-applier.settlement-write.spec.ts (rows
+                    oldest first whatever order they were listed, a written
+                    settlement not folded twice); rule-run-candidates.spec.ts;
+                    import.service.spec.ts, apply-import-rules.spec.ts,
+                    bank-sync-writer.service.spec.ts and
+                    bank-sync.service.spec.ts (the stable date sort on each
+                    path, the affected accounts dispatched); PostgreSQL:
+                    transaction-rules-loan-fold.integration.spec.ts (a file
+                    listed newest first settles three months in a chain, and
+                    the same rows settled by one run store the same price).
 Status              unenforced
 ```
 
