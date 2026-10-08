@@ -85,13 +85,13 @@ Spec section 10.7.
 
 Spec sections 10.8 and 10.9.
 
-- [ ] Backend: exclude a tagged transfer leg whose counterpart is also in
+- [x] Backend: exclude a tagged transfer leg whose counterpart is also in
       `accountIds` (whole transfer and split leg); truth table in unit and
       integration tests.
-- [ ] Frontend: `tagged-balance.ts` helper; "Include tagged transfers" switch;
+- [x] Frontend: `tagged-balance.ts` helper; "Include tagged transfers" switch;
       Balance and Balance % on Income vs Expenses and Cash Flow (chart, tooltip,
       cards, table, CSV); completeness via `PartialTotal`.
-- [ ] i18n: `reports.tagBreakdown.includeTransfers` and the Balance labels; the
+- [x] i18n: `reports.tagBreakdown.includeTransfers` and the Balance labels; the
       old `stackFlows` key removed if unused; every locale last.
 
 ## Phase 2 -- Spending by Category + Income by Source (stub)
