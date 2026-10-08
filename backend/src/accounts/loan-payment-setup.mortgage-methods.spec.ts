@@ -14,11 +14,13 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { LoanPaymentSetupService } from "./loan-payment-setup.service";
+import { LoanPaymentMatchingService } from "./loan-payment-matching.service";
 import { Account, AccountType } from "./entities/account.entity";
 import { CategoriesService } from "../categories/categories.service";
 import { ScheduledTransactionsService } from "../scheduled-transactions/scheduled-transactions.service";
 import { ACCOUNT_BALANCE_AS_OF_SQL } from "../common/ledger-balance.sql";
 import { SetupLoanPaymentsDto } from "./dto/setup-loan-payments.dto";
+import { constantLinearPrincipal } from "./mortgage-installment.util";
 
 /**
  * Payment setup for LINEAR and INTEREST_ONLY mortgages
@@ -31,6 +33,12 @@ describe("LoanPaymentSetupService: LINEAR and INTEREST_ONLY", () => {
   let service: LoanPaymentSetupService;
   let accountsRepository: Record<string, jest.Mock>;
   let scheduledTransactionsService: Record<string, jest.Mock>;
+  let paymentMatching: jest.Mocked<
+    Pick<
+      LoanPaymentMatchingService,
+      "assertDefinable" | "createMatchingRuleReported"
+    >
+  >;
   let manager: ManagerMock;
 
   const mortgage = {
@@ -78,6 +86,12 @@ describe("LoanPaymentSetupService: LINEAR and INTEREST_ONLY", () => {
   };
 
   beforeEach(async () => {
+    paymentMatching = {
+      assertDefinable: jest.fn(),
+      createMatchingRuleReported: jest
+        .fn()
+        .mockResolvedValue({ ruleId: "rule-1", error: null }),
+    };
     accountsRepository = {
       findOne: jest.fn(),
       update: jest.fn().mockResolvedValue(undefined),
@@ -105,6 +119,7 @@ describe("LoanPaymentSetupService: LINEAR and INTEREST_ONLY", () => {
           provide: ScheduledTransactionsService,
           useValue: scheduledTransactionsService,
         },
+        { provide: LoanPaymentMatchingService, useValue: paymentMatching },
       ],
     }).compile();
     service = module.get(LoanPaymentSetupService);
@@ -142,6 +157,68 @@ describe("LoanPaymentSetupService: LINEAR and INTEREST_ONLY", () => {
       paymentStartDate: expect.any(Date),
     });
     expect(result.firstInstallmentAmount).toBe(1333.3333);
+  });
+
+  it("prices c from the originalPrincipal it stores when that differs from the opening balance, preview and setup alike", async () => {
+    // A loan of 300,000 whose ledger opens at 260,000 (docs/specs/
+    // loan-installment-settlement.md section 14.3).
+    const underway = {
+      ...mortgage,
+      openingBalance: -260000,
+      currentBalance: -260000,
+      originalPrincipal: null,
+    };
+    manager.query.mockResolvedValue([{ balance: "-260000" }]);
+    const c = constantLinearPrincipal({
+      originalPrincipal: 300000,
+      openingBalance: -260000,
+      amortizationMonths: 360,
+      paymentFrequency: "MONTHLY",
+    });
+    expect(c).toBe(833.3333);
+
+    accountsRepository.findOne.mockResolvedValueOnce(underway);
+    const preview = await service.previewFirstInstallment(
+      "user-1",
+      "mortgage-1",
+      {
+        paymentFrequency: "MONTHLY",
+        nextDueDate: "2024-01-01",
+        mortgageType: "LINEAR",
+        amortizationMonths: 360,
+        originalPrincipal: 300000,
+      },
+    );
+    expect(preview).toEqual({
+      derivesInstallment: true,
+      principalPayment: c,
+      interestPayment: 433.3333,
+      paymentAmount: 1266.6666,
+    });
+
+    setUp(underway);
+    await service.setupLoanPayments(
+      "user-1",
+      "mortgage-1",
+      dto({ paymentAmount: 1266.6666, originalPrincipal: 300000 }),
+    );
+    const created = scheduledTransactionsService.create.mock.calls[0][1];
+    expect(created.splits[0]).toEqual({
+      transferAccountId: "mortgage-1",
+      amount: -c!,
+      memo: "Principal",
+    });
+    expect(accountsRepository.update.mock.calls[0][1].originalPrincipal).toBe(
+      300000,
+    );
+  });
+
+  it("stores the opening balance as originalPrincipal when neither the request nor the account has one", async () => {
+    setUp({ ...mortgage, originalPrincipal: null });
+    await service.setupLoanPayments("user-1", "mortgage-1", dto());
+    expect(accountsRepository.update.mock.calls[0][1].originalPrincipal).toBe(
+      300000,
+    );
   });
 
   it("stores the requested prepayment mode on a LINEAR mortgage", async () => {

@@ -1,16 +1,29 @@
+import "reflect-metadata";
 import { Test, TestingModule } from "@nestjs/testing";
-import { BadRequestException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ParseUUIDPipe,
+  ValidationPipe,
+} from "@nestjs/common";
+import { GUARDS_METADATA, ROUTE_ARGS_METADATA } from "@nestjs/common/constants";
 import { AccountsController } from "./accounts.controller";
 import { AccountsService } from "./accounts.service";
 import { AccountExportService } from "./account-export.service";
 import { LoanPaymentDetectorService } from "./loan-payment-detector.service";
 import { LoanPaymentSetupService } from "./loan-payment-setup.service";
+import { LoanPaymentMatchingService } from "./loan-payment-matching.service";
 import { StatementCycleService } from "./statement-cycle.service";
 import { BalanceForecastService } from "./balance-forecast.service";
 import { DailyBalanceTotalsService } from "./daily-balance-totals.service";
 import { DailyBalanceTotalsQueryDto } from "./dto/daily-balance-totals-query.dto";
 import { AccountBalancesReportService } from "./account-balances-report.service";
 import { DelegationService } from "../delegation/delegation.service";
+import { PaymentMatchingDto } from "./dto/payment-matching.dto";
+import { CreateAccountDto } from "./dto/create-account.dto";
+import { UpdateAccountDto } from "./dto/update-account.dto";
+import { SetupLoanPaymentsDto } from "./dto/setup-loan-payments.dto";
+import { TransactionRuleResponseDto } from "../transaction-rules/dto/transaction-rule-response.dto";
+import { LoanSettlementResponseDto } from "./dto/payment-matching.dto";
 
 describe("AccountsController", () => {
   let controller: AccountsController;
@@ -23,6 +36,9 @@ describe("AccountsController", () => {
   let mockDelegationService: Record<string, jest.Mock>;
   let mockCrossOwnerAccess: Record<string, jest.Mock>;
   let mockLoanPaymentSetup: Record<string, jest.Mock>;
+  let mockPaymentMatching: jest.Mocked<
+    Pick<LoanPaymentMatchingService, "createMatchingRule" | "listSettlements">
+  >;
   let mockJointAccounts: Record<string, jest.Mock>;
   const mockReq = { user: { id: "user-1", realUserId: "user-1" } };
 
@@ -87,6 +103,11 @@ describe("AccountsController", () => {
       previewFirstInstallment: jest.fn(),
     };
 
+    mockPaymentMatching = {
+      createMatchingRule: jest.fn(),
+      listSettlements: jest.fn(),
+    };
+
     mockJointAccounts = {
       jointShareCountsForOwner: jest.fn().mockResolvedValue(new Map()),
       jointAccountsFor: jest.fn().mockResolvedValue([]),
@@ -113,6 +134,10 @@ describe("AccountsController", () => {
         {
           provide: LoanPaymentSetupService,
           useValue: mockLoanPaymentSetup,
+        },
+        {
+          provide: LoanPaymentMatchingService,
+          useValue: mockPaymentMatching,
         },
         {
           provide: StatementCycleService,
@@ -1462,6 +1487,197 @@ describe("AccountsController", () => {
 
       expect(mockJointAccounts.jointAccountsFor).not.toHaveBeenCalled();
       expect(mockJointAccounts.jointShareCountsForOwner).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("payment matching routes", () => {
+    const loanId = "7b0d6f3e-2a4c-4c1e-9d55-0f4a3e9b8c21";
+    const matching: PaymentMatchingDto = { payeePattern: "ING HYPOTHEKEN*" };
+
+    const paramPipes = (method: string, name: string): unknown[] => {
+      const meta = Reflect.getMetadata(
+        ROUTE_ARGS_METADATA,
+        AccountsController,
+        method,
+      ) as Record<string, { data?: string; pipes: unknown[] }>;
+      return Object.values(meta).find((m) => m.data === name)?.pipes ?? [];
+    };
+
+    it("creates the rule for the JWT's user and the path's loan", async () => {
+      const rule = {
+        id: "rule-1",
+        name: "Mortgage payment - Hypotheek",
+      } as TransactionRuleResponseDto;
+      mockPaymentMatching.createMatchingRule.mockResolvedValue(rule);
+
+      await expect(
+        controller.createPaymentMatchingRule(mockReq, loanId, matching),
+      ).resolves.toBe(rule);
+      expect(mockPaymentMatching.createMatchingRule).toHaveBeenCalledWith(
+        "user-1",
+        loanId,
+        matching,
+      );
+    });
+
+    it("lists the settled installments for the JWT's user and the path's loan", async () => {
+      const settled: LoanSettlementResponseDto[] = [
+        {
+          claimId: "claim-1",
+          dueDate: "2024-01-01",
+          postedDate: "2024-01-03",
+          transactionId: "tx-1",
+          transactionStatus: "UNRECONCILED",
+          principal: 833.33,
+          interest: 500,
+          extraPrincipal: 0,
+          debtBefore: 300000,
+          installmentNumber: 1,
+          ruleId: "rule-1",
+        },
+      ];
+      mockPaymentMatching.listSettlements.mockResolvedValue(settled);
+
+      await expect(
+        controller.getLoanSettlements(mockReq, loanId),
+      ).resolves.toBe(settled);
+      expect(mockPaymentMatching.listSettlements).toHaveBeenCalledWith(
+        "user-1",
+        loanId,
+      );
+    });
+
+    it("parses :id as a UUID on both routes, under the JWT guard", () => {
+      expect(paramPipes("createPaymentMatchingRule", "id")).toContain(
+        ParseUUIDPipe,
+      );
+      expect(paramPipes("getLoanSettlements", "id")).toContain(ParseUUIDPipe);
+      expect(
+        Reflect.getMetadata(GUARDS_METADATA, AccountsController),
+      ).toHaveLength(1);
+    });
+
+    describe("request validation (whitelist + forbidNonWhitelisted)", () => {
+      const pipe = new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      });
+      const body = (type: new () => object, value: unknown) =>
+        pipe.transform(value, { type: "body", metatype: type });
+
+      it("accepts a payee glob with the optional description glob and policies", async () => {
+        await expect(
+          body(PaymentMatchingDto, {
+            payeePattern: "ING*",
+            descriptionPattern: "*Hypotheek*",
+            excess: "refuse",
+            shortfall: "interest_first",
+          }),
+        ).resolves.toBeInstanceOf(PaymentMatchingDto);
+        await expect(
+          body(PaymentMatchingDto, {
+            payeePattern: "ING*",
+            descriptionPattern: "",
+          }),
+        ).resolves.toBeInstanceOf(PaymentMatchingDto);
+      });
+
+      it.each([
+        ["an unknown field", { payeePattern: "ING*", sourceAccountId: loanId }],
+        ["no payee pattern", {}],
+        ["an empty payee pattern", { payeePattern: "" }],
+        ["a payee pattern without a wildcard", { payeePattern: "ING" }],
+        [
+          "a payee pattern over 200 characters",
+          { payeePattern: `${"a".repeat(200)}*` },
+        ],
+        [
+          "a description pattern without a wildcard",
+          { payeePattern: "ING*", descriptionPattern: "rent" },
+        ],
+        [
+          "an unknown excess policy",
+          { payeePattern: "ING*", excess: "ignore" },
+        ],
+        [
+          "an unknown shortfall policy",
+          { payeePattern: "ING*", shortfall: "extra_principal" },
+        ],
+      ])("refuses %s", async (_label, value) => {
+        await expect(body(PaymentMatchingDto, value)).rejects.toBeInstanceOf(
+          BadRequestException,
+        );
+      });
+
+      it("validates paymentMatching nested on the create and the setup, unknown keys included", async () => {
+        const create = {
+          name: "Hypotheek",
+          accountType: "MORTGAGE",
+          currencyCode: "EUR",
+        };
+        await expect(
+          body(CreateAccountDto, { ...create, paymentMatching: matching }),
+        ).resolves.toMatchObject({ paymentMatching: matching });
+        await expect(
+          body(CreateAccountDto, {
+            ...create,
+            paymentMatching: { ...matching, ruleId: "x" },
+          }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        await expect(
+          body(CreateAccountDto, {
+            ...create,
+            paymentMatching: { payeePattern: "ING" },
+          }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        const setup = {
+          paymentAmount: 1333.33,
+          paymentFrequency: "MONTHLY",
+          sourceAccountId: loanId,
+          nextDueDate: "2024-01-01",
+        };
+        await expect(
+          body(SetupLoanPaymentsDto, { ...setup, paymentMatching: matching }),
+        ).resolves.toMatchObject({ paymentMatching: matching });
+        await expect(
+          body(SetupLoanPaymentsDto, {
+            ...setup,
+            paymentMatching: { ...matching, extra: 1 },
+          }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+      });
+
+      it("takes originalPrincipal as a positive amount at 4dp on create, edit and setup", async () => {
+        const create = {
+          name: "Hypotheek",
+          accountType: "MORTGAGE",
+          currencyCode: "EUR",
+        };
+        await expect(
+          body(CreateAccountDto, { ...create, originalPrincipal: 300000.1234 }),
+        ).resolves.toMatchObject({ originalPrincipal: 300000.1234 });
+        await expect(
+          body(UpdateAccountDto, { originalPrincipal: 300000 }),
+        ).resolves.toMatchObject({ originalPrincipal: 300000 });
+        await expect(
+          body(UpdateAccountDto, { originalPrincipal: null }),
+        ).resolves.toMatchObject({ originalPrincipal: null });
+        await expect(
+          body(SetupLoanPaymentsDto, {
+            paymentAmount: 1333.33,
+            paymentFrequency: "MONTHLY",
+            sourceAccountId: loanId,
+            nextDueDate: "2024-01-01",
+            originalPrincipal: 300000,
+          }),
+        ).resolves.toMatchObject({ originalPrincipal: 300000 });
+        for (const bad of [0, -1, 1.23456, "300000"]) {
+          await expect(
+            body(UpdateAccountDto, { originalPrincipal: bad }),
+          ).rejects.toBeInstanceOf(BadRequestException);
+        }
+      });
     });
   });
 });

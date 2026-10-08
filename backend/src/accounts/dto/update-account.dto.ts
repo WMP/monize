@@ -383,4 +383,15 @@ export class UpdateAccountDto {
   @IsNumber()
   @IsPositive()
   amortizationMonths?: number;
+
+  @ApiPropertyOptional({
+    example: 300000,
+    description:
+      "Loans and mortgages: the amount originally borrowed, kept apart from the opening balance (the debt where this ledger starts). A LINEAR mortgage's constant principal is this over the scheduled payment count; null falls back to the opening balance. A LINEAR mortgage's scheduled payment is repriced when it changes",
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @IsPositive()
+  @Max(999999999999)
+  originalPrincipal?: number | null;
 }

@@ -3,7 +3,11 @@ import { Account } from "../accounts/entities/account.entity";
 import { Category } from "../categories/entities/category.entity";
 import { Payee } from "../payees/entities/payee.entity";
 import { Tag } from "../tags/entities/tag.entity";
-import { RuleAction, SETTLE_LOAN_INSTALLMENT } from "./rule-action.types";
+import {
+  RuleAction,
+  SETTLE_LOAN_INSTALLMENT,
+  SETTLE_LOAN_INSTALLMENT_DEFAULTS,
+} from "./rule-action.types";
 import {
   RULE_CONDITION_FIELDS,
   RuleConditionNode,
@@ -65,11 +69,7 @@ const ACTION_DEFAULTS: Readonly<
   set_payee_from_text: { onlyIfEmpty: true, createIfMissing: false },
   set_description: { onlyIfEmpty: false, mode: "replace" },
   convert_to_transfer: { clearCategory: true },
-  [SETTLE_LOAN_INSTALLMENT]: {
-    dueDateWindow: Object.freeze({ daysBefore: 3, daysAfter: 7 }),
-    excess: "extra_principal",
-    shortfall: "refuse",
-  },
+  [SETTLE_LOAN_INSTALLMENT]: SETTLE_LOAN_INSTALLMENT_DEFAULTS,
 };
 
 /**

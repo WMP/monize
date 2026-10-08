@@ -7,6 +7,7 @@ jest.mock("../common/db/scoped-db", () =>
 );
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { LoanPaymentSetupService } from "./loan-payment-setup.service";
+import { LoanPaymentMatchingService } from "./loan-payment-matching.service";
 import { Account, AccountType } from "./entities/account.entity";
 import { CategoriesService } from "../categories/categories.service";
 import { ScheduledTransactionsService } from "../scheduled-transactions/scheduled-transactions.service";
@@ -16,6 +17,12 @@ describe("LoanPaymentSetupService", () => {
   let accountsRepository: Record<string, jest.Mock>;
   let categoriesService: Record<string, jest.Mock>;
   let scheduledTransactionsService: Record<string, jest.Mock>;
+  let paymentMatching: jest.Mocked<
+    Pick<
+      LoanPaymentMatchingService,
+      "assertDefinable" | "createMatchingRuleReported"
+    >
+  >;
 
   const mockLoanAccount = {
     id: "loan-1",
@@ -45,6 +52,12 @@ describe("LoanPaymentSetupService", () => {
   };
 
   beforeEach(async () => {
+    paymentMatching = {
+      assertDefinable: jest.fn(),
+      createMatchingRuleReported: jest
+        .fn()
+        .mockResolvedValue({ ruleId: "rule-1", error: null }),
+    };
     accountsRepository = {
       findOne: jest.fn(),
       update: jest.fn().mockResolvedValue(undefined),
@@ -75,6 +88,7 @@ describe("LoanPaymentSetupService", () => {
           provide: ScheduledTransactionsService,
           useValue: scheduledTransactionsService,
         },
+        { provide: LoanPaymentMatchingService, useValue: paymentMatching },
       ],
     }).compile();
 
@@ -180,6 +194,151 @@ describe("LoanPaymentSetupService", () => {
           interestRate: 5.5,
         }),
       );
+    });
+
+    describe("payment matching", () => {
+      const setupDto = {
+        paymentAmount: 500,
+        paymentFrequency: "MONTHLY",
+        sourceAccountId: "source-1",
+        nextDueDate: "2026-04-01",
+        interestRate: 5.5,
+        autoPost: true,
+      };
+      const matching = { payeePattern: "BANK OF TEST*" };
+
+      beforeEach(() => {
+        accountsRepository.findOne
+          .mockResolvedValueOnce(mockLoanAccount)
+          .mockResolvedValueOnce(mockSourceAccount);
+      });
+
+      it("checks the patterns before the schedule, keeps auto-post off and creates the rule after the account points at it", async () => {
+        const result = await service.setupLoanPayments("user-1", "loan-1", {
+          ...setupDto,
+          paymentMatching: matching,
+        });
+
+        expect(paymentMatching.assertDefinable).toHaveBeenCalledWith(
+          "source-1",
+          matching,
+        );
+        expect(
+          paymentMatching.assertDefinable.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+          scheduledTransactionsService.create.mock.invocationCallOrder[0],
+        );
+        expect(scheduledTransactionsService.create).toHaveBeenCalledWith(
+          "user-1",
+          expect.objectContaining({ autoPost: false }),
+        );
+        expect(paymentMatching.createMatchingRuleReported).toHaveBeenCalledWith(
+          "user-1",
+          "loan-1",
+          matching,
+        );
+        expect(
+          paymentMatching.createMatchingRuleReported.mock
+            .invocationCallOrder[0],
+        ).toBeGreaterThan(
+          accountsRepository.update.mock.invocationCallOrder[0],
+        );
+        expect(result).toMatchObject({
+          paymentMatchingRuleId: "rule-1",
+          paymentMatchingError: null,
+        });
+      });
+
+      it("reports a rule it could not create, and the schedule stays", async () => {
+        const error = {
+          errorCode: "PAYMENT_MATCHING_FAILED",
+          message:
+            "The loan was saved, but its payment matching rule could not be created.",
+        };
+        paymentMatching.createMatchingRuleReported.mockResolvedValue({
+          ruleId: null,
+          error,
+        });
+
+        const result = await service.setupLoanPayments("user-1", "loan-1", {
+          ...setupDto,
+          paymentMatching: matching,
+        });
+
+        expect(result).toMatchObject({
+          scheduledTransactionId: "sched-1",
+          paymentMatchingRuleId: null,
+          paymentMatchingError: error,
+        });
+        expect(accountsRepository.update).toHaveBeenCalled();
+      });
+
+      it("leaves the request's auto-post and creates no rule when none is asked for", async () => {
+        const result = await service.setupLoanPayments(
+          "user-1",
+          "loan-1",
+          setupDto,
+        );
+
+        expect(scheduledTransactionsService.create).toHaveBeenCalledWith(
+          "user-1",
+          expect.objectContaining({ autoPost: true }),
+        );
+        expect(paymentMatching.assertDefinable).not.toHaveBeenCalled();
+        expect(
+          paymentMatching.createMatchingRuleReported,
+        ).not.toHaveBeenCalled();
+        expect(result).toMatchObject({
+          paymentMatchingRuleId: null,
+          paymentMatchingError: null,
+        });
+      });
+
+      it("refuses payment matching on a line of credit before anything is written", async () => {
+        accountsRepository.findOne.mockReset();
+        accountsRepository.findOne
+          .mockResolvedValueOnce({
+            ...mockLoanAccount,
+            accountType: AccountType.LINE_OF_CREDIT,
+          })
+          .mockResolvedValueOnce(mockSourceAccount);
+
+        await expect(
+          service.setupLoanPayments("user-1", "loan-1", {
+            ...setupDto,
+            paymentMatching: matching,
+          }),
+        ).rejects.toThrow(BadRequestException);
+        expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+        expect(accountsRepository.update).not.toHaveBeenCalled();
+      });
+
+      it("refuses a pattern the rule would refuse before anything is written", async () => {
+        paymentMatching.assertDefinable.mockImplementation(() => {
+          throw new BadRequestException("The rule definition is not valid");
+        });
+
+        await expect(
+          service.setupLoanPayments("user-1", "loan-1", {
+            ...setupDto,
+            paymentMatching: { payeePattern: "A|B*" },
+          }),
+        ).rejects.toThrow(BadRequestException);
+        expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+        expect(accountsRepository.update).not.toHaveBeenCalled();
+      });
+
+      it("stores a loan's originalPrincipal apart from its opening balance", async () => {
+        await service.setupLoanPayments("user-1", "loan-1", {
+          ...setupDto,
+          originalPrincipal: 24000,
+        });
+
+        expect(accountsRepository.update).toHaveBeenCalledWith(
+          "loan-1",
+          expect.objectContaining({ originalPrincipal: 24000 }),
+        );
+      });
     });
 
     it("creates scheduled transaction with principal/interest splits", async () => {

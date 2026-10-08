@@ -29,7 +29,10 @@ import {
   MortgageTypeHistoryDetectionResponseDto,
 } from "./dto/detect-mortgage-type.dto";
 import { MortgageTypeDetection } from "./mortgage-type-detection.util";
-import { LoanMortgageAccountService } from "./loan-mortgage-account.service";
+import {
+  CreatedLoanAccount,
+  LoanMortgageAccountService,
+} from "./loan-mortgage-account.service";
 import { mortgageTermEndDate } from "./payment-frequency.util";
 import { PaymentFrequency, AmortizationResult } from "./loan-amortization.util";
 import {
@@ -220,10 +223,26 @@ export class AccountsService {
     const {
       openingBalance = 0,
       createInvestmentPair,
+      paymentMatching,
       ...accountData
     } = createAccountDto;
 
     await this.assertInstitutionOwned(userId, accountData.institutionId);
+
+    // Payment matching settles mortgages and loans only (docs/specs/
+    // loan-installment-settlement.md decision 4); refused before any write.
+    if (
+      paymentMatching &&
+      accountData.accountType !== AccountType.MORTGAGE &&
+      accountData.accountType !== AccountType.LOAN
+    ) {
+      throw new BadRequestException(
+        tr(
+          "errors.accounts.paymentMatchingLoanOnly",
+          "Payment matching applies to mortgages and loans only",
+        ),
+      );
+    }
 
     // If creating an investment account pair, delegate to the pair creation method
     if (
@@ -253,6 +272,17 @@ export class AccountsService {
       createAccountDto.amortizationMonths
     ) {
       return this.createMortgageAccount(userId, createAccountDto);
+    }
+
+    // The rule matches the bank debits of the loan's scheduled payment, which
+    // only the two paths above create.
+    if (paymentMatching) {
+      throw new BadRequestException(
+        tr(
+          "errors.accounts.paymentMatchingRequiresSchedule",
+          "Payment matching needs the loan's scheduled payment. Set up its payments first.",
+        ),
+      );
     }
 
     // Strip credit card statement fields for non-credit-card accounts
@@ -692,7 +722,7 @@ export class AccountsService {
   async createLoanAccount(
     userId: string,
     createAccountDto: CreateAccountDto,
-  ): Promise<Account> {
+  ): Promise<CreatedLoanAccount> {
     await this.findOne(userId, createAccountDto.sourceAccountId!);
     return this.loanMortgageService.createLoanAccount(userId, createAccountDto);
   }
@@ -700,7 +730,7 @@ export class AccountsService {
   async createMortgageAccount(
     userId: string,
     createAccountDto: CreateAccountDto,
-  ): Promise<Account> {
+  ): Promise<CreatedLoanAccount> {
     await this.findOne(userId, createAccountDto.sourceAccountId!);
     return this.loanMortgageService.createMortgageAccount(
       userId,
@@ -986,20 +1016,40 @@ export class AccountsService {
         }
         if (updateAccountDto.amortizationMonths !== undefined)
           account.amortizationMonths = updateAccountDto.amortizationMonths;
+        // The amount originally borrowed, apart from the opening balance
+        // (docs/specs/loan-installment-settlement.md section 14.3). A value
+        // difference, not the field being sent: the form resends it.
+        const amountOrNull = (value: number | string | null | undefined) =>
+          value == null ? null : roundMoney(Number(value));
+        const originalPrincipalChanged =
+          updateAccountDto.originalPrincipal !== undefined &&
+          amountOrNull(updateAccountDto.originalPrincipal) !==
+            amountOrNull(account.originalPrincipal);
+        if (updateAccountDto.originalPrincipal !== undefined)
+          account.originalPrincipal = updateAccountDto.originalPrincipal;
         // The prepayment mode and the stored payment follow the saved type,
         // in this transaction (spec section 5.6).
-        const { repriceTemplate } = await applyMortgageMethodColumns(
-          m,
-          account,
-          {
-            type:
-              before.accountType === AccountType.MORTGAGE
-                ? mortgageTypeOf(before)
-                : null,
-            mode: before.prepaymentMode ?? null,
-          },
-          updateAccountDto.prepaymentMode,
-        );
+        const { repriceTemplate: methodRepriced } =
+          await applyMortgageMethodColumns(
+            m,
+            account,
+            {
+              type:
+                before.accountType === AccountType.MORTGAGE
+                  ? mortgageTypeOf(before)
+                  : null,
+              mode: before.prepaymentMode ?? null,
+            },
+            updateAccountDto.prepaymentMode,
+          );
+        // A LINEAR constant principal is the amount originally borrowed over
+        // the payment count (`constantLinearPrincipal`), so the template's
+        // installment moves with it.
+        const repriceTemplate =
+          methodRepriced ||
+          (originalPrincipalChanged &&
+            account.accountType === AccountType.MORTGAGE &&
+            mortgageTypeOf(account) === "LINEAR");
 
         // Keep a linked investment pair (cash <-> brokerage) in sync. Both halves
         // represent one real-world account, so shared attributes -- currency,

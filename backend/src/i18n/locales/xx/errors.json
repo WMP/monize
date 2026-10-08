@@ -69,7 +69,11 @@
     "unknownInvestmentAccount": "[XX-Unknown account: {{ name }}. Use an exact name from the user's account list.-XX]",
     "notACreditCard": "[XX-Statement cycles are only available for credit card accounts-XX]",
     "noStatementSettlementDay": "[XX-This credit card has no statement settlement day configured-XX]",
-    "loanLedgerUnreadable": "[XX-This loan's balance could not be read. Try again.-XX]"
+    "loanLedgerUnreadable": "[XX-This loan's balance could not be read. Try again.-XX]",
+    "paymentMatchingLoanOnly": "[XX-Payment matching applies to mortgages and loans only-XX]",
+    "paymentMatchingRequiresSchedule": "[XX-Payment matching needs the loan's scheduled payment. Set up its payments first.-XX]",
+    "paymentMatchingRuleExists": "[XX-This loan already has a payment matching rule-XX]",
+    "paymentMatchingFailed": "[XX-The loan was saved, but its payment matching rule could not be created. Create it from the loan's details.-XX]"
   },
   "actionHistory": {
     "nothingToUndo": "[XX-Nothing to undo-XX]",

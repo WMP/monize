@@ -142,6 +142,17 @@ export const LOAN_SETTLEMENT_SHORTFALL_POLICIES = [
 ] as const;
 
 /**
+ * What a `settle_loan_installment` saved without them stores (spec section
+ * 5.1, decision 19): the window, the excess and the shortfall policy. Read by
+ * the save-time defaults and by the rule the "Payment matching" section builds.
+ */
+export const SETTLE_LOAN_INSTALLMENT_DEFAULTS = Object.freeze({
+  dueDateWindow: Object.freeze({ daysBefore: 3, daysAfter: 7 }),
+  excess: "extra_principal",
+  shortfall: "refuse",
+} as const);
+
+/**
  * Settles the matched bank debit against the scheduled installment of a loan
  * (`docs/specs/loan-installment-settlement.md` section 5.1): the row becomes a
  * split of a principal transfer to the loan, an interest line and, when it

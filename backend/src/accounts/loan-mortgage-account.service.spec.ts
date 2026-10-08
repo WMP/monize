@@ -20,6 +20,7 @@ import { CategoriesService } from "../categories/categories.service";
 import { ScheduledTransactionsService } from "../scheduled-transactions/scheduled-transactions.service";
 import { LoanRateChangesService } from "../loan-rate-changes/loan-rate-changes.service";
 import { LoanPaymentDetectorService } from "./loan-payment-detector.service";
+import { LoanPaymentMatchingService } from "./loan-payment-matching.service";
 import { CreateAccountDto } from "./dto/create-account.dto";
 
 describe("LoanMortgageAccountService", () => {
@@ -29,11 +30,23 @@ describe("LoanMortgageAccountService", () => {
   let categoriesService: Record<string, jest.Mock>;
   let scheduledTransactionsService: Record<string, jest.Mock>;
   let loanRateChangesService: Record<string, jest.Mock>;
+  let paymentMatching: jest.Mocked<
+    Pick<
+      LoanPaymentMatchingService,
+      "assertDefinable" | "createMatchingRuleReported"
+    >
+  >;
   let manager: ManagerMock;
 
   const userId = "user-1";
 
   beforeEach(async () => {
+    paymentMatching = {
+      assertDefinable: jest.fn(),
+      createMatchingRuleReported: jest
+        .fn()
+        .mockResolvedValue({ ruleId: "rule-1", error: null }),
+    };
     accountsRepository = {
       create: jest.fn().mockImplementation((data: any) => ({
         id: "new-acc-id",
@@ -105,6 +118,7 @@ describe("LoanMortgageAccountService", () => {
           useValue: loanRateChangesService,
         },
         { provide: LoanPaymentDetectorService, useValue: {} },
+        { provide: LoanPaymentMatchingService, useValue: paymentMatching },
       ],
     }).compile();
 
@@ -568,6 +582,146 @@ describe("LoanMortgageAccountService", () => {
           frequency: "WEEKLY",
         }),
       );
+    });
+
+    it("stores originalPrincipal apart from the opening balance when given", async () => {
+      await service.createMortgageAccount(userId, {
+        ...makeValidMortgageDto(),
+        openingBalance: 450000,
+        originalPrincipal: 500000,
+      });
+
+      expect(accountsRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          openingBalance: -450000,
+          currentBalance: -450000,
+          originalPrincipal: 500000,
+        }),
+      );
+    });
+
+    describe("payment matching", () => {
+      const paymentMatchingDto = { payeePattern: "RBC MORTGAGE*" };
+
+      it("checks the patterns before writing, then creates the rule for the saved mortgage", async () => {
+        const created = await service.createMortgageAccount(userId, {
+          ...makeValidMortgageDto(),
+          paymentMatching: paymentMatchingDto,
+        });
+
+        expect(paymentMatching.assertDefinable).toHaveBeenCalledWith(
+          "acc-chequing",
+          paymentMatchingDto,
+        );
+        expect(
+          paymentMatching.assertDefinable.mock.invocationCallOrder[0],
+        ).toBeLessThan(accountsRepository.save.mock.invocationCallOrder[0]);
+        expect(paymentMatching.createMatchingRuleReported).toHaveBeenCalledWith(
+          userId,
+          "new-acc-id",
+          paymentMatchingDto,
+        );
+        // After the account points at its schedule.
+        expect(
+          paymentMatching.createMatchingRuleReported.mock
+            .invocationCallOrder[0],
+        ).toBeGreaterThan(accountsRepository.save.mock.invocationCallOrder[1]);
+        expect(created).toMatchObject({
+          scheduledTransactionId: "sched-tx-1",
+          paymentMatchingRuleId: "rule-1",
+          paymentMatchingError: null,
+        });
+        // Not spread into the account row.
+        expect(accountsRepository.create.mock.calls[0][0]).not.toHaveProperty(
+          "paymentMatching",
+        );
+      });
+
+      it("refuses a pattern the rule would refuse before anything is written", async () => {
+        paymentMatching.assertDefinable.mockImplementation(() => {
+          throw new BadRequestException("The rule definition is not valid");
+        });
+
+        await expect(
+          service.createMortgageAccount(userId, {
+            ...makeValidMortgageDto(),
+            paymentMatching: { payeePattern: "RBC|TD*" },
+          }),
+        ).rejects.toThrow(BadRequestException);
+        expect(accountsRepository.save).not.toHaveBeenCalled();
+        expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+      });
+
+      it("reports a rule it could not create on the saved mortgage, which stays", async () => {
+        const error = {
+          errorCode: "RULE_LIMIT_REACHED",
+          message: "At most 200 rules can be created",
+        };
+        paymentMatching.createMatchingRuleReported.mockResolvedValue({
+          ruleId: null,
+          error,
+        });
+
+        const created = await service.createMortgageAccount(userId, {
+          ...makeValidMortgageDto(),
+          paymentMatching: paymentMatchingDto,
+        });
+
+        expect(created).toMatchObject({
+          id: "new-acc-id",
+          scheduledTransactionId: "sched-tx-1",
+          paymentMatchingRuleId: null,
+          paymentMatchingError: error,
+        });
+        expect(accountsRepository.save).toHaveBeenCalledTimes(2);
+      });
+
+      it("creates no rule when the request asks for none", async () => {
+        const created = await service.createMortgageAccount(
+          userId,
+          makeValidMortgageDto(),
+        );
+
+        expect(paymentMatching.assertDefinable).not.toHaveBeenCalled();
+        expect(
+          paymentMatching.createMatchingRuleReported,
+        ).not.toHaveBeenCalled();
+        expect(created).not.toHaveProperty("paymentMatchingError");
+      });
+
+      it("creates the rule for a loan created with its payment too", async () => {
+        const created = await service.createLoanAccount(userId, {
+          accountType: AccountType.LOAN,
+          name: "Car Loan",
+          currencyCode: "CAD",
+          openingBalance: 25000,
+          paymentAmount: 500,
+          paymentFrequency: "MONTHLY",
+          paymentStartDate: "2025-01-15",
+          sourceAccountId: "acc-chequing",
+          interestRate: 5.5,
+          institution: "TD Bank",
+          originalPrincipal: 30000,
+          paymentMatching: paymentMatchingDto,
+        } as CreateAccountDto);
+
+        expect(paymentMatching.assertDefinable).toHaveBeenCalledWith(
+          "acc-chequing",
+          paymentMatchingDto,
+        );
+        expect(accountsRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            openingBalance: -25000,
+            originalPrincipal: 30000,
+          }),
+        );
+        expect(paymentMatching.createMatchingRuleReported).toHaveBeenCalledWith(
+          userId,
+          "new-acc-id",
+          paymentMatchingDto,
+        );
+        expect(created.paymentMatchingRuleId).toBe("rule-1");
+      });
     });
 
     it("should save scheduledTransactionId back to account", async () => {

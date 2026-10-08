@@ -38,6 +38,7 @@ import {
 import { AccountExportService } from "./account-export.service";
 import { LoanPaymentDetectorService } from "./loan-payment-detector.service";
 import { LoanPaymentSetupService } from "./loan-payment-setup.service";
+import { LoanPaymentMatchingService } from "./loan-payment-matching.service";
 import { StatementCycleService } from "./statement-cycle.service";
 import { BalanceForecastService } from "./balance-forecast.service";
 import { DailyBalanceTotalsService } from "./daily-balance-totals.service";
@@ -69,6 +70,11 @@ import {
   MortgageTypeDetectionResponseDto,
   MortgageTypeHistoryDetectionResponseDto,
 } from "./dto/detect-mortgage-type.dto";
+import {
+  LoanSettlementResponseDto,
+  PaymentMatchingDto,
+} from "./dto/payment-matching.dto";
+import { TransactionRuleResponseDto } from "../transaction-rules/dto/transaction-rule-response.dto";
 import { PaymentFrequency } from "./loan-amortization.util";
 import { requestedMortgageType } from "./mortgage-type.util";
 import { formatDateYMD, todayYMD } from "../common/date-utils";
@@ -136,6 +142,7 @@ export class AccountsController {
     private readonly accountExportService: AccountExportService,
     private readonly loanPaymentDetectorService: LoanPaymentDetectorService,
     private readonly loanPaymentSetupService: LoanPaymentSetupService,
+    private readonly loanPaymentMatchingService: LoanPaymentMatchingService,
     private readonly statementCycleService: StatementCycleService,
     private readonly balanceForecastService: BalanceForecastService,
     private readonly dailyBalanceTotalsService: DailyBalanceTotalsService,
@@ -1121,6 +1128,68 @@ export class AccountsController {
     @Body() dto: SetupLoanPaymentsDto,
   ): Promise<SetupLoanPaymentsResponseDto> {
     return this.loanPaymentSetupService.setupLoanPayments(req.user.id, id, dto);
+  }
+
+  @Post(":id/payment-matching-rule")
+  @ApiOperation({
+    summary: "Create the payment matching rule of an existing loan",
+    description:
+      "Creates the rule that settles the bank debits of the loan's scheduled payment against each installment (a settle_loan_installment action over the payment's source account, payee pattern and optional description pattern; triggers create and import; last in the rule order), points the loan at it and turns the bill's auto-post off, in one transaction.",
+  })
+  @ApiParam({
+    name: "id",
+    description: "Mortgage or loan account UUID",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Rule created",
+    type: TransactionRuleResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      "Bad request - not a mortgage or loan, no scheduled payment, or a pattern the rule cannot hold",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({ status: 404, description: "Account not found" })
+  @ApiResponse({
+    status: 409,
+    description: "The loan already has a payment matching rule",
+  })
+  createPaymentMatchingRule(
+    @Request() req,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: PaymentMatchingDto,
+  ): Promise<TransactionRuleResponseDto> {
+    return this.loanPaymentMatchingService.createMatchingRule(
+      req.user.id,
+      id,
+      dto,
+    );
+  }
+
+  @Get(":id/loan-settlements")
+  @ApiOperation({
+    summary: "List the installments payment matching settled on a loan",
+    description:
+      "The occurrences of the loan's scheduled payment a rule settled from a bank row, with the lines written and the debt each was priced on, newest first, at most 200.",
+  })
+  @ApiParam({
+    name: "id",
+    description: "Mortgage or loan account UUID",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Settled installments",
+    type: [LoanSettlementResponseDto],
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({ status: 404, description: "Account not found" })
+  getLoanSettlements(
+    @Request() req,
+    @Param("id", ParseUUIDPipe) id: string,
+  ): Promise<LoanSettlementResponseDto[]> {
+    return this.loanPaymentMatchingService.listSettlements(req.user.id, id);
   }
 
   @Post(":id/close")
