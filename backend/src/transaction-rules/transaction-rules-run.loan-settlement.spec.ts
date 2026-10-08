@@ -327,6 +327,8 @@ describe("TransactionRulesRunService: the chronological fold (INV-RULE-005)", ()
       direction: "ASC",
     });
     expect(preview.scanOrder).toBe("oldest_first");
+    // The next page of "Process history" starts on the last row examined.
+    expect(preview.scannedThrough).toBe("2024-03-04");
 
     (loadCandidateUnits as jest.Mock).mockClear();
     const plain = setup(threeMonths(), [

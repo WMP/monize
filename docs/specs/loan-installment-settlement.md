@@ -958,7 +958,8 @@ A run is capped at `MAX_RULE_RUN_LIMIT` (1000) rows and reports `truncated`.
 A run that contains the action scans oldest first, so its pages walk forward
 through time. "Process history" is the ordinary run of the loan's
 payment-matching rule over the source account, page by page: each next page
-starts at the date of the previous page's last row (`startDate`, inclusive).
+starts at the date of the previous page's last row (`startDate`, inclusive),
+which the preview reports as `scannedThrough`.
 Rows of that date that the previous page settled are now splits and are
 refused `row_has_splits`, so a re-scan writes nothing twice. The loop stops
 when a page is not truncated, and stops with an error naming the date when a
