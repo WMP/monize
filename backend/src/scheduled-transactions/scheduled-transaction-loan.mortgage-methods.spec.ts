@@ -12,13 +12,15 @@ jest.mock("../common/db/scoped-db", () =>
 );
 
 /**
- * `resolveInstallment` for the LINEAR and INTEREST_ONLY methods
- * (docs/specs/mortgage-types.md, sections 5.2 and 9, table 4.3). Every figure
- * is copied from the spec's section 7 tables, which were produced by an
- * independent period-by-period loop: EUR 300,000 over 360 monthly payments from
- * 2024-01-01, 2.00% until 4.00% from 2027-01-01, repayments of 20,000 on
- * 2025-07-01 and 15,000 on 2026-01-01. The debt each case prices is the spec's
- * "debt as posted", the figure `datedLoanDebt` returns.
+ * `ScheduledTransactionLoanService` on the LINEAR and INTEREST_ONLY methods
+ * (docs/specs/mortgage-types.md, sections 5.2, 5.6, 8 and 9): what the service
+ * WRITES from the installment the pricing tail resolves -- the deactivation at
+ * payoff, the posting's booking, the method-change reprice, the missing-term
+ * decline. The spec's section 7 pricing tables themselves are asserted
+ * against the pure tail in `backend/src/loan-installments/price-installment.spec.ts`.
+ * The fixture is the spec's: EUR 300,000 over 360 monthly payments from
+ * 2024-01-01, 2.00% until 4.00% from 2027-01-01; the debt each case prices is
+ * the spec's "debt as posted", the figure `datedLoanDebt` returns.
  */
 describe("ScheduledTransactionLoanService: LINEAR and INTEREST_ONLY", () => {
   let service: ScheduledTransactionLoanService;
@@ -196,196 +198,25 @@ describe("ScheduledTransactionLoanService: LINEAR and INTEREST_ONLY", () => {
     service = module.get(ScheduledTransactionLoanService);
   });
 
-  describe("LINEAR, SHORTEN_TERM (spec table 7.1)", () => {
-    it("keeps the principal constant through a rate change; only the interest moves", async () => {
-      const account = makeMortgage();
-
-      const december = await advance(
-        account,
-        makeTemplate(833.3333, 393.6111, "2026-12-01"),
-        235833.3345,
-      );
-      expect(december).toEqual({
-        principal: 833.3333,
-        interest: 393.0556,
-        extra: undefined,
-        parent: 1226.3889,
-      });
-
-      const january = await advance(
-        account,
-        makeTemplate(833.3333, 393.0556, "2027-01-01"),
-        235000.0012,
-      );
-      expect(january).toEqual({
-        principal: 833.3333,
-        interest: 783.3333,
-        extra: undefined,
-        parent: 1616.6666,
-      });
-    });
-
-    it("prices 2027-01-01 on a ledger posted at cents: 833.33 and 783.33", async () => {
-      // 36 installments of 833.33 and 35,000 of repayments leave 235,000.12.
-      const result = await advance(
-        makeMortgage(),
-        makeTemplate(833.3333, 393.0556, "2027-01-01"),
-        235000.12,
-      );
-      expect(result.principal).toBe(833.3333);
-      expect(result.interest).toBe(783.3337);
-      expect(Math.round(result.interest! * 100) / 100).toBe(783.33);
-    });
-
-    it("prices a ledger recorded at statement cents from what it holds (table 7.2)", async () => {
-      const result = await advance(
-        makeMortgage(),
-        makeTemplate(833.3333, 443.0556, "2025-07-01"),
-        265000.06,
-      );
-      expect(result).toMatchObject({
-        principal: 833.3333,
-        interest: 441.6668,
-        parent: 1275.0001,
-      });
-    });
-
-    it("lets the final installment absorb the leftover, and posts nothing after it", async () => {
-      const account = makeMortgage();
-      const final = await advance(
-        account,
-        makeTemplate(833.3333, 5.5555, "2050-06-01"),
-        833.3439,
-      );
-      expect(final).toEqual({
-        principal: 833.3439,
-        interest: 2.7778,
-        extra: undefined,
-        parent: 836.1217,
-      });
-
+  describe("the final installment (spec table 7.1)", () => {
+    it("deactivates the schedule once the debt is retired, and writes no split", async () => {
       // The 2050-07-01 advancement finds the debt retired: no 0.0106 payment.
-      scheduledTransactionsRepository.update.mockClear();
-      await advance(account, makeTemplate(833.3439, 2.7778, "2050-07-01"), 0);
+      await advance(
+        makeMortgage(),
+        makeTemplate(833.3439, 2.7778, "2050-07-01"),
+        0,
+      );
       expect(scheduledTransactionsRepository.update).toHaveBeenCalledWith(
         scheduledTransactionId,
         { isActive: false },
       );
       expect(splitsRepository.save).not.toHaveBeenCalled();
     });
-
-    it("grows the template to the method installment, unbounded by payment_amount", async () => {
-      // payment_amount is null for LINEAR (spec decision 11); the template
-      // still advances to c + interest + the standing extra.
-      const result = await advance(
-        makeMortgage({ extraPaymentAmount: 100 }),
-        makeTemplate(833.3333, 393.0556, "2027-01-01", 100),
-        235000.0012,
-      );
-      expect(result).toEqual({
-        principal: 833.3333,
-        interest: 783.3333,
-        extra: undefined,
-        parent: 1716.6666,
-      });
-    });
-
-    it("reads a mortgage whose original_principal is null from its opening balance", async () => {
-      const result = await advance(
-        makeMortgage({ originalPrincipal: null }),
-        makeTemplate(833.3333, 500, "2024-02-01"),
-        299166.6667,
-      );
-      expect(result).toMatchObject({ principal: 833.3333, interest: 498.6111 });
-    });
-  });
-
-  describe("LINEAR, LOWER_INSTALLMENT (spec table 7.3)", () => {
-    it("re-derives the principal from the next due date after a prepayment", async () => {
-      const account = makeMortgage({ prepaymentMode: "LOWER_INSTALLMENT" });
-      const template = makeTemplate(833.3333, 474.7222, "2025-07-01");
-
-      // Before the 20,000 repayment reaches the ledger: 285,000.0006 over 342.
-      const before = await advance(account, template, 285000.0006);
-      expect(before.principal).toBe(833.3333);
-
-      // After it: the same due date re-derives 265,000.0006 / 342.
-      const after = await advance(account, template, 265000.0006);
-      expect(after).toEqual({
-        principal: 774.8538,
-        interest: 441.6667,
-        extra: undefined,
-        parent: 1216.5205,
-      });
-    });
-
-    it("keeps the principal through a rate change", async () => {
-      const result = await advance(
-        makeMortgage({ prepaymentMode: "LOWER_INSTALLMENT" }),
-        makeTemplate(730.2109, 395.0, "2027-01-01"),
-        236588.347,
-      );
-      expect(result).toEqual({
-        principal: 730.2109,
-        interest: 788.6278,
-        extra: undefined,
-        parent: 1518.8387,
-      });
-    });
-
-    it("counts remaining payments from the calendar for a due date moved off it", async () => {
-      // 2025-07-10 is k = 19, the same as 2025-07-01: remaining 342.
-      const result = await advance(
-        makeMortgage({ prepaymentMode: "LOWER_INSTALLMENT" }),
-        makeTemplate(833.3333, 474.7222, "2025-07-10"),
-        265000.0006,
-      );
-      expect(result.principal).toBe(774.8538);
-    });
-
-    it("pays the whole debt on payment N", async () => {
-      const result = await advance(
-        makeMortgage({ prepaymentMode: "LOWER_INSTALLMENT" }),
-        makeTemplate(730.2109, 4.8679, "2053-12-01"),
-        730.2109,
-      );
-      expect(result).toEqual({
-        principal: 730.2109,
-        interest: 2.434,
-        extra: undefined,
-        parent: 732.6449,
-      });
-    });
   });
 
   describe("INTEREST_ONLY (spec table 7.4 and section 9)", () => {
     const interestOnly = () =>
       makeMortgage({ mortgageType: "INTEREST_ONLY", prepaymentMode: null });
-
-    it("keeps the principal line at zero and prices the interest", async () => {
-      const result = await advance(
-        interestOnly(),
-        makeTemplate(0, 441.6667, "2027-01-01"),
-        265000,
-      );
-      expect(result.principal).toBe(0);
-      expect(result.interest).toBe(883.3333);
-      expect(result.parent).toBe(883.3333);
-    });
-
-    it("writes the bullet into the principal line before payment N", async () => {
-      const result = await advance(
-        interestOnly(),
-        makeTemplate(0, 883.3333, "2053-12-01"),
-        265000,
-      );
-      expect(result).toEqual({
-        principal: 265000,
-        interest: 883.3333,
-        extra: undefined,
-        parent: 265883.3333,
-      });
-    });
 
     it("posts the interest alone and moves the loan balance by zero", async () => {
       const template = makeTemplate(0, 883.3333, "2027-02-01");
