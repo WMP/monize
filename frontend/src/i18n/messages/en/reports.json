@@ -347,7 +347,11 @@
     "monthlySummaryTitle": "Balance by month, including tagged transfers: {value}",
     "fundsExpenses": "Expenses",
     "fundsPartialNote": "Some amounts could not be converted (no exchange rate for {currencies}), so Balance is a subtotal and Balance % is not shown.",
-    "fundsPartialNoteGeneric": "Some amounts could not be included, so Balance is a subtotal and Balance % is not shown."
+    "fundsPartialNoteGeneric": "Some amounts could not be included, so Balance is a subtotal and Balance % is not shown.",
+    "actualVsAvailable": "Actual vs available",
+    "budgetFundsPartialNote": "Some amounts could not be converted (no exchange rate for {currencies}), so Available funds is a subtotal.",
+    "budgetFundsPartialNoteGeneric": "Some amounts could not be included, so Available funds is a subtotal.",
+    "fundsSeriesName": "Available funds ({value})"
   },
   "categoryPerformance": {
     "noBudgets": "No budgets found. Create a budget to see category performance.",

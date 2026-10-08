@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   findFundingBucket,
+  fundingCompleteness,
   fundingWindow,
   mergeCompleteness,
   monthEndYmd,
@@ -58,6 +59,39 @@ describe('fundingWindow', () => {
     expect(w.taggedOutflows).toBe(0);
     expect(w.bucket).toEqual({ missingCurrencies: [], excludedCount: 0 });
     expect(w.allTotalsKnown).toBe(false);
+  });
+});
+
+describe('fundingCompleteness', () => {
+  it('is complete when nothing was left out and the All totals are known', () => {
+    const r = response({ buckets: [{ ...bucket('household', false, 1), missingCurrencies: [], excludedCount: 0 }] });
+    expect(fundingCompleteness(r, 'household')).toEqual({
+      complete: true,
+      missingCurrencies: [],
+      excludedCount: 0,
+    });
+  });
+
+  it('is incomplete when the bucket lost a rate, naming the currency', () => {
+    expect(fundingCompleteness(response(), 'household')).toEqual({
+      complete: false,
+      missingCurrencies: ['EUR'],
+      excludedCount: 1,
+    });
+  });
+
+  it('is incomplete when the response lost a rate or its All totals are null', () => {
+    const clean = [{ ...bucket('household', false, 1), missingCurrencies: [], excludedCount: 0 }];
+    expect(
+      fundingCompleteness(response({ buckets: clean, missingCurrencies: ['GBP'], excludedCount: 2 }), 'household'),
+    ).toMatchObject({ complete: false, missingCurrencies: ['GBP'], excludedCount: 2 });
+    expect(
+      fundingCompleteness(response({ buckets: clean, totals: { ...totals, income: null } }), 'household').complete,
+    ).toBe(false);
+  });
+
+  it('reads an absent bucket as no gap of its own', () => {
+    expect(fundingCompleteness(response(), 'stall')).toMatchObject({ complete: true });
   });
 });
 

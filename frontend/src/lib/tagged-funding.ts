@@ -65,6 +65,39 @@ export function mergeCompleteness(...parts: BalanceCompleteness[]): BalanceCompl
   };
 }
 
+export interface FundingCompleteness {
+  /** True only when every component is known: the All totals and the bucket. */
+  complete: boolean;
+  missingCurrencies: string[];
+  excludedCount: number;
+}
+
+/**
+ * Whether the per-period figures read from the funding answer are complete: the
+ * All totals are known and neither the response nor the chosen bucket left a row
+ * out. The server does not say WHICH period lost a row, so a gap marks every
+ * period's figure as a subtotal.
+ */
+export function fundingCompleteness(
+  response: IncomeVsExpensesResponse,
+  tagValue: string,
+): FundingCompleteness {
+  const bucket = findFundingBucket(response, tagValue);
+  const gaps = mergeCompleteness(
+    { missingCurrencies: response.missingCurrencies, excludedCount: response.excludedCount },
+    bucket
+      ? { missingCurrencies: bucket.missingCurrencies, excludedCount: bucket.excludedCount }
+      : NO_GAPS,
+  );
+  return {
+    complete:
+      response.totals.income !== null &&
+      gaps.missingCurrencies.length === 0 &&
+      gaps.excludedCount === 0,
+    ...gaps,
+  };
+}
+
 /** Last day of a `YYYY-MM` month as `YYYY-MM-DD`, by calendar arithmetic (no local-time Date). */
 export function monthEndYmd(monthKey: string): string {
   const [year, month] = monthKey.split('-').map(Number);
