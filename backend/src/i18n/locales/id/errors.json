@@ -545,7 +545,9 @@
     "activeWindowInvalid": "Tanggal aktif pertama tidak boleh setelah tanggal aktif terakhir",
     "runTooLarge": "Proses ini mengubah terlalu banyak transaksi untuk dibatalkan dalam satu langkah. Persempit akun atau tanggal lalu coba lagi",
     "runRedoStructural": "Eksekusi ini mengubah struktur transaksi (transfer atau pemisahan), sehingga tidak dapat diulang. Jalankan aturan itu lagi",
-    "runUndoStructureChanged": "Transaksi yang distrukturkan ulang oleh eksekusi ini telah diubah sejak itu (baris pemisahan atau transfernya), sehingga eksekusi tidak dapat dibatalkan dengan aman. Pulihkan secara manual"
+    "runUndoStructureChanged": "Transaksi yang distrukturkan ulang oleh eksekusi ini telah diubah sejak itu (baris pemisahan atau transfernya), sehingga eksekusi tidak dapat dibatalkan dengan aman. Pulihkan secara manual",
+    "occurrenceAlreadyPosted": "Angsuran pinjaman ini sudah dibayar atau diposting, sehingga transaksi tidak dapat melunasinya",
+    "runUndoLaterSettlement": "Angsuran berikutnya dari pinjaman ini dilunasi setelah eksekusi ini, sehingga eksekusi tidak dapat dibatalkan. Batalkan pelunasan berikutnya terlebih dahulu"
   },
   "transactions": {
     "invalidStatus": "Status transaksi tidak valid: {{ status }}",

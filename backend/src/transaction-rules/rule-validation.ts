@@ -4,7 +4,10 @@ import {
   RULE_ACTION_TYPES,
   RULE_DESCRIPTION_MODES,
   RuleAction,
+  SETTLE_LOAN_INSTALLMENT,
+  SETTLE_LOAN_INSTALLMENT_ACCEPTED,
   SPLIT_REST_AMOUNT,
+  isStructuralActionType,
 } from "./rule-action.types";
 import {
   RULE_CONDITION_FIELDS,
@@ -22,6 +25,7 @@ import {
   parseGlob,
 } from "./rule-glob-capture";
 import { TEMPLATE_BUILTINS, parseTemplate } from "./rule-template";
+import { validateSettleLoanInstallment } from "./rule-validation.loan-settlement";
 
 /** Bounds from design section 4. The DTO layer and the validator share them. */
 export const MAX_RULE_CONDITION_DEPTH = 4;
@@ -422,8 +426,9 @@ function validateActions(
     } else if (action.type === "set_category") {
       setsCategory = true;
     } else if (
-      action.type === "convert_to_transfer" ||
-      action.type === "split"
+      isStructuralActionType(action.type) &&
+      typeof action.type === "string" &&
+      isAcceptedActionType(action.type)
     ) {
       // At most one structural action per rule (spec 3.6).
       if (++structural > MAX_RULE_STRUCTURAL_ACTIONS) {
@@ -447,10 +452,7 @@ function validateAction(
 ): void {
   if (!isRecord(action)) return push(path, "INVALID_SHAPE");
   const type = action.type;
-  if (
-    typeof type !== "string" ||
-    !(RULE_ACTION_TYPES as readonly string[]).includes(type)
-  ) {
+  if (typeof type !== "string" || !isAcceptedActionType(type)) {
     return push(`${path}.type`, "UNKNOWN_ACTION");
   }
   const uuid = (v: unknown, p: string): boolean =>
@@ -521,12 +523,28 @@ function validateAction(
     validateSplit(action, path, captures, push);
     return;
   }
+  if (type === SETTLE_LOAN_INSTALLMENT) {
+    validateSettleLoanInstallment(action, path, push);
+    return;
+  }
   const idKey = type === "set_category" ? "categoryId" : "payeeId";
   checkKeys(action, ["type", idKey, "onlyIfEmpty"], path, push);
   uuid(action[idKey], `${path}.${idKey}`);
   if (typeof action.onlyIfEmpty !== "boolean") {
     push(`${path}.onlyIfEmpty`, "VALUE_TYPE");
   }
+}
+
+/**
+ * A type every save path accepts: `RULE_ACTION_TYPES`, plus
+ * `settle_loan_installment` once its write path accepts it
+ * (`SETTLE_LOAN_INSTALLMENT_ACCEPTED`, `rule-action.types.ts`).
+ */
+function isAcceptedActionType(type: string): boolean {
+  return (
+    (RULE_ACTION_TYPES as readonly string[]).includes(type) ||
+    (type === SETTLE_LOAN_INSTALLMENT && SETTLE_LOAN_INSTALLMENT_ACCEPTED)
+  );
 }
 
 /** An optional id key: absent is fine, present must be a UUID. */
@@ -738,6 +756,11 @@ export function collectReferencedIds(
           sets.accountIds.add(part.transferAccountId);
         }
         if (part.payeeId !== undefined) sets.payeeIds.add(part.payeeId);
+      }
+    } else if (action.type === SETTLE_LOAN_INSTALLMENT) {
+      sets.accountIds.add(action.loanAccountId);
+      if (action.interestCategoryId !== undefined) {
+        sets.categoryIds.add(action.interestCategoryId);
       }
     }
   }

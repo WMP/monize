@@ -35,7 +35,7 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 | B1 | #1591 | Migration: claim columns on `scheduled_transaction_postings`, `accounts.payment_matching_rule_id`; entities, backup, restore, action history | S1 | inert | [x] | the PR closing #1591 |
 | B2 | #1592 | Loan core extraction into `backend/src/loan-installments/`; `advanceScheduleCursor` shared with `post()` | S1 | neutral | [x] | the PR closing #1592 |
 | B3 | #1593 | Settlement types, occurrence slots, facts loader, `datedLoanDebts`, pure planner | B1, B2 | none | [x] | the PR closing #1593 |
-| B4 | #1594 | The action in the rules engine: types, validation, references, planner, lookup rounds, skip reasons | B3 | inert | [ ] | -- |
+| B4 | #1594 | The action in the rules engine: types, validation, references, planner, lookup rounds, skip reasons | B3 | inert | [x] | the PR closing #1594 |
 | B5 | #1595 | Write path: claim, cursor, trace, fingerprint, snapshot, undo, after-commit reprice; `post()` records its transaction | B4 | inert | [ ] | -- |
 | B6 | #1596 | Chronological fold, ascending run order, import ordering, bank-sync affected accounts | B5 | neutral | [ ] | -- |
 | F1 | #1597 | Frontend action card, types, run preview, skip reasons, en + pseudo | B5 | inert | [ ] | -- |
@@ -97,6 +97,7 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 - `RulePlanContext` gains `loanFacts` and `fromScheduledPosting` (server-set, never from a request); `RuleEffects` gains `loanFactsLookups`; the applier and the run service answer them in a second round, as for payees.
 - `RuleSkippedAction` gains the optional `detail` (spec decision 18). Refusals in spec section 11's order; a success plans `changes.structure` (a split) and `changes.loanSettlement`.
 - Inert by construction until B5: `rule-validation.ts` answers `UNKNOWN_ACTION` for `settle_loan_installment` on every save path (REST, assistant, MCP), as it does today, so no stored rule can carry the action and no create or import can reach it. The planner and the lookup rounds are exercised by the specs directly. B5 lets the validator accept the type in the same PR that writes the claim, so a split is never written without its claim and nothing throws on a create or import path in between.
+- As built: the type is in the `RuleAction` union and `StructuralRuleAction`, but not in `RULE_ACTION_TYPES`, the list `frontend/src/lib/rule-fields.contract.test.ts` mirrors; the validator accepts it only while `SETTLE_LOAN_INSTALLMENT_ACCEPTED` (`rule-action.types.ts`) is true, which it is not, and the planner skips a rule the validator refuses (`invalid`). The specs that plan the action mock the flag on. B5 deletes the flag and appends the type to `RULE_ACTION_TYPES`; that append fails the frontend's mirror tests (`rule-fields.contract.test.ts`, `rules-catalog.test.ts`, `rule-actions.test.ts`) until the frontend lists the type, so B5 carries the frontend mirror entry or lands with F1. The name-mapping and hint entries (`RULE_ACTION_TOOL_KEYS`, `ACTION_NAME_KEYS`) are keyed on `RULE_ACTION_TYPES` and follow with it.
 - Acceptance: spec section 16 row B4.
 
 ### B5 -- Write path, claim, cursor, undo

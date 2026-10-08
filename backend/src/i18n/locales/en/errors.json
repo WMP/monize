@@ -556,7 +556,9 @@
     "activeWindowInvalid": "The first active date must not be after the last active date",
     "runTooLarge": "This run changes too many transactions to be undone in one step. Narrow the accounts or the dates and try again",
     "runRedoStructural": "This run restructured transactions (transfers or splits), so it cannot be redone. Run the rule again instead",
-    "runUndoStructureChanged": "A transaction this run restructured has been changed since (its split lines or its transfer), so the run cannot be undone safely. Restore it by hand"
+    "runUndoStructureChanged": "A transaction this run restructured has been changed since (its split lines or its transfer), so the run cannot be undone safely. Restore it by hand",
+    "occurrenceAlreadyPosted": "This loan installment has already been paid or posted, so the transaction cannot settle it",
+    "runUndoLaterSettlement": "A later installment of this loan was settled after this run, so the run cannot be undone. Undo the later settlement first"
   },
   "transactions": {
     "invalidStatus": "Invalid transaction status: {{ status }}",

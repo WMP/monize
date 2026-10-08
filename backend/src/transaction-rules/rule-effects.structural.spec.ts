@@ -578,3 +578,28 @@ describe("planRuleEffects: structuralNotAllowed (a joint-account member's create
     expect(effects.changes.structure).toMatchObject({ kind: "transfer" });
   });
 });
+
+describe("planRuleEffects: settle_loan_installment before its write path", () => {
+  it("skips a stored rule carrying it as invalid, so nothing is looked up or planned", () => {
+    // The validator answers UNKNOWN_ACTION until B5 accepts the action, so a
+    // rule restored or written around the save paths is never applied.
+    const effects = planRuleEffects(
+      row(),
+      [
+        rule([
+          {
+            type: "settle_loan_installment",
+            loanAccountId: LOAN,
+            dueDateWindow: { daysBefore: 3, daysAfter: 7 },
+            excess: "extra_principal",
+            shortfall: "refuse",
+          },
+        ]),
+      ],
+      { accounts: ACCOUNTS },
+    );
+    expect(effects.trace[0].skippedRule).toBe("invalid");
+    expect(effects.changes.structure).toBeUndefined();
+    expect(effects.loanFactsLookups).toBeUndefined();
+  });
+});

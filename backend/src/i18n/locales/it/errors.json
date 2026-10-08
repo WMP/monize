@@ -545,7 +545,9 @@
     "activeWindowInvalid": "La prima data attiva non deve essere successiva all'ultima data attiva",
     "runTooLarge": "Questa esecuzione modifica troppe transazioni per essere annullata in un solo passaggio. Restringi i conti o le date e riprova",
     "runRedoStructural": "Questa esecuzione ha ristrutturato delle transazioni (trasferimenti o suddivisioni), quindi non può essere ripristinata. Esegui di nuovo la regola",
-    "runUndoStructureChanged": "Una transazione ristrutturata da questa esecuzione è stata modificata da allora (le sue righe di suddivisione o il suo trasferimento), quindi l'esecuzione non può essere annullata in sicurezza. Ripristinala manualmente"
+    "runUndoStructureChanged": "Una transazione ristrutturata da questa esecuzione è stata modificata da allora (le sue righe di suddivisione o il suo trasferimento), quindi l'esecuzione non può essere annullata in sicurezza. Ripristinala manualmente",
+    "occurrenceAlreadyPosted": "Questa rata del prestito è già stata pagata o registrata, quindi la transazione non può saldarla",
+    "runUndoLaterSettlement": "Una rata successiva di questo prestito è stata saldata dopo questa esecuzione, quindi l'esecuzione non può essere annullata. Annulla prima il saldo successivo"
   },
   "transactions": {
     "invalidStatus": "Stato transazione non valido: {{ status }}",

@@ -33,6 +33,11 @@ import {
 } from "./rule-facts";
 import { RuleStructurePlan, SplitStructurePlan } from "./rule-structure";
 import { loadRuleTargetAccounts } from "./rule-target-accounts";
+import {
+  LoanFactsSource,
+  answerLoanFactsLookups,
+  newLoanFactsSource,
+} from "./rule-loan-facts";
 import { RuleFacts } from "./rule-condition.types";
 import { loadRuleLabels, mergeRuleLabels } from "./rule-labels";
 import {
@@ -200,11 +205,19 @@ function storedRowFacts(
 
 /**
  * What a caller knows about the row besides its facts: transfer ownership, the
- * target accounts and who wants to watch the evaluation.
+ * target accounts, the row's id, the loan facts and the settlements planned
+ * earlier in the pass, and who wants to watch the evaluation.
  */
 export type PlanRowContext = Pick<
   RulePlanContext,
-  "crossOwnerTransferLeg" | "accounts" | "structuralNotAllowed" | "onEvaluate"
+  | "crossOwnerTransferLeg"
+  | "accounts"
+  | "structuralNotAllowed"
+  | "onEvaluate"
+  | "transactionId"
+  | "fromScheduledPosting"
+  | "loanFacts"
+  | "priorSettlements"
 >;
 
 /** Payee lookups made while planning; share one across the rows of a call. */
@@ -215,6 +228,14 @@ export type PayeeLookupCache = Map<string, PayeeResolution | null>;
  * plan needed and plans again; a rule list needs one or two.
  */
 const MAX_PAYEE_LOOKUP_ROUNDS = 12;
+
+/**
+ * Planning rounds for loan facts. The loader answers a loan's schedule, slots,
+ * claims and slot debts in one read, so a row needs one round; a second widens
+ * a read whose window did not cover the row, and the bound stops a plan that
+ * keeps asking.
+ */
+export const MAX_LOAN_FACTS_ROUNDS = 3;
 
 /**
  * Applies a user's transaction rules to rows in the caller's transaction
@@ -284,10 +305,15 @@ export class TransactionRulesApplierService {
     if (rules.length === 0) return planRuleEffects(buildRuleFacts(input), []);
     const chains = await this.chainsFor(m, userId, rules, [input.categoryId]);
     const accounts = await loadRuleTargetAccounts(m, userId, rules);
-    return this.planResolved(userId, input, rules, chains, {
-      ...context,
-      accounts,
-    });
+    return this.planResolved(
+      userId,
+      input,
+      rules,
+      chains,
+      { ...context, accounts },
+      new Map(),
+      newLoanFactsSource(m, userId, { dates: [input.transactionDate] }),
+    );
   }
 
   /**
@@ -299,6 +325,11 @@ export class TransactionRulesApplierService {
    * preview never creates a payee; a name nobody has stays a
    * `payeeCreated` note on the plan. `cache` is shared by the rows of one
    * call so a batch looks each name up once.
+   *
+   * A `settle_loan_installment` asks for its loan's facts the same way
+   * (`loanFactsLookups`): `loans` reads them in the caller's transaction and
+   * keeps them for the rows of the call, by loan account id. Without a source
+   * the plan uses `context.loanFacts` as it is.
    */
   async planResolved(
     userId: string,
@@ -307,23 +338,44 @@ export class TransactionRulesApplierService {
     chains: ReadonlyMap<string, readonly string[]>,
     context: PlanRowContext,
     cache: PayeeLookupCache = new Map(),
+    loans?: LoanFactsSource,
   ): Promise<RuleEffects> {
-    let effects = this.planWithChains(input, rules, chains, context, cache);
-    for (
-      let round = 0;
-      round < MAX_PAYEE_LOOKUP_ROUNDS && effects.payeeLookups !== undefined;
-      round++
-    ) {
-      const missing = effects.payeeLookups.filter(
-        (name) => !cache.has(payeeLookupKey(name)),
-      );
-      if (missing.length === 0) break;
-      for (const name of missing) {
-        cache.set(payeeLookupKey(name), await this.lookUpPayee(userId, name));
+    const withLoans: PlanRowContext =
+      loans === undefined ? context : { ...context, loanFacts: loans.entries };
+    const plan = () =>
+      this.planWithChains(input, rules, chains, withLoans, cache);
+    let effects = plan();
+    let payeeRounds = 0;
+    let loanRounds = 0;
+    for (;;) {
+      let answered = false;
+      if (
+        payeeRounds < MAX_PAYEE_LOOKUP_ROUNDS &&
+        effects.payeeLookups !== undefined
+      ) {
+        const missing = effects.payeeLookups.filter(
+          (name) => !cache.has(payeeLookupKey(name)),
+        );
+        for (const name of missing) {
+          cache.set(payeeLookupKey(name), await this.lookUpPayee(userId, name));
+        }
+        if (missing.length > 0) {
+          payeeRounds += 1;
+          answered = true;
+        }
       }
-      effects = this.planWithChains(input, rules, chains, context, cache);
+      if (
+        loans !== undefined &&
+        loanRounds < MAX_LOAN_FACTS_ROUNDS &&
+        effects.loanFactsLookups !== undefined &&
+        (await answerLoanFactsLookups(loans, effects.loanFactsLookups))
+      ) {
+        loanRounds += 1;
+        answered = true;
+      }
+      if (!answered) return effects;
+      effects = plan();
     }
-    return effects;
   }
 
   private async lookUpPayee(
@@ -525,6 +577,10 @@ export class TransactionRulesApplierService {
     const accounts = await loadRuleTargetAccounts(m, userId, rules);
     const applied: AppliedRuleRow[] = [];
     const lookups: PayeeLookupCache = new Map();
+    const loans = newLoanFactsSource(m, userId, {
+      rowIds: rows.map((row) => row.id),
+      dates: rows.map((row) => row.transactionDate),
+    });
     for (const row of rows) {
       const { input, context } = await this.inputFromRow(
         m,
@@ -546,6 +602,7 @@ export class TransactionRulesApplierService {
             : {}),
         },
         lookups,
+        loans,
       );
       const affected = new Set<string>();
       const effects = await this.writeEffects(
@@ -790,7 +847,7 @@ export class TransactionRulesApplierService {
         fromAccountId,
         toAccountId,
       }),
-      context: { crossOwnerTransferLeg },
+      context: { crossOwnerTransferLeg, transactionId: row.id },
     };
   }
 

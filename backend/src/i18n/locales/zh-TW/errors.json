@@ -545,7 +545,9 @@
     "activeWindowInvalid": "生效起始日期不能晚於生效結束日期",
     "runTooLarge": "本次執行變更的交易過多，無法一步復原。請縮小帳戶或日期範圍後再試一次",
     "runRedoStructural": "此次執行變更了交易結構(轉帳或拆分),因此無法重做。請改為重新執行該規則",
-    "runUndoStructureChanged": "此次執行重組的某筆交易之後已被變更(其拆分列或轉帳),因此無法安全地復原該次執行。請手動還原"
+    "runUndoStructureChanged": "此次執行重組的某筆交易之後已被變更(其拆分列或轉帳),因此無法安全地復原該次執行。請手動還原",
+    "occurrenceAlreadyPosted": "此筆貸款分期已支付或已入帳，因此該交易無法結清它",
+    "runUndoLaterSettlement": "此次執行之後，此貸款的後續分期已被結清，因此無法復原該次執行。請先復原後續的結清"
   },
   "transactions": {
     "invalidStatus": "無效的交易狀態：{{ status }}",

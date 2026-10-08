@@ -545,7 +545,9 @@
     "activeWindowInvalid": "La première date active ne doit pas être postérieure à la dernière date active",
     "runTooLarge": "Cette exécution modifie trop de transactions pour être annulée en une seule étape. Restreignez les comptes ou les dates et réessayez",
     "runRedoStructural": "Cette exécution a restructuré des transactions (virements ou ventilations) et ne peut pas être rétablie. Exécutez plutôt la règle à nouveau",
-    "runUndoStructureChanged": "Une transaction restructurée par cette exécution a été modifiée depuis (ses lignes de ventilation ou son virement), l'exécution ne peut donc pas être annulée en toute sécurité. Rétablissez-la manuellement"
+    "runUndoStructureChanged": "Une transaction restructurée par cette exécution a été modifiée depuis (ses lignes de ventilation ou son virement), l'exécution ne peut donc pas être annulée en toute sécurité. Rétablissez-la manuellement",
+    "occurrenceAlreadyPosted": "Cette échéance du prêt a déjà été payée ou comptabilisée, la transaction ne peut donc pas la régler",
+    "runUndoLaterSettlement": "Une échéance ultérieure de ce prêt a été réglée après cette exécution, l'exécution ne peut donc pas être annulée. Annulez d'abord le règlement ultérieur"
   },
   "transactions": {
     "invalidStatus": "Statut de transaction invalide : {{ status }}",

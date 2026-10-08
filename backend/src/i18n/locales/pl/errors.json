@@ -545,7 +545,9 @@
     "activeWindowInvalid": "Pierwsza data aktywności nie może być późniejsza niż ostatnia data aktywności",
     "runTooLarge": "To uruchomienie zmienia zbyt wiele transakcji, aby można je było cofnąć jednym krokiem. Zawęź konta lub daty i spróbuj ponownie",
     "runRedoStructural": "To uruchomienie zmieniło strukturę transakcji (przelewy lub podziały), więc nie można go ponowić. Uruchom regułę ponownie",
-    "runUndoStructureChanged": "Transakcja przekształcona przez to uruchomienie została od tego czasu zmieniona (jej linie podziału lub przelew), więc nie można bezpiecznie cofnąć uruchomienia. Przywróć ją ręcznie"
+    "runUndoStructureChanged": "Transakcja przekształcona przez to uruchomienie została od tego czasu zmieniona (jej linie podziału lub przelew), więc nie można bezpiecznie cofnąć uruchomienia. Przywróć ją ręcznie",
+    "occurrenceAlreadyPosted": "Ta rata kredytu została już zapłacona lub zaksięgowana, więc transakcja nie może jej rozliczyć",
+    "runUndoLaterSettlement": "Po tym uruchomieniu rozliczono późniejszą ratę tego kredytu, więc nie można cofnąć uruchomienia. Najpierw cofnij późniejsze rozliczenie"
   },
   "transactions": {
     "invalidStatus": "Nieprawidłowy status transakcji: {{ status }}",

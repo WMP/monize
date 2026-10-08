@@ -1,3 +1,4 @@
+import type { LoanSettlementRefusalDetail } from "../loan-installments/loan-settlement.types";
 import type { StructuralRefusal } from "./rule-structure";
 import { RuleEffectsLabels } from "./transaction-rules-applier.service";
 
@@ -40,6 +41,8 @@ export interface RuleRunMatchedRow {
 export interface RuleRunSkippedRow {
   readonly transactionId: string;
   readonly reason: RuleRunSkipReason;
+  /** What a settlement refusal names: the field to set, the slot that is taken (spec decision 18). */
+  readonly detail?: LoanSettlementRefusalDetail;
 }
 
 /** What `preview-run` and `preview-draft` return: exactly what the commit would write. */

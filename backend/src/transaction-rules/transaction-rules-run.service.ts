@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import { isDeepStrictEqual } from "node:util";
 import { DataSource, EntityManager } from "typeorm";
+import { isStructuralActionType } from "./rule-action.types";
 import {
   ActionHistoryService,
   MAX_JSONB_SIZE_BYTES,
@@ -31,6 +32,7 @@ import { planFingerprint } from "./rule-run-fingerprint";
 import { PlannedUnit, buildRunSnapshots } from "./rule-run-snapshot";
 import { structureTargetAccountIds } from "./rule-structure";
 import { loadRuleTargetAccounts } from "./rule-target-accounts";
+import { newLoanFactsSource } from "./rule-loan-facts";
 import {
   RuleApplicationRow,
   RuleRunChanges,
@@ -91,8 +93,14 @@ const REFUSAL_REASONS: Readonly<Record<string, RuleRunSkipReason>> = {
   payee_not_found: "payee_not_found",
 };
 
-/** Every refusal only a structural action can make, named as the planner names it. */
-const STRUCTURAL_REFUSAL_REASONS: ReadonlySet<string> = new Set([
+/**
+ * Every refusal only a structural action can make, named as the planner names
+ * it, `settle_loan_installment`'s own included
+ * (`docs/specs/loan-installment-settlement.md` section 11).
+ */
+const STRUCTURAL_REFUSAL_REASONS: ReadonlySet<string> = new Set<
+  Exclude<RuleRunSkipReason, "row_is_transfer_leg" | "row_has_splits">
+>([
   "row_is_void",
   "zero_amount",
   "transfer_direction_mismatch",
@@ -102,19 +110,29 @@ const STRUCTURAL_REFUSAL_REASONS: ReadonlySet<string> = new Set([
   "split_amount_unparseable",
   "split_sum_mismatch",
   "split_too_few_parts",
+  "row_from_scheduled_posting",
+  "row_is_income",
+  "loan_account_unavailable",
+  "loan_interest_booked_separately",
+  "loan_not_configured",
+  "no_installment_in_window",
+  "occurrence_already_posted",
+  "loan_debt_retired",
+  "installment_amount_excess",
+  "installment_amount_shortfall",
 ]);
 
 /**
  * The preview's word for a skipped action. A structural action keeps the
  * planner's own name (the category words of `set_category` would mislead).
+ * A refusal that is not the row's (a lookup the plan is still waiting for)
+ * has no word and is not listed.
  */
-function runSkipReason(refused: {
+export function runSkipReason(refused: {
   type: string;
   reason: string;
 }): RuleRunSkipReason | undefined {
-  const structural =
-    refused.type === "convert_to_transfer" || refused.type === "split";
-  if (structural) {
+  if (isStructuralActionType(refused.type)) {
     return refused.reason === "row_is_transfer_leg" ||
       refused.reason === "row_has_splits" ||
       STRUCTURAL_REFUSAL_REASONS.has(refused.reason)
@@ -495,6 +513,11 @@ export class TransactionRulesRunService {
     const skipped: RuleRunSkippedRow[] = [];
     // Payee names looked up for this preview or commit; nothing is created here.
     const payeeLookups = new Map<string, PayeeResolution | null>();
+    // Loan facts read for this preview or commit, once per loan for the batch.
+    const loans = newLoanFactsSource(m, userId, {
+      rowIds: units.map((unit) => unit.primary.id),
+      dates: units.map((unit) => unit.primary.transactionDate),
+    });
     const changing: PlannedUnit[] = [];
     let conditionMatchedCount = 0;
     const asking: PlannedUnit[] = [];
@@ -523,14 +546,25 @@ export class TransactionRulesRunService {
         },
         [rule],
         chains,
-        { crossOwnerTransferLeg: unit.crossOwnerTransferLeg, accounts },
+        {
+          crossOwnerTransferLeg: unit.crossOwnerTransferLeg,
+          accounts,
+          transactionId: primary.id,
+        },
         payeeLookups,
+        loans,
       );
       const entry = effects.trace[0];
       if (entry?.matched) conditionMatchedCount += 1;
       for (const refused of entry?.skipped ?? []) {
         const reason = runSkipReason(refused);
-        if (reason) skipped.push({ transactionId: primary.id, reason });
+        if (reason) {
+          skipped.push({
+            transactionId: primary.id,
+            reason,
+            ...(refused.detail !== undefined ? { detail: refused.detail } : {}),
+          });
+        }
       }
       if (entry && Object.keys(entry.changes).length > 0) {
         changing.push({ unit, effects });
