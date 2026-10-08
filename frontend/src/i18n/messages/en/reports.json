@@ -334,7 +334,16 @@
     "balance": "Balance",
     "balancePercent": "Balance %",
     "balancePercentTooltip": "Balance %: {rate}",
-    "sharesExceedNote": "A row tagged with more than one value under this key counts toward each of them, so per-value shares can add up to more than 100%."
+    "sharesExceedNote": "A row tagged with more than one value under this key counts toward each of them, so per-value shares can add up to more than 100%.",
+    "valueLabel": "Tag value",
+    "allValues": "All values",
+    "fundsIncome": "Income",
+    "fundsTagged": "Tagged transfers: {value}",
+    "fundsAvailable": "Available funds",
+    "fundsSpent": "Spent",
+    "fundsLoadFailed": "The tagged transfer figures could not be loaded.",
+    "notIncome": "Not income",
+    "noNetTagged": "No net tagged inflow for this value in this period."
   },
   "categoryPerformance": {
     "noBudgets": "No budgets found. Create a budget to see category performance.",

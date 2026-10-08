@@ -334,7 +334,16 @@
     "balance": "[XX-Balance-XX]",
     "balancePercent": "[XX-Balance %-XX]",
     "balancePercentTooltip": "[XX-Balance %: {rate}-XX]",
-    "sharesExceedNote": "[XX-A row tagged with more than one value under this key counts toward each of them, so per-value shares can add up to more than 100%.-XX]"
+    "sharesExceedNote": "[XX-A row tagged with more than one value under this key counts toward each of them, so per-value shares can add up to more than 100%.-XX]",
+    "valueLabel": "[XX-Tag value-XX]",
+    "allValues": "[XX-All values-XX]",
+    "fundsIncome": "[XX-Income-XX]",
+    "fundsTagged": "[XX-Tagged transfers: {value}-XX]",
+    "fundsAvailable": "[XX-Available funds-XX]",
+    "fundsSpent": "[XX-Spent-XX]",
+    "fundsLoadFailed": "[XX-The tagged transfer figures could not be loaded.-XX]",
+    "notIncome": "[XX-Not income-XX]",
+    "noNetTagged": "[XX-No net tagged inflow for this value in this period.-XX]"
   },
   "categoryPerformance": {
     "noBudgets": "[XX-No budgets found. Create a budget to see category performance.-XX]",

@@ -121,3 +121,38 @@ export function periodBalanceFields(
     BalancePercent: balancePercent,
   };
 }
+
+export interface TaggedFundsInput {
+  income: BalanceAmount;
+  taggedInflows: BalanceAmount;
+  taggedOutflows: BalanceAmount;
+}
+
+export interface TaggedFunds {
+  /** What crossed the scope boundary under the value: inflows minus outflows. Null when unknown. */
+  netTagged: number | null;
+  /** `income + netTagged`; null when an input is unknown. */
+  availableFunds: number | null;
+}
+
+/**
+ * The funding figure of the other reports
+ * (`docs/specs/report-tag-key-breakdown.md` section 11.1): the money available
+ * to spend over a window or a month, the regular income plus what the tagged
+ * transfers brought across the scope boundary.
+ *
+ *   netTagged      = taggedInflows - taggedOutflows
+ *   availableFunds = income + netTagged
+ *
+ * Integer cents (`sumMoney`), no division. A figure of its own: never written
+ * into `income` or any category or budget total (INV-REPORT-003).
+ */
+export function taggedFunds(input: TaggedFundsInput): TaggedFunds {
+  const { income, taggedInflows, taggedOutflows } = input;
+  if (!isKnown(taggedInflows) || !isKnown(taggedOutflows)) {
+    return { netTagged: null, availableFunds: null };
+  }
+  const netTagged = sumMoney([taggedInflows, -taggedOutflows]) || 0;
+  if (!isKnown(income)) return { netTagged, availableFunds: null };
+  return { netTagged, availableFunds: sumMoney([income, netTagged]) || 0 };
+}
