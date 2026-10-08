@@ -545,7 +545,9 @@
     "activeWindowInvalid": "A primeira data ativa não pode ser posterior à última data ativa",
     "runTooLarge": "Esta execução altera demasiadas transações para poder ser anulada num único passo. Restrinja as contas ou as datas e tente novamente",
     "runRedoStructural": "Esta execução reestruturou transações (transferências ou divisões), pelo que não pode ser refeita. Execute a regra novamente",
-    "runUndoStructureChanged": "Uma transação reestruturada por esta execução foi alterada desde então (as suas linhas de divisão ou a transferência), pelo que a execução não pode ser desfeita em segurança. Reponha-a manualmente"
+    "runUndoStructureChanged": "Uma transação reestruturada por esta execução foi alterada desde então (as suas linhas de divisão ou a transferência), pelo que a execução não pode ser desfeita em segurança. Reponha-a manualmente",
+    "occurrenceAlreadyPosted": "Esta prestação do empréstimo já foi paga ou lançada, pelo que a transação não a pode liquidar",
+    "runUndoLaterSettlement": "Uma prestação posterior deste empréstimo foi liquidada depois desta execução, pelo que a execução não pode ser desfeita. Desfaça primeiro a liquidação posterior"
   },
   "transactions": {
     "invalidStatus": "Estado de transação inválido: {{ status }}",

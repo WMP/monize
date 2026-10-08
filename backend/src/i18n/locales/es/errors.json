@@ -545,7 +545,9 @@
     "activeWindowInvalid": "La primera fecha activa no debe ser posterior a la última fecha activa",
     "runTooLarge": "Esta ejecución cambia demasiadas transacciones para poder deshacerse en un solo paso. Reduce las cuentas o las fechas e inténtalo de nuevo",
     "runRedoStructural": "Esta ejecución reestructuró transacciones (transferencias o divisiones), por lo que no se puede rehacer. Ejecute la regla de nuevo",
-    "runUndoStructureChanged": "Una transacción que reestructuró esta ejecución se ha modificado desde entonces (sus líneas de división o su transferencia), por lo que la ejecución no se puede deshacer con seguridad. Restáurela manualmente"
+    "runUndoStructureChanged": "Una transacción que reestructuró esta ejecución se ha modificado desde entonces (sus líneas de división o su transferencia), por lo que la ejecución no se puede deshacer con seguridad. Restáurela manualmente",
+    "occurrenceAlreadyPosted": "Esta cuota del préstamo ya se ha pagado o registrado, por lo que la transacción no puede liquidarla",
+    "runUndoLaterSettlement": "Después de esta ejecución se liquidó una cuota posterior de este préstamo, por lo que la ejecución no se puede deshacer. Deshaga primero la liquidación posterior"
   },
   "transactions": {
     "invalidStatus": "Estado de transacción no válido: {{ status }}",

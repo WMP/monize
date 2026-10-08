@@ -545,7 +545,9 @@
     "activeWindowInvalid": "Das erste Aktivdatum darf nicht nach dem letzten Aktivdatum liegen",
     "runTooLarge": "Dieser Lauf ändert zu viele Transaktionen, um in einem Schritt rückgängig gemacht zu werden. Schränken Sie die Konten oder Daten ein und versuchen Sie es erneut",
     "runRedoStructural": "Dieser Lauf hat Transaktionen umstrukturiert (Überweisungen oder Aufteilungen) und kann nicht wiederholt werden. Führen Sie stattdessen die Regel erneut aus",
-    "runUndoStructureChanged": "Eine von diesem Lauf umstrukturierte Transaktion wurde seitdem geändert (ihre Aufteilungszeilen oder ihre Überweisung), daher kann der Lauf nicht sicher rückgängig gemacht werden. Stellen Sie sie manuell wieder her"
+    "runUndoStructureChanged": "Eine von diesem Lauf umstrukturierte Transaktion wurde seitdem geändert (ihre Aufteilungszeilen oder ihre Überweisung), daher kann der Lauf nicht sicher rückgängig gemacht werden. Stellen Sie sie manuell wieder her",
+    "occurrenceAlreadyPosted": "Diese Kreditrate wurde bereits bezahlt oder gebucht, daher kann die Transaktion sie nicht begleichen",
+    "runUndoLaterSettlement": "Nach diesem Lauf wurde eine spätere Rate dieses Kredits beglichen, daher kann der Lauf nicht rückgängig gemacht werden. Machen Sie zuerst die spätere Begleichung rückgängig"
   },
   "transactions": {
     "invalidStatus": "Ungültiger Buchungsstatus: {{ status }}",
