@@ -107,3 +107,129 @@ export async function advanceScheduleCursor(
     slotsConsumed,
   };
 }
+
+/** The cursor columns of a schedule, as they stand before an advance or after it. */
+export interface ScheduleCursorState {
+  readonly nextDueDate: string;
+  readonly occurrencesRemaining: number | null;
+  readonly isActive: boolean;
+  readonly lastPostedDate: string | null;
+}
+
+/**
+ * An override row an advance pruned, in the shape it is re-inserted in: the
+ * entity's own columns, without the timestamps the database regenerates.
+ */
+export type PrunedScheduleOverride = Pick<
+  ScheduledTransactionOverride,
+  | "id"
+  | "scheduledTransactionId"
+  | "originalDate"
+  | "overrideDate"
+  | "amount"
+  | "categoryId"
+  | "description"
+  | "isSplit"
+  | "splits"
+  | "investmentQuantity"
+  | "investmentPrice"
+  | "investmentTotalAmount"
+>;
+
+/**
+ * One advance of a schedule's cursor, recorded so it can be undone
+ * (`docs/specs/loan-installment-settlement.md` sections 12.4 and 12.6): the
+ * cursor columns before and after, and the override rows the advance pruned.
+ */
+export interface ScheduleCursorChange {
+  readonly before: ScheduleCursorState;
+  readonly after: ScheduleCursorState;
+  readonly prunedOverrides: readonly PrunedScheduleOverride[];
+}
+
+/** The cursor columns of a schedule row as `YYYY-MM-DD` strings and plain values. */
+export function scheduleCursorState(
+  schedule: Pick<
+    ScheduledTransaction,
+    "nextDueDate" | "occurrencesRemaining" | "isActive" | "lastPostedDate"
+  >,
+): ScheduleCursorState {
+  return {
+    nextDueDate: ensureYMD(schedule.nextDueDate),
+    occurrencesRemaining: schedule.occurrencesRemaining ?? null,
+    isActive: schedule.isActive,
+    lastPostedDate:
+      schedule.lastPostedDate === null || schedule.lastPostedDate === undefined
+        ? null
+        : ensureYMD(schedule.lastPostedDate),
+  };
+}
+
+/** The columns of an override row the rewind puts back. */
+export function prunedScheduleOverride(
+  override: ScheduledTransactionOverride,
+): PrunedScheduleOverride {
+  return {
+    id: override.id,
+    scheduledTransactionId: override.scheduledTransactionId,
+    originalDate: ensureYMD(override.originalDate),
+    overrideDate: ensureYMD(override.overrideDate),
+    amount: override.amount ?? null,
+    categoryId: override.categoryId ?? null,
+    description: override.description ?? null,
+    isSplit: override.isSplit ?? null,
+    splits: override.splits ?? null,
+    investmentQuantity: override.investmentQuantity ?? null,
+    investmentPrice: override.investmentPrice ?? null,
+    investmentTotalAmount: override.investmentTotalAmount ?? null,
+  };
+}
+
+/**
+ * The inverse of one `advanceScheduleCursor`, for the undo of a rule run that
+ * settled the cursor's occurrence (`docs/specs/loan-installment-settlement.md`
+ * section 12.6): put the cursor columns back to `change.before`, but only
+ * while `next_due_date` still stands where that advance left it
+ * (`change.after`), so a cursor the person has moved since is left as they
+ * set it. Returns whether the cursor was rewound. When it was, the override
+ * rows the advance pruned are re-inserted, `ON CONFLICT DO NOTHING` so an
+ * override the person has since re-created for the same occurrence stands.
+ *
+ * Scoped to `userId`: an undo only ever touches the acting user's schedules.
+ */
+export async function rewindScheduleCursor(
+  m: EntityManager,
+  scheduleId: string,
+  userId: string,
+  change: ScheduleCursorChange,
+): Promise<boolean> {
+  const result = await m
+    .createQueryBuilder()
+    .update(ScheduledTransaction)
+    .set({
+      nextDueDate: change.before.nextDueDate,
+      occurrencesRemaining: change.before.occurrencesRemaining,
+      isActive: change.before.isActive,
+      lastPostedDate: change.before.lastPostedDate,
+    })
+    .where("id = :id", { id: scheduleId })
+    .andWhere("userId = :userId", { userId })
+    .andWhere("nextDueDate = :after", { after: change.after.nextDueDate })
+    .execute();
+  if ((result.affected ?? 0) === 0) return false;
+  if (change.prunedOverrides.length > 0) {
+    await m
+      .createQueryBuilder()
+      .insert()
+      .into(ScheduledTransactionOverride)
+      .values(
+        change.prunedOverrides.map((override) => ({
+          ...override,
+          scheduledTransactionId: scheduleId,
+        })),
+      )
+      .orIgnore()
+      .execute();
+  }
+  return true;
+}

@@ -231,7 +231,12 @@ describe("BankSyncWriterService", () => {
       const outcome = await service.write(input([row()]));
 
       expect(order).toEqual(["ledger", "transaction", "link"]);
-      expect(outcome).toEqual({ imported: 1, skipped: 0, excluded: 0 });
+      expect(outcome).toEqual({
+        imported: 1,
+        skipped: 0,
+        excluded: 0,
+        settledScheduleIds: [],
+      });
       const ledgerInsert = statements(
         "INSERT INTO bank_sync_imported_transactions",
       )[0];
@@ -294,7 +299,12 @@ describe("BankSyncWriterService", () => {
         input([row({ externalKey: "ref:1" }), row({ externalKey: "ref:2" })]),
       );
 
-      expect(outcome).toEqual({ imported: 1, skipped: 1, excluded: 0 });
+      expect(outcome).toEqual({
+        imported: 1,
+        skipped: 1,
+        excluded: 0,
+        settledScheduleIds: [],
+      });
       expect(manager.create).toHaveBeenCalledTimes(1);
       expect(payees.findByName).toHaveBeenCalledTimes(1);
       expect(statements("SET transaction_id")).toHaveLength(1);
@@ -303,7 +313,12 @@ describe("BankSyncWriterService", () => {
     it("imports nothing, applies no rules and moves no balance when every row is a duplicate", async () => {
       ledger(["ref:1"]);
       const outcome = await service.write(input([row()]));
-      expect(outcome).toEqual({ imported: 0, skipped: 1, excluded: 0 });
+      expect(outcome).toEqual({
+        imported: 0,
+        skipped: 1,
+        excluded: 0,
+        settledScheduleIds: [],
+      });
       expect(manager.create).not.toHaveBeenCalled();
       expect(rulesApplier.applyToNew).not.toHaveBeenCalled();
       expect(accountsService.recalculateCurrentBalance).not.toHaveBeenCalled();
@@ -377,6 +392,32 @@ describe("BankSyncWriterService", () => {
       expect(options?.rules).toBe(rules);
       expect(options?.payeeTextById?.get("tx-1")).toBe("BIEDRONKA 123");
       expect(options?.payeeTextById?.get("tx-2")).toBeNull();
+    });
+
+    it("reports the schedules a settlement rule claimed on, once each across the batches, for the after-commit reprice", async () => {
+      const rules = [{ id: "rule-1" }] as never;
+      rulesApplier.loadRulesFor.mockResolvedValue(rules);
+      rulesApplier.applyToNew.mockImplementation(async (_m, _u, ids) =>
+        ids.map((id) => ({
+          transactionId: id,
+          effects: {
+            changes: { addTagIds: [], removeTagIds: [] },
+            trace: [],
+            aiReviewRequests: [],
+          },
+          affectedAccountIds: [],
+          settledScheduleIds: ["st-loan"],
+        })),
+      );
+
+      const outcome = await service.write(
+        input([
+          row({ externalKey: "ref:1", payeeText: "ING HYPOTHEKEN" }),
+          row({ externalKey: "ref:2", payeeText: "ING HYPOTHEKEN" }),
+        ]),
+      );
+
+      expect(outcome.settledScheduleIds).toEqual(["st-loan"]);
     });
 
     it("hands the rules applier at most one batch of ids at a time", async () => {
@@ -1067,7 +1108,12 @@ describe("BankSyncWriterService", () => {
           selection: { importKeys: ["ref:3", "ref:1"], excludeKeys: [] },
         }),
       );
-      expect(outcome).toEqual({ imported: 2, skipped: 0, excluded: 0 });
+      expect(outcome).toEqual({
+        imported: 2,
+        skipped: 0,
+        excluded: 0,
+        settledScheduleIds: [],
+      });
       expect(insertedKeys()).toEqual(["ref:1", "ref:3"]);
       expect(manager.create).toHaveBeenCalledTimes(2);
       expect(
@@ -1085,7 +1131,12 @@ describe("BankSyncWriterService", () => {
           selection: { importKeys: ["ref:1"], excludeKeys: ["ref:2", "ref:3"] },
         }),
       );
-      expect(outcome).toEqual({ imported: 1, skipped: 0, excluded: 2 });
+      expect(outcome).toEqual({
+        imported: 1,
+        skipped: 0,
+        excluded: 2,
+        settledScheduleIds: [],
+      });
       const exceptions = statements(
         "INSERT INTO bank_sync_imported_transactions",
       ).filter((call) => String(call[0]).includes("excluded_at"));
@@ -1144,7 +1195,12 @@ describe("BankSyncWriterService", () => {
           selection: { importKeys: [], excludeKeys: [] },
         }),
       );
-      expect(outcome).toEqual({ imported: 0, skipped: 0, excluded: 0 });
+      expect(outcome).toEqual({
+        imported: 0,
+        skipped: 0,
+        excluded: 0,
+        settledScheduleIds: [],
+      });
       expect(manager.create).not.toHaveBeenCalled();
       expect(insertedKeys()).toEqual([]);
       expect(accountsService.recalculateCurrentBalance).not.toHaveBeenCalled();

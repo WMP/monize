@@ -15,6 +15,7 @@ import {
 import { RULE_RUN_ENTITY_TYPE } from "../action-history/rule-run-undo";
 import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { withScopedDb } from "../common/db/scoped-db";
+import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { tr } from "../i18n/translate";
 import { TransactionStatus } from "../transactions/entities/transaction-status.enum";
@@ -320,9 +321,11 @@ export class TransactionRulesRunService {
       // transfer share it), inside this transaction, before the row is
       // written; the snapshots then hold its id.
       const written: PlannedUnit[] = [];
-      // Accounts a structural action moved; their net-worth state is
-      // invalidated after the commit, never in here (INV-CACHE-001).
+      // Accounts a structural action moved, and schedules a settlement claimed
+      // on; their net-worth state and their templates are refreshed after the
+      // commit, never in here (INV-CACHE-001).
       const affectedAccountIds = new Set<string>();
+      const settledScheduleIds = new Set<string>();
       for (const { unit, effects } of plan.writable) {
         const resolved = await this.applier.resolveCreatedPayee(
           m,
@@ -341,6 +344,7 @@ export class TransactionRulesRunService {
             resolved,
             "manual",
             affectedAccountIds,
+            settledScheduleIds,
           );
           if (leg === unit.primary) writtenEffects = result;
         }
@@ -363,16 +367,27 @@ export class TransactionRulesRunService {
           transactionId: unit.primary.id,
           effects,
           affectedAccountIds: [],
+          settledScheduleIds: [],
         })),
       );
-      return { rule, plan, before, after, affectedAccountIds };
+      return {
+        rule,
+        plan,
+        before,
+        after,
+        affectedAccountIds,
+        settledScheduleIds,
+      };
     });
 
     // After the commit, so a rollback leaves nothing queued: the accounts a
-    // structural action credited have derived state (net worth) to refresh.
+    // structural action credited have derived state (net worth) to refresh,
+    // and a schedule a settlement claimed on has its next installment to
+    // reprice on the ledger the settlement left (spec section 12.8).
     for (const accountId of done.affectedAccountIds) {
       this.netWorth.triggerDebouncedRecalc(accountId, userId);
     }
+    await repriceSettledLoanTemplates(this.dataSource, done.settledScheduleIds);
 
     const changed = done.before.length;
     // After the commit: a history write inside the transaction would hide an
@@ -514,9 +529,13 @@ export class TransactionRulesRunService {
     // Payee names looked up for this preview or commit; nothing is created here.
     const payeeLookups = new Map<string, PayeeResolution | null>();
     // Loan facts read for this preview or commit, once per loan for the batch.
+    // The commit reads them under the schedule row and account locks, after
+    // the candidate rows' locks (spec section 13), so the one plan it makes
+    // is over the claims and debts its writes act on.
     const loans = newLoanFactsSource(m, userId, {
       rowIds: units.map((unit) => unit.primary.id),
       dates: units.map((unit) => unit.primary.transactionDate),
+      lock,
     });
     const changing: PlannedUnit[] = [];
     let conditionMatchedCount = 0;

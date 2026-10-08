@@ -21,13 +21,6 @@ import {
   settleAction,
 } from "./rule-loan-settlement.test-helpers";
 
-// The validator refuses the action until its write path lands (B5), and the
-// planner skips a rule the validator refuses; these cases plan it as B5 will.
-jest.mock("./rule-action.types", () => ({
-  ...jest.requireActual("./rule-action.types"),
-  SETTLE_LOAN_INSTALLMENT_ACCEPTED: true,
-}));
-
 /**
  * `settle_loan_installment` in the pure planner
  * (`docs/specs/loan-installment-settlement.md` sections 7 to 11, and section

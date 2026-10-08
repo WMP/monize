@@ -224,3 +224,165 @@ describe("buildRunSnapshots", () => {
     });
   });
 });
+
+describe("buildRunSnapshots: a settled row", () => {
+  const plain = (id: string) =>
+    leg(id, {
+      categoryId: "c-old",
+      isTransfer: false,
+      isSplit: false,
+      linkedTransactionId: null,
+    });
+  const split = {
+    kind: "split" as const,
+    parts: [
+      {
+        amount: -833.33,
+        categoryId: null,
+        transferAccountId: "loan",
+        payeeId: null,
+        memo: "Principal",
+      },
+      {
+        amount: -500,
+        categoryId: "interest",
+        transferAccountId: null,
+        payeeId: null,
+        memo: "Interest",
+      },
+    ],
+  };
+  const settlement = (advancesCursor: boolean) =>
+    ({
+      loanAccountId: "loan",
+      scheduledTransactionId: "st-1",
+      dueDate: "2024-01-01",
+      advancesCursor,
+    }) as unknown as NonNullable<RuleEffects["changes"]["loanSettlement"]>;
+  const cursor = {
+    before: {
+      nextDueDate: "2024-01-01",
+      occurrencesRemaining: 10,
+      isActive: true,
+      lastPostedDate: null,
+    },
+    after: {
+      nextDueDate: "2024-02-01",
+      occurrencesRemaining: 9,
+      isActive: true,
+      lastPostedDate: "2024-01-03",
+    },
+    prunedOverrides: [],
+  };
+
+  it("records the written claim, the schedule, the slot and the cursor advance on both sides", () => {
+    const { before, after } = buildRunSnapshots(
+      [
+        {
+          unit: unit(plain("a")),
+          effects: effects({
+            structure: {
+              ...split,
+              counterpartIds: ["cp"],
+              lineIds: ["l1", "l2"],
+            },
+            loanSettlement: settlement(true),
+            settlementClaim: {
+              claimId: "claim-1",
+              scheduledTransactionId: "st-1",
+              dueDate: "2024-01-01",
+              cursorAdvanced: true,
+              cursor,
+            },
+          }),
+        },
+      ],
+      new Map(),
+      {},
+    );
+    const structure = {
+      kind: "split",
+      counterpartIds: ["cp"],
+      lineIds: ["l1", "l2"],
+      claimId: "claim-1",
+      scheduledTransactionId: "st-1",
+      dueDate: "2024-01-01",
+      cursorAdvanced: true,
+      cursor,
+    };
+    expect(before[0]).toEqual({
+      id: "a",
+      categoryId: "c-old",
+      isTransfer: false,
+      isSplit: false,
+      linkedTransactionId: null,
+      structure,
+    });
+    expect(after[0]).toMatchObject({ isSplit: true, structure });
+  });
+
+  it("omits the cursor when the claim did not advance it", () => {
+    const { before } = buildRunSnapshots(
+      [
+        {
+          unit: unit(plain("a")),
+          effects: effects({
+            structure: {
+              ...split,
+              counterpartIds: ["cp"],
+              lineIds: ["l1", "l2"],
+            },
+            loanSettlement: settlement(false),
+            settlementClaim: {
+              claimId: "claim-1",
+              scheduledTransactionId: "st-1",
+              dueDate: "2024-01-01",
+              cursorAdvanced: false,
+            },
+          }),
+        },
+      ],
+      new Map(),
+      {},
+    );
+    expect(before[0].structure).toMatchObject({ cursorAdvanced: false });
+    expect(before[0].structure).not.toHaveProperty("cursor");
+  });
+
+  it("measures an unwritten settlement with placeholders of the written shape, a cursor record only when the slot is the cursor", () => {
+    const { before } = buildRunSnapshots(
+      [
+        {
+          unit: unit(plain("a")),
+          effects: effects({
+            structure: split,
+            loanSettlement: settlement(true),
+          }),
+        },
+        {
+          unit: unit(plain("b")),
+          effects: effects({
+            structure: split,
+            loanSettlement: settlement(false),
+          }),
+        },
+      ],
+      new Map(),
+      {},
+    );
+    const cursorRow = before[0].structure as Record<string, unknown>;
+    expect(cursorRow.claimId).toHaveLength(36);
+    expect(cursorRow).toMatchObject({
+      scheduledTransactionId: "st-1",
+      dueDate: "2024-01-01",
+      cursorAdvanced: true,
+      cursor: {
+        before: expect.objectContaining({ nextDueDate: expect.any(String) }),
+        after: expect.objectContaining({ nextDueDate: expect.any(String) }),
+        prunedOverrides: [],
+      },
+    });
+    expect(before[1].structure).toMatchObject({ cursorAdvanced: false });
+    expect(before[1].structure).not.toHaveProperty("cursor");
+  });
+});

@@ -3,13 +3,6 @@ import { referenceErrors, withActionDefaults } from "./rule-references";
 import { validateRuleDefinition } from "./rule-validation";
 import { MAX_LOAN_SETTLEMENT_WINDOW_DAYS } from "./transaction-rules.limits";
 
-// The validator refuses the action until its write path lands (B5); these
-// cases check the shape it will accept then.
-jest.mock("./rule-action.types", () => ({
-  ...jest.requireActual("./rule-action.types"),
-  SETTLE_LOAN_INSTALLMENT_ACCEPTED: true,
-}));
-
 /**
  * `settle_loan_installment` validation
  * (`docs/specs/loan-installment-settlement.md` section 5.1): exact keys,

@@ -295,6 +295,7 @@ export class MnyImportService {
       userId,
       parsed.investments.transactions.length > 0,
       new Set(written.affectedAccountIds),
+      written.settledScheduleIds,
     );
 
     await context.reportProgress({
@@ -439,6 +440,8 @@ export class MnyImportService {
     pricesImported: number;
     exchangeRatesImported: number;
     affectedAccountIds: ReadonlySet<string>;
+    /** Schedules a settlement rule claimed on, repriced after the commit. */
+    settledScheduleIds: ReadonlySet<string>;
   }> {
     return withScopedDb(this.dataSource, async (manager) => {
       await context.reportProgress({
@@ -654,6 +657,7 @@ export class MnyImportService {
           // refreshed with the rest after the commit.
           ...ruleResult.affectedAccountIds,
         ]),
+        settledScheduleIds: ruleResult.settledScheduleIds,
       };
 
       // Last statement before commit, and both halves of the fence in one

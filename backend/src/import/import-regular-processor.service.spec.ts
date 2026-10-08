@@ -89,6 +89,7 @@ describe("ImportRegularProcessorService", () => {
       importStartTime: new Date(),
       dateCounters: new Map(),
       affectedAccountIds: new Set(),
+      settledScheduleIds: new Set(),
       importResult: makeImportResult(),
       transferDupCounts: new Map(),
       ...overrides,

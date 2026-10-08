@@ -144,6 +144,9 @@ export class ImportRegularProcessorService {
       for (const accountId of row.affectedAccountIds) {
         ctx.affectedAccountIds.add(accountId);
       }
+      for (const scheduleId of row.settledScheduleIds) {
+        ctx.settledScheduleIds.add(scheduleId);
+      }
     }
     // A traced change is a real one: the applier writes a trace row only for
     // a rule that changed the category, the payee or the tags.

@@ -36,7 +36,7 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 | B2 | #1592 | Loan core extraction into `backend/src/loan-installments/`; `advanceScheduleCursor` shared with `post()` | S1 | neutral | [x] | the PR closing #1592 |
 | B3 | #1593 | Settlement types, occurrence slots, facts loader, `datedLoanDebts`, pure planner | B1, B2 | none | [x] | the PR closing #1593 |
 | B4 | #1594 | The action in the rules engine: types, validation, references, planner, lookup rounds, skip reasons | B3 | inert | [x] | the PR closing #1594 |
-| B5 | #1595 | Write path: claim, cursor, trace, fingerprint, snapshot, undo, after-commit reprice; `post()` records its transaction | B4 | inert | [ ] | -- |
+| B5 | #1595 | Write path: claim, cursor, trace, fingerprint, snapshot, undo, after-commit reprice; `post()` records its transaction | B4 | inert | [x] | the PR closing #1595 |
 | B6 | #1596 | Chronological fold, ascending run order, import ordering, bank-sync affected accounts | B5 | neutral | [ ] | -- |
 | F1 | #1597 | Frontend action card, types, run preview, skip reasons, en + pseudo | B5 | inert | [ ] | -- |
 | B7 | #1598 | Mortgage and setup backend: payment matching, rule creation, auto-post off, original principal, endpoints | B5 | inert | [ ] | -- |
@@ -102,10 +102,10 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 
 ### B5 -- Write path, claim, cursor, undo
 
-**Files:** `backend/src/loan-installments/claim-loan-occurrence.ts` (new), `backend/src/transaction-rules/transaction-rules-applier.service.ts`, `backend/src/transaction-rules/rule-run-fingerprint.ts`, `backend/src/transaction-rules/rule-run-snapshot.ts`, `backend/src/transaction-rules/transaction-rules-run.service.ts`, `backend/src/action-history/rule-run-undo.ts`, `backend/src/scheduled-transactions/scheduled-transactions.service.ts` (`post()` writes `transaction_id` and passes `fromScheduledPosting`), `backend/src/transactions/transactions.service.ts` (the after-commit dispatch), `backend/test/integration/loan-settlement.integration.spec.ts` (new), their specs.
+**Files:** `backend/src/loan-installments/claim-loan-occurrence.ts` (new), `backend/src/transaction-rules/transaction-rules-applier.service.ts`, `backend/src/transaction-rules/rule-run-fingerprint.ts`, `backend/src/transaction-rules/rule-run-snapshot.ts`, `backend/src/transaction-rules/transaction-rules-run.service.ts`, `backend/src/action-history/rule-run-undo.ts`, `backend/src/scheduled-transactions/scheduled-transactions.service.ts` (`post()` writes `transaction_id` and passes `fromScheduledPosting`), `backend/src/transactions/transactions.service.ts` (the after-commit dispatch), `backend/test/integration/loan-settlement-claim.integration.spec.ts` (new), their specs.
 
-- Spec section 12 in full: claim, split, cursor in that order on one `EntityManager`; the conflict skipped, not thrown; the trace and `canonicalChanges`; the snapshot; undo with `RULE_RUN_UNDO_LATER_SETTLEMENT`, the conditional rewind and the overrides restored; the after-commit net-worth dispatch and `rewriteLoanTemplate` on the create and run paths.
-- Locks per spec section 13 on the create and run paths; the run derives its schedules and loans from the rules before planning.
+- Spec section 12 in full: split, claim, cursor in that order on one `EntityManager`; a write-time conflict is the throwing backstop of decision 17, unreachable while the planner reads the claims under the locks; the trace and `canonicalChanges`; the snapshot; undo with `RULE_RUN_UNDO_LATER_SETTLEMENT`, the conditional rewind and the overrides restored; the after-commit net-worth dispatch and `rewriteLoanTemplate` on the create, import, bank-sync and run paths.
+- Locks per spec section 13 on the create and run paths: the facts loader takes the schedule row and the two accounts before its reads on every write path, inside the run's one plan (one loan per run, so no pre-derivation).
 - `post()` sets `transaction_id` on its claim after it creates the transaction (spec 5.2), null for investment posts; the INV-OCCURRENCE-001 entry names the release on delete for every schedule.
 - `rule-validation.ts` accepts `settle_loan_installment` (it answered `UNKNOWN_ACTION` until this task).
 - Acceptance: spec section 16 rows B5, including the two-connection case.

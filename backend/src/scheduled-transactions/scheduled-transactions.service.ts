@@ -75,7 +75,7 @@ import {
 } from "../notification-center/entities/notification.entity";
 import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { withScopedDb } from "../common/db/scoped-db";
-import { affectedRowCount } from "../common/db/query-result";
+import { returnedRows } from "../common/db/query-result";
 import { validateSplitAmountSum } from "../common/split-amount.util";
 import { roundMoney, sumMoney } from "../common/round.util";
 import {
@@ -3408,16 +3408,20 @@ export class ScheduledTransactionsService {
       // Claim the occurrence. The unique key on
       // (scheduled_transaction_id, original_due_date) is what makes the claim
       // the serialization point rather than the lock alone: it survives a
-      // crash, and manual and automatic posting both go through it.
-      const claim: unknown = await m.query(
-        `INSERT INTO scheduled_transaction_postings
-           (scheduled_transaction_id, original_due_date, posted_date)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (scheduled_transaction_id, original_due_date) DO NOTHING
-         RETURNING id`,
-        [id, nextDueDateStr, postDate],
+      // crash, and manual and automatic posting both go through it, as does
+      // a rule's settlement of a bank row against the same occurrence
+      // (INV-LOAN-008).
+      const claimed = returnedRows<{ id: string }>(
+        await m.query(
+          `INSERT INTO scheduled_transaction_postings
+             (scheduled_transaction_id, original_due_date, posted_date)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (scheduled_transaction_id, original_due_date) DO NOTHING
+           RETURNING id`,
+          [id, nextDueDateStr, postDate],
+        ),
       );
-      if (affectedRowCount(claim) === 0) {
+      if (claimed.length === 0) {
         throw new ConflictException(
           tr(
             "errors.scheduled.occurrenceAlreadyPosted",
@@ -3425,6 +3429,7 @@ export class ScheduledTransactionsService {
           ),
         );
       }
+      const claimId = claimed[0].id;
 
       if (current.isInvestment) {
         // Post from the locked row, not the pre-lock `scheduled` snapshot: a
@@ -3448,14 +3453,25 @@ export class ScheduledTransactionsService {
           preparedTransfer,
           m,
         );
+        await this.recordClaimTransaction(
+          m,
+          claimId,
+          writtenTransfer.savedFromId,
+        );
       } else if (!skipFinancialWrite) {
-        await this.transactionsService.create(
+        const created = await this.transactionsService.create(
           userId,
           transactionPayload,
-          ...(options.actorIsNotOwner === true
-            ? [{ actorIsNotOwner: true }]
-            : []),
+          {
+            // Server-set: the row pays the occurrence claimed above, so the
+            // owner's settlement rules refuse it (row_from_scheduled_posting).
+            fromScheduledPosting: true,
+            ...(options.actorIsNotOwner === true
+              ? { actorIsNotOwner: true }
+              : {}),
+          },
         );
+        await this.recordClaimTransaction(m, claimId, created.id);
       } else {
         this.logger.log(
           `Scheduled loan payment ${id} posted no money: the loan owes nothing ` +
@@ -3513,6 +3529,27 @@ export class ScheduledTransactionsService {
     }
 
     return this.findOne(userId, id);
+  }
+
+  /**
+   * Name the transaction a claim's occurrence was paid by
+   * (`docs/specs/loan-installment-settlement.md` section 5.2), in the same
+   * transaction as the claim, once the create has returned the id. From here
+   * on deleting that transaction releases the claim (`ON DELETE CASCADE`),
+   * for every schedule, and a settlement rule reads the row as a posted bill
+   * (`row_from_scheduled_posting`). An investment post records nothing: it
+   * writes through the investment service, and nothing reads which of its
+   * rows paid the occurrence.
+   */
+  private async recordClaimTransaction(
+    m: EntityManager,
+    claimId: string,
+    transactionId: string,
+  ): Promise<void> {
+    await m.query(
+      `UPDATE scheduled_transaction_postings SET transaction_id = $1 WHERE id = $2`,
+      [transactionId, claimId],
+    );
   }
 
   /**

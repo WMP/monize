@@ -118,6 +118,11 @@ export interface BankSyncWriteOutcome {
   skipped: number;
   /** Rows added to the exceptions by this write. */
   excluded: number;
+  /**
+   * Scheduled payments a `settle_loan_installment` rule claimed an occurrence
+   * of; the sync reprices each template after the commit (INV-CACHE-001).
+   */
+  settledScheduleIds: string[];
 }
 
 /**
@@ -406,14 +411,20 @@ export class BankSyncWriterService {
       }
 
       // 6. The import rules over what was created, with the bank's raw payee text.
+      const settledScheduleIds = new Set<string>();
       for (let start = 0; start < created.length; start += RULES_BATCH_SIZE) {
-        await this.rulesApplier.applyToNew(
+        const applied = await this.rulesApplier.applyToNew(
           m,
           userId,
           created.slice(start, start + RULES_BATCH_SIZE),
           "import",
           { rules, payeeTextById },
         );
+        for (const row of applied) {
+          for (const scheduleId of row.settledScheduleIds) {
+            settledScheduleIds.add(scheduleId);
+          }
+        }
       }
 
       // 7. The balance, from the ledger, in this transaction.
@@ -435,7 +446,12 @@ export class BankSyncWriterService {
         leftForLater === 0,
       );
 
-      return { imported: created.length, skipped, excluded };
+      return {
+        imported: created.length,
+        skipped,
+        excluded,
+        settledScheduleIds: [...settledScheduleIds],
+      };
     });
   }
 

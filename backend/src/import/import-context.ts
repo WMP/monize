@@ -19,6 +19,12 @@ export interface ImportContext {
   importStartTime: Date;
   dateCounters: Map<string, number>;
   affectedAccountIds: Set<string>;
+  /**
+   * The scheduled payments a `settle_loan_installment` rule claimed an
+   * occurrence of; the import's post-processing reprices each template after
+   * the commit (INV-CACHE-001).
+   */
+  settledScheduleIds: Set<string>;
   importResult: ImportResultDto;
   /** Tracks how many QIF entries with each transfer signature have been seen in the current block,
    *  used to distinguish genuinely different transfers that share date/amount/account. */

@@ -5,7 +5,6 @@ import {
   RULE_DESCRIPTION_MODES,
   RuleAction,
   SETTLE_LOAN_INSTALLMENT,
-  SETTLE_LOAN_INSTALLMENT_ACCEPTED,
   SPLIT_REST_AMOUNT,
   isStructuralActionType,
 } from "./rule-action.types";
@@ -536,14 +535,14 @@ function validateAction(
 }
 
 /**
- * A type every save path accepts: `RULE_ACTION_TYPES`, plus
- * `settle_loan_installment` once its write path accepts it
- * (`SETTLE_LOAN_INSTALLMENT_ACCEPTED`, `rule-action.types.ts`).
+ * A type every save path accepts: `RULE_ACTION_TYPES`, the list the editor
+ * mirrors, plus `settle_loan_installment`, which the editor offers only from
+ * its card (`rule-action.types.ts` says why the two lists differ).
  */
 function isAcceptedActionType(type: string): boolean {
   return (
     (RULE_ACTION_TYPES as readonly string[]).includes(type) ||
-    (type === SETTLE_LOAN_INSTALLMENT && SETTLE_LOAN_INSTALLMENT_ACCEPTED)
+    type === SETTLE_LOAN_INSTALLMENT
   );
 }
 

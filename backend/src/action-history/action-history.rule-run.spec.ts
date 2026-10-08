@@ -4,6 +4,7 @@ import { DataSource } from "typeorm";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { ActionHistoryService } from "./action-history.service";
 import { ActionHistory } from "./entities/action-history.entity";
+import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
 import {
   RULE_RUN_ENTITY_TYPE,
   assertRuleRunRedoable,
@@ -17,6 +18,9 @@ jest.mock("./rule-run-undo", () => ({
   RULE_RUN_ENTITY_TYPE: "transaction_rule_run",
   undoRuleRun: jest.fn(),
   assertRuleRunRedoable: jest.fn(),
+}));
+jest.mock("../loan-installments/reprice-template", () => ({
+  repriceSettledLoanTemplates: jest.fn().mockResolvedValue(undefined),
 }));
 
 /** A manual rule run is one entry; undo and redo route it to `undoRuleRun`. */
@@ -40,6 +44,11 @@ describe("ActionHistoryService: transaction rule run entries", () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    // What the real undo returns: nothing moved, nothing released.
+    (undoRuleRun as jest.Mock).mockResolvedValue({
+      affectedAccountIds: new Set<string>(),
+      settledScheduleIds: new Set<string>(),
+    });
     repo = { findOne: jest.fn() };
     const scoped = createScopedDbMocks([[ActionHistory, repo]]);
     manager = scoped.manager;
@@ -68,6 +77,40 @@ describe("ActionHistoryService: transaction rule run entries", () => {
     expect(manager.update).toHaveBeenCalledWith(ActionHistory, "h1", {
       isUndone: true,
     });
+  });
+
+  it("reprices the schedules the undo released claims on, after the commit", async () => {
+    repo.findOne.mockResolvedValue(entry);
+    const order: string[] = [];
+    (undoRuleRun as jest.Mock).mockResolvedValue({
+      affectedAccountIds: new Set<string>(),
+      settledScheduleIds: new Set(["st-1"]),
+    });
+    manager.update.mockImplementation(async () => {
+      order.push("mark-undone");
+      return { affected: 1 };
+    });
+    (repriceSettledLoanTemplates as jest.Mock).mockImplementation(async () => {
+      order.push("reprice");
+    });
+
+    await service.undo(userId);
+
+    expect(repriceSettledLoanTemplates).toHaveBeenCalledWith(
+      expect.anything(),
+      ["st-1"],
+    );
+    // After the entry is marked undone inside the transaction, never inside it.
+    expect(order).toEqual(["mark-undone", "reprice"]);
+  });
+
+  it("reprices nothing for an undo that released no claim", async () => {
+    repo.findOne.mockResolvedValue(entry);
+    await service.undo(userId);
+    expect(repriceSettledLoanTemplates).toHaveBeenCalledWith(
+      expect.anything(),
+      [],
+    );
   });
 
   it("redo replays the after side: before and after are swapped", async () => {

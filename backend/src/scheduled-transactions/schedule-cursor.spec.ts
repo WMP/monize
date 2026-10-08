@@ -1,5 +1,9 @@
 import { EntityManager } from "typeorm";
-import { advanceScheduleCursor } from "./schedule-cursor";
+import {
+  PrunedScheduleOverride,
+  advanceScheduleCursor,
+  rewindScheduleCursor,
+} from "./schedule-cursor";
 import { ScheduledTransaction } from "./entities/scheduled-transaction.entity";
 import { ScheduledTransactionOverride } from "./entities/scheduled-transaction-override.entity";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
@@ -194,5 +198,120 @@ describe("advanceScheduleCursor", () => {
       new Set(["2025-02-15"]),
     );
     expect(result.deactivated).toBe(false);
+  });
+});
+
+describe("rewindScheduleCursor", () => {
+  let manager: Record<string, jest.Mock>;
+  let updateChain: Record<string, jest.Mock>;
+  let insertChain: Record<string, jest.Mock>;
+
+  const change = (prunedOverrides: PrunedScheduleOverride[] = []) => ({
+    before: {
+      nextDueDate: "2025-02-15",
+      occurrencesRemaining: 5,
+      isActive: true,
+      lastPostedDate: null,
+    },
+    after: {
+      nextDueDate: "2025-04-15",
+      occurrencesRemaining: 3,
+      isActive: true,
+      lastPostedDate: "2025-02-16",
+    },
+    prunedOverrides,
+  });
+
+  const pruned = (id: string): PrunedScheduleOverride => ({
+    id,
+    scheduledTransactionId: "st-1",
+    originalDate: "2025-02-15",
+    overrideDate: "2025-02-20",
+    amount: -99,
+    categoryId: null,
+    description: null,
+    isSplit: null,
+    splits: null,
+    investmentQuantity: null,
+    investmentPrice: null,
+    investmentTotalAmount: null,
+  });
+
+  beforeEach(() => {
+    manager = createScopedDbMocks().manager;
+    updateChain = {
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    insertChain = {
+      insert: jest.fn().mockReturnThis(),
+      into: jest.fn().mockReturnThis(),
+      values: jest.fn().mockReturnThis(),
+      orIgnore: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({}),
+    };
+    manager.createQueryBuilder
+      .mockReturnValueOnce(updateChain)
+      .mockReturnValueOnce(insertChain);
+  });
+
+  it("puts the cursor columns back, only while next_due_date still stands where the advance left it, owner-scoped", async () => {
+    const rewound = await rewindScheduleCursor(
+      manager as unknown as EntityManager,
+      "st-1",
+      "user-1",
+      change(),
+    );
+
+    expect(rewound).toBe(true);
+    expect(updateChain.update).toHaveBeenCalledWith(ScheduledTransaction);
+    expect(updateChain.set).toHaveBeenCalledWith({
+      nextDueDate: "2025-02-15",
+      occurrencesRemaining: 5,
+      isActive: true,
+      lastPostedDate: null,
+    });
+    expect(updateChain.where).toHaveBeenCalledWith("id = :id", { id: "st-1" });
+    expect(updateChain.andWhere).toHaveBeenCalledWith("userId = :userId", {
+      userId: "user-1",
+    });
+    expect(updateChain.andWhere).toHaveBeenCalledWith("nextDueDate = :after", {
+      after: "2025-04-15",
+    });
+    // Nothing was pruned, so nothing is re-inserted.
+    expect(insertChain.insert).not.toHaveBeenCalled();
+  });
+
+  it("re-inserts the overrides the advance pruned, ON CONFLICT DO NOTHING, on the schedule it rewound", async () => {
+    await rewindScheduleCursor(
+      manager as unknown as EntityManager,
+      "st-1",
+      "user-1",
+      change([pruned("ovr-1"), pruned("ovr-2")]),
+    );
+
+    expect(insertChain.into).toHaveBeenCalledWith(ScheduledTransactionOverride);
+    expect(insertChain.values).toHaveBeenCalledWith([
+      pruned("ovr-1"),
+      pruned("ovr-2"),
+    ]);
+    expect(insertChain.orIgnore).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves a cursor the person has moved since as they set it, and re-inserts nothing", async () => {
+    updateChain.execute.mockResolvedValue({ affected: 0 });
+
+    const rewound = await rewindScheduleCursor(
+      manager as unknown as EntityManager,
+      "st-1",
+      "user-1",
+      change([pruned("ovr-1")]),
+    );
+
+    expect(rewound).toBe(false);
+    expect(insertChain.insert).not.toHaveBeenCalled();
   });
 });

@@ -18,6 +18,7 @@ import {
 import { roundMoney } from "../common/round.util";
 import { isCalendarDate } from "../common/validators/is-calendar-date.validator";
 import { tr } from "../i18n/translate";
+import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { SYNC_LEASE_TTL_MS, SYNC_OVERLAP_DAYS } from "./bank-sync.constants";
 import type { BankSyncConnectionStatus } from "./bank-sync.constants";
@@ -477,10 +478,15 @@ export class BankSyncService {
           selection,
         });
 
-        // Step 6: after the commit, drop what depends on the balance.
+        // Step 6: after the commit, drop what depends on the balance, and
+        // reprice the schedules a settlement rule claimed on (INV-CACHE-001).
         if (written.imported > 0) {
           this.netWorth.triggerDebouncedRecalc(account.id, userId);
         }
+        await repriceSettledLoanTemplates(
+          this.dataSource,
+          written.settledScheduleIds,
+        );
         this.logger.log(
           `Bank account ${bankAccountId} synced: ${written.imported} imported, ${written.skipped} already imported, ${written.excluded} added to the exceptions`,
         );

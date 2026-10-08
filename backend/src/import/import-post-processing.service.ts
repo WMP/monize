@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger, forwardRef } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
+import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
 import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { SecurityPriceService } from "../securities/security-price.service";
@@ -41,6 +42,7 @@ export class ImportPostProcessingService {
     userId: string,
     isInvestment: boolean,
     affectedAccountIds: Set<string>,
+    settledScheduleIds: ReadonlySet<string> = new Set(),
   ): Promise<void> {
     // Recalculate current_balance for all affected accounts so that
     // future-dated transactions are excluded. During import,
@@ -157,5 +159,10 @@ export class ImportPostProcessingService {
           ),
         );
     }
+
+    // A settlement rule claimed a scheduled occurrence during the import: the
+    // schedule's next installment is priced on the ledger the import left,
+    // in its own transaction after the commit (INV-CACHE-001).
+    await repriceSettledLoanTemplates(this.dataSource, settledScheduleIds);
   }
 }

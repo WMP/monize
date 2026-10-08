@@ -1,5 +1,6 @@
 import { DataSource } from "typeorm";
 import { ActionHistoryService } from "../action-history/action-history.service";
+import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
 import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { Transaction } from "../transactions/entities/transaction.entity";
@@ -38,6 +39,9 @@ jest.mock("./rule-target-accounts", () => ({
 jest.mock("./transaction-rule-view", () => ({ toRuleResponses: jest.fn() }));
 jest.mock("../transactions/reconciled-lock.util", () => ({
   isReconciledLockEnabled: jest.fn(),
+}));
+jest.mock("../loan-installments/reprice-template", () => ({
+  repriceSettledLoanTemplates: jest.fn().mockResolvedValue(undefined),
 }));
 
 /**
@@ -203,6 +207,45 @@ describe("TransactionRulesRunService: committing a structural run", () => {
     expect(triggerDebouncedRecalc).toHaveBeenCalledTimes(1);
     expect(triggerDebouncedRecalc).toHaveBeenCalledWith(LOAN, USER);
     expect(order.indexOf("recalc")).toBeGreaterThan(order.lastIndexOf("write"));
+  });
+
+  it("reprices the schedules a settlement claimed on, once each, after the commit (INV-CACHE-001)", async () => {
+    const { service, writeEffects, order } = setup(
+      [unit(row("a", -1500.75)), unit(row("b", -1500.75))],
+      SPLIT,
+    );
+    // The write reports the schedule it claimed on through its last argument.
+    writeEffects.mockImplementation(
+      async (_m, _u, _id, effects, _s, affected, settled) => {
+        order.push("write");
+        affected?.add(LOAN);
+        settled?.add("st-loan");
+        return effects;
+      },
+    );
+    (repriceSettledLoanTemplates as jest.Mock).mockImplementation(async () => {
+      order.push("reprice");
+    });
+    const preview = await service.previewRun(USER, RULE_ID, {});
+    await service.run(USER, RULE_ID, { fingerprint: preview.fingerprint });
+
+    expect(repriceSettledLoanTemplates).toHaveBeenCalledTimes(1);
+    expect(repriceSettledLoanTemplates).toHaveBeenCalledWith(
+      expect.anything(),
+      new Set(["st-loan"]),
+    );
+    expect(order.indexOf("reprice")).toBeGreaterThan(
+      order.lastIndexOf("write"),
+    );
+    expect(order.indexOf("reprice")).toBeLessThan(order.indexOf("record"));
+  });
+
+  it("reprices nothing when the run refuses before its first write", async () => {
+    const { service } = setup([unit(row("a", -1500.75))], SPLIT);
+    await expect(
+      service.run(USER, RULE_ID, { fingerprint: "stale" }),
+    ).rejects.toMatchObject({ response: { errorCode: "PREVIEW_CHANGED" } });
+    expect(repriceSettledLoanTemplates).not.toHaveBeenCalled();
   });
 
   it("locks every account the writes will credit, in one call, after the plan and before the first write", async () => {

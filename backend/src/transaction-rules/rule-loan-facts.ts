@@ -23,12 +23,17 @@ import { MAX_LOAN_SETTLEMENT_WINDOW_DAYS } from "./transaction-rules.limits";
  * the read and reads again. Reading more slots than a row's window cannot
  * change its plan: the planner selects among the slots inside the window only.
  *
- * Nothing here locks: the reads are the preview's. The write path takes the
- * schedule and account locks before its reads (spec section 13).
+ * `lock` says which side of the write this source serves: a preview reads
+ * unlocked; a path that will write the settlement (`applyToNew`, the manual
+ * run's commit) has the loader take the schedule row and the two accounts'
+ * balance-write locks before every read (spec section 13), so the claims and
+ * the debt a plan is made from are the ones the write will act on.
  */
 export interface LoanFactsSource {
   readonly m: EntityManager;
   readonly userId: string;
+  /** Whether the loader locks before it reads: true on a path that will write. */
+  readonly lock: boolean;
   /** The ids of the pass's stored rows. */
   readonly rowIds: readonly string[];
   /** The dates the pass's rows carry, widened by the largest window. */
@@ -44,6 +49,7 @@ export function newLoanFactsSource(
   pass: {
     readonly rowIds?: readonly string[];
     readonly dates?: readonly (string | null | undefined)[];
+    readonly lock?: boolean;
   } = {},
 ): LoanFactsSource {
   const dates = (pass.dates ?? [])
@@ -52,6 +58,7 @@ export function newLoanFactsSource(
   return {
     m,
     userId,
+    lock: pass.lock === true,
     rowIds: [...new Set(pass.rowIds ?? [])],
     passWindow:
       dates.length === 0
@@ -108,7 +115,7 @@ export async function answerLoanFactsLookups(
         window,
         rowIds: [...rowIds],
       },
-      { lock: false },
+      { lock: source.lock },
     );
     source.entries.set(lookup.loanAccountId, { window, rowIds, facts });
     read = true;
