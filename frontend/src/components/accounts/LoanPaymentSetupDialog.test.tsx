@@ -675,6 +675,33 @@ describe('LoanPaymentSetupDialog', () => {
       }));
     });
 
+    it('warns when the server could not create the rule, but still reports the schedule as saved', async () => {
+      mockDetectLoanPayments.mockResolvedValue(defaultDetected);
+      mockSetupLoanPayments.mockResolvedValue({
+        paymentMatchingRuleId: null,
+        paymentMatchingError: { errorCode: 'RULE_LIMIT_REACHED', message: 'Too many rules already exist.' },
+      } as any);
+      await renderDialog();
+
+      await act(async () =>
+        fireEvent.click(screen.getByRole('switch', { name: "Recognise the bank's debit" })),
+      );
+      await act(async () =>
+        fireEvent.change(screen.getByLabelText('Payee pattern'), {
+          target: { value: '*ING HYPOTHEKEN*' },
+        }),
+      );
+
+      const submitButton = screen.getByRole('button', { name: /Set Up Payments/i });
+      await act(async () => fireEvent.click(submitButton));
+
+      // The schedule is saved either way (docs/specs/loan-installment-settlement.md
+      // decision 5): the setup-complete toast still fires, and the rule
+      // failure is reported as a second, separate warning.
+      expect(toast.success).toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith('Too many rules already exist.');
+    });
+
     it('refuses to submit a payee pattern without a wildcard', async () => {
       mockDetectLoanPayments.mockResolvedValue(defaultDetected);
       await renderDialog();

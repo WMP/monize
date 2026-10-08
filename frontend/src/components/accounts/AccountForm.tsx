@@ -174,7 +174,7 @@ const buildAccountSchema = (
   mortgagePaymentFrequency: optionalEnum(mortgagePaymentFrequencies),
   // The amount originally borrowed, apart from the opening balance; shown on
   // both create and edit (`MortgageFields`).
-  originalPrincipal: optionalNumber,
+  originalPrincipal: optionalNumber.nullable(),
   // Payment matching (create only): the rule that settles the bank's own
   // debit against each installment. `excess`/`shortfall` are never collected
   // here -- the server defaults them and they are editable in Tools > Rules.
@@ -546,6 +546,13 @@ export function AccountForm({
           lowBalanceThreshold: payload.lowBalanceThreshold ?? null,
           highBalanceThreshold: payload.highBalanceThreshold ?? null,
         };
+        // Original Principal is shown for a mortgage edit; an emptied field
+        // means "fall back to the opening balance", sent as an explicit null
+        // (the update DTO's own meaning for it) rather than omitted, which
+        // would leave a previously-saved value stuck on the account forever.
+        if (data.accountType === 'MORTGAGE') {
+          payload.originalPrincipal = payload.originalPrincipal ?? null;
+        }
       }
       if (!cashLedgerChanged(data, cashHalf)) {
         const {
@@ -612,6 +619,7 @@ export function AccountForm({
   const watchedOriginalPrincipal = useWatch({ control, name: 'originalPrincipal' });
   const watchedPaymentMatchingEnabled = useWatch({ control, name: 'paymentMatchingEnabled' });
   const watchedPaymentMatchingPayeePattern = useWatch({ control, name: 'paymentMatchingPayeePattern' });
+  const watchedPaymentMatchingDescriptionPattern = useWatch({ control, name: 'paymentMatchingDescriptionPattern' });
 
   // Resolve the linked pair when editing an investment account. A standalone
   // or orphaned account 400s here and simply keeps the single-account form.
@@ -1200,9 +1208,10 @@ export function AccountForm({
           formatCurrency={formatCurrency}
           isEditing={!!account}
           sourceAccountId={watchedSourceAccountId}
-          originalPrincipal={watchedOriginalPrincipal}
+          originalPrincipal={watchedOriginalPrincipal ?? undefined}
           paymentMatchingEnabled={watchedPaymentMatchingEnabled}
           paymentMatchingPayeePattern={watchedPaymentMatchingPayeePattern}
+          paymentMatchingDescriptionPattern={watchedPaymentMatchingDescriptionPattern}
           institutionName={selectedInstitutionName}
           selectedInterestCategoryId={selectedInterestCategoryId}
           handleInterestCategoryChange={handleInterestCategoryChange}

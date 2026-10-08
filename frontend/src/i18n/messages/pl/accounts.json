@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "Rozpoznaj obciążenie z banku",
+    "toggleHelp": "Gdy bank zarejestruje jedno obciążenie za tę płatność, Monize dopasowuje je do harmonogramu i automatycznie dzieli na kapitał i odsetki, zamiast rejestrować osobną transakcję rachunku.",
+    "payeePattern": "Wzorzec odbiorcy",
+    "payeePatternPlaceholder": "np. *ING HYPOTHEKEN*",
+    "descriptionPattern": "Wzorzec opisu (opcjonalnie)",
+    "descriptionPatternPlaceholder": "np. *Hypotheek*",
+    "fromAccount": "Dopasowywane do obciążeń z {account}."
+  },
   "nameSuffix": {
     "cash": "Gotówka",
     "brokerage": "Maklerskie"
@@ -272,13 +281,6 @@
     "firstInstallmentCalculating": "Obliczanie pierwszej raty...",
     "firstInstallmentFailed": "Nie udało się obliczyć pierwszej raty. Sprawdź poniższe wartości i spróbuj ponownie.",
     "paymentMatching": {
-      "toggleLabel": "Rozpoznaj obciążenie z banku",
-      "toggleHelp": "Gdy bank zarejestruje jedno obciążenie za tę płatność, Monize dopasowuje je do harmonogramu i automatycznie dzieli na kapitał i odsetki, zamiast rejestrować osobną transakcję rachunku.",
-      "payeePattern": "Wzorzec odbiorcy",
-      "payeePatternPlaceholder": "np. *ING HYPOTHEKEN*",
-      "descriptionPattern": "Wzorzec opisu (opcjonalnie)",
-      "descriptionPatternPlaceholder": "np. *Hypotheek*",
-      "fromAccount": "Dopasowywane do obciążeń z {account}.",
       "autoPostDisabled": "Wyłączone automatycznie: dopasowywanie płatności rozlicza ten rachunek na podstawie własnego obciążenia banku, więc nie może się on też księgować samodzielnie.",
       "payeePatternRequired": "Podaj wzorzec odbiorcy zawierający symbol wieloznaczny *"
     }
@@ -418,15 +420,6 @@
         "cancel": "Anuluj",
         "use": "Edytuj konto z tym rodzajem"
       }
-    },
-    "paymentMatching": {
-      "toggleLabel": "Rozpoznaj obciążenie z banku",
-      "toggleHelp": "Gdy bank zarejestruje jedno obciążenie za tę płatność, Monize dopasowuje je do harmonogramu i automatycznie dzieli na kapitał i odsetki, zamiast rejestrować osobną transakcję rachunku.",
-      "payeePattern": "Wzorzec odbiorcy",
-      "payeePatternPlaceholder": "np. *ING HYPOTHEKEN*",
-      "descriptionPattern": "Wzorzec opisu (opcjonalnie)",
-      "descriptionPatternPlaceholder": "np. *Hypotheek*",
-      "fromAccount": "Dopasowywane do obciążeń z {account}."
     },
     "originalPrincipal": {
       "label": "Pierwotny kapitał",

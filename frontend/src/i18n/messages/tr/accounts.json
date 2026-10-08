@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "Bankanın hesaptan çekimini tanı",
+    "toggleHelp": "Bankanız bu ödeme için tek bir hesaptan çekim kaydettiğinde Monize bunu takvimle eşleştirir ve ayrı bir fatura işlemi kaydetmek yerine otomatik olarak anapara ve faize böler.",
+    "payeePattern": "Alacaklı deseni",
+    "payeePatternPlaceholder": "ör. *ING HYPOTHEKEN*",
+    "descriptionPattern": "Açıklama deseni (isteğe bağlı)",
+    "descriptionPatternPlaceholder": "ör. *Hypotheek*",
+    "fromAccount": "{account} hesabındaki çekimlerle eşleştirildi."
+  },
   "nameSuffix": {
     "cash": "Nakit",
     "brokerage": "Aracılık"
@@ -272,13 +281,6 @@
     "firstInstallmentCalculating": "İlk taksit hesaplanıyor...",
     "firstInstallmentFailed": "İlk taksit hesaplanamadı. Aşağıdaki değerleri kontrol edip tekrar deneyin.",
     "paymentMatching": {
-      "toggleLabel": "Bankanın hesaptan çekimini tanı",
-      "toggleHelp": "Bankanız bu ödeme için tek bir hesaptan çekim kaydettiğinde Monize bunu takvimle eşleştirir ve ayrı bir fatura işlemi kaydetmek yerine otomatik olarak anapara ve faize böler.",
-      "payeePattern": "Alacaklı deseni",
-      "payeePatternPlaceholder": "ör. *ING HYPOTHEKEN*",
-      "descriptionPattern": "Açıklama deseni (isteğe bağlı)",
-      "descriptionPatternPlaceholder": "ör. *Hypotheek*",
-      "fromAccount": "{account} hesabındaki çekimlerle eşleştirildi.",
       "autoPostDisabled": "Otomatik olarak kapatıldı: ödeme eşleştirme bu faturayı bankanın kendi çekimiyle kapatır, bu nedenle faturanın kendisi de ayrıca işlenmemelidir.",
       "payeePatternRequired": "* joker karakteri içeren bir alacaklı deseni girin"
     }
@@ -418,15 +420,6 @@
         "cancel": "İptal",
         "use": "Hesabı Bu Türle Düzenle"
       }
-    },
-    "paymentMatching": {
-      "toggleLabel": "Bankanın hesaptan çekimini tanı",
-      "toggleHelp": "Bankanız bu ödeme için tek bir hesaptan çekim kaydettiğinde Monize bunu takvimle eşleştirir ve ayrı bir fatura işlemi kaydetmek yerine otomatik olarak anapara ve faize böler.",
-      "payeePattern": "Alacaklı deseni",
-      "payeePatternPlaceholder": "ör. *ING HYPOTHEKEN*",
-      "descriptionPattern": "Açıklama deseni (isteğe bağlı)",
-      "descriptionPatternPlaceholder": "ör. *Hypotheek*",
-      "fromAccount": "{account} hesabındaki çekimlerle eşleştirildi."
     },
     "originalPrincipal": {
       "label": "Orijinal Anapara",

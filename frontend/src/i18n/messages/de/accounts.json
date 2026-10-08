@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "Die Bankabbuchung erkennen",
+    "toggleHelp": "Wenn deine Bank eine einzelne Abbuchung für diese Zahlung bucht, gleicht Monize sie automatisch mit dem Zahlungsplan ab und teilt sie in Tilgung und Zinsen auf, statt eine separate Rechnungsbuchung zu erstellen.",
+    "payeePattern": "Zahlungsempfänger-Muster",
+    "payeePatternPlaceholder": "z. B. *ING HYPOTHEKEN*",
+    "descriptionPattern": "Beschreibungsmuster (optional)",
+    "descriptionPatternPlaceholder": "z. B. *Hypotheek*",
+    "fromAccount": "Abgeglichen mit Abbuchungen von {account}."
+  },
   "nameSuffix": {
     "cash": "Bargeld",
     "brokerage": "Depot"
@@ -272,13 +281,6 @@
     "firstInstallmentCalculating": "Die erste Rate wird berechnet...",
     "firstInstallmentFailed": "Die erste Rate konnte nicht berechnet werden. Prüfe die Angaben unten und versuche es erneut.",
     "paymentMatching": {
-      "toggleLabel": "Die Bankabbuchung erkennen",
-      "toggleHelp": "Wenn deine Bank eine einzelne Abbuchung für diese Zahlung bucht, gleicht Monize sie automatisch mit dem Zahlungsplan ab und teilt sie in Tilgung und Zinsen auf, statt eine separate Rechnungsbuchung zu erstellen.",
-      "payeePattern": "Zahlungsempfänger-Muster",
-      "payeePatternPlaceholder": "z. B. *ING HYPOTHEKEN*",
-      "descriptionPattern": "Beschreibungsmuster (optional)",
-      "descriptionPatternPlaceholder": "z. B. *Hypotheek*",
-      "fromAccount": "Abgeglichen mit Abbuchungen von {account}.",
       "autoPostDisabled": "Automatisch deaktiviert: Der Zahlungsabgleich begleicht diese Rechnung anhand der eigenen Abbuchung der Bank, daher darf sie nicht zusätzlich selbst gebucht werden.",
       "payeePatternRequired": "Gib ein Zahlungsempfänger-Muster mit einem *-Platzhalter ein"
     }
@@ -418,15 +420,6 @@
         "cancel": "Abbrechen",
         "use": "Konto mit dieser Art bearbeiten"
       }
-    },
-    "paymentMatching": {
-      "toggleLabel": "Die Bankabbuchung erkennen",
-      "toggleHelp": "Wenn deine Bank eine einzelne Abbuchung für diese Zahlung bucht, gleicht Monize sie automatisch mit dem Zahlungsplan ab und teilt sie in Tilgung und Zinsen auf, statt eine separate Rechnungsbuchung zu erstellen.",
-      "payeePattern": "Zahlungsempfänger-Muster",
-      "payeePatternPlaceholder": "z. B. *ING HYPOTHEKEN*",
-      "descriptionPattern": "Beschreibungsmuster (optional)",
-      "descriptionPatternPlaceholder": "z. B. *Hypotheek*",
-      "fromAccount": "Abgeglichen mit Abbuchungen von {account}."
     },
     "originalPrincipal": {
       "label": "Ursprüngliche Darlehenssumme",

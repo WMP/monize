@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "Reconhecer o débito do banco",
+    "toggleHelp": "Quando o seu banco registar um único débito para este pagamento, o Monize associa-o ao calendário e divide-o automaticamente em capital e juros, em vez de registar uma transação de fatura separada.",
+    "payeePattern": "Padrão do beneficiário",
+    "payeePatternPlaceholder": "ex.: *ING HYPOTHEKEN*",
+    "descriptionPattern": "Padrão da descrição (opcional)",
+    "descriptionPatternPlaceholder": "ex.: *Hypotheek*",
+    "fromAccount": "Associado aos débitos de {account}."
+  },
   "nameSuffix": {
     "cash": "Dinheiro",
     "brokerage": "Corretagem"
@@ -272,13 +281,6 @@
     "firstInstallmentCalculating": "A calcular a primeira prestação...",
     "firstInstallmentFailed": "Não foi possível calcular a primeira prestação. Verifique os valores abaixo e tente novamente.",
     "paymentMatching": {
-      "toggleLabel": "Reconhecer o débito do banco",
-      "toggleHelp": "Quando o seu banco registar um único débito para este pagamento, o Monize associa-o ao calendário e divide-o automaticamente em capital e juros, em vez de registar uma transação de fatura separada.",
-      "payeePattern": "Padrão do beneficiário",
-      "payeePatternPlaceholder": "ex.: *ING HYPOTHEKEN*",
-      "descriptionPattern": "Padrão da descrição (opcional)",
-      "descriptionPatternPlaceholder": "ex.: *Hypotheek*",
-      "fromAccount": "Associado aos débitos de {account}.",
       "autoPostDisabled": "Desativado automaticamente: a associação de pagamentos liquida esta fatura a partir do próprio débito do banco, por isso não deve também ser lançada por si própria.",
       "payeePatternRequired": "Introduza um padrão de beneficiário que inclua um carácter universal *"
     }
@@ -418,15 +420,6 @@
         "cancel": "Cancelar",
         "use": "Editar Conta com Este Tipo"
       }
-    },
-    "paymentMatching": {
-      "toggleLabel": "Reconhecer o débito do banco",
-      "toggleHelp": "Quando o seu banco registar um único débito para este pagamento, o Monize associa-o ao calendário e divide-o automaticamente em capital e juros, em vez de registar uma transação de fatura separada.",
-      "payeePattern": "Padrão do beneficiário",
-      "payeePatternPlaceholder": "ex.: *ING HYPOTHEKEN*",
-      "descriptionPattern": "Padrão da descrição (opcional)",
-      "descriptionPatternPlaceholder": "ex.: *Hypotheek*",
-      "fromAccount": "Associado aos débitos de {account}."
     },
     "originalPrincipal": {
       "label": "Capital original",

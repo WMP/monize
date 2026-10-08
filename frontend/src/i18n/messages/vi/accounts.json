@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "Nhận diện khoản ghi nợ của ngân hàng",
+    "toggleHelp": "Khi ngân hàng của bạn ghi một khoản ghi nợ cho khoản thanh toán này, Monize sẽ khớp nó với lịch thanh toán và tự động chia thành gốc và lãi, thay vì ghi một giao dịch hóa đơn riêng.",
+    "payeePattern": "Mẫu người nhận",
+    "payeePatternPlaceholder": "vd. *ING HYPOTHEKEN*",
+    "descriptionPattern": "Mẫu mô tả (không bắt buộc)",
+    "descriptionPatternPlaceholder": "vd. *Hypotheek*",
+    "fromAccount": "Được khớp với các khoản ghi nợ từ {account}."
+  },
   "nameSuffix": {
     "cash": "Tiền mặt",
     "brokerage": "Môi giới"
@@ -272,13 +281,6 @@
     "firstInstallmentCalculating": "Đang tính kỳ trả góp đầu tiên...",
     "firstInstallmentFailed": "Không thể tính kỳ trả góp đầu tiên. Hãy kiểm tra các giá trị bên dưới và thử lại.",
     "paymentMatching": {
-      "toggleLabel": "Nhận diện khoản ghi nợ của ngân hàng",
-      "toggleHelp": "Khi ngân hàng của bạn ghi một khoản ghi nợ cho khoản thanh toán này, Monize sẽ khớp nó với lịch thanh toán và tự động chia thành gốc và lãi, thay vì ghi một giao dịch hóa đơn riêng.",
-      "payeePattern": "Mẫu người nhận",
-      "payeePatternPlaceholder": "vd. *ING HYPOTHEKEN*",
-      "descriptionPattern": "Mẫu mô tả (không bắt buộc)",
-      "descriptionPatternPlaceholder": "vd. *Hypotheek*",
-      "fromAccount": "Được khớp với các khoản ghi nợ từ {account}.",
       "autoPostDisabled": "Đã tự động tắt: tính năng khớp thanh toán thanh toán hóa đơn này từ khoản ghi nợ của chính ngân hàng, vì vậy hóa đơn không được tự đăng thêm.",
       "payeePatternRequired": "Nhập mẫu người nhận có chứa ký tự đại diện *"
     }
@@ -418,15 +420,6 @@
         "cancel": "Hủy",
         "use": "Sửa tài khoản với loại này"
       }
-    },
-    "paymentMatching": {
-      "toggleLabel": "Nhận diện khoản ghi nợ của ngân hàng",
-      "toggleHelp": "Khi ngân hàng của bạn ghi một khoản ghi nợ cho khoản thanh toán này, Monize sẽ khớp nó với lịch thanh toán và tự động chia thành gốc và lãi, thay vì ghi một giao dịch hóa đơn riêng.",
-      "payeePattern": "Mẫu người nhận",
-      "payeePatternPlaceholder": "vd. *ING HYPOTHEKEN*",
-      "descriptionPattern": "Mẫu mô tả (không bắt buộc)",
-      "descriptionPatternPlaceholder": "vd. *Hypotheek*",
-      "fromAccount": "Được khớp với các khoản ghi nợ từ {account}."
     },
     "originalPrincipal": {
       "label": "Số tiền gốc ban đầu",

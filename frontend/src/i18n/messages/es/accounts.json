@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "Reconocer el adeudo del banco",
+    "toggleHelp": "Cuando tu banco registra un único adeudo para este pago, Monize lo compara con el calendario y lo divide automáticamente en capital e intereses, en lugar de registrar una transacción de factura por separado.",
+    "payeePattern": "Patrón del beneficiario",
+    "payeePatternPlaceholder": "p. ej. *ING HYPOTHEKEN*",
+    "descriptionPattern": "Patrón de la descripción (opcional)",
+    "descriptionPatternPlaceholder": "p. ej. *Hypotheek*",
+    "fromAccount": "Comparado con los adeudos de {account}."
+  },
   "nameSuffix": {
     "cash": "Efectivo",
     "brokerage": "Corretaje"
@@ -272,13 +281,6 @@
     "firstInstallmentCalculating": "Calculando la primera cuota...",
     "firstInstallmentFailed": "No se pudo calcular la primera cuota. Revisa los valores de abajo e inténtalo de nuevo.",
     "paymentMatching": {
-      "toggleLabel": "Reconocer el adeudo del banco",
-      "toggleHelp": "Cuando tu banco registra un único adeudo para este pago, Monize lo compara con el calendario y lo divide automáticamente en capital e intereses, en lugar de registrar una transacción de factura por separado.",
-      "payeePattern": "Patrón del beneficiario",
-      "payeePatternPlaceholder": "p. ej. *ING HYPOTHEKEN*",
-      "descriptionPattern": "Patrón de la descripción (opcional)",
-      "descriptionPatternPlaceholder": "p. ej. *Hypotheek*",
-      "fromAccount": "Comparado con los adeudos de {account}.",
       "autoPostDisabled": "Desactivado automáticamente: la coincidencia de pagos liquida esta factura a partir del propio adeudo del banco, por lo que no debe registrarse también por sí sola.",
       "payeePatternRequired": "Introduce un patrón de beneficiario que incluya un comodín *"
     }
@@ -418,15 +420,6 @@
         "cancel": "Cancelar",
         "use": "Editar cuenta con este tipo"
       }
-    },
-    "paymentMatching": {
-      "toggleLabel": "Reconocer el adeudo del banco",
-      "toggleHelp": "Cuando tu banco registra un único adeudo para este pago, Monize lo compara con el calendario y lo divide automáticamente en capital e intereses, en lugar de registrar una transacción de factura por separado.",
-      "payeePattern": "Patrón del beneficiario",
-      "payeePatternPlaceholder": "p. ej. *ING HYPOTHEKEN*",
-      "descriptionPattern": "Patrón de la descripción (opcional)",
-      "descriptionPatternPlaceholder": "p. ej. *Hypotheek*",
-      "fromAccount": "Comparado con los adeudos de {account}."
     },
     "originalPrincipal": {
       "label": "Capital original",

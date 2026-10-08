@@ -140,6 +140,7 @@ describe('MortgageFields', () => {
     sourceAccountId: undefined as string | undefined,
     paymentMatchingEnabled: false as boolean | undefined,
     paymentMatchingPayeePattern: undefined as string | undefined,
+    paymentMatchingDescriptionPattern: undefined as string | undefined,
     institutionName: '',
     selectedInterestCategoryId: '',
     handleInterestCategoryChange: vi.fn(),

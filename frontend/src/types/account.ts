@@ -196,6 +196,10 @@ export interface Account {
   // was created. Optional so the many existing account fixtures that predate
   // this field need not all name it; always present on a real API response.
   paymentMatchingRuleId?: string | null;
+  // Present only on the response to a create that asked for a "Payment
+  // matching" rule: why the server could not build it; absent otherwise. The
+  // account itself is saved either way.
+  paymentMatchingError?: PaymentMatchingFailure | null;
   canDelete?: boolean;
   futureTransactionsSum?: number;
   // ── Joint accounts ──

@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "識別銀行扣款",
+    "toggleHelp": "當您的銀行為此付款記錄一筆扣款時，Monize 會將其與排程進行比對，並自動拆分為本金和利息，而不是記錄單獨的帳單交易。",
+    "payeePattern": "收款人模式",
+    "payeePatternPlaceholder": "例如 *ING HYPOTHEKEN*",
+    "descriptionPattern": "描述模式（選用）",
+    "descriptionPatternPlaceholder": "例如 *Hypotheek*",
+    "fromAccount": "與來自 {account} 的扣款進行比對。"
+  },
   "nameSuffix": {
     "cash": "現金",
     "brokerage": "證券"
@@ -272,13 +281,6 @@
     "firstInstallmentCalculating": "正在計算首期還款...",
     "firstInstallmentFailed": "無法計算首期還款。請檢查下方的數值後再試一次。",
     "paymentMatching": {
-      "toggleLabel": "識別銀行扣款",
-      "toggleHelp": "當您的銀行為此付款記錄一筆扣款時，Monize 會將其與排程進行比對，並自動拆分為本金和利息，而不是記錄單獨的帳單交易。",
-      "payeePattern": "收款人模式",
-      "payeePatternPlaceholder": "例如 *ING HYPOTHEKEN*",
-      "descriptionPattern": "描述模式（選用）",
-      "descriptionPatternPlaceholder": "例如 *Hypotheek*",
-      "fromAccount": "與來自 {account} 的扣款進行比對。",
       "autoPostDisabled": "已自動關閉：付款比對會根據銀行自身的扣款結清此帳單，因此該帳單不應再自行記帳。",
       "payeePatternRequired": "請輸入包含 * 萬用字元的收款人模式"
     }
@@ -418,15 +420,6 @@
         "cancel": "取消",
         "use": "以此類型編輯科目"
       }
-    },
-    "paymentMatching": {
-      "toggleLabel": "識別銀行扣款",
-      "toggleHelp": "當您的銀行為此付款記錄一筆扣款時，Monize 會將其與排程進行比對，並自動拆分為本金和利息，而不是記錄單獨的帳單交易。",
-      "payeePattern": "收款人模式",
-      "payeePatternPlaceholder": "例如 *ING HYPOTHEKEN*",
-      "descriptionPattern": "描述模式（選用）",
-      "descriptionPatternPlaceholder": "例如 *Hypotheek*",
-      "fromAccount": "與來自 {account} 的扣款進行比對。"
     },
     "originalPrincipal": {
       "label": "原始本金",

@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "识别银行扣款",
+    "toggleHelp": "当您的银行为此付款记录一笔扣款时，Monize 会将其与计划进行匹配，并自动拆分为本金和利息，而不是记录单独的账单交易。",
+    "payeePattern": "收款人模式",
+    "payeePatternPlaceholder": "例如 *ING HYPOTHEKEN*",
+    "descriptionPattern": "描述模式（可选）",
+    "descriptionPatternPlaceholder": "例如 *Hypotheek*",
+    "fromAccount": "与来自 {account} 的扣款进行匹配。"
+  },
   "nameSuffix": {
     "cash": "现金",
     "brokerage": "证券"
@@ -272,13 +281,6 @@
     "firstInstallmentCalculating": "正在计算首期还款...",
     "firstInstallmentFailed": "无法计算首期还款。请检查下方的数值后重试。",
     "paymentMatching": {
-      "toggleLabel": "识别银行扣款",
-      "toggleHelp": "当您的银行为此付款记录一笔扣款时，Monize 会将其与计划进行匹配，并自动拆分为本金和利息，而不是记录单独的账单交易。",
-      "payeePattern": "收款人模式",
-      "payeePatternPlaceholder": "例如 *ING HYPOTHEKEN*",
-      "descriptionPattern": "描述模式（可选）",
-      "descriptionPatternPlaceholder": "例如 *Hypotheek*",
-      "fromAccount": "与来自 {account} 的扣款进行匹配。",
       "autoPostDisabled": "已自动关闭：付款匹配会根据银行自身的扣款结清此账单，因此该账单不应再自行记账。",
       "payeePatternRequired": "请输入包含 * 通配符的收款人模式"
     }
@@ -418,15 +420,6 @@
         "cancel": "取消",
         "use": "以此类型编辑账户"
       }
-    },
-    "paymentMatching": {
-      "toggleLabel": "识别银行扣款",
-      "toggleHelp": "当您的银行为此付款记录一笔扣款时，Monize 会将其与计划进行匹配，并自动拆分为本金和利息，而不是记录单独的账单交易。",
-      "payeePattern": "收款人模式",
-      "payeePatternPlaceholder": "例如 *ING HYPOTHEKEN*",
-      "descriptionPattern": "描述模式（可选）",
-      "descriptionPatternPlaceholder": "例如 *Hypotheek*",
-      "fromAccount": "与来自 {account} 的扣款进行匹配。"
     },
     "originalPrincipal": {
       "label": "原始本金",

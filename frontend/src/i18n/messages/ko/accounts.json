@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "은행 출금 인식",
+    "toggleHelp": "은행에서 이 결제에 대해 하나의 출금을 기록하면 Monize는 이를 일정과 대조하여 별도의 청구 거래를 기록하는 대신 자동으로 원금과 이자로 분할합니다.",
+    "payeePattern": "수취인 패턴",
+    "payeePatternPlaceholder": "예: *ING HYPOTHEKEN*",
+    "descriptionPattern": "설명 패턴(선택 사항)",
+    "descriptionPatternPlaceholder": "예: *Hypotheek*",
+    "fromAccount": "{account}의 출금과 대조됩니다."
+  },
   "nameSuffix": {
     "cash": "현금",
     "brokerage": "증권"
@@ -272,13 +281,6 @@
     "firstInstallmentCalculating": "첫 할부금을 계산하는 중...",
     "firstInstallmentFailed": "첫 할부금을 계산할 수 없습니다. 아래 값을 확인하고 다시 시도하세요.",
     "paymentMatching": {
-      "toggleLabel": "은행 출금 인식",
-      "toggleHelp": "은행에서 이 결제에 대해 하나의 출금을 기록하면 Monize는 이를 일정과 대조하여 별도의 청구 거래를 기록하는 대신 자동으로 원금과 이자로 분할합니다.",
-      "payeePattern": "수취인 패턴",
-      "payeePatternPlaceholder": "예: *ING HYPOTHEKEN*",
-      "descriptionPattern": "설명 패턴(선택 사항)",
-      "descriptionPatternPlaceholder": "예: *Hypotheek*",
-      "fromAccount": "{account}의 출금과 대조됩니다.",
       "autoPostDisabled": "자동으로 해제되었습니다. 결제 일치는 은행 자체 출금으로 이 청구서를 정산하므로 청구서가 스스로도 게시되어서는 안 됩니다.",
       "payeePatternRequired": "* 와일드카드가 포함된 수취인 패턴을 입력하세요"
     }
@@ -418,15 +420,6 @@
         "cancel": "취소",
         "use": "이 유형으로 계정 수정"
       }
-    },
-    "paymentMatching": {
-      "toggleLabel": "은행 출금 인식",
-      "toggleHelp": "은행에서 이 결제에 대해 하나의 출금을 기록하면 Monize는 이를 일정과 대조하여 별도의 청구 거래를 기록하는 대신 자동으로 원금과 이자로 분할합니다.",
-      "payeePattern": "수취인 패턴",
-      "payeePatternPlaceholder": "예: *ING HYPOTHEKEN*",
-      "descriptionPattern": "설명 패턴(선택 사항)",
-      "descriptionPatternPlaceholder": "예: *Hypotheek*",
-      "fromAccount": "{account}의 출금과 대조됩니다."
     },
     "originalPrincipal": {
       "label": "원래 대출 원금",

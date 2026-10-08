@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "銀行の引き落としを認識する",
+    "toggleHelp": "銀行がこの支払いの引き落としを1件登録すると、Monizeはそれをスケジュールと照合し、別の請求取引を登録する代わりに自動的に元本と利息に分割します。",
+    "payeePattern": "受取人パターン",
+    "payeePatternPlaceholder": "例：*ING HYPOTHEKEN*",
+    "descriptionPattern": "説明パターン（任意）",
+    "descriptionPatternPlaceholder": "例：*Hypotheek*",
+    "fromAccount": "{account} からの引き落としと照合されます。"
+  },
   "nameSuffix": {
     "cash": "現金",
     "brokerage": "証券"
@@ -272,13 +281,6 @@
     "firstInstallmentCalculating": "初回の返済額を計算しています...",
     "firstInstallmentFailed": "初回の返済額を計算できませんでした。下の値を確認して、もう一度お試しください。",
     "paymentMatching": {
-      "toggleLabel": "銀行の引き落としを認識する",
-      "toggleHelp": "銀行がこの支払いの引き落としを1件登録すると、Monizeはそれをスケジュールと照合し、別の請求取引を登録する代わりに自動的に元本と利息に分割します。",
-      "payeePattern": "受取人パターン",
-      "payeePatternPlaceholder": "例：*ING HYPOTHEKEN*",
-      "descriptionPattern": "説明パターン（任意）",
-      "descriptionPatternPlaceholder": "例：*Hypotheek*",
-      "fromAccount": "{account} からの引き落としと照合されます。",
       "autoPostDisabled": "自動的に無効化されました。支払いマッチングは銀行自身の引き落としからこの請求を決済するため、請求自体も記帳してはいけません。",
       "payeePatternRequired": "* ワイルドカードを含む受取人パターンを入力してください"
     }
@@ -418,15 +420,6 @@
         "cancel": "キャンセル",
         "use": "この種類で勘定科目を編集"
       }
-    },
-    "paymentMatching": {
-      "toggleLabel": "銀行の引き落としを認識する",
-      "toggleHelp": "銀行がこの支払いの引き落としを1件登録すると、Monizeはそれをスケジュールと照合し、別の請求取引を登録する代わりに自動的に元本と利息に分割します。",
-      "payeePattern": "受取人パターン",
-      "payeePatternPlaceholder": "例：*ING HYPOTHEKEN*",
-      "descriptionPattern": "説明パターン（任意）",
-      "descriptionPatternPlaceholder": "例：*Hypotheek*",
-      "fromAccount": "{account} からの引き落としと照合されます。"
     },
     "originalPrincipal": {
       "label": "当初借入金額",

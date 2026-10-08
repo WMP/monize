@@ -6,10 +6,9 @@ import { UseFormRegister, UseFormSetValue, FieldErrors } from 'react-hook-form';
 import { NumericInput } from '@/components/ui/NumericInput';
 import { DateInput } from '@/components/ui/DateInput';
 import { Select } from '@/components/ui/Select';
-import { Input } from '@/components/ui/Input';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
-import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
+import { PaymentMatchingFields } from './PaymentMatchingFields';
 import {
   Account,
   MortgageAmortizationPreview,
@@ -63,6 +62,7 @@ interface MortgageFieldsProps {
   originalPrincipal: number | undefined;
   paymentMatchingEnabled: boolean | undefined;
   paymentMatchingPayeePattern: string | undefined;
+  paymentMatchingDescriptionPattern: string | undefined;
   /** The selected institution's name, used to prefill the payee pattern. */
   institutionName: string;
   selectedInterestCategoryId: string;
@@ -96,6 +96,7 @@ export function MortgageFields({
   originalPrincipal,
   paymentMatchingEnabled,
   paymentMatchingPayeePattern,
+  paymentMatchingDescriptionPattern,
   institutionName,
   selectedInterestCategoryId,
   handleInterestCategoryChange,
@@ -489,42 +490,27 @@ export function MortgageFields({
               this payment against each installment instead of posting the
               bill separately (docs/specs/loan-installment-settlement.md
               decision 5). Create only -- an existing loan gets this from its
-              Loan Details panel. */}
-          <div className="space-y-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-            <input type="hidden" {...register('paymentMatchingEnabled')} />
-            <div className="flex items-center gap-2">
-              <ToggleSwitch
-                checked={!!paymentMatchingEnabled}
-                onChange={handlePaymentMatchingToggle}
-                label={t('mortgageFields.paymentMatching.toggleLabel')}
-              />
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {t('mortgageFields.paymentMatching.toggleLabel')}
-              </span>
-              <InfoTooltip text={t('mortgageFields.paymentMatching.toggleHelp')} placement="top" usePortal />
-            </div>
-            {paymentMatchingEnabled && (
-              <div className="space-y-3 pl-1">
-                <Input
-                  label={t('mortgageFields.paymentMatching.payeePattern')}
-                  placeholder={t('mortgageFields.paymentMatching.payeePatternPlaceholder')}
-                  error={errors.paymentMatchingPayeePattern?.message as string | undefined}
-                  {...register('paymentMatchingPayeePattern')}
-                />
-                <Input
-                  label={t('mortgageFields.paymentMatching.descriptionPattern')}
-                  placeholder={t('mortgageFields.paymentMatching.descriptionPatternPlaceholder')}
-                  error={errors.paymentMatchingDescriptionPattern?.message as string | undefined}
-                  {...register('paymentMatchingDescriptionPattern')}
-                />
-                {sourceAccountName && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {t('mortgageFields.paymentMatching.fromAccount', { account: sourceAccountName })}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
+              Loan Details panel. The two glob fields are registered here
+              (hidden) so react-hook-form tracks them; the shared component
+              below is a controlled view over the same watched values. */}
+          <input type="hidden" {...register('paymentMatchingEnabled')} />
+          <input type="hidden" {...register('paymentMatchingPayeePattern')} />
+          <input type="hidden" {...register('paymentMatchingDescriptionPattern')} />
+          <PaymentMatchingFields
+            enabled={!!paymentMatchingEnabled}
+            onToggle={handlePaymentMatchingToggle}
+            payeePattern={paymentMatchingPayeePattern ?? ''}
+            onPayeePatternChange={(value) =>
+              setValue('paymentMatchingPayeePattern', value, { shouldDirty: true, shouldValidate: true })
+            }
+            payeePatternError={errors.paymentMatchingPayeePattern?.message as string | undefined}
+            descriptionPattern={paymentMatchingDescriptionPattern ?? ''}
+            onDescriptionPatternChange={(value) =>
+              setValue('paymentMatchingDescriptionPattern', value, { shouldDirty: true, shouldValidate: true })
+            }
+            descriptionPatternError={errors.paymentMatchingDescriptionPattern?.message as string | undefined}
+            sourceAccountName={sourceAccountName}
+          />
 
           {/* Mortgage Amortization Preview */}
           {mortgagePreview && (

@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "Розпізнавати списання банку",
+    "toggleHelp": "Коли ваш банк реєструє одне списання за цей платіж, Monize зіставляє його з графіком і автоматично розділяє на основний борг і відсотки, замість реєстрації окремої операції рахунку.",
+    "payeePattern": "Шаблон отримувача",
+    "payeePatternPlaceholder": "напр. *ING HYPOTHEKEN*",
+    "descriptionPattern": "Шаблон опису (необов'язково)",
+    "descriptionPatternPlaceholder": "напр. *Hypotheek*",
+    "fromAccount": "Зіставляється зі списаннями з {account}."
+  },
   "nameSuffix": {
     "cash": "Готівка",
     "brokerage": "Брокерський"
@@ -272,13 +281,6 @@
     "firstInstallmentCalculating": "Розрахунок першого платежу...",
     "firstInstallmentFailed": "Не вдалося розрахувати перший платіж. Перевірте значення нижче та спробуйте ще раз.",
     "paymentMatching": {
-      "toggleLabel": "Розпізнавати списання банку",
-      "toggleHelp": "Коли ваш банк реєструє одне списання за цей платіж, Monize зіставляє його з графіком і автоматично розділяє на основний борг і відсотки, замість реєстрації окремої операції рахунку.",
-      "payeePattern": "Шаблон отримувача",
-      "payeePatternPlaceholder": "напр. *ING HYPOTHEKEN*",
-      "descriptionPattern": "Шаблон опису (необов'язково)",
-      "descriptionPatternPlaceholder": "напр. *Hypotheek*",
-      "fromAccount": "Зіставляється зі списаннями з {account}.",
       "autoPostDisabled": "Вимкнено автоматично: зіставлення платежів погашає цей рахунок на основі власного списання банку, тож він не повинен також проводитися самостійно.",
       "payeePatternRequired": "Введіть шаблон отримувача з символом підстановки *"
     }
@@ -418,15 +420,6 @@
         "cancel": "Скасувати",
         "use": "Редагувати рахунок із цим типом"
       }
-    },
-    "paymentMatching": {
-      "toggleLabel": "Розпізнавати списання банку",
-      "toggleHelp": "Коли ваш банк реєструє одне списання за цей платіж, Monize зіставляє його з графіком і автоматично розділяє на основний борг і відсотки, замість реєстрації окремої операції рахунку.",
-      "payeePattern": "Шаблон отримувача",
-      "payeePatternPlaceholder": "напр. *ING HYPOTHEKEN*",
-      "descriptionPattern": "Шаблон опису (необов'язково)",
-      "descriptionPatternPlaceholder": "напр. *Hypotheek*",
-      "fromAccount": "Зіставляється зі списаннями з {account}."
     },
     "originalPrincipal": {
       "label": "Початкова сума позики",

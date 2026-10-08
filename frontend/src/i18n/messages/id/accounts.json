@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "Kenali debit dari bank",
+    "toggleHelp": "Saat bank Anda mencatat satu debit untuk pembayaran ini, Monize mencocokkannya dengan jadwal dan memisahkannya secara otomatis menjadi pokok dan bunga, bukan mencatat transaksi tagihan terpisah.",
+    "payeePattern": "Pola penerima pembayaran",
+    "payeePatternPlaceholder": "mis. *ING HYPOTHEKEN*",
+    "descriptionPattern": "Pola deskripsi (opsional)",
+    "descriptionPatternPlaceholder": "mis. *Hypotheek*",
+    "fromAccount": "Dicocokkan dengan debit dari {account}."
+  },
   "nameSuffix": {
     "cash": "Tunai",
     "brokerage": "Pialang"
@@ -272,13 +281,6 @@
     "firstInstallmentCalculating": "Menghitung angsuran pertama...",
     "firstInstallmentFailed": "Angsuran pertama tidak dapat dihitung. Periksa nilai di bawah dan coba lagi.",
     "paymentMatching": {
-      "toggleLabel": "Kenali debit dari bank",
-      "toggleHelp": "Saat bank Anda mencatat satu debit untuk pembayaran ini, Monize mencocokkannya dengan jadwal dan memisahkannya secara otomatis menjadi pokok dan bunga, bukan mencatat transaksi tagihan terpisah.",
-      "payeePattern": "Pola penerima pembayaran",
-      "payeePatternPlaceholder": "mis. *ING HYPOTHEKEN*",
-      "descriptionPattern": "Pola deskripsi (opsional)",
-      "descriptionPatternPlaceholder": "mis. *Hypotheek*",
-      "fromAccount": "Dicocokkan dengan debit dari {account}.",
       "autoPostDisabled": "Dimatikan secara otomatis: pencocokan pembayaran melunasi tagihan ini dari debit bank itu sendiri, jadi tagihan ini tidak boleh ikut memposting dirinya sendiri.",
       "payeePatternRequired": "Masukkan pola penerima pembayaran yang menyertakan karakter pengganti *"
     }
@@ -418,15 +420,6 @@
         "cancel": "Batal",
         "use": "Edit Akun dengan Jenis Ini"
       }
-    },
-    "paymentMatching": {
-      "toggleLabel": "Kenali debit dari bank",
-      "toggleHelp": "Saat bank Anda mencatat satu debit untuk pembayaran ini, Monize mencocokkannya dengan jadwal dan memisahkannya secara otomatis menjadi pokok dan bunga, bukan mencatat transaksi tagihan terpisah.",
-      "payeePattern": "Pola penerima pembayaran",
-      "payeePatternPlaceholder": "mis. *ING HYPOTHEKEN*",
-      "descriptionPattern": "Pola deskripsi (opsional)",
-      "descriptionPatternPlaceholder": "mis. *Hypotheek*",
-      "fromAccount": "Dicocokkan dengan debit dari {account}."
     },
     "originalPrincipal": {
       "label": "Pokok Pinjaman Awal",

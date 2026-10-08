@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "Riconosci l'addebito della banca",
+    "toggleHelp": "Quando la tua banca registra un unico addebito per questo pagamento, Monize lo confronta con il piano e lo suddivide automaticamente in capitale e interessi, invece di registrare una transazione di fattura separata.",
+    "payeePattern": "Pattern del beneficiario",
+    "payeePatternPlaceholder": "es. *ING HYPOTHEKEN*",
+    "descriptionPattern": "Pattern della descrizione (opzionale)",
+    "descriptionPatternPlaceholder": "es. *Hypotheek*",
+    "fromAccount": "Confrontato con gli addebiti di {account}."
+  },
   "nameSuffix": {
     "cash": "Contanti",
     "brokerage": "Intermediazione"
@@ -272,13 +281,6 @@
     "firstInstallmentCalculating": "Calcolo della prima rata...",
     "firstInstallmentFailed": "Non è stato possibile calcolare la prima rata. Controlla i valori qui sotto e riprova.",
     "paymentMatching": {
-      "toggleLabel": "Riconosci l'addebito della banca",
-      "toggleHelp": "Quando la tua banca registra un unico addebito per questo pagamento, Monize lo confronta con il piano e lo suddivide automaticamente in capitale e interessi, invece di registrare una transazione di fattura separata.",
-      "payeePattern": "Pattern del beneficiario",
-      "payeePatternPlaceholder": "es. *ING HYPOTHEKEN*",
-      "descriptionPattern": "Pattern della descrizione (opzionale)",
-      "descriptionPatternPlaceholder": "es. *Hypotheek*",
-      "fromAccount": "Confrontato con gli addebiti di {account}.",
       "autoPostDisabled": "Disattivato automaticamente: la corrispondenza dei pagamenti regola questa fattura in base all'addebito della banca stessa, quindi non deve anche registrarsi da sola.",
       "payeePatternRequired": "Inserisci un pattern del beneficiario che includa un carattere jolly *"
     }
@@ -418,15 +420,6 @@
         "cancel": "Annulla",
         "use": "Modifica conto con questo tipo"
       }
-    },
-    "paymentMatching": {
-      "toggleLabel": "Riconosci l'addebito della banca",
-      "toggleHelp": "Quando la tua banca registra un unico addebito per questo pagamento, Monize lo confronta con il piano e lo suddivide automaticamente in capitale e interessi, invece di registrare una transazione di fattura separata.",
-      "payeePattern": "Pattern del beneficiario",
-      "payeePatternPlaceholder": "es. *ING HYPOTHEKEN*",
-      "descriptionPattern": "Pattern della descrizione (opzionale)",
-      "descriptionPatternPlaceholder": "es. *Hypotheek*",
-      "fromAccount": "Confrontato con gli addebiti di {account}."
     },
     "originalPrincipal": {
       "label": "Capitale originario",

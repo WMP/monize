@@ -8,11 +8,9 @@ import { DateInput } from '@/components/ui/DateInput';
 import { Select } from '@/components/ui/Select';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { NumericInput } from '@/components/ui/NumericInput';
-import { Input } from '@/components/ui/Input';
 import { Combobox } from '@/components/ui/Combobox';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
-import { InfoTooltip } from '@/components/ui/InfoTooltip';
+import { PaymentMatchingFields } from './PaymentMatchingFields';
 import {
   Account,
   DetectedLoanPayment,
@@ -399,8 +397,15 @@ export function LoanPaymentSetupDialog({
         data.termMonths = termMonths;
       }
 
-      await accountsApi.setupLoanPayments(loanAccount.accountId, data);
+      const result = await accountsApi.setupLoanPayments(loanAccount.accountId, data);
       toast.success(t('loanPaymentSetup.toasts.setupComplete', { account: loanAccount.accountName }));
+      // The schedule is saved either way (docs/specs/loan-installment-settlement.md
+      // decision 5): a rule the server could not create is reported here, never
+      // thrown, so the schedule-created toast above still fires and this is a
+      // second, separate warning rather than a replacement for it.
+      if (paymentMatchingEnabled && result.paymentMatchingError) {
+        toast.error(result.paymentMatchingError.message);
+      }
       onSetupComplete?.();
       onClose();
     } catch (error: any) {
@@ -745,40 +750,15 @@ export function LoanPaymentSetupDialog({
                   payment against each installment instead of posting the
                   bill separately (docs/specs/loan-installment-settlement.md
                   decision 5). */}
-              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 space-y-3">
-                <div className="flex items-center gap-2">
-                  <ToggleSwitch
-                    checked={paymentMatchingEnabled}
-                    onChange={setPaymentMatchingEnabled}
-                    label={t('loanPaymentSetup.paymentMatching.toggleLabel')}
-                  />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {t('loanPaymentSetup.paymentMatching.toggleLabel')}
-                  </span>
-                  <InfoTooltip text={t('loanPaymentSetup.paymentMatching.toggleHelp')} placement="top" usePortal />
-                </div>
-                {paymentMatchingEnabled && (
-                  <div className="space-y-3 ml-6">
-                    <Input
-                      label={t('loanPaymentSetup.paymentMatching.payeePattern')}
-                      placeholder={t('loanPaymentSetup.paymentMatching.payeePatternPlaceholder')}
-                      value={paymentMatchingPayeePattern}
-                      onChange={(e) => setPaymentMatchingPayeePattern(e.target.value)}
-                    />
-                    <Input
-                      label={t('loanPaymentSetup.paymentMatching.descriptionPattern')}
-                      placeholder={t('loanPaymentSetup.paymentMatching.descriptionPatternPlaceholder')}
-                      value={paymentMatchingDescriptionPattern}
-                      onChange={(e) => setPaymentMatchingDescriptionPattern(e.target.value)}
-                    />
-                    {sourceAccountName && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {t('loanPaymentSetup.paymentMatching.fromAccount', { account: sourceAccountName })}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
+              <PaymentMatchingFields
+                enabled={paymentMatchingEnabled}
+                onToggle={setPaymentMatchingEnabled}
+                payeePattern={paymentMatchingPayeePattern}
+                onPayeePatternChange={setPaymentMatchingPayeePattern}
+                descriptionPattern={paymentMatchingDescriptionPattern}
+                onDescriptionPatternChange={setPaymentMatchingDescriptionPattern}
+                sourceAccountName={sourceAccountName}
+              />
 
               {/* Auto-post */}
               <label className="flex items-center gap-2">
