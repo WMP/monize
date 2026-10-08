@@ -24,6 +24,7 @@ import {
   investmentExclusionSql,
   reportableTransactionAmountSql,
 } from "../common/investment-filter.util";
+import { tagValuesArrayExpr } from "./tag-values-sql";
 
 /**
  * Investment scope is LINKAGE, never account type (INV-REPORT-001, issue #1257):
@@ -97,6 +98,13 @@ export class SpendingReportsService {
    * its top-level ancestor. Both exist because the widget offers them -- a
    * setting the client answers for itself is a second implementation waiting to
    * drift.
+   *
+   * `options.tagKey` + `options.tagValue` keep only the rows (a transaction, or
+   * one split of it) whose own `tagKey:*` tags include `tagValue`, the household
+   * view of `docs/specs/report-tag-key-breakdown.md` section 11.4. It is one
+   * more `WHERE` clause on the query below, so the VOID, investment, transfer
+   * and asset-category exclusions all still apply; with neither the SQL and its
+   * parameters are exactly what they were.
    */
   async getSpendingByCategory(
     userId: string,
@@ -105,9 +113,11 @@ export class SpendingReportsService {
     options: {
       rollupToParent?: boolean;
       accountIds?: string[];
+      tagKey?: string;
+      tagValue?: string;
     } = {},
   ): Promise<SpendingByCategoryResponse> {
-    const { rollupToParent = true, accountIds } = options;
+    const { rollupToParent = true, accountIds, tagKey, tagValue } = options;
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
     const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
@@ -149,6 +159,22 @@ export class SpendingReportsService {
     if (accountIds && accountIds.length > 0) {
       query += ` AND t.account_id = ANY($${params.length + 1}::uuid[])`;
       params.push(accountIds);
+    }
+
+    // The tag filter needs the key AND the value; either alone filters nothing
+    // (the DTO already refuses the half-specified request). The value read is
+    // the row's own, transaction-level and this split's, de-duplicated, so a
+    // transaction with two matching split tags is still summed once.
+    if (tagKey && tagValue) {
+      const keyParam = `$${params.length + 1}`;
+      const valueParam = `$${params.length + 2}`;
+      // Two details matter. The cast: without it PostgreSQL types the parameter
+      // from the array on the right and reads the value as an array literal.
+      // The COALESCE: `ANY((SELECT ...))` is read as ANY over a sub-select's
+      // rows, not over the array it returns, and a row with no `K:*` tag has a
+      // NULL array, which then matches nothing.
+      query += ` AND ${valueParam}::text = ANY(COALESCE(${tagValuesArrayExpr("t", "ts", keyParam)}, ARRAY[]::text[]))`;
+      params.push(tagKey, tagValue);
     }
 
     query += ` GROUP BY COALESCE(ts.category_id, t.category_id), t.currency_code`;

@@ -84,6 +84,31 @@ describe("BuiltInReportsController", () => {
     });
   });
 
+  describe("getSpendingByCategory() tag filter", () => {
+    it("passes the tag key and value through", async () => {
+      mockService.getSpendingByCategory.mockResolvedValue({ data: [] });
+
+      await controller.getSpendingByCategory(mockReq, {
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
+        tagKey: "scope",
+        tagValue: "household",
+      } as any);
+
+      expect(mockService.getSpendingByCategory).toHaveBeenCalledWith(
+        "user-1",
+        "2024-01-01",
+        "2024-12-31",
+        {
+          rollupToParent: undefined,
+          accountIds: undefined,
+          tagKey: "scope",
+          tagValue: "household",
+        },
+      );
+    });
+  });
+
   describe("getSpendingByPayee()", () => {
     it("delegates to service with userId, startDate, and endDate", async () => {
       const query = { startDate: "2024-01-01", endDate: "2024-12-31" };
@@ -546,6 +571,24 @@ describe("BuiltInReportsController", () => {
         "user-1",
         "2024-01-01",
         "2024-12-31",
+        { accountIds: undefined },
+      );
+    });
+
+    it("passes the account filter through", async () => {
+      mockService.getMonthlyCategoryBreakdown.mockResolvedValue({});
+
+      await controller.getMonthlyCategoryBreakdown(mockReq, {
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
+        accountIds: ["acct-1"],
+      } as any);
+
+      expect(mockService.getMonthlyCategoryBreakdown).toHaveBeenCalledWith(
+        "user-1",
+        "2024-01-01",
+        "2024-12-31",
+        { accountIds: ["acct-1"] },
       );
     });
   });

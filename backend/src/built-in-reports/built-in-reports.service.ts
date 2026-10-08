@@ -46,7 +46,12 @@ export class BuiltInReportsService {
     userId: string,
     startDate: string | undefined,
     endDate: string,
-    options?: { rollupToParent?: boolean; accountIds?: string[] },
+    options?: {
+      rollupToParent?: boolean;
+      accountIds?: string[];
+      tagKey?: string;
+      tagValue?: string;
+    },
   ): Promise<SpendingByCategoryResponse> {
     return this.spendingReports.getSpendingByCategory(
       userId,
@@ -200,11 +205,13 @@ export class BuiltInReportsService {
     userId: string,
     startDate: string | undefined,
     endDate: string,
+    options?: { accountIds?: string[] },
   ): Promise<MonthlyCategoryBreakdownResponse> {
     return this.monthlyCategoryBreakdown.getMonthlyCategoryBreakdown(
       userId,
       startDate,
       endDate,
+      options,
     );
   }
 }

@@ -418,4 +418,84 @@ describe("MonthlyCategoryBreakdownService", () => {
     expect(transferSql).toContain("t.is_transfer = true");
     expect(transferSql).toContain("t.category_id IS NULL");
   });
+
+  describe("account filter", () => {
+    it("adds no account predicate and no parameter without a selection", async () => {
+      await service.getMonthlyCategoryBreakdown(
+        mockUserId,
+        "2025-01-01",
+        "2025-12-31",
+      );
+      await service.getMonthlyCategoryBreakdown(
+        mockUserId,
+        "2025-01-01",
+        "2025-12-31",
+        { accountIds: [] },
+      );
+
+      const calls = scopedManager.query.mock.calls;
+      expect(calls).toHaveLength(4);
+      for (const [sql, params] of calls) {
+        expect(sql).not.toContain("ANY(");
+        expect(params).toEqual([mockUserId, "2025-12-31", "2025-01-01"]);
+      }
+      // The two requests are the same SQL: omitting it is today's query.
+      expect(calls[2][0]).toBe(calls[0][0]);
+      expect(calls[3][0]).toBe(calls[1][0]);
+    });
+
+    it("scopes BOTH the category query and the transfer-rows query, parameterized", async () => {
+      await service.getMonthlyCategoryBreakdown(
+        mockUserId,
+        "2025-01-01",
+        "2025-12-31",
+        { accountIds: ["acct-1", "acct-2"] },
+      );
+
+      const [categorySql, categoryParams] = scopedManager.query.mock.calls[0];
+      const [transferSql, transferParams] = scopedManager.query.mock.calls[1];
+      for (const [sql, params] of [
+        [categorySql, categoryParams],
+        [transferSql, transferParams],
+      ] as const) {
+        expect(sql).toContain("t.account_id = ANY($4::uuid[])");
+        expect(sql).not.toContain("acct-1");
+        expect(params).toEqual([
+          mockUserId,
+          "2025-12-31",
+          "2025-01-01",
+          ["acct-1", "acct-2"],
+        ]);
+      }
+    });
+
+    it("numbers the account parameter around an absent start date", async () => {
+      await service.getMonthlyCategoryBreakdown(
+        mockUserId,
+        undefined,
+        "2025-12-31",
+        { accountIds: ["acct-1"] },
+      );
+
+      for (const [sql, params] of scopedManager.query.mock.calls) {
+        expect(sql).toContain("t.account_id = ANY($3::uuid[])");
+        expect(params).toEqual([mockUserId, "2025-12-31", ["acct-1"]]);
+      }
+    });
+
+    it("keeps every other exclusion on both queries when scoped", async () => {
+      await service.getMonthlyCategoryBreakdown(
+        mockUserId,
+        "2025-01-01",
+        "2025-12-31",
+        { accountIds: ["acct-1"] },
+      );
+      const [categorySql] = scopedManager.query.mock.calls[0];
+      const [transferSql] = scopedManager.query.mock.calls[1];
+      expect(categorySql).toContain("status != 'VOID'");
+      expect(categorySql).toContain("INVESTMENT_BROKERAGE");
+      expect(transferSql).toContain("status != 'VOID'");
+      expect(transferSql).toContain("t.category_id IS NULL");
+    });
+  });
 });
