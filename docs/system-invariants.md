@@ -836,6 +836,14 @@ Enforcement         The 1:1 half is enforced. Consumers return null on an absent
                     stored nothing, failed, or fell outside the bound leaves the
                     pair missing and the figure withheld; it never becomes 1:1
                     (docs/time-series-contract.md section 2.2).
+                    A latest provider quote is not taken at face value either:
+                    Yahoo rounds it to four decimals, so a quote below 1 is
+                    checked against its inverse symbol and one below
+                    MIN_PRECISE_QUOTED_RATE either way is not stored
+                    (currencies/quoted-rate.util.ts chooseFxQuote, through
+                    ExchangeRateService.fetchFxQuote for refreshAllRates and
+                    getLiveRate; quoted-rate.util.spec.ts and
+                    exchange-rate.service.spec.ts).
                     The mislabelling half is NOT enforced on the built-in report
                     path: see Known gap below.
 Known gap           **An unconverted amount still reaches a report under the
