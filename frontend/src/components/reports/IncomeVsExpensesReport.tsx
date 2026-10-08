@@ -35,23 +35,25 @@ import { chartColors } from "@/lib/chart-colors";
 import { useChartDateFormat } from "@/hooks/useChartDateFormat";
 import { useTranslations } from 'next-intl';
 import { useExchangeRates } from "@/hooks/useExchangeRates";
-import { PartialTotal } from "@/components/ui/PartialTotal";
 import { useTagKeys } from "@/hooks/useTagKeys";
 import { TagKeyBreakdownSelect } from "@/components/reports/TagKeyBreakdownSelect";
 import { TagKeyBreakdownBuckets } from "@/components/reports/TagKeyBreakdownBuckets";
-import { StackTaggedFlowsToggle } from "@/components/reports/StackTaggedFlowsToggle";
+import { IncludeTaggedTransfersToggle } from "@/components/reports/IncludeTaggedTransfersToggle";
+import { IncomeVsExpensesSummaryCards } from "@/components/reports/IncomeVsExpensesSummaryCards";
+import { TaggedBalanceTooltip, type BalanceTooltipEntry } from "@/components/reports/TaggedBalanceTooltip";
+import { periodBalanceFields, taggedBalanceWindow } from "@/lib/tagged-balance";
 import { useTaggedFlowBucket } from "@/hooks/useTaggedFlowBucket";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { flowBarStack } from "@/lib/tagged-flow-stack";
 import {
   IncomeVsExpensesTable,
-  isFlowField,
+  isFieldVisible,
   type ChartDataItem,
   type IncomeVsExpensesSortField,
 } from "@/components/reports/IncomeVsExpensesTable";
 
 const ACCOUNTS_STORAGE_KEY = 'monize-reports-income-vs-expenses-accounts';
-const STACK_FLOWS_STORAGE_KEY = 'monize-reports-income-vs-expenses-stack-tagged';
+const INCLUDE_TRANSFERS_STORAGE_KEY = 'monize-reports-income-vs-expenses-stack-tagged';
 
 // Same account list the dashboard's Income vs Expenses widget offers: an
 // investment account's cash legs are excluded from the report by linkage.
@@ -122,13 +124,17 @@ export function IncomeVsExpensesReport() {
   );
   const showFlows = flowBucket !== undefined;
   // Opt-in, off by default: a user whose KEY:VALUE tags mean something else
-  // would otherwise see the income and expense bars grow unasked. Presentation
-  // only -- no figure below reads it.
-  const [stackFlowsPref, setStackFlowsPref] = useLocalStorage<boolean>(
-    STACK_FLOWS_STORAGE_KEY,
+  // would otherwise see the income and expense bars grow unasked, and Savings
+  // replaced by a Balance they did not ask for. ON stacks the tagged flows on
+  // the bars and shows Balance and Balance % in place of Savings and Savings
+  // Rate (spec sections 10.7 and 10.9); income, expenses and net stay the
+  // server's values either way (INV-REPORT-003).
+  const [includeTransfersPref, setIncludeTransfersPref] = useLocalStorage<boolean>(
+    INCLUDE_TRANSFERS_STORAGE_KEY,
     false,
   );
-  const stackFlows = showFlows && stackFlowsPref === true;
+  const balanceView = showFlows && includeTransfersPref === true;
+  const stackFlows = balanceView;
 
   // Map response to chart data. `name` must be unique across the dataset
   // (used as the XAxis category key); a non-unique value like "May" causes
@@ -151,6 +157,7 @@ export function IncomeVsExpensesReport() {
           Expenses: Math.round(item.expenses),
           Savings: Math.round(savings),
           SavingsRate: savingsRate,
+          ...(balanceView ? periodBalanceFields(item, flows) : {}),
           ...(flowBucket
             ? {
                 TaggedInflows: Math.round(flows ? flows.taggedInflows : 0),
@@ -163,7 +170,7 @@ export function IncomeVsExpensesReport() {
           monthEnd: item.periodEnd,
         };
       }),
-    [response, formatChartDate, flowBucket, flowsByPeriod],
+    [response, formatChartDate, flowBucket, flowsByPeriod, balanceView],
   );
 
   /**
@@ -189,11 +196,35 @@ export function IncomeVsExpensesReport() {
     }),
     [response],
   );
+  // The window's Balance: a total only when the All totals are known and the
+  // active bucket is complete; otherwise a subtotal that says so.
+  const balanceWindow = useMemo(
+    () =>
+      balanceView && flowBucket && response
+        ? taggedBalanceWindow(
+            {
+              income: totals.totalIncome,
+              expenses: totals.totalExpenses,
+              taggedInflows: flowBucket.taggedInflows,
+              taggedOutflows: flowBucket.taggedOutflows,
+            },
+            response.totals.income !== null && response.totals.expenses !== null,
+            completeness,
+            flowBucket,
+          )
+        : undefined,
+    [balanceView, flowBucket, response, totals, completeness],
+  );
   const reportingCurrency = response?.currency ?? defaultCurrency;
 
   // A stored sort on a flow column falls back to the month when that column is
   // not on the screen.
-  const effectiveSortField = !showFlows && isFlowField(sortField) ? 'name' : sortField;
+  const columnMode = {
+    showFlows,
+    balanceView,
+    showOutflows: balanceView && flowBucket !== undefined && flowBucket.taggedOutflows !== 0,
+  };
+  const effectiveSortField = isFieldVisible(sortField, columnMode) ? sortField : 'name';
 
   const sortedTableData = useMemo(() => {
     const sorted = [...chartData];
@@ -214,6 +245,12 @@ export function IncomeVsExpensesReport() {
           break;
         case 'savingsRate':
           comparison = compareValues(a.SavingsRate, b.SavingsRate);
+          break;
+        case 'balance':
+          comparison = compareValues(a.Balance, b.Balance);
+          break;
+        case 'balancePercent':
+          comparison = compareValues(a.BalancePercent, b.BalancePercent);
           break;
         case 'taggedInflows':
           comparison = compareValues(a.TaggedInflows, b.TaggedInflows);
@@ -237,18 +274,54 @@ export function IncomeVsExpensesReport() {
     const { exportToPdf } = await import("@/lib/pdf-export");
     await exportToPdf({
       title: t('page.names.income-vs-expenses' as Parameters<typeof t>[0]),
-      summaryCards: [
-        { label: t('incomeVsExpenses.totalIncome'), value: formatCurrency(totals.totalIncome), color: "#16a34a" },
-        { label: t('incomeVsExpenses.totalExpenses'), value: formatCurrency(totals.totalExpenses), color: "#dc2626" },
-        { label: t('incomeVsExpenses.totalSavings'), value: formatCurrency(totals.totalSavings), color: totals.totalSavings >= 0 ? "#2563eb" : "#ea580c" },
-        { label: t('incomeVsExpenses.savingsRate'), value: formatPercent(totals.savingsRate, 1), color: totals.savingsRate >= 0 ? "#9333ea" : "#ea580c" },
-      ],
+      summaryCards: balanceWindow && flowBucket
+        ? [
+            { label: t('incomeVsExpenses.totalIncome'), value: formatCurrency(totals.totalIncome), color: "#16a34a" },
+            { label: t('tagBreakdown.inflows'), value: formatCurrency(flowBucket.taggedInflows), color: "#4f46e5" },
+            { label: t('incomeVsExpenses.totalExpenses'), value: formatCurrency(totals.totalExpenses), color: "#dc2626" },
+            ...(flowBucket.taggedOutflows !== 0
+              ? [{ label: t('tagBreakdown.outflows'), value: formatCurrency(flowBucket.taggedOutflows), color: "#4f46e5" }]
+              : []),
+            { label: t('tagBreakdown.balance'), value: `${formatCurrency(balanceWindow.balance ?? 0)}${balanceWindow.complete ? "" : "*"}`, color: (balanceWindow.balance ?? 0) >= 0 ? "#2563eb" : "#ea580c" },
+            { label: t('tagBreakdown.balancePercent'), value: balanceWindow.balancePercent === null ? "\u2014" : formatPercent(balanceWindow.balancePercent, 2), color: (balanceWindow.balancePercent ?? 0) >= 0 ? "#9333ea" : "#ea580c" },
+          ]
+        : [
+            { label: t('incomeVsExpenses.totalIncome'), value: formatCurrency(totals.totalIncome), color: "#16a34a" },
+            { label: t('incomeVsExpenses.totalExpenses'), value: formatCurrency(totals.totalExpenses), color: "#dc2626" },
+            { label: t('incomeVsExpenses.totalSavings'), value: formatCurrency(totals.totalSavings), color: totals.totalSavings >= 0 ? "#2563eb" : "#ea580c" },
+            { label: t('incomeVsExpenses.savingsRate'), value: formatPercent(totals.savingsRate, 1), color: totals.savingsRate >= 0 ? "#9333ea" : "#ea580c" },
+          ],
       chartContainer: chartRef.current,
       filename: "income-vs-expenses",
     });
   };
 
   const handleExportCsv = () => {
+    if (balanceView) {
+      // Same columns, same order as the table: Income, Tagged inflows,
+      // Expenses, Tagged outflows (only when there are some), Balance, Balance %.
+      const withOutflows = columnMode.showOutflows;
+      const headers = [
+        t('incomeVsExpenses.colMonth'),
+        t('incomeVsExpenses.colIncome'),
+        t('tagBreakdown.inflows'),
+        t('incomeVsExpenses.colExpenses'),
+        ...(withOutflows ? [t('tagBreakdown.outflows')] : []),
+        t('tagBreakdown.balance'),
+        t('tagBreakdown.balancePercent'),
+      ];
+      const rows = sortedTableData.map((d) => [
+        d.fullName,
+        d.Income,
+        d.TaggedInflows ?? null,
+        d.Expenses,
+        ...(withOutflows ? [d.TaggedOutflows ?? null] : []),
+        d.Balance ?? null,
+        d.BalancePercent == null ? null : formatPercentTrimmed(d.BalancePercent),
+      ]);
+      exportToCsv('income-vs-expenses', headers, rows);
+      return;
+    }
     const headers = [t('incomeVsExpenses.colMonth'), t('incomeVsExpenses.colIncome'), t('incomeVsExpenses.colExpenses'), t('incomeVsExpenses.colSavings'), t('incomeVsExpenses.colSavingsRate'), ...(showFlows ? [t('tagBreakdown.inflows'), t('tagBreakdown.outflows')] : [])];
     const rows = sortedTableData.map((d) => [
       d.fullName,
@@ -303,6 +376,16 @@ export function IncomeVsExpensesReport() {
     label?: string;
   }) => {
     const data = payload?.[0]?.payload;
+    if (balanceView) {
+      return (
+        <TaggedBalanceTooltip
+          active={active}
+          payload={payload as unknown as BalanceTooltipEntry[]}
+          formatValue={(v) => formatCurrency(v)}
+          formatPercent={(p) => formatPercent(p, 2)}
+        />
+      );
+    }
     return (
       <ChartTooltip
         active={active}
@@ -348,7 +431,7 @@ export function IncomeVsExpensesReport() {
             />
             <TagKeyBreakdownSelect tagKeys={tagKeys} value={tagKey} onChange={setTagKey} />
             {showFlows && (
-              <StackTaggedFlowsToggle checked={stackFlows} onChange={setStackFlowsPref} />
+              <IncludeTaggedTransfersToggle checked={balanceView} onChange={setIncludeTransfersPref} />
             )}
           </div>
           <ReportToolbarActions
@@ -382,6 +465,7 @@ export function IncomeVsExpensesReport() {
             completeness={completeness}
             reportingCurrency={reportingCurrency}
             flowBucket={flowBucket}
+            balanceWindow={balanceWindow}
             onOpenMonth={openMonth}
           />
         ) : (
@@ -426,8 +510,8 @@ export function IncomeVsExpensesReport() {
                     onClick={handleBarClick('expense')}
                   />
                   <Bar
-                    dataKey="Savings"
-                    name={t('incomeVsExpenses.seriesSavings')}
+                    dataKey={balanceView ? "Balance" : "Savings"}
+                    name={balanceView ? t('tagBreakdown.balance') : t('incomeVsExpenses.seriesSavings')}
                     fill={chartColors.primary}
                     radius={[4, 4, 0, 0]}
                     cursor="pointer"
@@ -456,83 +540,12 @@ export function IncomeVsExpensesReport() {
               </ResponsiveContainer>
             </div>
 
-            {/* Summary Cards */}
-            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
-                <div className="text-sm text-green-600 dark:text-green-400">
-                  {t('incomeVsExpenses.totalIncome')}
-                </div>
-                <div className="text-xl font-bold text-green-700 dark:text-green-300">
-                  <PartialTotal total={{ value: totals.totalIncome, ...completeness }} displayCurrency={reportingCurrency}>
-                    {formatCurrency(totals.totalIncome)}
-                  </PartialTotal>
-                </div>
-              </div>
-              <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 text-center">
-                <div className="text-sm text-red-600 dark:text-red-400">
-                  {t('incomeVsExpenses.totalExpenses')}
-                </div>
-                <div className="text-xl font-bold text-red-700 dark:text-red-300">
-                  <PartialTotal total={{ value: totals.totalExpenses, ...completeness }} displayCurrency={reportingCurrency}>
-                    {formatCurrency(totals.totalExpenses)}
-                  </PartialTotal>
-                </div>
-              </div>
-              <div
-                className={`rounded-lg p-4 text-center ${
-                  totals.totalSavings >= 0
-                    ? "bg-blue-50 dark:bg-blue-900/20"
-                    : "bg-orange-50 dark:bg-orange-900/20"
-                }`}
-              >
-                <div
-                  className={`text-sm ${
-                    totals.totalSavings >= 0
-                      ? "text-blue-600 dark:text-blue-400"
-                      : "text-orange-600 dark:text-orange-400"
-                  }`}
-                >
-                  {t('incomeVsExpenses.totalSavings')}
-                </div>
-                <div
-                  className={`text-xl font-bold ${
-                    totals.totalSavings >= 0
-                      ? "text-blue-700 dark:text-blue-300"
-                      : "text-orange-700 dark:text-orange-300"
-                  }`}
-                >
-                  <PartialTotal total={{ value: totals.totalSavings, ...completeness }} displayCurrency={reportingCurrency}>
-                    {formatCurrency(totals.totalSavings)}
-                  </PartialTotal>
-                </div>
-              </div>
-              <div
-                className={`rounded-lg p-4 text-center ${
-                  totals.savingsRate >= 0
-                    ? "bg-purple-50 dark:bg-purple-900/20"
-                    : "bg-orange-50 dark:bg-orange-900/20"
-                }`}
-              >
-                <div
-                  className={`text-sm ${
-                    totals.savingsRate >= 0
-                      ? "text-purple-600 dark:text-purple-400"
-                      : "text-orange-600 dark:text-orange-400"
-                  }`}
-                >
-                  {t('incomeVsExpenses.savingsRate')}
-                </div>
-                <div
-                  className={`text-xl font-bold ${
-                    totals.savingsRate >= 0
-                      ? "text-purple-700 dark:text-purple-300"
-                      : "text-orange-700 dark:text-orange-300"
-                  }`}
-                >
-                  {formatPercent(totals.savingsRate, 1)}
-                </div>
-              </div>
-            </div>
+            <IncomeVsExpensesSummaryCards
+              totals={totals}
+              completeness={completeness}
+              reportingCurrency={reportingCurrency}
+              balance={balanceWindow && flowBucket ? { bucket: flowBucket, window: balanceWindow } : undefined}
+            />
           </>
         )}
       </div>

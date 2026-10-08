@@ -12,6 +12,7 @@ import { SortableHeader } from '@/components/ui/SortableHeader';
 import { PartialTotal } from "@/components/ui/PartialTotal";
 import { useNumberFormat } from "@/hooks/useNumberFormat";
 import type { IncomeExpenseTagBucket } from "@/types/built-in-reports";
+import type { TaggedBalanceWindow } from "@/lib/tagged-balance";
 
 export type IncomeVsExpensesSortField =
   | 'name'
@@ -20,11 +21,45 @@ export type IncomeVsExpensesSortField =
   | 'savings'
   | 'savingsRate'
   | 'taggedInflows'
-  | 'taggedOutflows';
+  | 'taggedOutflows'
+  | 'balance'
+  | 'balancePercent';
 
-/** The two columns that exist only while a tagged-flow series is shown. */
-export const isFlowField = (field: IncomeVsExpensesSortField) =>
-  field === 'taggedInflows' || field === 'taggedOutflows';
+/** Which optional columns the table carries (spec sections 10.5 and 10.9). */
+export interface ColumnMode {
+  /** A tagged-flow series is shown: the two flow columns exist. */
+  showFlows: boolean;
+  /** The Balance view: Balance and Balance % replace Savings and Savings Rate. */
+  balanceView: boolean;
+  /** Balance view only: the window has tagged outflows, so that column is worth a place. */
+  showOutflows: boolean;
+}
+
+/** Whether a field is on the screen; a stored sort on one that is not falls back to the month. */
+export function isFieldVisible(field: IncomeVsExpensesSortField, mode: ColumnMode): boolean {
+  switch (field) {
+    case 'savings':
+    case 'savingsRate':
+      return !mode.balanceView;
+    case 'balance':
+    case 'balancePercent':
+      return mode.balanceView;
+    case 'taggedInflows':
+      return mode.showFlows;
+    case 'taggedOutflows':
+      return mode.showFlows && (!mode.balanceView || mode.showOutflows);
+    default:
+      return true;
+  }
+}
+
+/** Column order per mode; the Balance view reads Income, Tagged inflows, Expenses, Tagged outflows, Balance, Balance %. */
+const DEFAULT_ORDER: readonly IncomeVsExpensesSortField[] = [
+  'name', 'income', 'expenses', 'savings', 'savingsRate', 'taggedInflows', 'taggedOutflows',
+];
+const BALANCE_ORDER: readonly IncomeVsExpensesSortField[] = [
+  'name', 'income', 'taggedInflows', 'expenses', 'taggedOutflows', 'balance', 'balancePercent',
+];
 
 /**
  * One sortable column of the table view. The five are declared once and
@@ -60,6 +95,9 @@ export interface ChartDataItem {
   Expenses: number;
   Savings: number;
   SavingsRate: number;
+  /** Balance view only: `taggedBalance` of the period (spec section 10.9). */
+  Balance?: number;
+  BalancePercent?: number | null;
   /** Tagged transfer flows of the active bucket; absent when no flow series is shown. */
   TaggedInflows?: number;
   TaggedOutflows?: number;
@@ -78,6 +116,8 @@ export interface IncomeVsExpensesTableProps {
   reportingCurrency: string;
   /** The active non-untagged tag bucket; its flows add two columns. */
   flowBucket?: IncomeExpenseTagBucket;
+  /** The Balance view's window figure; present exactly when the Balance columns are. */
+  balanceWindow?: TaggedBalanceWindow;
   onOpenMonth: (row: ChartDataItem) => void;
 }
 
@@ -90,12 +130,19 @@ export function IncomeVsExpensesTable({
   completeness,
   reportingCurrency,
   flowBucket,
+  balanceWindow,
   onOpenMonth: openMonth,
 }: IncomeVsExpensesTableProps) {
   const t = useTranslations('reports');
   const { formatCurrencyCompact: formatCurrency, formatPercent, formatPercentTrimmed } =
     useNumberFormat();
   const showFlows = flowBucket !== undefined;
+  const balanceView = showFlows && balanceWindow !== undefined;
+  const mode: ColumnMode = {
+    showFlows,
+    balanceView,
+    showOutflows: flowBucket !== undefined && balanceWindow !== undefined && flowBucket.taggedOutflows !== 0,
+  };
 
   // Exhaustive over the sort field union, so a new field is a compile error
   // rather than a column with no control in either header. The list both
@@ -118,10 +165,12 @@ export function IncomeVsExpensesTable({
     savingsRate: { field: 'savingsRate', label: t('incomeVsExpenses.colSavingsRate'), align: 'right' },
     taggedInflows: { field: 'taggedInflows', label: t('tagBreakdown.inflows'), align: 'right' },
     taggedOutflows: { field: 'taggedOutflows', label: t('tagBreakdown.outflows'), align: 'right' },
+    balance: { field: 'balance', label: t('tagBreakdown.balance'), align: 'right' },
+    balancePercent: { field: 'balancePercent', label: t('tagBreakdown.balancePercent'), align: 'right' },
   };
-  const sortColumns: readonly SortColumn[] = Object.values(columns).filter(
-    (col) => showFlows || !isFlowField(col.field),
-  );
+  const sortColumns: readonly SortColumn[] = (balanceView ? BALANCE_ORDER : DEFAULT_ORDER)
+    .filter((field) => isFieldVisible(field, mode))
+    .map((field) => columns[field]);
 
   return (
     <>
@@ -201,44 +250,83 @@ export function IncomeVsExpensesTable({
                       <td role="cell" className="col-start-1 row-start-1 p-0 text-sm font-medium text-gray-900 dark:text-gray-100 sm:table-cell sm:px-4 sm:py-3">
                         {row.fullName}
                       </td>
-                      <td role="cell" className={`col-start-3 row-start-1 text-green-600 dark:text-green-400 ${MONEY_CELL}`}>
-                        <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colIncome')}</CellLabel>
-                        {formatCurrency(row.Income)}
-                      </td>
-                      <td role="cell" className={`col-start-3 row-start-2 text-red-600 dark:text-red-400 ${MONEY_CELL}`}>
-                        <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colExpenses')}</CellLabel>
-                        {formatCurrency(row.Expenses)}
-                      </td>
-                      {/* Savings takes the middle of line 1 beside the month:
-                          it is the figure the row is read for. */}
-                      <td role="cell"
-                        className={`col-start-2 row-start-1 font-medium ${row.Savings >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
-                      >
-                        <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colSavings')}</CellLabel>
-                        {formatCurrency(row.Savings)}
-                      </td>
-                      {/* The rate spans the first two tracks so its caption --
-                          the longest in the table in every locale -- has room
-                          on one line; right-aligned, it ends under Savings. */}
-                      <td role="cell"
-                        className={`col-start-1 col-span-2 row-start-2 font-medium ${row.SavingsRate >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
-                      >
-                        <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colSavingsRate')}</CellLabel>
-                        {formatPercentTrimmed(row.SavingsRate)}
-                      </td>
-                      {/* Tagged transfer flows: indigo, never the green/red of
-                          income and expenses, and third in the phone grid so
-                          the five figures above keep their places. */}
-                      {flowBucket && row.TaggedInflows !== undefined && row.TaggedOutflows !== undefined && (
+                      {balanceView ? (
                         <>
-                          <td role="cell" className={`col-start-1 col-span-2 row-start-3 text-indigo-600 dark:text-indigo-400 ${MONEY_CELL}`}>
-                            <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.inflows')}</CellLabel>
-                            {formatCurrency(row.TaggedInflows)}
+                          <td role="cell" className={`col-start-3 row-start-1 text-green-600 dark:text-green-400 ${MONEY_CELL}`}>
+                            <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colIncome')}</CellLabel>
+                            {formatCurrency(row.Income)}
                           </td>
-                          <td role="cell" className={`col-start-3 row-start-3 text-indigo-600 dark:text-indigo-400 ${MONEY_CELL}`}>
-                            <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.outflows')}</CellLabel>
-                            {formatCurrency(row.TaggedOutflows)}
+                          {row.TaggedInflows !== undefined && (
+                            <td role="cell" className={`col-start-1 col-span-2 row-start-3 text-indigo-600 dark:text-indigo-400 ${MONEY_CELL}`}>
+                              <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.inflows')}</CellLabel>
+                              {formatCurrency(row.TaggedInflows)}
+                            </td>
+                          )}
+                          <td role="cell" className={`col-start-3 row-start-2 text-red-600 dark:text-red-400 ${MONEY_CELL}`}>
+                            <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colExpenses')}</CellLabel>
+                            {formatCurrency(row.Expenses)}
                           </td>
+                          {mode.showOutflows && row.TaggedOutflows !== undefined && (
+                            <td role="cell" className={`col-start-3 row-start-3 text-indigo-600 dark:text-indigo-400 ${MONEY_CELL}`}>
+                              <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.outflows')}</CellLabel>
+                              {formatCurrency(row.TaggedOutflows)}
+                            </td>
+                          )}
+                          <td role="cell"
+                            className={`col-start-2 row-start-1 font-medium ${(row.Balance ?? 0) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
+                          >
+                            <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.balance')}</CellLabel>
+                            {row.Balance === undefined ? '\u2014' : formatCurrency(row.Balance)}
+                          </td>
+                          <td role="cell"
+                            className={`col-start-1 col-span-2 row-start-2 font-medium ${(row.BalancePercent ?? 0) >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
+                          >
+                            <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.balancePercent')}</CellLabel>
+                            {row.BalancePercent == null ? '\u2014' : formatPercentTrimmed(row.BalancePercent)}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                        <td role="cell" className={`col-start-3 row-start-1 text-green-600 dark:text-green-400 ${MONEY_CELL}`}>
+                          <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colIncome')}</CellLabel>
+                          {formatCurrency(row.Income)}
+                        </td>
+                        <td role="cell" className={`col-start-3 row-start-2 text-red-600 dark:text-red-400 ${MONEY_CELL}`}>
+                          <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colExpenses')}</CellLabel>
+                          {formatCurrency(row.Expenses)}
+                        </td>
+                        {/* Savings takes the middle of line 1 beside the month:
+                            it is the figure the row is read for. */}
+                        <td role="cell"
+                          className={`col-start-2 row-start-1 font-medium ${row.Savings >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
+                        >
+                          <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colSavings')}</CellLabel>
+                          {formatCurrency(row.Savings)}
+                        </td>
+                        {/* The rate spans the first two tracks so its caption --
+                            the longest in the table in every locale -- has room
+                            on one line; right-aligned, it ends under Savings. */}
+                        <td role="cell"
+                          className={`col-start-1 col-span-2 row-start-2 font-medium ${row.SavingsRate >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
+                        >
+                          <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colSavingsRate')}</CellLabel>
+                          {formatPercentTrimmed(row.SavingsRate)}
+                        </td>
+                        {/* Tagged transfer flows: indigo, never the green/red of
+                            income and expenses, and third in the phone grid so
+                            the five figures above keep their places. */}
+                        {flowBucket && row.TaggedInflows !== undefined && row.TaggedOutflows !== undefined && (
+                          <>
+                            <td role="cell" className={`col-start-1 col-span-2 row-start-3 text-indigo-600 dark:text-indigo-400 ${MONEY_CELL}`}>
+                              <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.inflows')}</CellLabel>
+                              {formatCurrency(row.TaggedInflows)}
+                            </td>
+                            <td role="cell" className={`col-start-3 row-start-3 text-indigo-600 dark:text-indigo-400 ${MONEY_CELL}`}>
+                              <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.outflows')}</CellLabel>
+                              {formatCurrency(row.TaggedOutflows)}
+                            </td>
+                          </>
+                        )}
                         </>
                       )}
                     </tr>
@@ -250,46 +338,93 @@ export function IncomeVsExpensesTable({
                       tracks and placement, each money cell captioned. */}
                   <tr role="row" className="grid grid-cols-3 items-start gap-x-3 gap-y-1.5 px-4 py-3 sm:table-row sm:p-0">
                     <td role="cell" className="col-start-1 row-start-1 p-0 text-sm font-bold text-gray-900 dark:text-gray-100 sm:table-cell sm:px-4 sm:py-3">{t('incomeVsExpenses.total')}</td>
-                    <td role="cell" className={`col-start-3 row-start-1 font-bold text-green-600 dark:text-green-400 ${MONEY_CELL}`}>
-                      <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colIncome')}</CellLabel>
-                      <PartialTotal total={{ value: totals.totalIncome, ...completeness }} displayCurrency={reportingCurrency}>
-                        {formatCurrency(totals.totalIncome)}
-                      </PartialTotal>
-                    </td>
-                    <td role="cell" className={`col-start-3 row-start-2 font-bold text-red-600 dark:text-red-400 ${MONEY_CELL}`}>
-                      <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colExpenses')}</CellLabel>
-                      <PartialTotal total={{ value: totals.totalExpenses, ...completeness }} displayCurrency={reportingCurrency}>
-                        {formatCurrency(totals.totalExpenses)}
-                      </PartialTotal>
-                    </td>
-                    <td role="cell"
-                      className={`col-start-2 row-start-1 font-bold ${totals.totalSavings >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
-                    >
-                      <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colSavings')}</CellLabel>
-                      <PartialTotal total={{ value: totals.totalSavings, ...completeness }} displayCurrency={reportingCurrency}>
-                        {formatCurrency(totals.totalSavings)}
-                      </PartialTotal>
-                    </td>
-                    <td role="cell"
-                      className={`col-start-1 col-span-2 row-start-2 font-bold ${totals.savingsRate >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
-                    >
-                      <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colSavingsRate')}</CellLabel>
-                      {formatPercent(totals.savingsRate, 1)}
-                    </td>
-                    {flowBucket && (
+                    {balanceWindow && flowBucket ? (
                       <>
+                        <td role="cell" className={`col-start-3 row-start-1 font-bold text-green-600 dark:text-green-400 ${MONEY_CELL}`}>
+                          <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colIncome')}</CellLabel>
+                          <PartialTotal total={{ value: totals.totalIncome, ...completeness }} displayCurrency={reportingCurrency}>
+                            {formatCurrency(totals.totalIncome)}
+                          </PartialTotal>
+                        </td>
                         <td role="cell" className={`col-start-1 col-span-2 row-start-3 font-bold text-indigo-600 dark:text-indigo-400 ${MONEY_CELL}`}>
                           <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.inflows')}</CellLabel>
                           <PartialTotal total={{ value: flowBucket.taggedInflows, missingCurrencies: flowBucket.missingCurrencies, excludedCount: flowBucket.excludedCount }} displayCurrency={reportingCurrency}>
                             {formatCurrency(flowBucket.taggedInflows)}
                           </PartialTotal>
                         </td>
-                        <td role="cell" className={`col-start-3 row-start-3 font-bold text-indigo-600 dark:text-indigo-400 ${MONEY_CELL}`}>
-                          <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.outflows')}</CellLabel>
-                          <PartialTotal total={{ value: flowBucket.taggedOutflows, missingCurrencies: flowBucket.missingCurrencies, excludedCount: flowBucket.excludedCount }} displayCurrency={reportingCurrency}>
-                            {formatCurrency(flowBucket.taggedOutflows)}
+                        <td role="cell" className={`col-start-3 row-start-2 font-bold text-red-600 dark:text-red-400 ${MONEY_CELL}`}>
+                          <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colExpenses')}</CellLabel>
+                          <PartialTotal total={{ value: totals.totalExpenses, ...completeness }} displayCurrency={reportingCurrency}>
+                            {formatCurrency(totals.totalExpenses)}
                           </PartialTotal>
                         </td>
+                        {mode.showOutflows && (
+                          <td role="cell" className={`col-start-3 row-start-3 font-bold text-indigo-600 dark:text-indigo-400 ${MONEY_CELL}`}>
+                            <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.outflows')}</CellLabel>
+                            <PartialTotal total={{ value: flowBucket.taggedOutflows, missingCurrencies: flowBucket.missingCurrencies, excludedCount: flowBucket.excludedCount }} displayCurrency={reportingCurrency}>
+                              {formatCurrency(flowBucket.taggedOutflows)}
+                            </PartialTotal>
+                          </td>
+                        )}
+                        <td role="cell"
+                          className={`col-start-2 row-start-1 font-bold ${(balanceWindow.balance ?? 0) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
+                        >
+                          <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.balance')}</CellLabel>
+                          <PartialTotal total={{ value: balanceWindow.balance ?? 0, missingCurrencies: balanceWindow.missingCurrencies, excludedCount: balanceWindow.excludedCount }} displayCurrency={reportingCurrency}>
+                            {formatCurrency(balanceWindow.balance ?? 0)}
+                          </PartialTotal>
+                        </td>
+                        <td role="cell"
+                          className={`col-start-1 col-span-2 row-start-2 font-bold ${(balanceWindow.balancePercent ?? 0) >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
+                        >
+                          <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.balancePercent')}</CellLabel>
+                          {balanceWindow.balancePercent === null ? '\u2014' : formatPercent(balanceWindow.balancePercent, 2)}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                      <td role="cell" className={`col-start-3 row-start-1 font-bold text-green-600 dark:text-green-400 ${MONEY_CELL}`}>
+                        <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colIncome')}</CellLabel>
+                        <PartialTotal total={{ value: totals.totalIncome, ...completeness }} displayCurrency={reportingCurrency}>
+                          {formatCurrency(totals.totalIncome)}
+                        </PartialTotal>
+                      </td>
+                      <td role="cell" className={`col-start-3 row-start-2 font-bold text-red-600 dark:text-red-400 ${MONEY_CELL}`}>
+                        <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colExpenses')}</CellLabel>
+                        <PartialTotal total={{ value: totals.totalExpenses, ...completeness }} displayCurrency={reportingCurrency}>
+                          {formatCurrency(totals.totalExpenses)}
+                        </PartialTotal>
+                      </td>
+                      <td role="cell"
+                        className={`col-start-2 row-start-1 font-bold ${totals.totalSavings >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
+                      >
+                        <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colSavings')}</CellLabel>
+                        <PartialTotal total={{ value: totals.totalSavings, ...completeness }} displayCurrency={reportingCurrency}>
+                          {formatCurrency(totals.totalSavings)}
+                        </PartialTotal>
+                      </td>
+                      <td role="cell"
+                        className={`col-start-1 col-span-2 row-start-2 font-bold ${totals.savingsRate >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400'} ${MONEY_CELL}`}
+                      >
+                        <CellLabel className={CAPTION_CLASS}>{t('incomeVsExpenses.colSavingsRate')}</CellLabel>
+                        {formatPercent(totals.savingsRate, 1)}
+                      </td>
+                      {flowBucket && (
+                        <>
+                          <td role="cell" className={`col-start-1 col-span-2 row-start-3 font-bold text-indigo-600 dark:text-indigo-400 ${MONEY_CELL}`}>
+                            <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.inflows')}</CellLabel>
+                            <PartialTotal total={{ value: flowBucket.taggedInflows, missingCurrencies: flowBucket.missingCurrencies, excludedCount: flowBucket.excludedCount }} displayCurrency={reportingCurrency}>
+                              {formatCurrency(flowBucket.taggedInflows)}
+                            </PartialTotal>
+                          </td>
+                          <td role="cell" className={`col-start-3 row-start-3 font-bold text-indigo-600 dark:text-indigo-400 ${MONEY_CELL}`}>
+                            <CellLabel className={CAPTION_CLASS}>{t('tagBreakdown.outflows')}</CellLabel>
+                            <PartialTotal total={{ value: flowBucket.taggedOutflows, missingCurrencies: flowBucket.missingCurrencies, excludedCount: flowBucket.excludedCount }} displayCurrency={reportingCurrency}>
+                              {formatCurrency(flowBucket.taggedOutflows)}
+                            </PartialTotal>
+                          </td>
+                        </>
+                      )}
                       </>
                     )}
                   </tr>
