@@ -40,6 +40,11 @@ lands in none or several: **direct** (`user_id` column), **owner-column**,
 **indirect** (`EXISTS` back to the owning parent), or **exempt**. The first
 three are described in `database/CLAUDE.md`. This document owns the fourth.
 
+`scheduled_transaction_postings` gained the settlement claim columns
+(`transaction_id`, `source`, `rule_id`, `pricing`;
+`docs/specs/loan-installment-settlement.md` section 5.2) and stays **indirect**:
+its policy, an `EXISTS` back to `scheduled_transactions.user_id`, is unchanged.
+
 ## 2. The exempt tables
 
 The set is `RLS_EXEMPT_TABLES` in

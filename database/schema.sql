@@ -204,6 +204,9 @@ CREATE TABLE accounts (
     term_end_date DATE, -- When the current term ends (for renewal reminders)
     amortization_months INTEGER, -- Total amortization period in months (e.g., 300 for 25 years)
     original_principal NUMERIC(20, 4), -- Original mortgage amount for reference
+    -- The rule a loan's "Payment matching" created; a pointer for the UI only
+    -- (FK added after transaction_rules).
+    payment_matching_rule_id UUID,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_statement_due_day
@@ -920,6 +923,8 @@ ALTER TABLE accounts ADD CONSTRAINT fk_accounts_institution
     FOREIGN KEY (institution_id) REFERENCES institutions(id) ON DELETE SET NULL;
 ALTER TABLE accounts ADD CONSTRAINT fk_accounts_linked_loan_account
     FOREIGN KEY (linked_loan_account_id) REFERENCES accounts(id) ON DELETE SET NULL;
+ALTER TABLE accounts ADD CONSTRAINT fk_accounts_payment_matching_rule
+    FOREIGN KEY (payment_matching_rule_id) REFERENCES transaction_rules(id) ON DELETE SET NULL;
 
 -- Scheduled Transaction Overrides (for modifying individual occurrences)
 CREATE TABLE scheduled_transaction_overrides (
@@ -967,11 +972,24 @@ CREATE TABLE scheduled_transaction_postings (
     scheduled_transaction_id UUID NOT NULL REFERENCES scheduled_transactions(id) ON DELETE CASCADE,
     original_due_date DATE NOT NULL,
     posted_date DATE NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- The settlement claim (docs/specs/loan-installment-settlement.md 5.2): the
+    -- transaction that paid the occurrence, who claimed it, the rule that did,
+    -- and the priced breakdown a rule booked.
+    transaction_id UUID NULL REFERENCES transactions(id) ON DELETE CASCADE,
+    source VARCHAR(16) NOT NULL DEFAULT 'post',
+    rule_id UUID NULL REFERENCES transaction_rules(id) ON DELETE SET NULL,
+    pricing JSONB NULL,
+    CONSTRAINT chk_stp_source CHECK (source IN ('post', 'rule')),
+    CONSTRAINT chk_stp_rule_claim_transaction
+        CHECK (source = 'post' OR transaction_id IS NOT NULL)
 );
 
 CREATE UNIQUE INDEX idx_stp_occurrence
     ON scheduled_transaction_postings(scheduled_transaction_id, original_due_date);
+CREATE UNIQUE INDEX idx_stp_transaction
+    ON scheduled_transaction_postings(transaction_id)
+    WHERE transaction_id IS NOT NULL;
 
 -- Security documents: factsheet, KIID, prospectus, annual report, tax slip,
 -- research. Real columns rather than a JSONB blob so the type, name, date and

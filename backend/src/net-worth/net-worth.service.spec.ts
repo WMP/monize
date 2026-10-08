@@ -132,6 +132,7 @@ describe("NetWorthService", () => {
     originalPrincipal: null,
     scheduledTransactionId: null,
     scheduledTransaction: null,
+    paymentMatchingRuleId: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
     transactions: [],

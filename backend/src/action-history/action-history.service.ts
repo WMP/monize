@@ -173,6 +173,7 @@ const ALLOWED_COLUMNS: Record<string, Set<string>> = {
     "amortization_months",
     "original_principal",
     "scheduled_transaction_id",
+    "payment_matching_rule_id",
     "created_at",
     "updated_at",
   ]),
