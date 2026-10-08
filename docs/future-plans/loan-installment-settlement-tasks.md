@@ -34,7 +34,7 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 | S1 | #1590 | Spec in `docs/specs/` and plan pair in `docs/future-plans/`; INV-LOAN-008 and INV-RULE-005 registered `unenforced` | -- | none | [x] | the PR closing #1590 |
 | B1 | #1591 | Migration: claim columns on `scheduled_transaction_postings`, `accounts.payment_matching_rule_id`; entities, backup, restore, action history | S1 | inert | [x] | the PR closing #1591 |
 | B2 | #1592 | Loan core extraction into `backend/src/loan-installments/`; `advanceScheduleCursor` shared with `post()` | S1 | neutral | [x] | the PR closing #1592 |
-| B3 | #1593 | Settlement types, occurrence slots, facts loader, `datedLoanDebts`, pure planner | B1, B2 | none | [ ] | -- |
+| B3 | #1593 | Settlement types, occurrence slots, facts loader, `datedLoanDebts`, pure planner | B1, B2 | none | [x] | the PR closing #1593 |
 | B4 | #1594 | The action in the rules engine: types, validation, references, planner, lookup rounds, skip reasons | B3 | inert | [ ] | -- |
 | B5 | #1595 | Write path: claim, cursor, trace, fingerprint, snapshot, undo, after-commit reprice; `post()` records its transaction | B4 | inert | [ ] | -- |
 | B6 | #1596 | Chronological fold, ascending run order, import ordering, bank-sync affected accounts | B5 | neutral | [ ] | -- |
@@ -80,12 +80,12 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 
 ### B3 -- Types, slots, facts, planner
 
-**Files:** `backend/src/loan-installments/loan-settlement.types.ts`, `backend/src/loan-installments/occurrence-slots.ts`, `backend/src/loan-installments/loan-settlement-facts.ts`, `backend/src/loan-installments/dated-loan-debts.ts`, `backend/src/loan-installments/plan-loan-settlement.ts` (all new, with specs), a PG integration spec for `datedLoanDebts`.
+**Files:** `backend/src/loan-installments/loan-settlement.types.ts`, `backend/src/loan-installments/occurrence-slots.ts`, `backend/src/loan-installments/loan-settlement-facts.ts`, `backend/src/loan-installments/plan-loan-settlement.ts` (all new, with specs), `backend/src/accounts/dated-loan-debt.util.ts` (`datedLoanDebts` beside `datedLoanDebt`), `backend/src/common/ledger-balance.sql.ts` (the batched statement), `backend/test/integration/loan-settlement-debt.integration.spec.ts`.
 
 - Types: `LoanSettlementAction` fields, `LoanSettlementPlan`, the `pricing` record (spec 5.3), the refusal reasons and `missing` codes (spec sections 10 and 11), `LOAN_SETTLEMENT_TOLERANCE_MINOR_UNITS = 5`.
 - `occurrence-slots.ts`: the pure calendar of spec 6.1 (built around `next_due_date`, history from `start_date`, periods, `ONCE`, the cadence check) and the selection of 6.2.
-- `datedLoanDebts(m, loan, dates)`: one statement over `ACCOUNT_BALANCE_AS_OF_SQL`'s predicate for every date, equal date by date to `datedLoanDebt`.
-- `loan-settlement-facts.ts`: account, schedule and template lines, rates, payments by date (spec decision 12), claims, the dated debts; read under the caller's locks.
+- `datedLoanDebts(m, loan, dates)`: one statement (`ACCOUNT_BALANCES_AS_OF_DATES_SQL`, the as-of join bounded at each unnested date) for every date, equal date by date to `datedLoanDebt`.
+- `loan-settlement-facts.ts`: account, schedule and template lines, rates (the dated payment of spec decision 12 is read off them), the slots of the pass's window, the claims over their periods, the dated debts; read after the locks of spec section 13 when the caller asks for them.
 - `plan-loan-settlement.ts`: pure; slot selection, the fold over `priorSettlements` (spec 7.2), pricing through `priceInstallment` (spec 7.3), the amount policy (spec section 8), refusals 11 to 19 (spec section 11); returns a `SplitStructurePlan` and a `LoanSettlementPlan`, or a refusal with its detail.
 - Acceptance: spec section 16 rows B3; every row of spec sections 6, 8 and 9 as a named case.
 
