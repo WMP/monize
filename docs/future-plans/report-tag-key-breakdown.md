@@ -66,6 +66,16 @@ parity: account filter sent to all three endpoints (`income-by-source` gains
 Income vs Expenses table (file size), spec, backend (`cash-flow` and
 `income-by-source` `accountIds`), frontend, translations last.
 
+### Phase 1d -- internal transfers and the Balance view
+
+Spec sections 10.8 and 10.9. Backend: with `accountIds`, a tagged transfer leg
+whose counterpart account is also selected is left out of the tagged flows (whole
+transfer via `linked_transaction_id`, split leg via `transfer_account_id`).
+Frontend: the stacking switch becomes "Include tagged transfers" and, when on,
+shows Balance and Balance % (one pure helper) in the chart, tooltip, cards,
+table and CSV of Income vs Expenses and Cash Flow. Order: spec, backend,
+frontend, translations last.
+
 ### Phase 2 -- Spending by Category + Income by Source
 
 Value partitioning only (no transfer flows). Reuses the Phase 1 DTO mixin,
