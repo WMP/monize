@@ -119,3 +119,87 @@ describe('RuleRunPreviewTable: a structural change', () => {
     expect(screen.queryByText(/the rule cannot change it/)).not.toBeInTheDocument();
   });
 });
+
+describe('RuleRunPreviewTable: a loan settlement', () => {
+  const pricing = (debtBefore: string, lines: { principal: string; interest: string; extra: string }) => ({
+    dueDate: '2024-01-01',
+    installmentNumber: 1,
+    method: 'LINEAR',
+    prepaymentMode: null,
+    currencyCode: 'PLN',
+    debtLedger: debtBefore,
+    foldedPrincipal: '0.0000',
+    debtBefore,
+    annualRate: '2',
+    periodicRate: 0.02 / 12,
+    priced: { principal: '833.3333', interest: '500.0000', extra: '0.0000', total: '1333.3333' },
+    booked: { principal: '833.33', interest: '500.00', extra: '0.00', total: '1333.33' },
+    paid: '1533.33',
+    difference: '200.00',
+    outcome: 'extra_principal' as const,
+    lines,
+  });
+
+  it('shows per row the installment, its principal, interest and extra, and the debt before', () => {
+    const settle = (id: string, number: number, debtBefore: string, extra: string) => ({
+      transactionId: id,
+      date: '2024-01-03',
+      payeeName: 'Bank',
+      amount: -1533.33,
+      currencyCode: 'PLN',
+      changes: {
+        loanSettlement: {
+          before: null,
+          after: {
+            loanAccountId: LOAN,
+            scheduledTransactionId: 'schedule-1',
+            dueDate: '2024-01-01',
+            installmentNumber: number,
+            pricing: pricing(debtBefore, { principal: '833.33', interest: '500.00', extra }),
+          },
+        },
+      },
+    });
+    render(
+      <RuleRunPreviewTable
+        preview={previewWith({}, 0, {
+          matched: [settle('tx-1', 1, '300000.0000', '200.00'), settle('tx-2', 2, '298966.6700', '0.00')],
+        })}
+      />,
+    );
+    const [first, second] = screen.getAllByRole('row').slice(1);
+    expect(within(first).getByText(/^Settles installment 1 of Loan account, due .*extra principal .*200\.00.*Debt before: .*300,000\.00/)).toBeInTheDocument();
+    expect(within(second).getByText(/^Settles installment 2 of Loan account.*Debt before: .*298,966\.67/)).toBeInTheDocument();
+    expect(within(second).queryByText(/extra principal/)).not.toBeInTheDocument();
+  });
+
+  it('names every settlement refusal, and what the loan is missing', () => {
+    render(
+      <RuleRunPreviewTable
+        preview={previewWith({}, -1, {
+          matched: [],
+          conditionMatchedCount: 4,
+          skipped: [
+            { transactionId: 'a', reason: 'loan_not_configured', detail: { missing: ['rate', 'interestCategory'] } },
+            { transactionId: 'b', reason: 'occurrence_already_posted', detail: { dueDate: '2024-01-01' } },
+            { transactionId: 'c', reason: 'installment_amount_shortfall', detail: { expected: 1333.33, paid: 1300 } },
+            { transactionId: 'd', reason: 'no_installment_in_window' },
+          ],
+        })}
+      />,
+    );
+    expect(screen.getByText(/the loan is missing what is needed to price an installment/)).toBeInTheDocument();
+    expect(screen.getByText('Missing on the loan: an interest rate for the date and an interest category.')).toBeInTheDocument();
+    expect(screen.getByText(/the installment due in the window is already paid/)).toBeInTheDocument();
+    expect(screen.getByText(/it is less than the installment/)).toBeInTheDocument();
+    expect(screen.getByText(/no installment of the loan is due within the window/)).toBeInTheDocument();
+    expect(screen.queryByText(/the rule cannot change it/)).not.toBeInTheDocument();
+  });
+
+  it('says which rows a truncated oldest-first run kept', () => {
+    const { rerender } = render(<RuleRunPreviewTable preview={previewWith({}, -1, { truncated: true, scanOrder: 'oldest_first' })} />);
+    expect(screen.getByText(/Only the oldest are included/)).toBeInTheDocument();
+    rerender(<RuleRunPreviewTable preview={previewWith({}, -1, { truncated: true, scanOrder: 'newest_first' })} />);
+    expect(screen.getByText(/Only the newest are included/)).toBeInTheDocument();
+  });
+});

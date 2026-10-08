@@ -9,6 +9,8 @@
  * and fails when the two differ; change the backend first and mirror it here.
  */
 import type {
+  LoanSettlementExcessPolicy,
+  LoanSettlementShortfallPolicy,
   RuleActionType,
   RuleField,
   RuleOperator,
@@ -143,6 +145,39 @@ export const RULE_ACTION_TYPES = [
   'split',
 ] as const satisfies readonly RuleActionType[];
 
+/**
+ * The action that settles a bank debit against a scheduled loan installment.
+ * The server accepts it on every save path but keeps it off its mirrored
+ * `RULE_ACTION_TYPES` until the assistant and MCP name form lands, so the
+ * editor lists it beside that list (`ACCEPTED_RULE_ACTION_TYPES`).
+ */
+export const SETTLE_LOAN_INSTALLMENT = 'settle_loan_installment' as const satisfies RuleActionType;
+
+/** Every action type a stored rule may carry: the mirrored list plus the loan settlement. */
+export const ACCEPTED_RULE_ACTION_TYPES = [
+  ...RULE_ACTION_TYPES,
+  SETTLE_LOAN_INSTALLMENT,
+] as const satisfies readonly RuleActionType[];
+
+/** What a settlement does with a row that paid more than the priced installment. */
+export const LOAN_SETTLEMENT_EXCESS_POLICIES = ['extra_principal', 'refuse'] as const satisfies readonly LoanSettlementExcessPolicy[];
+/** What a settlement does with a row that paid less than the base installment. */
+export const LOAN_SETTLEMENT_SHORTFALL_POLICIES = ['refuse', 'interest_first'] as const satisfies readonly LoanSettlementShortfallPolicy[];
+
+/** The inputs a `loan_not_configured` refusal can name as missing (`LoanSettlementMissingInput`). */
+export const LOAN_SETTLEMENT_MISSING_INPUTS = [
+  'scheduledPayment',
+  'managedTemplate',
+  'scheduleCalendar',
+  'interestCategory',
+  'amortizationMonths',
+  'paymentStartDate',
+  'paymentFrequency',
+  'originalPrincipal',
+  'rate',
+  'payment',
+] as const;
+
 export const RULE_TRIGGERS = ['create', 'import'] as const satisfies readonly RuleTrigger[];
 
 // Limits (`rule-validation.ts`, `dto/create-transaction-rule.dto.ts`).
@@ -167,6 +202,8 @@ export const MAX_RULE_TEXT_LENGTH = 500;
 export const MAX_RULE_VALUE_LIST = 50;
 export const MIN_RULE_NAME_LENGTH = 1;
 export const MAX_RULE_NAME_LENGTH = 100;
+// `transaction-rules.limits.ts`: either side of a settlement's due-date window.
+export const MAX_LOAN_SETTLEMENT_WINDOW_DAYS = 31;
 
 export const RULE_VALIDATION_CODES = [
   'INVALID_SHAPE',
@@ -213,5 +250,5 @@ export function isRuleOperator(value: unknown): value is RuleOperator {
 }
 
 export function isRuleActionType(value: unknown): value is RuleActionType {
-  return typeof value === 'string' && (RULE_ACTION_TYPES as readonly string[]).includes(value);
+  return typeof value === 'string' && (ACCEPTED_RULE_ACTION_TYPES as readonly string[]).includes(value);
 }

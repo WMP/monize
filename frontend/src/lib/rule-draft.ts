@@ -10,8 +10,12 @@
  * the create and update DTOs accept, and the server validates it again.
  */
 import {
+  DEFAULT_LOAN_SETTLEMENT_DAYS_AFTER,
+  DEFAULT_LOAN_SETTLEMENT_DAYS_BEFORE,
   createAction,
   createSplitPart,
+  isExcessPolicy,
+  isShortfallPolicy,
   isDescriptionMode,
   isEditorActionType,
   type EditorAction,
@@ -19,6 +23,7 @@ import {
   type TransferDirection,
 } from '@/lib/rule-actions';
 import {
+  MAX_LOAN_SETTLEMENT_WINDOW_DAYS,
   RULE_CONDITION_FIELDS,
   RULE_OPERATOR_SHAPES,
   RULE_TRIGGERS,
@@ -201,6 +206,8 @@ function readAction(input: unknown, repairs: Repairs): EditorAction | null {
       return readConvert(blank, input, repairs);
     case 'split':
       return readSplit(blank, input, repairs);
+    case 'settle_loan_installment':
+      return readSettleLoan(blank, input, repairs);
   }
 }
 
@@ -274,6 +281,39 @@ function readSplit(
   // A split has at least two parts; a definition with fewer is padded so the editor can open it.
   if (parts.length === 0) parts = blank.parts.map((part) => ({ ...part }));
   return { ...blank, payeeId: readOptionalId(input.payeeId, repairs), parts };
+}
+
+/** A window side: absent reads as the default, anything but a whole number in range is repaired to it. */
+function readWindowDays(value: unknown, fallback: number, repairs: Repairs): number {
+  if (value === undefined) return fallback;
+  if (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= MAX_LOAN_SETTLEMENT_WINDOW_DAYS) {
+    return value;
+  }
+  repairs.note();
+  return fallback;
+}
+
+function readSettleLoan(
+  blank: Extract<EditorAction, { type: 'settle_loan_installment' }>,
+  input: Record_,
+  repairs: Repairs,
+): EditorAction {
+  if (typeof input.loanAccountId !== 'string') repairs.note();
+  const window = input.dueDateWindow;
+  if (window !== undefined && !isRecord(window)) repairs.note();
+  const days = isRecord(window) ? window : {};
+  // A missing policy reads as the server's default; one it does not know is repaired to it.
+  if (input.excess !== undefined && !isExcessPolicy(input.excess)) repairs.note();
+  if (input.shortfall !== undefined && !isShortfallPolicy(input.shortfall)) repairs.note();
+  return {
+    ...blank,
+    loanAccountId: typeof input.loanAccountId === 'string' ? input.loanAccountId : '',
+    daysBefore: readWindowDays(days.daysBefore, DEFAULT_LOAN_SETTLEMENT_DAYS_BEFORE, repairs),
+    daysAfter: readWindowDays(days.daysAfter, DEFAULT_LOAN_SETTLEMENT_DAYS_AFTER, repairs),
+    excess: isExcessPolicy(input.excess) ? input.excess : blank.excess,
+    shortfall: isShortfallPolicy(input.shortfall) ? input.shortfall : blank.shortfall,
+    interestCategoryId: readOptionalId(input.interestCategoryId, repairs),
+  };
 }
 
 function partToApi(part: EditorSplitPart): SplitActionPart {
@@ -376,6 +416,19 @@ export function actionToApi(action: EditorAction): RuleAction {
         type: 'split',
         ...(action.payeeId !== '' ? { payeeId: action.payeeId } : {}),
         parts: action.parts.map(partToApi),
+      };
+    case 'settle_loan_installment':
+      return {
+        type: 'settle_loan_installment',
+        // Left as typed, an empty account or a cleared day count, so the server names the field (VALUE_REQUIRED, VALUE_TYPE).
+        loanAccountId: action.loanAccountId,
+        dueDateWindow: {
+          daysBefore: action.daysBefore as number,
+          daysAfter: action.daysAfter as number,
+        },
+        excess: action.excess,
+        shortfall: action.shortfall,
+        ...(action.interestCategoryId !== '' ? { interestCategoryId: action.interestCategoryId } : {}),
       };
   }
 }

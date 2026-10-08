@@ -35,6 +35,13 @@ function isGroup(node: RuleConditionNode): node is Exclude<RuleConditionNode, Ru
   return 'all' in node || 'any' in node;
 }
 
+/** A settlement window with both sides numbers. */
+function isRecordWindow(value: unknown): value is { daysBefore: number; daysAfter: number } {
+  if (typeof value !== 'object' || value === null) return false;
+  const window = value as Record<string, unknown>;
+  return typeof window.daysBefore === 'number' && typeof window.daysAfter === 'number';
+}
+
 /** The sentences a rule is read in, from the `rules` catalog and the reader's own formats. */
 export function useRuleWords(labels: RuleWordsLabels) {
   const t = useTranslations('rules');
@@ -153,6 +160,20 @@ export function useRuleWords(labels: RuleWordsLabels) {
         });
       case 'split':
         return t('words.action.split', { parts: list(action.parts.map(partText)) });
+      case 'settle_loan_installment': {
+        // A stored rule may be malformed (it is then invalid); a window it does not hold is not read as zero days.
+        const window: unknown = action.dueDateWindow;
+        const before = isRecordWindow(window) ? window.daysBefore : null;
+        const after = isRecordWindow(window) ? window.daysAfter : null;
+        if (before === null || after === null) return t('words.unknownAction');
+        return t('words.action.settle_loan_installment', {
+          account: named(labels.accounts, action.loanAccountId),
+          before,
+          after,
+          excess: action.excess,
+          shortfall: action.shortfall,
+        });
+      }
     }
   };
 

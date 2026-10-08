@@ -1,52 +1,57 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { TABLE_BODY_CLASS, TABLE_CLASS, Td, Th } from '@/components/ui/Table';
 import { useRuleChangeText } from '@/components/rules/use-rule-change-text';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
-import type { RuleRunPreview, RuleRunSkippedRow } from '@/types/transaction-rule-run';
+import { LOAN_SETTLEMENT_MISSING_INPUTS } from '@/lib/rule-fields';
+import {
+  RULE_SKIP_REASONS,
+  type RuleRunPreview,
+  type RuleRunSkipReason,
+  type RuleRunSkippedRow,
+} from '@/types/transaction-rule-run';
+
+const isSkipReason = (reason: string): reason is RuleRunSkipReason =>
+  (RULE_SKIP_REASONS as readonly string[]).includes(reason);
+
+const isMissingInput = (value: string): value is (typeof LOAN_SETTLEMENT_MISSING_INPUTS)[number] =>
+  (LOAN_SETTLEMENT_MISSING_INPUTS as readonly string[]).includes(value);
 
 /** The reason a row was left alone, as a sentence. */
 export function useSkipReasonText(): (reason: string) => string {
   const t = useTranslations('rules.run.skipReasons');
-  return (reason) => {
-    switch (reason) {
-      case 'reconciled_locked':
-      case 'transfer_leg_category':
-      case 'split_category':
-      case 'cross_owner_transfer_payee':
-      case 'empty_render':
-      case 'payee_not_found':
-      case 'row_is_transfer_leg':
-      case 'row_has_splits':
-      case 'row_is_void':
-      case 'zero_amount':
-      case 'transfer_direction_mismatch':
-      case 'transfer_same_account':
-      case 'transfer_account_unavailable':
-      case 'transfer_currency_mismatch':
-      case 'split_amount_unparseable':
-      case 'split_sum_mismatch':
-      case 'split_too_few_parts':
-        return t(reason);
-      default:
-        // A reason newer than this client still says that the row was left alone.
-        return t('other');
-    }
-  };
+  // A reason newer than this client still says that the row was left alone.
+  return (reason) => (isSkipReason(reason) ? t(reason) : t('other'));
 }
 
 /** Skipped rows carry only an id; the reason is what the reader can act on. */
 export function RuleRunSkippedList({ skipped }: { skipped: readonly RuleRunSkippedRow[] }) {
   const t = useTranslations('rules.run');
+  const format = useFormatter();
   const reasonText = useSkipReasonText();
   if (skipped.length === 0) return null;
 
   // One line per reason with a count: the ids alone would tell the reader nothing.
   const counts = new Map<string, number>();
-  for (const row of skipped) counts.set(row.reason, (counts.get(row.reason) ?? 0) + 1);
+  // What a settlement refusal names as missing, so the reader knows what to set on the loan.
+  const missing = new Map<string, Set<string>>();
+  for (const row of skipped) {
+    counts.set(row.reason, (counts.get(row.reason) ?? 0) + 1);
+    for (const input of row.detail?.missing ?? []) {
+      const inputs = missing.get(row.reason) ?? new Set<string>();
+      inputs.add(input);
+      missing.set(row.reason, inputs);
+    }
+  }
+  const missingText = (reason: string): string | null => {
+    const inputs = missing.get(reason);
+    if (inputs === undefined || inputs.size === 0) return null;
+    const names = [...inputs].map((input) => (isMissingInput(input) ? t(`missingInputs.${input}`) : t('missingInputs.other')));
+    return t('skipped.missing', { inputs: format.list([...new Set(names)], { type: 'conjunction' }) });
+  };
 
   return (
     <div className="mt-4" data-testid="rule-run-skipped">
@@ -55,7 +60,10 @@ export function RuleRunSkippedList({ skipped }: { skipped: readonly RuleRunSkipp
       </h3>
       <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm text-gray-600 dark:text-gray-300">
         {[...counts].map(([reason, count]) => (
-          <li key={reason}>{t('skipped.line', { count, reason: reasonText(reason) })}</li>
+          <li key={reason}>
+            {t('skipped.line', { count, reason: reasonText(reason) })}
+            {missingText(reason) !== null && <span className="block">{missingText(reason)}</span>}
+          </li>
         ))}
       </ul>
     </div>
@@ -90,7 +98,9 @@ export function RuleRunPreviewTable({ preview }: RuleRunPreviewTableProps) {
         {t('summary', { matched: preview.matched.length, scanned: preview.scanned })}
       </p>
       {preview.truncated && (
-        <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">{t('truncated')}</p>
+        <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+          {preview.scanOrder === 'oldest_first' ? t('truncatedOldest') : t('truncated')}
+        </p>
       )}
 
       {preview.matched.length === 0 ? (

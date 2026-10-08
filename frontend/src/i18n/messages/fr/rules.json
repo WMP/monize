@@ -251,7 +251,34 @@
       "splitGuideTip": "Conseil : définissez une date de début dans « Active entre » pour ne pas modifier les anciennes transactions rapprochées, et utilisez le panneau Test avant d’enregistrer.",
       "convertGuide": "Une dépense devient un virement vers le compte choisi, et un revenu un virement depuis ce compte. Seul le solde de l’autre compte change. Conseil : utilisez « Active entre » pour ne pas modifier les anciennes transactions.",
       "splitGuideName1": "capital",
-      "splitGuideName2": "interets"
+      "splitGuideName2": "interets",
+      "loanGuide": "Utilisez ceci pour un prélèvement bancaire qui paie une échéance de prêt hypothécaire ou de prêt comme un seul montant. Dans « Si », faites correspondre le prélèvement par son compte, le texte du bénéficiaire ou la description. La transaction devient un fractionnement : le capital est viré vers le compte du prêt et les intérêts vont dans la catégorie d'intérêts, tous deux calculés pour l'échéance qu'il paie. Conseil : désactivez l'enregistrement automatique du paiement programmé du prêt pour que l'échéance ne soit pas payée deux fois, et utilisez le panneau Test avant d'enregistrer.",
+      "loan": {
+        "help": "Le prélèvement correspondant paie la prochaine échéance du prêt due près de sa date. Monize calcule le capital et les intérêts de cette échéance ; vous ne saisissez jamais de montant.",
+        "account": "Compte du prêt",
+        "accountPlaceholder": "Sélectionnez un prêt hypothécaire ou un prêt...",
+        "noLoans": "Vous n'avez aucun compte de prêt hypothécaire ou de prêt ouvert à régler.",
+        "window": "Fenêtre de date d'échéance",
+        "windowHelp": "À quelle distance de la date d'échéance la banque peut prélever le paiement. Un prélèvement effectué jusqu'à ce nombre de jours avant ou après la date d'échéance paie l'échéance correspondante ; un prélèvement hors de la fenêtre est laissé tel quel.",
+        "daysBefore": "Jours avant la date d'échéance",
+        "daysAfter": "Jours après la date d'échéance",
+        "excess": "Quand le prélèvement est supérieur à l'échéance",
+        "excessPolicies": {
+          "extra_principal": "Payer la différence en capital supplémentaire",
+          "refuse": "Laisser la transaction telle quelle"
+        },
+        "shortfall": "Quand le prélèvement est inférieur à l'échéance",
+        "shortfallPolicies": {
+          "refuse": "Laisser la transaction telle quelle",
+          "interest_first": "Payer d'abord les intérêts, le reste en capital"
+        },
+        "policyNote": "Une différence de quelques centimes est absorbée par la ligne d'intérêts.",
+        "policyHelp": "Les banques arrondissent chaque partie séparément, donc un prélèvement à moins de 5 unités de la plus petite unité de la devise (0,05 pour la plupart des devises) est traité comme exact et la ligne d'intérêts absorbe la différence. Une différence plus importante suit les deux choix ci-dessus.",
+        "interestCategory": "Catégorie d'intérêts (facultative)",
+        "interestCategoryPlaceholder": "La catégorie d'intérêts propre au prêt",
+        "autoPostTitle": "Le paiement programmé du prêt s'enregistre lui-même",
+        "autoPostBody": "L'enregistrement automatique est activé pour le paiement programmé de ce prêt, donc lui et le prélèvement bancaire que cette règle règle paieraient tous les deux la même échéance. Désactivez l'enregistrement automatique du paiement programmé."
+      }
     },
     "actionTypes": {
       "add_tags": "Ajouter des tags",
@@ -262,7 +289,8 @@
       "set_payee_from_text": "Définir le bénéficiaire à partir du texte",
       "set_description": "Définir la description",
       "convert_to_transfer": "Convertir en virement",
-      "split": "Fractionner la transaction"
+      "split": "Fractionner la transaction",
+      "settle_loan_installment": "Régler une échéance de prêt"
     },
     "save": {
       "button": "Enregistrer la règle",
@@ -311,8 +339,8 @@
         "MAX_NODES": "Il y a trop de conditions et de groupes. La limite est de {maxNodes}.",
         "NO_ACTIONS": "Ajoutez au moins une action.",
         "TOO_MANY_ACTIONS": "Il y a trop d'actions. La limite est de {maxActions}.",
-        "DUPLICATE_ACTION": "Une règle ne peut avoir qu'une seule revue par l'IA, un seul virement ou fractionnement, et une seule partie de fractionnement qui prend le reste.",
-        "CONFLICTING_ACTIONS": "Une action de virement ou de fractionnement ne peut pas être combinée avec « Définir la catégorie », et chacune de ses parties a soit une catégorie, soit un compte.",
+        "DUPLICATE_ACTION": "Une règle ne peut avoir qu'une seule revue par l'IA, un seul virement, fractionnement ou règlement de prêt, et une seule partie de fractionnement qui prend le reste.",
+        "CONFLICTING_ACTIONS": "Une action de virement, de fractionnement ou de règlement de prêt ne peut pas être combinée avec « Définir la catégorie », et chaque partie d'un fractionnement a soit une catégorie, soit un compte.",
         "INVALID_CAPTURE": "Un nom de capture utilise des lettres minuscules et des chiffres, commence par une lettre et compte 20 caractères au plus.",
         "TOO_MANY_CAPTURES": "Un motif peut contenir 5 captures au plus.",
         "DUPLICATE_CAPTURE": "Chaque nom de capture ne peut être utilisé qu’une fois dans une règle.",
@@ -395,6 +423,7 @@
     "matchesNone": "Cette règle ne correspond à aucune des transactions examinées ({scanned}). Vérifiez les conditions avant d'enregistrer. Un motif sans * ne correspond qu'au texte entier.",
     "noChange": "{matched} des {scanned} transactions examinées répondent aux conditions de la règle, mais rien ne changerait (par exemple, elles ont déjà la valeur et « seulement si vide » est activé). Ce n'est pas une erreur.",
     "truncated": "Plus de transactions correspondent que la limite ne le permet. Seules les plus récentes sont incluses. Augmentez la limite ou réduisez les dates pour inclure le reste.",
+    "truncatedOldest": "Plus de transactions ont correspondu que la limite ne le permet. Seules les plus anciennes sont incluses, car cette règle règle les échéances de prêt dans l'ordre des dates. Exécutez-la à nouveau après cette exécution pour inclure le reste.",
     "noMatches": {
       "title": "Aucune transaction ne serait modifiée",
       "body": "Aucune des transactions analysées ne correspond à la règle, ou la règle n’y changerait rien."
@@ -408,7 +437,8 @@
     },
     "skipped": {
       "title": "{count, plural, one {# transaction est laissée telle quelle} other {# transactions sont laissées telles quelles}}",
-      "line": "{count, plural, one {# transaction} other {# transactions}} : {reason}"
+      "line": "{count, plural, one {# transaction} other {# transactions}} : {reason}",
+      "missing": "Manque au prêt : {inputs}."
     },
     "skipReasons": {
       "reconciled_locked": "elle est rapprochée et verrouillée",
@@ -428,7 +458,17 @@
       "transfer_currency_mismatch": "le compte du virement utilise une autre devise",
       "split_amount_unparseable": "un montant de son texte n'a pas pu être lu comme un nombre",
       "split_sum_mismatch": "les parties ne totalisent pas son montant",
-      "split_too_few_parts": "il reste moins de deux parties une fois les montants nuls écartés"
+      "split_too_few_parts": "il reste moins de deux parties une fois les montants nuls écartés",
+      "row_from_scheduled_posting": "elle a été enregistrée à partir du paiement programmé du prêt, qui a déjà payé l'échéance",
+      "row_is_income": "c'est un revenu, et seul un prélèvement paie une échéance",
+      "loan_account_unavailable": "le compte du prêt n'est pas disponible (il a été supprimé, est fermé, n'est pas à vous ou n'est pas un prêt hypothécaire ni un prêt)",
+      "loan_interest_booked_separately": "le prêt enregistre ses intérêts comme des transactions séparées, donc un paiement ne peut pas les inclure",
+      "loan_not_configured": "il manque au prêt ce qui est nécessaire pour calculer une échéance",
+      "no_installment_in_window": "aucune échéance du prêt n'est due dans la fenêtre autour de sa date",
+      "occurrence_already_posted": "l'échéance due dans la fenêtre est déjà payée",
+      "loan_debt_retired": "le prêt est déjà remboursé",
+      "installment_amount_excess": "il est supérieur à l'échéance, et la règle laisse les prélèvements plus élevés tels quels",
+      "installment_amount_shortfall": "il est inférieur à l'échéance, et la règle laisse les prélèvements plus faibles tels quels"
     },
     "change": {
       "category": "Catégorie : {before} → {after}",
@@ -448,7 +488,8 @@
       "splitToTransfer": "vers {account}",
       "splitToTransferPayee": "vers {account}, bénéficiaire {payee}",
       "splitToCategory": "comme {category}",
-      "splitUncategorised": "sans catégorie"
+      "splitUncategorised": "sans catégorie",
+      "loanSettlement": "{done, select, yes {A réglé} other {Règle}} l'échéance {number} de {account}, due le {dueDate} : capital {principal}, intérêts {interest}{hasExtra, select, yes {, capital supplémentaire {extra}} other {}}. Dette avant : {debtBefore}"
     },
     "filters": {
       "accounts": "Comptes",
@@ -475,6 +516,19 @@
     "done": {
       "summary": "{count, plural, =0 {Aucune transaction n’a été modifiée.} one {# transaction a été modifiée.} other {# transactions ont été modifiées.}}",
       "undo": "Vous pouvez annuler l’exécution depuis l’historique des actions."
+    },
+    "missingInputs": {
+      "scheduledPayment": "un paiement programmé",
+      "managedTemplate": "un paiement fractionné en capital et intérêts",
+      "scheduleCalendar": "un calendrier de paiement",
+      "interestCategory": "une catégorie d'intérêts",
+      "amortizationMonths": "la période d'amortissement",
+      "paymentStartDate": "la date du premier paiement",
+      "paymentFrequency": "la fréquence de paiement",
+      "originalPrincipal": "le capital initial du prêt",
+      "rate": "un taux d'intérêt pour la date",
+      "payment": "le montant du paiement",
+      "other": "un paramètre du prêt"
     }
   },
   "applications": {
@@ -531,7 +585,8 @@
       "set_payee_from_text": "Définir le bénéficiaire à partir du texte : « {template} »{createIfMissing, select, yes { (créé s’il n’existe pas)} other {}}{onlyIfEmpty, select, yes { (seulement si vide)} other {}}",
       "set_description": "Définir la description ({mode, select, append {ajouter après} prepend {ajouter avant} other {remplacer}}) : « {template} »{onlyIfEmpty, select, yes { (seulement si vide)} other {}}",
       "convert_to_transfer": "Convertir en virement {direction, select, from {depuis} other {vers}} {account}",
-      "split": "Fractionner en : {parts}"
+      "split": "Fractionner en : {parts}",
+      "settle_loan_installment": "Régler l'échéance de {account} payée par un prélèvement jusqu'à {before, plural, one {# jour} other {# jours}} avant ou {after, plural, one {# jour} other {# jours}} après sa date d'échéance ; un prélèvement plus élevé {excess, select, refuse {est laissé tel quel} other {paie du capital supplémentaire}}, un prélèvement plus faible {shortfall, select, interest_first {paie d'abord les intérêts} other {est laissé tel quel}}"
     },
     "splitPart": {
       "transfer": "{amount} vers {account}",

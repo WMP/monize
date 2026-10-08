@@ -251,7 +251,34 @@
       "splitGuideTip": "Tips: atur tanggal mulai di “Aktif antara” agar transaksi lama yang sudah direkonsiliasi tidak berubah, dan gunakan panel Uji sebelum menyimpan.",
       "convertGuide": "Pengeluaran menjadi transfer ke akun yang dipilih, dan pemasukan menjadi transfer dari akun itu. Hanya saldo akun lainnya yang berubah. Tips: gunakan “Aktif antara” agar transaksi lama tidak berubah.",
       "splitGuideName1": "pokok",
-      "splitGuideName2": "bunga"
+      "splitGuideName2": "bunga",
+      "loanGuide": "Gunakan ini untuk debit bank yang membayar angsuran hipotek atau pinjaman sebagai satu jumlah. Di “Jika”, cocokkan debit berdasarkan akun, teks penerima, atau deskripsinya. Transaksi menjadi pemecahan: pokok ditransfer ke akun pinjaman dan bunga masuk ke kategori bunga, keduanya dihitung untuk angsuran yang dibayarnya. Tips: matikan posting otomatis pada pembayaran terjadwal pinjaman agar angsuran tidak dibayar dua kali, dan gunakan panel Uji sebelum menyimpan.",
+      "loan": {
+        "help": "Debit yang cocok membayar angsuran pinjaman berikutnya yang jatuh tempo dekat tanggalnya. Monize menghitung pokok dan bunga untuk angsuran itu; Anda tidak pernah mengetikkan jumlah.",
+        "account": "Akun pinjaman",
+        "accountPlaceholder": "Pilih hipotek atau pinjaman...",
+        "noLoans": "Anda tidak memiliki akun hipotek atau pinjaman terbuka untuk dilunasi.",
+        "window": "Jendela tanggal jatuh tempo",
+        "windowHelp": "Seberapa jauh dari tanggal jatuh tempo bank dapat mengambil pembayaran. Debit hingga sejumlah hari ini sebelum atau setelah tanggal jatuh tempo angsuran membayar angsuran itu; yang di luar jendela dibiarkan tanpa perubahan.",
+        "daysBefore": "Hari sebelum tanggal jatuh tempo",
+        "daysAfter": "Hari setelah tanggal jatuh tempo",
+        "excess": "Saat debit lebih besar dari angsuran",
+        "excessPolicies": {
+          "extra_principal": "Bayar selisihnya sebagai pokok tambahan",
+          "refuse": "Biarkan transaksi tanpa perubahan"
+        },
+        "shortfall": "Saat debit lebih kecil dari angsuran",
+        "shortfallPolicies": {
+          "refuse": "Biarkan transaksi tanpa perubahan",
+          "interest_first": "Bayar bunga dulu, sisanya sebagai pokok"
+        },
+        "policyNote": "Selisih beberapa sen diserap oleh baris bunga.",
+        "policyHelp": "Bank membulatkan setiap bagian secara terpisah, sehingga debit dalam 5 satuan terkecil mata uang (0,05 untuk sebagian besar mata uang) dianggap tepat dan baris bunga menyerap selisihnya. Selisih yang lebih besar mengikuti dua pilihan di atas.",
+        "interestCategory": "Kategori bunga (opsional)",
+        "interestCategoryPlaceholder": "Kategori bunga milik pinjaman itu sendiri",
+        "autoPostTitle": "Pembayaran terjadwal pinjaman memposting dirinya sendiri",
+        "autoPostBody": "Posting otomatis aktif untuk pembayaran terjadwal pinjaman ini, sehingga keduanya, pembayaran itu dan debit bank yang dilunasi aturan ini, akan membayar angsuran yang sama. Matikan posting otomatis pada pembayaran terjadwal."
+      }
     },
     "actionTypes": {
       "add_tags": "Tambah tag",
@@ -262,7 +289,8 @@
       "set_payee_from_text": "Atur penerima dari teks",
       "set_description": "Atur deskripsi",
       "convert_to_transfer": "Ubah menjadi transfer",
-      "split": "Pecah transaksi"
+      "split": "Pecah transaksi",
+      "settle_loan_installment": "Melunasi angsuran pinjaman"
     },
     "save": {
       "button": "Simpan aturan",
@@ -311,8 +339,8 @@
         "MAX_NODES": "Terlalu banyak kondisi dan grup. Batasnya {maxNodes}.",
         "NO_ACTIONS": "Tambahkan setidaknya satu tindakan.",
         "TOO_MANY_ACTIONS": "Terlalu banyak tindakan. Batasnya {maxActions}.",
-        "DUPLICATE_ACTION": "Sebuah aturan hanya dapat memiliki satu tinjauan AI, satu transfer atau pemecahan, dan satu bagian pemecahan yang mengambil sisanya.",
-        "CONFLICTING_ACTIONS": "Tindakan transfer atau pemecahan tidak dapat digabungkan dengan “Atur kategori”, dan setiap bagiannya memiliki kategori atau akun.",
+        "DUPLICATE_ACTION": "Sebuah aturan hanya dapat memiliki satu tinjauan AI, satu transfer, pemecahan, atau pelunasan pinjaman, dan satu bagian pemecahan yang mengambil sisanya.",
+        "CONFLICTING_ACTIONS": "Tindakan transfer, pemecahan, atau pelunasan pinjaman tidak dapat digabungkan dengan “Atur kategori”, dan setiap bagian pemecahan memiliki kategori atau akun.",
         "INVALID_CAPTURE": "Nama tangkapan memakai huruf kecil dan angka, diawali huruf, dan panjangnya paling banyak 20 karakter.",
         "TOO_MANY_CAPTURES": "Satu pola dapat memuat paling banyak 5 tangkapan.",
         "DUPLICATE_CAPTURE": "Setiap nama tangkapan hanya boleh dipakai satu kali dalam satu aturan.",
@@ -395,6 +423,7 @@
     "matchesNone": "Aturan ini tidak cocok dengan satu pun transaksi yang diperiksa ({scanned}). Periksa kondisinya sebelum menyimpan. Pola tanpa * hanya cocok dengan seluruh teks.",
     "noChange": "{matched} dari {scanned} transaksi yang diperiksa cocok dengan kondisi aturan, tetapi tidak ada yang akan berubah (misalnya, nilainya sudah ada dan «hanya jika kosong» aktif). Ini bukan kesalahan.",
     "truncated": "Lebih banyak transaksi yang cocok daripada batas yang diizinkan. Hanya yang terbaru yang disertakan. Naikkan batas atau persempit tanggal untuk menyertakan sisanya.",
+    "truncatedOldest": "Lebih banyak transaksi cocok daripada yang diizinkan batas. Hanya yang paling lama yang disertakan, karena aturan ini melunasi angsuran pinjaman menurut urutan tanggal. Jalankan lagi setelah proses ini untuk menyertakan sisanya.",
     "noMatches": {
       "title": "Tidak ada transaksi yang akan berubah",
       "body": "Tidak ada transaksi yang diperiksa yang cocok dengan aturan, atau aturan tidak akan mengubah apa pun pada transaksi tersebut."
@@ -408,7 +437,8 @@
     },
     "skipped": {
       "title": "{count, plural, other {# transaksi}} dibiarkan apa adanya",
-      "line": "{count, plural, other {# transaksi}}: {reason}"
+      "line": "{count, plural, other {# transaksi}}: {reason}",
+      "missing": "Hilang pada pinjaman: {inputs}."
     },
     "skipReasons": {
       "reconciled_locked": "sudah direkonsiliasi dan terkunci",
@@ -428,7 +458,17 @@
       "transfer_currency_mismatch": "akun transfer memakai mata uang lain",
       "split_amount_unparseable": "jumlah dalam teksnya tidak dapat dibaca sebagai angka",
       "split_sum_mismatch": "bagian-bagiannya tidak berjumlah sama dengan jumlahnya",
-      "split_too_few_parts": "kurang dari dua bagian tersisa setelah jumlah nol dibuang"
+      "split_too_few_parts": "kurang dari dua bagian tersisa setelah jumlah nol dibuang",
+      "row_from_scheduled_posting": "itu diposting dari pembayaran terjadwal pinjaman, yang sudah membayar angsuran itu",
+      "row_is_income": "itu adalah pemasukan, dan hanya debit yang membayar angsuran",
+      "loan_account_unavailable": "akun pinjaman tidak tersedia (sudah dihapus, ditutup, bukan milik Anda, atau bukan hipotek maupun pinjaman)",
+      "loan_interest_booked_separately": "pinjaman mencatat bunganya sebagai transaksi terpisah, sehingga satu pembayaran tidak bisa menanggungnya",
+      "loan_not_configured": "pinjaman kekurangan apa yang diperlukan untuk menghitung angsuran",
+      "no_installment_in_window": "tidak ada angsuran pinjaman yang jatuh tempo dalam jendela di sekitar tanggalnya",
+      "occurrence_already_posted": "angsuran yang jatuh tempo dalam jendela sudah dibayar",
+      "loan_debt_retired": "pinjaman sudah lunas",
+      "installment_amount_excess": "itu lebih besar dari angsuran, dan aturan membiarkan debit yang lebih besar tanpa perubahan",
+      "installment_amount_shortfall": "itu lebih kecil dari angsuran, dan aturan membiarkan debit yang lebih kecil tanpa perubahan"
     },
     "change": {
       "category": "Kategori: {before} → {after}",
@@ -448,7 +488,8 @@
       "splitToTransfer": "ke {account}",
       "splitToTransferPayee": "ke {account}, penerima {payee}",
       "splitToCategory": "sebagai {category}",
-      "splitUncategorised": "tanpa kategori"
+      "splitUncategorised": "tanpa kategori",
+      "loanSettlement": "{done, select, yes {Dilunasi} other {Akan dilunasi}} angsuran {number} dari {account}, jatuh tempo {dueDate}: pokok {principal}, bunga {interest}{hasExtra, select, yes {, pokok tambahan {extra}} other {}}. Utang sebelumnya: {debtBefore}"
     },
     "filters": {
       "accounts": "Akun",
@@ -475,6 +516,19 @@
     "done": {
       "summary": "{count, plural, =0 {Tidak ada transaksi yang diubah.} other {# transaksi diubah.}}",
       "undo": "Anda dapat membatalkan proses ini dari riwayat tindakan."
+    },
+    "missingInputs": {
+      "scheduledPayment": "pembayaran terjadwal",
+      "managedTemplate": "pembayaran yang dipecah menjadi pokok dan bunga",
+      "scheduleCalendar": "jadwal pembayaran",
+      "interestCategory": "kategori bunga",
+      "amortizationMonths": "periode amortisasi",
+      "paymentStartDate": "tanggal pembayaran pertama",
+      "paymentFrequency": "frekuensi pembayaran",
+      "originalPrincipal": "pokok awal pinjaman",
+      "rate": "suku bunga untuk tanggal tersebut",
+      "payment": "jumlah pembayaran",
+      "other": "pengaturan pinjaman"
     }
   },
   "applications": {
@@ -531,7 +585,8 @@
       "set_payee_from_text": "Atur penerima dari teks: “{template}”{createIfMissing, select, yes { (dibuat jika belum ada)} other {}}{onlyIfEmpty, select, yes { (hanya jika kosong)} other {}}",
       "set_description": "Atur deskripsi ({mode, select, append {tambahkan setelah} prepend {tambahkan sebelum} other {ganti}}): “{template}”{onlyIfEmpty, select, yes { (hanya jika kosong)} other {}}",
       "convert_to_transfer": "Ubah menjadi transfer {direction, select, from {dari} other {ke}} {account}",
-      "split": "Pecah menjadi: {parts}"
+      "split": "Pecah menjadi: {parts}",
+      "settle_loan_installment": "Melunasi angsuran {account} yang dibayar oleh debit hingga {before, plural, other {# hari}} sebelum atau {after, plural, other {# hari}} setelah tanggal jatuh temponya; debit yang lebih besar {excess, select, refuse {dibiarkan tanpa perubahan} other {membayar pokok tambahan}}, yang lebih kecil {shortfall, select, interest_first {membayar bunga dulu} other {dibiarkan tanpa perubahan}}"
     },
     "splitPart": {
       "transfer": "{amount} ke {account}",

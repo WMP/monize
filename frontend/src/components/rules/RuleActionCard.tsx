@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { RuleActionGuide } from '@/components/rules/RuleActionGuide';
 import { RuleCardShell } from '@/components/rules/RuleCardShell';
+import { RuleLoanSettlementFields } from '@/components/rules/RuleLoanSettlementFields';
 import { ConvertToTransferFields, SplitFields } from '@/components/rules/RuleStructuralActions';
 import { RuleSwitchRow as SwitchRow } from '@/components/rules/RuleSwitchRow';
 import { RuleTemplateInput } from '@/components/rules/RuleTemplateInput';
@@ -185,6 +186,8 @@ function ActionParameters({
       return <ConvertToTransferFields action={action} options={options} onChange={onChange} fields={fields} />;
     case 'split':
       return <SplitFields action={action} options={options} captures={captures} onChange={onChange} fields={fields} />;
+    case 'settle_loan_installment':
+      return <RuleLoanSettlementFields action={action} options={options} onChange={onChange} fields={fields} />;
     case 'request_ai_review':
       return (
         <div>
@@ -212,8 +215,8 @@ function ActionParameters({
 /**
  * One action: its type, and the parameters that type takes. Changing the type
  * starts the parameters over (the card keeps its place). The type list leaves
- * out `request_ai_review` when another card already holds it, and the two
- * structural actions when another card holds either, because the server
+ * out `request_ai_review` when another card already holds it, and the three
+ * structural actions when another card holds one, because the server
  * allows one of each kind per rule.
  */
 export function RuleActionCard({
@@ -228,7 +231,7 @@ export function RuleActionCard({
 }: RuleActionCardProps) {
   const t = useTranslations('rules.editor');
   const shownInline = inlineCodes(action, captures);
-  // A transfer or a split shows each error at its field; the card keeps only what names no field.
+  // A transfer, a split or a settlement shows each error at its field; the card keeps only what names no field.
   const structural = isStructuralActionType(action.type) && fieldErrors !== undefined;
   const cardErrors = structural ? fieldErrors.shell : errors.filter((code) => !shownInline.includes(code));
 

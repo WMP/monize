@@ -3,12 +3,13 @@ import { RuleConditionGroup, type RuleTreeEnv } from '@/components/rules/RuleCon
 import { createTreeHandlers } from '@/components/rules/rule-tree-handlers';
 import type { RuleOptions } from '@/components/rules/use-rule-options';
 import { treeCapacity, type EditorGroup } from '@/lib/rule-tree';
-import { ACCOUNT_ID, COFFEE_ID, FOOD_ID, PAYEE_ID, TAG_ID, TAG_WORK_ID } from './rules-test-fixtures';
+import { ACCOUNT_ID, LOAN_ID, COFFEE_ID, FOOD_ID, PAYEE_ID, TAG_ID, TAG_WORK_ID } from './rules-test-fixtures';
 
 /** The lists the pickers offer, already built. */
 export const testOptions: RuleOptions = {
   accounts: [{ value: ACCOUNT_ID, label: 'Chequing (CAD)' }],
   transferAccounts: [{ value: ACCOUNT_ID, label: 'Chequing (CAD)' }],
+  loanAccounts: [{ value: LOAN_ID, label: 'Mortgage (CAD)' }],
   payees: [{ value: PAYEE_ID, label: 'Corner Cafe' }],
   categories: [
     { value: FOOD_ID, label: 'Food' },

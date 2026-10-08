@@ -251,7 +251,34 @@
       "splitGuideTip": "提示：在「生效期間」中設定開始日期，以免變更較早已對帳的交易，並在儲存前使用測試面板。",
       "convertGuide": "支出會變成轉到所選帳戶的轉帳，收入會變成從該帳戶轉入的轉帳。只有另一個帳戶的餘額會變動。提示：使用「生效期間」，以免變更較早的交易。",
       "splitGuideName1": "benjin",
-      "splitGuideName2": "lixi"
+      "splitGuideName2": "lixi",
+      "loanGuide": "適用於以單筆金額償還抵押貸款或貸款分期還款的銀行扣款。在「如果」中，按帳戶、收款人文字或說明比對該筆扣款。該交易會變成拆分交易：本金轉入貸款帳戶，利息計入利息分類，兩者都依所償還的那一期計算。提示：關閉該貸款排程付款的自動過帳，以免該期被重複償還，並在儲存前使用測試面板。",
+      "loan": {
+        "help": "符合條件的扣款會償還該貸款的下一期，其到期日與扣款日期相近。Monize 會為該期計算本金與利息；你不需要輸入金額。",
+        "account": "貸款帳戶",
+        "accountPlaceholder": "選擇一筆抵押貸款或貸款…",
+        "noLoans": "你沒有可結算的未結清抵押貸款或貸款帳戶。",
+        "window": "到期日區間",
+        "windowHelp": "銀行可能在到期日前後多久扣款。在某一期到期日前後這麼多天內的扣款會償還該期；區間之外的扣款維持不變。",
+        "daysBefore": "到期日前的天數",
+        "daysAfter": "到期日後的天數",
+        "excess": "當扣款金額超過該期還款額時",
+        "excessPolicies": {
+          "extra_principal": "將差額作為額外本金償還",
+          "refuse": "保持該交易不變"
+        },
+        "shortfall": "當扣款金額低於該期還款額時",
+        "shortfallPolicies": {
+          "refuse": "保持該交易不變",
+          "interest_first": "先償還利息，其餘作為本金"
+        },
+        "policyNote": "幾分錢的差額由利息部分吸收。",
+        "policyHelp": "銀行會分別對每部分四捨五入，因此扣款與應還金額相差不超過貨幣最小單位的 5 倍（大多數貨幣為 0.05）時視為精確相符，差額計入利息部分。更大的差額依上方兩種選擇之一處理。",
+        "interestCategory": "利息分類（可選）",
+        "interestCategoryPlaceholder": "該貸款自己的利息分類",
+        "autoPostTitle": "該貸款的排程付款會自動過帳",
+        "autoPostBody": "該貸款的排程付款已開啟自動過帳，這樣它與此規則結算的銀行扣款會同時償還同一期。請關閉該排程付款的自動過帳。"
+      }
     },
     "actionTypes": {
       "add_tags": "新增標籤",
@@ -262,7 +289,8 @@
       "set_payee_from_text": "依文字設定收款對象",
       "set_description": "設定說明",
       "convert_to_transfer": "轉為轉帳",
-      "split": "拆分交易"
+      "split": "拆分交易",
+      "settle_loan_installment": "結算一期貸款還款"
     },
     "save": {
       "button": "儲存規則",
@@ -311,8 +339,8 @@
         "MAX_NODES": "條件和群組過多。上限為 {maxNodes} 個。",
         "NO_ACTIONS": "請至少新增一個動作。",
         "TOO_MANY_ACTIONS": "動作過多。上限為 {maxActions} 個。",
-        "DUPLICATE_ACTION": "一條規則只能有一個 AI 審核、一個轉帳或拆分,以及一個取剩餘部分的拆分部分。",
-        "CONFLICTING_ACTIONS": "轉帳或拆分動作不能與「設定分類」組合，且其每個部分要麼有分類，要麼有帳戶。",
+        "DUPLICATE_ACTION": "一條規則只能有一個 AI 審核、一個轉帳、拆分或貸款結算，以及一個取剩餘部分的拆分部分。",
+        "CONFLICTING_ACTIONS": "轉帳、拆分或貸款結算動作不能與「設定分類」組合，且其每個部分要麼有分類，要麼有帳戶。",
         "INVALID_CAPTURE": "擷取名稱由小寫字母和數字組成，以字母開頭，最長 20 個字元。",
         "TOO_MANY_CAPTURES": "一個模式最多可包含 5 個擷取。",
         "DUPLICATE_CAPTURE": "每個擷取名稱在一條規則中只能使用一次。",
@@ -395,6 +423,7 @@
     "matchesNone": "此規則與已檢查的所有交易都不相符（{scanned} 筆）。儲存前請檢查條件。不含 * 的模式只比對整段文字。",
     "noChange": "在檢查的 {scanned} 筆交易中，有 {matched} 筆符合規則條件，但不會有任何變更（例如它們已有該值且開啟了「僅在為空時」）。這不是錯誤。",
     "truncated": "符合的交易多於上限允許的數量。僅包含最新的交易。請提高上限或縮小日期範圍以包含其餘交易。",
+    "truncatedOldest": "符合的交易超過了限制數量。由於此規則依日期順序結算貸款還款，因此僅包含最早的部分。請在此次執行之後再次執行，以納入剩餘部分。",
     "noMatches": {
       "title": "沒有交易會被變更",
       "body": "已檢查的交易都不符合此規則，或規則不會變更它們。"
@@ -408,7 +437,8 @@
     },
     "skipped": {
       "title": "{count, plural, other {# 筆交易}}維持不變",
-      "line": "{count, plural, other {# 筆交易}}：{reason}"
+      "line": "{count, plural, other {# 筆交易}}：{reason}",
+      "missing": "貸款缺少：{inputs}。"
     },
     "skipReasons": {
       "reconciled_locked": "已對帳並被鎖定",
@@ -428,7 +458,17 @@
       "transfer_currency_mismatch": "轉帳帳戶使用的幣別不同",
       "split_amount_unparseable": "其文字中的金額無法讀取為數字",
       "split_sum_mismatch": "各部分的總和與其金額不符",
-      "split_too_few_parts": "去掉零金額後剩餘部分不足兩個"
+      "split_too_few_parts": "去掉零金額後剩餘部分不足兩個",
+      "row_from_scheduled_posting": "它是由該貸款的排程付款過帳的，該付款已償還這一期",
+      "row_is_income": "它是一筆收入，而只有扣款才能償還一期",
+      "loan_account_unavailable": "貸款帳戶無法使用（已刪除、已結清、不屬於你，或不是抵押貸款或貸款）",
+      "loan_interest_booked_separately": "該貸款將利息記為單獨的交易，因此一次付款無法包含它",
+      "loan_not_configured": "該貸款缺少計算一期還款所需的資訊",
+      "no_installment_in_window": "該貸款沒有任何一期在其日期附近的區間內到期",
+      "occurrence_already_posted": "區間內到期的這一期已經償還",
+      "loan_debt_retired": "該貸款已經還清",
+      "installment_amount_excess": "它超過該期還款額，規則會使較大的扣款維持不變",
+      "installment_amount_shortfall": "它低於該期還款額，規則會使較小的扣款維持不變"
     },
     "change": {
       "category": "分類：{before} → {after}",
@@ -448,7 +488,8 @@
       "splitToTransfer": "轉入 {account}",
       "splitToTransferPayee": "轉入 {account},收款對象 {payee}",
       "splitToCategory": "歸為 {category}",
-      "splitUncategorised": "無分類"
+      "splitUncategorised": "無分類",
+      "loanSettlement": "{done, select, yes {已結算} other {結算}} {account} 的第 {number} 期，到期日 {dueDate}：本金 {principal}，利息 {interest}{hasExtra, select, yes {，額外本金 {extra}} other {}}。結算前欠款：{debtBefore}"
     },
     "filters": {
       "accounts": "帳戶",
@@ -475,6 +516,19 @@
     "done": {
       "summary": "{count, plural, =0 {沒有交易被變更。} other {已變更 # 筆交易。}}",
       "undo": "你可以在操作記錄中復原此次執行。"
+    },
+    "missingInputs": {
+      "scheduledPayment": "一筆排程付款",
+      "managedTemplate": "一筆拆分為本金與利息的付款",
+      "scheduleCalendar": "一份還款排程",
+      "interestCategory": "一個利息分類",
+      "amortizationMonths": "攤還期",
+      "paymentStartDate": "首次還款日期",
+      "paymentFrequency": "還款頻率",
+      "originalPrincipal": "原始本金",
+      "rate": "該日期的利率",
+      "payment": "還款金額",
+      "other": "一項貸款設定"
     }
   },
   "applications": {
@@ -531,7 +585,8 @@
       "set_payee_from_text": "依文字設定收款對象：「{template}」{createIfMissing, select, yes {（不存在則建立）} other {}}{onlyIfEmpty, select, yes {（僅在為空時）} other {}}",
       "set_description": "設定說明（{mode, select, append {附加} prepend {前置} other {取代}}）：「{template}」{onlyIfEmpty, select, yes {（僅在為空時）} other {}}",
       "convert_to_transfer": "轉為{direction, select, from {來自} other {轉至}} {account} 的轉帳",
-      "split": "拆分為：{parts}"
+      "split": "拆分為：{parts}",
+      "settle_loan_installment": "按到期日前最多 {before, plural, other {# 天}}或到期日後最多 {after, plural, other {# 天}}內的扣款結算 {account} 的這一期；較大的扣款{excess, select, refuse {維持不變} other {償還額外本金}}，較小的扣款{shortfall, select, interest_first {先償還利息} other {維持不變}}"
     },
     "splitPart": {
       "transfer": "{amount} 轉入 {account}",

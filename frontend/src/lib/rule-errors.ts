@@ -10,6 +10,7 @@
 import { AxiosError } from 'axios';
 import { draftToPayload, type RuleDraft } from '@/lib/rule-draft';
 import {
+  MAX_LOAN_SETTLEMENT_WINDOW_DAYS,
   MAX_RULE_DESCRIPTION_TEMPLATE_LENGTH,
   MAX_RULE_PAYEE_TEMPLATE_LENGTH,
   MAX_RULE_SPLIT_DESCRIPTION_LENGTH,
@@ -148,7 +149,8 @@ export interface StructuralFieldErrors {
   readonly fields: Readonly<Record<string, readonly string[]>>;
 }
 
-const FIELD_PATH = /^(?:toAccountId|fromAccountId|payeeId|parts|parts\[\d+\](?:\.(?:amount|categoryId|transferAccountId|payeeId|description))?)$/;
+const FIELD_PATH =
+  /^(?:toAccountId|fromAccountId|payeeId|parts|parts\[\d+\](?:\.(?:amount|categoryId|transferAccountId|payeeId|description))?|loanAccountId|interestCategoryId|dueDateWindow(?:\.(?:daysBefore|daysAfter))?|excess|shortfall)$/;
 
 /** The entries under `actions[index]`, split into the card's own list and its fields. */
 export function structuralFieldErrors(placed: PlacedErrors, index: number): StructuralFieldErrors {
@@ -268,8 +270,8 @@ export function draftGaps(draft: RuleDraft, loaded?: RuleDraft | null): RuleErro
 }
 
 /**
- * The gaps of the two structural actions: an account or an amount not chosen
- * yet, a capture the patterns do not define, a second `rest`, and the two
+ * The gaps of the three structural actions: an account or an amount not chosen
+ * yet, a settlement window day left empty or out of range, a capture the patterns do not define, a second `rest`, and the two
  * combinations the server refuses (`DUPLICATE_ACTION`, `CONFLICTING_ACTIONS`).
  * Paths and codes are the server's (`rule-validation.ts`).
  */
@@ -285,6 +287,18 @@ function structuralGaps(actions: readonly EditorAction[], captures: readonly str
     if (action.type === 'convert_to_transfer') {
       if (action.accountId === '') {
         out.push({ path: `${path}.${action.direction === 'from' ? 'fromAccountId' : 'toAccountId'}`, code: 'VALUE_REQUIRED' });
+      }
+      return;
+    }
+    if (action.type === 'settle_loan_installment') {
+      if (action.loanAccountId === '') out.push({ path: `${path}.loanAccountId`, code: 'VALUE_REQUIRED' });
+      for (const key of ['daysBefore', 'daysAfter'] as const) {
+        const days = action[key];
+        const at = `${path}.dueDateWindow.${key}`;
+        if (days === null) out.push({ path: at, code: 'VALUE_REQUIRED' });
+        else if (!Number.isInteger(days) || days < 0 || days > MAX_LOAN_SETTLEMENT_WINDOW_DAYS) {
+          out.push({ path: at, code: 'VALUE_OUT_OF_RANGE' });
+        }
       }
       return;
     }
