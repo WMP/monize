@@ -6,6 +6,10 @@ import { UseFormRegister, UseFormSetValue, FieldErrors } from 'react-hook-form';
 import { NumericInput } from '@/components/ui/NumericInput';
 import { DateInput } from '@/components/ui/DateInput';
 import { Select } from '@/components/ui/Select';
+import { Input } from '@/components/ui/Input';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import {
   Account,
   MortgageAmortizationPreview,
@@ -27,6 +31,7 @@ import { buildAccountDropdownOptions } from '@/lib/account-utils';
 import { createLogger } from '@/lib/logger';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { getCurrencySymbol } from '@/lib/format';
 
 const logger = createLogger('MortgageFields');
 
@@ -53,6 +58,13 @@ interface MortgageFieldsProps {
   categories: Category[];
   formatCurrency: (amount: number, currency?: string) => string;
   isEditing: boolean;
+  sourceAccountId: string | undefined;
+  /** The amount originally borrowed; defaults to `openingBalance` until set. */
+  originalPrincipal: number | undefined;
+  paymentMatchingEnabled: boolean | undefined;
+  paymentMatchingPayeePattern: string | undefined;
+  /** The selected institution's name, used to prefill the payee pattern. */
+  institutionName: string;
   selectedInterestCategoryId: string;
   handleInterestCategoryChange: (categoryId: string) => void;
   interestBookingMode: InterestBookingMode;
@@ -80,6 +92,11 @@ export function MortgageFields({
   categories,
   formatCurrency,
   isEditing,
+  sourceAccountId,
+  originalPrincipal,
+  paymentMatchingEnabled,
+  paymentMatchingPayeePattern,
+  institutionName,
   selectedInterestCategoryId,
   handleInterestCategoryChange,
   interestBookingMode,
@@ -94,6 +111,18 @@ export function MortgageFields({
   // Money arrives as a prop; the preview's rate does not, and it is just as
   // user-facing -- so it takes the same number locale rather than `toFixed`.
   const { formatPercent } = useNumberFormat();
+  const currencySymbol = getCurrencySymbol(watchedCurrency);
+  const sourceAccountName = accounts.find((a) => a.id === sourceAccountId)?.name;
+
+  const handlePaymentMatchingToggle = (next: boolean) => {
+    setValue('paymentMatchingEnabled', next, { shouldDirty: true });
+    if (next && !paymentMatchingPayeePattern && institutionName) {
+      setValue('paymentMatchingPayeePattern', `*${institutionName}*`, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+  };
 
   // A LINEAR or INTEREST_ONLY mortgage has no constant payment: its preview
   // shows the first installment, and the accelerated cadences -- a fraction of
@@ -397,6 +426,30 @@ export function MortgageFields({
         </div>
       </div>
 
+      {/* Original Principal: the amount originally borrowed, apart from the
+          opening balance (the debt where an imported history starts). Shown
+          create and edit; defaults to the mortgage amount until the user
+          types a value of their own -- a plain `?? openingBalance` fallback,
+          so a later change to the opening balance keeps tracking it only
+          while this field has never been touched. */}
+      <div>
+        <div className="flex items-center mb-1">
+          <label htmlFor="mortgage-original-principal" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            {t('mortgageFields.originalPrincipal.label')}
+          </label>
+          <InfoTooltip text={t('mortgageFields.originalPrincipal.help')} placement="top" usePortal />
+        </div>
+        <CurrencyInput
+          id="mortgage-original-principal"
+          prefix={currencySymbol}
+          value={originalPrincipal ?? openingBalance}
+          onChange={(value) =>
+            setValue('originalPrincipal', value, { shouldDirty: true, shouldValidate: true })
+          }
+          error={errors.originalPrincipal?.message as string | undefined}
+        />
+      </div>
+
       {!isEditing && (
         <>
           <div className="grid grid-cols-2 gap-4">
@@ -431,6 +484,47 @@ export function MortgageFields({
             error={errors.sourceAccountId?.message as string | undefined}
             {...register('sourceAccountId')}
           />
+
+          {/* Payment matching: the rule that settles the bank's own debit of
+              this payment against each installment instead of posting the
+              bill separately (docs/specs/loan-installment-settlement.md
+              decision 5). Create only -- an existing loan gets this from its
+              Loan Details panel. */}
+          <div className="space-y-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <input type="hidden" {...register('paymentMatchingEnabled')} />
+            <div className="flex items-center gap-2">
+              <ToggleSwitch
+                checked={!!paymentMatchingEnabled}
+                onChange={handlePaymentMatchingToggle}
+                label={t('mortgageFields.paymentMatching.toggleLabel')}
+              />
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                {t('mortgageFields.paymentMatching.toggleLabel')}
+              </span>
+              <InfoTooltip text={t('mortgageFields.paymentMatching.toggleHelp')} placement="top" usePortal />
+            </div>
+            {paymentMatchingEnabled && (
+              <div className="space-y-3 pl-1">
+                <Input
+                  label={t('mortgageFields.paymentMatching.payeePattern')}
+                  placeholder={t('mortgageFields.paymentMatching.payeePatternPlaceholder')}
+                  error={errors.paymentMatchingPayeePattern?.message as string | undefined}
+                  {...register('paymentMatchingPayeePattern')}
+                />
+                <Input
+                  label={t('mortgageFields.paymentMatching.descriptionPattern')}
+                  placeholder={t('mortgageFields.paymentMatching.descriptionPatternPlaceholder')}
+                  error={errors.paymentMatchingDescriptionPattern?.message as string | undefined}
+                  {...register('paymentMatchingDescriptionPattern')}
+                />
+                {sourceAccountName && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {t('mortgageFields.paymentMatching.fromAccount', { account: sourceAccountName })}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Mortgage Amortization Preview */}
           {mortgagePreview && (

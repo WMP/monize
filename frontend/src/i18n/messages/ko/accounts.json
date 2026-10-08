@@ -270,7 +270,18 @@
     "firstInstallmentHelp": "이 모기지는 고정 납입금이 없습니다. 각 할부금은 잔액, 금리, 상환 기간으로 계산됩니다. {date}에 기일이 돌아오는 할부금이며 추가 원금을 포함합니다.",
     "firstInstallmentPending": "첫 할부금을 계산하려면 다음 납입일을 입력하세요.",
     "firstInstallmentCalculating": "첫 할부금을 계산하는 중...",
-    "firstInstallmentFailed": "첫 할부금을 계산할 수 없습니다. 아래 값을 확인하고 다시 시도하세요."
+    "firstInstallmentFailed": "첫 할부금을 계산할 수 없습니다. 아래 값을 확인하고 다시 시도하세요.",
+    "paymentMatching": {
+      "toggleLabel": "은행 출금 인식",
+      "toggleHelp": "은행에서 이 결제에 대해 하나의 출금을 기록하면 Monize는 이를 일정과 대조하여 별도의 청구 거래를 기록하는 대신 자동으로 원금과 이자로 분할합니다.",
+      "payeePattern": "수취인 패턴",
+      "payeePatternPlaceholder": "예: *ING HYPOTHEKEN*",
+      "descriptionPattern": "설명 패턴(선택 사항)",
+      "descriptionPatternPlaceholder": "예: *Hypotheek*",
+      "fromAccount": "{account}의 출금과 대조됩니다.",
+      "autoPostDisabled": "자동으로 해제되었습니다. 결제 일치는 은행 자체 출금으로 이 청구서를 정산하므로 청구서가 스스로도 게시되어서는 안 됩니다.",
+      "payeePatternRequired": "* 와일드카드가 포함된 수취인 패턴을 입력하세요"
+    }
   },
   "mortgageFields": {
     "title": "담보대출 세부 정보",
@@ -407,6 +418,19 @@
         "cancel": "취소",
         "use": "이 유형으로 계정 수정"
       }
+    },
+    "paymentMatching": {
+      "toggleLabel": "은행 출금 인식",
+      "toggleHelp": "은행에서 이 결제에 대해 하나의 출금을 기록하면 Monize는 이를 일정과 대조하여 별도의 청구 거래를 기록하는 대신 자동으로 원금과 이자로 분할합니다.",
+      "payeePattern": "수취인 패턴",
+      "payeePatternPlaceholder": "예: *ING HYPOTHEKEN*",
+      "descriptionPattern": "설명 패턴(선택 사항)",
+      "descriptionPatternPlaceholder": "예: *Hypotheek*",
+      "fromAccount": "{account}의 출금과 대조됩니다."
+    },
+    "originalPrincipal": {
+      "label": "원래 대출 원금",
+      "help": "원래 빌린 금액입니다. 기록된 내역이 대출 시작 이후에 시작되는 계정의 경우, 이는 빌린 금액이며 기초 잔액(내역 시작 시점의 채무)이 아닙니다."
     }
   },
   "assetFields": {
@@ -436,7 +460,10 @@
     "paymentStartDateRequired": "첫 납부일은 필수입니다",
     "paymentAccountRequired": "납부 출금 계정은 필수입니다",
     "amortizationRequired": "상환 기간은 필수입니다",
-    "acceleratedNeedsAnnuity": "이 모기지는 가속 일정으로 납입되며, 이는 원리금 균등 모기지에만 있습니다. 원금 균등 또는 이자만 내는 모기지에는 일반 납입 주기가 필요하므로 원리금 균등 유형을 유지하세요."
+    "acceleratedNeedsAnnuity": "이 모기지는 가속 일정으로 납입되며, 이는 원리금 균등 모기지에만 있습니다. 원금 균등 또는 이자만 내는 모기지에는 일반 납입 주기가 필요하므로 원리금 균등 유형을 유지하세요.",
+    "paymentMatchingPayeePatternRequired": "은행 출금과 일치시킬 수취인 패턴을 입력하세요",
+    "paymentMatchingPayeePatternWildcard": "수취인 패턴에는 * 와일드카드가 포함되어야 합니다",
+    "paymentMatchingDescriptionPatternWildcard": "설명 패턴에는 * 와일드카드가 포함되어야 합니다"
   },
   "loanDetail": {
     "backToAccounts": "계좌 목록으로 돌아가기",

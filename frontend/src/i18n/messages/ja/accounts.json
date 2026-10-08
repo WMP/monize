@@ -270,7 +270,18 @@
     "firstInstallmentHelp": "この住宅ローンには固定の返済額がありません。各回の返済額は残高、金利、償還期間から計算されます。これは {date} が期日の返済額で、追加の元金を含みます。",
     "firstInstallmentPending": "初回の返済額を計算するには、次回の返済日を入力してください。",
     "firstInstallmentCalculating": "初回の返済額を計算しています...",
-    "firstInstallmentFailed": "初回の返済額を計算できませんでした。下の値を確認して、もう一度お試しください。"
+    "firstInstallmentFailed": "初回の返済額を計算できませんでした。下の値を確認して、もう一度お試しください。",
+    "paymentMatching": {
+      "toggleLabel": "銀行の引き落としを認識する",
+      "toggleHelp": "銀行がこの支払いの引き落としを1件登録すると、Monizeはそれをスケジュールと照合し、別の請求取引を登録する代わりに自動的に元本と利息に分割します。",
+      "payeePattern": "受取人パターン",
+      "payeePatternPlaceholder": "例：*ING HYPOTHEKEN*",
+      "descriptionPattern": "説明パターン（任意）",
+      "descriptionPatternPlaceholder": "例：*Hypotheek*",
+      "fromAccount": "{account} からの引き落としと照合されます。",
+      "autoPostDisabled": "自動的に無効化されました。支払いマッチングは銀行自身の引き落としからこの請求を決済するため、請求自体も記帳してはいけません。",
+      "payeePatternRequired": "* ワイルドカードを含む受取人パターンを入力してください"
+    }
   },
   "mortgageFields": {
     "title": "住宅ローンの詳細",
@@ -407,6 +418,19 @@
         "cancel": "キャンセル",
         "use": "この種類で勘定科目を編集"
       }
+    },
+    "paymentMatching": {
+      "toggleLabel": "銀行の引き落としを認識する",
+      "toggleHelp": "銀行がこの支払いの引き落としを1件登録すると、Monizeはそれをスケジュールと照合し、別の請求取引を登録する代わりに自動的に元本と利息に分割します。",
+      "payeePattern": "受取人パターン",
+      "payeePatternPlaceholder": "例：*ING HYPOTHEKEN*",
+      "descriptionPattern": "説明パターン（任意）",
+      "descriptionPatternPlaceholder": "例：*Hypotheek*",
+      "fromAccount": "{account} からの引き落としと照合されます。"
+    },
+    "originalPrincipal": {
+      "label": "当初借入金額",
+      "help": "当初借り入れた金額です。履歴の記録がローン開始後から始まる口座では、これは借入額であり、期首残高（履歴開始時点の債務）ではありません。"
     }
   },
   "assetFields": {
@@ -436,7 +460,10 @@
     "paymentStartDateRequired": "初回支払日は必須です",
     "paymentAccountRequired": "支払い元勘定科目は必須です",
     "amortizationRequired": "償却期間は必須です",
-    "acceleratedNeedsAnnuity": "この住宅ローンは繰上げ型の返済スケジュールで支払われており、これは元利均等返済の住宅ローンにしかありません。元金均等返済や利息のみの住宅ローンには通常の返済頻度が必要なため、元利均等の種類のままにしてください。"
+    "acceleratedNeedsAnnuity": "この住宅ローンは繰上げ型の返済スケジュールで支払われており、これは元利均等返済の住宅ローンにしかありません。元金均等返済や利息のみの住宅ローンには通常の返済頻度が必要なため、元利均等の種類のままにしてください。",
+    "paymentMatchingPayeePatternRequired": "銀行の引き落としと照合する受取人パターンを入力してください",
+    "paymentMatchingPayeePatternWildcard": "受取人パターンには * ワイルドカードを含める必要があります",
+    "paymentMatchingDescriptionPatternWildcard": "説明パターンには * ワイルドカードを含める必要があります"
   },
   "loanDetail": {
     "backToAccounts": "勘定科目一覧に戻る",

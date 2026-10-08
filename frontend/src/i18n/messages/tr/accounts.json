@@ -270,7 +270,18 @@
     "firstInstallmentHelp": "Bu konut kredisinin sabit bir ödemesi yok: her taksit bakiye, faiz oranı ve amortisman süresinden hesaplanır. Bu, ek anapara dahil {date} vadeli taksittir.",
     "firstInstallmentPending": "İlk taksiti hesaplamak için sonraki ödeme tarihini girin.",
     "firstInstallmentCalculating": "İlk taksit hesaplanıyor...",
-    "firstInstallmentFailed": "İlk taksit hesaplanamadı. Aşağıdaki değerleri kontrol edip tekrar deneyin."
+    "firstInstallmentFailed": "İlk taksit hesaplanamadı. Aşağıdaki değerleri kontrol edip tekrar deneyin.",
+    "paymentMatching": {
+      "toggleLabel": "Bankanın hesaptan çekimini tanı",
+      "toggleHelp": "Bankanız bu ödeme için tek bir hesaptan çekim kaydettiğinde Monize bunu takvimle eşleştirir ve ayrı bir fatura işlemi kaydetmek yerine otomatik olarak anapara ve faize böler.",
+      "payeePattern": "Alacaklı deseni",
+      "payeePatternPlaceholder": "ör. *ING HYPOTHEKEN*",
+      "descriptionPattern": "Açıklama deseni (isteğe bağlı)",
+      "descriptionPatternPlaceholder": "ör. *Hypotheek*",
+      "fromAccount": "{account} hesabındaki çekimlerle eşleştirildi.",
+      "autoPostDisabled": "Otomatik olarak kapatıldı: ödeme eşleştirme bu faturayı bankanın kendi çekimiyle kapatır, bu nedenle faturanın kendisi de ayrıca işlenmemelidir.",
+      "payeePatternRequired": "* joker karakteri içeren bir alacaklı deseni girin"
+    }
   },
   "mortgageFields": {
     "title": "İpotek Ayrıntıları",
@@ -407,6 +418,19 @@
         "cancel": "İptal",
         "use": "Hesabı Bu Türle Düzenle"
       }
+    },
+    "paymentMatching": {
+      "toggleLabel": "Bankanın hesaptan çekimini tanı",
+      "toggleHelp": "Bankanız bu ödeme için tek bir hesaptan çekim kaydettiğinde Monize bunu takvimle eşleştirir ve ayrı bir fatura işlemi kaydetmek yerine otomatik olarak anapara ve faize böler.",
+      "payeePattern": "Alacaklı deseni",
+      "payeePatternPlaceholder": "ör. *ING HYPOTHEKEN*",
+      "descriptionPattern": "Açıklama deseni (isteğe bağlı)",
+      "descriptionPatternPlaceholder": "ör. *Hypotheek*",
+      "fromAccount": "{account} hesabındaki çekimlerle eşleştirildi."
+    },
+    "originalPrincipal": {
+      "label": "Orijinal Anapara",
+      "help": "Başlangıçta borç aldığınız tutar. Kaydedilen geçmişi kredinin başlangıcından sonra başlayan bir hesap için bu, borç alınan tutardır, açılış bakiyesi değildir -- açılış bakiyesi geçmişinizin başındaki borçtur."
     }
   },
   "assetFields": {
@@ -436,7 +460,10 @@
     "paymentStartDateRequired": "İlk ödeme tarihi zorunludur",
     "paymentAccountRequired": "Ödeme hesabı zorunludur",
     "amortizationRequired": "Amortisman süresi zorunludur",
-    "acceleratedNeedsAnnuity": "Bu konut kredisi hızlandırılmış bir planla ödeniyor ve bu yalnızca anüiteli kredilerde bulunur. Doğrusal veya yalnızca faizli bir kredi normal bir ödeme sıklığı gerektirir, bu nedenle anüite türünü koruyun."
+    "acceleratedNeedsAnnuity": "Bu konut kredisi hızlandırılmış bir planla ödeniyor ve bu yalnızca anüiteli kredilerde bulunur. Doğrusal veya yalnızca faizli bir kredi normal bir ödeme sıklığı gerektirir, bu nedenle anüite türünü koruyun.",
+    "paymentMatchingPayeePatternRequired": "Bankanın çekimini tanımak için bir alacaklı deseni girin",
+    "paymentMatchingPayeePatternWildcard": "Alacaklı deseni bir * joker karakteri içermelidir",
+    "paymentMatchingDescriptionPatternWildcard": "Açıklama deseni bir * joker karakteri içermelidir"
   },
   "loanDetail": {
     "backToAccounts": "Hesaplara Dön",

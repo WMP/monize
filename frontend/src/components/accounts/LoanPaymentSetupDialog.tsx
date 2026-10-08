@@ -8,8 +8,11 @@ import { DateInput } from '@/components/ui/DateInput';
 import { Select } from '@/components/ui/Select';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { NumericInput } from '@/components/ui/NumericInput';
+import { Input } from '@/components/ui/Input';
 import { Combobox } from '@/components/ui/Combobox';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import {
   Account,
   DetectedLoanPayment,
@@ -101,6 +104,15 @@ export function LoanPaymentSetupDialog({
   // Use detected split ratio from imported transactions
   const [useDetectedSplit, setUseDetectedSplit] = useState(false);
 
+  // Payment matching: settle the bank's own debit of this payment against
+  // each installment instead of posting the bill separately
+  // (docs/specs/loan-installment-settlement.md decision 5). While on, the
+  // bill's own auto-post is forced off below -- both posting the bill and
+  // settling a matching debit would otherwise pay the same installment twice.
+  const [paymentMatchingEnabled, setPaymentMatchingEnabled] = useState(false);
+  const [paymentMatchingPayeePattern, setPaymentMatchingPayeePattern] = useState('');
+  const [paymentMatchingDescriptionPattern, setPaymentMatchingDescriptionPattern] = useState('');
+
   const allPaymentFrequencyOptions = [
     { value: 'WEEKLY', label: t('loanPaymentSetup.frequencyOptions.weekly') },
     { value: 'BIWEEKLY', label: t('loanPaymentSetup.frequencyOptions.biweekly') },
@@ -153,6 +165,12 @@ export function LoanPaymentSetupDialog({
       ['CHEQUING', 'SAVINGS', 'CASH'].includes(a.accountType),
     (a) => a.name,
   );
+
+  // Payment matching forces auto-post off: derived, not synced through an
+  // effect, so the checkbox's own history (what the person last chose) is
+  // never lost, only overridden while matching is on.
+  const effectiveAutoPost = paymentMatchingEnabled ? false : autoPost;
+  const sourceAccountName = accounts.find((a) => a.id === sourceAccountId)?.name;
 
   const categoryOptions = getCategorySelectOptions(categories);
 
@@ -330,6 +348,10 @@ export function LoanPaymentSetupDialog({
       toast.error(t('loanPaymentSetup.fillRequiredFields'));
       return;
     }
+    if (paymentMatchingEnabled && !paymentMatchingPayeePattern.trim().includes('*')) {
+      toast.error(t('loanPaymentSetup.paymentMatching.payeePatternRequired'));
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -346,11 +368,20 @@ export function LoanPaymentSetupDialog({
         interestCategoryId: interestCategoryId || undefined,
         payeeId: selectedPayeeId || undefined,
         payeeName: payeeName || undefined,
-        autoPost,
+        // The checkbox's displayed value: forced off while payment matching
+        // is on, so the two never settle the same installment.
+        autoPost: effectiveAutoPost,
       };
 
       if (includeExtraPrincipal && extraPrincipal > 0) {
         data.extraPrincipal = extraPrincipal;
+      }
+
+      if (paymentMatchingEnabled) {
+        data.paymentMatching = {
+          payeePattern: paymentMatchingPayeePattern.trim(),
+          descriptionPattern: paymentMatchingDescriptionPattern.trim() || undefined,
+        };
       }
 
       // A derived installment is split by its method; the server ignores a
@@ -381,8 +412,9 @@ export function LoanPaymentSetupDialog({
     }
   }, [
     submittedPaymentAmount, effectivePaymentFrequency, sourceAccountId, nextDueDate,
-    interestRate, interestCategoryId, selectedPayeeId, payeeName, autoPost,
+    interestRate, interestCategoryId, selectedPayeeId, payeeName, effectiveAutoPost,
     includeExtraPrincipal, extraPrincipal, useDetectedSplit, detected,
+    paymentMatchingEnabled, paymentMatchingPayeePattern, paymentMatchingDescriptionPattern,
     derivesInstallment, isMortgage, mortgageType, prepaymentMode,
     amortizationMonths, termMonths, loanAccount, onSetupComplete, onClose, t,
   ]);
@@ -709,18 +741,63 @@ export function LoanPaymentSetupDialog({
                 </div>
               )}
 
+              {/* Payment matching: settle the bank's own debit of this
+                  payment against each installment instead of posting the
+                  bill separately (docs/specs/loan-installment-settlement.md
+                  decision 5). */}
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <ToggleSwitch
+                    checked={paymentMatchingEnabled}
+                    onChange={setPaymentMatchingEnabled}
+                    label={t('loanPaymentSetup.paymentMatching.toggleLabel')}
+                  />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {t('loanPaymentSetup.paymentMatching.toggleLabel')}
+                  </span>
+                  <InfoTooltip text={t('loanPaymentSetup.paymentMatching.toggleHelp')} placement="top" usePortal />
+                </div>
+                {paymentMatchingEnabled && (
+                  <div className="space-y-3 ml-6">
+                    <Input
+                      label={t('loanPaymentSetup.paymentMatching.payeePattern')}
+                      placeholder={t('loanPaymentSetup.paymentMatching.payeePatternPlaceholder')}
+                      value={paymentMatchingPayeePattern}
+                      onChange={(e) => setPaymentMatchingPayeePattern(e.target.value)}
+                    />
+                    <Input
+                      label={t('loanPaymentSetup.paymentMatching.descriptionPattern')}
+                      placeholder={t('loanPaymentSetup.paymentMatching.descriptionPatternPlaceholder')}
+                      value={paymentMatchingDescriptionPattern}
+                      onChange={(e) => setPaymentMatchingDescriptionPattern(e.target.value)}
+                    />
+                    {sourceAccountName && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {t('loanPaymentSetup.paymentMatching.fromAccount', { account: sourceAccountName })}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Auto-post */}
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={autoPost}
+                  checked={effectiveAutoPost}
+                  disabled={paymentMatchingEnabled}
                   onChange={(e) => setAutoPost(e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">
                   {t('loanPaymentSetup.autoPost')}
                 </span>
               </label>
+              {paymentMatchingEnabled && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 ml-6">
+                  {t('loanPaymentSetup.paymentMatching.autoPostDisabled')}
+                </p>
+              )}
             </div>
 
             {/* Actions */}

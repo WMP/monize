@@ -1007,6 +1007,21 @@ describe('AccountForm', () => {
       expect(payload).toMatchObject({ mortgageType: 'LINEAR', prepaymentMode: 'SHORTEN_TERM' });
     });
 
+    it('sends an edited original principal on an edit', async () => {
+      await submitEdit(mortgage({ originalPrincipal: 300000, openingBalance: -280000 }));
+      fireEvent.change(screen.getByLabelText('Original Principal'), {
+        target: { value: '295000' },
+      });
+      const payload = await clickUpdate();
+      expect(payload.originalPrincipal).toBe(295000);
+    });
+
+    it('round-trips the stored original principal on an edit that never touched it', async () => {
+      await submitEdit(mortgage({ originalPrincipal: 300000, openingBalance: -280000 }));
+      const payload = await clickUpdate();
+      expect(payload.originalPrincipal).toBe(300000);
+    });
+
     it.each(['LINEAR', 'INTEREST_ONLY'] as const)(
       'refuses %s inline for a mortgage paid on an accelerated cadence',
       async (type) => {

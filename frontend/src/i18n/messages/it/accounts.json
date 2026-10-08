@@ -270,7 +270,18 @@
     "firstInstallmentHelp": "Questo mutuo non ha un pagamento fisso: ogni rata è calcolata dal saldo, dal tasso e dal periodo di ammortamento. Questa è la rata in scadenza il {date}, compreso l'eventuale capitale aggiuntivo.",
     "firstInstallmentPending": "Inserisci la data del prossimo pagamento per calcolare la prima rata.",
     "firstInstallmentCalculating": "Calcolo della prima rata...",
-    "firstInstallmentFailed": "Non è stato possibile calcolare la prima rata. Controlla i valori qui sotto e riprova."
+    "firstInstallmentFailed": "Non è stato possibile calcolare la prima rata. Controlla i valori qui sotto e riprova.",
+    "paymentMatching": {
+      "toggleLabel": "Riconosci l'addebito della banca",
+      "toggleHelp": "Quando la tua banca registra un unico addebito per questo pagamento, Monize lo confronta con il piano e lo suddivide automaticamente in capitale e interessi, invece di registrare una transazione di fattura separata.",
+      "payeePattern": "Pattern del beneficiario",
+      "payeePatternPlaceholder": "es. *ING HYPOTHEKEN*",
+      "descriptionPattern": "Pattern della descrizione (opzionale)",
+      "descriptionPatternPlaceholder": "es. *Hypotheek*",
+      "fromAccount": "Confrontato con gli addebiti di {account}.",
+      "autoPostDisabled": "Disattivato automaticamente: la corrispondenza dei pagamenti regola questa fattura in base all'addebito della banca stessa, quindi non deve anche registrarsi da sola.",
+      "payeePatternRequired": "Inserisci un pattern del beneficiario che includa un carattere jolly *"
+    }
   },
   "mortgageFields": {
     "title": "Dettagli mutuo",
@@ -407,6 +418,19 @@
         "cancel": "Annulla",
         "use": "Modifica conto con questo tipo"
       }
+    },
+    "paymentMatching": {
+      "toggleLabel": "Riconosci l'addebito della banca",
+      "toggleHelp": "Quando la tua banca registra un unico addebito per questo pagamento, Monize lo confronta con il piano e lo suddivide automaticamente in capitale e interessi, invece di registrare una transazione di fattura separata.",
+      "payeePattern": "Pattern del beneficiario",
+      "payeePatternPlaceholder": "es. *ING HYPOTHEKEN*",
+      "descriptionPattern": "Pattern della descrizione (opzionale)",
+      "descriptionPatternPlaceholder": "es. *Hypotheek*",
+      "fromAccount": "Confrontato con gli addebiti di {account}."
+    },
+    "originalPrincipal": {
+      "label": "Capitale originario",
+      "help": "L'importo originariamente preso in prestito. Per un conto il cui storico registrato inizia dopo l'avvio del mutuo, questo è l'importo preso in prestito, non il saldo iniziale -- che è il debito all'inizio del tuo storico."
     }
   },
   "assetFields": {
@@ -436,7 +460,10 @@
     "paymentStartDateRequired": "La data del primo pagamento è obbligatoria",
     "paymentAccountRequired": "Il conto di pagamento è obbligatorio",
     "amortizationRequired": "Il periodo di ammortamento è obbligatorio",
-    "acceleratedNeedsAnnuity": "Questo mutuo è pagato con un piano accelerato, che ha solo un mutuo a rata costante. Un mutuo lineare o solo interessi richiede una frequenza di pagamento regolare, quindi mantieni un tipo a rata costante."
+    "acceleratedNeedsAnnuity": "Questo mutuo è pagato con un piano accelerato, che ha solo un mutuo a rata costante. Un mutuo lineare o solo interessi richiede una frequenza di pagamento regolare, quindi mantieni un tipo a rata costante.",
+    "paymentMatchingPayeePatternRequired": "Inserisci un pattern del beneficiario per riconoscere l'addebito della banca",
+    "paymentMatchingPayeePatternWildcard": "Il pattern del beneficiario deve includere un carattere jolly *",
+    "paymentMatchingDescriptionPatternWildcard": "Il pattern della descrizione deve includere un carattere jolly *"
   },
   "loanDetail": {
     "backToAccounts": "Torna ai conti",

@@ -1,5 +1,9 @@
 import type { BalanceForecastGap } from './banking-detail';
 import type { PrepaymentMode } from '@/lib/mortgage-type';
+import type {
+  LoanSettlementExcessPolicy,
+  LoanSettlementShortfallPolicy,
+} from './transaction-rule';
 
 export type AccountType =
   | 'CHEQUING'
@@ -187,6 +191,11 @@ export interface Account {
   termEndDate: string | null;
   amortizationMonths: number | null;
   originalPrincipal: number | null;
+  // The "Payment matching" rule this loan/mortgage's bill is settled by
+  // (`docs/specs/loan-installment-settlement.md` decision 5); null when none
+  // was created. Optional so the many existing account fixtures that predate
+  // this field need not all name it; always present on a real API response.
+  paymentMatchingRuleId?: string | null;
   canDelete?: boolean;
   futureTransactionsSum?: number;
   // ── Joint accounts ──
@@ -207,6 +216,43 @@ export interface Account {
   jointGranteeCount?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * The "Payment matching" section of the mortgage form and the loan-payment
+ * setup dialog (`docs/specs/loan-installment-settlement.md` decision 5): the
+ * rule to create against the loan/mortgage's own scheduled payment, which
+ * settles a matching bank debit against the next installment instead of
+ * posting the bill separately. `excess`/`shortfall` are never offered here --
+ * the server defaults them (`extra_principal` / `refuse`) and they are
+ * editable afterwards in Tools > Rules.
+ */
+export interface PaymentMatching {
+  payeePattern: string;
+  descriptionPattern?: string | null;
+  excess?: LoanSettlementExcessPolicy;
+  shortfall?: LoanSettlementShortfallPolicy;
+}
+
+/** Why a create or setup that saved the loan could not create its rule. */
+export interface PaymentMatchingFailure {
+  errorCode: string;
+  message: string;
+}
+
+/** One installment a payment-matching rule settled (a `rule` claim). */
+export interface LoanSettlementRow {
+  claimId: string;
+  dueDate: string;
+  postedDate: string;
+  transactionId: string;
+  transactionStatus: string;
+  principal: number | null;
+  interest: number | null;
+  extraPrincipal: number | null;
+  debtBefore: number | null;
+  installmentNumber: number | null;
+  ruleId: string | null;
 }
 
 export interface CreateAccountData {
@@ -253,6 +299,12 @@ export interface CreateAccountData {
   termMonths?: number;
   amortizationMonths?: number;
   mortgagePaymentFrequency?: MortgagePaymentFrequency;
+  // The amount originally borrowed, apart from the opening balance (the debt
+  // where this ledger starts); absent stores the opening balance.
+  originalPrincipal?: number;
+  // Loans and mortgages created with their scheduled payment: create the
+  // "Payment matching" rule and turn the bill's auto-post off.
+  paymentMatching?: PaymentMatching;
 }
 
 export interface InvestmentAccountPair {
@@ -467,6 +519,12 @@ export interface SetupLoanPaymentsData {
   termMonths?: number;
   extraPrincipal?: number;
   detectedInterestAmount?: number;
+  // The amount originally borrowed, apart from the opening balance; the
+  // account's own when absent.
+  originalPrincipal?: number;
+  // Create the "Payment matching" rule for this payment and leave the bill's
+  // auto-post off.
+  paymentMatching?: PaymentMatching;
 }
 
 /**
@@ -484,6 +542,7 @@ export type PreviewLoanPaymentSetupData = Pick<
   | 'isVariableRate'
   | 'amortizationMonths'
   | 'extraPrincipal'
+  | 'originalPrincipal'
 >;
 
 export interface PreviewLoanPaymentSetupResponse {
@@ -507,6 +566,12 @@ export interface SetupLoanPaymentsResponse {
   firstInstallmentAmount: number;
   paymentFrequency: string;
   nextDueDate: string;
+  // The "Payment matching" rule the setup created; null when none was asked
+  // for or it could not be created.
+  paymentMatchingRuleId: string | null;
+  // Why the rule asked for could not be created; null otherwise. The
+  // schedule stays either way.
+  paymentMatchingError: PaymentMatchingFailure | null;
 }
 
 /**

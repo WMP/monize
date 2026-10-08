@@ -270,7 +270,18 @@
     "firstInstallmentHelp": "Deze hypotheek heeft geen vaste betaling: elke termijn wordt berekend uit het saldo, de rente en de looptijd. Dit is de termijn die vervalt op {date}, inclusief eventuele extra aflossing.",
     "firstInstallmentPending": "Voer de volgende betaaldatum in om de eerste termijn te berekenen.",
     "firstInstallmentCalculating": "De eerste termijn wordt berekend...",
-    "firstInstallmentFailed": "De eerste termijn kon niet worden berekend. Controleer de waarden hieronder en probeer het opnieuw."
+    "firstInstallmentFailed": "De eerste termijn kon niet worden berekend. Controleer de waarden hieronder en probeer het opnieuw.",
+    "paymentMatching": {
+      "toggleLabel": "De afschrijving van de bank herkennen",
+      "toggleHelp": "Wanneer je bank één afschrijving voor deze betaling boekt, matcht Monize deze automatisch met het schema en splitst deze in aflossing en rente, in plaats van een afzonderlijke rekeningtransactie te boeken.",
+      "payeePattern": "Begunstigdepatroon",
+      "payeePatternPlaceholder": "bijv. *ING HYPOTHEKEN*",
+      "descriptionPattern": "Omschrijvingspatroon (optioneel)",
+      "descriptionPatternPlaceholder": "bijv. *Hypotheek*",
+      "fromAccount": "Gematcht met afschrijvingen van {account}.",
+      "autoPostDisabled": "Automatisch uitgeschakeld: betalingsmatching verrekent deze rekening met de eigen afschrijving van de bank, dus deze mag niet ook zelf worden geboekt.",
+      "payeePatternRequired": "Voer een begunstigdepatroon in met een *-jokerteken"
+    }
   },
   "mortgageFields": {
     "title": "Hypotheekdetails",
@@ -407,6 +418,19 @@
         "cancel": "Annuleren",
         "use": "Rekening bewerken met deze vorm"
       }
+    },
+    "paymentMatching": {
+      "toggleLabel": "De afschrijving van de bank herkennen",
+      "toggleHelp": "Wanneer je bank één afschrijving voor deze betaling boekt, matcht Monize deze automatisch met het schema en splitst deze in aflossing en rente, in plaats van een afzonderlijke rekeningtransactie te boeken.",
+      "payeePattern": "Begunstigdepatroon",
+      "payeePatternPlaceholder": "bijv. *ING HYPOTHEKEN*",
+      "descriptionPattern": "Omschrijvingspatroon (optioneel)",
+      "descriptionPatternPlaceholder": "bijv. *Hypotheek*",
+      "fromAccount": "Gematcht met afschrijvingen van {account}."
+    },
+    "originalPrincipal": {
+      "label": "Oorspronkelijke hoofdsom",
+      "help": "Het bedrag dat je oorspronkelijk hebt geleend. Voor een rekening waarvan de vastgelegde geschiedenis later begint dan de lening, is dit het geleende bedrag, niet het openingssaldo -- dat is de schuld aan het begin van je geschiedenis."
     }
   },
   "assetFields": {
@@ -436,7 +460,10 @@
     "paymentStartDateRequired": "Datum eerste betaling is vereist",
     "paymentAccountRequired": "Betaalrekening is vereist",
     "amortizationRequired": "Afschrijvingstermijn is vereist",
-    "acceleratedNeedsAnnuity": "Deze hypotheek wordt volgens een versneld schema betaald, dat alleen een annuïteitenhypotheek heeft. Een lineaire of aflossingsvrije hypotheek heeft een gewone betaalfrequentie nodig, dus houd een annuïteitensoort aan."
+    "acceleratedNeedsAnnuity": "Deze hypotheek wordt volgens een versneld schema betaald, dat alleen een annuïteitenhypotheek heeft. Een lineaire of aflossingsvrije hypotheek heeft een gewone betaalfrequentie nodig, dus houd een annuïteitensoort aan.",
+    "paymentMatchingPayeePatternRequired": "Voer een begunstigdepatroon in om de afschrijving van de bank te herkennen",
+    "paymentMatchingPayeePatternWildcard": "Het begunstigdepatroon moet een *-jokerteken bevatten",
+    "paymentMatchingDescriptionPatternWildcard": "Het omschrijvingspatroon moet een *-jokerteken bevatten"
   },
   "loanDetail": {
     "backToAccounts": "Terug naar rekeningen",

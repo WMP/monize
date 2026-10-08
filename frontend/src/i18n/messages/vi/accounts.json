@@ -270,7 +270,18 @@
     "firstInstallmentHelp": "Khoản vay thế chấp này không có khoản thanh toán cố định: mỗi kỳ được tính từ số dư, lãi suất và thời gian trả dần. Đây là kỳ đến hạn {date}, bao gồm mọi khoản gốc trả thêm.",
     "firstInstallmentPending": "Nhập ngày thanh toán tiếp theo để tính kỳ trả góp đầu tiên.",
     "firstInstallmentCalculating": "Đang tính kỳ trả góp đầu tiên...",
-    "firstInstallmentFailed": "Không thể tính kỳ trả góp đầu tiên. Hãy kiểm tra các giá trị bên dưới và thử lại."
+    "firstInstallmentFailed": "Không thể tính kỳ trả góp đầu tiên. Hãy kiểm tra các giá trị bên dưới và thử lại.",
+    "paymentMatching": {
+      "toggleLabel": "Nhận diện khoản ghi nợ của ngân hàng",
+      "toggleHelp": "Khi ngân hàng của bạn ghi một khoản ghi nợ cho khoản thanh toán này, Monize sẽ khớp nó với lịch thanh toán và tự động chia thành gốc và lãi, thay vì ghi một giao dịch hóa đơn riêng.",
+      "payeePattern": "Mẫu người nhận",
+      "payeePatternPlaceholder": "vd. *ING HYPOTHEKEN*",
+      "descriptionPattern": "Mẫu mô tả (không bắt buộc)",
+      "descriptionPatternPlaceholder": "vd. *Hypotheek*",
+      "fromAccount": "Được khớp với các khoản ghi nợ từ {account}.",
+      "autoPostDisabled": "Đã tự động tắt: tính năng khớp thanh toán thanh toán hóa đơn này từ khoản ghi nợ của chính ngân hàng, vì vậy hóa đơn không được tự đăng thêm.",
+      "payeePatternRequired": "Nhập mẫu người nhận có chứa ký tự đại diện *"
+    }
   },
   "mortgageFields": {
     "title": "Chi tiết thế chấp",
@@ -407,6 +418,19 @@
         "cancel": "Hủy",
         "use": "Sửa tài khoản với loại này"
       }
+    },
+    "paymentMatching": {
+      "toggleLabel": "Nhận diện khoản ghi nợ của ngân hàng",
+      "toggleHelp": "Khi ngân hàng của bạn ghi một khoản ghi nợ cho khoản thanh toán này, Monize sẽ khớp nó với lịch thanh toán và tự động chia thành gốc và lãi, thay vì ghi một giao dịch hóa đơn riêng.",
+      "payeePattern": "Mẫu người nhận",
+      "payeePatternPlaceholder": "vd. *ING HYPOTHEKEN*",
+      "descriptionPattern": "Mẫu mô tả (không bắt buộc)",
+      "descriptionPatternPlaceholder": "vd. *Hypotheek*",
+      "fromAccount": "Được khớp với các khoản ghi nợ từ {account}."
+    },
+    "originalPrincipal": {
+      "label": "Số tiền gốc ban đầu",
+      "help": "Số tiền bạn đã vay ban đầu. Đối với tài khoản có lịch sử ghi nhận bắt đầu sau khi khoản vay bắt đầu, đây là số tiền đã vay, không phải số dư đầu kỳ -- là khoản nợ vào đầu lịch sử của bạn."
     }
   },
   "assetFields": {
@@ -436,7 +460,10 @@
     "paymentStartDateRequired": "Ngày thanh toán đầu tiên là bắt buộc",
     "paymentAccountRequired": "Tài khoản thanh toán là bắt buộc",
     "amortizationRequired": "Thời gian khấu hao là bắt buộc",
-    "acceleratedNeedsAnnuity": "Khoản vay thế chấp này được trả theo lịch tăng tốc, vốn chỉ có ở khoản vay trả góp đều. Khoản vay trả gốc đều hoặc chỉ trả lãi cần tần suất thanh toán thông thường, vì vậy hãy giữ loại trả góp đều."
+    "acceleratedNeedsAnnuity": "Khoản vay thế chấp này được trả theo lịch tăng tốc, vốn chỉ có ở khoản vay trả góp đều. Khoản vay trả gốc đều hoặc chỉ trả lãi cần tần suất thanh toán thông thường, vì vậy hãy giữ loại trả góp đều.",
+    "paymentMatchingPayeePatternRequired": "Nhập mẫu người nhận để khớp với khoản ghi nợ của ngân hàng",
+    "paymentMatchingPayeePatternWildcard": "Mẫu người nhận phải chứa ký tự đại diện *",
+    "paymentMatchingDescriptionPatternWildcard": "Mẫu mô tả phải chứa ký tự đại diện *"
   },
   "loanDetail": {
     "backToAccounts": "Quay lại danh sách tài khoản",

@@ -270,7 +270,18 @@
     "firstInstallmentHelp": "[XX-This mortgage has no fixed payment: each installment is worked out from the balance, the rate and the amortization period. This is the one due {date}, including any extra principal.-XX]",
     "firstInstallmentPending": "[XX-Enter the next payment date to work out the first installment.-XX]",
     "firstInstallmentCalculating": "[XX-Working out the first installment...-XX]",
-    "firstInstallmentFailed": "[XX-The first installment could not be worked out. Check the values below and try again.-XX]"
+    "firstInstallmentFailed": "[XX-The first installment could not be worked out. Check the values below and try again.-XX]",
+    "paymentMatching": {
+      "toggleLabel": "[XX-Recognise the bank's debit-XX]",
+      "toggleHelp": "[XX-When your bank posts one debit for this payment, Monize matches it against the schedule and splits it into principal and interest automatically, instead of posting a separate bill transaction.-XX]",
+      "payeePattern": "[XX-Payee pattern-XX]",
+      "payeePatternPlaceholder": "[XX-e.g. *ING HYPOTHEKEN*-XX]",
+      "descriptionPattern": "[XX-Description pattern (optional)-XX]",
+      "descriptionPatternPlaceholder": "[XX-e.g. *Hypotheek*-XX]",
+      "fromAccount": "[XX-Matched against debits from {account}.-XX]",
+      "autoPostDisabled": "[XX-Turned off automatically: payment matching settles this bill from the bank's own debit, so it must not also post itself.-XX]",
+      "payeePatternRequired": "[XX-Enter a payee pattern that includes a * wildcard-XX]"
+    }
   },
   "mortgageFields": {
     "title": "[XX-Mortgage Details-XX]",
@@ -326,6 +337,19 @@
       "memoLabel": "[XX-Overpayment memo text-XX]",
       "memoPlaceholder": "[XX-e.g. overpayment-XX]",
       "memoHelp": "[XX-Case-insensitive substring match against the payment's memo, its source transaction's memo, or a split memo.-XX]"
+    },
+    "paymentMatching": {
+      "toggleLabel": "[XX-Recognise the bank's debit-XX]",
+      "toggleHelp": "[XX-When your bank posts one debit for this payment, Monize matches it against the schedule and splits it into principal and interest automatically, instead of posting a separate bill transaction.-XX]",
+      "payeePattern": "[XX-Payee pattern-XX]",
+      "payeePatternPlaceholder": "[XX-e.g. *ING HYPOTHEKEN*-XX]",
+      "descriptionPattern": "[XX-Description pattern (optional)-XX]",
+      "descriptionPatternPlaceholder": "[XX-e.g. *Hypotheek*-XX]",
+      "fromAccount": "[XX-Matched against debits from {account}.-XX]"
+    },
+    "originalPrincipal": {
+      "label": "[XX-Original Principal-XX]",
+      "help": "[XX-The amount you originally borrowed. For an account whose recorded history starts after the mortgage did, this is the amount borrowed, not the opening balance -- which is the debt at the start of your history.-XX]"
     },
     "previewTitle": "[XX-Amortization Preview-XX]",
     "previewPaymentAmount": "[XX-Payment Amount:-XX]",
@@ -436,7 +460,10 @@
     "paymentStartDateRequired": "[XX-First payment date is required-XX]",
     "paymentAccountRequired": "[XX-Payment account is required-XX]",
     "amortizationRequired": "[XX-Amortization period is required-XX]",
-    "acceleratedNeedsAnnuity": "[XX-This mortgage is paid on an accelerated schedule, which only an annuity mortgage has. A linear or interest-only mortgage needs a regular payment frequency, so keep an annuity type.-XX]"
+    "acceleratedNeedsAnnuity": "[XX-This mortgage is paid on an accelerated schedule, which only an annuity mortgage has. A linear or interest-only mortgage needs a regular payment frequency, so keep an annuity type.-XX]",
+    "paymentMatchingPayeePatternRequired": "[XX-Enter a payee pattern to match the bank's debit-XX]",
+    "paymentMatchingPayeePatternWildcard": "[XX-The payee pattern must include a * wildcard-XX]",
+    "paymentMatchingDescriptionPatternWildcard": "[XX-The description pattern must include a * wildcard-XX]"
   },
   "loanDetail": {
     "backToAccounts": "[XX-Back to Accounts-XX]",
