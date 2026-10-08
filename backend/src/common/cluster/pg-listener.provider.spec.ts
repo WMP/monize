@@ -7,6 +7,7 @@ import {
   PG_LISTENER_RECONNECT_MAX_MS,
   PG_LISTENER_RECONNECT_MIN_MS,
   PG_WAKEUP_CHANNEL,
+  PG_WAKEUP_PROBE_CHANNEL,
   PgListener,
   assertValidChannel,
   resolveListenerClientConfig,
@@ -134,6 +135,18 @@ describe("assertValidChannel", () => {
     expect(() => assertValidChannel("a".repeat(64))).toThrow(
       /at most 63 characters/,
     );
+  });
+});
+
+describe("PG_WAKEUP_PROBE_CHANNEL", () => {
+  it("stays distinct from the production wake-up channel", () => {
+    // `PostgresEventBus` is already listening on `PG_WAKEUP_CHANNEL` by the
+    // time the boot probe runs and parses everything delivered there as a
+    // wake-up envelope. A probe token published on that channel fails that
+    // parse and logs a spurious "Unparsable wake-up dropped" warning on every
+    // boot -- this is the regression the separate channel exists to prevent.
+    expect(PG_WAKEUP_PROBE_CHANNEL).not.toBe(PG_WAKEUP_CHANNEL);
+    expect(() => assertValidChannel(PG_WAKEUP_PROBE_CHANNEL)).not.toThrow();
   });
 });
 
