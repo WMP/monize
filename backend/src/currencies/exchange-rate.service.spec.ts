@@ -2093,6 +2093,21 @@ describe("ExchangeRateService", () => {
 
     const ymd = (date: Date): string => date.toISOString().slice(0, 10);
 
+    /** One bar per weekday in `[start, end]`, the shape of a daily FX series. */
+    const weekdayBars = (start: string, end: string, close: number) => {
+      const bars: Array<{ date: Date; close: number }> = [];
+      for (
+        let day = new Date(`${start}T00:00:00Z`);
+        ymd(day) <= end;
+        day = new Date(day.getTime() + 86_400_000)
+      ) {
+        if (day.getUTCDay() !== 0 && day.getUTCDay() !== 6) {
+          bars.push({ date: day, close });
+        }
+      }
+      return bars;
+    };
+
     beforeEach(() => {
       inserted = [];
       dataSource.query.mockImplementation(
@@ -2121,16 +2136,15 @@ describe("ExchangeRateService", () => {
     // plus the lead `closeAt` may reach back over, without which the first days
     // of the month would have nothing to carry forward from.
     it("fetches the whole month, with the boundary lead the lookup needs", async () => {
-      yahooFinanceService.fetchHistoricalWindow.mockResolvedValue([
-        { date: new Date("2017-08-17T00:00:00Z"), close: 1.27 },
-      ]);
+      const bars = weekdayBars("2017-07-18", "2017-08-31", 1.27);
+      yahooFinanceService.fetchHistoricalWindow.mockResolvedValue(bars);
 
       const loaded = await service.ensureRatesForDate(
         [{ from: "USD", to: "CAD" }],
         "2017-08-18",
       );
 
-      expect(loaded).toBe(1);
+      expect(loaded).toBe(bars.length);
       expect(yahooFinanceService.fetchHistoricalWindow).toHaveBeenCalledTimes(
         1,
       );
@@ -2160,9 +2174,9 @@ describe("ExchangeRateService", () => {
     // One fetch writes both directions, so USD->CAD and CAD->USD are one unit of
     // work -- fetching each would be the same request twice.
     it("asks once for a pair named in both directions", async () => {
-      yahooFinanceService.fetchHistoricalWindow.mockResolvedValue([
-        { date: new Date("2017-08-17T00:00:00Z"), close: 1.25 },
-      ]);
+      yahooFinanceService.fetchHistoricalWindow.mockResolvedValue(
+        weekdayBars("2017-07-18", "2017-08-31", 1.25),
+      );
 
       await service.ensureRatesForDate(
         [
@@ -2208,6 +2222,82 @@ describe("ExchangeRateService", () => {
       expect(inserted).toEqual([
         { from: "CAD", to: "USD", date: "2017-08-17", rate: 0.8 },
       ]);
+    });
+
+    // A symbol that answered is not necessarily a daily series: `VNDSGD=X`
+    // returned one bar for a month while `SGDVND=X` carried every weekday.
+    it("asks the reverse symbol when the direct one is sparse, and keeps the denser answer", async () => {
+      const reverseBars = weekdayBars("2017-07-18", "2017-08-31", 17_000);
+      yahooFinanceService.fetchHistoricalWindow.mockImplementation(
+        async (symbol: string) =>
+          symbol === "VNDSGD=X"
+            ? [
+                // A day the reverse also carries, and one it does not.
+                { date: new Date("2017-08-17T00:00:00Z"), close: 0.00005 },
+                { date: new Date("2017-08-19T00:00:00Z"), close: 0.00005 },
+              ]
+            : reverseBars,
+      );
+
+      const loaded = await service.ensureRatesForDate(
+        [{ from: "VND", to: "SGD" }],
+        "2017-08-18",
+      );
+
+      expect(
+        yahooFinanceService.fetchHistoricalWindow.mock.calls.map((c) => c[0]),
+      ).toEqual(["VNDSGD=X", "SGDVND=X"]);
+      // Every reverse day, plus the one day only the direct symbol had.
+      expect(loaded).toBe(reverseBars.length + 1);
+      expect(inserted).toHaveLength(reverseBars.length + 1);
+      // One row per day: the shared day is written from the denser series only.
+      const aug17 = inserted.filter((row) => row.date === "2017-08-17");
+      expect(aug17).toEqual([
+        { from: "SGD", to: "VND", date: "2017-08-17", rate: 17_000 },
+      ]);
+      expect(inserted).toContainEqual({
+        from: "SGD",
+        to: "VND",
+        date: "2017-08-19",
+        rate: roundFxRate(1 / 0.00005),
+      });
+    });
+
+    it("keeps a sparse direct series when the reverse symbol has nothing", async () => {
+      yahooFinanceService.fetchHistoricalWindow.mockImplementation(
+        async (symbol: string) =>
+          symbol === "USDCAD=X"
+            ? [{ date: new Date("2017-08-17T00:00:00Z"), close: 1.25 }]
+            : null,
+      );
+
+      const loaded = await service.ensureRatesForDate(
+        [{ from: "USD", to: "CAD" }],
+        "2017-08-18",
+      );
+
+      expect(yahooFinanceService.fetchHistoricalWindow).toHaveBeenCalledTimes(
+        2,
+      );
+      expect(loaded).toBe(1);
+      expect(inserted).toEqual([
+        { from: "CAD", to: "USD", date: "2017-08-17", rate: 0.8 },
+      ]);
+    });
+
+    it("does not ask the reverse symbol when the direct one is daily", async () => {
+      yahooFinanceService.fetchHistoricalWindow.mockResolvedValue(
+        weekdayBars("2017-07-18", "2017-08-31", 1.25),
+      );
+
+      await service.ensureRatesForDate(
+        [{ from: "USD", to: "CAD" }],
+        "2017-08-18",
+      );
+
+      expect(
+        yahooFinanceService.fetchHistoricalWindow.mock.calls.map((c) => c[0]),
+      ).toEqual(["USDCAD=X"]);
     });
 
     // The one case the fetch can never satisfy is the one that would otherwise

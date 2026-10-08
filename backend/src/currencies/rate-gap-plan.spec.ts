@@ -2,6 +2,7 @@ import {
   GAP_WINDOW_MAX_DAYS,
   MAX_GAP_WINDOWS,
   MAX_OBSERVATION_GAP_DAYS,
+  isSparseRateSeries,
   planRateGapWindows,
   type RateGapWindow,
 } from "./rate-gap-plan";
@@ -269,5 +270,53 @@ describe("planRateGapWindows", () => {
       expect(plan.windows[0].start).toBe("2009-12-18");
       expect(plan.windows[plan.windows.length - 1].end).toBe("2020-01-01");
     });
+  });
+});
+
+describe("isSparseRateSeries", () => {
+  it("is not sparse for a weekday series opening on a Monday after a Saturday start", () => {
+    // 2017-07-15 is a Saturday.
+    const dates = ["2017-07-17", "2017-07-18", "2017-07-21", "2017-07-24"];
+    expect(isSparseRateSeries(dates, "2017-07-15", "2017-07-25")).toBe(false);
+  });
+
+  it("is sparse for one bar over a month", () => {
+    expect(isSparseRateSeries(["2017-08-17"], "2017-07-18", "2017-08-31")).toBe(
+      true,
+    );
+  });
+
+  it("is sparse for an empty series", () => {
+    expect(isSparseRateSeries([], "2017-07-18", "2017-08-31")).toBe(true);
+  });
+
+  it("is sparse when the gap between two bars exceeds the bound", () => {
+    expect(
+      isSparseRateSeries(
+        ["2017-07-03", "2017-07-14", "2017-07-15"],
+        "2017-07-03",
+        "2017-07-15",
+      ),
+    ).toBe(true);
+  });
+
+  it("is sparse when the series stops well before the window closes", () => {
+    expect(
+      isSparseRateSeries(
+        ["2017-07-03", "2017-07-04"],
+        "2017-07-03",
+        "2017-07-31",
+      ),
+    ).toBe(true);
+  });
+
+  it("ignores bars outside the window", () => {
+    expect(
+      isSparseRateSeries(
+        ["2017-06-01", "2017-09-01"],
+        "2017-07-01",
+        "2017-07-05",
+      ),
+    ).toBe(true);
   });
 });
