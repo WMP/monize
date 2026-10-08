@@ -46,6 +46,7 @@ import {
   canonicalRateRow,
   isCanonicalOrientation,
 } from "./canonical-rate.util";
+import { isSparseRateSeries } from "./rate-gap-plan";
 
 // Cap concurrent Yahoo FX fetches so the daily refresh does not burst every
 // currency pair at once (this cron also runs alongside the security price
@@ -83,6 +84,19 @@ function ymdSpan(fromYmd: string, toYmd: string): FindOperator<Date> {
     MoreThanOrEqual(fromYmd),
     LessThanOrEqual(toYmd),
   ) as unknown as FindOperator<Date>;
+}
+
+/**
+ * The distinct days a provider series carries a usable rate on, the same points
+ * `persistRateSeries` would keep.
+ */
+function seriesDays(series: ReadonlyArray<{ date: Date; rate: number }>) {
+  const days = new Set<string>();
+  for (const point of series) {
+    if (!isFinite(point.rate) || point.rate <= 0) continue;
+    days.add(point.date.toISOString().slice(0, 10));
+  }
+  return [...days];
 }
 
 /**
@@ -887,10 +901,16 @@ export class ExchangeRateService implements OnModuleInit {
   /**
    * One pair, one window, persisted in the pair's canonical orientation.
    *
-   * The reverse symbol is tried when the direct one returns nothing, because
-   * Yahoo carries some pairs under one orientation only and `persistRateSeries`
-   * orients whatever answered -- so `CADUSD=X` answers a `USD->CAD` question just
-   * as well, landing on the same rows the direct symbol would have.
+   * The reverse symbol is tried when the direct one returns nothing *or too
+   * little* (`isSparseRateSeries`), because Yahoo carries some pairs fully under
+   * one orientation only -- `VNDSGD=X` returned one bar for a month while
+   * `SGDVND=X` had every day -- and `persistRateSeries` orients whatever
+   * answered, so `CADUSD=X` answers a `USD->CAD` question just as well, landing
+   * on the same rows the direct symbol would have.
+   *
+   * When both answered, the denser series is stored whole and the other only
+   * for the days the denser one lacks: the two are the same rows once oriented,
+   * so one day is written from one symbol, never from both.
    */
   /**
    * @returns the number of observations persisted, and whether the provider
@@ -919,7 +939,7 @@ export class ExchangeRateService implements OnModuleInit {
       startDate,
       endDate,
     );
-    if (direct && direct.length > 0) {
+    if (direct && !isSparseRateSeries(seriesDays(direct), start, end)) {
       return {
         stored: await this.persistRateSeries(from, to, direct),
         answered: true,
@@ -932,11 +952,28 @@ export class ExchangeRateService implements OnModuleInit {
       startDate,
       endDate,
     );
-    if (reverse && reverse.length > 0) {
-      return {
-        stored: await this.persistRateSeries(to, from, reverse),
-        answered: true,
-      };
+    const directSeries = { from, to, series: direct ?? [] };
+    const reverseSeries = { from: to, to: from, series: reverse ?? [] };
+    if (directSeries.series.length > 0 || reverseSeries.series.length > 0) {
+      // The denser answer first, the direct one on a tie; the other contributes
+      // only the days the first has no bar for.
+      const [primary, secondary] =
+        seriesDays(reverseSeries.series).length >
+        seriesDays(directSeries.series).length
+          ? [reverseSeries, directSeries]
+          : [directSeries, reverseSeries];
+      const covered = new Set(seriesDays(primary.series));
+      const extra = secondary.series.filter(
+        (point) => !covered.has(point.date.toISOString().slice(0, 10)),
+      );
+      const stored =
+        (await this.persistRateSeries(
+          primary.from,
+          primary.to,
+          primary.series,
+        )) +
+        (await this.persistRateSeries(secondary.from, secondary.to, extra));
+      return { stored, answered: true };
     }
 
     // Both directions, not either: "this pair has no rates in this window" is
