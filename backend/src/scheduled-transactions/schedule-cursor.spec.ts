@@ -1,0 +1,198 @@
+import { EntityManager } from "typeorm";
+import { advanceScheduleCursor } from "./schedule-cursor";
+import { ScheduledTransaction } from "./entities/scheduled-transaction.entity";
+import { ScheduledTransactionOverride } from "./entities/scheduled-transaction-override.entity";
+import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+
+/**
+ * The cursor advance `post()` runs after its claim, lifted so a settlement can
+ * share it (`docs/specs/loan-installment-settlement.md` section 12.3). The
+ * `post()` suite proves the posting still calls it; this one proves the block
+ * itself, including the one thing `post()` never exercises: stepping past
+ * several claimed slots at once.
+ */
+describe("advanceScheduleCursor", () => {
+  let manager: Record<string, jest.Mock>;
+  let deleteChain: Record<string, jest.Mock>;
+
+  const schedule = (
+    overrides: Partial<ScheduledTransaction> = {},
+  ): Pick<
+    ScheduledTransaction,
+    "id" | "nextDueDate" | "frequency" | "occurrencesRemaining" | "endDate"
+  > => ({
+    id: "st-1",
+    nextDueDate: "2025-02-15",
+    frequency: "MONTHLY",
+    occurrencesRemaining: null,
+    endDate: null,
+    ...overrides,
+  });
+
+  const m = () => manager as unknown as EntityManager;
+
+  beforeEach(() => {
+    manager = createScopedDbMocks().manager;
+    deleteChain = {
+      delete: jest.fn().mockReturnThis(),
+      from: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({ affected: 0 }),
+    };
+    manager.createQueryBuilder.mockReturnValue(deleteChain);
+    manager.update.mockResolvedValue({ affected: 1 });
+  });
+
+  it("steps one slot for the one claimed occurrence, prunes overrides before it and stamps the posting", async () => {
+    const result = await advanceScheduleCursor(
+      m(),
+      schedule(),
+      new Set(["2025-02-15"]),
+    );
+
+    expect(result).toEqual({
+      nextDueDate: "2025-03-15",
+      occurrencesRemaining: null,
+      deactivated: false,
+      slotsConsumed: 1,
+    });
+    expect(deleteChain.from).toHaveBeenCalledWith(ScheduledTransactionOverride);
+    expect(deleteChain.where).toHaveBeenCalledWith(
+      "scheduledTransactionId = :id",
+      { id: "st-1" },
+    );
+    expect(deleteChain.andWhere).toHaveBeenCalledWith(
+      "originalDate < :newNextDueDate",
+      { newNextDueDate: "2025-03-15" },
+    );
+    expect(manager.update).toHaveBeenCalledWith(ScheduledTransaction, "st-1", {
+      lastPostedDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      nextDueDate: "2025-03-15",
+    });
+    // An unbounded schedule has no count to decrement and nothing to deactivate.
+    const written = manager.update.mock.calls[0][2];
+    expect(written).not.toHaveProperty("occurrencesRemaining");
+    expect(written).not.toHaveProperty("isActive");
+  });
+
+  it("steps past every consecutive claimed slot, consuming an occurrence for each", async () => {
+    const result = await advanceScheduleCursor(
+      m(),
+      schedule({ occurrencesRemaining: 5 }),
+      new Set(["2025-02-15", "2025-03-15", "2025-04-15"]),
+    );
+
+    expect(result).toEqual({
+      nextDueDate: "2025-05-15",
+      occurrencesRemaining: 2,
+      deactivated: false,
+      slotsConsumed: 3,
+    });
+    expect(deleteChain.andWhere).toHaveBeenCalledWith(
+      "originalDate < :newNextDueDate",
+      { newNextDueDate: "2025-05-15" },
+    );
+    expect(manager.update).toHaveBeenCalledWith(
+      ScheduledTransaction,
+      "st-1",
+      expect.objectContaining({
+        nextDueDate: "2025-05-15",
+        occurrencesRemaining: 2,
+      }),
+    );
+  });
+
+  it("stops at the first unclaimed slot: a claim after a gap leaves the earlier occurrence due", async () => {
+    const result = await advanceScheduleCursor(
+      m(),
+      schedule(),
+      new Set(["2025-02-15", "2025-04-15"]),
+    );
+    expect(result.nextDueDate).toBe("2025-03-15");
+    expect(result.slotsConsumed).toBe(1);
+  });
+
+  it("decrements the remaining count and deactivates at zero", async () => {
+    const result = await advanceScheduleCursor(
+      m(),
+      schedule({ occurrencesRemaining: 1 }),
+      new Set(["2025-02-15"]),
+    );
+    expect(result).toEqual({
+      nextDueDate: "2025-03-15",
+      occurrencesRemaining: 0,
+      deactivated: true,
+      slotsConsumed: 1,
+    });
+    expect(manager.update).toHaveBeenCalledWith(
+      ScheduledTransaction,
+      "st-1",
+      expect.objectContaining({ occurrencesRemaining: 0, isActive: false }),
+    );
+  });
+
+  it("never drives the remaining count below zero when more slots were claimed than remained", async () => {
+    const result = await advanceScheduleCursor(
+      m(),
+      schedule({ occurrencesRemaining: 1 }),
+      new Set(["2025-02-15", "2025-03-15"]),
+    );
+    expect(result.occurrencesRemaining).toBe(0);
+    expect(result.deactivated).toBe(true);
+  });
+
+  it("leaves a count already at zero alone", async () => {
+    await advanceScheduleCursor(
+      m(),
+      schedule({ occurrencesRemaining: 0 }),
+      new Set(["2025-02-15"]),
+    );
+    const written = manager.update.mock.calls[0][2];
+    expect(written).not.toHaveProperty("occurrencesRemaining");
+    expect(written).not.toHaveProperty("isActive");
+  });
+
+  it("deactivates a schedule whose next slot falls past its end date", async () => {
+    const result = await advanceScheduleCursor(
+      m(),
+      schedule({ endDate: "2025-03-01" }),
+      new Set(["2025-02-15"]),
+    );
+    expect(result.deactivated).toBe(true);
+    expect(manager.update).toHaveBeenCalledWith(
+      ScheduledTransaction,
+      "st-1",
+      expect.objectContaining({ nextDueDate: "2025-03-15", isActive: false }),
+    );
+  });
+
+  it.each([["ONCE"], ["FORTNIGHTLY"]])(
+    "refuses a cadence that does not advance (%s) instead of looping, and writes nothing",
+    async (frequency) => {
+      // `calculateNextDueDate` returns its input for ONCE and for a string the
+      // column can hold but the type does not name; the claimed slot is always
+      // in the set, so without the refusal the loop would never exit.
+      await expect(
+        advanceScheduleCursor(
+          m(),
+          schedule({
+            frequency: frequency as ScheduledTransaction["frequency"],
+          }),
+          new Set(["2025-02-15"]),
+        ),
+      ).rejects.toThrow(/does not advance 2025-02-15/);
+      expect(manager.createQueryBuilder).not.toHaveBeenCalled();
+      expect(manager.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps a schedule active when the next slot is on or before its end date", async () => {
+    const result = await advanceScheduleCursor(
+      m(),
+      schedule({ endDate: "2025-03-15" }),
+      new Set(["2025-02-15"]),
+    );
+    expect(result.deactivated).toBe(false);
+  });
+});

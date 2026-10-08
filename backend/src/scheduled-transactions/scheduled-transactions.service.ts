@@ -59,6 +59,7 @@ import {
 } from "./scheduled-occurrence.service";
 import { ScheduledTransactionOverrideService } from "./scheduled-transaction-override.service";
 import { ScheduledTransactionLoanService } from "./scheduled-transaction-loan.service";
+import { advanceScheduleCursor } from "./schedule-cursor";
 import { addDaysYMD, todayInTimezone, todayYMD } from "../common/date-utils";
 import {
   calculateNextDueDate as calcNextDueDate,
@@ -3479,45 +3480,11 @@ export class ScheduledTransactionsService {
       // Recurring frequency: advance nextDueDate, prune stale overrides,
       // decrement occurrencesRemaining, deactivate if past endDate.
       //
-      // Read from `current`, the locked row, not from the `scheduled` snapshot
+      // From `current`, the locked row, not from the `scheduled` snapshot
       // taken before the transaction: a concurrent edit to occurrencesRemaining
-      // or endDate would otherwise be reverted by this advancement.
-      const newNextDueDateStr = calcNextDueDate(
-        nextDueDateStr,
-        current.frequency,
-      );
-
-      await m
-        .createQueryBuilder()
-        .delete()
-        .from(ScheduledTransactionOverride)
-        .where("scheduledTransactionId = :id", { id })
-        .andWhere("originalDate < :newNextDueDate", {
-          newNextDueDate: newNextDueDateStr,
-        })
-        .execute();
-
-      const updateFields: Record<string, any> = {
-        lastPostedDate: todayYMD(),
-        nextDueDate: newNextDueDateStr,
-      };
-
-      if (
-        current.occurrencesRemaining !== null &&
-        current.occurrencesRemaining > 0
-      ) {
-        const newRemaining = current.occurrencesRemaining - 1;
-        updateFields.occurrencesRemaining = newRemaining;
-        if (newRemaining === 0) {
-          updateFields.isActive = false;
-        }
-      }
-
-      if (current.endDate && newNextDueDateStr > ensureYMD(current.endDate)) {
-        updateFields.isActive = false;
-      }
-
-      await m.update(ScheduledTransaction, id, updateFields);
+      // or endDate would otherwise be reverted by this advancement. The one
+      // consumed slot is the occurrence claimed above.
+      await advanceScheduleCursor(m, current, new Set([nextDueDateStr]));
       return false;
     });
 

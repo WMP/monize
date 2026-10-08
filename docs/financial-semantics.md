@@ -653,7 +653,7 @@ of the annuity's monthly installment and are refused for both new methods.
 | The method of a type | `amortizationMethodFor` in `backend/src/accounts/mortgage-type.util.ts` and `frontend/src/lib/mortgage-type.ts` |
 | The principal on a date | `methodPrincipal` / `nonAnnuityInstallment` in `backend/src/accounts/mortgage-installment.util.ts`; `methodPrincipal` in `frontend/src/lib/mortgage-installment.ts` |
 | Preview | `calculateMortgageAmortization` in `backend/src/accounts/mortgage-amortization.util.ts` |
-| Scheduled installment | `ScheduledTransactionLoanService.resolveInstallment` (`backend/src/scheduled-transactions/scheduled-transaction-loan.service.ts`) |
+| Scheduled installment | `priceInstallment` / `resolveInstallmentCore` (`backend/src/loan-installments/price-installment.ts`), which `ScheduledTransactionLoanService.resolveInstallment` (`backend/src/scheduled-transactions/scheduled-transaction-loan.service.ts`) delegates to |
 | Frontend projection | `generateLoanSchedule` in `frontend/src/lib/loan-schedule.ts`, over `frontend/src/lib/loan-schedule-methods.ts` |
 
 The figures are fixed by the worked example in `docs/specs/mortgage-types.md`
