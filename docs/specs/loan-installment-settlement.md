@@ -403,8 +403,10 @@ periodic rate is the double the interest was multiplied by.
 }
 ```
 
-`method` is `amortizationMethodFor(mortgageTypeOf(account))` for a mortgage
-and `ANNUITY` for a `LOAN`; `prepaymentMode` is null off `LINEAR`. `booked` is
+`method` is `mortgageTypeOf(account)` for a mortgage (the type fixes both the
+compounding and the amortization method, so `CANADIAN_FIXED` is kept apart
+from `ANNUITY`) and `LOAN` for a `LOAN`; `prepaymentMode` is null off
+`LINEAR`. `booked` is
 what the slot charges; `lines` is what was written after the policy, which
 differs from `booked` by the absorbed tolerance, the excess or the shortfall.
 `outcome` is one of `exact`, `tolerance`, `extra_principal`, `extra_shed`,
