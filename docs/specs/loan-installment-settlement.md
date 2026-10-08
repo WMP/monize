@@ -177,14 +177,22 @@ review surface of this document.
     path's own defaults (`datedAnnualRate` falls back to 0, `periodicRateFor`
     to `DEFAULT_PERIODS_PER_YEAR`) are unchanged by this work and reported in
     section 15, not fixed in passing.
-17. **The claim is written before the split.** `writeEffects` inserts the
-    claim with `ON CONFLICT DO NOTHING RETURNING id` first; zero rows records
-    the action as skipped (`occurrence_already_posted`) and writes no
-    structure. A conflict therefore refuses without throwing on a create or
-    import path, which a split-then-claim order could only do by rolling a
-    savepoint back. The claim's `transaction_id` is the matched row, which
-    already exists. Both writes share the `EntityManager`, so neither commits
-    without the other.
+17. **The claim is the backstop, written after the split.** `writeEffects`
+    writes the split through `writeSplit`, then inserts the claim with `ON
+    CONFLICT DO NOTHING RETURNING id` on the same `EntityManager`; zero rows
+    throws `ConflictException` (`errors.transactionRules.occurrenceAlreadyPosted`)
+    and the caller's transaction rolls the split, its counterpart legs and the
+    claim back together. The decision that a slot is taken is the planner's
+    (`occurrence_already_posted`, section 11), made before any write from the
+    claims the facts loader reads under the schedule row lock (section 13), so
+    on the ordinary path the write-time conflict is unreachable: the `INSERT`
+    is the database's own guarantee against a plan made on stale facts, not a
+    second decision point. Recording the conflict as a skipped action instead
+    would mean re-planning the row after its field patch was written, and in
+    a manual run committing something other than the fingerprinted preview;
+    a throw rolls back everything and keeps INV-RULE-003. The claim's
+    `transaction_id` is the matched row, which already exists. Both writes
+    share the `EntityManager`, so neither commits without the other.
 18. **A refusal names what is missing.** `RuleSkippedAction` gains an optional
     `detail`; the settlement reasons carry it (section 11), so the preview,
     the trace and the Loan Details panel say which field to set or which slot
@@ -226,10 +234,11 @@ stays, section 15.) Mechanisms:
 - **One occurrence per transaction:** a partial unique index on
   `scheduled_transaction_postings (transaction_id) WHERE transaction_id IS NOT
   NULL`.
-- **Claim with the split:** the claim `INSERT`, the split
-  (`TransactionSplitService.createSplits`), its counterpart legs and the
-  cursor advance run on one `EntityManager` inside one `withScopedDb`
-  transaction (decision 17 orders them); a rollback drops all of them.
+- **Claim with the split:** the split
+  (`TransactionSplitService.createSplits`), its counterpart legs, the claim
+  `INSERT` and the cursor advance run on one `EntityManager` inside one
+  `withScopedDb` transaction (decision 17 orders them); a rollback drops all
+  of them.
 - **Release on delete:** `transaction_id` references `transactions(id) ON
   DELETE CASCADE`, so deleting the settling transaction (or undoing its
   create) deletes the claim in the same statement. The cursor is not rewound
@@ -543,10 +552,12 @@ leg is dated on its row's date, so `datedLoanDebt(s)` will include it exactly
 when that date is on or before `s`.
 
 Where a caller writes each row before planning the next (a REST create, the
-per-row import processor), the earlier settlements are already in the ledger
-and `priorSettlements` is empty; where it plans several rows before writing
-(the manual run, `applyToNew` over several ids), `priorSettlements` carries
-them. Both give the same `debtBefore` for the same rows.
+per-row import processor, and `applyToNew` over several ids, which drops the
+loan's cached facts after each settlement it writes so the next row reads
+the claims and the debts the write left), the earlier settlements are already
+in the ledger and `priorSettlements` is empty; where it plans several rows
+before writing (the manual run), `priorSettlements` carries them. Both give
+the same `debtBefore` for the same rows.
 
 `debtBefore <= 0.01` refuses `loan_debt_retired` (the threshold
 `resolveInstallment` reads as paid off).
@@ -771,9 +782,10 @@ action.
 direction to mismatch (row 10 refuses an income), no captures, and lines that
 sum to the row by construction. Rows 1 to 8 are the shared refusals of
 `docs/specs/transaction-rules-structural-actions.md` section 4, in its order.
-`occurrence_already_posted` is also the answer when the claim `INSERT` finds
-a conflict at write time (decision 17); under the lock protocol of section 13
-that is unreachable, and the write path records it rather than throwing.
+A conflict the claim `INSERT` finds at write time is not a refusal: under
+the lock protocol of section 13 it is unreachable, and the write path throws
+the backstop `ConflictException` rather than recording a refusal it did not
+plan (decision 17).
 
 ## 12. Write path
 
@@ -783,16 +795,21 @@ that is unreachable, and the write path records it rather than throwing.
 `EntityManager`: the field patch and tags as today (a settlement can share a
 rule with tag, payee and description actions), then for a settlement:
 
-1. the claim (`claim-loan-occurrence.ts`): `INSERT INTO
+1. the split, through `writeSplit` (`TransactionSplitService.validateSplits`,
+   then `createSplits`), from the `SplitStructurePlan` the planner produced;
+   `isSplit = true`, `categoryId = null` on the row.
+2. the claim (`claim-loan-occurrence.ts`): `INSERT INTO
    scheduled_transaction_postings (scheduled_transaction_id,
    original_due_date, posted_date, transaction_id, source, rule_id, pricing)
    VALUES (..., 'rule', ...) ON CONFLICT DO NOTHING RETURNING id`, with
-   `posted_date` the row's date. No row (a conflict on either unique index):
-   skip with `occurrence_already_posted` and write nothing structural.
-2. the split, through `writeSplit` (`TransactionSplitService.validateSplits`,
-   then `createSplits`), from the `SplitStructurePlan` the planner produced;
-   `isSplit = true`, `categoryId = null` on the row.
+   `posted_date` the row's date and `rule_id` the rule that planned it. No
+   row (a conflict on either unique index): the backstop `ConflictException`
+   of decision 17, and the transaction rolls back.
 3. the cursor (12.3).
+
+The applier returns, per row, the schedule it claimed on
+(`AppliedRuleRow.settledScheduleIds`), for the caller's after-commit reprice
+(12.8).
 
 ### 12.2 Trace and fingerprint
 
@@ -813,20 +830,28 @@ decremented and the schedule deactivated at zero or past `end_date`,
 overrides with `original_date` before the new cursor pruned,
 `last_posted_date` set. It repeats while the new `next_due_date` already has
 a claim on that date (a slot settled out of order before), so the bill does
-not offer an occurrence whose own key is already claimed. A claim on any other slot leaves the cursor
-where it is: a slot before it is history, and a slot after it leaves the
-earlier occurrence still due.
+not offer an occurrence whose own key is already claimed. The claim reads the
+locked schedule row itself and compares `next_due_date` with the slot, never
+the plan's `advancesCursor` alone. A cadence that does not step (`ONCE`, a
+value outside `FrequencyType`) has no next slot: the settlement deactivates
+the schedule with `last_posted_date` set, the claim-preserving counterpart of
+the delete `post()` makes for a `ONCE` bill (deleting the schedule would
+cascade to the claim). A claim on any other slot leaves the cursor where it
+is: a slot before it is history, and a slot after it leaves the earlier
+occurrence still due.
 
 ### 12.4 Run snapshot
 
-Per settled row: the claim id, the schedule id and the slot, with the
-existing split snapshot (line and counterpart ids). Per schedule, once: the
-cursor columns (`next_due_date`, `occurrences_remaining`, `is_active`,
-`last_posted_date`) before the run's first advance and after its last, and
-every override row any advance of the run deleted. One record per schedule,
-not one per row, because a run can advance one schedule several times
-(X to Y, then Y to Z), and a per-row rewind applied in run order would test
-`next_due_date = Y` against Z and stop at Y.
+Per settled row, on its `structure` record beside the existing split
+snapshot (line and counterpart ids): the claim id, the schedule id, the slot
+and `cursorAdvanced`; and when the claim advanced the cursor, the cursor
+columns (`next_due_date`, `occurrences_remaining`, `is_active`,
+`last_posted_date`) before and after that advance plus every override row it
+pruned. A run can advance one schedule several times (X to Y, then Y to Z),
+so the undo rewinds the rows in reverse run order: Z back to Y, then Y back
+to X, each step conditional on the cursor still standing where that advance
+left it (12.6). Before the write the size check measures the record with
+placeholders, as it does the counterpart ids.
 
 ### 12.5 Delete, void, edit
 
@@ -857,14 +882,17 @@ before any write:
 - refuse `RULE_RUN_UNDO_STRUCTURE_CHANGED` as today when a line was replaced.
 
 Then remove the split lines and counterpart legs as a `split` undo does,
-delete each claim the run wrote (`DELETE ... WHERE id = $claimId`; a claim
-already gone through a deletion is skipped, not a change), rewind each schedule's
-cursor once, with `UPDATE scheduled_transactions SET <recorded before the
-first advance> WHERE id = $1 AND next_due_date = <recorded after the last
-advance>` (a cursor the user has moved since is left as they set it), and
-re-insert the overrides the run's advances deleted. After the
-commit, dispatch the net-worth recompute for the loan accounts and
-`rewriteLoanTemplate` for the schedules (4.7). Redo stays refused
+and, over the settled rows in reverse run order, delete each claim the run
+wrote (`DELETE ... WHERE id = $claimId`; a claim already gone through a
+deletion is skipped, not a change) and rewind each advance the snapshot
+recorded, with `UPDATE scheduled_transactions SET <recorded before the
+advance> WHERE id = $1 AND next_due_date = <recorded after the advance>`
+(`rewindScheduleCursor`; a cursor the user has moved since is left as they
+set it, and the overrides are then not re-inserted either), re-inserting the
+overrides that advance pruned (`ON CONFLICT DO NOTHING`, so an override the
+person has since re-created for the same occurrence stands). After the
+commit, `ActionHistoryService.undo` dispatches `rewriteLoanTemplate` for the
+schedules it released claims on (4.7). Redo stays refused
 (`RULE_RUN_REDO_STRUCTURAL`).
 
 ### 12.7 Auto-post
@@ -1021,8 +1049,8 @@ Stated so they are not mistaken for coverage; none is closed by this spec.
 | B3 | `plan-loan-settlement.spec.ts` | section 8, every row and the totality property (lines sum to `paid`); section 9, every row; the fold of 9.4 and the "dated on or before `s`" condition; section 10; refusals 11 to 19 in order |
 | B3 | `loan-settlement-facts.spec.ts`, a PG integration spec | `datedLoanDebts` equals `datedLoanDebt` date by date on a real ledger (VOID, split children and later rows excluded); a null rate and a missing payment reported as missing, never 0 |
 | B4 | `rule-validation.structural.spec.ts`, `rule-effects.structural.spec.ts` | the action's validation, defaults written on save, the two combination codes; refusals 1 to 10 in order; the lookup rounds; a later rule sees `hasSplits` |
-| B5 | `transaction-rules-applier.structure-write.spec.ts`, `rule-run-undo.spec.ts`, `transaction-rules-run.structure-commit.spec.ts`, `scheduled-transactions.service.spec.ts` | claim before split; a conflict skipped, not thrown; the cursor (advance, repeat over claimed slots, no move off the cursor, a moved cursor's slot claimed on its own date); trace, fingerprint, snapshot; undo, `RULE_RUN_UNDO_LATER_SETTLEMENT`, one rewind per schedule after two advances (X to Y to Z back to X), overrides restored; the run's locks taken before its one plan; `post()` writes `transaction_id` after its create, null for an investment post; after-commit reprice and dispatch |
-| B5 | PG integration (`loan-settlement.integration.spec.ts`) and two connections | 9.1 L1 and L9 end to end with the loan balance; a post and a settlement of one slot on two connections leave one claim; rollback leaves no claim and no leg; delete releases the claim; void keeps it |
+| B5 | `claim-loan-occurrence.spec.ts`, `schedule-cursor.spec.ts`, `transaction-rules-applier.settlement-write.spec.ts`, `rule-run-fingerprint.spec.ts`, `rule-run-snapshot.spec.ts`, `rule-run-undo.spec.ts`, `transaction-rules-run.structure-commit.spec.ts`, `scheduled-transactions.service.spec.ts` | the claim after the split with the written id and the rule id; the write-time conflict thrown as the backstop and unreachable when the planner saw the claim; the cursor (advance, repeat over claimed slots, no move off the cursor, a cadence that does not step deactivates); trace, fingerprint, snapshot; undo, `RULE_RUN_UNDO_LATER_SETTLEMENT`, two advances rewound in reverse order (X to Y to Z back to X), overrides restored; the facts read under the locks on the write paths; `post()` writes `transaction_id` after its create, null for an investment post; after-commit reprice and dispatch |
+| B5 | PG integration (`loan-settlement-claim.integration.spec.ts`) and two connections | 9.2 A1 end to end with the loan balance, the claim and the cursor; a planted failure after the claim rolls all of it back; a second row for the slot refused with nothing written; delete releases the claim, void keeps it; a bill post and a settlement of one slot on two connections leave one claim; the template repriced after the commit |
 | B6 | `transaction-rules-run.*.spec.ts`, import processor specs, bank sync specs | ascending order when a rule settles; 9.4 through preview and commit with equal fingerprints; `priorSettlements` never double-counts a written row; the import sort (stable within a date) on every import path; bank sync dispatches the loan account |
 | F1 | `RuleEditor.structural-actions.test.tsx`, `RuleRunPreviewTable.test.tsx`, a skip-reason contract test | the action card; the preview shows `debtBefore`, the lines and the extra per row; every reason and `missing` code worded |
 | B7 | `loan-mortgage-account.service.spec.ts`, `loan-payment-setup.service.spec.ts` | the rule created with section 3 decision 5's conditions and triggers, appended; `payment_matching_rule_id` set; `auto_post` off; `original_principal` stored separately; the settled-installments endpoint reads the claims |
