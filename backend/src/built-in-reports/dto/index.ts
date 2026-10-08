@@ -22,3 +22,4 @@ export * from "./monthly-comparison.dto";
 export * from "./monthly-comparison-query.dto";
 export * from "./monthly-category-breakdown.dto";
 export * from "./cash-flow-sankey.dto";
+export * from "./monthly-category-breakdown-query.dto";
