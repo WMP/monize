@@ -257,6 +257,7 @@ export class ImportService {
     }
 
     const affectedAccountIds = new Set<string>();
+    const settledScheduleIds = new Set<string>();
     const importStartTime = new Date();
     let hasInvestment = false;
 
@@ -442,6 +443,7 @@ export class ImportService {
             importStartTime,
             dateCounters: new Map(),
             affectedAccountIds,
+            settledScheduleIds,
             importResult,
             transferDupCounts: new Map(),
             importRules,
@@ -520,7 +522,12 @@ export class ImportService {
     }
 
     // Post-import processing
-    await this.postImportProcessing(userId, hasInvestment, affectedAccountIds);
+    await this.postImportProcessing(
+      userId,
+      hasInvestment,
+      affectedAccountIds,
+      settledScheduleIds,
+    );
 
     // Detect loan/mortgage accounts needing payment setup
     importResult.loanAccountsNeedingSetup =
@@ -1277,6 +1284,7 @@ export class ImportService {
 
     const affectedAccountIds = new Set<string>();
     affectedAccountIds.add(accountId);
+    const settledScheduleIds = new Set<string>();
     const importStartTime = new Date();
 
     const importResult: ImportResultDto = {
@@ -1317,6 +1325,7 @@ export class ImportService {
           importStartTime,
           dateCounters: new Map<string, number>(),
           affectedAccountIds,
+          settledScheduleIds,
           importResult,
           transferDupCounts: new Map<string, number>(),
           // The user's import-trigger rules, once for the whole file (design
@@ -1425,7 +1434,12 @@ export class ImportService {
     }
 
     // Post-import processing
-    await this.postImportProcessing(userId, isInvestment, affectedAccountIds);
+    await this.postImportProcessing(
+      userId,
+      isInvestment,
+      affectedAccountIds,
+      settledScheduleIds,
+    );
 
     // Detect loan/mortgage accounts needing payment setup
     importResult.loanAccountsNeedingSetup =
@@ -1800,8 +1814,14 @@ export class ImportService {
     userId: string,
     isInvestment: boolean,
     affectedAccountIds: Set<string>,
+    settledScheduleIds: ReadonlySet<string>,
   ): Promise<void> {
-    await this.postProcessing.run(userId, isInvestment, affectedAccountIds);
+    await this.postProcessing.run(
+      userId,
+      isInvestment,
+      affectedAccountIds,
+      settledScheduleIds,
+    );
   }
 
   /**

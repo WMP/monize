@@ -73,6 +73,7 @@ describe("ImportRegularProcessorService import rules", () => {
     importStartTime: new Date(),
     dateCounters: new Map(),
     affectedAccountIds: new Set(),
+    settledScheduleIds: new Set(),
     importResult: {
       imported: 0,
       skipped: 0,
@@ -100,6 +101,7 @@ describe("ImportRegularProcessorService import rules", () => {
       transactionId: "saved-tx",
       effects: effectsWith(changes),
       affectedAccountIds: [],
+      settledScheduleIds: [],
     },
   ];
 
@@ -234,10 +236,25 @@ describe("ImportRegularProcessorService import rules", () => {
         transactionId: "saved-tx",
         effects: effectsWith({}),
         affectedAccountIds: ["loan-account"],
+        settledScheduleIds: [],
       },
     ]);
     await service.processTransaction(ctx, { date: "2025-01-15", amount: -1 });
     expect(ctx.affectedAccountIds.has("loan-account")).toBe(true);
+  });
+
+  it("adds the schedules a settlement claimed on to the import's settled schedules, for the post-commit reprice", async () => {
+    const ctx = makeContext();
+    applier.applyToNew.mockResolvedValueOnce([
+      {
+        transactionId: "saved-tx",
+        effects: effectsWith({}),
+        affectedAccountIds: ["loan-account"],
+        settledScheduleIds: ["st-loan"],
+      },
+    ]);
+    await service.processTransaction(ctx, { date: "2025-01-15", amount: -1 });
+    expect(ctx.settledScheduleIds).toEqual(new Set(["st-loan"]));
   });
 
   it("leaves the counter absent when no rule changed a row", async () => {

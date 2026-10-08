@@ -13,6 +13,11 @@ export interface ApplyImportRulesResult {
    * file wrote to.
    */
   readonly affectedAccountIds: ReadonlySet<string>;
+  /**
+   * Scheduled payments a `settle_loan_installment` claimed an occurrence of;
+   * the import's post-processing reprices each template after the commit.
+   */
+  readonly settledScheduleIds: ReadonlySet<string>;
 }
 
 export interface ApplyImportRulesInput {
@@ -58,10 +63,12 @@ export async function applyImportRules(
   input: ApplyImportRulesInput,
 ): Promise<ApplyImportRulesResult> {
   const affectedAccountIds = new Set<string>();
+  const settledScheduleIds = new Set<string>();
+  const nothing = { changed: 0, affectedAccountIds, settledScheduleIds };
   const ids = eligibleImportRuleIds(input);
-  if (ids.length === 0) return { changed: 0, affectedAccountIds };
+  if (ids.length === 0) return nothing;
   const rules = await applier.loadRulesFor(manager, userId, "import");
-  if (rules.length === 0) return { changed: 0, affectedAccountIds };
+  if (rules.length === 0) return nothing;
 
   const payeeTextById = new Map<string, string | null>();
   for (const transaction of input.transactions) {
@@ -86,7 +93,10 @@ export async function applyImportRules(
       for (const accountId of row.affectedAccountIds) {
         affectedAccountIds.add(accountId);
       }
+      for (const scheduleId of row.settledScheduleIds) {
+        settledScheduleIds.add(scheduleId);
+      }
     }
   }
-  return { changed, affectedAccountIds };
+  return { changed, affectedAccountIds, settledScheduleIds };
 }

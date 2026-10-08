@@ -739,6 +739,7 @@ describe("MnyImportService", () => {
         "user-1",
         false,
         new Set(["account-1"]),
+        new Set(),
       );
     });
 
@@ -1022,6 +1023,7 @@ describe("MnyImportService", () => {
           transactionId: "tx-1",
           effects: { trace: [] },
           affectedAccountIds: ["loan-account"],
+          settledScheduleIds: [],
         },
       ]);
       mockedWriteTransactions.mockResolvedValue({
@@ -1165,6 +1167,7 @@ describe("MnyImportService", () => {
         "user-1",
         true,
         expect.any(Set),
+        new Set(),
       );
     });
 

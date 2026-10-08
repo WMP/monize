@@ -133,11 +133,13 @@ describe("apply-import-rules", () => {
             trace: [{ ruleId: "r", matched: true, changes: { x: 1 } }],
           },
           affectedAccountIds: [],
+          settledScheduleIds: [],
         },
         {
           transactionId: "b",
           effects: { trace: [{ ruleId: "r", matched: true, changes: {} }] },
           affectedAccountIds: [],
+          settledScheduleIds: [],
         },
       ]);
       expect((await run([tx("a"), tx("b")])).changed).toBe(1);
@@ -149,21 +151,46 @@ describe("apply-import-rules", () => {
           transactionId: "a",
           effects: { trace: [] },
           affectedAccountIds: ["loan", "other"],
+          settledScheduleIds: [],
         },
         {
           transactionId: "b",
           effects: { trace: [] },
           affectedAccountIds: ["loan"],
+          settledScheduleIds: [],
         },
       ]);
       const result = await run([tx("a"), tx("b")]);
       expect([...result.affectedAccountIds].sort()).toEqual(["loan", "other"]);
     });
 
+    it("returns the schedules a settlement claimed on, once each, across batches", async () => {
+      applier.applyToNew.mockResolvedValue([
+        {
+          transactionId: "a",
+          effects: { trace: [] },
+          affectedAccountIds: ["loan"],
+          settledScheduleIds: ["st-loan"],
+        },
+        {
+          transactionId: "b",
+          effects: { trace: [] },
+          affectedAccountIds: [],
+          settledScheduleIds: ["st-loan"],
+        },
+      ]);
+      const result = await run([tx("a"), tx("b")]);
+      expect([...result.settledScheduleIds]).toEqual(["st-loan"]);
+    });
+
     it("returns no accounts when no rule applies", async () => {
       applier.loadRulesFor.mockResolvedValue([]);
       const result = await run([tx("a")]);
-      expect(result).toEqual({ changed: 0, affectedAccountIds: new Set() });
+      expect(result).toEqual({
+        changed: 0,
+        affectedAccountIds: new Set(),
+        settledScheduleIds: new Set(),
+      });
     });
   });
 });
