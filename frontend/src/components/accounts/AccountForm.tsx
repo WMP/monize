@@ -819,6 +819,16 @@ export function AccountForm({
     loadData();
   }, [isLoanAccount, isMortgageAccount, isLineOfCreditAccount, isAssetAccount, account, setValue, getValues]);
 
+  // The payment-source select is uncontrolled and mounts before its options
+  // load, so the browser drops the saved account and shows the placeholder.
+  // Re-apply the form value once the options have rendered.
+  useEffect(() => {
+    const sourceAccountId = getValues('sourceAccountId');
+    if (accounts.length > 0 && sourceAccountId) {
+      setValue('sourceAccountId', sourceAccountId);
+    }
+  }, [accounts, getValues, setValue]);
+
   const toggleFavourite = () => {
     setValue('isFavourite', !watchedIsFavourite, { shouldDirty: true });
   };

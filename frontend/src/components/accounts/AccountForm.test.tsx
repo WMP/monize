@@ -865,6 +865,33 @@ describe('AccountForm', () => {
     expect(screen.queryByText('First Payment Date (required)')).not.toBeInTheDocument();
   });
 
+  it('shows the saved payment source account when editing a mortgage', async () => {
+    // The source-account options load after the uncontrolled select mounts,
+    // so the browser would otherwise fall back to the placeholder.
+    vi.mocked(accountsApi.getAll).mockResolvedValueOnce([
+      createExistingAccount({ id: 'chq-1', name: 'Chequing' }),
+      createExistingAccount({ id: 'chq-2', name: 'Savings' }),
+    ]);
+    const mortgageAccount = createExistingAccount({
+      id: 'mortgage-1',
+      accountType: 'MORTGAGE',
+      interestRate: 3.5,
+      amortizationMonths: 300,
+      sourceAccountId: 'chq-2',
+    });
+
+    await act(async () => {
+      render(
+        <AccountForm account={mortgageAccount} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
+      );
+    });
+
+    const select = screen.getByLabelText(/^Payment From Account/) as HTMLSelectElement;
+    await waitFor(() => {
+      expect(select.value).toBe('chq-2');
+    });
+  });
+
   describe('mortgage type', () => {
     const submitEdit = async (account: Account) => {
       render(<AccountForm account={account} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
