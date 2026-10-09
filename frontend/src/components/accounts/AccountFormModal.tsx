@@ -175,6 +175,14 @@ export function AccountFormModal({
       } else {
         created = await accountsApi.create(accountData);
         toast.success(t('toast.createSuccess'));
+        // The account and its schedule are saved either way (decision 5 of
+        // docs/specs/loan-installment-settlement.md): a "Payment matching"
+        // rule the server could not build is reported here, never thrown, so
+        // the create-succeeded toast above still fires and this is a second,
+        // separate warning rather than a replacement for it.
+        if (created.paymentMatchingError) {
+          toast.error(created.paymentMatchingError.message);
+        }
       }
       close();
       onSaved();

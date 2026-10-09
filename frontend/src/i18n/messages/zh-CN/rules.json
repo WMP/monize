@@ -251,7 +251,34 @@
       "splitGuideTip": "提示：在“生效期间”中设置开始日期，以免改动较早已对账的交易，并在保存前使用测试面板。",
       "convertGuide": "支出会变成转到所选账户的转账，收入会变成从该账户转入的转账。只有另一个账户的余额会变化。提示：使用“生效期间”，以免改动较早的交易。",
       "splitGuideName1": "benjin",
-      "splitGuideName2": "lixi"
+      "splitGuideName2": "lixi",
+      "loanGuide": "适用于以单笔金额偿还抵押贷款或贷款分期还款的银行扣款。在\"如果\"中，按账户、收款人文本或描述匹配该笔扣款。该交易会变为拆分交易：本金转入贷款账户，利息计入利息分类，两者都按所偿还的那一期计算。提示：关闭该贷款计划付款的自动过账，以免该期被重复偿还，并在保存前使用测试面板。",
+      "loan": {
+        "help": "匹配到的扣款会偿还该贷款的下一期，其到期日与扣款日期相近。Monize 会为该期计算本金和利息；你无需输入金额。",
+        "account": "贷款账户",
+        "accountPlaceholder": "选择一笔抵押贷款或贷款…",
+        "noLoans": "你没有可结算的未结清抵押贷款或贷款账户。",
+        "window": "到期日窗口",
+        "windowHelp": "银行可能在到期日前后多久扣款。在某一期到期日前后这么多天内的扣款将偿还该期；窗口之外的扣款保持不变。",
+        "daysBefore": "到期日前的天数",
+        "daysAfter": "到期日后的天数",
+        "excess": "当扣款金额超过该期还款额时",
+        "excessPolicies": {
+          "extra_principal": "将差额作为额外本金偿还",
+          "refuse": "保持该交易不变"
+        },
+        "shortfall": "当扣款金额低于该期还款额时",
+        "shortfallPolicies": {
+          "refuse": "保持该交易不变",
+          "interest_first": "先偿还利息，其余作为本金"
+        },
+        "policyNote": "几分钱的差额由利息部分吸收。",
+        "policyHelp": "银行会分别对每部分四舍五入，因此扣款与应还金额相差不超过货币最小单位的 5 倍（大多数货币为 0.05）时视为精确匹配，差额计入利息部分。更大的差额按上面两种选择之一处理。",
+        "interestCategory": "利息分类（可选）",
+        "interestCategoryPlaceholder": "该贷款自己的利息分类",
+        "autoPostTitle": "该贷款的计划付款会自动过账",
+        "autoPostBody": "该贷款的计划付款已开启自动过账，这样它和此规则结算的银行扣款会同时偿还同一期。请关闭该计划付款的自动过账。"
+      }
     },
     "actionTypes": {
       "add_tags": "添加标签",
@@ -262,7 +289,8 @@
       "set_payee_from_text": "根据文本设置收款方",
       "set_description": "设置说明",
       "convert_to_transfer": "转为转账",
-      "split": "拆分交易"
+      "split": "拆分交易",
+      "settle_loan_installment": "结算一期贷款还款"
     },
     "save": {
       "button": "保存规则",
@@ -311,8 +339,8 @@
         "MAX_NODES": "条件和条件组过多。上限为 {maxNodes} 个。",
         "NO_ACTIONS": "请至少添加一个操作。",
         "TOO_MANY_ACTIONS": "操作过多。上限为 {maxActions} 个。",
-        "DUPLICATE_ACTION": "一条规则只能有一个 AI 审核、一个转账或拆分,以及一个取剩余部分的拆分部分。",
-        "CONFLICTING_ACTIONS": "转账或拆分操作不能与“设置分类”组合，且其每个部分要么有分类，要么有账户。",
+        "DUPLICATE_ACTION": "一条规则只能有一个 AI 审核、一个转账、拆分或贷款结算，以及一个取剩余部分的拆分部分。",
+        "CONFLICTING_ACTIONS": "转账、拆分或贷款结算操作不能与\"设置分类\"组合，且其每个部分要么有分类，要么有账户。",
         "INVALID_CAPTURE": "捕获名称由小写字母和数字组成，以字母开头，最长 20 个字符。",
         "TOO_MANY_CAPTURES": "一个模式最多可包含 5 个捕获。",
         "DUPLICATE_CAPTURE": "每个捕获名称在一条规则中只能使用一次。",
@@ -395,6 +423,7 @@
     "matchesNone": "此规则与已检查的所有交易都不匹配（{scanned} 笔）。保存前请检查条件。不含 * 的模式只匹配整段文本。",
     "noChange": "在检查的 {scanned} 笔交易中，有 {matched} 笔符合规则条件，但不会有任何更改（例如它们已有该值且开启了“仅在为空时”）。这不是错误。",
     "truncated": "匹配的交易多于上限允许的数量。仅包含最新的交易。请提高上限或缩小日期范围以包含其余交易。",
+    "truncatedOldest": "匹配的交易超过了限制数量。由于此规则按日期顺序结算贷款还款，因此仅包含最早的部分。请在此次运行之后再次运行，以包含剩余部分。",
     "noMatches": {
       "title": "没有交易会被更改",
       "body": "已检查的交易都不符合该规则，或者规则不会更改它们。"
@@ -408,7 +437,8 @@
     },
     "skipped": {
       "title": "{count, plural, other {# 笔交易}}保持不变",
-      "line": "{count, plural, other {# 笔交易}}：{reason}"
+      "line": "{count, plural, other {# 笔交易}}：{reason}",
+      "missing": "贷款缺少：{inputs}。"
     },
     "skipReasons": {
       "reconciled_locked": "已对账并被锁定",
@@ -428,7 +458,17 @@
       "transfer_currency_mismatch": "转账账户使用的币种不同",
       "split_amount_unparseable": "其文本中的金额无法读取为数字",
       "split_sum_mismatch": "各部分之和与其金额不符",
-      "split_too_few_parts": "去掉零金额后剩余部分不足两个"
+      "split_too_few_parts": "去掉零金额后剩余部分不足两个",
+      "row_from_scheduled_posting": "它是由该贷款的计划付款过账的，该付款已偿还这一期",
+      "row_is_income": "它是一笔收入，而只有扣款才能偿还一期",
+      "loan_account_unavailable": "贷款账户不可用（已删除、已关闭、不属于你，或不是抵押贷款或贷款）",
+      "loan_interest_booked_separately": "该贷款将利息记为单独的交易，因此一次付款无法包含它",
+      "loan_not_configured": "该贷款缺少计算一期还款所需的信息",
+      "no_installment_in_window": "该贷款没有任何一期在其日期附近的窗口内到期",
+      "occurrence_already_posted": "窗口内到期的这一期已经偿还",
+      "loan_debt_retired": "该贷款已经还清",
+      "installment_amount_excess": "它超过该期还款额，规则会使较大的扣款保持不变",
+      "installment_amount_shortfall": "它低于该期还款额，规则会使较小的扣款保持不变"
     },
     "change": {
       "category": "分类：{before} → {after}",
@@ -448,7 +488,8 @@
       "splitToTransfer": "转入 {account}",
       "splitToTransferPayee": "转入 {account},收款方 {payee}",
       "splitToCategory": "归为 {category}",
-      "splitUncategorised": "无分类"
+      "splitUncategorised": "无分类",
+      "loanSettlement": "{done, select, yes {已结算} other {结算}} {account} 的第 {number} 期，到期日 {dueDate}：本金 {principal}，利息 {interest}{hasExtra, select, yes {，额外本金 {extra}} other {}}。结算前欠款：{debtBefore}"
     },
     "filters": {
       "accounts": "账户",
@@ -475,6 +516,19 @@
     "done": {
       "summary": "{count, plural, =0 {没有交易被更改。} other {已更改 # 笔交易。}}",
       "undo": "你可以在操作历史中撤销此次运行。"
+    },
+    "missingInputs": {
+      "scheduledPayment": "一笔计划付款",
+      "managedTemplate": "一笔拆分为本金和利息的付款",
+      "scheduleCalendar": "一份还款计划",
+      "interestCategory": "一个利息分类",
+      "amortizationMonths": "摊销期",
+      "paymentStartDate": "首次还款日期",
+      "paymentFrequency": "还款频率",
+      "originalPrincipal": "原始本金",
+      "rate": "该日期的利率",
+      "payment": "还款金额",
+      "other": "一项贷款设置"
     }
   },
   "applications": {
@@ -531,7 +585,8 @@
       "set_payee_from_text": "根据文本设置收款方：“{template}”{createIfMissing, select, yes {（不存在则创建）} other {}}{onlyIfEmpty, select, yes {（仅在为空时）} other {}}",
       "set_description": "设置说明（{mode, select, append {追加} prepend {前置} other {替换}}）：“{template}”{onlyIfEmpty, select, yes {（仅在为空时）} other {}}",
       "convert_to_transfer": "转为{direction, select, from {来自} other {转至}} {account} 的转账",
-      "split": "拆分为：{parts}"
+      "split": "拆分为：{parts}",
+      "settle_loan_installment": "按到期日前最多 {before, plural, other {# 天}}或到期日后最多 {after, plural, other {# 天}}内的扣款结算 {account} 的这一期；较大的扣款{excess, select, refuse {保持不变} other {偿还额外本金}}，较小的扣款{shortfall, select, interest_first {先偿还利息} other {保持不变}}"
     },
     "splitPart": {
       "transfer": "{amount} 转入 {account}",

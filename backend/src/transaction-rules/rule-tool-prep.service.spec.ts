@@ -62,8 +62,10 @@ function runPreview(rows = 2): RuleRunPreview {
     })),
     skipped: [{ transactionId: "t-x", reason: "reconciled_locked" }],
     scanned: 40,
+    scanOrder: "newest_first",
     conditionMatchedCount: rows + 1,
     truncated: false,
+    scannedThrough: null,
     fingerprint: "f".repeat(64),
     labels: {
       accounts: {},
@@ -214,6 +216,69 @@ describe("TransactionRuleToolPrepService", () => {
           type: "convert_to_transfer",
           toAccountId: ACCOUNT_ID,
           clearCategory: true,
+        },
+      ]);
+    });
+
+    it("resolves settle_loan_installment's loan account and interest category names", async () => {
+      const { service, runService } = build();
+      const condition = {
+        all: [{ field: "payeeText", op: "contains", value: "ING" }],
+      };
+      const prep = await service.prepareCreate(USER_ID, {
+        name: "Mortgage",
+        condition,
+        actions: [
+          {
+            type: "settle_loan_installment",
+            loanAccountName: "Checking",
+            dueDateWindow: { daysBefore: 3, daysAfter: 7 },
+            excess: "extra_principal",
+            shortfall: "refuse",
+            interestCategoryName: "Bills: Streaming",
+          },
+        ],
+      });
+      expect(prep.ok).toBe(true);
+      if (!prep.ok) return;
+      expect(prep.preview.rule.actions).toEqual([
+        {
+          type: "settle_loan_installment",
+          loanAccountId: ACCOUNT_ID,
+          dueDateWindow: { daysBefore: 3, daysAfter: 7 },
+          excess: "extra_principal",
+          shortfall: "refuse",
+          interestCategoryId: CATEGORY_ID,
+        },
+      ]);
+      expect(runService.previewDraft).toHaveBeenCalled();
+    });
+
+    it("refuses an unknown loan account name for settle_loan_installment", async () => {
+      const { service } = build();
+      const prep = await service.prepareCreate(USER_ID, {
+        name: "Mortgage",
+        condition: {
+          all: [{ field: "payeeText", op: "contains", value: "ING" }],
+        },
+        actions: [
+          {
+            type: "settle_loan_installment",
+            loanAccountName: "Nowhere",
+            dueDateWindow: { daysBefore: 3, daysAfter: 7 },
+            excess: "extra_principal",
+            shortfall: "refuse",
+          },
+        ],
+      });
+      expect(prep.ok).toBe(false);
+      if (prep.ok) return;
+      expect(prep.errors).toEqual([
+        {
+          path: "actions[0].loanAccountName",
+          code: "NAME_NOT_FOUND",
+          name: "Nowhere",
+          kind: "accounts",
         },
       ]);
     });
@@ -1158,6 +1223,17 @@ describe("TransactionRuleToolPrepService", () => {
       aiReviewRequests: 0,
       labels: { accounts: {}, payees: {}, categories: {}, tags: {}, rules: {} },
     };
+
+    it("names the oldest rows when the test scanned oldest first (a rule that settles loan installments)", () => {
+      const { service } = build();
+      const llm = service.toLlmTest(
+        { ...empty, scanOrder: "oldest_first" },
+        empty.labels as never,
+      );
+      expect(llm.message).toContain(
+        "This rule matches none of the 40 oldest transactions.",
+      );
+    });
 
     it("states it plainly for the model, with the advice to re-check", () => {
       const { service } = build();

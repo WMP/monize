@@ -22,6 +22,7 @@ import {
 } from "./loan-amortization.util";
 import {
   calculateMortgageAmortization,
+  getMortgagePeriodsPerYear,
   getPeriodicRate,
   MORTGAGE_FREQUENCY_TO_RECURRENCE,
   MortgagePaymentFrequency,
@@ -77,6 +78,20 @@ import {
   DetectMortgageTypeDto,
   MortgageTypeHistoryDetectionResponseDto,
 } from "./dto/detect-mortgage-type.dto";
+import {
+  PaymentMatchingDto,
+  PaymentMatchingFailureDto,
+} from "./dto/payment-matching.dto";
+import { LoanPaymentMatchingService } from "./loan-payment-matching.service";
+
+/**
+ * A loan or mortgage just created, with the outcome of the "Payment matching"
+ * rule its request asked for: `paymentMatchingRuleId` set, or
+ * `paymentMatchingError` saying why there is none (the account stays).
+ */
+export type CreatedLoanAccount = Account & {
+  paymentMatchingError?: PaymentMatchingFailureDto | null;
+};
 
 /**
  * The installments a history detection reads: the latest three consecutive
@@ -97,7 +112,30 @@ export class LoanMortgageAccountService {
     @Inject(forwardRef(() => LoanRateChangesService))
     private loanRateChangesService: LoanRateChangesService,
     private loanPaymentDetectorService: LoanPaymentDetectorService,
+    private loanPaymentMatchingService: LoanPaymentMatchingService,
   ) {}
+
+  /**
+   * The "Payment matching" rule of a loan this service just saved with its
+   * schedule. The account and the schedule are already committed (spec
+   * section 15 item 6), so a refusal is reported on the returned account,
+   * never thrown.
+   */
+  private async withPaymentMatching(
+    userId: string,
+    savedAccount: Account,
+    paymentMatching: PaymentMatchingDto | undefined,
+  ): Promise<CreatedLoanAccount> {
+    if (!paymentMatching) return savedAccount;
+    const outcome =
+      await this.loanPaymentMatchingService.createMatchingRuleReported(
+        userId,
+        savedAccount.id,
+        paymentMatching,
+      );
+    savedAccount.paymentMatchingRuleId = outcome.ruleId;
+    return Object.assign(savedAccount, { paymentMatchingError: outcome.error });
+  }
 
   /**
    * Resolve a display name for the lender/institution backing a loan or
@@ -130,9 +168,10 @@ export class LoanMortgageAccountService {
   async createLoanAccount(
     userId: string,
     createAccountDto: CreateAccountDto,
-  ): Promise<Account> {
+  ): Promise<CreatedLoanAccount> {
     const {
       openingBalance = 0,
+      paymentMatching,
       paymentAmount,
       paymentFrequency,
       paymentStartDate,
@@ -178,6 +217,13 @@ export class LoanMortgageAccountService {
           "errors.accounts.loanRequiresInstitution",
           "Loan accounts require an institution name",
         ),
+      );
+    }
+    // Refused before anything is written, as the rule create would refuse it.
+    if (paymentMatching) {
+      this.loanPaymentMatchingService.assertDefinable(
+        sourceAccountId,
+        paymentMatching,
       );
     }
 
@@ -272,15 +318,17 @@ export class LoanMortgageAccountService {
       m.getRepository(Account).save(savedAccount),
     );
 
-    return savedAccount;
+    return this.withPaymentMatching(userId, savedAccount, paymentMatching);
   }
 
   async createMortgageAccount(
     userId: string,
     createAccountDto: CreateAccountDto,
-  ): Promise<Account> {
+  ): Promise<CreatedLoanAccount> {
     const {
       openingBalance = 0,
+      originalPrincipal,
+      paymentMatching,
       mortgagePaymentFrequency,
       paymentStartDate,
       sourceAccountId,
@@ -330,6 +378,13 @@ export class LoanMortgageAccountService {
         ),
       );
     }
+    // Refused before anything is written, as the rule create would refuse it.
+    if (paymentMatching) {
+      this.loanPaymentMatchingService.assertDefinable(
+        sourceAccountId,
+        paymentMatching,
+      );
+    }
 
     let interestCatId = interestCategoryId;
 
@@ -367,6 +422,47 @@ export class LoanMortgageAccountService {
     const storedPaymentAmount = storesConstantPayment(mortgageType)
       ? amortization.paymentAmount
       : null;
+    // The amount originally borrowed, apart from the debt this ledger opens
+    // at (spec section 14.3); the opening debt when the request names none.
+    const storedOriginalPrincipal = originalPrincipal ?? mortgageAmount;
+    // A LINEAR or INTEREST_ONLY first installment is table 4.3's at payment 1
+    // on the opening debt, the price `nonAnnuityInstallment` gives every later
+    // one: a LINEAR constant principal is the amount originally borrowed over
+    // the payment count, which the preview's closed form cannot see when the
+    // ledger starts after the loan did. `calculateMortgageAmortization` above
+    // refused every term that leaves it unpriced, so null means an annuity.
+    const methodInstallment = storesConstantPayment(mortgageType)
+      ? null
+      : nonAnnuityInstallment(
+          mortgageType,
+          {
+            prepaymentMode: prepaymentModeColumn(mortgageType, prepaymentMode),
+            originalPrincipal: storedOriginalPrincipal,
+            openingBalance: -mortgageAmount,
+            amortizationMonths,
+            paymentStartDate,
+            paymentFrequency: mortgagePaymentFrequency,
+          },
+          paymentStartDate,
+          mortgageAmount,
+          getPeriodicRate(
+            interestRate,
+            getMortgagePeriodsPerYear(mortgagePaymentFrequency),
+            mortgageType,
+          ),
+        );
+    const firstInstallment = methodInstallment
+      ? {
+          ...methodInstallment,
+          total: roundMoney(
+            methodInstallment.principal + methodInstallment.interest,
+          ),
+        }
+      : {
+          principal: amortization.principalPayment,
+          interest: amortization.interestPayment,
+          total: amortization.paymentAmount,
+        };
 
     const termEndDate = termMonths
       ? mortgageTermEndDate(new Date(paymentStartDate), termMonths)
@@ -394,7 +490,7 @@ export class LoanMortgageAccountService {
         termMonths: termMonths || null,
         termEndDate,
         amortizationMonths,
-        originalPrincipal: mortgageAmount,
+        originalPrincipal: storedOriginalPrincipal,
       });
       return repo.save(account);
     });
@@ -423,7 +519,7 @@ export class LoanMortgageAccountService {
         accountId: sourceAccountId,
         name: `Mortgage Payment - ${savedAccount.name}`,
         payeeName: institutionName,
-        amount: -amortization.paymentAmount,
+        amount: -firstInstallment.total,
         currencyCode: accountData.currencyCode,
         frequency: FrequencyTypeDto[scheduledFrequency],
         nextDueDate: paymentStartDate,
@@ -434,12 +530,12 @@ export class LoanMortgageAccountService {
         splits: [
           {
             transferAccountId: savedAccount.id,
-            amount: -amortization.principalPayment,
+            amount: -firstInstallment.principal,
             memo: "Principal",
           },
           {
             categoryId: interestCatId || undefined,
-            amount: -amortization.interestPayment,
+            amount: -firstInstallment.interest,
             memo: "Interest",
           },
         ],
@@ -451,7 +547,7 @@ export class LoanMortgageAccountService {
       m.getRepository(Account).save(savedAccount),
     );
 
-    return savedAccount;
+    return this.withPaymentMatching(userId, savedAccount, paymentMatching);
   }
 
   previewMortgageAmortization(

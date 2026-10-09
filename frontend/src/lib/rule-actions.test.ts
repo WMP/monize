@@ -19,9 +19,10 @@ import {
   moveAction,
   removeAction,
   updateAction,
+  isStructuralActionType,
   type EditorAction,
 } from './rule-actions';
-import { MAX_RULE_ACTIONS, RULE_ACTION_TYPES } from './rule-fields';
+import { ACCEPTED_RULE_ACTION_TYPES, MAX_RULE_ACTIONS } from './rule-fields';
 
 const many = (n: number): EditorAction[] => Array.from({ length: n }, () => createAction('add_tags'));
 
@@ -103,10 +104,10 @@ describe('list edits', () => {
 
 describe('the action types the editor offers', () => {
   it('are all the types the server accepts, each once', () => {
-    expect([...EDITOR_ACTION_TYPES].sort()).toEqual([...RULE_ACTION_TYPES].sort());
+    expect([...EDITOR_ACTION_TYPES].sort()).toEqual([...ACCEPTED_RULE_ACTION_TYPES].sort());
   });
 
-  it('lists the text actions after set_payee, the two structural ones, and the review last', () => {
+  it('lists the text actions after set_payee, the three structural ones, and the review last', () => {
     expect(availableActionTypes([createAction('add_tags')], 0)).toEqual([
       'add_tags',
       'remove_tags',
@@ -116,6 +117,7 @@ describe('the action types the editor offers', () => {
       'set_description',
       'convert_to_transfer',
       'split',
+      'settle_loan_installment',
       'request_ai_review',
     ]);
   });
@@ -142,12 +144,34 @@ describe('the structural actions', () => {
     expect(split.parts[0].uid).not.toBe(split.parts[1].uid);
   });
 
-  it('are offered once: a card that is not one sees neither while another holds one', () => {
+  it('are offered once: a card that is not one sees none while another holds one', () => {
     const list = [createAction('add_tags'), split];
     expect(availableActionTypes(list, 0)).not.toContain('split');
     expect(availableActionTypes(list, 0)).not.toContain('convert_to_transfer');
-    // The card that holds it keeps both, so it can be switched between them.
-    expect(availableActionTypes(list, 1)).toEqual(expect.arrayContaining(['split', 'convert_to_transfer']));
+    expect(availableActionTypes(list, 0)).not.toContain('settle_loan_installment');
+    // The card that holds it keeps all three, so it can be switched between them.
+    expect(availableActionTypes(list, 1)).toEqual(
+      expect.arrayContaining(['split', 'convert_to_transfer', 'settle_loan_installment']),
+    );
+  });
+
+  it('count a loan settlement as the structural action of the rule', () => {
+    const settle = createAction('settle_loan_installment');
+    expect(isStructuralActionType('settle_loan_installment')).toBe(true);
+    expect(availableActionTypes([createAction('add_tags'), settle], 0)).not.toContain('split');
+    expect(canDuplicateAction([settle], 0)).toBe(false);
+  });
+
+  it('start a loan settlement at the server defaults: 3 days before, 7 after, extra principal, refuse', () => {
+    expect(createAction('settle_loan_installment')).toMatchObject({
+      type: 'settle_loan_installment',
+      loanAccountId: '',
+      daysBefore: 3,
+      daysAfter: 7,
+      excess: 'extra_principal',
+      shortfall: 'refuse',
+      interestCategoryId: '',
+    });
   });
 
   it('stay offered next to set_category: the conflict is reported on the card, not hidden', () => {

@@ -82,7 +82,14 @@ const row = (over: Partial<Transaction> = {}): Transaction =>
     ...over,
   }) as Transaction;
 
-function harness(accounts: Array<{ id: string; currencyCode: string }>) {
+function harness(
+  accounts: Array<{
+    id: string;
+    currencyCode: string;
+    accountType?: string;
+    interestBookingMode?: string;
+  }>,
+) {
   const accountFind = jest.fn(
     async (opts: { where: { id: { value: string[] } } }) =>
       accounts.filter((a) => opts.where.id.value.includes(a.id)),
@@ -167,14 +174,52 @@ describe("loadRuleTargetAccounts", () => {
     expect(h.accountFind).not.toHaveBeenCalled();
   });
 
-  it("reads the owner's open accounts by id, with their currency", async () => {
-    const h = harness([{ id: LOAN, currencyCode: "PLN" }]);
+  it("names the loan of a settle_loan_installment, beside the other structural targets", () => {
+    expect(
+      structuralTargetIds([
+        {
+          actions: [
+            {
+              type: "settle_loan_installment",
+              loanAccountId: CLOSED,
+              dueDateWindow: { daysBefore: 3, daysAfter: 7 },
+              excess: "extra_principal",
+              shortfall: "refuse",
+              interestCategoryId: CAT,
+            },
+          ],
+        },
+        { actions: [CONVERT] },
+      ]),
+    ).toEqual([CLOSED, LOAN]);
+  });
+
+  it("reads the owner's open accounts by id, with their currency, type and interest booking mode", async () => {
+    const h = harness([
+      {
+        id: LOAN,
+        currencyCode: "PLN",
+        accountType: "MORTGAGE",
+        interestBookingMode: "AUTO",
+      },
+    ]);
     const map = await loadRuleTargetAccounts(h.m, USER, [
       { actions: [CONVERT] },
     ]);
-    expect(map.get(LOAN)).toEqual({ currencyCode: "PLN" });
+    // The type and the booking mode let a settlement refuse a target that
+    // is not a loan without reading the loan's facts.
+    expect(map.get(LOAN)).toEqual({
+      currencyCode: "PLN",
+      accountType: "MORTGAGE",
+      interestBookingMode: "AUTO",
+    });
     expect(h.accountFind).toHaveBeenCalledWith({
-      select: { id: true, currencyCode: true },
+      select: {
+        id: true,
+        currencyCode: true,
+        accountType: true,
+        interestBookingMode: true,
+      },
       where: { id: In([LOAN]), userId: USER, isClosed: false },
     });
   });

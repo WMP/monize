@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "{kind, select, mortgage {İçe aktarılan banka ödemelerini bu konut kredisiyle eşleştir} other {İçe aktarılan banka ödemelerini bu krediyle eşleştir}}",
+    "toggleHelp": "İçe aktarılan bir banka işlemi alıcı kalıbıyla eşleştiğinde Monize onu planlanan ödemeye mahsup eder ve ayrı bir fatura işlemi kaydetmek yerine anapara ve faize böler.",
+    "payeePattern": "Alacaklı deseni",
+    "payeePatternPlaceholder": "ör. *BANKAM*",
+    "descriptionPattern": "Açıklama deseni (isteğe bağlı)",
+    "descriptionPatternPlaceholder": "ör. *Kredi taksiti*",
+    "fromAccount": "{account} hesabındaki çekimlerle eşleştirildi."
+  },
   "nameSuffix": {
     "cash": "Nakit",
     "brokerage": "Aracılık"
@@ -165,8 +174,6 @@
     "statementDueDayPlaceholder": "ör. 15",
     "statementSettlementDayPlaceholder": "ör. 25",
     "fxFeeTitle": "Yabancı para dönüştürme ücreti (isteğe bağlı)",
-    "fxFeePercent": "Ücret yüzdesi",
-    "fxFeePercentPlaceholder": "örn. 2,5",
     "jointSharedWith": "{count, plural, other {# kişiyle}} paylaşılan ortak hesap",
     "jointManage": "Paylaşımı yönet",
     "cashSection": {
@@ -270,7 +277,11 @@
     "firstInstallmentHelp": "Bu konut kredisinin sabit bir ödemesi yok: her taksit bakiye, faiz oranı ve amortisman süresinden hesaplanır. Bu, ek anapara dahil {date} vadeli taksittir.",
     "firstInstallmentPending": "İlk taksiti hesaplamak için sonraki ödeme tarihini girin.",
     "firstInstallmentCalculating": "İlk taksit hesaplanıyor...",
-    "firstInstallmentFailed": "İlk taksit hesaplanamadı. Aşağıdaki değerleri kontrol edip tekrar deneyin."
+    "firstInstallmentFailed": "İlk taksit hesaplanamadı. Aşağıdaki değerleri kontrol edip tekrar deneyin.",
+    "paymentMatching": {
+      "autoPostDisabled": "Otomatik olarak kapatıldı: ödeme eşleştirme bu faturayı bankanın kendi çekimiyle kapatır, bu nedenle faturanın kendisi de ayrıca işlenmemelidir.",
+      "payeePatternRequired": "* joker karakteri içeren bir alacaklı deseni girin"
+    }
   },
   "mortgageFields": {
     "title": "İpotek Ayrıntıları",
@@ -407,6 +418,10 @@
         "cancel": "İptal",
         "use": "Hesabı Bu Türle Düzenle"
       }
+    },
+    "originalPrincipal": {
+      "label": "Orijinal Anapara",
+      "help": "Başlangıçta borç aldığınız tutar. Kaydedilen geçmişi kredinin başlangıcından sonra başlayan bir hesap için bu, borç alınan tutardır, açılış bakiyesi değildir — açılış bakiyesi geçmişinizin başındaki borçtur."
     }
   },
   "assetFields": {
@@ -436,7 +451,10 @@
     "paymentStartDateRequired": "İlk ödeme tarihi zorunludur",
     "paymentAccountRequired": "Ödeme hesabı zorunludur",
     "amortizationRequired": "Amortisman süresi zorunludur",
-    "acceleratedNeedsAnnuity": "Bu konut kredisi hızlandırılmış bir planla ödeniyor ve bu yalnızca anüiteli kredilerde bulunur. Doğrusal veya yalnızca faizli bir kredi normal bir ödeme sıklığı gerektirir, bu nedenle anüite türünü koruyun."
+    "acceleratedNeedsAnnuity": "Bu konut kredisi hızlandırılmış bir planla ödeniyor ve bu yalnızca anüiteli kredilerde bulunur. Doğrusal veya yalnızca faizli bir kredi normal bir ödeme sıklığı gerektirir, bu nedenle anüite türünü koruyun.",
+    "paymentMatchingPayeePatternRequired": "Bankanın çekimini tanımak için bir alacaklı deseni girin",
+    "paymentMatchingPayeePatternWildcard": "Alacaklı deseni bir * joker karakteri içermelidir",
+    "paymentMatchingDescriptionPatternWildcard": "Açıklama deseni bir * joker karakteri içermelidir"
   },
   "loanDetail": {
     "backToAccounts": "Hesaplara Dön",
@@ -633,6 +651,70 @@
       "seriesOriginal": "Orijinal Plan",
       "seriesActual": "Gerçek Bakiye",
       "unknown": "Bilinmiyor"
+    },
+    "paymentMatching": {
+      "title": "Ödeme eşleştirme",
+      "description": "Her taksit için bankanın kendi hesaptan çekimini tanır ve faturayı ayrıca kaydetmek yerine bunu kredinin ödeme planına anapara ve faiz olarak işler.",
+      "noSchedule": "Ödeme eşleştirme, bankanın çekimlerini kredinin zamanlanmış ödemesine karşı kapatır. Önce bu kredinin ödemelerini ayarlayın.",
+      "noRule": "Bu krediye bağlı bir ödeme eşleştirme kuralı yok.",
+      "createOne": "Oluştur",
+      "ruleLabel": "Kural:",
+      "ruleLoading": "Kural yükleniyor",
+      "ruleFailed": "Ödeme eşleştirme kuralı yüklenemedi.",
+      "scheduleLoading": "Zamanlanmış ödeme yükleniyor",
+      "scheduleFailed": "Kredinin zamanlanmış ödemesi yüklenemedi.",
+      "retry": "Tekrar dene",
+      "autoPost": {
+        "title": "Zamanlanmış ödeme hâlâ kendini kaydediyor",
+        "body": "Bu kredinin faturası için otomatik kayıt açık, bu nedenle kuralın bankanın çekiminden kapattığı bir taksit fatura tarafından da kaydedilir. Faturalar ve Mevduatlar bölümünde faturanın otomatik kaydını kapatın."
+      },
+      "preconditions": {
+        "openingBalance": "Kredinin açılış bakiyesi, işlenen geçmişin başındaki borç olmalıdır; her taksidin faizi bunun üzerinden hesaplanır.",
+        "originalPrincipal": "Başlangıç anaparası, açılış bakiyesi değil, başlangıçta borç alınan tutar olmalıdır.",
+        "scheduleStart": "Zamanlanmış ödemenin başladığı {date} tarihinden önceki çekimlerin eşleşecek bir taksidi yoktur."
+      },
+      "process": {
+        "button": "Geçmişi işle",
+        "scope": "Kuralı {account} hesabındaki çekimler üzerinde en eskiden başlayarak çalıştırır.",
+        "running": "Geçmiş işleniyor: şu ana kadar {count, plural, one {# taksit} other {# taksit}} kapatıldı.",
+        "done": "{count, plural, =0 {Hiçbir taksit kapatılmadı.} one {# taksit kapatıldı.} other {# taksit kapatıldı.}}",
+        "undo": "Çalıştırmanın her sayfası işlem geçmişinden geri alınabilir.",
+        "failed": "Geçmişin işlenmesi durdu",
+        "stuckTitle": "Geçmişin işlenmesine devam edilemedi",
+        "stuck": "{date} tarihli {limit, number} işlemden fazlası var, bu nedenle çalıştırma o günün ötesine geçemiyor. Kalanları daha dar bir filtreyle Araçlar > Kurallar bölümünden kapatın.",
+        "stuckUnknown": "Sunucu çalıştırmanın nereye kadar ulaştığını bildirmedi, bu nedenle devam edilemiyor. Sayfayı yeniden yükleyip tekrar deneyin."
+      },
+      "create": {
+        "title": "Ödeme eşleştirme kuralı oluştur",
+        "description": "Kural, kredinin zamanlanmış ödeme hesabından eşleşen çekimleri kapatır ve faturanın otomatik kaydı kapatılır.",
+        "descriptionWithAccount": "Kural, {account} hesabından eşleşen çekimleri kapatır ve faturanın otomatik kaydı kapatılır.",
+        "submit": "Kural oluştur",
+        "payeePatternRequired": "Bir * joker karakteri içeren bir alacaklı deseni girin",
+        "descriptionPatternWildcard": "Açıklama deseni bir * joker karakteri içermelidir",
+        "failed": "Ödeme eşleştirme kuralı oluşturulamadı.",
+        "done": "\"{name}\" kuralı oluşturuldu"
+      },
+      "settled": {
+        "title": "Kapatılan taksitler",
+        "colDueDate": "Vade tarihi",
+        "colTransaction": "İşlem",
+        "colPrincipal": "Anapara",
+        "colInterest": "Faiz",
+        "colExtra": "Ek anapara",
+        "colDebtBefore": "Önceki borç",
+        "openTransaction": "İşlemi aç",
+        "void": "Geçersiz",
+        "notRecorded": "Kaydedilmedi",
+        "empty": {
+          "title": "Henüz kapatılan taksit yok",
+          "body": "Taksitleri kapatmak için geçmişi işleyin veya bankanın çekimlerini içe aktarın."
+        },
+        "error": {
+          "title": "Kapatılan taksitler yüklenemedi",
+          "body": "Bu boş bir liste değil. Hangi taksitlerin kapatıldığını görmek için tekrar deneyin.",
+          "retry": "Tekrar dene"
+        }
+      }
     },
     "lineOfCredit": {
       "currentBalance": "Güncel Bakiye",

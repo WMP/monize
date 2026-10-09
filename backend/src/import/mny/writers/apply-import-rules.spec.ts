@@ -110,6 +110,21 @@ describe("apply-import-rules", () => {
       expect(applier.applyToNew).not.toHaveBeenCalled();
     });
 
+    it("hands the applier the rows oldest first, keeping the file's order within a date (INV-RULE-005)", async () => {
+      await run([
+        tx("march", { transactionDate: "2024-03-01" }),
+        tx("jan-first", { transactionDate: "2024-01-05" }),
+        tx("jan-second", { transactionDate: "2024-01-05" }),
+        tx("feb", { transactionDate: "2024-02-01" }),
+      ]);
+      expect(applier.applyToNew.mock.calls[0][2]).toEqual([
+        "jan-first",
+        "jan-second",
+        "feb",
+        "march",
+      ]);
+    });
+
     it("batches the rows, so facts are read per chunk and not per row", async () => {
       const rows = Array.from({ length: INSERT_CHUNK_SIZE + 1 }, (_, i) =>
         tx(`t-${i}`),
@@ -133,11 +148,13 @@ describe("apply-import-rules", () => {
             trace: [{ ruleId: "r", matched: true, changes: { x: 1 } }],
           },
           affectedAccountIds: [],
+          settledScheduleIds: [],
         },
         {
           transactionId: "b",
           effects: { trace: [{ ruleId: "r", matched: true, changes: {} }] },
           affectedAccountIds: [],
+          settledScheduleIds: [],
         },
       ]);
       expect((await run([tx("a"), tx("b")])).changed).toBe(1);
@@ -149,21 +166,46 @@ describe("apply-import-rules", () => {
           transactionId: "a",
           effects: { trace: [] },
           affectedAccountIds: ["loan", "other"],
+          settledScheduleIds: [],
         },
         {
           transactionId: "b",
           effects: { trace: [] },
           affectedAccountIds: ["loan"],
+          settledScheduleIds: [],
         },
       ]);
       const result = await run([tx("a"), tx("b")]);
       expect([...result.affectedAccountIds].sort()).toEqual(["loan", "other"]);
     });
 
+    it("returns the schedules a settlement claimed on, once each, across batches", async () => {
+      applier.applyToNew.mockResolvedValue([
+        {
+          transactionId: "a",
+          effects: { trace: [] },
+          affectedAccountIds: ["loan"],
+          settledScheduleIds: ["st-loan"],
+        },
+        {
+          transactionId: "b",
+          effects: { trace: [] },
+          affectedAccountIds: [],
+          settledScheduleIds: ["st-loan"],
+        },
+      ]);
+      const result = await run([tx("a"), tx("b")]);
+      expect([...result.settledScheduleIds]).toEqual(["st-loan"]);
+    });
+
     it("returns no accounts when no rule applies", async () => {
       applier.loadRulesFor.mockResolvedValue([]);
       const result = await run([tx("a")]);
-      expect(result).toEqual({ changed: 0, affectedAccountIds: new Set() });
+      expect(result).toEqual({
+        changed: 0,
+        affectedAccountIds: new Set(),
+        settledScheduleIds: new Set(),
+      });
     });
   });
 });

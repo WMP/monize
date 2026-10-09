@@ -84,13 +84,29 @@ describe("hints for the structural actions", () => {
     ).toContain("Only one part");
     expect(
       ruleErrorHint({ path: "actions[1]", code: "DUPLICATE_ACTION" }),
-    ).toContain("convert_to_transfer or split");
+    ).toContain("convert_to_transfer, split or settle_loan_installment");
     expect(
       ruleErrorHint({ path: "actions[0].toAccountId", code: "VALUE_REQUIRED" }),
     ).toContain("fromAccountName");
     expect(
+      ruleErrorHint(
+        { path: "actions[0].loanAccountId", code: "VALUE_REQUIRED" },
+        { actions: [{ type: "settle_loan_installment" }] },
+      ),
+    ).toContain("settle_loan_installment needs loanAccountName");
+    expect(
       ruleErrorHint({ path: "condition.value", code: "VALUE_REQUIRED" }),
     ).toContain("only isEmpty");
+  });
+
+  it("lists the name-form keys of settle_loan_installment", () => {
+    const hint = ruleErrorHint(
+      { path: "actions[0].extra", code: "UNKNOWN_KEY" },
+      { actions: [{ type: "settle_loan_installment" }] },
+    );
+    expect(hint).toContain(
+      "settle_loan_installment takes only type, loanAccountName, dueDateWindow, excess, shortfall, interestCategoryName",
+    );
   });
 
   it("produces a hint for what the validator reports on a split with an unknown capture", () => {

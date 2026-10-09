@@ -59,6 +59,7 @@ import {
 } from "./scheduled-occurrence.service";
 import { ScheduledTransactionOverrideService } from "./scheduled-transaction-override.service";
 import { ScheduledTransactionLoanService } from "./scheduled-transaction-loan.service";
+import { advanceScheduleCursor } from "./schedule-cursor";
 import { addDaysYMD, todayInTimezone, todayYMD } from "../common/date-utils";
 import {
   calculateNextDueDate as calcNextDueDate,
@@ -74,7 +75,7 @@ import {
 } from "../notification-center/entities/notification.entity";
 import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { withScopedDb } from "../common/db/scoped-db";
-import { affectedRowCount } from "../common/db/query-result";
+import { returnedRows } from "../common/db/query-result";
 import { validateSplitAmountSum } from "../common/split-amount.util";
 import { roundMoney, sumMoney } from "../common/round.util";
 import {
@@ -3407,16 +3408,20 @@ export class ScheduledTransactionsService {
       // Claim the occurrence. The unique key on
       // (scheduled_transaction_id, original_due_date) is what makes the claim
       // the serialization point rather than the lock alone: it survives a
-      // crash, and manual and automatic posting both go through it.
-      const claim: unknown = await m.query(
-        `INSERT INTO scheduled_transaction_postings
-           (scheduled_transaction_id, original_due_date, posted_date)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (scheduled_transaction_id, original_due_date) DO NOTHING
-         RETURNING id`,
-        [id, nextDueDateStr, postDate],
+      // crash, and manual and automatic posting both go through it, as does
+      // a rule's settlement of a bank row against the same occurrence
+      // (INV-LOAN-008).
+      const claimed = returnedRows<{ id: string }>(
+        await m.query(
+          `INSERT INTO scheduled_transaction_postings
+             (scheduled_transaction_id, original_due_date, posted_date)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (scheduled_transaction_id, original_due_date) DO NOTHING
+           RETURNING id`,
+          [id, nextDueDateStr, postDate],
+        ),
       );
-      if (affectedRowCount(claim) === 0) {
+      if (claimed.length === 0) {
         throw new ConflictException(
           tr(
             "errors.scheduled.occurrenceAlreadyPosted",
@@ -3424,6 +3429,7 @@ export class ScheduledTransactionsService {
           ),
         );
       }
+      const claimId = claimed[0].id;
 
       if (current.isInvestment) {
         // Post from the locked row, not the pre-lock `scheduled` snapshot: a
@@ -3447,14 +3453,25 @@ export class ScheduledTransactionsService {
           preparedTransfer,
           m,
         );
+        await this.recordClaimTransaction(
+          m,
+          claimId,
+          writtenTransfer.savedFromId,
+        );
       } else if (!skipFinancialWrite) {
-        await this.transactionsService.create(
+        const created = await this.transactionsService.create(
           userId,
           transactionPayload,
-          ...(options.actorIsNotOwner === true
-            ? [{ actorIsNotOwner: true }]
-            : []),
+          {
+            // Server-set: the row pays the occurrence claimed above, so the
+            // owner's settlement rules refuse it (row_from_scheduled_posting).
+            fromScheduledPosting: true,
+            ...(options.actorIsNotOwner === true
+              ? { actorIsNotOwner: true }
+              : {}),
+          },
         );
+        await this.recordClaimTransaction(m, claimId, created.id);
       } else {
         this.logger.log(
           `Scheduled loan payment ${id} posted no money: the loan owes nothing ` +
@@ -3479,45 +3496,11 @@ export class ScheduledTransactionsService {
       // Recurring frequency: advance nextDueDate, prune stale overrides,
       // decrement occurrencesRemaining, deactivate if past endDate.
       //
-      // Read from `current`, the locked row, not from the `scheduled` snapshot
+      // From `current`, the locked row, not from the `scheduled` snapshot
       // taken before the transaction: a concurrent edit to occurrencesRemaining
-      // or endDate would otherwise be reverted by this advancement.
-      const newNextDueDateStr = calcNextDueDate(
-        nextDueDateStr,
-        current.frequency,
-      );
-
-      await m
-        .createQueryBuilder()
-        .delete()
-        .from(ScheduledTransactionOverride)
-        .where("scheduledTransactionId = :id", { id })
-        .andWhere("originalDate < :newNextDueDate", {
-          newNextDueDate: newNextDueDateStr,
-        })
-        .execute();
-
-      const updateFields: Record<string, any> = {
-        lastPostedDate: todayYMD(),
-        nextDueDate: newNextDueDateStr,
-      };
-
-      if (
-        current.occurrencesRemaining !== null &&
-        current.occurrencesRemaining > 0
-      ) {
-        const newRemaining = current.occurrencesRemaining - 1;
-        updateFields.occurrencesRemaining = newRemaining;
-        if (newRemaining === 0) {
-          updateFields.isActive = false;
-        }
-      }
-
-      if (current.endDate && newNextDueDateStr > ensureYMD(current.endDate)) {
-        updateFields.isActive = false;
-      }
-
-      await m.update(ScheduledTransaction, id, updateFields);
+      // or endDate would otherwise be reverted by this advancement. The one
+      // consumed slot is the occurrence claimed above.
+      await advanceScheduleCursor(m, current, new Set([nextDueDateStr]));
       return false;
     });
 
@@ -3546,6 +3529,27 @@ export class ScheduledTransactionsService {
     }
 
     return this.findOne(userId, id);
+  }
+
+  /**
+   * Name the transaction a claim's occurrence was paid by
+   * (`docs/specs/loan-installment-settlement.md` section 5.2), in the same
+   * transaction as the claim, once the create has returned the id. From here
+   * on deleting that transaction releases the claim (`ON DELETE CASCADE`),
+   * for every schedule, and a settlement rule reads the row as a posted bill
+   * (`row_from_scheduled_posting`). An investment post records nothing: it
+   * writes through the investment service, and nothing reads which of its
+   * rows paid the occurrence.
+   */
+  private async recordClaimTransaction(
+    m: EntityManager,
+    claimId: string,
+    transactionId: string,
+  ): Promise<void> {
+    await m.query(
+      `UPDATE scheduled_transaction_postings SET transaction_id = $1 WHERE id = $2`,
+      [transactionId, claimId],
+    );
   }
 
   /**

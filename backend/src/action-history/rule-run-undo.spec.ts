@@ -5,9 +5,13 @@ import { Transaction } from "../transactions/entities/transaction.entity";
 import { assertReconciledRowsMutable } from "../transactions/reconciled-lock.util";
 import { ActionHistory } from "./entities/action-history.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
+import { rewindScheduleCursor } from "../scheduled-transactions/schedule-cursor";
 import { assertRuleRunRedoable, undoRuleRun } from "./rule-run-undo";
 
 jest.mock("../common/db/locks", () => ({ lockTransactionRows: jest.fn() }));
+jest.mock("../scheduled-transactions/schedule-cursor", () => ({
+  rewindScheduleCursor: jest.fn(),
+}));
 jest.mock("../transactions/reconciled-lock.util", () => ({
   assertReconciledRowsMutable: jest.fn(),
 }));
@@ -261,7 +265,7 @@ describe("undoRuleRun", () => {
       expect(balances.updateBalance).toHaveBeenCalledTimes(1);
       expect(balances.updateBalance).toHaveBeenCalledWith(LOAN, -640.15);
       expect(balances.recalculateCurrentBalance).not.toHaveBeenCalled();
-      expect(moved).toEqual(new Set([LOAN]));
+      expect(moved.affectedAccountIds).toEqual(new Set([LOAN]));
       expect(manager.update).toHaveBeenCalledWith(
         Transaction,
         { id: "t1", userId: USER },
@@ -312,7 +316,7 @@ describe("undoRuleRun", () => {
 
       expect(manager.delete).not.toHaveBeenCalled();
       expect(balances.updateBalance).not.toHaveBeenCalled();
-      expect(moved.size).toBe(0);
+      expect(moved.affectedAccountIds.size).toBe(0);
       // The row itself is still put back.
       expect(manager.update).toHaveBeenCalledTimes(1);
     });
@@ -587,4 +591,339 @@ describe("assertRuleRunRedoable", () => {
       });
     },
   );
+});
+
+/**
+ * The undo of a run that settled loan installments
+ * (`docs/specs/loan-installment-settlement.md` section 12.6): the schedule
+ * rows locked after the transaction rows, the LIFO refusal before any write,
+ * the claims released and the cursor advances rewound in reverse run order,
+ * and the released schedules returned for the after-commit reprice.
+ */
+describe("undoRuleRun: settled rows", () => {
+  const SCHEDULE = "st-1";
+  const cursor = (from: string, to: string) => ({
+    before: {
+      nextDueDate: from,
+      occurrencesRemaining: null,
+      isActive: true,
+      lastPostedDate: null,
+    },
+    after: {
+      nextDueDate: to,
+      occurrencesRemaining: null,
+      isActive: true,
+      lastPostedDate: "2024-01-03",
+    },
+    prunedOverrides: [],
+  });
+  const settled = (
+    id: string,
+    claimId: string,
+    dueDate: string,
+    over: Record<string, unknown> = {},
+  ) => ({
+    id,
+    categoryId: null,
+    isTransfer: false,
+    isSplit: false,
+    linkedTransactionId: null,
+    structure: {
+      kind: "split",
+      counterpartIds: [`cp-${id}`],
+      lineIds: [`l1-${id}`, `l2-${id}`],
+      claimId,
+      scheduledTransactionId: SCHEDULE,
+      dueDate,
+      cursorAdvanced: false,
+      ...over,
+    },
+  });
+  const leg = (id: string, linkedTransactionId: string) => ({
+    id,
+    accountId: "loan",
+    amount: 833.33,
+    transactionDate: "2024-01-03",
+    status: "UNRECONCILED",
+    linkedTransactionId,
+  });
+  type Claim = {
+    id: string;
+    scheduled_transaction_id: string;
+    original_due_date: string;
+  };
+
+  /** The manager's statements, by their text, in the order the undo issues them. */
+  function arrange(rows: Record<string, unknown>[], claims: Claim[]) {
+    const { manager, em } = harness();
+    const statements: string[] = [];
+    const lockable: Record<string, unknown>[] = [
+      ...rows.map((row) => ({ ...row, status: "UNRECONCILED" })),
+      ...rows.map((row) => leg(`cp-${row.id as string}`, row.id as string)),
+    ];
+    (lockTransactionRows as jest.Mock).mockImplementation(
+      async (_em: unknown, ids: string[]) =>
+        new Map(
+          lockable
+            .filter((r) => ids.includes(r.id as string))
+            .map((r) => [r.id as string, r]),
+        ),
+    );
+    manager.query.mockImplementation(async (sql: string) => {
+      const text = String(sql);
+      if (
+        text.includes("FROM scheduled_transactions") &&
+        text.includes("FOR UPDATE")
+      ) {
+        statements.push("lock-schedules");
+        return [];
+      }
+      if (
+        text.includes("FROM scheduled_transaction_postings stp") &&
+        text.includes("SELECT")
+      ) {
+        statements.push("read-claims");
+        return claims;
+      }
+      if (text.includes("DELETE FROM scheduled_transaction_postings")) {
+        statements.push("release-claim");
+        return [[], 1];
+      }
+      if (text.includes("FROM transaction_splits")) {
+        statements.push("read-lines");
+        return rows.flatMap((row) =>
+          (row.structure as { lineIds: string[] }).lineIds.map((id, i) => ({
+            id,
+            transaction_id: row.id,
+            linked_transaction_id: i === 0 ? `cp-${row.id as string}` : null,
+          })),
+        );
+      }
+      return [];
+    });
+    (rewindScheduleCursor as jest.Mock).mockImplementation(async () => {
+      statements.push("rewind");
+      return true;
+    });
+    manager.delete.mockImplementation(async () => {
+      statements.push("delete");
+      return { affected: 1 };
+    });
+    return { manager, em, statements };
+  }
+
+  const claimRow = (id: string, due: string): Claim => ({
+    id,
+    scheduled_transaction_id: SCHEDULE,
+    original_due_date: due,
+  });
+
+  beforeEach(() => jest.resetAllMocks());
+
+  it("locks the schedule and reads its claims before any write, then releases the claim and rewinds the advance, owner-scoped", async () => {
+    const row = settled("t1", "claim-1", "2024-01-01", {
+      cursorAdvanced: true,
+      cursor: cursor("2024-01-01", "2024-02-01"),
+    });
+    const { manager, em, statements } = arrange(
+      [row],
+      [claimRow("claim-1", "2024-01-01")],
+    );
+
+    const result = await undoRuleRun(action([row]), em, balances);
+
+    expect(statements.indexOf("lock-schedules")).toBeLessThan(
+      statements.indexOf("read-claims"),
+    );
+    expect(statements.indexOf("read-claims")).toBeLessThan(
+      statements.indexOf("delete"),
+    );
+    const lockSql = manager.query.mock.calls.find(([sql]) =>
+      String(sql).includes("FOR UPDATE"),
+    );
+    expect(lockSql?.[0]).toContain("user_id = $2");
+    expect(lockSql?.[1]).toEqual([[SCHEDULE], USER]);
+    const release = manager.query.mock.calls.find(([sql]) =>
+      String(sql).includes("DELETE FROM scheduled_transaction_postings"),
+    );
+    expect(release?.[0]).toContain("s.user_id = $2");
+    expect(release?.[1]).toEqual(["claim-1", USER]);
+    expect(rewindScheduleCursor).toHaveBeenCalledWith(
+      em,
+      SCHEDULE,
+      USER,
+      cursor("2024-01-01", "2024-02-01"),
+    );
+    expect(result.settledScheduleIds).toEqual(new Set([SCHEDULE]));
+    expect(result.affectedAccountIds).toEqual(new Set(["loan"]));
+  });
+
+  it("releases the claim without a rewind when the claim did not move the cursor", async () => {
+    const row = settled("t1", "claim-1", "2023-12-01");
+    const { em } = arrange([row], [claimRow("claim-1", "2023-12-01")]);
+    await undoRuleRun(action([row]), em, balances);
+    expect(rewindScheduleCursor).not.toHaveBeenCalled();
+  });
+
+  it("refuses RULE_RUN_UNDO_LATER_SETTLEMENT, before any write, when the schedule holds a later claim the run did not write, whatever its source", async () => {
+    const row = settled("t1", "claim-1", "2024-01-01", {
+      cursorAdvanced: true,
+      cursor: cursor("2024-01-01", "2024-02-01"),
+    });
+    const { manager, em } = arrange(
+      [row],
+      [claimRow("claim-1", "2024-01-01"), claimRow("claim-post", "2024-02-01")],
+    );
+
+    await expect(
+      undoRuleRun(action([row]), em, balances),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        errorCode: "RULE_RUN_UNDO_LATER_SETTLEMENT",
+        scheduledTransactionId: SCHEDULE,
+        dueDate: "2024-02-01",
+      }),
+    });
+    // Every claim of the schedule counts: the read filters on no source.
+    const read = manager.query.mock.calls.find(([sql]) =>
+      String(sql).includes("FROM scheduled_transaction_postings stp"),
+    );
+    expect(read?.[0]).not.toMatch(/source/);
+    expect(manager.delete).not.toHaveBeenCalled();
+    expect(manager.update).not.toHaveBeenCalled();
+    expect(rewindScheduleCursor).not.toHaveBeenCalled();
+    expect(balances.updateBalance).not.toHaveBeenCalled();
+    expect(
+      manager.query.mock.calls.some(([sql]) =>
+        String(sql).includes("DELETE FROM scheduled_transaction_postings"),
+      ),
+    ).toBe(false);
+  });
+
+  it("refuses a foreign claim between two of the run's slots: later than the earliest released, whatever the latest", async () => {
+    // The run settled January and March (February's debit never came); a
+    // later create settled February on a debt that includes January's
+    // principal. Releasing January would leave February's interest priced on
+    // a debt that never existed.
+    const january = settled("t1", "claim-jan", "2024-01-01", {
+      cursorAdvanced: true,
+      cursor: cursor("2024-01-01", "2024-02-01"),
+    });
+    const march = settled("t3", "claim-mar", "2024-03-01");
+    const { manager, em } = arrange(
+      [january, march],
+      [
+        claimRow("claim-jan", "2024-01-01"),
+        claimRow("claim-feb", "2024-02-01"),
+        claimRow("claim-mar", "2024-03-01"),
+      ],
+    );
+
+    await expect(
+      undoRuleRun(action([january, march]), em, balances),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        errorCode: "RULE_RUN_UNDO_LATER_SETTLEMENT",
+        dueDate: "2024-02-01",
+      }),
+    });
+    expect(manager.delete).not.toHaveBeenCalled();
+    expect(rewindScheduleCursor).not.toHaveBeenCalled();
+  });
+
+  it("does not refuse for a claim on an earlier slot, nor for the later slots the run claimed itself; rewinds in reverse run order", async () => {
+    const january = settled("t1", "claim-jan", "2024-01-01", {
+      cursorAdvanced: true,
+      cursor: cursor("2024-01-01", "2024-02-01"),
+    });
+    const february = settled("t2", "claim-feb", "2024-02-01", {
+      cursorAdvanced: true,
+      cursor: cursor("2024-02-01", "2024-03-01"),
+    });
+    const { manager, em, statements } = arrange(
+      [january, february],
+      [
+        claimRow("claim-dec", "2023-12-01"),
+        claimRow("claim-jan", "2024-01-01"),
+        claimRow("claim-feb", "2024-02-01"),
+      ],
+    );
+
+    const result = await undoRuleRun(action([january, february]), em, balances);
+
+    const releases = manager.query.mock.calls
+      .filter(([sql]) =>
+        String(sql).includes("DELETE FROM scheduled_transaction_postings"),
+      )
+      .map(([, params]) => (params as string[])[0]);
+    expect(releases).toEqual(["claim-feb", "claim-jan"]);
+    // Z back to Y, then Y back to X: each advance undone against the cursor
+    // the previous rewind left.
+    expect(
+      (rewindScheduleCursor as jest.Mock).mock.calls.map((c) => c[3]),
+    ).toEqual([
+      cursor("2024-02-01", "2024-03-01"),
+      cursor("2024-01-01", "2024-02-01"),
+    ]);
+    expect(statements.filter((s) => s === "release-claim")).toHaveLength(2);
+    expect(result.settledScheduleIds).toEqual(new Set([SCHEDULE]));
+  });
+
+  it("skips a settled row deleted since the run: its claim went with it, and nothing is rewound", async () => {
+    const row = settled("t1", "claim-1", "2024-01-01", {
+      cursorAdvanced: true,
+      cursor: cursor("2024-01-01", "2024-02-01"),
+    });
+    const { manager, em } = arrange([], [claimRow("claim-1", "2024-01-01")]);
+    (lockTransactionRows as jest.Mock).mockResolvedValue(new Map());
+
+    const result = await undoRuleRun(action([row]), em, balances);
+
+    expect(
+      manager.query.mock.calls.some(([sql]) =>
+        String(sql).includes("DELETE FROM scheduled_transaction_postings"),
+      ),
+    ).toBe(false);
+    expect(rewindScheduleCursor).not.toHaveBeenCalled();
+    expect(result.settledScheduleIds.size).toBe(0);
+  });
+
+  it("a run without a settled row locks no schedule and reads no claim", async () => {
+    const { manager, em } = arrange([], []);
+    (lockTransactionRows as jest.Mock).mockResolvedValue(locked("t1"));
+    await undoRuleRun(action([{ id: "t1", categoryId: null }]), em, balances);
+    expect(
+      manager.query.mock.calls.some(([sql]) =>
+        String(sql).includes("scheduled_transaction"),
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("assertRuleRunRedoable: a settled row", () => {
+  it("refuses the redo of a run that settled an installment (its claim and cursor were undone, not replayable)", () => {
+    expect(() =>
+      assertRuleRunRedoable(
+        action([
+          {
+            id: "t1",
+            structure: {
+              kind: "split",
+              counterpartIds: ["cp"],
+              claimId: "claim-1",
+              scheduledTransactionId: "st-1",
+              dueDate: "2024-01-01",
+              cursorAdvanced: true,
+            },
+          },
+        ]),
+      ),
+    ).toThrow(
+      expect.objectContaining({
+        response: expect.objectContaining({
+          errorCode: "RULE_RUN_REDO_STRUCTURAL",
+        }),
+      }),
+    );
+  });
 });

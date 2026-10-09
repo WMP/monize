@@ -391,6 +391,20 @@ export class TransactionRulesService {
   }
 
   /**
+   * The shape half of `checkedDefinition` (no database read), with the same
+   * 400. For a caller that writes something of its own before it creates the
+   * rule (the mortgage create, the loan-payment setup), so a definition the
+   * create would refuse is refused before that first write.
+   */
+  assertDefinitionShape(condition: unknown, actions: unknown): void {
+    const shapeErrors = validateRuleDefinition(
+      { condition, actions: withActionDefaults(actions) },
+      { authoring: true },
+    );
+    if (shapeErrors.length > 0) throw this.invalidDefinition(shapeErrors);
+  }
+
+  /**
    * An empty window (from after to) could never match a row; refused before
    * anything is written. `YYYY-MM-DD` strings compare in date order.
    */

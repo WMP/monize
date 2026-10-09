@@ -69,7 +69,11 @@
     "unknownInvestmentAccount": "Conta desconhecida: {{ name }}. Utilize um nome exato da lista de contas do utilizador.",
     "notACreditCard": "Os ciclos de extrato só estão disponíveis para contas de cartão de crédito",
     "noStatementSettlementDay": "Este cartão de crédito não tem um dia de liquidação de extrato configurado",
-    "loanLedgerUnreadable": "Não foi possível ler o saldo deste empréstimo. Tente novamente."
+    "loanLedgerUnreadable": "Não foi possível ler o saldo deste empréstimo. Tente novamente.",
+    "paymentMatchingLoanOnly": "A correspondência de pagamentos aplica-se apenas a hipotecas e empréstimos",
+    "paymentMatchingRequiresSchedule": "A correspondência de pagamentos precisa do pagamento agendado do empréstimo. Configure primeiro os seus pagamentos.",
+    "paymentMatchingRuleExists": "Este empréstimo já tem uma regra de correspondência de pagamentos",
+    "paymentMatchingFailed": "O empréstimo foi guardado, mas não foi possível criar a sua regra de correspondência de pagamentos. Crie-a a partir dos detalhes do empréstimo."
   },
   "actionHistory": {
     "nothingToUndo": "Nada para desfazer",
@@ -618,7 +622,9 @@
     "activeWindowInvalid": "A primeira data ativa não pode ser posterior à última data ativa",
     "runTooLarge": "Esta execução altera demasiadas transações para poder ser anulada num único passo. Restrinja as contas ou as datas e tente novamente",
     "runRedoStructural": "Esta execução reestruturou transações (transferências ou divisões), pelo que não pode ser refeita. Execute a regra novamente",
-    "runUndoStructureChanged": "Uma transação reestruturada por esta execução foi alterada desde então (as suas linhas de divisão ou a transferência), pelo que a execução não pode ser desfeita em segurança. Reponha-a manualmente"
+    "runUndoStructureChanged": "Uma transação reestruturada por esta execução foi alterada desde então (as suas linhas de divisão ou a transferência), pelo que a execução não pode ser desfeita em segurança. Reponha-a manualmente",
+    "occurrenceAlreadyPosted": "Esta prestação do empréstimo já foi paga ou lançada, pelo que a transação não a pode liquidar",
+    "runUndoLaterSettlement": "Uma prestação posterior deste empréstimo foi liquidada depois desta execução, pelo que a execução não pode ser desfeita. Desfaça primeiro a liquidação posterior"
   },
   "transactions": {
     "invalidStatus": "Estado de transação inválido: {{ status }}",

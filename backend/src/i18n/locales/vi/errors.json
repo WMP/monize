@@ -69,7 +69,11 @@
     "unknownInvestmentAccount": "Tài khoản không xác định: {{ name }}. Hãy dùng tên chính xác từ danh sách tài khoản của người dùng.",
     "notACreditCard": "Chu kỳ sao kê chỉ khả dụng cho tài khoản thẻ tín dụng",
     "noStatementSettlementDay": "Thẻ tín dụng này chưa được cấu hình ngày chốt sao kê",
-    "loanLedgerUnreadable": "Không thể đọc số dư của khoản vay này. Vui lòng thử lại."
+    "loanLedgerUnreadable": "Không thể đọc số dư của khoản vay này. Vui lòng thử lại.",
+    "paymentMatchingLoanOnly": "Đối chiếu thanh toán chỉ áp dụng cho khoản thế chấp và khoản vay",
+    "paymentMatchingRequiresSchedule": "Đối chiếu thanh toán cần khoản thanh toán theo lịch của khoản vay. Hãy thiết lập thanh toán trước.",
+    "paymentMatchingRuleExists": "Khoản vay này đã có quy tắc đối chiếu thanh toán",
+    "paymentMatchingFailed": "Khoản vay đã được lưu, nhưng không thể tạo quy tắc đối chiếu thanh toán. Hãy tạo nó từ chi tiết khoản vay."
   },
   "actionHistory": {
     "nothingToUndo": "Không có gì để hoàn tác",
@@ -618,7 +622,9 @@
     "activeWindowInvalid": "Ngày hoạt động đầu tiên không được sau ngày hoạt động cuối cùng",
     "runTooLarge": "Lần chạy này thay đổi quá nhiều giao dịch để có thể hoàn tác trong một bước. Hãy thu hẹp tài khoản hoặc khoảng ngày rồi thử lại",
     "runRedoStructural": "Lần chạy này đã thay đổi cấu trúc giao dịch (chuyển khoản hoặc tách khoản) nên không thể làm lại. Hãy chạy lại quy tắc",
-    "runUndoStructureChanged": "Một giao dịch mà lần chạy này đã thay đổi cấu trúc đã bị sửa từ đó (các dòng tách khoản hoặc khoản chuyển), nên không thể hoàn tác lần chạy một cách an toàn. Hãy khôi phục thủ công"
+    "runUndoStructureChanged": "Một giao dịch mà lần chạy này đã thay đổi cấu trúc đã bị sửa từ đó (các dòng tách khoản hoặc khoản chuyển), nên không thể hoàn tác lần chạy một cách an toàn. Hãy khôi phục thủ công",
+    "occurrenceAlreadyPosted": "Kỳ trả góp này của khoản vay đã được thanh toán hoặc ghi sổ, nên giao dịch không thể tất toán kỳ này",
+    "runUndoLaterSettlement": "Một kỳ trả góp sau của khoản vay này đã được tất toán sau lần chạy này, nên không thể hoàn tác lần chạy. Hãy hoàn tác lần tất toán sau trước"
   },
   "transactions": {
     "invalidStatus": "Trạng thái giao tác không hợp lệ: {{ status }}",

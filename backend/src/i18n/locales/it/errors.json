@@ -69,7 +69,11 @@
     "unknownInvestmentAccount": "Conto sconosciuto: {{ name }}. Usa un nome esatto dall'elenco dei conti dell'utente.",
     "notACreditCard": "I cicli di fatturazione sono disponibili solo per i conti carta di credito",
     "noStatementSettlementDay": "Questa carta di credito non ha un giorno di chiusura dell'estratto conto configurato",
-    "loanLedgerUnreadable": "Non è stato possibile leggere il saldo di questo prestito. Riprova."
+    "loanLedgerUnreadable": "Non è stato possibile leggere il saldo di questo prestito. Riprova.",
+    "paymentMatchingLoanOnly": "L'abbinamento dei pagamenti si applica solo a mutui e prestiti",
+    "paymentMatchingRequiresSchedule": "L'abbinamento dei pagamenti richiede il pagamento pianificato del prestito. Configura prima i suoi pagamenti.",
+    "paymentMatchingRuleExists": "Questo prestito ha già una regola di abbinamento dei pagamenti",
+    "paymentMatchingFailed": "Il prestito è stato salvato, ma non è stato possibile creare la sua regola di abbinamento dei pagamenti. Creala dai dettagli del prestito."
   },
   "actionHistory": {
     "nothingToUndo": "Niente da annullare",
@@ -618,7 +622,9 @@
     "activeWindowInvalid": "La prima data attiva non deve essere successiva all'ultima data attiva",
     "runTooLarge": "Questa esecuzione modifica troppe transazioni per essere annullata in un solo passaggio. Restringi i conti o le date e riprova",
     "runRedoStructural": "Questa esecuzione ha ristrutturato delle transazioni (trasferimenti o suddivisioni), quindi non può essere ripristinata. Esegui di nuovo la regola",
-    "runUndoStructureChanged": "Una transazione ristrutturata da questa esecuzione è stata modificata da allora (le sue righe di suddivisione o il suo trasferimento), quindi l'esecuzione non può essere annullata in sicurezza. Ripristinala manualmente"
+    "runUndoStructureChanged": "Una transazione ristrutturata da questa esecuzione è stata modificata da allora (le sue righe di suddivisione o il suo trasferimento), quindi l'esecuzione non può essere annullata in sicurezza. Ripristinala manualmente",
+    "occurrenceAlreadyPosted": "Questa rata del prestito è già stata pagata o registrata, quindi la transazione non può saldarla",
+    "runUndoLaterSettlement": "Una rata successiva di questo prestito è stata saldata dopo questa esecuzione, quindi l'esecuzione non può essere annullata. Annulla prima il saldo successivo"
   },
   "transactions": {
     "invalidStatus": "Stato transazione non valido: {{ status }}",

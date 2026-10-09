@@ -21,6 +21,8 @@ import { UserPreference } from "../users/entities/user-preference.entity";
 import { LoanMortgageAccountService } from "./loan-mortgage-account.service";
 import { LoanRateChangesService } from "../loan-rate-changes/loan-rate-changes.service";
 import { LoanPaymentDetectorService } from "./loan-payment-detector.service";
+import { LoanPaymentMatchingService } from "./loan-payment-matching.service";
+import { constantLinearPrincipal } from "./mortgage-installment.util";
 import { DataSource } from "typeorm";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { ScheduledOccurrenceService } from "../scheduled-transactions/scheduled-occurrence.service";
@@ -222,6 +224,7 @@ describe("AccountsService", () => {
           useValue: loanRateChangesService,
         },
         { provide: LoanPaymentDetectorService, useValue: {} },
+        { provide: LoanPaymentMatchingService, useValue: {} },
         {
           provide: DataSource,
           useValue: mockDataSource,
@@ -305,6 +308,46 @@ describe("AccountsService", () => {
         } as any),
       ).rejects.toThrow(BadRequestException);
       expect(accountsRepository.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses payment matching on an account that is not a mortgage or loan, writing nothing", async () => {
+      await expect(
+        service.create("user-1", {
+          name: "Chequing",
+          accountType: AccountType.CHEQUING,
+          currencyCode: "USD",
+          paymentMatching: { payeePattern: "ING*" },
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(accountsRepository.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses payment matching on a mortgage created without its scheduled payment, writing nothing", async () => {
+      await expect(
+        service.create("user-1", {
+          name: "Hypotheek",
+          accountType: AccountType.MORTGAGE,
+          currencyCode: "EUR",
+          openingBalance: -300000,
+          paymentMatching: { payeePattern: "ING*" },
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(accountsRepository.save).not.toHaveBeenCalled();
+    });
+
+    it("stores originalPrincipal on a mortgage created without its scheduled payment", async () => {
+      await service.create("user-1", {
+        name: "Hypotheek",
+        accountType: AccountType.MORTGAGE,
+        currencyCode: "EUR",
+        openingBalance: -260000,
+        originalPrincipal: 300000,
+      } as any);
+
+      expect(accountsRepository.create.mock.calls[0][0]).toMatchObject({
+        openingBalance: -260000,
+        originalPrincipal: 300000,
+      });
     });
 
     it("defaults opening balance to 0", async () => {
@@ -889,6 +932,98 @@ describe("AccountsService", () => {
       expect(
         scheduledTransactionsService.repriceLoanTemplate,
       ).not.toHaveBeenCalled();
+    });
+
+    describe("originalPrincipal", () => {
+      const linear = {
+        ...mockAccount,
+        accountType: "MORTGAGE",
+        mortgageType: "LINEAR",
+        paymentAmount: null,
+        paymentFrequency: "MONTHLY",
+        paymentStartDate: "2024-01-01",
+        amortizationMonths: 360,
+        openingBalance: -260000,
+        originalPrincipal: 260000,
+        scheduledTransactionId: "sched-1",
+      };
+
+      it("writes it apart from the opening balance and reprices a LINEAR template, after the row it reads", async () => {
+        // docs/specs/loan-installment-settlement.md section 14.3: c is the
+        // amount originally borrowed over the payment count.
+        mockQueryRunner.manager.findOne.mockResolvedValue({ ...linear });
+
+        await service.update("user-1", "account-1", {
+          originalPrincipal: 300000,
+        });
+
+        const saved = mockQueryRunner.manager.save.mock.calls[0][0];
+        expect(saved).toMatchObject({
+          originalPrincipal: 300000,
+          openingBalance: -260000,
+        });
+        expect(constantLinearPrincipal(saved)).toBe(833.3333);
+        expect(
+          scheduledTransactionsService.repriceLoanTemplate,
+        ).toHaveBeenCalledWith("sched-1");
+        expect(
+          mockQueryRunner.manager.save.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+          scheduledTransactionsService.repriceLoanTemplate.mock
+            .invocationCallOrder[0],
+        );
+      });
+
+      it("leaves the template alone when the form resends the stored amount", async () => {
+        mockQueryRunner.manager.findOne.mockResolvedValue({
+          ...linear,
+          originalPrincipal: "260000.0000",
+        });
+
+        await service.update("user-1", "account-1", {
+          originalPrincipal: 260000,
+        });
+
+        expect(
+          scheduledTransactionsService.repriceLoanTemplate,
+        ).not.toHaveBeenCalled();
+      });
+
+      it("writes it on an annuity mortgage without repricing, which does not read it", async () => {
+        mockQueryRunner.manager.findOne.mockResolvedValue({
+          ...linear,
+          mortgageType: "ANNUITY",
+          paymentAmount: 1108.8584,
+        });
+
+        await service.update("user-1", "account-1", {
+          originalPrincipal: 300000,
+        });
+
+        expect(
+          mockQueryRunner.manager.save.mock.calls[0][0].originalPrincipal,
+        ).toBe(300000);
+        expect(
+          scheduledTransactionsService.repriceLoanTemplate,
+        ).not.toHaveBeenCalled();
+      });
+
+      it("clears it with null, and leaves it when the request omits it", async () => {
+        mockQueryRunner.manager.findOne.mockResolvedValue({ ...linear });
+        await service.update("user-1", "account-1", {
+          originalPrincipal: null,
+        });
+        expect(
+          mockQueryRunner.manager.save.mock.calls[0][0].originalPrincipal,
+        ).toBeNull();
+
+        mockQueryRunner.manager.save.mockClear();
+        mockQueryRunner.manager.findOne.mockResolvedValue({ ...linear });
+        await service.update("user-1", "account-1", { name: "Renamed" });
+        expect(
+          mockQueryRunner.manager.save.mock.calls[0][0].originalPrincipal,
+        ).toBe(260000);
+      });
     });
 
     it("refuses to move a mortgage to INTEREST_ONLY without an amortization, writing nothing", async () => {
@@ -4180,6 +4315,30 @@ describe("AccountsService", () => {
       ]);
       const params = ds.query.mock.calls[0][1];
       expect(params[4]).toBeGreaterThan(1); // ~5479 days / 400 -> step 14
+    });
+
+    it("keeps today's point when downsampling a range that ends in the future", async () => {
+      // A future-dated transaction moves the series' final point past today;
+      // with a step > 1, today could fall between samples and the chart's
+      // "Current" would read an earlier day's balance instead.
+      jest.useFakeTimers({ now: new Date(2026, 9, 8, 12) });
+      try {
+        const ds = mockQueryRunner.manager as unknown as { query: jest.Mock };
+        ds.query = jest
+          .fn()
+          .mockResolvedValueOnce([{ max_date: "2026-10-17" }])
+          .mockResolvedValueOnce([]);
+        await service.getDailyBalances("user-1", "2024-09-21", undefined, [
+          "a1",
+        ]);
+        const [sql, params] = ds.query.mock.calls[1];
+        expect(params[3]).toBe("2026-10-17");
+        expect(params[4]).toBe(2); // 757 days -> step 2
+        expect(params[6]).toBe("2026-10-08");
+        expect(sql).toMatch(/OR date = \$7::DATE/);
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it("spans earliest to latest transaction when allTime and no startDate", async () => {

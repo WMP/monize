@@ -33,7 +33,7 @@ type SplitEditorAction = Extract<EditorAction, { type: 'split' }>;
 type FieldErrors = StructuralFieldErrors['fields'];
 
 /** The sentence(s) for the codes at a field, or nothing. */
-function useFieldError(fields: FieldErrors): (...paths: string[]) => string | undefined {
+export function useFieldError(fields: FieldErrors): (...paths: string[]) => string | undefined {
   const message = useRuleErrorMessage();
   return (...paths) => {
     const codes = [...new Set(paths.flatMap((path) => fields[path] ?? []))];

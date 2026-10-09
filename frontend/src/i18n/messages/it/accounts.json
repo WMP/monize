@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "{kind, select, mortgage {Associa i pagamenti bancari importati a questo mutuo} other {Associa i pagamenti bancari importati a questo prestito}}",
+    "toggleHelp": "Quando una transazione bancaria importata corrisponde al modello del beneficiario, Monize la usa per saldare il pagamento pianificato e la suddivide in capitale e interessi, invece di registrare una transazione di fattura separata.",
+    "payeePattern": "Pattern del beneficiario",
+    "payeePatternPlaceholder": "es. *LA MIA BANCA*",
+    "descriptionPattern": "Pattern della descrizione (opzionale)",
+    "descriptionPatternPlaceholder": "es. *Rata del prestito*",
+    "fromAccount": "Confrontato con gli addebiti di {account}."
+  },
   "nameSuffix": {
     "cash": "Contanti",
     "brokerage": "Intermediazione"
@@ -165,8 +174,6 @@
     "statementDueDayPlaceholder": "es. 15",
     "statementSettlementDayPlaceholder": "es. 25",
     "fxFeeTitle": "Commissione di conversione valuta estera (facoltativa)",
-    "fxFeePercent": "Percentuale della commissione",
-    "fxFeePercentPlaceholder": "es. 2,5",
     "jointSharedWith": "Conto cointestato condiviso con {count, plural, one {# persona} other {# persone}}",
     "jointManage": "Gestisci condivisione",
     "cashSection": {
@@ -270,7 +277,11 @@
     "firstInstallmentHelp": "Questo mutuo non ha un pagamento fisso: ogni rata è calcolata dal saldo, dal tasso e dal periodo di ammortamento. Questa è la rata in scadenza il {date}, compreso l'eventuale capitale aggiuntivo.",
     "firstInstallmentPending": "Inserisci la data del prossimo pagamento per calcolare la prima rata.",
     "firstInstallmentCalculating": "Calcolo della prima rata...",
-    "firstInstallmentFailed": "Non è stato possibile calcolare la prima rata. Controlla i valori qui sotto e riprova."
+    "firstInstallmentFailed": "Non è stato possibile calcolare la prima rata. Controlla i valori qui sotto e riprova.",
+    "paymentMatching": {
+      "autoPostDisabled": "Disattivato automaticamente: la corrispondenza dei pagamenti regola questa fattura in base all'addebito della banca stessa, quindi non deve anche registrarsi da sola.",
+      "payeePatternRequired": "Inserisci un pattern del beneficiario che includa un carattere jolly *"
+    }
   },
   "mortgageFields": {
     "title": "Dettagli mutuo",
@@ -407,6 +418,10 @@
         "cancel": "Annulla",
         "use": "Modifica conto con questo tipo"
       }
+    },
+    "originalPrincipal": {
+      "label": "Capitale originario",
+      "help": "L'importo originariamente preso in prestito. Per un conto il cui storico registrato inizia dopo l'avvio del mutuo, questo è l'importo preso in prestito, non il saldo iniziale — che è il debito all'inizio del tuo storico."
     }
   },
   "assetFields": {
@@ -436,7 +451,10 @@
     "paymentStartDateRequired": "La data del primo pagamento è obbligatoria",
     "paymentAccountRequired": "Il conto di pagamento è obbligatorio",
     "amortizationRequired": "Il periodo di ammortamento è obbligatorio",
-    "acceleratedNeedsAnnuity": "Questo mutuo è pagato con un piano accelerato, che ha solo un mutuo a rata costante. Un mutuo lineare o solo interessi richiede una frequenza di pagamento regolare, quindi mantieni un tipo a rata costante."
+    "acceleratedNeedsAnnuity": "Questo mutuo è pagato con un piano accelerato, che ha solo un mutuo a rata costante. Un mutuo lineare o solo interessi richiede una frequenza di pagamento regolare, quindi mantieni un tipo a rata costante.",
+    "paymentMatchingPayeePatternRequired": "Inserisci un pattern del beneficiario per riconoscere l'addebito della banca",
+    "paymentMatchingPayeePatternWildcard": "Il pattern del beneficiario deve includere un carattere jolly *",
+    "paymentMatchingDescriptionPatternWildcard": "Il pattern della descrizione deve includere un carattere jolly *"
   },
   "loanDetail": {
     "backToAccounts": "Torna ai conti",
@@ -633,6 +651,70 @@
       "seriesOriginal": "Piano originario",
       "seriesActual": "Saldo effettivo",
       "unknown": "Sconosciuto"
+    },
+    "paymentMatching": {
+      "title": "Abbinamento dei pagamenti",
+      "description": "Riconosce l'addebito di ogni rata da parte della banca e lo imputa al piano del prestito come capitale e interessi, invece di registrare la fattura separatamente.",
+      "noSchedule": "L'abbinamento dei pagamenti imputa gli addebiti della banca al pagamento programmato del prestito. Imposta prima i pagamenti di questo prestito.",
+      "noRule": "Nessuna regola di abbinamento dei pagamenti è collegata a questo prestito.",
+      "createOne": "Creane una",
+      "ruleLabel": "Regola:",
+      "ruleLoading": "Caricamento della regola",
+      "ruleFailed": "Impossibile caricare la regola di abbinamento dei pagamenti.",
+      "scheduleLoading": "Caricamento del pagamento programmato",
+      "scheduleFailed": "Impossibile caricare il pagamento programmato del prestito.",
+      "retry": "Riprova",
+      "autoPost": {
+        "title": "Il pagamento programmato si registra ancora da solo",
+        "body": "La registrazione automatica è attiva sulla fattura di questo prestito, quindi una rata che la regola imputa dall'addebito della banca verrebbe registrata anche dalla fattura. Disattiva la registrazione automatica della fattura in Fatture & Versamenti."
+      },
+      "preconditions": {
+        "openingBalance": "Il saldo iniziale del prestito deve essere il debito all'inizio della cronologia elaborata; gli interessi di ogni rata sono calcolati su di esso.",
+        "originalPrincipal": "Il capitale originario deve essere l'importo preso in prestito inizialmente, non il saldo iniziale.",
+        "scheduleStart": "Gli addebiti con data anteriore al {date}, quando inizia il pagamento programmato, non hanno alcuna rata a cui essere abbinati."
+      },
+      "process": {
+        "button": "Elabora cronologia",
+        "scope": "Applica la regola agli addebiti di {account}, a partire dai più vecchi.",
+        "running": "Elaborazione della cronologia: finora {count, plural, one {# rata imputata} other {# rate imputate}}.",
+        "done": "{count, plural, =0 {Nessuna rata è stata imputata.} one {# rata è stata imputata.} other {# rate sono state imputate.}}",
+        "undo": "Ogni pagina dell'elaborazione può essere annullata dalla cronologia azioni.",
+        "failed": "Elaborazione della cronologia interrotta",
+        "stuckTitle": "Impossibile proseguire l'elaborazione della cronologia",
+        "stuck": "Più di {limit, number} transazioni hanno data {date}, quindi l'elaborazione non può andare oltre quel giorno. Imputa il resto da Strumenti > Regole con un filtro più ristretto.",
+        "stuckUnknown": "Il server non ha indicato fin dove è arrivata l'elaborazione, quindi non può proseguire. Ricarica la pagina e riprova."
+      },
+      "create": {
+        "title": "Crea regola di abbinamento dei pagamenti",
+        "description": "La regola imputa gli addebiti corrispondenti dal conto del pagamento programmato del prestito, e la registrazione automatica della fattura viene disattivata.",
+        "descriptionWithAccount": "La regola imputa gli addebiti corrispondenti da {account}, e la registrazione automatica della fattura viene disattivata.",
+        "submit": "Crea regola",
+        "payeePatternRequired": "Inserisci un pattern del beneficiario che includa un carattere jolly *",
+        "descriptionPatternWildcard": "Un pattern della descrizione deve includere un carattere jolly *",
+        "failed": "Impossibile creare la regola di abbinamento dei pagamenti.",
+        "done": "Regola \"{name}\" creata"
+      },
+      "settled": {
+        "title": "Rate imputate",
+        "colDueDate": "Data di scadenza",
+        "colTransaction": "Transazione",
+        "colPrincipal": "Capitale",
+        "colInterest": "Interessi",
+        "colExtra": "Capitale extra",
+        "colDebtBefore": "Debito precedente",
+        "openTransaction": "Apri la transazione",
+        "void": "Annullata",
+        "notRecorded": "Non registrato",
+        "empty": {
+          "title": "Nessuna rata ancora imputata",
+          "body": "Elabora la cronologia o importa gli addebiti della banca per imputare le rate."
+        },
+        "error": {
+          "title": "Impossibile caricare le rate imputate",
+          "body": "Questa non è una lista vuota. Riprova per vedere quali rate sono state imputate.",
+          "retry": "Riprova"
+        }
+      }
     },
     "lineOfCredit": {
       "currentBalance": "Saldo attuale",

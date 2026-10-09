@@ -251,7 +251,34 @@
       "splitGuideTip": "Dica: defina uma data de início em “Ativa entre” para não alterar transações antigas já reconciliadas e use o painel Teste antes de guardar.",
       "convertGuide": "Uma despesa torna-se uma transferência para a conta escolhida e uma receita, uma transferência dessa conta. Só o saldo da outra conta se altera. Dica: use “Ativa entre” para não alterar transações antigas.",
       "splitGuideName1": "capital",
-      "splitGuideName2": "juros"
+      "splitGuideName2": "juros",
+      "loanGuide": "Use isto para um débito bancário que paga uma prestação de crédito à habitação ou empréstimo como um único valor. Em “Se”, corresponda o débito pela conta, pelo texto do beneficiário ou pela descrição. A transação passa a ser uma divisão: o capital é transferido para a conta do empréstimo e os juros vão para a categoria de juros, ambos calculados para a prestação que pagam. Dica: desative o lançamento automático do pagamento agendado do empréstimo para que a prestação não seja paga duas vezes, e use o painel Teste antes de guardar.",
+      "loan": {
+        "help": "O débito correspondido paga a próxima prestação do empréstimo com vencimento próximo dessa data. O Monize calcula o capital e os juros dessa prestação; nunca introduz um valor.",
+        "account": "Conta do empréstimo",
+        "accountPlaceholder": "Selecione um crédito à habitação ou empréstimo...",
+        "noLoans": "Não tem nenhuma conta de crédito à habitação ou empréstimo em aberto para liquidar.",
+        "window": "Margem da data de vencimento",
+        "windowHelp": "A que distância da data de vencimento o banco pode cobrar o pagamento. Um débito até este número de dias antes ou depois da data de vencimento de uma prestação paga essa prestação; um que esteja fora da margem fica inalterado.",
+        "daysBefore": "Dias antes da data de vencimento",
+        "daysAfter": "Dias depois da data de vencimento",
+        "excess": "Quando o débito é superior à prestação",
+        "excessPolicies": {
+          "extra_principal": "Pagar a diferença como capital adicional",
+          "refuse": "Deixar a transação inalterada"
+        },
+        "shortfall": "Quando o débito é inferior à prestação",
+        "shortfallPolicies": {
+          "refuse": "Deixar a transação inalterada",
+          "interest_first": "Pagar primeiro os juros, o resto como capital"
+        },
+        "policyNote": "Uma diferença de alguns cêntimos é absorvida pela linha de juros.",
+        "policyHelp": "Os bancos arredondam cada parte em separado, por isso um débito até 5 vezes a menor unidade da moeda (0,05 na maioria das moedas) é tratado como exato e a linha de juros absorve a diferença. Uma diferença maior segue as duas opções acima.",
+        "interestCategory": "Categoria de juros (opcional)",
+        "interestCategoryPlaceholder": "A categoria de juros do próprio empréstimo",
+        "autoPostTitle": "O pagamento agendado do empréstimo lança-se automaticamente",
+        "autoPostBody": "O lançamento automático está ativado para o pagamento agendado deste empréstimo, pelo que ele e o débito bancário que esta regra liquida pagariam ambos a mesma prestação. Desative o lançamento automático do pagamento agendado."
+      }
     },
     "actionTypes": {
       "add_tags": "Adicionar etiquetas",
@@ -262,7 +289,8 @@
       "set_payee_from_text": "Definir o beneficiário a partir do texto",
       "set_description": "Definir a descrição",
       "convert_to_transfer": "Converter em transferência",
-      "split": "Dividir a transação"
+      "split": "Dividir a transação",
+      "settle_loan_installment": "Liquidar uma prestação do empréstimo"
     },
     "save": {
       "button": "Guardar regra",
@@ -311,8 +339,8 @@
         "MAX_NODES": "Há condições e grupos a mais. O limite é {maxNodes}.",
         "NO_ACTIONS": "Adicione pelo menos uma ação.",
         "TOO_MANY_ACTIONS": "Há ações a mais. O limite é {maxActions}.",
-        "DUPLICATE_ACTION": "Uma regra só pode ter uma revisão por IA, uma transferência ou divisão, e uma parte da divisão que fica com o restante.",
-        "CONFLICTING_ACTIONS": "Uma ação de transferência ou de divisão não pode ser combinada com «Definir a categoria», e cada uma das suas partes tem uma categoria ou uma conta.",
+        "DUPLICATE_ACTION": "Uma regra só pode ter uma revisão por IA, uma transferência, divisão ou liquidação de empréstimo, e uma parte da divisão que fica com o restante.",
+        "CONFLICTING_ACTIONS": "Uma ação de transferência, de divisão ou de liquidação de empréstimo não pode ser combinada com «Definir a categoria», e cada parte de uma divisão tem uma categoria ou uma conta.",
         "INVALID_CAPTURE": "O nome de uma captura usa letras minúsculas e algarismos, começa por uma letra e tem no máximo 20 caracteres.",
         "TOO_MANY_CAPTURES": "Um padrão pode conter no máximo 5 capturas.",
         "DUPLICATE_CAPTURE": "Cada nome de captura só pode ser usado uma vez numa regra.",
@@ -395,6 +423,7 @@
     "matchesNone": "Esta regra não corresponde a nenhuma das transações examinadas ({scanned}). Verifique as condições antes de guardar. Um padrão sem * corresponde apenas ao texto inteiro.",
     "noChange": "{matched} das {scanned} transações examinadas cumprem as condições da regra, mas nada mudaria (por exemplo, já têm o valor e «apenas se vazio» está ativo). Não é um erro.",
     "truncated": "Correspondem mais transações do que o limite permite. Apenas as mais recentes estão incluídas. Aumente o limite ou restrinja as datas para incluir as restantes.",
+    "truncatedOldest": "Corresponderam mais transações do que o limite permite. Só as mais antigas são incluídas, porque esta regra liquida prestações de empréstimo por ordem de data. Execute-a novamente depois desta execução para incluir o restante.",
     "noMatches": {
       "title": "Nenhuma transação seria alterada",
       "body": "Nenhuma das transações analisadas corresponde à regra, ou a regra não alteraria nada nelas."
@@ -408,7 +437,8 @@
     },
     "skipped": {
       "title": "{count, plural, one {# transação é deixada como está} other {# transações são deixadas como estão}}",
-      "line": "{count, plural, one {# transação} other {# transações}}: {reason}"
+      "line": "{count, plural, one {# transação} other {# transações}}: {reason}",
+      "missing": "Em falta no empréstimo: {inputs}."
     },
     "skipReasons": {
       "reconciled_locked": "está reconciliada e bloqueada",
@@ -428,7 +458,17 @@
       "transfer_currency_mismatch": "a conta da transferência usa outra moeda",
       "split_amount_unparseable": "um valor do seu texto não pôde ser lido como número",
       "split_sum_mismatch": "as partes não somam o seu valor",
-      "split_too_few_parts": "ficam menos de duas partes depois de descartar os valores zero"
+      "split_too_few_parts": "ficam menos de duas partes depois de descartar os valores zero",
+      "row_from_scheduled_posting": "foi lançada a partir do pagamento agendado do empréstimo, que já pagou a prestação",
+      "row_is_income": "é uma receita, e só um débito paga uma prestação",
+      "loan_account_unavailable": "a conta do empréstimo não está disponível (foi eliminada, está encerrada, não é sua ou não é um crédito à habitação ou empréstimo)",
+      "loan_interest_booked_separately": "o empréstimo contabiliza os seus juros como transações separadas, por isso um pagamento não os pode incluir",
+      "loan_not_configured": "falta ao empréstimo o que é necessário para calcular uma prestação",
+      "no_installment_in_window": "nenhuma prestação do empréstimo vence dentro da margem em torno desta data",
+      "occurrence_already_posted": "a prestação que vence dentro da margem já está paga",
+      "loan_debt_retired": "o empréstimo já está liquidado",
+      "installment_amount_excess": "é superior à prestação e a regra deixa os débitos maiores inalterados",
+      "installment_amount_shortfall": "é inferior à prestação e a regra deixa os débitos menores inalterados"
     },
     "change": {
       "category": "Categoria: {before} → {after}",
@@ -448,7 +488,8 @@
       "splitToTransfer": "para {account}",
       "splitToTransferPayee": "para {account}, beneficiário {payee}",
       "splitToCategory": "como {category}",
-      "splitUncategorised": "sem categoria"
+      "splitUncategorised": "sem categoria",
+      "loanSettlement": "{done, select, yes {Liquidou a prestação {number} de {account}} other {Liquida a prestação {number} de {account}}}, com vencimento a {dueDate}: capital {principal}, juros {interest}{hasExtra, select, yes {, capital adicional {extra}} other {}}. Dívida antes: {debtBefore}"
     },
     "filters": {
       "accounts": "Contas",
@@ -475,6 +516,19 @@
     "done": {
       "summary": "{count, plural, =0 {Nenhuma transação foi alterada.} one {# transação foi alterada.} other {# transações foram alteradas.}}",
       "undo": "Pode anular a execução no histórico de ações."
+    },
+    "missingInputs": {
+      "scheduledPayment": "um pagamento agendado",
+      "managedTemplate": "um pagamento dividido em capital e juros",
+      "scheduleCalendar": "um calendário de pagamentos",
+      "interestCategory": "uma categoria de juros",
+      "amortizationMonths": "o período de amortização",
+      "paymentStartDate": "a data do primeiro pagamento",
+      "paymentFrequency": "a frequência de pagamento",
+      "originalPrincipal": "o montante original do empréstimo",
+      "rate": "uma taxa de juro para a data",
+      "payment": "o valor do pagamento",
+      "other": "uma definição do empréstimo"
     }
   },
   "applications": {
@@ -531,7 +585,8 @@
       "set_payee_from_text": "Definir o beneficiário a partir do texto: «{template}»{createIfMissing, select, yes { (criado se não existir)} other {}}{onlyIfEmpty, select, yes { (apenas se vazio)} other {}}",
       "set_description": "Definir a descrição ({mode, select, append {acrescentar depois} prepend {acrescentar antes} other {substituir}}): «{template}»{onlyIfEmpty, select, yes { (apenas se vazio)} other {}}",
       "convert_to_transfer": "Converter em transferência {direction, select, from {de} other {para}} {account}",
-      "split": "Dividir em: {parts}"
+      "split": "Dividir em: {parts}",
+      "settle_loan_installment": "Liquidar a prestação de {account} paga por um débito até {before, plural, one {# dia} other {# dias}} antes ou {after, plural, one {# dia} other {# dias}} depois da data de vencimento; um débito maior {excess, select, refuse {fica inalterado} other {paga capital adicional}}, um menor {shortfall, select, interest_first {paga primeiro os juros} other {fica inalterado}}"
     },
     "splitPart": {
       "transfer": "{amount} para {account}",

@@ -251,7 +251,34 @@
       "splitGuideTip": "Consejo: define una fecha de inicio en “Activa entre” para no cambiar transacciones antiguas ya conciliadas, y usa el panel Prueba antes de guardar.",
       "convertGuide": "Un gasto se convierte en una transferencia a la cuenta elegida y un ingreso, en una transferencia desde ella. Solo cambia el saldo de la otra cuenta. Consejo: usa “Activa entre” para no cambiar transacciones antiguas.",
       "splitGuideName1": "capital",
-      "splitGuideName2": "intereses"
+      "splitGuideName2": "intereses",
+      "loanGuide": "Usa esto para un débito bancario que paga una cuota de hipoteca o préstamo como un solo importe. En “Si”, haz coincidir el débito por su cuenta, el texto del beneficiario o la descripción. La transacción se convierte en una división: el capital se transfiere a la cuenta del préstamo y el interés va a la categoría de interés, ambos calculados para la cuota que paga. Consejo: desactiva el registro automático del pago programado del préstamo para que la cuota no se pague dos veces, y usa el panel Prueba antes de guardar.",
+      "loan": {
+        "help": "El débito coincidente paga la siguiente cuota del préstamo que vence cerca de su fecha. Monize calcula el capital y el interés de esa cuota; nunca escribes un importe.",
+        "account": "Cuenta del préstamo",
+        "accountPlaceholder": "Selecciona una hipoteca o un préstamo...",
+        "noLoans": "No tienes ninguna cuenta de hipoteca o préstamo abierta para liquidar.",
+        "window": "Ventana de la fecha de vencimiento",
+        "windowHelp": "Cuánto se puede alejar el banco de la fecha de vencimiento para cobrar el pago. Un débito hasta esta cantidad de días antes o después de la fecha de vencimiento de una cuota paga esa cuota; uno fuera de la ventana se deja sin tocar.",
+        "daysBefore": "Días antes de la fecha de vencimiento",
+        "daysAfter": "Días después de la fecha de vencimiento",
+        "excess": "Cuando el débito es mayor que la cuota",
+        "excessPolicies": {
+          "extra_principal": "Pagar la diferencia como capital extra",
+          "refuse": "Dejar la transacción sin tocar"
+        },
+        "shortfall": "Cuando el débito es menor que la cuota",
+        "shortfallPolicies": {
+          "refuse": "Dejar la transacción sin tocar",
+          "interest_first": "Pagar primero el interés, el resto como capital"
+        },
+        "policyNote": "Una diferencia de unos pocos centavos se absorbe en la línea de interés.",
+        "policyHelp": "Los bancos redondean cada parte por separado, así que un débito a menos de 5 unidades mínimas de la moneda (0,05 en la mayoría de las monedas) se trata como exacto y la línea de interés absorbe la diferencia. Una diferencia mayor sigue las dos opciones anteriores.",
+        "interestCategory": "Categoría de interés (opcional)",
+        "interestCategoryPlaceholder": "La categoría de interés propia del préstamo",
+        "autoPostTitle": "El pago programado del préstamo se registra solo",
+        "autoPostBody": "El registro automático está activado para el pago programado de este préstamo, así que él y el débito bancario que esta regla liquida pagarían la misma cuota. Desactiva el registro automático del pago programado."
+      }
     },
     "actionTypes": {
       "add_tags": "Añadir etiquetas",
@@ -262,7 +289,8 @@
       "set_payee_from_text": "Establecer el beneficiario desde el texto",
       "set_description": "Establecer la descripción",
       "convert_to_transfer": "Convertir en transferencia",
-      "split": "Dividir la transacción"
+      "split": "Dividir la transacción",
+      "settle_loan_installment": "Liquidar una cuota del préstamo"
     },
     "save": {
       "button": "Guardar regla",
@@ -311,8 +339,8 @@
         "MAX_NODES": "Hay demasiadas condiciones y grupos. El límite es {maxNodes}.",
         "NO_ACTIONS": "Añade al menos una acción.",
         "TOO_MANY_ACTIONS": "Hay demasiadas acciones. El límite es {maxActions}.",
-        "DUPLICATE_ACTION": "Una regla puede tener solo una revisión de IA, una transferencia o división, y una parte de la división que toma el resto.",
-        "CONFLICTING_ACTIONS": "Una acción de transferencia o de división no se puede combinar con «Establecer la categoría», y cada una de sus partes tiene una categoría o una cuenta.",
+        "DUPLICATE_ACTION": "Una regla puede tener solo una revisión de IA, una transferencia, división o liquidación de préstamo, y una parte de la división que toma el resto.",
+        "CONFLICTING_ACTIONS": "Una acción de transferencia, de división o de liquidación de préstamo no se puede combinar con «Establecer la categoría», y cada parte de una división tiene una categoría o una cuenta.",
         "INVALID_CAPTURE": "El nombre de una captura usa letras minúsculas y dígitos, empieza por una letra y tiene como máximo 20 caracteres.",
         "TOO_MANY_CAPTURES": "Un patrón puede contener como máximo 5 capturas.",
         "DUPLICATE_CAPTURE": "Cada nombre de captura solo puede usarse una vez en una regla.",
@@ -395,6 +423,7 @@
     "matchesNone": "Esta regla no coincide con ninguna de las transacciones analizadas ({scanned}). Revisa las condiciones antes de guardar. Un patrón sin * solo coincide con el texto completo.",
     "noChange": "{matched} de las {scanned} transacciones examinadas cumplen las condiciones de la regla, pero no cambiaría nada (por ejemplo, porque ya tienen el valor y «solo si está vacío» está activado). No es un error.",
     "truncated": "Coinciden más transacciones de las que permite el límite. Solo se incluyen las más recientes. Sube el límite o acota las fechas para incluir el resto.",
+    "truncatedOldest": "Coincidieron más transacciones de las que permite el límite. Solo se incluyen las más antiguas, porque esta regla liquida las cuotas del préstamo en orden de fecha. Ejecútala de nuevo después de esta ejecución para incluir el resto.",
     "noMatches": {
       "title": "Ninguna transacción cambiaría",
       "body": "Ninguna de las transacciones analizadas coincide con la regla, o la regla no cambiaría nada en ellas."
@@ -408,7 +437,8 @@
     },
     "skipped": {
       "title": "{count, plural, one {# transacción se deja sin tocar} other {# transacciones se dejan sin tocar}}",
-      "line": "{count, plural, one {# transacción} other {# transacciones}}: {reason}"
+      "line": "{count, plural, one {# transacción} other {# transacciones}}: {reason}",
+      "missing": "Falta en el préstamo: {inputs}."
     },
     "skipReasons": {
       "reconciled_locked": "está conciliada y bloqueada",
@@ -428,7 +458,17 @@
       "transfer_currency_mismatch": "la cuenta de la transferencia usa otra moneda",
       "split_amount_unparseable": "un importe de su texto no se pudo leer como número",
       "split_sum_mismatch": "las partes no suman su importe",
-      "split_too_few_parts": "quedan menos de dos partes al descartar los importes cero"
+      "split_too_few_parts": "quedan menos de dos partes al descartar los importes cero",
+      "row_from_scheduled_posting": "se registró desde el pago programado del préstamo, que ya pagó la cuota",
+      "row_is_income": "es un ingreso, y solo un débito paga una cuota",
+      "loan_account_unavailable": "la cuenta del préstamo no está disponible (se eliminó, está cerrada, no es tuya o no es una hipoteca ni un préstamo)",
+      "loan_interest_booked_separately": "el préstamo registra su interés como transacciones separadas, así que un pago no puede incluirlo",
+      "loan_not_configured": "al préstamo le falta lo necesario para calcular una cuota",
+      "no_installment_in_window": "ninguna cuota del préstamo vence dentro de la ventana alrededor de su fecha",
+      "occurrence_already_posted": "la cuota que vence dentro de la ventana ya está pagada",
+      "loan_debt_retired": "el préstamo ya está saldado",
+      "installment_amount_excess": "es mayor que la cuota, y la regla deja sin tocar los débitos mayores",
+      "installment_amount_shortfall": "es menor que la cuota, y la regla deja sin tocar los débitos menores"
     },
     "change": {
       "category": "Categoría: {before} → {after}",
@@ -448,7 +488,8 @@
       "splitToTransfer": "a {account}",
       "splitToTransferPayee": "a {account}, beneficiario {payee}",
       "splitToCategory": "como {category}",
-      "splitUncategorised": "sin categoría"
+      "splitUncategorised": "sin categoría",
+      "loanSettlement": "{done, select, yes {Se liquidó} other {Liquida}} la cuota {number} de {account}, que vence el {dueDate}: capital {principal}, interés {interest}{hasExtra, select, yes {, capital extra {extra}} other {}}. Deuda antes: {debtBefore}"
     },
     "filters": {
       "accounts": "Cuentas",
@@ -475,6 +516,19 @@
     "done": {
       "summary": "{count, plural, =0 {No se cambió ninguna transacción.} one {Se cambió # transacción.} other {Se cambiaron # transacciones.}}",
       "undo": "Puedes deshacer la ejecución desde el historial de acciones."
+    },
+    "missingInputs": {
+      "scheduledPayment": "un pago programado",
+      "managedTemplate": "un pago dividido en capital e interés",
+      "scheduleCalendar": "un calendario de pagos",
+      "interestCategory": "una categoría de interés",
+      "amortizationMonths": "el período de amortización",
+      "paymentStartDate": "la fecha del primer pago",
+      "paymentFrequency": "la frecuencia de pago",
+      "originalPrincipal": "el capital original del préstamo",
+      "rate": "una tasa de interés para la fecha",
+      "payment": "el importe del pago",
+      "other": "una configuración del préstamo"
     }
   },
   "applications": {
@@ -531,7 +585,8 @@
       "set_payee_from_text": "Establecer el beneficiario desde el texto: «{template}»{createIfMissing, select, yes { (se crea si no existe)} other {}}{onlyIfEmpty, select, yes { (solo si está vacío)} other {}}",
       "set_description": "Establecer la descripción ({mode, select, append {añadir al final} prepend {añadir al inicio} other {reemplazar}}): «{template}»{onlyIfEmpty, select, yes { (solo si está vacío)} other {}}",
       "convert_to_transfer": "Convertir en transferencia {direction, select, from {desde} other {a}} {account}",
-      "split": "Dividir en: {parts}"
+      "split": "Dividir en: {parts}",
+      "settle_loan_installment": "Liquidar la cuota de {account} pagada por un débito hasta {before, plural, one {# día} other {# días}} antes o {after, plural, one {# día} other {# días}} después de su fecha de vencimiento; un débito mayor {excess, select, refuse {se deja sin tocar} other {paga capital extra}}, uno menor {shortfall, select, interest_first {paga primero el interés} other {se deja sin tocar}}"
     },
     "splitPart": {
       "transfer": "{amount} a {account}",

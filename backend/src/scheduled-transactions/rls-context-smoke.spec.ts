@@ -176,6 +176,7 @@ describe("scheduled-transactions module RLS context smoke (real withScopedDb)", 
     expect(transactionsService.create).toHaveBeenCalledWith(
       OWNER_ID,
       expect.objectContaining({ accountId: "acc-1" }),
+      { fromScheduledPosting: true },
     );
     // The post's bookkeeping write (advance nextDueDate) also ran in context.
     expect(manager.update).toHaveBeenCalledWith(

@@ -653,7 +653,7 @@ of the annuity's monthly installment and are refused for both new methods.
 | The method of a type | `amortizationMethodFor` in `backend/src/accounts/mortgage-type.util.ts` and `frontend/src/lib/mortgage-type.ts` |
 | The principal on a date | `methodPrincipal` / `nonAnnuityInstallment` in `backend/src/accounts/mortgage-installment.util.ts`; `methodPrincipal` in `frontend/src/lib/mortgage-installment.ts` |
 | Preview | `calculateMortgageAmortization` in `backend/src/accounts/mortgage-amortization.util.ts` |
-| Scheduled installment | `ScheduledTransactionLoanService.resolveInstallment` (`backend/src/scheduled-transactions/scheduled-transaction-loan.service.ts`) |
+| Scheduled installment | `priceInstallment` / `resolveInstallmentCore` (`backend/src/loan-installments/price-installment.ts`), which `ScheduledTransactionLoanService.resolveInstallment` (`backend/src/scheduled-transactions/scheduled-transaction-loan.service.ts`) delegates to |
 | Frontend projection | `generateLoanSchedule` in `frontend/src/lib/loan-schedule.ts`, over `frontend/src/lib/loan-schedule-methods.ts` |
 
 The figures are fixed by the worked example in `docs/specs/mortgage-types.md`
@@ -848,6 +848,49 @@ charged for the days the money had not yet arrived.
 `perPaymentExtraAmount` survives as a **display** average for the "resulting
 monthly payment" card. It is not what the engine applies, and it must not be
 used to compute a balance.
+
+### A settled installment is the bank's row re-divided
+
+A bank that posts one undivided mortgage debit never tells Monize the
+principal/interest split; `settle_loan_installment` (a transaction-rule
+structural action, `docs/specs/loan-installment-settlement.md`) re-divides
+that one row into the installment the loan core would have priced for the
+matched occurrence, through the same `priceInstallment` pricing path as
+`post()`, the posting allocation and the projection anchor (INV-LOAN-006's
+fourth consumer). The row's own amount is the fact; the priced total `T` is
+a proposal the bank's actual debit may disagree with by rounding or by a
+real extra or short payment, so the lines booked are the row's amount
+divided by the amount policy below, never the priced total's own split
+unless the row paid exactly that.
+
+`paid = abs(row.amount)`, `diff = paid - T` at 4dp. Within
+`LOAN_SETTLEMENT_TOLERANCE_MINOR_UNITS = 5` minor units of the account's
+currency (0.05 EUR/USD, 5 JPY, 0.005 KWD) the difference is rounding, not
+money, and lands on the interest line: a bank's own day-count or rounding
+convention differs from Monize's by a few minor units on an otherwise
+correct installment, and no one overpays a mortgage by five cents, so
+anything inside the tolerance is absorbed and anything outside it is money.
+Above the tolerance the excess becomes a third line, extra principal
+(merged with any standing extra the template already carries, memo "Extra
+Principal"), capped at the remaining debt; past the cap, or when the rule's
+`excess` policy is `refuse`, the action is skipped rather than booking a
+principal payment larger than what is owed. Below the tolerance the
+shortfall refuses by default, or (`shortfall: interest_first`) pays
+interest first and gives the rest to principal, never a negative interest
+line. `docs/specs/loan-installment-settlement.md` section 8 is the total
+amount-policy table; section 9 is its worked fixtures at cents.
+
+A rule pass that settles several rows prices each one on the ledger debt
+less the principal and extra principal of every settlement planned earlier
+in the same pass and dated on or before it (INV-RULE-005) -- the fold that
+makes a manual run's newest-first scan price a chain of installments
+wrongly, and why a run carrying the action plans oldest first instead, with
+every import path sorting its rows by date before rules run (so a file
+listed out of order settles the same chain the bank statement would). The
+occurrence is claimed in `scheduled_transaction_postings` in the same
+database transaction as the split (INV-LOAN-008): one settlement per
+scheduled occurrence, and the claim is the arbiter between `post()` and a
+settlement racing the same slot.
 
 ## 10. Gap register
 

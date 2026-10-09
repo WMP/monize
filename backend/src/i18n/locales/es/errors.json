@@ -69,7 +69,11 @@
     "unknownInvestmentAccount": "Cuenta desconocida: {{ name }}. Use un nombre exacto de la lista de cuentas del usuario.",
     "notACreditCard": "Los ciclos de facturación solo están disponibles para cuentas de tarjeta de crédito",
     "noStatementSettlementDay": "Esta tarjeta de crédito no tiene configurado un día de cierre del estado de cuenta",
-    "loanLedgerUnreadable": "No se pudo leer el saldo de este préstamo. Vuelve a intentarlo."
+    "loanLedgerUnreadable": "No se pudo leer el saldo de este préstamo. Vuelve a intentarlo.",
+    "paymentMatchingLoanOnly": "La conciliación de pagos solo se aplica a hipotecas y préstamos",
+    "paymentMatchingRequiresSchedule": "La conciliación de pagos necesita el pago programado del préstamo. Configura primero sus pagos.",
+    "paymentMatchingRuleExists": "Este préstamo ya tiene una regla de conciliación de pagos",
+    "paymentMatchingFailed": "El préstamo se guardó, pero no se pudo crear su regla de conciliación de pagos. Créala desde los detalles del préstamo."
   },
   "actionHistory": {
     "nothingToUndo": "Nada que deshacer",
@@ -618,7 +622,9 @@
     "activeWindowInvalid": "La primera fecha activa no debe ser posterior a la última fecha activa",
     "runTooLarge": "Esta ejecución cambia demasiadas transacciones para poder deshacerse en un solo paso. Reduce las cuentas o las fechas e inténtalo de nuevo",
     "runRedoStructural": "Esta ejecución reestructuró transacciones (transferencias o divisiones), por lo que no se puede rehacer. Ejecute la regla de nuevo",
-    "runUndoStructureChanged": "Una transacción que reestructuró esta ejecución se ha modificado desde entonces (sus líneas de división o su transferencia), por lo que la ejecución no se puede deshacer con seguridad. Restáurela manualmente"
+    "runUndoStructureChanged": "Una transacción que reestructuró esta ejecución se ha modificado desde entonces (sus líneas de división o su transferencia), por lo que la ejecución no se puede deshacer con seguridad. Restáurela manualmente",
+    "occurrenceAlreadyPosted": "Esta cuota del préstamo ya se ha pagado o registrado, por lo que la transacción no puede liquidarla",
+    "runUndoLaterSettlement": "Después de esta ejecución se liquidó una cuota posterior de este préstamo, por lo que la ejecución no se puede deshacer. Deshaga primero la liquidación posterior"
   },
   "transactions": {
     "invalidStatus": "Estado de transacción no válido: {{ status }}",

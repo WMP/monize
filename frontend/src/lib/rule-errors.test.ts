@@ -352,3 +352,50 @@ describe('structuralFieldErrors', () => {
     expect(placed.byKey).toEqual({ 'a:0': ['UNKNOWN_CAPTURE'] });
   });
 });
+
+describe('the loan settlement action', () => {
+  const LOAN = '22222222-2222-4222-8222-222222222222';
+  const draft = (actions: RuleDraft['actions']): RuleDraft => ({ ...emptyDraft(), name: 'Rule', actions });
+  const settle = (over: Partial<Extract<EditorAction, { type: 'settle_loan_installment' }>> = {}): EditorAction =>
+    ({ ...createAction('settle_loan_installment'), loanAccountId: LOAN, ...over }) as EditorAction;
+
+  it('asks for the loan account and each side of the window, and bounds the window at 0..31', () => {
+    expect(draftGaps(draft([settle()]))).toEqual([]);
+    expect(draftGaps(draft([settle({ loanAccountId: '', daysBefore: null, daysAfter: 32 })]))).toEqual([
+      { path: 'actions[0].loanAccountId', code: 'VALUE_REQUIRED' },
+      { path: 'actions[0].dueDateWindow.daysBefore', code: 'VALUE_REQUIRED' },
+      { path: 'actions[0].dueDateWindow.daysAfter', code: 'VALUE_OUT_OF_RANGE' },
+    ]);
+    expect(draftGaps(draft([settle({ daysBefore: 0, daysAfter: 31 })]))).toEqual([]);
+  });
+
+  it('is the one structural action of the rule and conflicts with set_category', () => {
+    expect(draftGaps(draft([settle(), createAction('split')]))).toContainEqual({
+      path: 'actions[1]',
+      code: 'DUPLICATE_ACTION',
+    });
+    expect(
+      draftGaps(draft([{ ...createAction('set_category'), categoryId: LOAN } as EditorAction, settle()])),
+    ).toEqual([{ path: 'actions[1]', code: 'CONFLICTING_ACTIONS' }]);
+  });
+
+  it('puts the server entries at the fields of the card', () => {
+    const placed = placeErrors([
+      { path: 'actions[0].loanAccountId', code: 'REFERENCE_NOT_FOUND' },
+      { path: 'actions[0].dueDateWindow.daysAfter', code: 'VALUE_OUT_OF_RANGE' },
+      { path: 'actions[0].interestCategoryId', code: 'INVALID_UUID' },
+      { path: 'actions[0].excess', code: 'INVALID_ENUM' },
+      { path: 'actions[0].shortfall', code: 'INVALID_ENUM' },
+    ]);
+    expect(structuralFieldErrors(placed, 0)).toEqual({
+      shell: [],
+      fields: {
+        loanAccountId: ['REFERENCE_NOT_FOUND'],
+        'dueDateWindow.daysAfter': ['VALUE_OUT_OF_RANGE'],
+        interestCategoryId: ['INVALID_UUID'],
+        excess: ['INVALID_ENUM'],
+        shortfall: ['INVALID_ENUM'],
+      },
+    });
+  });
+});

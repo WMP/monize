@@ -20,3 +20,9 @@ export const MAX_EXPLAIN_ROW_PAYEE_LENGTH = 255;
 export const MAX_EXPLAIN_ROW_REFERENCE_LENGTH = 100;
 /** `transactions.amount` is decimal(20,4): sixteen integer digits at most. */
 export const MAX_EXPLAIN_ROW_AMOUNT_DIGITS = 16;
+/**
+ * `settle_loan_installment`: the most days a row may be dated before or after
+ * the installment it pays (`dueDateWindow.daysBefore` / `daysAfter`, spec
+ * `docs/specs/loan-installment-settlement.md` section 5.1).
+ */
+export const MAX_LOAN_SETTLEMENT_WINDOW_DAYS = 31;

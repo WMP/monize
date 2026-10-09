@@ -1,5 +1,12 @@
+import type { ClaimedLoanOccurrence } from "../loan-installments/claim-loan-occurrence";
+import type {
+  LoanSettlementPlan,
+  LoanSettlementRefusalDetail,
+  PriorSettlement,
+} from "../loan-installments/loan-settlement.types";
 import {
   RuleAction,
+  SettleLoanInstallmentAction,
   StructuralRuleAction,
   isLedgerAction,
 } from "./rule-action.types";
@@ -13,12 +20,26 @@ import {
   renderRuleTemplate,
 } from "./rule-template";
 import {
+  LoanFactsLookup,
+  RuleLoanFactsByAccount,
+  RuleLoanSettlementChange,
+  loanSettlementChange,
+  planSettlementStep,
+} from "./rule-loan-settlement";
+import {
   RuleStructurePlan,
   RuleTargetAccounts,
   StructuralRefusal,
   planStructure,
 } from "./rule-structure";
 import { validateRuleDefinition } from "./rule-validation";
+
+export type {
+  LoanFactsLookup,
+  RuleLoanFacts,
+  RuleLoanFactsByAccount,
+  RuleLoanSettlementChange,
+} from "./rule-loan-settlement";
 
 export type {
   RuleStructurePlan,
@@ -55,6 +76,8 @@ export type RuleActionSkipReason =
   | "payee_not_found"
   /** The payee lookup for the rendered name has not been made yet (the applier looks it up and plans again). */
   | "payee_unresolved"
+  /** The loan's facts have not been read yet for the row's window (the applier reads them and plans again). */
+  | "loan_facts_unresolved"
   /**
    * A structural action on a row someone other than the owner created in the
    * owner's account (a joint-account member, or a delegate acting as the
@@ -116,6 +139,25 @@ export interface RulePlanContext {
    */
   readonly accounts?: RuleTargetAccounts;
   /**
+   * The facts of each loan a `settle_loan_installment` names, by loan account
+   * id, read by the caller (`RuleEffects.loanFactsLookups` says which).
+   */
+  readonly loanFacts?: RuleLoanFactsByAccount;
+  /**
+   * The settlements planned earlier in the same pass and not yet written
+   * (INV-RULE-005): a later row is priced on the debt they leave and never
+   * claims the slot they claim.
+   */
+  readonly priorSettlements?: readonly PriorSettlement[];
+  /**
+   * The row is a bill `post()` just created. Set by the server on that path
+   * only, never from a request field: a settlement refuses it
+   * (`row_from_scheduled_posting`).
+   */
+  readonly fromScheduledPosting?: boolean;
+  /** The stored row's id; absent for a row not stored yet (a preview of a create). */
+  readonly transactionId?: string;
+  /**
    * Told the facts each rule's condition is evaluated against: the row as the
    * rules before it left it, which a rule's explanation needs and the trace
    * does not carry. Called once per plannable rule that is reached, in order,
@@ -145,8 +187,10 @@ export interface RuleTraceChanges {
   readonly description?: RuleFieldChange<string | null>;
   /** Sorted tag id sets before and after the rule. */
   readonly tagIds?: RuleFieldChange<readonly string[]>;
-  /** Set by `convert_to_transfer` and `split` only: before is always null. */
+  /** Set by the structural actions only: before is always null. */
   readonly structure?: RuleFieldChange<RuleStructurePlan | null>;
+  /** Set by `settle_loan_installment` only, beside `structure`: before is always null. */
+  readonly loanSettlement?: RuleFieldChange<RuleLoanSettlementChange | null>;
 }
 
 /** What became of a `request_ai_review` action: a new request, or one already open. */
@@ -161,6 +205,8 @@ export interface RuleAppliedAction {
 export interface RuleSkippedAction {
   readonly type: RuleAction["type"];
   readonly reason: RuleActionSkipReason;
+  /** What a settlement refusal names: the field to set, the slot that is taken (spec decision 18). */
+  readonly detail?: LoanSettlementRefusalDetail;
 }
 
 export interface RuleTraceEntry {
@@ -195,6 +241,14 @@ export interface RuleNetChanges {
   readonly description?: string | null;
   /** What a structural action makes of the row: a transfer leg or a split. */
   readonly structure?: RuleStructurePlan;
+  /** The settlement `structure` carries out: the slot, its pricing and the lines. */
+  readonly loanSettlement?: LoanSettlementPlan;
+  /**
+   * The claim the write made for `loanSettlement`. Absent in a plan; set by
+   * the applier on the effects it returns, so the run snapshot (and so the
+   * undo) knows the claim and what it did to the cursor.
+   */
+  readonly settlementClaim?: ClaimedLoanOccurrence;
   readonly addTagIds: readonly string[];
   readonly removeTagIds: readonly string[];
 }
@@ -205,6 +259,8 @@ export interface RuleEffects {
   readonly aiReviewRequests: readonly AiReviewRequest[];
   /** Rendered payee names the plan needed and `payeeResolutions` did not hold. */
   readonly payeeLookups?: readonly string[];
+  /** Loan facts the plan needed and `loanFacts` did not hold, one per loan. */
+  readonly loanFactsLookups?: readonly LoanFactsLookup[];
 }
 
 /** The ledger fields rules move, threaded through the pass (never mutated). */
@@ -227,6 +283,8 @@ interface WorkingState {
   readonly hasSplits: boolean;
   /** The structure a structural action planned; at most one per row. */
   readonly structure: RuleStructurePlan | null;
+  /** The settlement a `settle_loan_installment` planned with `structure`. */
+  readonly loanSettlement: LoanSettlementPlan | null;
 }
 
 const NO_CHANGES: RuleTraceChanges = Object.freeze({});
@@ -254,6 +312,8 @@ interface StepInput {
   readonly captures: GlobCaptures;
   /** Payee names this step needed and could not look up (filled in place). */
   readonly lookups: string[];
+  /** Loan facts this step needed and the context did not hold (filled in place). */
+  readonly loanLookups: LoanFactsLookup[];
 }
 
 const sameSet = (a: readonly string[], b: readonly string[]): boolean =>
@@ -269,8 +329,15 @@ function skip(
   state: WorkingState,
   action: RuleAction,
   reason: RuleActionSkipReason,
+  detail?: LoanSettlementRefusalDetail,
 ): StepResult {
-  return { state, skipped: { type: action.type, reason } };
+  return {
+    state,
+    skipped:
+      detail === undefined
+        ? { type: action.type, reason }
+        : { type: action.type, reason, detail },
+  };
 }
 
 /** `facts` are the row as the rules before this one left it (`withState`). */
@@ -339,6 +406,7 @@ function step(
       };
     case "convert_to_transfer":
     case "split":
+    case "settle_loan_installment":
       return structural(state, action, input);
     case "set_payee_from_text":
       return payeeFromText(state, action, input);
@@ -372,10 +440,10 @@ function step(
 }
 
 /**
- * `convert_to_transfer` and `split` (spec section 4). A refused action is
- * skipped whole: its `payeeId` is not applied either. The row afterwards is a
- * transfer leg, or a split with no category, so a later rule sees what the
- * commit will write.
+ * `convert_to_transfer`, `split` and `settle_loan_installment` (spec section
+ * 4). A refused action is skipped whole: its `payeeId` is not applied either.
+ * The row afterwards is a transfer leg, or a split with no category, so a
+ * later rule sees what the commit will write.
  */
 function structural(
   state: WorkingState,
@@ -384,6 +452,9 @@ function structural(
 ): StepResult {
   if (input.context.structuralNotAllowed === true) {
     return skip(state, action, "structural_not_allowed_for_actor");
+  }
+  if (action.type === "settle_loan_installment") {
+    return settleLoan(state, action, input);
   }
   const planned = planStructure(
     action,
@@ -409,6 +480,37 @@ function structural(
       structure,
       isTransfer: structure.kind === "transfer" || state.isTransfer,
       hasSplits: structure.kind === "split" || state.hasSplits,
+    },
+    applied: { type: action.type },
+  };
+}
+
+/**
+ * `settle_loan_installment` (`rule-loan-settlement.ts`): a planned
+ * settlement is a split, so `hasSplits`, a later rule's refusals, the labels
+ * and the run's account locks treat it as one.
+ */
+function settleLoan(
+  state: WorkingState,
+  action: SettleLoanInstallmentAction,
+  input: StepInput,
+): StepResult {
+  const step = planSettlementStep(action, input.facts, input.context);
+  if (step.kind === "lookup") {
+    input.loanLookups.push(step.lookup);
+    return skip(state, action, "loan_facts_unresolved");
+  }
+  if (step.kind === "refused") {
+    return skip(state, action, step.reason, step.detail);
+  }
+  return {
+    state: {
+      ...state,
+      categoryId: null,
+      categoryAncestorIds: [],
+      structure: step.structure,
+      loanSettlement: step.settlement,
+      hasSplits: true,
     },
     applied: { type: action.type },
   };
@@ -527,6 +629,15 @@ function diffState(
     ...(before.structure !== after.structure
       ? { structure: { before: before.structure, after: after.structure } }
       : {}),
+    ...(after.loanSettlement !== null &&
+    before.loanSettlement !== after.loanSettlement
+      ? {
+          loanSettlement: {
+            before: null,
+            after: loanSettlementChange(after.loanSettlement),
+          },
+        }
+      : {}),
   };
 }
 
@@ -573,6 +684,10 @@ function netChanges(first: WorkingState, last: WorkingState): RuleNetChanges {
     ...(last.structure !== null && last.structure !== first.structure
       ? { structure: last.structure }
       : {}),
+    ...(last.loanSettlement !== null &&
+    last.loanSettlement !== first.loanSettlement
+      ? { loanSettlement: last.loanSettlement }
+      : {}),
     addTagIds: last.tagIds.filter((id) => !first.tagIds.includes(id)),
     removeTagIds: first.tagIds.filter((id) => !last.tagIds.includes(id)),
   };
@@ -605,11 +720,13 @@ export function planRuleEffects(
     isTransfer: facts.type === "TRANSFER",
     hasSplits: facts.hasSplits,
     structure: null,
+    loanSettlement: null,
   };
   let state = initial;
   const trace: RuleTraceEntry[] = [];
   const aiReviewRequests: AiReviewRequest[] = [];
   const lookups: string[] = [];
+  const loanLookups: LoanFactsLookup[] = [];
 
   for (const rule of rules) {
     const notRun =
@@ -658,6 +775,7 @@ export function planRuleEffects(
         context,
         captures: match.captures,
         lookups,
+        loanLookups,
       });
       state = result.state;
       if (result.applied) applied.push(result.applied);
@@ -698,6 +816,7 @@ export function planRuleEffects(
     trace: finalTrace,
     aiReviewRequests,
     ...(lookups.length > 0 ? { payeeLookups: [...new Set(lookups)] } : {}),
+    ...(loanLookups.length > 0 ? { loanFactsLookups: loanLookups } : {}),
   };
 }
 

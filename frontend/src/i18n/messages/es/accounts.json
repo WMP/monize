@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "{kind, select, mortgage {Asociar los pagos bancarios importados a esta hipoteca} other {Asociar los pagos bancarios importados a este préstamo}}",
+    "toggleHelp": "Cuando una transacción bancaria importada coincide con el patrón de beneficiario, Monize la usa para liquidar el pago programado y la divide en capital e intereses, en lugar de registrar una transacción de factura por separado.",
+    "payeePattern": "Patrón del beneficiario",
+    "payeePatternPlaceholder": "p. ej. *MI BANCO*",
+    "descriptionPattern": "Patrón de la descripción (opcional)",
+    "descriptionPatternPlaceholder": "p. ej. *Pago del préstamo*",
+    "fromAccount": "Comparado con los adeudos de {account}."
+  },
   "nameSuffix": {
     "cash": "Efectivo",
     "brokerage": "Corretaje"
@@ -165,8 +174,6 @@
     "statementDueDayPlaceholder": "p. ej. 15",
     "statementSettlementDayPlaceholder": "p. ej. 25",
     "fxFeeTitle": "Comisión por conversión de moneda extranjera (opcional)",
-    "fxFeePercent": "Porcentaje de comisión",
-    "fxFeePercentPlaceholder": "p. ej. 2,5",
     "jointSharedWith": "Cuenta conjunta compartida con {count, plural, one {# persona} other {# personas}}",
     "jointManage": "Gestionar uso compartido",
     "cashSection": {
@@ -270,7 +277,11 @@
     "firstInstallmentHelp": "Esta hipoteca no tiene un pago fijo: cada cuota se calcula a partir del saldo, el tipo de interés y el periodo de amortización. Esta es la que vence el {date}, incluido cualquier capital adicional.",
     "firstInstallmentPending": "Introduce la fecha del próximo pago para calcular la primera cuota.",
     "firstInstallmentCalculating": "Calculando la primera cuota...",
-    "firstInstallmentFailed": "No se pudo calcular la primera cuota. Revisa los valores de abajo e inténtalo de nuevo."
+    "firstInstallmentFailed": "No se pudo calcular la primera cuota. Revisa los valores de abajo e inténtalo de nuevo.",
+    "paymentMatching": {
+      "autoPostDisabled": "Desactivado automáticamente: la coincidencia de pagos liquida esta factura a partir del propio adeudo del banco, por lo que no debe registrarse también por sí sola.",
+      "payeePatternRequired": "Introduce un patrón de beneficiario que incluya un comodín *"
+    }
   },
   "mortgageFields": {
     "title": "Detalles de la Hipoteca",
@@ -407,6 +418,10 @@
         "cancel": "Cancelar",
         "use": "Editar cuenta con este tipo"
       }
+    },
+    "originalPrincipal": {
+      "label": "Capital original",
+      "help": "El importe que pediste prestado originalmente. En una cuenta cuyo historial registrado comienza después de iniciarse la hipoteca, este es el importe prestado, no el saldo inicial, que es la deuda al comienzo de tu historial."
     }
   },
   "assetFields": {
@@ -436,7 +451,10 @@
     "paymentStartDateRequired": "La fecha del primer pago es obligatoria",
     "paymentAccountRequired": "La cuenta de pago es obligatoria",
     "amortizationRequired": "El período de amortización es obligatorio",
-    "acceleratedNeedsAnnuity": "Esta hipoteca se paga con un calendario acelerado, que solo tiene una hipoteca de anualidad. Una hipoteca lineal o de solo intereses necesita una frecuencia de pago normal, así que mantén un tipo de anualidad."
+    "acceleratedNeedsAnnuity": "Esta hipoteca se paga con un calendario acelerado, que solo tiene una hipoteca de anualidad. Una hipoteca lineal o de solo intereses necesita una frecuencia de pago normal, así que mantén un tipo de anualidad.",
+    "paymentMatchingPayeePatternRequired": "Introduce un patrón de beneficiario para identificar el adeudo del banco",
+    "paymentMatchingPayeePatternWildcard": "El patrón del beneficiario debe incluir un comodín *",
+    "paymentMatchingDescriptionPatternWildcard": "El patrón de la descripción debe incluir un comodín *"
   },
   "loanDetail": {
     "backToAccounts": "Volver a las cuentas",
@@ -633,6 +651,70 @@
       "seriesOriginal": "Calendario original",
       "seriesActual": "Saldo real",
       "unknown": "Desconocido"
+    },
+    "paymentMatching": {
+      "title": "Conciliación de pagos",
+      "description": "Reconoce el adeudo que hace el banco de cada cuota y lo liquida contra el calendario del préstamo como capital e intereses, en lugar de registrar la factura por separado.",
+      "noSchedule": "La conciliación de pagos liquida los adeudos del banco contra el pago programado del préstamo. Configura primero los pagos de este préstamo.",
+      "noRule": "No hay ninguna regla de conciliación de pagos vinculada a este préstamo.",
+      "createOne": "Crear una",
+      "ruleLabel": "Regla:",
+      "ruleLoading": "Cargando la regla",
+      "ruleFailed": "No se pudo cargar la regla de conciliación de pagos.",
+      "scheduleLoading": "Cargando el pago programado",
+      "scheduleFailed": "No se pudo cargar el pago programado del préstamo.",
+      "retry": "Reintentar",
+      "autoPost": {
+        "title": "El pago programado todavía se registra solo",
+        "body": "El registro automático está activado en la factura de este préstamo, así que una cuota que la regla liquide a partir del adeudo del banco también la registraría la factura. Desactiva el registro automático de la factura en Facturas y depósitos."
+      },
+      "preconditions": {
+        "openingBalance": "El saldo inicial del préstamo debe ser la deuda al comienzo del historial que se procesa; los intereses de cada cuota se calculan sobre él.",
+        "originalPrincipal": "El capital original debe ser el importe prestado originalmente, no el saldo inicial.",
+        "scheduleStart": "Los adeudos con fecha anterior al {date}, cuando empieza el pago programado, no tienen ninguna cuota con la que conciliarse."
+      },
+      "process": {
+        "button": "Procesar historial",
+        "scope": "Aplica la regla a los adeudos de {account}, empezando por los más antiguos.",
+        "running": "Procesando historial: {count, plural, one {# cuota liquidada} other {# cuotas liquidadas}} hasta ahora.",
+        "done": "{count, plural, =0 {No se liquidó ninguna cuota.} one {Se liquidó # cuota.} other {Se liquidaron # cuotas.}}",
+        "undo": "Cada página de la ejecución se puede deshacer desde el historial de acciones.",
+        "failed": "El procesamiento del historial se detuvo",
+        "stuckTitle": "El procesamiento del historial no pudo continuar",
+        "stuck": "Hay más de {limit, number} transacciones con fecha {date}, por lo que la ejecución no puede pasar de ese día. Liquida el resto desde Herramientas > Reglas con un filtro más específico.",
+        "stuckUnknown": "El servidor no indicó hasta dónde llegó la ejecución, así que no puede continuar. Recarga la página y vuelve a intentarlo."
+      },
+      "create": {
+        "title": "Crear regla de conciliación de pagos",
+        "description": "La regla liquida los adeudos coincidentes de la cuenta del pago programado del préstamo, y se desactiva el registro automático de la factura.",
+        "descriptionWithAccount": "La regla liquida los adeudos coincidentes de {account}, y se desactiva el registro automático de la factura.",
+        "submit": "Crear regla",
+        "payeePatternRequired": "Introduce un patrón del beneficiario que incluya un comodín *",
+        "descriptionPatternWildcard": "Un patrón de la descripción debe incluir un comodín *",
+        "failed": "No se pudo crear la regla de conciliación de pagos.",
+        "done": "Regla \"{name}\" creada"
+      },
+      "settled": {
+        "title": "Cuotas liquidadas",
+        "colDueDate": "Fecha de vencimiento",
+        "colTransaction": "Transacción",
+        "colPrincipal": "Capital",
+        "colInterest": "Intereses",
+        "colExtra": "Capital adicional",
+        "colDebtBefore": "Deuda anterior",
+        "openTransaction": "Abrir la transacción",
+        "void": "Anulada",
+        "notRecorded": "No registrado",
+        "empty": {
+          "title": "Todavía no hay cuotas liquidadas",
+          "body": "Procesa el historial o importa los adeudos del banco para liquidar cuotas."
+        },
+        "error": {
+          "title": "No se pudieron cargar las cuotas liquidadas",
+          "body": "Esta no es una lista vacía. Vuelve a intentarlo para ver qué cuotas se liquidaron.",
+          "retry": "Reintentar"
+        }
+      }
     },
     "lineOfCredit": {
       "currentBalance": "Saldo actual",

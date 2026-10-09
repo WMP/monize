@@ -33,17 +33,17 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 |----|-------|------|-----------|--------------|--------|----|
 | S1 | #1590 | Spec in `docs/specs/` and plan pair in `docs/future-plans/`; INV-LOAN-008 and INV-RULE-005 registered `unenforced` | -- | none | [x] | the PR closing #1590 |
 | B1 | #1591 | Migration: claim columns on `scheduled_transaction_postings`, `accounts.payment_matching_rule_id`; entities, backup, restore, action history | S1 | inert | [x] | the PR closing #1591 |
-| B2 | #1592 | Loan core extraction into `backend/src/loan-installments/`; `advanceScheduleCursor` shared with `post()` | S1 | neutral | [ ] | -- |
-| B3 | #1593 | Settlement types, occurrence slots, facts loader, `datedLoanDebts`, pure planner | B1, B2 | none | [ ] | -- |
-| B4 | #1594 | The action in the rules engine: types, validation, references, planner, lookup rounds, skip reasons | B3 | inert | [ ] | -- |
-| B5 | #1595 | Write path: claim, cursor, trace, fingerprint, snapshot, undo, after-commit reprice; `post()` records its transaction | B4 | inert | [ ] | -- |
-| B6 | #1596 | Chronological fold, ascending run order, import ordering, bank-sync affected accounts | B5 | neutral | [ ] | -- |
-| F1 | #1597 | Frontend action card, types, run preview, skip reasons, en + pseudo | B5 | inert | [ ] | -- |
-| B7 | #1598 | Mortgage and setup backend: payment matching, rule creation, auto-post off, original principal, endpoints | B5 | inert | [ ] | -- |
-| F2 | #1599 | Mortgage form and setup dialog: Payment matching, Original principal | F1, B7 | inert | [ ] | -- |
-| F3 | #1600 | Loan Details Payment matching panel | F2, B6 | inert | [ ] | -- |
-| B8 | #1601 | Assistant and MCP name form, hints, rule language, docs | B4 | inert | [ ] | -- |
-| Q | #1602 | Acceptance: all locales, invariants enforced, docs, release note | F3, B8, B6 | none | [ ] | -- |
+| B2 | #1592 | Loan core extraction into `backend/src/loan-installments/`; `advanceScheduleCursor` shared with `post()` | S1 | neutral | [x] | the PR closing #1592 |
+| B3 | #1593 | Settlement types, occurrence slots, facts loader, `datedLoanDebts`, pure planner | B1, B2 | none | [x] | the PR closing #1593 |
+| B4 | #1594 | The action in the rules engine: types, validation, references, planner, lookup rounds, skip reasons | B3 | inert | [x] | the PR closing #1594 |
+| B5 | #1595 | Write path: claim, cursor, trace, fingerprint, snapshot, undo, after-commit reprice; `post()` records its transaction | B4 | inert | [x] | the PR closing #1595 |
+| B6 | #1596 | Chronological fold, ascending run order, import ordering, bank-sync affected accounts | B5 | neutral | [x] | PR #1619 |
+| F1 | #1597 | Frontend action card, types, run preview, skip reasons, en + pseudo | B5 | inert | [x] | PR #1621 |
+| B7 | #1598 | Mortgage and setup backend: payment matching, rule creation, auto-post off, original principal, endpoints | B5 | inert | [x] | the PR closing #1598 |
+| F2 | #1599 | Mortgage form and setup dialog: Payment matching, Original principal | F1, B7 | inert | [x] | PR #1624 |
+| F3 | #1600 | Loan Details Payment matching panel | F2, B6 | inert | [x] | PR #1625 |
+| B8 | #1601 | Assistant and MCP name form, hints, rule language, docs | B4 | inert | [x] | PR #1626 |
+| Q | #1602 | Acceptance: all locales, invariants enforced, docs, release note | F3, B8, B6 | none | [x] | this PR |
 
 **Why F1 waits for B5:** until B5 the validator refuses the action, so a card for it would offer something the server refuses to save.
 
@@ -70,22 +70,22 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 
 ### B2 -- The loan core, behaviour-preserving
 
-**Files:** `backend/src/loan-installments/price-installment.ts`, `backend/src/loan-installments/reprice-template.ts`, `backend/src/loan-installments/advance-schedule-cursor.ts`, `backend/src/loan-installments/loan-core-imports.guard.spec.ts` (all new), `backend/src/scheduled-transactions/scheduled-transaction-loan.service.ts`, `backend/src/scheduled-transactions/scheduled-transactions.service.ts`, their specs.
+**Files:** `backend/src/loan-installments/price-installment.ts`, `backend/src/loan-installments/reprice-template.ts`, `backend/src/scheduled-transactions/schedule-cursor.ts`, `backend/src/loan-installments/loan-core-imports.guard.spec.ts` (all new), `backend/src/scheduled-transactions/scheduled-transaction-loan.service.ts`, `backend/src/scheduled-transactions/scheduled-transactions.service.ts`, their specs.
 
 - `price-installment.ts`: the body of `resolveInstallment`, split into the I/O half (debt, rate, template lines) and a pure `priceInstallment(inputs)`; `reprice-template.ts`: the body of `rewriteTemplate` as `rewriteLoanTemplate(m, scheduledTransactionId, purpose)`. `ScheduledTransactionLoanService` delegates; its public methods and their specs are unchanged.
 - `priceInstallment` takes the annual rate, the cadence and the payment as inputs, so each caller states its missing-data rule; the posting path keeps today's defaults (spec section 15 item 5) and its specs stay green unchanged.
-- `advance-schedule-cursor.ts`: the recurring branch of `post()` after the claim (next due date, override pruning, occurrences, end date, `last_posted_date`), called by `post()`.
+- `schedule-cursor.ts` (in `scheduled-transactions/`, beside the entities, which the core may import): `advanceScheduleCursor(m, schedule, consumedSlots)`, the recurring branch of `post()` after the claim (next due date, override pruning, occurrences, end date, `last_posted_date`), stepping past every consecutive claimed slot; `post()` calls it with the one slot it claimed.
 - The guard spec fails an import from `transactions/*`, `scheduled-transactions/*.service*` or `transaction-rules/*` inside the core.
 - Acceptance: every existing spec of the two services green with no expectation changed; the guard's own positive and negative cases.
 
 ### B3 -- Types, slots, facts, planner
 
-**Files:** `backend/src/loan-installments/loan-settlement.types.ts`, `backend/src/loan-installments/occurrence-slots.ts`, `backend/src/loan-installments/loan-settlement-facts.ts`, `backend/src/loan-installments/dated-loan-debts.ts`, `backend/src/loan-installments/plan-loan-settlement.ts` (all new, with specs), a PG integration spec for `datedLoanDebts`.
+**Files:** `backend/src/loan-installments/loan-settlement.types.ts`, `backend/src/loan-installments/occurrence-slots.ts`, `backend/src/loan-installments/loan-settlement-facts.ts`, `backend/src/loan-installments/plan-loan-settlement.ts` (all new, with specs), `backend/src/accounts/dated-loan-debt.util.ts` (`datedLoanDebts` beside `datedLoanDebt`), `backend/src/common/ledger-balance.sql.ts` (the batched statement), `backend/test/integration/loan-settlement-debt.integration.spec.ts`.
 
 - Types: `LoanSettlementAction` fields, `LoanSettlementPlan`, the `pricing` record (spec 5.3), the refusal reasons and `missing` codes (spec sections 10 and 11), `LOAN_SETTLEMENT_TOLERANCE_MINOR_UNITS = 5`.
 - `occurrence-slots.ts`: the pure calendar of spec 6.1 (built around `next_due_date`, history from `start_date`, periods, `ONCE`, the cadence check) and the selection of 6.2.
-- `datedLoanDebts(m, loan, dates)`: one statement over `ACCOUNT_BALANCE_AS_OF_SQL`'s predicate for every date, equal date by date to `datedLoanDebt`.
-- `loan-settlement-facts.ts`: account, schedule and template lines, rates, payments by date (spec decision 12), claims, the dated debts; read under the caller's locks.
+- `datedLoanDebts(m, loan, dates)`: one statement (`ACCOUNT_BALANCES_AS_OF_DATES_SQL`, the as-of join bounded at each unnested date) for every date, equal date by date to `datedLoanDebt`.
+- `loan-settlement-facts.ts`: account, schedule and template lines, rates (the dated payment of spec decision 12 is read off them), the slots of the pass's window, the claims over their periods, the dated debts; read after the locks of spec section 13 when the caller asks for them.
 - `plan-loan-settlement.ts`: pure; slot selection, the fold over `priorSettlements` (spec 7.2), pricing through `priceInstallment` (spec 7.3), the amount policy (spec section 8), refusals 11 to 19 (spec section 11); returns a `SplitStructurePlan` and a `LoanSettlementPlan`, or a refusal with its detail.
 - Acceptance: spec section 16 rows B3; every row of spec sections 6, 8 and 9 as a named case.
 
@@ -97,14 +97,15 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 - `RulePlanContext` gains `loanFacts` and `fromScheduledPosting` (server-set, never from a request); `RuleEffects` gains `loanFactsLookups`; the applier and the run service answer them in a second round, as for payees.
 - `RuleSkippedAction` gains the optional `detail` (spec decision 18). Refusals in spec section 11's order; a success plans `changes.structure` (a split) and `changes.loanSettlement`.
 - Inert by construction until B5: `rule-validation.ts` answers `UNKNOWN_ACTION` for `settle_loan_installment` on every save path (REST, assistant, MCP), as it does today, so no stored rule can carry the action and no create or import can reach it. The planner and the lookup rounds are exercised by the specs directly. B5 lets the validator accept the type in the same PR that writes the claim, so a split is never written without its claim and nothing throws on a create or import path in between.
+- As built: the type is in the `RuleAction` union and `StructuralRuleAction`, but not in `RULE_ACTION_TYPES`, the list `frontend/src/lib/rule-fields.contract.test.ts` mirrors; the validator accepts it only while `SETTLE_LOAN_INSTALLMENT_ACCEPTED` (`rule-action.types.ts`) is true, which it is not, and the planner skips a rule the validator refuses (`invalid`). The specs that plan the action mock the flag on. B5 deletes the flag and appends the type to `RULE_ACTION_TYPES`; that append fails the frontend's mirror tests (`rule-fields.contract.test.ts`, `rules-catalog.test.ts`, `rule-actions.test.ts`) until the frontend lists the type, so B5 carries the frontend mirror entry or lands with F1. The name-mapping and hint entries (`RULE_ACTION_TOOL_KEYS`, `ACTION_NAME_KEYS`) are keyed on `RULE_ACTION_TYPES` and follow with it.
 - Acceptance: spec section 16 row B4.
 
 ### B5 -- Write path, claim, cursor, undo
 
-**Files:** `backend/src/loan-installments/claim-loan-occurrence.ts` (new), `backend/src/transaction-rules/transaction-rules-applier.service.ts`, `backend/src/transaction-rules/rule-run-fingerprint.ts`, `backend/src/transaction-rules/rule-run-snapshot.ts`, `backend/src/transaction-rules/transaction-rules-run.service.ts`, `backend/src/action-history/rule-run-undo.ts`, `backend/src/scheduled-transactions/scheduled-transactions.service.ts` (`post()` writes `transaction_id` and passes `fromScheduledPosting`), `backend/src/transactions/transactions.service.ts` (the after-commit dispatch), `backend/test/integration/loan-settlement.integration.spec.ts` (new), their specs.
+**Files:** `backend/src/loan-installments/claim-loan-occurrence.ts` (new), `backend/src/transaction-rules/transaction-rules-applier.service.ts`, `backend/src/transaction-rules/rule-run-fingerprint.ts`, `backend/src/transaction-rules/rule-run-snapshot.ts`, `backend/src/transaction-rules/transaction-rules-run.service.ts`, `backend/src/action-history/rule-run-undo.ts`, `backend/src/scheduled-transactions/scheduled-transactions.service.ts` (`post()` writes `transaction_id` and passes `fromScheduledPosting`), `backend/src/transactions/transactions.service.ts` (the after-commit dispatch), `backend/test/integration/loan-settlement-claim.integration.spec.ts` (new), their specs.
 
-- Spec section 12 in full: claim, split, cursor in that order on one `EntityManager`; the conflict skipped, not thrown; the trace and `canonicalChanges`; the snapshot; undo with `RULE_RUN_UNDO_LATER_SETTLEMENT`, the conditional rewind and the overrides restored; the after-commit net-worth dispatch and `rewriteLoanTemplate` on the create and run paths.
-- Locks per spec section 13 on the create and run paths; the run derives its schedules and loans from the rules before planning.
+- Spec section 12 in full: split, claim, cursor in that order on one `EntityManager`; a write-time conflict is the throwing backstop of decision 17, unreachable while the planner reads the claims under the locks; the trace and `canonicalChanges`; the snapshot; undo with `RULE_RUN_UNDO_LATER_SETTLEMENT`, the conditional rewind and the overrides restored; the after-commit net-worth dispatch and `rewriteLoanTemplate` on the create, import, bank-sync and run paths.
+- Locks per spec section 13 on the create and run paths: the facts loader takes the schedule row and the two accounts before its reads on every write path, inside the run's one plan (one loan per run, so no pre-derivation).
 - `post()` sets `transaction_id` on its claim after it creates the transaction (spec 5.2), null for investment posts; the INV-OCCURRENCE-001 entry names the release on delete for every schedule.
 - `rule-validation.ts` accepts `settle_loan_installment` (it answered `UNKNOWN_ACTION` until this task).
 - Acceptance: spec section 16 rows B5, including the two-connection case.
@@ -131,6 +132,7 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 - Spec decision 5: the rule through `TransactionRulesService.create`, `payment_matching_rule_id`, `auto_post = false`; `original_principal` accepted on create and edit, separate from the opening balance (spec 14.3).
 - An endpoint listing the loan's settled installments from the claims (slot, transaction, lines, `pricing`), and one creating the rule for an existing loan.
 - A rule-creation failure is reported and the account stays (spec section 15 item 6).
+- As built: `LoanPaymentMatchingService` (`backend/src/accounts/loan-payment-matching.service.ts`) builds the rule, creates it through `TransactionRulesService.create` and, in the same transaction after the schedule row lock and then the account's, sets `payment_matching_rule_id` and `auto_post = false`. The create and setup flows check the patterns with the rule validator before their first write (`assertDefinable`); a refusal after the account and schedule are committed comes back as `paymentMatchingError: { errorCode, message }` on the created account and on the setup response, beside `paymentMatchingRuleId: null`, never as a thrown error. `POST /accounts/:id/payment-matching-rule` creates the rule for an existing loan (409 when it has one); `GET /accounts/:id/loan-settlements` lists the `rule` claims on the loan's schedule, newest first, at most 200. The loan create path accepts `paymentMatching` as the mortgage path does; any other create refuses it. `originalPrincipal` is accepted on create, edit and setup (and the setup preview); a change on a LINEAR mortgage reprices its template.
 
 ### F2 -- Mortgage form and setup dialog
 

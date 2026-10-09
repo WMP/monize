@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act, waitFor } from '@/test/render';
+import toast from 'react-hot-toast';
 import { AccountFormModal } from './AccountFormModal';
 import { Account } from '@/types/account';
 
@@ -102,6 +103,37 @@ describe('AccountFormModal', () => {
     expect(mockCreate).toHaveBeenCalled();
     expect(close).toHaveBeenCalled();
     expect(onSaved).toHaveBeenCalled();
+  });
+
+  it('warns when the created account could not create its Payment matching rule', async () => {
+    mockCreate.mockResolvedValue({
+      id: 'new',
+      paymentMatchingError: { errorCode: 'RULE_LIMIT_REACHED', message: 'Too many rules already exist.' },
+    });
+    render(<AccountFormModal formModal={buildFormModal()} onSaved={vi.fn()} />);
+
+    await waitFor(() => expect(capturedOnSubmit).not.toBeNull());
+    await act(async () => {
+      await capturedOnSubmit!({ name: 'New', accountType: 'MORTGAGE' });
+    });
+
+    // The account is saved either way (docs/specs/loan-installment-settlement.md
+    // decision 5), so the success toast still fires, and the rule failure is a
+    // second, separate warning rather than a replacement for it.
+    expect(toast.success).toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith('Too many rules already exist.');
+  });
+
+  it('does not warn about Payment matching when the create had none to report', async () => {
+    mockCreate.mockResolvedValue({ id: 'new' });
+    render(<AccountFormModal formModal={buildFormModal()} onSaved={vi.fn()} />);
+
+    await waitFor(() => expect(capturedOnSubmit).not.toBeNull());
+    await act(async () => {
+      await capturedOnSubmit!({ name: 'New', accountType: 'CHEQUING' });
+    });
+
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
   it('hands the account it created to onCreated, after onSaved, and only on a create', async () => {

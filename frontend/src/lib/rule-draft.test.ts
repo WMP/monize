@@ -409,3 +409,62 @@ describe('the structural actions', () => {
     expect(split.parts).toHaveLength(2);
   });
 });
+
+describe('the loan settlement action', () => {
+  const LOAN = '22222222-2222-4222-8222-222222222222';
+  const stored = {
+    type: 'settle_loan_installment',
+    loanAccountId: LOAN,
+    dueDateWindow: { daysBefore: 2, daysAfter: 10 },
+    excess: 'refuse',
+    shortfall: 'interest_first',
+    interestCategoryId: UUID,
+  };
+
+  it('opens and saves exactly as stored, with nothing repaired', () => {
+    const { draft, repaired } = read({ actions: [stored] as never });
+    expect(repaired).toBe(0);
+    expect(draft.actions[0]).toMatchObject({
+      type: 'settle_loan_installment',
+      loanAccountId: LOAN,
+      daysBefore: 2,
+      daysAfter: 10,
+      excess: 'refuse',
+      shortfall: 'interest_first',
+      interestCategoryId: UUID,
+    });
+    expect(draftToPayload(draft).actions).toEqual([stored]);
+  });
+
+  it('reads a missing window and missing policies as the defaults, and saves them', () => {
+    const { draft, repaired } = read({ actions: [{ type: 'settle_loan_installment', loanAccountId: LOAN }] as never });
+    expect(repaired).toBe(0);
+    expect(actionToApi(draft.actions[0])).toEqual({
+      type: 'settle_loan_installment',
+      loanAccountId: LOAN,
+      dueDateWindow: { daysBefore: 3, daysAfter: 7 },
+      excess: 'extra_principal',
+      shortfall: 'refuse',
+    });
+  });
+
+  it('repairs a window side out of range and a policy it does not know to the defaults', () => {
+    const { draft, repaired } = read({
+      actions: [
+        { ...stored, dueDateWindow: { daysBefore: 40, daysAfter: 1.5 }, excess: 'ignore', interestCategoryId: 7 },
+      ] as never,
+    });
+    expect(repaired).toBe(4);
+    expect(draft.actions[0]).toMatchObject({ daysBefore: 3, daysAfter: 7, excess: 'extra_principal', interestCategoryId: '' });
+  });
+
+  it('starts a new card without an account and leaves the interest category out until one is chosen', () => {
+    expect(actionToApi(createAction('settle_loan_installment'))).toEqual({
+      type: 'settle_loan_installment',
+      loanAccountId: '',
+      dueDateWindow: { daysBefore: 3, daysAfter: 7 },
+      excess: 'extra_principal',
+      shortfall: 'refuse',
+    });
+  });
+});

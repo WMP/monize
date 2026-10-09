@@ -251,7 +251,34 @@
       "splitGuideTip": "İpucu: eski mutabakatı yapılmış işlemler değişmesin diye “Şu tarihler arasında etkin” alanında bir başlangıç tarihi belirleyin ve kaydetmeden önce Test panelini kullanın.",
       "convertGuide": "Bir gider, seçtiğiniz hesaba transfere; bir gelir ise o hesaptan transfere dönüşür. Yalnızca diğer hesabın bakiyesi değişir. İpucu: eski işlemler değişmesin diye “Şu tarihler arasında etkin” alanını kullanın.",
       "splitGuideName1": "anapara",
-      "splitGuideName2": "faiz"
+      "splitGuideName2": "faiz",
+      "loanGuide": "Bir ipotek veya kredi taksitini tek tutar olarak ödeyen bir banka çekimi için bunu kullanın. “Eğer”de çekimi hesabına, alıcı metnine veya açıklamasına göre eşleştirin. İşlem bir bölmeye dönüşür: anapara kredi hesabına transfer edilir, faiz ise faiz kategorisine gider; her ikisi de ödediği taksite göre fiyatlandırılır. İpucu: taksidin iki kez ödenmemesi için bu kredinin zamanlanmış ödemesinde otomatik kaydı kapatın ve kaydetmeden önce Test panelini kullanın.",
+      "loan": {
+        "help": "Eşleşen çekim, tarihine yakın vadesi olan kredinin bir sonraki taksitini öder. Monize bu taksit için anaparayı ve faizi hesaplar; tutarı siz asla yazmazsınız.",
+        "account": "Kredi hesabı",
+        "accountPlaceholder": "Bir ipotek veya kredi seçin...",
+        "noLoans": "Kapatılacak açık bir ipotek veya kredi hesabınız yok.",
+        "window": "Vade penceresi",
+        "windowHelp": "Bankanın ödemeyi vadeden ne kadar önce veya sonra alabileceği. Bir taksidin vadesinden bu kadar gün önceye veya sonrasına kadar yapılan bir çekim o taksidi öder; pencerenin dışında kalan bir çekim olduğu gibi bırakılır.",
+        "daysBefore": "Vadeden önceki gün sayısı",
+        "daysAfter": "Vadeden sonraki gün sayısı",
+        "excess": "Çekim taksitten fazla olduğunda",
+        "excessPolicies": {
+          "extra_principal": "Farkı ek anapara olarak öde",
+          "refuse": "İşlemi olduğu gibi bırak"
+        },
+        "shortfall": "Çekim taksitten az olduğunda",
+        "shortfallPolicies": {
+          "refuse": "İşlemi olduğu gibi bırak",
+          "interest_first": "Önce faizi öde, kalanını anapara olarak öde"
+        },
+        "policyNote": "Birkaç kuruşluk bir fark faiz satırına yansıtılır.",
+        "policyHelp": "Bankalar her bölümü ayrı ayrı yuvarlar, bu nedenle para biriminin en küçük biriminin 5 katına kadar olan bir çekim (çoğu para birimi için 0,05) tam kabul edilir ve farkı faiz satırı üstlenir. Daha büyük bir fark yukarıdaki iki seçenekten birini izler.",
+        "interestCategory": "Faiz kategorisi (isteğe bağlı)",
+        "interestCategoryPlaceholder": "Kredinin kendi faiz kategorisi",
+        "autoPostTitle": "Kredinin zamanlanmış ödemesi kendini kaydeder",
+        "autoPostBody": "Bu kredinin zamanlanmış ödemesi için otomatik kayıt açık, bu nedenle o ödeme ile bu kuralın karşıladığı banka çekimi aynı taksidi öder. Zamanlanmış ödemede otomatik kaydı kapatın."
+      }
     },
     "actionTypes": {
       "add_tags": "Etiket ekle",
@@ -262,7 +289,8 @@
       "set_payee_from_text": "Alıcıyı metinden ayarla",
       "set_description": "Açıklamayı ayarla",
       "convert_to_transfer": "Havaleye dönüştür",
-      "split": "İşlemi böl"
+      "split": "İşlemi böl",
+      "settle_loan_installment": "Bir kredi taksidini öde"
     },
     "save": {
       "button": "Kuralı kaydet",
@@ -311,8 +339,8 @@
         "MAX_NODES": "Çok fazla koşul ve grup var. Sınır {maxNodes}.",
         "NO_ACTIONS": "En az bir eylem ekleyin.",
         "TOO_MANY_ACTIONS": "Çok fazla eylem var. Sınır {maxActions}.",
-        "DUPLICATE_ACTION": "Bir kuralda yalnızca bir yapay zekâ incelemesi, bir havale veya bölme ve kalanı alan bir bölme parçası olabilir.",
-        "CONFLICTING_ACTIONS": "Havale veya bölme eylemi “Kategoriyi ayarla” ile birleştirilemez ve parçalarının her birinin bir kategorisi ya da bir hesabı vardır.",
+        "DUPLICATE_ACTION": "Bir kuralda yalnızca bir yapay zekâ incelemesi, bir havale, bölme veya kredi taksidi ödemesi ve kalanı alan bir bölme parçası olabilir.",
+        "CONFLICTING_ACTIONS": "Bir havale, bölme veya kredi taksidi ödemesi eylemi “Kategoriyi ayarla” ile birleştirilemez ve bölmenin her parçasının bir kategorisi ya da bir hesabı vardır.",
         "INVALID_CAPTURE": "Yakalama adı küçük harf ve rakamlardan oluşur, harfle başlar ve en fazla 20 karakter uzunluğundadır.",
         "TOO_MANY_CAPTURES": "Bir desen en fazla 5 yakalama içerebilir.",
         "DUPLICATE_CAPTURE": "Her yakalama adı bir kuralda yalnızca bir kez kullanılabilir.",
@@ -395,6 +423,7 @@
     "matchesNone": "Bu kural incelenen işlemlerin hiçbiriyle eşleşmiyor ({scanned}). Kaydetmeden önce koşulları kontrol edin. * içermeyen bir desen yalnızca metnin tamamıyla eşleşir.",
     "noChange": "İncelenen {scanned} işlemden {matched} tanesi kuralın koşullarını karşılıyor, ancak hiçbir şey değişmeyecek (örneğin değer zaten var ve «yalnızca boşsa» açık). Bu bir hata değildir.",
     "truncated": "Sınırın izin verdiğinden fazla işlem eşleşti. Yalnızca en yeniler dahil edildi. Kalanı dahil etmek için sınırı artırın veya tarihleri daraltın.",
+    "truncatedOldest": "Sınırın izin verdiğinden daha fazla işlem eşleşti. Bu kural kredi taksitlerini tarih sırasına göre karşıladığından, yalnızca en eskiler dahil edildi. Kalanları dahil etmek için bu çalıştırmadan sonra yeniden çalıştırın.",
     "noMatches": {
       "title": "Hiçbir işlem değişmeyecek",
       "body": "İncelenen işlemlerin hiçbiri kuralla eşleşmiyor veya kural onlarda hiçbir şeyi değiştirmeyecek."
@@ -408,7 +437,8 @@
     },
     "skipped": {
       "title": "{count, plural, other {# işlem}} olduğu gibi bırakıldı",
-      "line": "{count, plural, other {# işlem}}: {reason}"
+      "line": "{count, plural, other {# işlem}}: {reason}",
+      "missing": "Kredide eksik olan: {inputs}."
     },
     "skipReasons": {
       "reconciled_locked": "mutabık kılınmış ve kilitli",
@@ -428,7 +458,17 @@
       "transfer_currency_mismatch": "havale hesabı başka bir para birimi kullanıyor",
       "split_amount_unparseable": "metnindeki bir tutar sayı olarak okunamadı",
       "split_sum_mismatch": "parçaların toplamı tutarına eşit değil",
-      "split_too_few_parts": "sıfır tutarlar çıkarıldığında ikiden az parça kalıyor"
+      "split_too_few_parts": "sıfır tutarlar çıkarıldığında ikiden az parça kalıyor",
+      "row_from_scheduled_posting": "kredinin taksidi zaten ödeyen zamanlanmış ödemesinden kaydedildi",
+      "row_is_income": "bir gelir ve bir taksidi yalnızca bir çekim öder",
+      "loan_account_unavailable": "kredi hesabı kullanılamıyor (silinmiş, kapalı, size ait değil veya bir ipotek ya da kredi değil)",
+      "loan_interest_booked_separately": "bu kredi faizini ayrı işlemler olarak kaydeder, bu nedenle bir ödeme onu taşıyamaz",
+      "loan_not_configured": "kredide bir taksidi fiyatlandırmak için gereken bilgi eksik",
+      "no_installment_in_window": "kredinin, tarihinin çevresindeki pencere içinde vadesi gelen bir taksidi yok",
+      "occurrence_already_posted": "pencere içinde vadesi gelen taksit zaten ödendi",
+      "loan_debt_retired": "kredi zaten tamamen ödendi",
+      "installment_amount_excess": "taksitten fazla ve kural daha büyük çekimleri olduğu gibi bırakır",
+      "installment_amount_shortfall": "taksitten az ve kural daha küçük çekimleri olduğu gibi bırakır"
     },
     "change": {
       "category": "Kategori: {before} → {after}",
@@ -448,7 +488,8 @@
       "splitToTransfer": "{account} hesabına",
       "splitToTransferPayee": "{account} hesabına, alıcı {payee}",
       "splitToCategory": "{category} olarak",
-      "splitUncategorised": "kategorisiz"
+      "splitUncategorised": "kategorisiz",
+      "loanSettlement": "{done, select, yes {Karşılandı} other {Karşılanıyor}}: {account} kredisinin {number}. taksidi, vade {dueDate} — anapara {principal}, faiz {interest}{hasExtra, select, yes {, ek anapara {extra}} other {}}. Önceki borç: {debtBefore}"
     },
     "filters": {
       "accounts": "Hesaplar",
@@ -475,6 +516,19 @@
     "done": {
       "summary": "{count, plural, =0 {Hiçbir işlem değiştirilmedi.} other {# işlem değiştirildi.}}",
       "undo": "Çalıştırmayı işlem geçmişinden geri alabilirsiniz."
+    },
+    "missingInputs": {
+      "scheduledPayment": "zamanlanmış bir ödeme",
+      "managedTemplate": "anapara ve faize bölünmüş bir ödeme",
+      "scheduleCalendar": "bir ödeme takvimi",
+      "interestCategory": "bir faiz kategorisi",
+      "amortizationMonths": "amortisman süresi",
+      "paymentStartDate": "ilk ödeme tarihi",
+      "paymentFrequency": "ödeme sıklığı",
+      "originalPrincipal": "orijinal anapara",
+      "rate": "o tarih için bir faiz oranı",
+      "payment": "ödeme tutarı",
+      "other": "bir kredi ayarı"
     }
   },
   "applications": {
@@ -531,7 +585,8 @@
       "set_payee_from_text": "Alıcıyı metinden ayarla: “{template}”{createIfMissing, select, yes { (yoksa oluşturulur)} other {}}{onlyIfEmpty, select, yes { (yalnızca boşsa)} other {}}",
       "set_description": "Açıklamayı ayarla ({mode, select, append {sona ekle} prepend {başa ekle} other {değiştir}}): “{template}”{onlyIfEmpty, select, yes { (yalnızca boşsa)} other {}}",
       "convert_to_transfer": "{direction, select, from {{account} hesabından} other {{account} hesabına}} havaleye dönüştür",
-      "split": "Şuna böl: {parts}"
+      "split": "Şuna böl: {parts}",
+      "settle_loan_installment": "{account} taksidini, vadesinden {before, plural, one {# gün} other {# gün}} önceye veya {after, plural, one {# gün} other {# gün}} sonrasına kadar yapılan bir çekimle karşıla; daha büyük bir çekim {excess, select, refuse {olduğu gibi bırakılır} other {ek anapara olarak öder}}, daha küçük bir çekim {shortfall, select, interest_first {önce faizi öder} other {olduğu gibi bırakılır}}"
     },
     "splitPart": {
       "transfer": "{amount} tutarı {account} hesabına",

@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "{kind, select, mortgage {Cocokkan pembayaran bank yang diimpor dengan KPR ini} other {Cocokkan pembayaran bank yang diimpor dengan pinjaman ini}}",
+    "toggleHelp": "Saat transaksi bank yang diimpor cocok dengan pola penerima, Monize menggunakannya untuk melunasi pembayaran terjadwal dan memisahkannya menjadi pokok dan bunga, bukan mencatat transaksi tagihan terpisah.",
+    "payeePattern": "Pola penerima pembayaran",
+    "payeePatternPlaceholder": "mis. *BANK SAYA*",
+    "descriptionPattern": "Pola deskripsi (opsional)",
+    "descriptionPatternPlaceholder": "mis. *Angsuran pinjaman*",
+    "fromAccount": "Dicocokkan dengan debit dari {account}."
+  },
   "nameSuffix": {
     "cash": "Tunai",
     "brokerage": "Pialang"
@@ -165,8 +174,6 @@
     "statementDueDayPlaceholder": "mis. 15",
     "statementSettlementDayPlaceholder": "mis. 25",
     "fxFeeTitle": "Biaya konversi mata uang asing (opsional)",
-    "fxFeePercent": "Persentase biaya",
-    "fxFeePercentPlaceholder": "mis. 2,5",
     "jointSharedWith": "Akun bersama dibagikan dengan {count, plural, other {# orang}}",
     "jointManage": "Kelola berbagi",
     "cashSection": {
@@ -270,7 +277,11 @@
     "firstInstallmentHelp": "KPR ini tidak memiliki pembayaran tetap: setiap angsuran dihitung dari saldo, suku bunga, dan periode amortisasi. Ini adalah angsuran yang jatuh tempo {date}, termasuk pokok tambahan.",
     "firstInstallmentPending": "Masukkan tanggal pembayaran berikutnya untuk menghitung angsuran pertama.",
     "firstInstallmentCalculating": "Menghitung angsuran pertama...",
-    "firstInstallmentFailed": "Angsuran pertama tidak dapat dihitung. Periksa nilai di bawah dan coba lagi."
+    "firstInstallmentFailed": "Angsuran pertama tidak dapat dihitung. Periksa nilai di bawah dan coba lagi.",
+    "paymentMatching": {
+      "autoPostDisabled": "Dimatikan secara otomatis: pencocokan pembayaran melunasi tagihan ini dari debit bank itu sendiri, jadi tagihan ini tidak boleh ikut memposting dirinya sendiri.",
+      "payeePatternRequired": "Masukkan pola penerima pembayaran yang menyertakan karakter pengganti *"
+    }
   },
   "mortgageFields": {
     "title": "Detail Hipotek",
@@ -407,6 +418,10 @@
         "cancel": "Batal",
         "use": "Edit Akun dengan Jenis Ini"
       }
+    },
+    "originalPrincipal": {
+      "label": "Pokok Pinjaman Awal",
+      "help": "Jumlah yang awalnya Anda pinjam. Untuk akun yang riwayat tercatatnya dimulai setelah pinjaman dimulai, ini adalah jumlah yang dipinjam, bukan saldo awal — yaitu utang pada awal riwayat Anda."
     }
   },
   "assetFields": {
@@ -436,7 +451,10 @@
     "paymentStartDateRequired": "Tanggal pembayaran pertama wajib diisi",
     "paymentAccountRequired": "Akun pembayaran wajib dipilih",
     "amortizationRequired": "Periode amortisasi wajib diisi",
-    "acceleratedNeedsAnnuity": "KPR ini dibayar dengan jadwal dipercepat, yang hanya dimiliki KPR anuitas. KPR linear atau hanya bunga memerlukan frekuensi pembayaran biasa, jadi tetap gunakan jenis anuitas."
+    "acceleratedNeedsAnnuity": "KPR ini dibayar dengan jadwal dipercepat, yang hanya dimiliki KPR anuitas. KPR linear atau hanya bunga memerlukan frekuensi pembayaran biasa, jadi tetap gunakan jenis anuitas.",
+    "paymentMatchingPayeePatternRequired": "Masukkan pola penerima pembayaran untuk mencocokkan debit bank",
+    "paymentMatchingPayeePatternWildcard": "Pola penerima pembayaran harus menyertakan karakter pengganti *",
+    "paymentMatchingDescriptionPatternWildcard": "Pola deskripsi harus menyertakan karakter pengganti *"
   },
   "loanDetail": {
     "backToAccounts": "Kembali ke Akun",
@@ -633,6 +651,70 @@
       "seriesOriginal": "Jadwal Awal",
       "seriesActual": "Saldo Aktual",
       "unknown": "Tidak diketahui"
+    },
+    "paymentMatching": {
+      "title": "Pencocokan pembayaran",
+      "description": "Mengenali debit bank itu sendiri untuk setiap angsuran dan melunasinya terhadap jadwal pinjaman sebagai pokok dan bunga, alih-alih memposting tagihan secara terpisah.",
+      "noSchedule": "Pencocokan pembayaran melunasi debit bank terhadap pembayaran terjadwal pinjaman. Atur pembayaran pinjaman ini terlebih dahulu.",
+      "noRule": "Tidak ada aturan pencocokan pembayaran yang ditautkan ke pinjaman ini.",
+      "createOne": "Buat satu",
+      "ruleLabel": "Aturan:",
+      "ruleLoading": "Memuat aturan",
+      "ruleFailed": "Aturan pencocokan pembayaran tidak dapat dimuat.",
+      "scheduleLoading": "Memuat pembayaran terjadwal",
+      "scheduleFailed": "Pembayaran terjadwal pinjaman tidak dapat dimuat.",
+      "retry": "Coba lagi",
+      "autoPost": {
+        "title": "Pembayaran terjadwal masih memposting dirinya sendiri",
+        "body": "Posting otomatis aktif untuk tagihan pinjaman ini, sehingga angsuran yang dilunasi aturan dari debit bank juga akan diposting oleh tagihan. Matikan posting otomatis pada tagihan di Tagihan & Setoran."
+      },
+      "preconditions": {
+        "openingBalance": "Saldo awal pinjaman harus berupa utang pada awal riwayat yang diproses; bunga setiap angsuran dihitung berdasarkan saldo tersebut.",
+        "originalPrincipal": "Pokok awal harus berupa jumlah yang semula dipinjam, bukan saldo awal.",
+        "scheduleStart": "Debit bertanggal sebelum {date}, saat pembayaran terjadwal dimulai, tidak memiliki angsuran untuk dicocokkan."
+      },
+      "process": {
+        "button": "Proses riwayat",
+        "scope": "Menjalankan aturan pada debit di {account}, mulai dari yang terlama.",
+        "running": "Memproses riwayat: {count, plural, one {# angsuran} other {# angsuran}} telah dilunasi sejauh ini.",
+        "done": "{count, plural, =0 {Tidak ada angsuran yang dilunasi.} one {# angsuran telah dilunasi.} other {# angsuran telah dilunasi.}}",
+        "undo": "Setiap halaman proses dapat dibatalkan dari riwayat tindakan.",
+        "failed": "Pemrosesan riwayat berhenti",
+        "stuckTitle": "Pemrosesan riwayat tidak dapat dilanjutkan",
+        "stuck": "Lebih dari {limit, number} transaksi bertanggal {date}, sehingga proses tidak dapat melewati hari itu. Lunasi sisanya dari Alat > Aturan dengan filter yang lebih sempit.",
+        "stuckUnknown": "Server tidak menyebutkan sejauh mana proses berjalan, sehingga tidak dapat dilanjutkan. Muat ulang halaman dan coba lagi."
+      },
+      "create": {
+        "title": "Buat aturan pencocokan pembayaran",
+        "description": "Aturan ini melunasi debit yang cocok dari akun pembayaran terjadwal pinjaman, dan posting otomatis tagihan dimatikan.",
+        "descriptionWithAccount": "Aturan ini melunasi debit yang cocok dari {account}, dan posting otomatis tagihan dimatikan.",
+        "submit": "Buat aturan",
+        "payeePatternRequired": "Masukkan pola penerima pembayaran yang menyertakan karakter pengganti *",
+        "descriptionPatternWildcard": "Pola deskripsi harus menyertakan karakter pengganti *",
+        "failed": "Aturan pencocokan pembayaran tidak dapat dibuat.",
+        "done": "Aturan \"{name}\" dibuat"
+      },
+      "settled": {
+        "title": "Angsuran yang dilunasi",
+        "colDueDate": "Jatuh tempo",
+        "colTransaction": "Transaksi",
+        "colPrincipal": "Pokok",
+        "colInterest": "Bunga",
+        "colExtra": "Pokok tambahan",
+        "colDebtBefore": "Utang sebelumnya",
+        "openTransaction": "Buka transaksi",
+        "void": "Dibatalkan",
+        "notRecorded": "Tidak tercatat",
+        "empty": {
+          "title": "Belum ada angsuran yang dilunasi",
+          "body": "Proses riwayat, atau impor debit bank, untuk melunasi angsuran."
+        },
+        "error": {
+          "title": "Angsuran yang dilunasi tidak dapat dimuat",
+          "body": "Ini bukan daftar kosong. Coba lagi untuk melihat angsuran mana yang telah dilunasi.",
+          "retry": "Coba lagi"
+        }
+      }
     },
     "lineOfCredit": {
       "currentBalance": "Saldo Saat Ini",

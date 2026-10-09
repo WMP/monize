@@ -8,11 +8,18 @@ import {
   MAX_RULE_AI_REVIEW_ACTIONS,
   MAX_RULE_SPLIT_PARTS,
   MAX_RULE_STRUCTURAL_ACTIONS,
+  LOAN_SETTLEMENT_EXCESS_POLICIES,
+  LOAN_SETTLEMENT_SHORTFALL_POLICIES,
   MIN_RULE_SPLIT_PARTS,
   isRuleActionType,
 } from '@/lib/rule-fields';
 import { newUid } from '@/lib/rule-tree';
-import type { RuleActionType, RuleDescriptionMode } from '@/types/transaction-rule';
+import type {
+  LoanSettlementExcessPolicy,
+  LoanSettlementShortfallPolicy,
+  RuleActionType,
+  RuleDescriptionMode,
+} from '@/types/transaction-rule';
 
 /** Every action the server accepts has a card, so the editor holds all of them. */
 export type EditorActionType = RuleActionType;
@@ -20,14 +27,14 @@ export type EditorActionType = RuleActionType;
 export const isEditorActionType = (value: unknown): value is EditorActionType => isRuleActionType(value);
 
 /**
- * The two actions that restructure the row (a transfer, a split). At most one
- * per rule, and never together with `set_category`: the structural action
- * decides the category itself (spec section 3.6).
+ * The three actions that restructure the row (a transfer, a split, a loan
+ * settlement). At most one per rule, and never together with `set_category`:
+ * the structural action decides the category itself (spec section 3.6).
  */
-export type StructuralActionType = 'convert_to_transfer' | 'split';
+export type StructuralActionType = 'convert_to_transfer' | 'split' | 'settle_loan_installment';
 
 export const isStructuralActionType = (value: unknown): value is StructuralActionType =>
-  value === 'convert_to_transfer' || value === 'split';
+  value === 'convert_to_transfer' || value === 'split' || value === 'settle_loan_installment';
 
 /** The types a card can be set to, and a blank card can start as: every one. */
 export type EditableActionType = EditorActionType;
@@ -44,6 +51,7 @@ export const EDITOR_ACTION_TYPES: readonly EditableActionType[] = [
   'set_description',
   'convert_to_transfer',
   'split',
+  'settle_loan_installment',
   'request_ai_review',
 ];
 
@@ -81,11 +89,21 @@ export interface EditorSplitPart {
 /** `to`: an expense, the money goes to the account. `from`: an income, it came from the account. */
 export type TransferDirection = 'to' | 'from';
 
+/** A new settlement's due-date window: three days early, a week late (spec section 5.1). */
+export const DEFAULT_LOAN_SETTLEMENT_DAYS_BEFORE = 3;
+export const DEFAULT_LOAN_SETTLEMENT_DAYS_AFTER = 7;
+
 /** The ways `set_description` joins its text to the current one. */
 export const DESCRIPTION_MODES: readonly RuleDescriptionMode[] = ['replace', 'append', 'prepend'];
 
 export const isDescriptionMode = (value: unknown): value is RuleDescriptionMode =>
   typeof value === 'string' && (DESCRIPTION_MODES as readonly string[]).includes(value);
+
+export const isExcessPolicy = (value: unknown): value is LoanSettlementExcessPolicy =>
+  typeof value === 'string' && (LOAN_SETTLEMENT_EXCESS_POLICIES as readonly string[]).includes(value);
+
+export const isShortfallPolicy = (value: unknown): value is LoanSettlementShortfallPolicy =>
+  typeof value === 'string' && (LOAN_SETTLEMENT_SHORTFALL_POLICIES as readonly string[]).includes(value);
 
 export type EditorAction =
   | { readonly uid: string; readonly type: 'add_tags' | 'remove_tags'; readonly tagIds: readonly string[] }
@@ -122,6 +140,19 @@ export type EditorAction =
       /** The parent row's payee; empty for none. */
       readonly payeeId: string;
       readonly parts: readonly EditorSplitPart[];
+    }
+  | {
+      readonly uid: string;
+      readonly type: 'settle_loan_installment';
+      /** The `MORTGAGE` or `LOAN` account; empty until chosen. */
+      readonly loanAccountId: string;
+      /** The due-date window; null while the field is cleared, which the server refuses. */
+      readonly daysBefore: number | null;
+      readonly daysAfter: number | null;
+      readonly excess: LoanSettlementExcessPolicy;
+      readonly shortfall: LoanSettlementShortfallPolicy;
+      /** The interest line's category; empty for the loan's own. */
+      readonly interestCategoryId: string;
     };
 
 /** An action the editor can create and edit: every one. */
@@ -159,6 +190,18 @@ export function createAction(type: EditableActionType = 'add_tags'): EditableAct
       return { uid, type, direction: 'to', accountId: '', clearCategory: true, payeeId: '' };
     case 'split':
       return { uid, type, payeeId: '', parts: [createSplitPart(), createSplitPart()] };
+    case 'settle_loan_installment':
+      // The server's defaults: an overpayment is extra principal, an underpayment is refused.
+      return {
+        uid,
+        type,
+        loanAccountId: '',
+        daysBefore: DEFAULT_LOAN_SETTLEMENT_DAYS_BEFORE,
+        daysAfter: DEFAULT_LOAN_SETTLEMENT_DAYS_AFTER,
+        excess: 'extra_principal',
+        shortfall: 'refuse',
+        interestCategoryId: '',
+      };
   }
 }
 
@@ -182,7 +225,7 @@ export function canAddAction(actions: readonly EditorAction[]): boolean {
 /**
  * The types the card at `index` may be set to. `request_ai_review` is offered
  * only to the card that already is one, or while no other card is; the same
- * goes for the two structural actions together (one per rule). Combining a
+ * goes for the three structural actions together (one per rule). Combining a
  * structural action with `set_category` stays possible to pick, and is
  * reported as `CONFLICTING_ACTIONS` on the card (`draftGaps`).
  */

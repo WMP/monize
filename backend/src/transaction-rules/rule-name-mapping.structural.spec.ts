@@ -69,8 +69,25 @@ const storedSplit = {
   ],
 };
 
+const namedSettle = {
+  type: "settle_loan_installment",
+  loanAccountName: "Loan account",
+  dueDateWindow: { daysBefore: 3, daysAfter: 7 },
+  excess: "extra_principal",
+  shortfall: "refuse",
+  interestCategoryName: "Loans: Interest",
+};
+const storedSettle = {
+  type: "settle_loan_installment",
+  loanAccountId: LOAN,
+  dueDateWindow: { daysBefore: 3, daysAfter: 7 },
+  excess: "extra_principal",
+  shortfall: "refuse",
+  interestCategoryId: INTEREST,
+};
+
 describe("structural actions in the name form", () => {
-  it("collects the names of both actions, every part included", () => {
+  it("collects the names of every structural action, every part included", () => {
     expect(
       collectNamedReferences({ all: [] }, [
         namedConvert,
@@ -80,6 +97,7 @@ describe("structural actions in the name form", () => {
           toAccountName: undefined,
         },
         namedSplit,
+        namedSettle,
       ]),
     ).toEqual({
       accounts: ["Loan account", "Savings"],
@@ -110,6 +128,26 @@ describe("structural actions in the name form", () => {
     const mapped = namesToIds({ all: [] }, [namedSplit], lookup);
     expect(mapped.errors).toEqual([]);
     expect(mapped.actions).toEqual([storedSplit]);
+  });
+
+  it("turns names into ids for settle_loan_installment", () => {
+    const mapped = namesToIds({ all: [] }, [namedSettle], lookup);
+    expect(mapped.errors).toEqual([]);
+    expect(mapped.actions).toEqual([storedSettle]);
+  });
+
+  it("round trips settle_loan_installment: ids to names and back", () => {
+    const named = idsToNames(
+      {
+        condition: { all: [] },
+        actions: [storedSettle] as unknown as RuleAction[],
+      },
+      LABELS,
+    );
+    expect(named.actions).toEqual([namedSettle]);
+    const back = namesToIds(named.condition, named.actions, lookup);
+    expect(back.errors).toEqual([]);
+    expect(back.actions).toEqual([storedSettle]);
   });
 
   it("reports a name that does not resolve at the path of its key", () => {

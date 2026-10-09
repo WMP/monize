@@ -8,6 +8,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { DataSource } from "typeorm";
 import { Account, AccountSubType } from "../accounts/entities/account.entity";
 import { JobClaimService } from "../common/jobs/job-claim.service";
+import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import {
@@ -50,6 +51,9 @@ import {
 } from "./providers/bank-sync-provider.errors";
 import { BankSyncProviderRegistry } from "./providers/bank-sync-provider.registry";
 
+jest.mock("../loan-installments/reprice-template", () => ({
+  repriceSettledLoanTemplates: jest.fn().mockResolvedValue(undefined),
+}));
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
 );
@@ -243,7 +247,13 @@ describe("BankSyncService", () => {
     manager.query.mockResolvedValue([]);
     provider.fetchTransactions.mockResolvedValue([]);
     provider.fetchBalance.mockResolvedValue(null);
-    writer.write.mockResolvedValue({ imported: 0, skipped: 0, excluded: 0 });
+    writer.write.mockResolvedValue({
+      imported: 0,
+      skipped: 0,
+      excluded: 0,
+      affectedAccountIds: [],
+      settledScheduleIds: [],
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -490,6 +500,64 @@ describe("BankSyncService", () => {
       psu: { ipAddress: string; userAgent: string } | null = null,
     ) => service.syncAccount(USER_ID, BANK_ACCOUNT_ID, psu);
 
+    it("reprices the schedules a settlement rule claimed on, after the write has committed", async () => {
+      provider.fetchTransactions.mockResolvedValue([
+        bankTransaction({ entryReference: "ref-1" }),
+      ]);
+      const order: string[] = [];
+      writer.write.mockImplementation(async () => {
+        order.push("write");
+        return {
+          imported: 1,
+          skipped: 0,
+          excluded: 0,
+          affectedAccountIds: [],
+          settledScheduleIds: ["st-loan"],
+        };
+      });
+      (repriceSettledLoanTemplates as jest.Mock).mockImplementation(
+        async () => {
+          order.push("reprice");
+        },
+      );
+
+      await sync();
+
+      expect(repriceSettledLoanTemplates).toHaveBeenCalledWith(
+        expect.anything(),
+        ["st-loan"],
+      );
+      expect(order).toEqual(["write", "reprice"]);
+    });
+
+    it("dispatches the net-worth recompute for every account a rule moved money into, after the write, and the synced account once (INV-CACHE-001)", async () => {
+      provider.fetchTransactions.mockResolvedValue([
+        bankTransaction({ entryReference: "ref-1" }),
+      ]);
+      const order: string[] = [];
+      writer.write.mockImplementation(async () => {
+        order.push("write");
+        return {
+          imported: 1,
+          skipped: 0,
+          excluded: 0,
+          affectedAccountIds: ["loan-1", ACCOUNT_ID, "loan-1"],
+          settledScheduleIds: [],
+        };
+      });
+      netWorth.triggerDebouncedRecalc.mockImplementation((accountId) => {
+        order.push(`recalc:${accountId}`);
+      });
+
+      await sync();
+
+      expect(order).toEqual(["write", `recalc:${ACCOUNT_ID}`, "recalc:loan-1"]);
+      expect(netWorth.triggerDebouncedRecalc).toHaveBeenCalledWith(
+        "loan-1",
+        USER_ID,
+      );
+    });
+
     it("reads the bank, plans, writes once and reports the result", async () => {
       provider.fetchTransactions.mockResolvedValue([
         bankTransaction({ entryReference: "ref-1" }),
@@ -503,7 +571,13 @@ describe("BankSyncService", () => {
         referenceDate: "2026-09-29",
         balanceType: "CLBD",
       });
-      writer.write.mockResolvedValue({ imported: 1, skipped: 0, excluded: 0 });
+      writer.write.mockResolvedValue({
+        imported: 1,
+        skipped: 0,
+        excluded: 0,
+        affectedAccountIds: [],
+        settledScheduleIds: [],
+      });
 
       const result = await sync();
 
@@ -584,7 +658,13 @@ describe("BankSyncService", () => {
       });
       writer.write.mockImplementation(async () => {
         order.push("write");
-        return { imported: 0, skipped: 0, excluded: 0 };
+        return {
+          imported: 0,
+          skipped: 0,
+          excluded: 0,
+          affectedAccountIds: [],
+          settledScheduleIds: [],
+        };
       });
       jobClaims.releaseLease.mockImplementation(async () => {
         order.push("release");
@@ -633,7 +713,13 @@ describe("BankSyncService", () => {
     });
 
     it("drops the derived balance state after the commit, only when something was created", async () => {
-      writer.write.mockResolvedValue({ imported: 2, skipped: 0, excluded: 0 });
+      writer.write.mockResolvedValue({
+        imported: 2,
+        skipped: 0,
+        excluded: 0,
+        affectedAccountIds: [],
+        settledScheduleIds: [],
+      });
       await sync();
       expect(netWorth.triggerDebouncedRecalc).toHaveBeenCalledWith(
         ACCOUNT_ID,
@@ -641,7 +727,13 @@ describe("BankSyncService", () => {
       );
 
       netWorth.triggerDebouncedRecalc.mockClear();
-      writer.write.mockResolvedValue({ imported: 0, skipped: 3, excluded: 0 });
+      writer.write.mockResolvedValue({
+        imported: 0,
+        skipped: 3,
+        excluded: 0,
+        affectedAccountIds: [],
+        settledScheduleIds: [],
+      });
       await sync();
       expect(netWorth.triggerDebouncedRecalc).not.toHaveBeenCalled();
     });
@@ -1133,7 +1225,13 @@ describe("BankSyncService", () => {
     });
 
     it("reports the rows it added to the exceptions", async () => {
-      writer.write.mockResolvedValue({ imported: 1, skipped: 0, excluded: 3 });
+      writer.write.mockResolvedValue({
+        imported: 1,
+        skipped: 0,
+        excluded: 3,
+        affectedAccountIds: [],
+        settledScheduleIds: [],
+      });
       const result = await service.syncAccount(
         USER_ID,
         BANK_ACCOUNT_ID,
@@ -1145,7 +1243,13 @@ describe("BankSyncService", () => {
     });
 
     it("still drops what depends on the balance only when a row was imported", async () => {
-      writer.write.mockResolvedValue({ imported: 0, skipped: 0, excluded: 2 });
+      writer.write.mockResolvedValue({
+        imported: 0,
+        skipped: 0,
+        excluded: 2,
+        affectedAccountIds: [],
+        settledScheduleIds: [],
+      });
       await service.syncAccount(
         USER_ID,
         BANK_ACCOUNT_ID,

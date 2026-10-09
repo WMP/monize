@@ -69,7 +69,11 @@
     "unknownInvestmentAccount": "未知账户：{{ name }}。请使用用户账户列表中的准确名称。",
     "notACreditCard": "账单周期仅适用于信用卡账户",
     "noStatementSettlementDay": "此信用卡未配置账单结算日",
-    "loanLedgerUnreadable": "无法读取此贷款的余额。请重试。"
+    "loanLedgerUnreadable": "无法读取此贷款的余额。请重试。",
+    "paymentMatchingLoanOnly": "付款匹配仅适用于抵押贷款和贷款",
+    "paymentMatchingRequiresSchedule": "付款匹配需要贷款的计划付款。请先设置其付款。",
+    "paymentMatchingRuleExists": "此贷款已有付款匹配规则",
+    "paymentMatchingFailed": "贷款已保存，但无法创建其付款匹配规则。请在贷款详情中创建。"
   },
   "actionHistory": {
     "nothingToUndo": "没有可撤销的操作",
@@ -618,7 +622,9 @@
     "activeWindowInvalid": "生效起始日期不能晚于生效结束日期",
     "runTooLarge": "本次运行更改的交易过多，无法一步撤销。请缩小账户或日期范围后重试",
     "runRedoStructural": "此次运行更改了交易结构(转账或拆分),因此无法重做。请改为重新运行该规则",
-    "runUndoStructureChanged": "此次运行重组的某笔交易此后已被更改(其拆分行或转账),因此无法安全地撤销该运行。请手动恢复"
+    "runUndoStructureChanged": "此次运行重组的某笔交易此后已被更改(其拆分行或转账),因此无法安全地撤销该运行。请手动恢复",
+    "occurrenceAlreadyPosted": "此笔贷款分期已支付或已入账，因此该交易无法结清它",
+    "runUndoLaterSettlement": "此次运行之后，此贷款的后续分期已被结清，因此无法撤销该运行。请先撤销后续的结清"
   },
   "transactions": {
     "invalidStatus": "无效的交易状态：{{ status }}",

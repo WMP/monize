@@ -87,7 +87,7 @@ describe('RuleActionCard', () => {
     expect(optionLabels(screen.getByLabelText('Action type'))).toEqual(['Add tags', 'Set the payee']);
   });
 
-  it('lists all nine types when none is held back', () => {
+  it('lists all ten types when none is held back', () => {
     render(<Card initial={createAction('add_tags')} />);
     expect(optionLabels(screen.getByLabelText('Action type'))).toEqual([
       'Add tags',
@@ -98,6 +98,7 @@ describe('RuleActionCard', () => {
       'Set the description',
       'Convert to transfer',
       'Split transaction',
+      'Settle a loan installment',
       'Ask for an AI review',
     ]);
   });

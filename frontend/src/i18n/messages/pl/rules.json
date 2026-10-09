@@ -251,7 +251,34 @@
       "splitGuideTip": "Wskazówka: ustaw datę początkową w polu „Aktywna w okresie”, aby nie zmieniać starszych uzgodnionych transakcji, i użyj panelu Test przed zapisaniem.",
       "convertGuide": "Wydatek staje się przelewem na wybrane konto, a przychód przelewem z tego konta. Zmienia się tylko saldo drugiego konta. Wskazówka: użyj pola „Aktywna w okresie”, aby nie zmieniać starszych transakcji.",
       "splitGuideName1": "kapital",
-      "splitGuideName2": "odsetki"
+      "splitGuideName2": "odsetki",
+      "loanGuide": "Użyj tego dla obciążenia bankowego, które płaci ratę kredytu hipotecznego lub kredytu jako jedną kwotę. W „Jeśli” dopasuj obciążenie po koncie, tekście odbiorcy lub opisie. Transakcja staje się podziałem: kapitał jest przelewany na konto kredytu, a odsetki trafiają do kategorii odsetek, oba wyliczone dla raty, którą płacą. Wskazówka: wyłącz automatyczne księgowanie zaplanowanej płatności kredytu, aby rata nie została zapłacona dwa razy, i użyj panelu Test przed zapisaniem.",
+      "loan": {
+        "help": "Dopasowane obciążenie płaci najbliższą ratę kredytu z terminem w okolicy tej daty. Monize wylicza kapitał i odsetki tej raty; nigdy nie wpisujesz kwoty.",
+        "account": "Konto kredytu",
+        "accountPlaceholder": "Wybierz kredyt hipoteczny lub kredyt...",
+        "noLoans": "Nie masz otwartego konta kredytu hipotecznego lub kredytu do rozliczenia.",
+        "window": "Okno terminu płatności",
+        "windowHelp": "Jak daleko od terminu bank może pobrać płatność. Obciążenie do tej liczby dni przed lub po terminie raty płaci tę ratę; obciążenie poza oknem pozostaje bez zmian.",
+        "daysBefore": "Dni przed terminem",
+        "daysAfter": "Dni po terminie",
+        "excess": "Gdy obciążenie jest większe niż rata",
+        "excessPolicies": {
+          "extra_principal": "Zapłać różnicę jako dodatkową spłatę kapitału",
+          "refuse": "Pozostaw transakcję bez zmian"
+        },
+        "shortfall": "Gdy obciążenie jest mniejsze niż rata",
+        "shortfallPolicies": {
+          "refuse": "Pozostaw transakcję bez zmian",
+          "interest_first": "Zapłać najpierw odsetki, resztę jako kapitał"
+        },
+        "policyNote": "Różnica kilku centów jest wchłaniana przez pozycję odsetek.",
+        "policyHelp": "Banki zaokrąglają każdą część osobno, więc obciążenie w granicach 5 najmniejszych jednostek waluty (0,05 dla większości walut) jest traktowane jako dokładne, a różnicę przejmuje pozycja odsetek. Większa różnica podlega dwóm wyborom powyżej.",
+        "interestCategory": "Kategoria odsetek (opcjonalnie)",
+        "interestCategoryPlaceholder": "Własna kategoria odsetek kredytu",
+        "autoPostTitle": "Zaplanowana płatność kredytu księguje się sama",
+        "autoPostBody": "Automatyczne księgowanie jest włączone dla zaplanowanej płatności tego kredytu, więc ono i obciążenie bankowe rozliczane przez tę regułę zapłaciłyby tę samą ratę. Wyłącz automatyczne księgowanie zaplanowanej płatności."
+      }
     },
     "actionTypes": {
       "add_tags": "Dodaj tagi",
@@ -262,7 +289,8 @@
       "set_payee_from_text": "Ustaw odbiorcę z tekstu",
       "set_description": "Ustaw opis",
       "convert_to_transfer": "Zamień w przelew",
-      "split": "Podziel transakcję"
+      "split": "Podziel transakcję",
+      "settle_loan_installment": "Rozlicz ratę kredytu"
     },
     "save": {
       "button": "Zapisz regułę",
@@ -311,8 +339,8 @@
         "MAX_NODES": "Warunków i grup jest zbyt wiele. Limit to {maxNodes}.",
         "NO_ACTIONS": "Dodaj co najmniej jedną akcję.",
         "TOO_MANY_ACTIONS": "Akcji jest zbyt wiele. Limit to {maxActions}.",
-        "DUPLICATE_ACTION": "Reguła może mieć tylko jeden przegląd AI, jedną zamianę w przelew lub podział oraz jedną część podziału, która bierze resztę.",
-        "CONFLICTING_ACTIONS": "Akcji przelewu lub podziału nie można łączyć z „Ustaw kategorię”, a każda jej część ma kategorię albo konto.",
+        "DUPLICATE_ACTION": "Reguła może mieć tylko jeden przegląd AI, jedną zamianę w przelew, podział lub rozliczenie raty kredytu, oraz jedną część podziału, która bierze resztę.",
+        "CONFLICTING_ACTIONS": "Akcji przelewu, podziału lub rozliczenia raty kredytu nie można łączyć z „Ustaw kategorię”, a każda część podziału ma kategorię albo konto.",
         "INVALID_CAPTURE": "Nazwa przechwytywania składa się z małych liter i cyfr, zaczyna się od litery i ma najwyżej 20 znaków.",
         "TOO_MANY_CAPTURES": "Wzorzec może zawierać najwyżej 5 przechwyceń.",
         "DUPLICATE_CAPTURE": "Każdą nazwę przechwytywania można użyć w regule tylko raz.",
@@ -395,6 +423,7 @@
     "matchesNone": "Ta reguła nie pasuje do żadnej ze sprawdzonych transakcji ({scanned}). Sprawdź warunki przed zapisem. Wzorzec bez * pasuje tylko do całego tekstu.",
     "noChange": "{matched} z {scanned} sprawdzonych transakcji spełnia warunki reguły, ale nic by się nie zmieniło (na przykład mają już tę wartość, a „tylko jeśli puste” jest włączone). To nie jest błąd.",
     "truncated": "Pasuje więcej transakcji, niż pozwala limit. Uwzględniono tylko najnowsze. Zwiększ limit lub zawęź daty, aby objąć resztę.",
+    "truncatedOldest": "Dopasowano więcej transakcji, niż pozwala limit. Uwzględniono tylko najstarsze, ponieważ ta reguła rozlicza raty kredytu w porządku dat. Uruchom ją ponownie po tym uruchomieniu, aby uwzględnić resztę.",
     "noMatches": {
       "title": "Żadna transakcja nie zostałaby zmieniona",
       "body": "Żadna ze sprawdzonych transakcji nie pasuje do reguły albo reguła niczego by w nich nie zmieniła."
@@ -408,7 +437,8 @@
     },
     "skipped": {
       "title": "{count, plural, one {# transakcja pozostaje bez zmian} few {# transakcje pozostają bez zmian} many {# transakcji pozostaje bez zmian} other {# transakcji pozostaje bez zmian}}",
-      "line": "{count, plural, one {# transakcja} few {# transakcje} many {# transakcji} other {# transakcji}}: {reason}"
+      "line": "{count, plural, one {# transakcja} few {# transakcje} many {# transakcji} other {# transakcji}}: {reason}",
+      "missing": "Brakuje w kredycie: {inputs}."
     },
     "skipReasons": {
       "reconciled_locked": "jest uzgodniona i zablokowana",
@@ -428,7 +458,17 @@
       "transfer_currency_mismatch": "konto przelewu ma inną walutę",
       "split_amount_unparseable": "kwoty z jej tekstu nie da się odczytać jako liczby",
       "split_sum_mismatch": "części nie sumują się do jej kwoty",
-      "split_too_few_parts": "po pominięciu zerowych kwot zostaje mniej niż dwie części"
+      "split_too_few_parts": "po pominięciu zerowych kwot zostaje mniej niż dwie części",
+      "row_from_scheduled_posting": "została zaksięgowana z zaplanowanej płatności kredytu, która już zapłaciła tę ratę",
+      "row_is_income": "jest przychodem, a ratę płaci tylko obciążenie",
+      "loan_account_unavailable": "konto kredytu jest niedostępne (zostało usunięte, jest zamknięte, nie jest Twoje albo nie jest kredytem hipotecznym lub kredytem)",
+      "loan_interest_booked_separately": "ten kredyt księguje odsetki jako osobne transakcje, więc płatność nie może ich nieść",
+      "loan_not_configured": "kredytowi brakuje danych potrzebnych do wyliczenia raty",
+      "no_installment_in_window": "żadna rata kredytu nie ma terminu w oknie wokół tej daty",
+      "occurrence_already_posted": "rata z terminem w oknie jest już zapłacona",
+      "loan_debt_retired": "kredyt jest już spłacony",
+      "installment_amount_excess": "jest większe niż rata, a reguła pozostawia większe obciążenia bez zmian",
+      "installment_amount_shortfall": "jest mniejsze niż rata, a reguła pozostawia mniejsze obciążenia bez zmian"
     },
     "change": {
       "category": "Kategoria: {before} → {after}",
@@ -448,7 +488,8 @@
       "splitToTransfer": "na konto {account}",
       "splitToTransferPayee": "na konto {account}, odbiorca {payee}",
       "splitToCategory": "jako {category}",
-      "splitUncategorised": "bez kategorii"
+      "splitUncategorised": "bez kategorii",
+      "loanSettlement": "{done, select, yes {Rozliczono ratę {number} kredytu {account}} other {Rozlicza ratę {number} kredytu {account}}}, termin {dueDate}: kapitał {principal}, odsetki {interest}{hasExtra, select, yes {, dodatkowa spłata kapitału {extra}} other {}}. Zadłużenie przed: {debtBefore}"
     },
     "filters": {
       "accounts": "Konta",
@@ -475,6 +516,19 @@
     "done": {
       "summary": "{count, plural, =0 {Nie zmieniono żadnych transakcji.} one {Zmieniono # transakcję.} few {Zmieniono # transakcje.} many {Zmieniono # transakcji.} other {Zmieniono # transakcji.}}",
       "undo": "Uruchomienie można cofnąć w historii akcji."
+    },
+    "missingInputs": {
+      "scheduledPayment": "zaplanowana płatność",
+      "managedTemplate": "płatność podzielona na kapitał i odsetki",
+      "scheduleCalendar": "harmonogram płatności",
+      "interestCategory": "kategoria odsetek",
+      "amortizationMonths": "okres amortyzacji",
+      "paymentStartDate": "data pierwszej płatności",
+      "paymentFrequency": "częstotliwość płatności",
+      "originalPrincipal": "kwota początkowa kredytu",
+      "rate": "stopa procentowa na tę datę",
+      "payment": "kwota płatności",
+      "other": "ustawienie kredytu"
     }
   },
   "applications": {
@@ -531,7 +585,8 @@
       "set_payee_from_text": "Ustaw odbiorcę z tekstu: „{template}”{createIfMissing, select, yes { (utworzony, jeśli nie istnieje)} other {}}{onlyIfEmpty, select, yes { (tylko jeśli pusty)} other {}}",
       "set_description": "Ustaw opis ({mode, select, append {dołącz na końcu} prepend {dołącz na początku} other {zastąp}}): „{template}”{onlyIfEmpty, select, yes { (tylko jeśli pusty)} other {}}",
       "convert_to_transfer": "Zamień na przelew {direction, select, from {z konta} other {na konto}} {account}",
-      "split": "Podziel na: {parts}"
+      "split": "Podziel na: {parts}",
+      "settle_loan_installment": "Rozlicz ratę kredytu {account} płaconą obciążeniem do {before, plural, one {# dnia} few {# dni} many {# dni} other {# dnia}} przed terminem lub {after, plural, one {# dnia} few {# dni} many {# dni} other {# dnia}} po nim; większe obciążenie {excess, select, refuse {pozostaje bez zmian} other {płaci dodatkową spłatę kapitału}}, mniejsze {shortfall, select, interest_first {płaci najpierw odsetki} other {pozostaje bez zmian}}"
     },
     "splitPart": {
       "transfer": "{amount} na konto {account}",

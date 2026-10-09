@@ -8,12 +8,18 @@ import {
 import { isDeepStrictEqual } from "node:util";
 import { DataSource, EntityManager } from "typeorm";
 import {
+  SETTLE_LOAN_INSTALLMENT,
+  isStructuralActionType,
+} from "./rule-action.types";
+import {
   ActionHistoryService,
   MAX_JSONB_SIZE_BYTES,
 } from "../action-history/action-history.service";
 import { RULE_RUN_ENTITY_TYPE } from "../action-history/rule-run-undo";
 import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { withScopedDb } from "../common/db/scoped-db";
+import { PriorSettlement } from "../loan-installments/loan-settlement.types";
+import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { tr } from "../i18n/translate";
 import { TransactionStatus } from "../transactions/entities/transaction-status.enum";
@@ -31,6 +37,7 @@ import { planFingerprint } from "./rule-run-fingerprint";
 import { PlannedUnit, buildRunSnapshots } from "./rule-run-snapshot";
 import { structureTargetAccountIds } from "./rule-structure";
 import { loadRuleTargetAccounts } from "./rule-target-accounts";
+import { newLoanFactsSource } from "./rule-loan-facts";
 import {
   RuleApplicationRow,
   RuleRunChanges,
@@ -91,8 +98,14 @@ const REFUSAL_REASONS: Readonly<Record<string, RuleRunSkipReason>> = {
   payee_not_found: "payee_not_found",
 };
 
-/** Every refusal only a structural action can make, named as the planner names it. */
-const STRUCTURAL_REFUSAL_REASONS: ReadonlySet<string> = new Set([
+/**
+ * Every refusal only a structural action can make, named as the planner names
+ * it, `settle_loan_installment`'s own included
+ * (`docs/specs/loan-installment-settlement.md` section 11).
+ */
+const STRUCTURAL_REFUSAL_REASONS: ReadonlySet<string> = new Set<
+  Exclude<RuleRunSkipReason, "row_is_transfer_leg" | "row_has_splits">
+>([
   "row_is_void",
   "zero_amount",
   "transfer_direction_mismatch",
@@ -102,19 +115,29 @@ const STRUCTURAL_REFUSAL_REASONS: ReadonlySet<string> = new Set([
   "split_amount_unparseable",
   "split_sum_mismatch",
   "split_too_few_parts",
+  "row_from_scheduled_posting",
+  "row_is_income",
+  "loan_account_unavailable",
+  "loan_interest_booked_separately",
+  "loan_not_configured",
+  "no_installment_in_window",
+  "occurrence_already_posted",
+  "loan_debt_retired",
+  "installment_amount_excess",
+  "installment_amount_shortfall",
 ]);
 
 /**
  * The preview's word for a skipped action. A structural action keeps the
  * planner's own name (the category words of `set_category` would mislead).
+ * A refusal that is not the row's (a lookup the plan is still waiting for)
+ * has no word and is not listed.
  */
-function runSkipReason(refused: {
+export function runSkipReason(refused: {
   type: string;
   reason: string;
 }): RuleRunSkipReason | undefined {
-  const structural =
-    refused.type === "convert_to_transfer" || refused.type === "split";
-  if (structural) {
+  if (isStructuralActionType(refused.type)) {
     return refused.reason === "row_is_transfer_leg" ||
       refused.reason === "row_has_splits" ||
       STRUCTURAL_REFUSAL_REASONS.has(refused.reason)
@@ -302,9 +325,11 @@ export class TransactionRulesRunService {
       // transfer share it), inside this transaction, before the row is
       // written; the snapshots then hold its id.
       const written: PlannedUnit[] = [];
-      // Accounts a structural action moved; their net-worth state is
-      // invalidated after the commit, never in here (INV-CACHE-001).
+      // Accounts a structural action moved, and schedules a settlement claimed
+      // on; their net-worth state and their templates are refreshed after the
+      // commit, never in here (INV-CACHE-001).
       const affectedAccountIds = new Set<string>();
+      const settledScheduleIds = new Set<string>();
       for (const { unit, effects } of plan.writable) {
         const resolved = await this.applier.resolveCreatedPayee(
           m,
@@ -323,6 +348,7 @@ export class TransactionRulesRunService {
             resolved,
             "manual",
             affectedAccountIds,
+            settledScheduleIds,
           );
           if (leg === unit.primary) writtenEffects = result;
         }
@@ -345,16 +371,27 @@ export class TransactionRulesRunService {
           transactionId: unit.primary.id,
           effects,
           affectedAccountIds: [],
+          settledScheduleIds: [],
         })),
       );
-      return { rule, plan, before, after, affectedAccountIds };
+      return {
+        rule,
+        plan,
+        before,
+        after,
+        affectedAccountIds,
+        settledScheduleIds,
+      };
     });
 
     // After the commit, so a rollback leaves nothing queued: the accounts a
-    // structural action credited have derived state (net worth) to refresh.
+    // structural action credited have derived state (net worth) to refresh,
+    // and a schedule a settlement claimed on has its next installment to
+    // reprice on the ledger the settlement left (spec section 12.8).
     for (const accountId of done.affectedAccountIds) {
       this.netWorth.triggerDebouncedRecalc(accountId, userId);
     }
+    await repriceSettledLoanTemplates(this.dataSource, done.settledScheduleIds);
 
     const changed = done.before.length;
     // After the commit: a history write inside the transaction would hide an
@@ -464,6 +501,12 @@ export class TransactionRulesRunService {
     // INV-RULE-004: the window only narrows the scan; the planner still
     // decides every row. An empty intersection scans nothing.
     const scan = narrowToActiveWindow(filters, rule);
+    // A rule that settles loan installments scans oldest first, so each row
+    // is priced on the debt the rows before it leave (INV-RULE-005); every
+    // other rule scans newest first, as it always has.
+    const settles = rule.actions.some(
+      (action) => action.type === SETTLE_LOAN_INSTALLMENT,
+    );
     const { units, truncated } =
       scan === null
         ? { units: [], truncated: false }
@@ -471,7 +514,7 @@ export class TransactionRulesRunService {
             m,
             userId,
             { ...scan, limit: effectiveRunLimit(filters.limit) },
-            { lock },
+            { lock, direction: settles ? "ASC" : "DESC" },
           );
     const legIds = units.flatMap((unit) => unit.legs.map((leg) => leg.id));
     const tagsByRow =
@@ -495,7 +538,28 @@ export class TransactionRulesRunService {
     const skipped: RuleRunSkippedRow[] = [];
     // Payee names looked up for this preview or commit; nothing is created here.
     const payeeLookups = new Map<string, PayeeResolution | null>();
-    const changing: PlannedUnit[] = [];
+    // Loan facts read for this preview or commit, once per loan for the batch.
+    // The commit reads them under the schedule row and account locks, after
+    // the candidate rows' locks (spec section 13), so the one plan it makes
+    // is over the claims and debts its writes act on.
+    const loans = newLoanFactsSource(m, userId, {
+      rowIds: units.map((unit) => unit.primary.id),
+      dates: units.map((unit) => unit.primary.transactionDate),
+      lock,
+    });
+    // The settlements planned so far and not yet written, in scan order
+    // (INV-RULE-005, spec section 7.2): a later row on the same loan is priced
+    // on the debt they leave and is never offered a slot they claim. Nothing
+    // is written while this plans, so every settlement here is unwritten and
+    // none is subtracted twice; a row the strict lock keeps is not written
+    // either, so it is not folded.
+    const prior: PriorSettlement[] = [];
+    // I6: a reconciled row is not altered while the strict lock is on. The
+    // preference is read once, and only when a reconciled row would change.
+    let strict: boolean | null = null;
+    const strictLock = async (): Promise<boolean> =>
+      (strict ??= await isReconciledLockEnabled(m, userId));
+    const writable: PlannedUnit[] = [];
     let conditionMatchedCount = 0;
     const asking: PlannedUnit[] = [];
     for (const unit of units) {
@@ -523,43 +587,51 @@ export class TransactionRulesRunService {
         },
         [rule],
         chains,
-        { crossOwnerTransferLeg: unit.crossOwnerTransferLeg, accounts },
+        {
+          crossOwnerTransferLeg: unit.crossOwnerTransferLeg,
+          accounts,
+          transactionId: primary.id,
+          priorSettlements: prior,
+        },
         payeeLookups,
+        loans,
       );
       const entry = effects.trace[0];
       if (entry?.matched) conditionMatchedCount += 1;
       for (const refused of entry?.skipped ?? []) {
         const reason = runSkipReason(refused);
-        if (reason) skipped.push({ transactionId: primary.id, reason });
+        if (reason) {
+          skipped.push({
+            transactionId: primary.id,
+            reason,
+            ...(refused.detail !== undefined ? { detail: refused.detail } : {}),
+          });
+        }
       }
       if (entry && Object.keys(entry.changes).length > 0) {
-        changing.push({ unit, effects });
-      }
-      if (effects.aiReviewRequests.length > 0) asking.push({ unit, effects });
-    }
-
-    // I6: a reconciled row is not altered while the strict lock is on.
-    const hasReconciled = changing.some(({ unit }) =>
-      unit.legs.some((leg) => leg.status === TransactionStatus.RECONCILED),
-    );
-    const strict = hasReconciled
-      ? await isReconciledLockEnabled(m, userId)
-      : false;
-    const writable: PlannedUnit[] = [];
-    for (const planned of changing) {
-      const locked =
-        strict &&
-        planned.unit.legs.some(
+        const reconciled = unit.legs.some(
           (leg) => leg.status === TransactionStatus.RECONCILED,
         );
-      if (locked) {
-        skipped.push({
-          transactionId: planned.unit.primary.id,
-          reason: "reconciled_locked",
-        });
-      } else {
-        writable.push(planned);
+        if (reconciled && (await strictLock())) {
+          skipped.push({
+            transactionId: primary.id,
+            reason: "reconciled_locked",
+          });
+        } else {
+          writable.push({ unit, effects });
+          const settlement = effects.changes.loanSettlement;
+          if (settlement !== undefined) {
+            prior.push({
+              loanAccountId: settlement.loanAccountId,
+              rowDate: primary.transactionDate,
+              dueDate: settlement.dueDate,
+              principal: settlement.principal,
+              extraPrincipal: settlement.extraPrincipal,
+            });
+          }
+        }
       }
+      if (effects.aiReviewRequests.length > 0) asking.push({ unit, effects });
     }
 
     const matched: RuleRunMatchedRow[] = writable.map(({ unit, effects }) => ({
@@ -585,8 +657,13 @@ export class TransactionRulesRunService {
         matched,
         skipped,
         scanned: units.length,
+        scanOrder: settles ? "oldest_first" : "newest_first",
         conditionMatchedCount,
         truncated,
+        scannedThrough:
+          units.length > 0
+            ? units[units.length - 1].primary.transactionDate
+            : null,
         fingerprint: planFingerprint(
           rule.revision,
           writable.map(({ unit, effects }) => ({

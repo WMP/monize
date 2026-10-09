@@ -251,7 +251,34 @@
       "splitGuideTip": "Mẹo: đặt ngày bắt đầu trong “Hoạt động trong khoảng” để không thay đổi các giao dịch cũ đã đối chiếu, và dùng bảng Kiểm tra trước khi lưu.",
       "convertGuide": "Một khoản chi trở thành chuyển khoản sang tài khoản bạn chọn, và một khoản thu trở thành chuyển khoản từ tài khoản đó. Chỉ số dư của tài khoản kia thay đổi. Mẹo: dùng “Hoạt động trong khoảng” để không thay đổi các giao dịch cũ.",
       "splitGuideName1": "goc",
-      "splitGuideName2": "lai"
+      "splitGuideName2": "lai",
+      "loanGuide": "Dùng mục này cho một khoản ghi nợ ngân hàng thanh toán một kỳ trả góp thế chấp hoặc khoản vay bằng một số tiền duy nhất. Trong “Nếu”, khớp khoản ghi nợ theo tài khoản, văn bản người nhận hoặc mô tả của nó. Giao dịch trở thành một giao dịch tách: phần gốc được chuyển sang tài khoản khoản vay và phần lãi được ghi vào danh mục lãi, cả hai đều được tính theo kỳ trả góp mà nó thanh toán. Gợi ý: tắt tự động đăng cho khoản thanh toán theo lịch của khoản vay này để kỳ trả góp không bị trả hai lần, và dùng bảng Thử trước khi lưu.",
+      "loan": {
+        "help": "Khoản ghi nợ khớp sẽ thanh toán kỳ trả góp tiếp theo của khoản vay, có kỳ đến hạn gần với ngày đó. Monize tự tính phần gốc và lãi cho kỳ đó; bạn không bao giờ phải nhập số tiền.",
+        "account": "Tài khoản khoản vay",
+        "accountPlaceholder": "Chọn một khoản thế chấp hoặc khoản vay...",
+        "noLoans": "Bạn không có tài khoản thế chấp hoặc khoản vay nào còn mở để thanh toán.",
+        "window": "Khoảng thời gian quanh ngày đến hạn",
+        "windowHelp": "Khoảng thời gian trước hoặc sau ngày đến hạn mà ngân hàng có thể thực hiện khoản thanh toán. Một khoản ghi nợ trong vòng số ngày này trước hoặc sau ngày đến hạn của một kỳ trả góp sẽ thanh toán kỳ đó; một khoản ghi nợ ngoài khoảng này được giữ nguyên.",
+        "daysBefore": "Số ngày trước ngày đến hạn",
+        "daysAfter": "Số ngày sau ngày đến hạn",
+        "excess": "Khi khoản ghi nợ lớn hơn kỳ trả góp",
+        "excessPolicies": {
+          "extra_principal": "Trả phần chênh lệch như gốc trả thêm",
+          "refuse": "Giữ nguyên giao dịch"
+        },
+        "shortfall": "Khi khoản ghi nợ nhỏ hơn kỳ trả góp",
+        "shortfallPolicies": {
+          "refuse": "Giữ nguyên giao dịch",
+          "interest_first": "Trả lãi trước, phần còn lại là gốc"
+        },
+        "policyNote": "Phần chênh lệch vài xu được dồn vào dòng lãi.",
+        "policyHelp": "Ngân hàng làm tròn từng phần riêng biệt, vì vậy một khoản ghi nợ trong phạm vi 5 đơn vị nhỏ nhất của đơn vị tiền tệ (0,05 với hầu hết các loại tiền) được coi là chính xác và dòng lãi nhận phần chênh lệch. Một phần chênh lệch lớn hơn sẽ theo một trong hai lựa chọn trên.",
+        "interestCategory": "Danh mục lãi (không bắt buộc)",
+        "interestCategoryPlaceholder": "Danh mục lãi riêng của khoản vay",
+        "autoPostTitle": "Khoản thanh toán theo lịch của khoản vay tự đăng",
+        "autoPostBody": "Tự động đăng đang được bật cho khoản thanh toán theo lịch của khoản vay này, vì vậy nó và khoản ghi nợ ngân hàng mà quy tắc này thanh toán sẽ cùng trả cho một kỳ trả góp. Hãy tắt tự động đăng trên khoản thanh toán theo lịch."
+      }
     },
     "actionTypes": {
       "add_tags": "Thêm thẻ",
@@ -262,7 +289,8 @@
       "set_payee_from_text": "Đặt người nhận từ văn bản",
       "set_description": "Đặt mô tả",
       "convert_to_transfer": "Chuyển thành giao dịch chuyển khoản",
-      "split": "Tách giao dịch"
+      "split": "Tách giao dịch",
+      "settle_loan_installment": "Thanh toán một kỳ trả góp khoản vay"
     },
     "save": {
       "button": "Lưu quy tắc",
@@ -311,8 +339,8 @@
         "MAX_NODES": "Có quá nhiều điều kiện và nhóm. Giới hạn là {maxNodes}.",
         "NO_ACTIONS": "Hãy thêm ít nhất một hành động.",
         "TOO_MANY_ACTIONS": "Có quá nhiều hành động. Giới hạn là {maxActions}.",
-        "DUPLICATE_ACTION": "Một quy tắc chỉ có thể có một lần xem xét bằng AI, một giao dịch chuyển khoản hoặc tách, và một phần tách lấy phần còn lại.",
-        "CONFLICTING_ACTIONS": "Hành động chuyển khoản hoặc tách không thể kết hợp với “Đặt danh mục”, và mỗi phần của nó có danh mục hoặc tài khoản.",
+        "DUPLICATE_ACTION": "Một quy tắc chỉ có thể có một lần xem xét bằng AI, một giao dịch chuyển khoản, tách hoặc thanh toán kỳ trả góp khoản vay, và một phần tách lấy phần còn lại.",
+        "CONFLICTING_ACTIONS": "Hành động chuyển khoản, tách hoặc thanh toán kỳ trả góp khoản vay không thể kết hợp với “Đặt danh mục”, và mỗi phần của nó có danh mục hoặc tài khoản.",
         "INVALID_CAPTURE": "Tên phần bắt giữ gồm chữ thường và chữ số, bắt đầu bằng chữ cái và dài tối đa 20 ký tự.",
         "TOO_MANY_CAPTURES": "Một mẫu có thể chứa tối đa 5 phần bắt giữ.",
         "DUPLICATE_CAPTURE": "Mỗi tên phần bắt giữ chỉ được dùng một lần trong một quy tắc.",
@@ -395,6 +423,7 @@
     "matchesNone": "Quy tắc này không khớp với giao dịch nào trong số đã kiểm tra ({scanned}). Hãy kiểm tra các điều kiện trước khi lưu. Mẫu không có * chỉ khớp với toàn bộ văn bản.",
     "noChange": "{matched} trong số {scanned} giao dịch được kiểm tra khớp với điều kiện của quy tắc, nhưng sẽ không có gì thay đổi (ví dụ: chúng đã có giá trị và «chỉ khi trống» đang bật). Đây không phải là lỗi.",
     "truncated": "Có nhiều giao dịch khớp hơn giới hạn cho phép. Chỉ các giao dịch mới nhất được đưa vào. Hãy tăng giới hạn hoặc thu hẹp ngày để đưa phần còn lại vào.",
+    "truncatedOldest": "Có nhiều giao dịch khớp hơn giới hạn cho phép. Chỉ các giao dịch cũ nhất được đưa vào, vì quy tắc này thanh toán các kỳ trả góp khoản vay theo thứ tự ngày. Chạy lại sau lần chạy này để đưa vào phần còn lại.",
     "noMatches": {
       "title": "Không có giao dịch nào sẽ thay đổi",
       "body": "Không giao dịch nào đã kiểm tra khớp với quy tắc, hoặc quy tắc sẽ không thay đổi gì ở chúng."
@@ -408,7 +437,8 @@
     },
     "skipped": {
       "title": "{count, plural, other {# giao dịch}} được giữ nguyên",
-      "line": "{count, plural, other {# giao dịch}}: {reason}"
+      "line": "{count, plural, other {# giao dịch}}: {reason}",
+      "missing": "Khoản vay còn thiếu: {inputs}."
     },
     "skipReasons": {
       "reconciled_locked": "đã đối chiếu và bị khóa",
@@ -428,7 +458,17 @@
       "transfer_currency_mismatch": "tài khoản chuyển khoản dùng loại tiền tệ khác",
       "split_amount_unparseable": "không đọc được một số tiền trong văn bản của nó thành số",
       "split_sum_mismatch": "các phần cộng lại không bằng số tiền của nó",
-      "split_too_few_parts": "còn ít hơn hai phần sau khi bỏ các số tiền bằng 0"
+      "split_too_few_parts": "còn ít hơn hai phần sau khi bỏ các số tiền bằng 0",
+      "row_from_scheduled_posting": "nó đã được đăng từ khoản thanh toán theo lịch của khoản vay, khoản này đã thanh toán kỳ trả góp đó",
+      "row_is_income": "nó là một khoản thu, và chỉ khoản ghi nợ mới thanh toán một kỳ trả góp",
+      "loan_account_unavailable": "tài khoản khoản vay không khả dụng (đã bị xóa, đã đóng, không phải của bạn hoặc không phải một khoản thế chấp hay khoản vay)",
+      "loan_interest_booked_separately": "khoản vay này ghi nhận lãi thành các giao dịch riêng, nên một khoản thanh toán không thể gộp nó",
+      "loan_not_configured": "khoản vay còn thiếu những gì cần để tính giá cho một kỳ trả góp",
+      "no_installment_in_window": "không có kỳ trả góp nào của khoản vay đến hạn trong khoảng quanh ngày của nó",
+      "occurrence_already_posted": "kỳ trả góp đến hạn trong khoảng này đã được thanh toán",
+      "loan_debt_retired": "khoản vay này đã được trả hết",
+      "installment_amount_excess": "nó lớn hơn kỳ trả góp và quy tắc giữ nguyên các khoản ghi nợ lớn hơn",
+      "installment_amount_shortfall": "nó nhỏ hơn kỳ trả góp và quy tắc giữ nguyên các khoản ghi nợ nhỏ hơn"
     },
     "change": {
       "category": "Danh mục: {before} → {after}",
@@ -448,7 +488,8 @@
       "splitToTransfer": "tới {account}",
       "splitToTransferPayee": "tới {account}, người nhận {payee}",
       "splitToCategory": "là {category}",
-      "splitUncategorised": "không có danh mục"
+      "splitUncategorised": "không có danh mục",
+      "loanSettlement": "{done, select, yes {Đã thanh toán} other {Thanh toán}} kỳ trả góp {number} của {account}, đến hạn {dueDate}: gốc {principal}, lãi {interest}{hasExtra, select, yes {, gốc trả thêm {extra}} other {}}. Nợ trước đó: {debtBefore}"
     },
     "filters": {
       "accounts": "Tài khoản",
@@ -475,6 +516,19 @@
     "done": {
       "summary": "{count, plural, =0 {Không có giao dịch nào bị thay đổi.} other {Đã thay đổi # giao dịch.}}",
       "undo": "Bạn có thể hoàn tác lần chạy từ lịch sử hành động."
+    },
+    "missingInputs": {
+      "scheduledPayment": "một khoản thanh toán theo lịch",
+      "managedTemplate": "một khoản thanh toán được tách thành gốc và lãi",
+      "scheduleCalendar": "một lịch thanh toán",
+      "interestCategory": "một danh mục lãi",
+      "amortizationMonths": "thời gian khấu hao",
+      "paymentStartDate": "ngày thanh toán đầu tiên",
+      "paymentFrequency": "tần suất thanh toán",
+      "originalPrincipal": "gốc ban đầu",
+      "rate": "lãi suất cho ngày đó",
+      "payment": "số tiền thanh toán",
+      "other": "một thiết lập của khoản vay"
     }
   },
   "applications": {
@@ -531,7 +585,8 @@
       "set_payee_from_text": "Đặt người nhận từ văn bản: “{template}”{createIfMissing, select, yes { (tạo mới nếu chưa có)} other {}}{onlyIfEmpty, select, yes { (chỉ khi trống)} other {}}",
       "set_description": "Đặt mô tả ({mode, select, append {thêm vào sau} prepend {thêm vào trước} other {thay thế}}): “{template}”{onlyIfEmpty, select, yes { (chỉ khi trống)} other {}}",
       "convert_to_transfer": "Chuyển thành chuyển khoản {direction, select, from {từ} other {đến}} {account}",
-      "split": "Tách thành: {parts}"
+      "split": "Tách thành: {parts}",
+      "settle_loan_installment": "Thanh toán kỳ trả góp của {account} bằng một khoản ghi nợ trong vòng {before, plural, other {# ngày}} trước hoặc {after, plural, other {# ngày}} sau ngày đến hạn; một khoản ghi nợ lớn hơn {excess, select, refuse {được giữ nguyên} other {trả gốc thêm}}, một khoản nhỏ hơn {shortfall, select, interest_first {trả lãi trước} other {được giữ nguyên}}"
     },
     "splitPart": {
       "transfer": "{amount} đến {account}",

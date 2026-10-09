@@ -251,7 +251,34 @@
       "splitGuideTip": "Suggerimento: imposta una data di inizio in “Attiva tra” per non modificare le vecchie transazioni riconciliate e usa il pannello Prova prima di salvare.",
       "convertGuide": "Una spesa diventa un trasferimento verso il conto scelto e un’entrata un trasferimento da quel conto. Cambia solo il saldo dell’altro conto. Suggerimento: usa “Attiva tra” per non modificare le vecchie transazioni.",
       "splitGuideName1": "capitale",
-      "splitGuideName2": "interessi"
+      "splitGuideName2": "interessi",
+      "loanGuide": "Usa questa funzione per un addebito bancario che paga una rata di mutuo o prestito come un unico importo. In “Se”, fai corrispondere l'addebito per conto, testo del beneficiario o descrizione. La transazione diventa una divisione: la quota capitale viene trasferita al conto del prestito e gli interessi vanno nella categoria interessi, entrambi calcolati per la rata che paga. Suggerimento: disattiva la registrazione automatica del pagamento programmato del prestito, così la rata non viene pagata due volte, e usa il pannello Prova prima di salvare.",
+      "loan": {
+        "help": "L'addebito corrispondente paga la prossima rata del prestito in scadenza vicino alla sua data. Monize calcola la quota capitale e gli interessi di quella rata; non digiti mai un importo.",
+        "account": "Conto del prestito",
+        "accountPlaceholder": "Seleziona un mutuo o un prestito...",
+        "noLoans": "Non hai nessun conto di mutuo o prestito aperto da saldare.",
+        "window": "Finestra della data di scadenza",
+        "windowHelp": "Quanto la banca può allontanarsi dalla data di scadenza per effettuare il pagamento. Un addebito fino a questo numero di giorni prima o dopo la scadenza di una rata paga quella rata; uno fuori dalla finestra viene lasciato invariato.",
+        "daysBefore": "Giorni prima della data di scadenza",
+        "daysAfter": "Giorni dopo la data di scadenza",
+        "excess": "Quando l'addebito è maggiore della rata",
+        "excessPolicies": {
+          "extra_principal": "Pagare la differenza come capitale aggiuntivo",
+          "refuse": "Lasciare la transazione invariata"
+        },
+        "shortfall": "Quando l'addebito è minore della rata",
+        "shortfallPolicies": {
+          "refuse": "Lasciare la transazione invariata",
+          "interest_first": "Pagare prima gli interessi, il resto come capitale"
+        },
+        "policyNote": "Una differenza di pochi centesimi viene assorbita dalla riga degli interessi.",
+        "policyHelp": "Le banche arrotondano ogni parte separatamente, quindi un addebito entro 5 unità minime della valuta (0,05 per la maggior parte delle valute) è trattato come esatto e la riga degli interessi assorbe la differenza. Una differenza maggiore segue le due scelte precedenti.",
+        "interestCategory": "Categoria interessi (facoltativa)",
+        "interestCategoryPlaceholder": "La categoria interessi propria del prestito",
+        "autoPostTitle": "Il pagamento programmato del prestito si registra da solo",
+        "autoPostBody": "La registrazione automatica è attiva per il pagamento programmato di questo prestito, quindi esso e l'addebito bancario che questa regola salda pagherebbero entrambi la stessa rata. Disattiva la registrazione automatica del pagamento programmato."
+      }
     },
     "actionTypes": {
       "add_tags": "Aggiungi tag",
@@ -262,7 +289,8 @@
       "set_payee_from_text": "Imposta il beneficiario dal testo",
       "set_description": "Imposta la descrizione",
       "convert_to_transfer": "Trasforma in trasferimento",
-      "split": "Dividi la transazione"
+      "split": "Dividi la transazione",
+      "settle_loan_installment": "Saldare una rata del prestito"
     },
     "save": {
       "button": "Salva regola",
@@ -311,8 +339,8 @@
         "MAX_NODES": "Ci sono troppe condizioni e gruppi. Il limite è {maxNodes}.",
         "NO_ACTIONS": "Aggiungi almeno un'azione.",
         "TOO_MANY_ACTIONS": "Ci sono troppe azioni. Il limite è {maxActions}.",
-        "DUPLICATE_ACTION": "Una regola può avere solo una revisione IA, un trasferimento o una divisione, e una parte della divisione che prende il resto.",
-        "CONFLICTING_ACTIONS": "Un'azione di trasferimento o di divisione non può essere combinata con «Imposta la categoria», e ciascuna delle sue parti ha una categoria o un conto.",
+        "DUPLICATE_ACTION": "Una regola può avere solo una revisione IA, un trasferimento, una divisione o un saldo di prestito, e una parte della divisione che prende il resto.",
+        "CONFLICTING_ACTIONS": "Un'azione di trasferimento, di divisione o di saldo di prestito non può essere combinata con «Imposta la categoria», e ciascuna parte di una divisione ha una categoria o un conto.",
         "INVALID_CAPTURE": "Il nome di una cattura usa lettere minuscole e cifre, inizia con una lettera e ha al massimo 20 caratteri.",
         "TOO_MANY_CAPTURES": "Un modello può contenere al massimo 5 catture.",
         "DUPLICATE_CAPTURE": "Ogni nome di cattura può essere usato una sola volta in una regola.",
@@ -395,6 +423,7 @@
     "matchesNone": "Questa regola non corrisponde a nessuna delle transazioni esaminate ({scanned}). Controlla le condizioni prima di salvare. Un modello senza * corrisponde solo al testo intero.",
     "noChange": "{matched} delle {scanned} transazioni esaminate soddisfano le condizioni della regola, ma non cambierebbe nulla (ad esempio, hanno già il valore e «solo se vuoto» è attivo). Non è un errore.",
     "truncated": "Corrispondono più transazioni di quante il limite consenta. Sono incluse solo le più recenti. Aumenta il limite o restringi le date per includere le altre.",
+    "truncatedOldest": "Sono risultate più transazioni corrispondenti di quante il limite ne permetta. Sono incluse solo le più vecchie, perché questa regola salda le rate del prestito in ordine di data. Eseguila di nuovo dopo questa esecuzione per includere il resto.",
     "noMatches": {
       "title": "Nessuna transazione verrebbe modificata",
       "body": "Nessuna delle transazioni analizzate corrisponde alla regola, oppure la regola non cambierebbe nulla."
@@ -408,7 +437,8 @@
     },
     "skipped": {
       "title": "{count, plural, one {# transazione viene lasciata invariata} other {# transazioni vengono lasciate invariate}}",
-      "line": "{count, plural, one {# transazione} other {# transazioni}}: {reason}"
+      "line": "{count, plural, one {# transazione} other {# transazioni}}: {reason}",
+      "missing": "Manca al prestito: {inputs}."
     },
     "skipReasons": {
       "reconciled_locked": "è riconciliata e bloccata",
@@ -428,7 +458,17 @@
       "transfer_currency_mismatch": "il conto del trasferimento usa un'altra valuta",
       "split_amount_unparseable": "un importo nel suo testo non si può leggere come numero",
       "split_sum_mismatch": "le parti non sommano il suo importo",
-      "split_too_few_parts": "restano meno di due parti dopo aver scartato gli importi zero"
+      "split_too_few_parts": "restano meno di due parti dopo aver scartato gli importi zero",
+      "row_from_scheduled_posting": "è stata registrata dal pagamento programmato del prestito, che ha già pagato la rata",
+      "row_is_income": "è un'entrata, e solo un addebito paga una rata",
+      "loan_account_unavailable": "il conto del prestito non è disponibile (è stato eliminato, è chiuso, non è tuo o non è un mutuo né un prestito)",
+      "loan_interest_booked_separately": "il prestito registra i suoi interessi come transazioni separate, quindi un pagamento non può includerli",
+      "loan_not_configured": "al prestito manca ciò che serve per calcolare una rata",
+      "no_installment_in_window": "nessuna rata del prestito scade entro la finestra intorno alla sua data",
+      "occurrence_already_posted": "la rata in scadenza nella finestra è già pagata",
+      "loan_debt_retired": "il prestito è già stato estinto",
+      "installment_amount_excess": "è maggiore della rata, e la regola lascia invariati gli addebiti più alti",
+      "installment_amount_shortfall": "è minore della rata, e la regola lascia invariati gli addebiti più bassi"
     },
     "change": {
       "category": "Categoria: {before} → {after}",
@@ -448,7 +488,8 @@
       "splitToTransfer": "verso {account}",
       "splitToTransferPayee": "verso {account}, beneficiario {payee}",
       "splitToCategory": "come {category}",
-      "splitUncategorised": "senza categoria"
+      "splitUncategorised": "senza categoria",
+      "loanSettlement": "{done, select, yes {Ha saldato} other {Salda}} la rata {number} di {account}, in scadenza il {dueDate}: capitale {principal}, interessi {interest}{hasExtra, select, yes {, capitale aggiuntivo {extra}} other {}}. Debito prima: {debtBefore}"
     },
     "filters": {
       "accounts": "Conti",
@@ -475,6 +516,19 @@
     "done": {
       "summary": "{count, plural, =0 {Nessuna transazione è stata modificata.} one {È stata modificata # transazione.} other {Sono state modificate # transazioni.}}",
       "undo": "Puoi annullare l’esecuzione dalla cronologia azioni."
+    },
+    "missingInputs": {
+      "scheduledPayment": "un pagamento programmato",
+      "managedTemplate": "un pagamento diviso in capitale e interessi",
+      "scheduleCalendar": "un piano di pagamento",
+      "interestCategory": "una categoria interessi",
+      "amortizationMonths": "il periodo di ammortamento",
+      "paymentStartDate": "la data del primo pagamento",
+      "paymentFrequency": "la frequenza di pagamento",
+      "originalPrincipal": "il capitale originario del prestito",
+      "rate": "un tasso d'interesse per la data",
+      "payment": "l'importo del pagamento",
+      "other": "un'impostazione del prestito"
     }
   },
   "applications": {
@@ -531,7 +585,8 @@
       "set_payee_from_text": "Imposta il beneficiario dal testo: «{template}»{createIfMissing, select, yes { (creato se non esiste)} other {}}{onlyIfEmpty, select, yes { (solo se vuoto)} other {}}",
       "set_description": "Imposta la descrizione ({mode, select, append {aggiungi dopo} prepend {aggiungi prima} other {sostituisci}}): «{template}»{onlyIfEmpty, select, yes { (solo se vuoto)} other {}}",
       "convert_to_transfer": "Trasforma in trasferimento {direction, select, from {da} other {a}} {account}",
-      "split": "Dividi in: {parts}"
+      "split": "Dividi in: {parts}",
+      "settle_loan_installment": "Saldare la rata di {account} pagata da un addebito entro {before, plural, one {# giorno} other {# giorni}} prima o {after, plural, one {# giorno} other {# giorni}} dopo la scadenza; un addebito maggiore {excess, select, refuse {viene lasciato invariato} other {paga capitale aggiuntivo}}, uno minore {shortfall, select, interest_first {paga prima gli interessi} other {viene lasciato invariato}}"
     },
     "splitPart": {
       "transfer": "{amount} a {account}",

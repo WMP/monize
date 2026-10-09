@@ -1,4 +1,5 @@
 import { EntityManager } from "typeorm";
+import { orderByDateStable } from "../../../common/date-order.util";
 import { TransactionRulesApplierService } from "../../../transaction-rules/transaction-rules-applier.service";
 import { MappedTransaction } from "../model/mny-import-model";
 import { INSERT_CHUNK_SIZE, chunk } from "./chunk";
@@ -13,6 +14,11 @@ export interface ApplyImportRulesResult {
    * file wrote to.
    */
   readonly affectedAccountIds: ReadonlySet<string>;
+  /**
+   * Scheduled payments a `settle_loan_installment` claimed an occurrence of;
+   * the import's post-processing reprices each template after the commit.
+   */
+  readonly settledScheduleIds: ReadonlySet<string>;
 }
 
 export interface ApplyImportRulesInput {
@@ -26,21 +32,24 @@ export interface ApplyImportRulesInput {
 }
 
 /**
- * The ids a rule may evaluate: written, regular rows. A transfer leg (its own
- * flag or a link) is left to the transfer step, and the row a trade adopts as
- * its cash leg is an investment cash leg, which is exempt.
+ * The ids a rule may evaluate: written, regular rows, oldest first and within
+ * a date in the file's order (INV-RULE-005), so the chunks walk forward
+ * through time. A transfer leg (its own flag or a link) is left to the
+ * transfer step, and the row a trade adopts as its cash leg is an investment
+ * cash leg, which is exempt.
  */
 export function eligibleImportRuleIds(input: ApplyImportRulesInput): string[] {
-  return input.transactions
-    .filter(
-      (transaction) =>
-        input.writtenTransactionIds.has(transaction.id) &&
-        !transaction.isTransfer &&
-        transaction.linkedTransactionId === null &&
-        transaction.collapsedTradeHandle === null &&
-        !input.investmentCashTransactionIds.has(transaction.id),
-    )
-    .map((transaction) => transaction.id);
+  const eligible = input.transactions.filter(
+    (transaction) =>
+      input.writtenTransactionIds.has(transaction.id) &&
+      !transaction.isTransfer &&
+      transaction.linkedTransactionId === null &&
+      transaction.collapsedTradeHandle === null &&
+      !input.investmentCashTransactionIds.has(transaction.id),
+  );
+  return orderByDateStable(eligible, (row) => row.transactionDate).map(
+    ({ row }) => row.id,
+  );
 }
 
 /**
@@ -58,10 +67,12 @@ export async function applyImportRules(
   input: ApplyImportRulesInput,
 ): Promise<ApplyImportRulesResult> {
   const affectedAccountIds = new Set<string>();
+  const settledScheduleIds = new Set<string>();
+  const nothing = { changed: 0, affectedAccountIds, settledScheduleIds };
   const ids = eligibleImportRuleIds(input);
-  if (ids.length === 0) return { changed: 0, affectedAccountIds };
+  if (ids.length === 0) return nothing;
   const rules = await applier.loadRulesFor(manager, userId, "import");
-  if (rules.length === 0) return { changed: 0, affectedAccountIds };
+  if (rules.length === 0) return nothing;
 
   const payeeTextById = new Map<string, string | null>();
   for (const transaction of input.transactions) {
@@ -86,7 +97,10 @@ export async function applyImportRules(
       for (const accountId of row.affectedAccountIds) {
         affectedAccountIds.add(accountId);
       }
+      for (const scheduleId of row.settledScheduleIds) {
+        settledScheduleIds.add(scheduleId);
+      }
     }
   }
-  return { changed, affectedAccountIds };
+  return { changed, affectedAccountIds, settledScheduleIds };
 }

@@ -251,7 +251,34 @@
       "splitGuideTip": "ヒント: 照合済みの古い取引が変更されないよう、「有効期間」に開始日を設定し、保存前にテストパネルで確認してください。",
       "convertGuide": "支出は選んだ口座への振替になり、収入はその口座からの振替になります。変更されるのは相手口座の残高だけです。ヒント: 古い取引が変更されないよう「有効期間」を使ってください。",
       "splitGuideName1": "gankin",
-      "splitGuideName2": "risoku"
+      "splitGuideName2": "risoku",
+      "loanGuide": "住宅ローンまたはローンの返済を一括で支払う銀行の引き落としに使います。「もし」では、口座、支払先テキストまたは説明で引き落としを照合してください。取引は分割になります: 元金はローン口座への振替、利息は利息カテゴリになり、どちらもその返済に応じた金額になります。ヒント: 返済が二重に支払われないよう、ローンの予定支払いの自動記帳をオフにし、保存前にテストパネルで確認してください。",
+      "loan": {
+        "help": "照合された引き落としは、その日付の近くに期日があるローンの次の返済に当てられます。Monize がその返済の元金と利息を計算するため、金額を入力する必要はありません。",
+        "account": "ローン口座",
+        "accountPlaceholder": "住宅ローンまたはローンを選択...",
+        "noLoans": "返済できる未決済の住宅ローンまたはローン口座がありません。",
+        "window": "期日の許容範囲",
+        "windowHelp": "銀行が支払いを行える、期日からの許容範囲です。返済の期日の前後、この日数以内の引き落としはその返済に当てられます。範囲外の引き落としは変更されません。",
+        "daysBefore": "期日より前の日数",
+        "daysAfter": "期日より後の日数",
+        "excess": "引き落としが返済額より多い場合",
+        "excessPolicies": {
+          "extra_principal": "差額を追加の元金として支払う",
+          "refuse": "取引を変更しない"
+        },
+        "shortfall": "引き落としが返済額より少ない場合",
+        "shortfallPolicies": {
+          "refuse": "取引を変更しない",
+          "interest_first": "まず利息を支払い、残りを元金とする"
+        },
+        "policyNote": "数銭程度の差額は利息の行で吸収されます。",
+        "policyHelp": "銀行は各部分を別々に四捨五入するため、通貨の最小単位の5倍以内（多くの通貨で0.05）の引き落としは正確な額として扱われ、差額は利息の行に反映されます。それより大きな差額には上記の2つの選択が適用されます。",
+        "interestCategory": "利息カテゴリ（任意）",
+        "interestCategoryPlaceholder": "ローン自体の利息カテゴリ",
+        "autoPostTitle": "ローンの予定支払いが自動で記帳されます",
+        "autoPostBody": "このローンの予定支払いは自動記帳が有効なため、それとこのルールが処理する銀行の引き落としの両方が同じ返済に当てられてしまいます。予定支払いの自動記帳をオフにしてください。"
+      }
     },
     "actionTypes": {
       "add_tags": "タグを追加",
@@ -262,7 +289,8 @@
       "set_payee_from_text": "テキストから支払先を設定",
       "set_description": "説明を設定",
       "convert_to_transfer": "振替に変換",
-      "split": "取引を分割"
+      "split": "取引を分割",
+      "settle_loan_installment": "ローンの返済を処理"
     },
     "save": {
       "button": "ルールを保存",
@@ -311,8 +339,8 @@
         "MAX_NODES": "条件とグループが多すぎます。上限は{maxNodes}件です。",
         "NO_ACTIONS": "アクションを少なくとも1つ追加してください。",
         "TOO_MANY_ACTIONS": "アクションが多すぎます。上限は{maxActions}件です。",
-        "DUPLICATE_ACTION": "1 つのルールに指定できるのは、AI レビュー 1 つ、振替または分割 1 つ、残りを取る分割パーツ 1 つまでです。",
-        "CONFLICTING_ACTIONS": "振替または分割のアクションは「カテゴリを設定」と組み合わせられず、各パートにはカテゴリまたは口座のいずれかが設定されます。",
+        "DUPLICATE_ACTION": "1 つのルールに指定できるのは、AI レビュー 1 つ、振替、分割またはローンの返済処理のうち 1 つ、残りを取る分割パーツ 1 つまでです。",
+        "CONFLICTING_ACTIONS": "振替、分割またはローンの返済処理のアクションは「カテゴリを設定」と組み合わせられず、分割の各パートにはカテゴリまたは口座のいずれかが設定されます。",
         "INVALID_CAPTURE": "キャプチャ名は小文字の英字と数字で、英字から始め、20文字以内にしてください。",
         "TOO_MANY_CAPTURES": "1つのパターンに含められるキャプチャは最大5つです。",
         "DUPLICATE_CAPTURE": "キャプチャ名は1つのルール内で1回だけ使えます。",
@@ -395,6 +423,7 @@
     "matchesNone": "このルールは確認したどの取引にも一致しません（{scanned} 件）。保存する前に条件を確認してください。* のないパターンはテキスト全体にのみ一致します。",
     "noChange": "確認した {scanned} 件の取引のうち {matched} 件がルールの条件に一致しますが、何も変更されません（たとえば、すでに値が設定されていて「空の場合のみ」が有効な場合）。エラーではありません。",
     "truncated": "上限を超える数の取引が一致しました。最新のものだけが含まれています。残りを含めるには、上限を上げるか日付を絞り込んでください。",
+    "truncatedOldest": "一致した取引が上限を超えました。このルールはローンの返済を日付順に処理するため、最も古いものだけが含まれます。残りを含めるには、この実行の後にもう一度実行してください。",
     "noMatches": {
       "title": "変更される取引はありません",
       "body": "確認した取引のどれもルールに一致しないか、ルールによる変更がありません。"
@@ -408,7 +437,8 @@
     },
     "skipped": {
       "title": "{count, plural, other {# 件}}の取引は変更されません",
-      "line": "{count, plural, other {# 件}}の取引: {reason}"
+      "line": "{count, plural, other {# 件}}の取引: {reason}",
+      "missing": "ローンに不足している設定: {inputs}。"
     },
     "skipReasons": {
       "reconciled_locked": "照合済みでロックされています",
@@ -428,7 +458,17 @@
       "transfer_currency_mismatch": "振替先の口座の通貨が異なります",
       "split_amount_unparseable": "テキスト内の金額を数値として読み取れませんでした",
       "split_sum_mismatch": "パーツの合計が金額と一致しません",
-      "split_too_few_parts": "ゼロの金額を除くとパーツが 2 つ未満になります"
+      "split_too_few_parts": "ゼロの金額を除くとパーツが 2 つ未満になります",
+      "row_from_scheduled_posting": "ローンの予定支払いから記帳され、その返済はすでに支払われているため",
+      "row_is_income": "収入であり、返済を支払えるのは引き落としのみであるため",
+      "loan_account_unavailable": "ローン口座を利用できないため（削除された、解約された、自分のものではない、または住宅ローンやローンではない）",
+      "loan_interest_booked_separately": "このローンは利息を別の取引として記帳するため、支払いに利息を含められないため",
+      "loan_not_configured": "返済額を計算するために必要な設定がローンに不足しているため",
+      "no_installment_in_window": "その日付の許容範囲内に期日があるローンの返済がないため",
+      "occurrence_already_posted": "許容範囲内で期日となる返済はすでに支払われているため",
+      "loan_debt_retired": "ローンはすでに完済されているため",
+      "installment_amount_excess": "返済額より多く、このルールはより大きい引き落としを変更しないため",
+      "installment_amount_shortfall": "返済額より少なく、このルールはより小さい引き落としを変更しないため"
     },
     "change": {
       "category": "カテゴリ: {before} → {after}",
@@ -448,7 +488,8 @@
       "splitToTransfer": "{account} へ",
       "splitToTransferPayee": "{account} へ、支払先 {payee}",
       "splitToCategory": "{category} として",
-      "splitUncategorised": "カテゴリなし"
+      "splitUncategorised": "カテゴリなし",
+      "loanSettlement": "{done, select, yes {{account}の第{number}回の返済を処理しました} other {{account}の第{number}回の返済を処理します}}（期日 {dueDate}）: 元金 {principal}、利息 {interest}{hasExtra, select, yes {、追加の元金 {extra}} other {}}。返済前の残高: {debtBefore}"
     },
     "filters": {
       "accounts": "口座",
@@ -475,6 +516,19 @@
     "done": {
       "summary": "{count, plural, =0 {変更された取引はありません。} other {# 件の取引を変更しました。}}",
       "undo": "実行は操作履歴から元に戻せます。"
+    },
+    "missingInputs": {
+      "scheduledPayment": "予定支払い",
+      "managedTemplate": "元金と利息に分割された支払い",
+      "scheduleCalendar": "支払いスケジュール",
+      "interestCategory": "利息カテゴリ",
+      "amortizationMonths": "償却期間",
+      "paymentStartDate": "初回支払日",
+      "paymentFrequency": "支払い頻度",
+      "originalPrincipal": "当初借入額",
+      "rate": "その日付の金利",
+      "payment": "支払い金額",
+      "other": "ローンの設定"
     }
   },
   "applications": {
@@ -531,7 +585,8 @@
       "set_payee_from_text": "テキストから支払先を設定：「{template}」{createIfMissing, select, yes {（なければ作成）} other {}}{onlyIfEmpty, select, yes {（空の場合のみ）} other {}}",
       "set_description": "説明を設定（{mode, select, append {後ろに追加} prepend {前に追加} other {置換}}）：「{template}」{onlyIfEmpty, select, yes {（空の場合のみ）} other {}}",
       "convert_to_transfer": "{account}{direction, select, from {から} other {へ}}の振替に変換",
-      "split": "次に分割: {parts}"
+      "split": "次に分割: {parts}",
+      "settle_loan_installment": "{account}の期日の前は{before, plural, other {#日}}まで、後は{after, plural, other {#日}}までの引き落としで返済を処理します。これより多い引き落としは{excess, select, refuse {変更されません} other {差額が追加の元金になります}}。これより少ない引き落としは{shortfall, select, interest_first {まず利息が支払われます} other {変更されません}}"
     },
     "splitPart": {
       "transfer": "{amount} を {account} へ",

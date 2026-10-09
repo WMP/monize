@@ -3,6 +3,15 @@
     "cash": "[XX-Cash-XX]",
     "brokerage": "[XX-Brokerage-XX]"
   },
+  "paymentMatching": {
+    "toggleLabel": "[XX-{kind, select, mortgage {Match imported bank payments to this mortgage} other {Match imported bank payments to this loan}}-XX]",
+    "toggleHelp": "[XX-When an imported bank transaction matches the payee pattern, Monize settles the scheduled payment with it and splits it into principal and interest, instead of posting a separate bill transaction.-XX]",
+    "payeePattern": "[XX-Payee pattern-XX]",
+    "payeePatternPlaceholder": "[XX-e.g. *MY BANK*-XX]",
+    "descriptionPattern": "[XX-Description pattern (optional)-XX]",
+    "descriptionPatternPlaceholder": "[XX-e.g. *Loan payment*-XX]",
+    "fromAccount": "[XX-Matched against debits from {account}.-XX]"
+  },
   "page": {
     "title": "[XX-Accounts-XX]",
     "subtitle": "[XX-Manage your bank accounts, credit cards, and investments-XX]",
@@ -172,8 +181,6 @@
     "statementDueDayPlaceholder": "[XX-e.g. 15-XX]",
     "statementSettlementDayPlaceholder": "[XX-e.g. 25-XX]",
     "fxFeeTitle": "[XX-Foreign Currency Conversion Fee (optional)-XX]",
-    "fxFeePercent": "[XX-Fee Percentage-XX]",
-    "fxFeePercentPlaceholder": "[XX-e.g. 2.5-XX]",
     "jointSharedWith": "[XX-Joint account shared with {count, plural, one {# person} other {# people}}-XX]",
     "jointManage": "[XX-Manage sharing-XX]"
   },
@@ -270,7 +277,11 @@
     "firstInstallmentHelp": "[XX-This mortgage has no fixed payment: each installment is worked out from the balance, the rate and the amortization period. This is the one due {date}, including any extra principal.-XX]",
     "firstInstallmentPending": "[XX-Enter the next payment date to work out the first installment.-XX]",
     "firstInstallmentCalculating": "[XX-Working out the first installment...-XX]",
-    "firstInstallmentFailed": "[XX-The first installment could not be worked out. Check the values below and try again.-XX]"
+    "firstInstallmentFailed": "[XX-The first installment could not be worked out. Check the values below and try again.-XX]",
+    "paymentMatching": {
+      "autoPostDisabled": "[XX-Turned off automatically: payment matching settles this bill from the bank's own debit, so it must not also post itself.-XX]",
+      "payeePatternRequired": "[XX-Enter a payee pattern that includes a * wildcard-XX]"
+    }
   },
   "mortgageFields": {
     "title": "[XX-Mortgage Details-XX]",
@@ -326,6 +337,10 @@
       "memoLabel": "[XX-Overpayment memo text-XX]",
       "memoPlaceholder": "[XX-e.g. overpayment-XX]",
       "memoHelp": "[XX-Case-insensitive substring match against the payment's memo, its source transaction's memo, or a split memo.-XX]"
+    },
+    "originalPrincipal": {
+      "label": "[XX-Original Principal-XX]",
+      "help": "[XX-The amount you originally borrowed. For an account whose recorded history starts after the mortgage did, this is the amount borrowed, not the opening balance — which is the debt at the start of your history.-XX]"
     },
     "previewTitle": "[XX-Amortization Preview-XX]",
     "previewPaymentAmount": "[XX-Payment Amount:-XX]",
@@ -436,7 +451,10 @@
     "paymentStartDateRequired": "[XX-First payment date is required-XX]",
     "paymentAccountRequired": "[XX-Payment account is required-XX]",
     "amortizationRequired": "[XX-Amortization period is required-XX]",
-    "acceleratedNeedsAnnuity": "[XX-This mortgage is paid on an accelerated schedule, which only an annuity mortgage has. A linear or interest-only mortgage needs a regular payment frequency, so keep an annuity type.-XX]"
+    "acceleratedNeedsAnnuity": "[XX-This mortgage is paid on an accelerated schedule, which only an annuity mortgage has. A linear or interest-only mortgage needs a regular payment frequency, so keep an annuity type.-XX]",
+    "paymentMatchingPayeePatternRequired": "[XX-Enter a payee pattern to match the bank's debit-XX]",
+    "paymentMatchingPayeePatternWildcard": "[XX-The payee pattern must include a * wildcard-XX]",
+    "paymentMatchingDescriptionPatternWildcard": "[XX-The description pattern must include a * wildcard-XX]"
   },
   "loanDetail": {
     "backToAccounts": "[XX-Back to Accounts-XX]",
@@ -717,6 +735,70 @@
       "utilization": "[XX-Utilization-XX]",
       "balanceHistory": "[XX-Balance History-XX]",
       "noHistory": "[XX-No balance history available.-XX]"
+    },
+    "paymentMatching": {
+      "title": "[XX-Payment matching-XX]",
+      "description": "[XX-Recognises the bank's own debit of each installment and settles it against the loan's schedule as principal and interest, instead of posting the bill separately.-XX]",
+      "noSchedule": "[XX-Payment matching settles the bank's debits against the loan's scheduled payment. Set up this loan's payments first.-XX]",
+      "noRule": "[XX-No payment matching rule is linked to this loan.-XX]",
+      "createOne": "[XX-Create one-XX]",
+      "ruleLabel": "[XX-Rule:-XX]",
+      "ruleLoading": "[XX-Loading the rule-XX]",
+      "ruleFailed": "[XX-The payment matching rule could not be loaded.-XX]",
+      "scheduleLoading": "[XX-Loading the scheduled payment-XX]",
+      "scheduleFailed": "[XX-The loan's scheduled payment could not be loaded.-XX]",
+      "retry": "[XX-Try again-XX]",
+      "autoPost": {
+        "title": "[XX-The scheduled payment still posts itself-XX]",
+        "body": "[XX-Auto-post is on for this loan's bill, so an installment the rule settles from the bank's debit would also be posted by the bill. Turn auto-post off on the bill in Bills.-XX]"
+      },
+      "preconditions": {
+        "openingBalance": "[XX-The loan's opening balance must be the debt at the start of the history being processed; every installment's interest is priced on it.-XX]",
+        "originalPrincipal": "[XX-The original principal must be the amount originally borrowed, not the opening balance.-XX]",
+        "scheduleStart": "[XX-Debits dated before {date}, when the scheduled payment starts, have no installment to match.-XX]"
+      },
+      "process": {
+        "button": "[XX-Process history-XX]",
+        "scope": "[XX-Runs the rule over the debits in {account}, oldest first.-XX]",
+        "running": "[XX-Processing history: {count, plural, one {# installment} other {# installments}} settled so far.-XX]",
+        "done": "[XX-{count, plural, =0 {No installments were settled.} one {# installment was settled.} other {# installments were settled.}}-XX]",
+        "undo": "[XX-Each page of the run can be undone from the action history.-XX]",
+        "failed": "[XX-Processing history stopped-XX]",
+        "stuckTitle": "[XX-Processing history could not continue-XX]",
+        "stuck": "[XX-More than {limit, number} transactions are dated {date}, so the run cannot move past that day. Settle the rest from Tools > Rules with a narrower filter.-XX]",
+        "stuckUnknown": "[XX-The server did not say how far the run reached, so it cannot continue. Reload the page and try again.-XX]"
+      },
+      "create": {
+        "title": "[XX-Create payment matching rule-XX]",
+        "description": "[XX-The rule settles matching debits from the loan's scheduled payment account, and the bill's auto-post is turned off.-XX]",
+        "descriptionWithAccount": "[XX-The rule settles matching debits from {account}, and the bill's auto-post is turned off.-XX]",
+        "submit": "[XX-Create rule-XX]",
+        "payeePatternRequired": "[XX-Enter a payee pattern that includes a * wildcard-XX]",
+        "descriptionPatternWildcard": "[XX-A description pattern must include a * wildcard-XX]",
+        "failed": "[XX-The payment matching rule could not be created.-XX]",
+        "done": "[XX-Rule \"{name}\" created-XX]"
+      },
+      "settled": {
+        "title": "[XX-Settled installments-XX]",
+        "colDueDate": "[XX-Due date-XX]",
+        "colTransaction": "[XX-Transaction-XX]",
+        "colPrincipal": "[XX-Principal-XX]",
+        "colInterest": "[XX-Interest-XX]",
+        "colExtra": "[XX-Extra principal-XX]",
+        "colDebtBefore": "[XX-Debt before-XX]",
+        "openTransaction": "[XX-Open the transaction-XX]",
+        "void": "[XX-Void-XX]",
+        "notRecorded": "[XX-Not recorded-XX]",
+        "empty": {
+          "title": "[XX-No installments settled yet-XX]",
+          "body": "[XX-Process history, or import the bank's debits, to settle installments.-XX]"
+        },
+        "error": {
+          "title": "[XX-The settled installments could not be loaded-XX]",
+          "body": "[XX-This is not an empty list. Try again to see which installments were settled.-XX]",
+          "retry": "[XX-Try again-XX]"
+        }
+      }
     }
   }
 }

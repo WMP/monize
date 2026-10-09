@@ -251,7 +251,34 @@
       "splitGuideTip": "팁: 이미 대조된 예전 거래가 바뀌지 않도록 “적용 기간”에 시작일을 설정하고, 저장하기 전에 테스트 패널을 사용하세요.",
       "convertGuide": "지출은 선택한 계좌로의 이체가 되고, 수입은 그 계좌에서의 이체가 됩니다. 상대 계좌의 잔액만 변경됩니다. 팁: 예전 거래가 바뀌지 않도록 “적용 기간”을 사용하세요.",
       "splitGuideName1": "wongeum",
-      "splitGuideName2": "ija"
+      "splitGuideName2": "ija",
+      "loanGuide": "모기지 또는 대출 할부금을 한 번에 지불하는 은행 출금에 사용하세요. “만약”에서 계좌, 수취인 텍스트 또는 설명으로 출금을 매칭하세요. 거래는 분할로 바뀝니다: 원금은 대출 계좌로 이체되고 이자는 이자 범주로 들어가며, 둘 다 해당 할부금에 맞게 계산됩니다. 팁: 할부금이 두 번 지불되지 않도록 대출의 예약된 결제에서 자동 등록을 끄고, 저장하기 전에 테스트 패널을 사용하세요.",
+      "loan": {
+        "help": "매칭된 출금은 날짜 근처에 기일이 돌아오는 대출의 다음 할부금을 지불합니다. Monize가 그 할부금의 원금과 이자를 계산하므로 금액을 직접 입력할 필요가 없습니다.",
+        "account": "대출 계좌",
+        "accountPlaceholder": "모기지 또는 대출 선택...",
+        "noLoans": "처리할 수 있는 미결제 모기지 또는 대출 계좌가 없습니다.",
+        "window": "기일 허용 범위",
+        "windowHelp": "은행이 결제를 가져갈 수 있는, 기일로부터의 허용 범위입니다. 할부금 기일 전후로 이 일수 이내의 출금은 그 할부금을 지불합니다. 범위를 벗어난 출금은 그대로 둡니다.",
+        "daysBefore": "기일 이전 일수",
+        "daysAfter": "기일 이후 일수",
+        "excess": "출금이 할부금보다 많은 경우",
+        "excessPolicies": {
+          "extra_principal": "차액을 추가 원금으로 지불",
+          "refuse": "거래를 그대로 둠"
+        },
+        "shortfall": "출금이 할부금보다 적은 경우",
+        "shortfallPolicies": {
+          "refuse": "거래를 그대로 둠",
+          "interest_first": "이자를 먼저 지불하고 나머지를 원금으로"
+        },
+        "policyNote": "몇 센트의 차액은 이자 항목에서 흡수됩니다.",
+        "policyHelp": "은행은 각 부분을 따로 반올림하므로, 통화 최소 단위의 5배 이내(대부분의 통화에서 0.05)인 출금은 정확한 금액으로 처리되고 차액은 이자 항목에 반영됩니다. 그보다 큰 차액에는 위의 두 선택이 적용됩니다.",
+        "interestCategory": "이자 범주(선택 사항)",
+        "interestCategoryPlaceholder": "대출 자체의 이자 범주",
+        "autoPostTitle": "대출의 예약된 결제가 자동으로 등록됩니다",
+        "autoPostBody": "이 대출의 예약된 결제는 자동 등록이 켜져 있어, 그것과 이 규칙이 처리하는 은행 출금이 같은 할부금을 지불하게 됩니다. 예약된 결제의 자동 등록을 끄세요."
+      }
     },
     "actionTypes": {
       "add_tags": "태그 추가",
@@ -262,7 +289,8 @@
       "set_payee_from_text": "텍스트로 수취인 지정",
       "set_description": "설명 지정",
       "convert_to_transfer": "이체로 변환",
-      "split": "거래 분할"
+      "split": "거래 분할",
+      "settle_loan_installment": "대출 할부금 처리"
     },
     "save": {
       "button": "규칙 저장",
@@ -311,8 +339,8 @@
         "MAX_NODES": "조건과 그룹이 너무 많습니다. 한도는 {maxNodes}개입니다.",
         "NO_ACTIONS": "동작을 하나 이상 추가하세요.",
         "TOO_MANY_ACTIONS": "동작이 너무 많습니다. 한도는 {maxActions}개입니다.",
-        "DUPLICATE_ACTION": "규칙에는 AI 검토 1개, 이체 또는 분할 1개, 나머지를 가져가는 분할 부분 1개만 둘 수 있습니다.",
-        "CONFLICTING_ACTIONS": "이체 또는 분할 동작은 ‘카테고리 지정’과 함께 사용할 수 없으며, 각 부분에는 카테고리 또는 계좌 중 하나가 있습니다.",
+        "DUPLICATE_ACTION": "규칙에는 AI 검토 1개, 이체·분할·대출 할부금 처리 중 1개, 나머지를 가져가는 분할 부분 1개만 둘 수 있습니다.",
+        "CONFLICTING_ACTIONS": "이체, 분할 또는 대출 할부금 처리 동작은 ‘카테고리 지정’과 함께 사용할 수 없으며, 분할의 각 부분에는 카테고리 또는 계좌 중 하나가 있습니다.",
         "INVALID_CAPTURE": "캡처 이름은 영문 소문자와 숫자로 이루어지고 영문자로 시작하며 20자 이하여야 합니다.",
         "TOO_MANY_CAPTURES": "패턴 하나에는 캡처를 최대 5개까지 넣을 수 있습니다.",
         "DUPLICATE_CAPTURE": "캡처 이름은 규칙 하나에서 한 번만 사용할 수 있습니다.",
@@ -395,6 +423,7 @@
     "matchesNone": "이 규칙은 검사한 어떤 거래와도 일치하지 않습니다({scanned}건). 저장하기 전에 조건을 확인하세요. *가 없는 패턴은 텍스트 전체와만 일치합니다.",
     "noChange": "검토한 거래 {scanned}건 중 {matched}건이 규칙 조건과 일치하지만 변경되는 내용은 없습니다(예: 이미 값이 있고 '비어 있을 때만'이 켜져 있는 경우). 오류가 아닙니다.",
     "truncated": "한도보다 많은 거래가 일치했습니다. 최신 거래만 포함되었습니다. 나머지를 포함하려면 한도를 올리거나 날짜를 좁히세요.",
+    "truncatedOldest": "한도보다 많은 거래가 일치했습니다. 이 규칙은 대출 할부금을 날짜 순서로 처리하므로 가장 오래된 것만 포함됩니다. 나머지를 포함하려면 이번 실행 후에 다시 실행하세요.",
     "noMatches": {
       "title": "변경될 거래가 없습니다",
       "body": "검사한 거래 중 규칙과 일치하는 것이 없거나, 규칙이 아무것도 변경하지 않습니다."
@@ -408,7 +437,8 @@
     },
     "skipped": {
       "title": "{count, plural, other {# 건}}의 거래는 그대로 둡니다",
-      "line": "{count, plural, other {# 건}}의 거래: {reason}"
+      "line": "{count, plural, other {# 건}}의 거래: {reason}",
+      "missing": "대출에 없는 항목: {inputs}."
     },
     "skipReasons": {
       "reconciled_locked": "조정되어 잠겨 있습니다",
@@ -428,7 +458,17 @@
       "transfer_currency_mismatch": "이체 계좌의 통화가 다릅니다",
       "split_amount_unparseable": "텍스트의 금액을 숫자로 읽을 수 없습니다",
       "split_sum_mismatch": "부분의 합이 금액과 맞지 않습니다",
-      "split_too_few_parts": "0 금액을 제외하면 부분이 2개 미만입니다"
+      "split_too_few_parts": "0 금액을 제외하면 부분이 2개 미만입니다",
+      "row_from_scheduled_posting": "대출의 예약된 결제에서 등록되어 그 할부금이 이미 지불되었기 때문",
+      "row_is_income": "수입이며, 할부금을 지불할 수 있는 것은 출금뿐이기 때문",
+      "loan_account_unavailable": "대출 계좌를 사용할 수 없기 때문(삭제됨, 닫힘, 내 것이 아님 또는 모기지나 대출이 아님)",
+      "loan_interest_booked_separately": "이 대출은 이자를 별도의 거래로 등록하므로 결제에 이자를 포함할 수 없기 때문",
+      "loan_not_configured": "할부금을 계산하는 데 필요한 설정이 대출에 없기 때문",
+      "no_installment_in_window": "그 날짜 주변 범위 내에 기일이 돌아오는 대출 할부금이 없기 때문",
+      "occurrence_already_posted": "범위 내에 기일이 돌아오는 할부금이 이미 지불되었기 때문",
+      "loan_debt_retired": "대출이 이미 상환 완료되었기 때문",
+      "installment_amount_excess": "할부금보다 많아서 이 규칙이 더 큰 출금을 그대로 두기 때문",
+      "installment_amount_shortfall": "할부금보다 적어서 이 규칙이 더 작은 출금을 그대로 두기 때문"
     },
     "change": {
       "category": "카테고리: {before} → {after}",
@@ -448,7 +488,8 @@
       "splitToTransfer": "{account}(으)로",
       "splitToTransferPayee": "{account}(으)로, 수취인 {payee}",
       "splitToCategory": "{category}(으)로",
-      "splitUncategorised": "카테고리 없음"
+      "splitUncategorised": "카테고리 없음",
+      "loanSettlement": "{done, select, yes {{account}의 {number}회차 할부금을 처리했습니다} other {{account}의 {number}회차 할부금을 처리합니다}}(기일 {dueDate}): 원금 {principal}, 이자 {interest}{hasExtra, select, yes {, 추가 원금 {extra}} other {}}. 처리 전 잔액: {debtBefore}"
     },
     "filters": {
       "accounts": "계정",
@@ -475,6 +516,19 @@
     "done": {
       "summary": "{count, plural, =0 {변경된 거래가 없습니다.} other {# 건의 거래가 변경되었습니다.}}",
       "undo": "실행은 작업 내역에서 되돌릴 수 있습니다."
+    },
+    "missingInputs": {
+      "scheduledPayment": "예약된 결제",
+      "managedTemplate": "원금과 이자로 나눈 결제",
+      "scheduleCalendar": "결제 일정",
+      "interestCategory": "이자 범주",
+      "amortizationMonths": "상환 기간",
+      "paymentStartDate": "첫 결제일",
+      "paymentFrequency": "결제 주기",
+      "originalPrincipal": "최초 대출금",
+      "rate": "해당 날짜의 금리",
+      "payment": "결제 금액",
+      "other": "대출 설정"
     }
   },
   "applications": {
@@ -531,7 +585,8 @@
       "set_payee_from_text": "텍스트로 수취인 지정: “{template}”{createIfMissing, select, yes { (없으면 생성)} other {}}{onlyIfEmpty, select, yes { (비어 있는 경우에만)} other {}}",
       "set_description": "설명 지정 ({mode, select, append {뒤에 추가} prepend {앞에 추가} other {바꾸기}}): “{template}”{onlyIfEmpty, select, yes { (비어 있는 경우에만)} other {}}",
       "convert_to_transfer": "{account}{direction, select, from {에서} other {(으)로}} 이체로 변환",
-      "split": "다음으로 분할: {parts}"
+      "split": "다음으로 분할: {parts}",
+      "settle_loan_installment": "{account}의 할부금을 처리합니다. 기일 {before, plural, other {#일}} 전 또는 {after, plural, other {#일}} 후까지의 출금으로 지불되며, 더 큰 출금은 {excess, select, refuse {그대로 둡니다} other {차액을 추가 원금으로 지불합니다}}, 더 작은 출금은 {shortfall, select, interest_first {이자를 먼저 지불합니다} other {그대로 둡니다}}"
     },
     "splitPart": {
       "transfer": "{amount}을(를) {account}(으)로",

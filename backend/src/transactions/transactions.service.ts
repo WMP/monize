@@ -16,6 +16,7 @@ import {
 import { Transaction, TransactionStatus } from "./entities/transaction.entity";
 import { TransactionSplit } from "./entities/transaction-split.entity";
 import { Category } from "../categories/entities/category.entity";
+import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
 import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { TransactionAttachment } from "../attachments/entities/transaction-attachment.entity";
@@ -400,6 +401,12 @@ export class TransactionsService {
        * on. Derived from the server-side identity, never read from a request.
        */
       actorIsNotOwner?: boolean;
+      /**
+       * Set by `ScheduledTransactionsService.post()` only, never read from a
+       * request: the row pays the occurrence `post()` just claimed, so a
+       * `settle_loan_installment` rule refuses it (`row_from_scheduled_posting`).
+       */
+      fromScheduledPosting?: boolean;
     },
   ): Promise<Transaction> {
     const account = await this.accountsService.findOne(
@@ -498,6 +505,8 @@ export class TransactionsService {
 
     // Accounts a transfer/investment split touched, invalidated after commit.
     const splitAffectedAccountIds = new Set<string>();
+    // Schedules a settlement rule claimed an occurrence of, repriced after commit.
+    const settledScheduleIds = new Set<string>();
 
     // One transaction: the row, its splits/tags, and the balance update
     // commit or roll back together. Nested service calls (split service, tags,
@@ -569,14 +578,19 @@ export class TransactionsService {
           {
             payeeTextById: new Map([[savedTransaction.id, payeeText]]),
             structuralNotAllowed: options?.actorIsNotOwner === true,
+            fromScheduledPosting: options?.fromScheduledPosting === true,
           },
         );
         // A structural action (convert to transfer, split) credits another
         // account; invalidated after the commit with the split targets
-        // (INV-CACHE-001).
+        // (INV-CACHE-001). A settlement also claimed a scheduled occurrence;
+        // its schedule's template is repriced after the commit.
         for (const rule of ruleRows) {
           for (const accountId of rule.affectedAccountIds) {
             splitAffectedAccountIds.add(accountId);
+          }
+          for (const scheduleId of rule.settledScheduleIds) {
+            settledScheduleIds.add(scheduleId);
           }
         }
 
@@ -607,6 +621,10 @@ export class TransactionsService {
         this.netWorthService.triggerDebouncedRecalc(affected, userId);
       }
     }
+    // The next installment of a schedule a rule settled an occurrence of is
+    // priced on the ledger this create left, in its own transaction after the
+    // commit (INV-CACHE-001; docs/specs/loan-installment-settlement.md 12.8).
+    await repriceSettledLoanTemplates(this.dataSource, settledScheduleIds);
 
     const result = await this.findOne(userId, savedTransactionId);
     this.recordTransactionAction(userId, result, "create");

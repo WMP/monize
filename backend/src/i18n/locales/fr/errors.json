@@ -69,7 +69,11 @@
     "unknownInvestmentAccount": "Compte inconnu : {{ name }}. Utilisez un nom exact de la liste des comptes de l'utilisateur.",
     "notACreditCard": "Les cycles de facturation ne sont disponibles que pour les comptes de carte de crédit",
     "noStatementSettlementDay": "Cette carte de crédit n'a aucun jour de clôture de relevé configuré",
-    "loanLedgerUnreadable": "Le solde de ce prêt n'a pas pu être lu. Réessayez."
+    "loanLedgerUnreadable": "Le solde de ce prêt n'a pas pu être lu. Réessayez.",
+    "paymentMatchingLoanOnly": "Le rapprochement des paiements s'applique uniquement aux prêts hypothécaires et aux prêts",
+    "paymentMatchingRequiresSchedule": "Le rapprochement des paiements nécessite le paiement planifié du prêt. Configurez d'abord ses paiements.",
+    "paymentMatchingRuleExists": "Ce prêt a déjà une règle de rapprochement des paiements",
+    "paymentMatchingFailed": "Le prêt a été enregistré, mais sa règle de rapprochement des paiements n'a pas pu être créée. Créez-la depuis les détails du prêt."
   },
   "actionHistory": {
     "nothingToUndo": "Rien à annuler",
@@ -618,7 +622,9 @@
     "activeWindowInvalid": "La première date active ne doit pas être postérieure à la dernière date active",
     "runTooLarge": "Cette exécution modifie trop de transactions pour être annulée en une seule étape. Restreignez les comptes ou les dates et réessayez",
     "runRedoStructural": "Cette exécution a restructuré des transactions (virements ou ventilations) et ne peut pas être rétablie. Exécutez plutôt la règle à nouveau",
-    "runUndoStructureChanged": "Une transaction restructurée par cette exécution a été modifiée depuis (ses lignes de ventilation ou son virement), l'exécution ne peut donc pas être annulée en toute sécurité. Rétablissez-la manuellement"
+    "runUndoStructureChanged": "Une transaction restructurée par cette exécution a été modifiée depuis (ses lignes de ventilation ou son virement), l'exécution ne peut donc pas être annulée en toute sécurité. Rétablissez-la manuellement",
+    "occurrenceAlreadyPosted": "Cette échéance du prêt a déjà été payée ou comptabilisée, la transaction ne peut donc pas la régler",
+    "runUndoLaterSettlement": "Une échéance ultérieure de ce prêt a été réglée après cette exécution, l'exécution ne peut donc pas être annulée. Annulez d'abord le règlement ultérieur"
   },
   "transactions": {
     "invalidStatus": "Statut de transaction invalide : {{ status }}",

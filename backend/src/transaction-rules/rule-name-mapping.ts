@@ -82,6 +82,14 @@ const ACTION_NAME_KEYS: Readonly<Record<string, readonly ActionNameKey[]>> = {
     PAYEE_NAME,
   ],
   split: [PAYEE_NAME],
+  settle_loan_installment: [
+    { kind: "accounts", nameKey: "loanAccountName", idKey: "loanAccountId" },
+    {
+      kind: "categories",
+      nameKey: "interestCategoryName",
+      idKey: "interestCategoryId",
+    },
+  ],
 };
 
 /** The names of one `split` part: its category, the account it transfers to, its payee. */

@@ -26,6 +26,7 @@ import type { RuleConditionNode } from "../../transaction-rules/rule-condition.t
 import type { RuleDefinitionLabels } from "../../transaction-rules/rule-labels";
 import type {
   RuleRunMatchedRow,
+  RuleRunScanOrder,
   RuleRunSkippedRow,
 } from "../../transaction-rules/rule-run.types";
 import type { RuleTrigger } from "../../transaction-rules/rule-trigger.types";
@@ -828,6 +829,8 @@ export interface AiActionRuleTestPreview {
   conditionMatchedCount: number;
   /** Transactions examined. */
   scanned: number;
+  /** Which end of the register the test scanned from: the oldest rows for a rule that settles loan installments, else the latest. */
+  scanOrder?: RuleRunScanOrder;
   /** More transactions matched the filters than the run examines. */
   truncated: boolean;
   /** The first {@link RULE_CARD_PREVIEW_ROWS} rows that would change. */

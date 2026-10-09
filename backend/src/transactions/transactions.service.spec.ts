@@ -21,6 +21,7 @@ import { TransactionBulkUpdateService } from "./transaction-bulk-update.service"
 import { TagsService } from "../tags/tags.service";
 import { TransactionTag } from "../tags/entities/transaction-tag.entity";
 import { TransactionRulesApplierService } from "../transaction-rules/transaction-rules-applier.service";
+import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
 import {
   PlannableRule,
   planRuleEffects,
@@ -43,6 +44,9 @@ import {
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
 );
+jest.mock("../loan-installments/reprice-template", () => ({
+  repriceSettledLoanTemplates: jest.fn().mockResolvedValue(undefined),
+}));
 
 // `update` and `remove` read the values a balance delta reverses under a row
 // lock inside the write transaction, not from the snapshot `findOne` returned
@@ -589,6 +593,7 @@ describe("TransactionsService", () => {
           transactionId: "tx-1",
           effects: {},
           affectedAccountIds: ["loan-account", "account-1"],
+          settledScheduleIds: [],
         },
       ]);
       const order: string[] = [];
@@ -625,6 +630,74 @@ describe("TransactionsService", () => {
         "recalc:account-1",
         "recalc:loan-account",
       ]);
+    });
+
+    it("reprices the schedule a settlement rule claimed on, after the commit and the net-worth dispatch", async () => {
+      transactionsRepository.findOne.mockResolvedValue(rowInDb);
+      rulesApplier.applyToNew.mockResolvedValue([
+        {
+          transactionId: "tx-1",
+          effects: {},
+          affectedAccountIds: ["loan-account"],
+          settledScheduleIds: ["st-loan"],
+        },
+      ]);
+      const order: string[] = [];
+      accountsService.updateBalance.mockImplementation(async () => {
+        order.push("balance");
+      });
+      netWorthService.triggerDebouncedRecalc.mockImplementation(() => {
+        order.push("recalc");
+      });
+      (repriceSettledLoanTemplates as jest.Mock).mockImplementation(
+        async () => {
+          order.push("reprice");
+        },
+      );
+
+      await service.create("user-1", {
+        accountId: "account-1",
+        transactionDate: "2026-01-15",
+        amount: -1333.33,
+        currencyCode: "USD",
+        payeeName: "ING HYPOTHEKEN",
+      } as any);
+
+      expect(repriceSettledLoanTemplates).toHaveBeenCalledWith(
+        mockDataSource,
+        new Set(["st-loan"]),
+      );
+      expect(order).toEqual(["balance", "recalc", "recalc", "reprice"]);
+    });
+
+    it("forwards the posting flag to the rules, server-set, never from the request", async () => {
+      transactionsRepository.findOne.mockResolvedValue(rowInDb);
+      await service.create(
+        "user-1",
+        {
+          accountId: "account-1",
+          transactionDate: "2026-01-15",
+          amount: -50,
+          currencyCode: "USD",
+          fromScheduledPosting: true,
+        } as any,
+        { fromScheduledPosting: true },
+      );
+      expect(rulesApplier.applyToNew.mock.calls[0][4]).toMatchObject({
+        fromScheduledPosting: true,
+      });
+
+      await service.create("user-1", {
+        accountId: "account-1",
+        transactionDate: "2026-01-15",
+        amount: -50,
+        currencyCode: "USD",
+        fromScheduledPosting: true,
+      } as any);
+      // The request's own field says nothing.
+      expect(rulesApplier.applyToNew.mock.calls[1][4]).toMatchObject({
+        fromScheduledPosting: false,
+      });
     });
 
     it("hands a rule the payee's own name as payeeText when only an id was given", async () => {

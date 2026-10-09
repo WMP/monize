@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "{kind, select, mortgage {將匯入的銀行付款與此房貸比對} other {將匯入的銀行付款與此貸款比對}}",
+    "toggleHelp": "當匯入的銀行交易符合收款人模式時，Monize 會用它結清排定的付款，並將其拆分為本金和利息，而不是記錄單獨的帳單交易。",
+    "payeePattern": "收款人模式",
+    "payeePatternPlaceholder": "例如 *我的銀行*",
+    "descriptionPattern": "描述模式（選用）",
+    "descriptionPatternPlaceholder": "例如 *貸款還款*",
+    "fromAccount": "與來自 {account} 的扣款進行比對。"
+  },
   "nameSuffix": {
     "cash": "現金",
     "brokerage": "證券"
@@ -165,8 +174,6 @@
     "statementDueDayPlaceholder": "例如 15",
     "statementSettlementDayPlaceholder": "例如 25",
     "fxFeeTitle": "外幣兌換手續費 （選填）",
-    "fxFeePercent": "手續費百分比",
-    "fxFeePercentPlaceholder": "例如 2.5",
     "jointSharedWith": "聯名帳戶，已與 {count, plural, other {# 人}}共享",
     "jointManage": "管理共享",
     "cashSection": {
@@ -270,7 +277,11 @@
     "firstInstallmentHelp": "此房貸沒有固定還款額：每期還款依餘額、利率與攤還期間計算。這是 {date} 到期的一期，包含任何額外本金。",
     "firstInstallmentPending": "請輸入下次還款日期以計算首期還款。",
     "firstInstallmentCalculating": "正在計算首期還款...",
-    "firstInstallmentFailed": "無法計算首期還款。請檢查下方的數值後再試一次。"
+    "firstInstallmentFailed": "無法計算首期還款。請檢查下方的數值後再試一次。",
+    "paymentMatching": {
+      "autoPostDisabled": "已自動關閉：付款比對會根據銀行自身的扣款結清此帳單，因此該帳單不應再自行記帳。",
+      "payeePatternRequired": "請輸入包含 * 萬用字元的收款人模式"
+    }
   },
   "mortgageFields": {
     "title": "抵押貸款詳情",
@@ -407,6 +418,10 @@
         "cancel": "取消",
         "use": "以此類型編輯科目"
       }
+    },
+    "originalPrincipal": {
+      "label": "原始本金",
+      "help": "您最初借入的金額。對於記錄歷史晚於貸款開始日期的帳戶，這是借入的金額，而不是期初餘額——期初餘額是您歷史記錄開始時的債務。"
     }
   },
   "assetFields": {
@@ -436,7 +451,10 @@
     "paymentStartDateRequired": "首次還款日期為必填",
     "paymentAccountRequired": "付款科目為必填",
     "amortizationRequired": "攤還期為必填",
-    "acceleratedNeedsAnnuity": "此房貸依加速還款計畫支付，只有本息平均攤還的房貸才有這種計畫。本金平均攤還或只付利息的房貸需要一般還款頻率，因此請保留本息平均攤還類型。"
+    "acceleratedNeedsAnnuity": "此房貸依加速還款計畫支付，只有本息平均攤還的房貸才有這種計畫。本金平均攤還或只付利息的房貸需要一般還款頻率，因此請保留本息平均攤還類型。",
+    "paymentMatchingPayeePatternRequired": "請輸入用於識別銀行扣款的收款人模式",
+    "paymentMatchingPayeePatternWildcard": "收款人模式必須包含 * 萬用字元",
+    "paymentMatchingDescriptionPatternWildcard": "描述模式必須包含 * 萬用字元"
   },
   "loanDetail": {
     "backToAccounts": "返回帳戶",
@@ -633,6 +651,70 @@
       "seriesOriginal": "原始計畫",
       "seriesActual": "實際餘額",
       "unknown": "未知"
+    },
+    "paymentMatching": {
+      "title": "付款比對",
+      "description": "識別銀行對每期還款的自身扣款，並依貸款還款排程將其結算為本金和利息，而不是另外記錄帳單。",
+      "noSchedule": "付款比對會依據貸款的排程還款結算銀行扣款。請先為此貸款設定還款。",
+      "noRule": "此貸款未連結付款比對規則。",
+      "createOne": "建立一條",
+      "ruleLabel": "規則：",
+      "ruleLoading": "正在載入規則",
+      "ruleFailed": "無法載入付款比對規則。",
+      "scheduleLoading": "正在載入排程還款",
+      "scheduleFailed": "無法載入貸款的排程還款。",
+      "retry": "重試",
+      "autoPost": {
+        "title": "排程還款仍會自動記帳",
+        "body": "此貸款的帳單已開啟自動過帳，因此規則依據銀行扣款結算的每期還款也會被帳單再次記帳。請在「帳單與存款」中關閉該帳單的自動過帳。"
+      },
+      "preconditions": {
+        "openingBalance": "貸款的初始餘額必須是所處理歷史開始時的欠款；每期還款的利息都以此計算。",
+        "originalPrincipal": "原始本金必須是最初借入的金額，而不是初始餘額。",
+        "scheduleStart": "日期早於排程還款開始日 {date} 的扣款沒有可比對的還款期。"
+      },
+      "process": {
+        "button": "處理歷史記錄",
+        "scope": "依從舊到新的順序，對 {account} 中的扣款執行規則。",
+        "running": "正在處理歷史記錄：目前已結算 {count, plural, one {# 期還款} other {# 期還款}}。",
+        "done": "{count, plural, =0 {未結算任何還款。} one {已結算 # 期還款。} other {已結算 # 期還款。}}",
+        "undo": "本次執行的每一頁都可以在操作歷史中復原。",
+        "failed": "歷史記錄處理已停止",
+        "stuckTitle": "無法繼續處理歷史記錄",
+        "stuck": "日期為 {date} 的交易超過 {limit, number} 筆，因此執行無法越過該日。請在「工具 > 規則」中使用更精確的篩選條件結算其餘交易。",
+        "stuckUnknown": "伺服器未告知執行進行到的位置，因此無法繼續。請重新載入頁面後再試一次。"
+      },
+      "create": {
+        "title": "建立付款比對規則",
+        "description": "此規則將結算來自貸款排程還款帳戶的相符扣款，並關閉帳單的自動過帳。",
+        "descriptionWithAccount": "此規則將結算來自 {account} 的相符扣款，並關閉帳單的自動過帳。",
+        "submit": "建立規則",
+        "payeePatternRequired": "請輸入包含 * 萬用字元的收款人模式",
+        "descriptionPatternWildcard": "描述模式必須包含 * 萬用字元",
+        "failed": "無法建立付款比對規則。",
+        "done": "已建立規則「{name}」"
+      },
+      "settled": {
+        "title": "已結算的還款",
+        "colDueDate": "到期日",
+        "colTransaction": "交易",
+        "colPrincipal": "本金",
+        "colInterest": "利息",
+        "colExtra": "額外本金",
+        "colDebtBefore": "還款前欠款",
+        "openTransaction": "開啟交易",
+        "void": "作廢",
+        "notRecorded": "未記錄",
+        "empty": {
+          "title": "尚無已結算的還款",
+          "body": "處理歷史記錄或匯入銀行扣款，以結算還款。"
+        },
+        "error": {
+          "title": "無法載入已結算的還款",
+          "body": "這並不是空白清單。請重試以查看哪些還款已結算。",
+          "retry": "重試"
+        }
+      }
     },
     "lineOfCredit": {
       "currentBalance": "目前餘額",

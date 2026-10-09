@@ -251,7 +251,34 @@
       "splitGuideTip": "Tip: set a start date under “Active between” so older reconciled transactions are not changed, and use the Test panel before saving.",
       "convertGuide": "An expense becomes a transfer to the account you choose, and an income becomes a transfer from it. Only the balance of the other account changes. Tip: use “Active between” so older transactions are not changed.",
       "splitGuideName1": "principal",
-      "splitGuideName2": "interest"
+      "splitGuideName2": "interest",
+      "loanGuide": "Use this for a bank debit that pays a mortgage or loan installment as one amount. In “If”, match the debit by its account, payee text or description. The transaction becomes a split: the principal is transferred to the loan account and the interest goes to the interest category, both priced for the installment it pays. Tip: turn off automatic posting on the loan's scheduled payment so the installment is not paid twice, and use the Test panel before saving.",
+      "loan": {
+        "help": "The matched debit pays the next installment of the loan due near its date. Monize works out the principal and interest for that installment; you never type an amount.",
+        "account": "Loan account",
+        "accountPlaceholder": "Select a mortgage or loan...",
+        "noLoans": "You have no open mortgage or loan account to settle.",
+        "window": "Due date window",
+        "windowHelp": "How far from the due date the bank may take the payment. A debit up to this many days before or after an installment's due date pays that installment; one outside the window is left alone.",
+        "daysBefore": "Days before the due date",
+        "daysAfter": "Days after the due date",
+        "excess": "When the debit is more than the installment",
+        "excessPolicies": {
+          "extra_principal": "Pay the difference as extra principal",
+          "refuse": "Leave the transaction alone"
+        },
+        "shortfall": "When the debit is less than the installment",
+        "shortfallPolicies": {
+          "refuse": "Leave the transaction alone",
+          "interest_first": "Pay the interest first, the rest as principal"
+        },
+        "policyNote": "A difference of a few cents is absorbed by the interest line.",
+        "policyHelp": "Banks round each part separately, so a debit within 5 of the smallest unit of the currency (0.05 for most currencies) is treated as exact and the interest line takes the difference. A larger difference follows the two choices above.",
+        "interestCategory": "Interest category (optional)",
+        "interestCategoryPlaceholder": "The loan's own interest category",
+        "autoPostTitle": "The loan's scheduled payment posts itself",
+        "autoPostBody": "Automatic posting is on for this loan's scheduled payment, so it and the bank debit this rule settles would both pay the same installment. Turn off automatic posting on the scheduled payment."
+      }
     },
     "actionTypes": {
       "add_tags": "Add tags",
@@ -262,7 +289,8 @@
       "set_payee_from_text": "Set the payee from text",
       "set_description": "Set the description",
       "convert_to_transfer": "Convert to transfer",
-      "split": "Split transaction"
+      "split": "Split transaction",
+      "settle_loan_installment": "Settle a loan installment"
     },
     "save": {
       "button": "Save rule",
@@ -311,8 +339,8 @@
         "MAX_NODES": "There are too many conditions and groups. The limit is {maxNodes}.",
         "NO_ACTIONS": "Add at least one action.",
         "TOO_MANY_ACTIONS": "There are too many actions. The limit is {maxActions}.",
-        "DUPLICATE_ACTION": "A rule can have only one AI review, one transfer or split, and one split part that takes the rest.",
-        "CONFLICTING_ACTIONS": "A transfer or split action cannot be combined with “Set the category”, and each of its parts has either a category or an account.",
+        "DUPLICATE_ACTION": "A rule can have only one AI review, one transfer, split or loan settlement, and one split part that takes the rest.",
+        "CONFLICTING_ACTIONS": "A transfer, split or loan settlement action cannot be combined with “Set the category”, and each part of a split has either a category or an account.",
         "INVALID_CAPTURE": "A capture name must be lowercase letters and digits, starting with a letter, and up to 20 long.",
         "TOO_MANY_CAPTURES": "A pattern can hold at most 5 captures.",
         "DUPLICATE_CAPTURE": "Each capture name can be used once in a rule.",
@@ -395,6 +423,7 @@
     "matchesNone": "This rule matches none of the transactions examined ({scanned}). Check the conditions before saving. A pattern without * matches only the whole text.",
     "noChange": "{matched} of the {scanned} transactions examined match the rule's conditions, but nothing would change (for example, they already have the value and only-if-empty is on). This is not an error.",
     "truncated": "More transactions matched than the limit allows. Only the newest are included. Raise the limit or narrow the dates to include the rest.",
+    "truncatedOldest": "More transactions matched than the limit allows. Only the oldest are included, because this rule settles loan installments in date order. Run it again after this run to include the rest.",
     "noMatches": {
       "title": "No transactions would change",
       "body": "None of the scanned transactions match the rule, or the rule would change nothing on them."
@@ -408,7 +437,8 @@
     },
     "skipped": {
       "title": "{count, plural, one {# transaction is left alone} other {# transactions are left alone}}",
-      "line": "{count, plural, one {# transaction} other {# transactions}}: {reason}"
+      "line": "{count, plural, one {# transaction} other {# transactions}}: {reason}",
+      "missing": "Missing on the loan: {inputs}."
     },
     "skipReasons": {
       "reconciled_locked": "it is reconciled and locked",
@@ -428,7 +458,17 @@
       "transfer_currency_mismatch": "the transfer account uses another currency",
       "split_amount_unparseable": "an amount in its text could not be read as a number",
       "split_sum_mismatch": "the parts do not add up to its amount",
-      "split_too_few_parts": "fewer than two parts are left once zero amounts are dropped"
+      "split_too_few_parts": "fewer than two parts are left once zero amounts are dropped",
+      "row_from_scheduled_posting": "it was posted from the loan's scheduled payment, which already paid the installment",
+      "row_is_income": "it is an income, and only a debit pays an installment",
+      "loan_account_unavailable": "the loan account is not available (it was deleted, is closed, is not yours or is not a mortgage or loan)",
+      "loan_interest_booked_separately": "the loan books its interest as separate transactions, so a payment cannot carry it",
+      "loan_not_configured": "the loan is missing what is needed to price an installment",
+      "no_installment_in_window": "no installment of the loan is due within the window around its date",
+      "occurrence_already_posted": "the installment due in the window is already paid",
+      "loan_debt_retired": "the loan is already paid off",
+      "installment_amount_excess": "it is more than the installment and the rule leaves larger debits alone",
+      "installment_amount_shortfall": "it is less than the installment and the rule leaves smaller debits alone"
     },
     "change": {
       "category": "Category: {before} → {after}",
@@ -448,7 +488,8 @@
       "splitToTransfer": "to {account}",
       "splitToTransferPayee": "to {account}, payee {payee}",
       "splitToCategory": "as {category}",
-      "splitUncategorised": "uncategorised"
+      "splitUncategorised": "uncategorised",
+      "loanSettlement": "{done, select, yes {Settled} other {Settles}} installment {number} of {account}, due {dueDate}: principal {principal}, interest {interest}{hasExtra, select, yes {, extra principal {extra}} other {}}. Debt before: {debtBefore}"
     },
     "filters": {
       "accounts": "Accounts",
@@ -475,6 +516,19 @@
     "done": {
       "summary": "{count, plural, =0 {No transactions were changed.} one {# transaction was changed.} other {# transactions were changed.}}",
       "undo": "You can undo the run from the action history."
+    },
+    "missingInputs": {
+      "scheduledPayment": "a scheduled payment",
+      "managedTemplate": "a payment split into principal and interest",
+      "scheduleCalendar": "a payment schedule",
+      "interestCategory": "an interest category",
+      "amortizationMonths": "the amortization period",
+      "paymentStartDate": "the first payment date",
+      "paymentFrequency": "the payment frequency",
+      "originalPrincipal": "the original principal",
+      "rate": "an interest rate for the date",
+      "payment": "the payment amount",
+      "other": "a loan setting"
     }
   },
   "applications": {
@@ -531,7 +585,8 @@
       "set_payee_from_text": "Set the payee from text: \"{template}\"{createIfMissing, select, yes { (created if missing)} other {}}{onlyIfEmpty, select, yes { (only if empty)} other {}}",
       "set_description": "Set the description ({mode, select, append {append} prepend {prepend} other {replace}}): \"{template}\"{onlyIfEmpty, select, yes { (only if empty)} other {}}",
       "convert_to_transfer": "Turn into a transfer {direction, select, from {from} other {to}} {account}",
-      "split": "Split into: {parts}"
+      "split": "Split into: {parts}",
+      "settle_loan_installment": "Settle the installment of {account} paid by a debit up to {before, plural, one {# day} other {# days}} before or {after, plural, one {# day} other {# days}} after its due date; a larger debit {excess, select, refuse {is left alone} other {pays extra principal}}, a smaller one {shortfall, select, interest_first {pays the interest first} other {is left alone}}"
     },
     "splitPart": {
       "transfer": "{amount} to {account}",

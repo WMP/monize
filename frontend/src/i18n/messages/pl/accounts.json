@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "{kind, select, mortgage {Dopasuj zaimportowane płatności bankowe do tego kredytu hipotecznego} other {Dopasuj zaimportowane płatności bankowe do tego kredytu}}",
+    "toggleHelp": "Gdy zaimportowana transakcja bankowa pasuje do wzorca odbiorcy, Monize rozlicza nią zaplanowaną płatność i dzieli ją na kapitał i odsetki, zamiast rejestrować osobną transakcję rachunku.",
+    "payeePattern": "Wzorzec odbiorcy",
+    "payeePatternPlaceholder": "np. *MÓJ BANK*",
+    "descriptionPattern": "Wzorzec opisu (opcjonalnie)",
+    "descriptionPatternPlaceholder": "np. *Rata kredytu*",
+    "fromAccount": "Dopasowywane do obciążeń z {account}."
+  },
   "nameSuffix": {
     "cash": "Gotówka",
     "brokerage": "Maklerskie"
@@ -165,8 +174,6 @@
     "statementDueDayPlaceholder": "np. 15",
     "statementSettlementDayPlaceholder": "np. 25",
     "fxFeeTitle": "Opłata za przewalutowanie (opcjonalnie)",
-    "fxFeePercent": "Procent opłaty",
-    "fxFeePercentPlaceholder": "np. 2,5",
     "jointSharedWith": "Wspólne konto udostępnione {count, plural, one {# osobie} few {# osobom} many {# osobom} other {# osobom}}",
     "jointManage": "Zarządzaj udostępnianiem",
     "cashSection": {
@@ -270,7 +277,11 @@
     "firstInstallmentHelp": "Ten kredyt hipoteczny nie ma stałej płatności: każda rata wynika z salda, oprocentowania i okresu amortyzacji. To rata z terminem {date}, łącznie z ewentualną dodatkową spłatą kapitału.",
     "firstInstallmentPending": "Wpisz datę następnej płatności, aby obliczyć pierwszą ratę.",
     "firstInstallmentCalculating": "Obliczanie pierwszej raty...",
-    "firstInstallmentFailed": "Nie udało się obliczyć pierwszej raty. Sprawdź poniższe wartości i spróbuj ponownie."
+    "firstInstallmentFailed": "Nie udało się obliczyć pierwszej raty. Sprawdź poniższe wartości i spróbuj ponownie.",
+    "paymentMatching": {
+      "autoPostDisabled": "Wyłączone automatycznie: dopasowywanie płatności rozlicza ten rachunek na podstawie własnego obciążenia banku, więc nie może się on też księgować samodzielnie.",
+      "payeePatternRequired": "Podaj wzorzec odbiorcy zawierający symbol wieloznaczny *"
+    }
   },
   "mortgageFields": {
     "title": "Szczegóły kredytu hipotecznego",
@@ -407,6 +418,10 @@
         "cancel": "Anuluj",
         "use": "Edytuj konto z tym rodzajem"
       }
+    },
+    "originalPrincipal": {
+      "label": "Pierwotny kapitał",
+      "help": "Kwota, którą pierwotnie pożyczono. W przypadku konta, którego zapisana historia zaczyna się po rozpoczęciu kredytu, jest to pożyczona kwota, a nie saldo początkowe — czyli zadłużenie na początku historii."
     }
   },
   "assetFields": {
@@ -436,7 +451,10 @@
     "paymentStartDateRequired": "Data pierwszej płatności jest wymagana",
     "paymentAccountRequired": "Konto płatności jest wymagane",
     "amortizationRequired": "Okres spłaty jest wymagany",
-    "acceleratedNeedsAnnuity": "Ten kredyt hipoteczny jest spłacany według przyspieszonego harmonogramu, który ma tylko kredyt z ratami równymi. Kredyt z ratami malejącymi lub tylko odsetkowy wymaga zwykłej częstotliwości płatności, więc zostaw typ z ratami równymi."
+    "acceleratedNeedsAnnuity": "Ten kredyt hipoteczny jest spłacany według przyspieszonego harmonogramu, który ma tylko kredyt z ratami równymi. Kredyt z ratami malejącymi lub tylko odsetkowy wymaga zwykłej częstotliwości płatności, więc zostaw typ z ratami równymi.",
+    "paymentMatchingPayeePatternRequired": "Podaj wzorzec odbiorcy, który rozpozna obciążenie z banku",
+    "paymentMatchingPayeePatternWildcard": "Wzorzec odbiorcy musi zawierać symbol wieloznaczny *",
+    "paymentMatchingDescriptionPatternWildcard": "Wzorzec opisu musi zawierać symbol wieloznaczny *"
   },
   "loanDetail": {
     "backToAccounts": "Powrót do kont",
@@ -638,6 +656,70 @@
       "seriesOriginal": "Pierwotny harmonogram",
       "seriesActual": "Rzeczywiste saldo",
       "unknown": "Nieznane"
+    },
+    "paymentMatching": {
+      "title": "Dopasowywanie płatności",
+      "description": "Rozpoznaje obciążenie każdej raty przez bank i rozlicza je z harmonogramem kredytu jako kapitał i odsetki, zamiast osobno księgować rachunek.",
+      "noSchedule": "Dopasowywanie płatności rozlicza obciążenia z banku z zaplanowaną płatnością kredytu. Najpierw skonfiguruj płatności tego kredytu.",
+      "noRule": "Z tym kredytem nie jest powiązana żadna reguła dopasowywania płatności.",
+      "createOne": "Utwórz ją",
+      "ruleLabel": "Reguła:",
+      "ruleLoading": "Wczytywanie reguły",
+      "ruleFailed": "Nie udało się wczytać reguły dopasowywania płatności.",
+      "scheduleLoading": "Wczytywanie zaplanowanej płatności",
+      "scheduleFailed": "Nie udało się wczytać zaplanowanej płatności kredytu.",
+      "retry": "Spróbuj ponownie",
+      "autoPost": {
+        "title": "Zaplanowana płatność nadal księguje się sama",
+        "body": "Auto-księgowanie jest włączone dla rachunku tego kredytu, więc rata, którą reguła rozliczy z obciążenia z banku, zostałaby też zaksięgowana przez rachunek. Wyłącz auto-księgowanie rachunku w sekcji Rachunki i wpłaty."
+      },
+      "preconditions": {
+        "openingBalance": "Saldo początkowe kredytu musi być zadłużeniem na początku przetwarzanej historii; od niego naliczane są odsetki każdej raty.",
+        "originalPrincipal": "Kapitał początkowy musi być kwotą pierwotnie pożyczoną, a nie saldem początkowym.",
+        "scheduleStart": "Obciążenia z datą wcześniejszą niż {date}, kiedy zaczyna się zaplanowana płatność, nie mają raty, do której można je dopasować."
+      },
+      "process": {
+        "button": "Przetwórz historię",
+        "scope": "Stosuje regułę do obciążeń na koncie {account}, od najstarszych.",
+        "running": "Przetwarzanie historii: dotąd rozliczono {count, plural, one {# ratę} few {# raty} many {# rat} other {# raty}}.",
+        "done": "{count, plural, =0 {Nie rozliczono żadnej raty.} one {Rozliczono # ratę.} few {Rozliczono # raty.} many {Rozliczono # rat.} other {Rozliczono # raty.}}",
+        "undo": "Każdą stronę przebiegu można cofnąć w historii działań.",
+        "failed": "Przetwarzanie historii zostało zatrzymane",
+        "stuckTitle": "Nie można kontynuować przetwarzania historii",
+        "stuck": "Ponad {limit, number} transakcji ma datę {date}, więc przebieg nie może wyjść poza ten dzień. Rozlicz resztę w Narzędzia > Reguły, używając węższego filtra.",
+        "stuckUnknown": "Serwer nie podał, dokąd dotarł przebieg, więc nie można go kontynuować. Odśwież stronę i spróbuj ponownie."
+      },
+      "create": {
+        "title": "Utwórz regułę dopasowywania płatności",
+        "description": "Reguła rozlicza pasujące obciążenia z konta zaplanowanej płatności kredytu, a auto-księgowanie rachunku zostaje wyłączone.",
+        "descriptionWithAccount": "Reguła rozlicza pasujące obciążenia z {account}, a auto-księgowanie rachunku zostaje wyłączone.",
+        "submit": "Utwórz regułę",
+        "payeePatternRequired": "Wpisz wzorzec odbiorcy zawierający symbol wieloznaczny *",
+        "descriptionPatternWildcard": "Wzorzec opisu musi zawierać symbol wieloznaczny *",
+        "failed": "Nie udało się utworzyć reguły dopasowywania płatności.",
+        "done": "Utworzono regułę „{name}”"
+      },
+      "settled": {
+        "title": "Rozliczone raty",
+        "colDueDate": "Termin płatności",
+        "colTransaction": "Transakcja",
+        "colPrincipal": "Kapitał",
+        "colInterest": "Odsetki",
+        "colExtra": "Dodatkowy kapitał",
+        "colDebtBefore": "Zadłużenie przed",
+        "openTransaction": "Otwórz transakcję",
+        "void": "Unieważniona",
+        "notRecorded": "Nie zarejestrowano",
+        "empty": {
+          "title": "Nie rozliczono jeszcze żadnych rat",
+          "body": "Przetwórz historię lub zaimportuj obciążenia z banku, aby rozliczyć raty."
+        },
+        "error": {
+          "title": "Nie udało się wczytać rozliczonych rat",
+          "body": "To nie jest pusta lista. Spróbuj ponownie, aby zobaczyć, które raty zostały rozliczone.",
+          "retry": "Spróbuj ponownie"
+        }
+      }
     },
     "lineOfCredit": {
       "currentBalance": "Bieżące saldo",

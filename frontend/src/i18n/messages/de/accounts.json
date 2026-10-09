@@ -1,4 +1,13 @@
 {
+  "paymentMatching": {
+    "toggleLabel": "{kind, select, mortgage {Importierte Bankzahlungen dieser Hypothek zuordnen} other {Importierte Bankzahlungen diesem Kredit zuordnen}}",
+    "toggleHelp": "Wenn eine importierte Banktransaktion zum Empfängermuster passt, verrechnet Monize sie mit der geplanten Zahlung und teilt sie in Tilgung und Zinsen auf, statt eine separate Rechnungsbuchung zu erstellen.",
+    "payeePattern": "Zahlungsempfänger-Muster",
+    "payeePatternPlaceholder": "z. B. *MEINE BANK*",
+    "descriptionPattern": "Beschreibungsmuster (optional)",
+    "descriptionPatternPlaceholder": "z. B. *Kreditrate*",
+    "fromAccount": "Abgeglichen mit Abbuchungen von {account}."
+  },
   "nameSuffix": {
     "cash": "Bargeld",
     "brokerage": "Depot"
@@ -165,8 +174,6 @@
     "statementDueDayPlaceholder": "z. B. 15",
     "statementSettlementDayPlaceholder": "z. B. 25",
     "fxFeeTitle": "Fremdwährungsumrechnungsgebühr (optional)",
-    "fxFeePercent": "Gebührensatz",
-    "fxFeePercentPlaceholder": "z. B. 2,5",
     "jointSharedWith": "Gemeinschaftskonto, geteilt mit {count, plural, one {# Person} other {# Personen}}",
     "jointManage": "Freigabe verwalten",
     "cashSection": {
@@ -270,7 +277,11 @@
     "firstInstallmentHelp": "Diese Hypothek hat keine feste Zahlung: Jede Rate ergibt sich aus dem Saldo, dem Zinssatz und der Tilgungsdauer. Dies ist die am {date} fällige Rate, einschließlich einer eventuellen Sondertilgung.",
     "firstInstallmentPending": "Gib das nächste Zahlungsdatum ein, um die erste Rate zu berechnen.",
     "firstInstallmentCalculating": "Die erste Rate wird berechnet...",
-    "firstInstallmentFailed": "Die erste Rate konnte nicht berechnet werden. Prüfe die Angaben unten und versuche es erneut."
+    "firstInstallmentFailed": "Die erste Rate konnte nicht berechnet werden. Prüfe die Angaben unten und versuche es erneut.",
+    "paymentMatching": {
+      "autoPostDisabled": "Automatisch deaktiviert: Der Zahlungsabgleich begleicht diese Rechnung anhand der eigenen Abbuchung der Bank, daher darf sie nicht zusätzlich selbst gebucht werden.",
+      "payeePatternRequired": "Gib ein Zahlungsempfänger-Muster mit einem *-Platzhalter ein"
+    }
   },
   "mortgageFields": {
     "title": "Hypothekendetails",
@@ -407,6 +418,10 @@
         "cancel": "Abbrechen",
         "use": "Konto mit dieser Art bearbeiten"
       }
+    },
+    "originalPrincipal": {
+      "label": "Ursprüngliche Darlehenssumme",
+      "help": "Der ursprünglich geliehene Betrag. Bei einem Konto, dessen erfasste Historie erst nach Beginn der Hypothek einsetzt, ist dies der geliehene Betrag und nicht der Anfangssaldo — das ist die Schuld zu Beginn deiner Historie."
     }
   },
   "assetFields": {
@@ -436,7 +451,10 @@
     "paymentStartDateRequired": "Datum der ersten Zahlung ist erforderlich",
     "paymentAccountRequired": "Zahlungskonto ist erforderlich",
     "amortizationRequired": "Tilgungszeitraum ist erforderlich",
-    "acceleratedNeedsAnnuity": "Diese Hypothek wird nach einem beschleunigten Zahlungsplan bezahlt, den nur eine Annuitätenhypothek hat. Eine lineare oder tilgungsfreie Hypothek braucht eine reguläre Zahlungsfrequenz; behalte daher eine Annuitätenart bei."
+    "acceleratedNeedsAnnuity": "Diese Hypothek wird nach einem beschleunigten Zahlungsplan bezahlt, den nur eine Annuitätenhypothek hat. Eine lineare oder tilgungsfreie Hypothek braucht eine reguläre Zahlungsfrequenz; behalte daher eine Annuitätenart bei.",
+    "paymentMatchingPayeePatternRequired": "Gib ein Zahlungsempfänger-Muster ein, das die Bankabbuchung erkennt",
+    "paymentMatchingPayeePatternWildcard": "Das Zahlungsempfänger-Muster muss einen *-Platzhalter enthalten",
+    "paymentMatchingDescriptionPatternWildcard": "Das Beschreibungsmuster muss einen *-Platzhalter enthalten"
   },
   "loanDetail": {
     "backToAccounts": "Zurück zu den Konten",
@@ -633,6 +651,70 @@
       "seriesOriginal": "Ursprünglicher Plan",
       "seriesActual": "Tatsächlicher Saldo",
       "unknown": "Unbekannt"
+    },
+    "paymentMatching": {
+      "title": "Zahlungsabgleich",
+      "description": "Erkennt die Abbuchung jeder Rate durch die Bank und verrechnet sie mit dem Zahlungsplan des Darlehens als Tilgung und Zinsen, statt die Rechnung separat zu buchen.",
+      "noSchedule": "Der Zahlungsabgleich verrechnet die Abbuchungen der Bank mit der geplanten Zahlung des Darlehens. Richte zuerst die Zahlungen dieses Darlehens ein.",
+      "noRule": "Mit diesem Darlehen ist keine Zahlungsabgleichsregel verknüpft.",
+      "createOne": "Jetzt erstellen",
+      "ruleLabel": "Regel:",
+      "ruleLoading": "Regel wird geladen",
+      "ruleFailed": "Die Zahlungsabgleichsregel konnte nicht geladen werden.",
+      "scheduleLoading": "Geplante Zahlung wird geladen",
+      "scheduleFailed": "Die geplante Zahlung des Darlehens konnte nicht geladen werden.",
+      "retry": "Erneut versuchen",
+      "autoPost": {
+        "title": "Die geplante Zahlung bucht sich weiterhin selbst",
+        "body": "Für die Rechnung dieses Darlehens ist das automatische Buchen aktiviert, daher würde eine Rate, die die Regel aus der Bankabbuchung verrechnet, zusätzlich von der Rechnung gebucht. Deaktiviere das automatische Buchen der Rechnung unter Rechnungen & Einzahlungen."
+      },
+      "preconditions": {
+        "openingBalance": "Der Anfangssaldo des Darlehens muss die Restschuld zu Beginn der verarbeiteten Historie sein; die Zinsen jeder Rate werden darauf berechnet.",
+        "originalPrincipal": "Der ursprüngliche Darlehensbetrag muss der ursprünglich geliehene Betrag sein, nicht der Anfangssaldo.",
+        "scheduleStart": "Abbuchungen vor dem {date}, dem Beginn der geplanten Zahlung, haben keine Rate, mit der sie abgeglichen werden können."
+      },
+      "process": {
+        "button": "Historie verarbeiten",
+        "scope": "Wendet die Regel auf die Abbuchungen in {account} an, die ältesten zuerst.",
+        "running": "Historie wird verarbeitet: bisher {count, plural, one {# Rate} other {# Raten}} verrechnet.",
+        "done": "{count, plural, =0 {Es wurden keine Raten verrechnet.} one {# Rate wurde verrechnet.} other {# Raten wurden verrechnet.}}",
+        "undo": "Jede Seite des Durchlaufs kann im Aktionsverlauf rückgängig gemacht werden.",
+        "failed": "Verarbeitung der Historie angehalten",
+        "stuckTitle": "Die Verarbeitung der Historie konnte nicht fortgesetzt werden",
+        "stuck": "Mehr als {limit, number} Buchungen sind auf den {date} datiert, daher kann der Durchlauf nicht über diesen Tag hinaus fortfahren. Verrechne den Rest unter Tools > Regeln mit einem engeren Filter.",
+        "stuckUnknown": "Der Server hat nicht mitgeteilt, wie weit der Durchlauf gekommen ist, daher kann er nicht fortgesetzt werden. Lade die Seite neu und versuche es erneut."
+      },
+      "create": {
+        "title": "Zahlungsabgleichsregel erstellen",
+        "description": "Die Regel verrechnet passende Abbuchungen vom Konto der geplanten Darlehenszahlung, und das automatische Buchen der Rechnung wird deaktiviert.",
+        "descriptionWithAccount": "Die Regel verrechnet passende Abbuchungen von {account}, und das automatische Buchen der Rechnung wird deaktiviert.",
+        "submit": "Regel erstellen",
+        "payeePatternRequired": "Gib ein Zahlungsempfänger-Muster mit einem *-Platzhalter ein",
+        "descriptionPatternWildcard": "Ein Beschreibungsmuster muss einen *-Platzhalter enthalten",
+        "failed": "Die Zahlungsabgleichsregel konnte nicht erstellt werden.",
+        "done": "Regel „{name}“ erstellt"
+      },
+      "settled": {
+        "title": "Verrechnete Raten",
+        "colDueDate": "Fälligkeitsdatum",
+        "colTransaction": "Buchung",
+        "colPrincipal": "Tilgung",
+        "colInterest": "Zinsen",
+        "colExtra": "Sondertilgung",
+        "colDebtBefore": "Restschuld davor",
+        "openTransaction": "Buchung öffnen",
+        "void": "Storniert",
+        "notRecorded": "Nicht erfasst",
+        "empty": {
+          "title": "Noch keine Raten verrechnet",
+          "body": "Verarbeite die Historie oder importiere die Abbuchungen der Bank, um Raten zu verrechnen."
+        },
+        "error": {
+          "title": "Die verrechneten Raten konnten nicht geladen werden",
+          "body": "Dies ist keine leere Liste. Versuche es erneut, um zu sehen, welche Raten verrechnet wurden.",
+          "retry": "Erneut versuchen"
+        }
+      }
     },
     "lineOfCredit": {
       "currentBalance": "Aktueller Saldo",

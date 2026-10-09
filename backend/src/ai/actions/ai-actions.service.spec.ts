@@ -749,6 +749,43 @@ describe("AiActionsService", () => {
     expect(result).toMatchObject({ type: "batch_actions", count: 1 });
   });
 
+  it("confirms a JSON-round-tripped update_payee batch with undefined fields", async () => {
+    const ids = [1, 2, 3, 4, 5].map(
+      (n) => `aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa${n}`,
+    );
+    const descriptor = {
+      type: "batch_actions" as const,
+      userId: USER,
+      actionId: "act-batch-up-rt",
+      expiresAt: Date.now() + 60_000,
+      operation: "update_payee" as const,
+      rows: ids.map((payeeId) => ({
+        payeeId,
+        website: undefined,
+        address: undefined,
+        email: undefined,
+        phone: undefined,
+        defaultCategoryId: CAT,
+      })),
+    };
+    const signature = signing.sign(descriptor as unknown as AiActionDescriptor);
+    const echoed = JSON.parse(JSON.stringify(descriptor));
+    const result = await service.confirm(USER, {
+      actionId: descriptor.actionId,
+      signature,
+      descriptor: echoed,
+    });
+    expect(payees.update).toHaveBeenCalledTimes(5);
+    ids.forEach((payeeId) =>
+      expect(payees.update).toHaveBeenCalledWith(
+        USER,
+        payeeId,
+        expect.objectContaining({ defaultCategoryId: CAT }),
+      ),
+    );
+    expect(result).toMatchObject({ type: "batch_actions", count: 5 });
+  });
+
   it("executes a batch_actions delete_payee envelope", async () => {
     const descriptor = {
       type: "batch_actions" as const,

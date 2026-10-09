@@ -69,7 +69,11 @@
     "unknownInvestmentAccount": "Unknown account: {{ name }}. Use an exact name from the user's account list.",
     "notACreditCard": "Statement cycles are only available for credit card accounts",
     "noStatementSettlementDay": "This credit card has no statement settlement day configured",
-    "loanLedgerUnreadable": "This loan's balance could not be read. Try again."
+    "loanLedgerUnreadable": "This loan's balance could not be read. Try again.",
+    "paymentMatchingLoanOnly": "Payment matching applies to mortgages and loans only",
+    "paymentMatchingRequiresSchedule": "Payment matching needs the loan's scheduled payment. Set up its payments first.",
+    "paymentMatchingRuleExists": "This loan already has a payment matching rule",
+    "paymentMatchingFailed": "The loan was saved, but its payment matching rule could not be created. Create it from the loan's details."
   },
   "actionHistory": {
     "nothingToUndo": "Nothing to undo",
@@ -618,7 +622,9 @@
     "activeWindowInvalid": "The first active date must not be after the last active date",
     "runTooLarge": "This run changes too many transactions to be undone in one step. Narrow the accounts or the dates and try again",
     "runRedoStructural": "This run restructured transactions (transfers or splits), so it cannot be redone. Run the rule again instead",
-    "runUndoStructureChanged": "A transaction this run restructured has been changed since (its split lines or its transfer), so the run cannot be undone safely. Restore it by hand"
+    "runUndoStructureChanged": "A transaction this run restructured has been changed since (its split lines or its transfer), so the run cannot be undone safely. Restore it by hand",
+    "occurrenceAlreadyPosted": "This loan installment has already been paid or posted, so the transaction cannot settle it",
+    "runUndoLaterSettlement": "A later installment of this loan was settled after this run, so the run cannot be undone. Undo the later settlement first"
   },
   "transactions": {
     "invalidStatus": "Invalid transaction status: {{ status }}",

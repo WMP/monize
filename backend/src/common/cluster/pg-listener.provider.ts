@@ -48,11 +48,24 @@ export const PG_LISTENER = Symbol("PG_LISTENER");
  * One `LISTEN` for the life of the process, with the recipient named inside
  * each payload, rather than one channel per subscriber: a subscribe happens on
  * every SSE open and every agent long-poll, and `LISTEN`/`UNLISTEN` churn on a
- * single session would put that traffic on the hot path. Task R6's bus does the
- * routing; the boot check below issues this same `LISTEN`, so proving the
- * connection works and arming it are one step.
+ * single session would put that traffic on the hot path. `PostgresEventBus`
+ * issues this `LISTEN` on construction and parses every payload delivered on
+ * it as a wake-up envelope -- which is why the boot probe below uses
+ * `PG_WAKEUP_PROBE_CHANNEL` instead of this one.
  */
 export const PG_WAKEUP_CHANNEL = "monize_wakeups";
+
+/**
+ * The channel the boot probe self-tests delivery on.
+ *
+ * Deliberately not `PG_WAKEUP_CHANNEL`: `PostgresEventBus` is already
+ * constructed and subscribed by the time `main.ts` runs its boot checks, so a
+ * probe token published on `PG_WAKEUP_CHANNEL` would reach it and fail its
+ * `JSON.parse`, logging a spurious "Unparsable wake-up dropped" warning on
+ * every boot. `LISTEN`/`NOTIFY` delivery does not depend on the channel's
+ * name, so a dedicated channel proves the same thing without that side effect.
+ */
+export const PG_WAKEUP_PROBE_CHANNEL = "monize_wakeups_probe";
 
 /** How long the first connect and its `LISTEN` may take before the boot fails. */
 export const PG_LISTENER_CONNECT_TIMEOUT_MS = 5_000;

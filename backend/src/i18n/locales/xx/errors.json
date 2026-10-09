@@ -69,7 +69,11 @@
     "unknownInvestmentAccount": "[XX-Unknown account: {{ name }}. Use an exact name from the user's account list.-XX]",
     "notACreditCard": "[XX-Statement cycles are only available for credit card accounts-XX]",
     "noStatementSettlementDay": "[XX-This credit card has no statement settlement day configured-XX]",
-    "loanLedgerUnreadable": "[XX-This loan's balance could not be read. Try again.-XX]"
+    "loanLedgerUnreadable": "[XX-This loan's balance could not be read. Try again.-XX]",
+    "paymentMatchingLoanOnly": "[XX-Payment matching applies to mortgages and loans only-XX]",
+    "paymentMatchingRequiresSchedule": "[XX-Payment matching needs the loan's scheduled payment. Set up its payments first.-XX]",
+    "paymentMatchingRuleExists": "[XX-This loan already has a payment matching rule-XX]",
+    "paymentMatchingFailed": "[XX-The loan was saved, but its payment matching rule could not be created. Create it from the loan's details.-XX]"
   },
   "actionHistory": {
     "nothingToUndo": "[XX-Nothing to undo-XX]",
@@ -618,7 +622,9 @@
     "activeWindowInvalid": "[XX-The first active date must not be after the last active date-XX]",
     "runTooLarge": "[XX-This run changes too many transactions to be undone in one step. Narrow the accounts or the dates and try again-XX]",
     "runRedoStructural": "[XX-This run restructured transactions (transfers or splits), so it cannot be redone. Run the rule again instead-XX]",
-    "runUndoStructureChanged": "[XX-A transaction this run restructured has been changed since (its split lines or its transfer), so the run cannot be undone safely. Restore it by hand-XX]"
+    "runUndoStructureChanged": "[XX-A transaction this run restructured has been changed since (its split lines or its transfer), so the run cannot be undone safely. Restore it by hand-XX]",
+    "occurrenceAlreadyPosted": "[XX-This loan installment has already been paid or posted, so the transaction cannot settle it-XX]",
+    "runUndoLaterSettlement": "[XX-A later installment of this loan was settled after this run, so the run cannot be undone. Undo the later settlement first-XX]"
   },
   "transactions": {
     "invalidStatus": "[XX-Invalid transaction status: {{ status }}-XX]",

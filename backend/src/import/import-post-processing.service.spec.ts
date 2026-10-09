@@ -7,6 +7,7 @@ import { SecurityPriceService } from "../securities/security-price.service";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { lockAccountsForBalanceWrite } from "../common/db/locks";
+import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -15,6 +16,9 @@ jest.mock("../common/db/scoped-db", () =>
 jest.mock("../common/db/locks", () =>
   jest.requireActual("../test-helpers/locks-testing").locksMockModule(),
 );
+jest.mock("../loan-installments/reprice-template", () => ({
+  repriceSettledLoanTemplates: jest.fn().mockResolvedValue(undefined),
+}));
 
 const lockAccounts = lockAccountsForBalanceWrite as jest.MockedFunction<
   typeof lockAccountsForBalanceWrite
@@ -231,6 +235,41 @@ describe("ImportPostProcessingService", () => {
       await expect(
         service.run(userId, false, new Set([accountA])),
       ).resolves.toBeUndefined();
+    });
+  });
+
+  describe("settled loan schedules", () => {
+    it("reprices each schedule a settlement rule claimed on, after the net-worth dispatch (INV-CACHE-001)", async () => {
+      const order: string[] = [];
+      netWorth.recalculateAccount.mockImplementation(async () => {
+        order.push("net-worth");
+      });
+      (repriceSettledLoanTemplates as jest.Mock).mockImplementation(
+        async () => {
+          order.push("reprice");
+        },
+      );
+
+      await service.run(
+        userId,
+        false,
+        new Set([accountA]),
+        new Set(["st-loan"]),
+      );
+
+      expect(repriceSettledLoanTemplates).toHaveBeenCalledWith(
+        expect.anything(),
+        new Set(["st-loan"]),
+      );
+      expect(order).toEqual(["net-worth", "reprice"]);
+    });
+
+    it("reprices nothing by default", async () => {
+      await service.run(userId, false, new Set([accountA]));
+      expect(repriceSettledLoanTemplates).toHaveBeenCalledWith(
+        expect.anything(),
+        new Set(),
+      );
     });
   });
 });

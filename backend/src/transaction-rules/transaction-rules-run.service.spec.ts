@@ -13,7 +13,10 @@ import { TransactionRuleApplication } from "./transaction-rule-application.entit
 import { TransactionRule } from "./transaction-rule.entity";
 import { toRuleResponses } from "./transaction-rule-view";
 import { TransactionRulesApplierService } from "./transaction-rules-applier.service";
-import { TransactionRulesRunService } from "./transaction-rules-run.service";
+import {
+  TransactionRulesRunService,
+  runSkipReason,
+} from "./transaction-rules-run.service";
 import { TransactionRulesService } from "./transaction-rules.service";
 import { thrown } from "./transaction-rules.test-helpers";
 
@@ -301,6 +304,7 @@ describe("TransactionRulesRunService", () => {
       // The condition matched t1, t2 and the split t4; LIDL (t3) did not.
       expect(preview.conditionMatchedCount).toBe(3);
       expect(preview.truncated).toBe(false);
+      expect(preview.scannedThrough).toBe(split.transactionDate);
       expect(preview.matched).toEqual([
         {
           transactionId: "t1",
@@ -332,7 +336,7 @@ describe("TransactionRulesRunService", () => {
         expect.anything(),
         USER,
         expect.objectContaining({ limit: 50 }),
-        { lock: false },
+        { lock: false, direction: "DESC" },
       );
     });
 
@@ -422,7 +426,11 @@ describe("TransactionRulesRunService", () => {
           startDate: "2026-04-01",
           endDate: "2026-04-01",
         }),
-      ).resolves.toMatchObject({ scanned: 0, matched: [] });
+      ).resolves.toMatchObject({
+        scanned: 0,
+        matched: [],
+        scannedThrough: null,
+      });
     });
 
     it("an empty plan still has a fingerprint", async () => {
@@ -500,7 +508,7 @@ describe("TransactionRulesRunService", () => {
         expect.anything(),
         USER,
         expect.objectContaining({ accountIds: ["acc-1"], limit: 10 }),
-        { lock: false },
+        { lock: false, direction: "DESC" },
       );
       expect(writeEffects).not.toHaveBeenCalled();
       expect(record).not.toHaveBeenCalled();
@@ -660,7 +668,7 @@ describe("TransactionRulesRunService", () => {
         expect.anything(),
         USER,
         expect.anything(),
-        { lock: true },
+        { lock: true, direction: "DESC" },
       );
       expect(s.rulesService.getOwnedRule).toHaveBeenLastCalledWith(
         expect.anything(),
@@ -677,6 +685,7 @@ describe("TransactionRulesRunService", () => {
           changes: expect.objectContaining({ categoryId: CAT }),
         }),
         "manual",
+        expect.any(Set),
         expect.any(Set),
       );
       expect(s.record).toHaveBeenCalledTimes(1);
@@ -1105,6 +1114,7 @@ describe("TransactionRulesRunService", () => {
         }),
         "manual",
         expect.any(Set),
+        expect.any(Set),
       );
       const entry = s.record.mock.calls[0][1];
       expect(entry.beforeData.transactions).toEqual([
@@ -1176,5 +1186,49 @@ describe("TransactionRulesRunService", () => {
       expect(s.writeEffects).not.toHaveBeenCalled();
       expect(s.payees.findOrCreate).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("runSkipReason: settle_loan_installment", () => {
+  const settle = (reason: string) =>
+    runSkipReason({ type: "settle_loan_installment", reason });
+
+  it.each([
+    "row_is_transfer_leg",
+    "row_has_splits",
+    "row_is_void",
+    "zero_amount",
+    "transfer_same_account",
+    "transfer_account_unavailable",
+    "transfer_currency_mismatch",
+    "row_from_scheduled_posting",
+    "row_is_income",
+    "loan_account_unavailable",
+    "loan_interest_booked_separately",
+    "loan_not_configured",
+    "no_installment_in_window",
+    "occurrence_already_posted",
+    "loan_debt_retired",
+    "installment_amount_excess",
+    "installment_amount_shortfall",
+  ])("names %s in the preview as the planner names it", (reason) => {
+    expect(settle(reason)).toBe(reason);
+  });
+
+  it("lists nothing for a lookup the plan was still waiting on", () => {
+    expect(settle("loan_facts_unresolved")).toBeUndefined();
+    expect(settle("payee_unresolved")).toBeUndefined();
+  });
+
+  it("gives the settlement's reasons only to a structural action, and leaves the others' unchanged", () => {
+    expect(
+      runSkipReason({ type: "set_category", reason: "loan_not_configured" }),
+    ).toBeUndefined();
+    expect(
+      runSkipReason({
+        type: "convert_to_transfer",
+        reason: "transfer_direction_mismatch",
+      }),
+    ).toBe("transfer_direction_mismatch");
   });
 });
