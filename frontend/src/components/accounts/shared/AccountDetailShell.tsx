@@ -175,12 +175,13 @@ export function AccountDetailShell({
                 {t('header.reconcile')}
               </Button>
             )}
+            {headerActions}
+            {/* Last, so Edit sits at the top right of the page. */}
             {onEdit && (
               <Button variant="outline" onClick={onEdit}>
                 {t('header.edit')}
               </Button>
             )}
-            {headerActions}
           </div>
         </div>
       </div>

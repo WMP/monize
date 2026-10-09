@@ -305,6 +305,33 @@ describe('AccountDetailPage', () => {
     expect(modal).toHaveAttribute('data-mortgage-type', 'CANADIAN_FIXED');
   });
 
+  it('opens the edit form from the header Edit button', async () => {
+    mockGetById.mockResolvedValue(makeAccount({ accountType: 'CHEQUING', id: 'loan-1' }));
+
+    await renderPage();
+    expect(screen.queryByTestId('account-form-modal')).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Edit Account' }));
+    });
+
+    const modal = screen.getByTestId('account-form-modal');
+    expect(modal).toHaveAttribute('data-account-id', 'loan-1');
+    expect(modal).not.toHaveAttribute('data-mortgage-type');
+  });
+
+  it.each([
+    ['closed', { isClosed: true }],
+    ['joint', { isJoint: true }],
+  ])('offers no Edit button for a %s account', async (_label, overrides) => {
+    mockGetById.mockResolvedValue(makeAccount(overrides as Partial<Account>));
+
+    await renderPage();
+
+    expect(screen.getByText('Car Loan')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit Account' })).not.toBeInTheDocument();
+  });
+
   it('mounts the foreign-currency section regardless of the fee percentage', async () => {
     // No fee configured -- the section still mounts and decides for itself
     // whether to render (it shows the register when foreign transactions exist).
