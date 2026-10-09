@@ -11,10 +11,10 @@ The financial rules, truth tables and fixtures are in the spec,
 this plan says what to edit, in what order, and what to run, and defers to
 the spec on every number and every refusal.
 
-Status: **approved** in discussion #1486 (with the architecture review by WMP
-attached to the thread), tracked by issue #1589. Each task is a sub-issue
-(#1590 to #1602), one PR each. S1 (this plan and the spec) is the only task
-done.
+Status: **implemented**, approved in discussion #1486 (with the architecture
+review by WMP attached to the thread), tracked by issue #1589. Each task was
+a sub-issue (#1590 to #1602), one PR each; Q, the acceptance task, closes
+the feature.
 
 ## 1. Goal
 

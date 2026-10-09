@@ -90,7 +90,8 @@ waterfall). `ScheduledTransactionLoanService.resolveInstallment` delegates to
 the core for the three consumers below and keeps the posting path's defaults;
 the template rewrite they share is `rewriteLoanTemplate`
 (`backend/src/loan-installments/reprice-template.ts`). The fourth consumer,
-the settlement, is specified to call the pure tail with its own facts. Each
+the settlement, calls the pure tail with its own facts
+(`planLoanSettlement`, `docs/specs/loan-installment-settlement.md`). Each
 one answered differently is a reported drift:
 
 | Consumer | Boundary `d` | When |
@@ -98,7 +99,7 @@ one answered differently is a reported drift:
 | `recalculateLoanPaymentSplits` | the schedule's `next_due_date` (already advanced) | after each posting; writes the template for the next occurrence |
 | `resolvePostingAllocation` | the occurrence's own due date | inside the posting transaction, under the parent lock, immediately before the financial write |
 | `getLoanProjectionAnchor` | the schedule's `next_due_date` | on demand, for the amortization report's projection (`buildLoanProjectionInput`'s `anchor`) |
-| `planLoanSettlement` (`backend/src/loan-installments/plan-loan-settlement.ts`; nothing calls it until the rules engine gains the action, `docs/specs/loan-installment-settlement.md`) | the matched slot's due date, with the debt less the settlements planned earlier in the same rule pass | when a `settle_loan_installment` rule matches a bank row, inside the create's, import's or run's transaction, under the schedule row and `lockAccountsForBalanceWrite(source, loan)` |
+| `planLoanSettlement` (`backend/src/loan-installments/plan-loan-settlement.ts`, `docs/specs/loan-installment-settlement.md`) | the matched slot's due date, with the debt less the settlements planned earlier in the same rule pass | when a `settle_loan_installment` rule matches a bank row, inside the create's, import's or run's transaction, under the schedule row and `lockAccountsForBalanceWrite(source, loan)` |
 
 Which schedule is "the loan's payment" is the account's own statement --
 `accounts.scheduled_transaction_id`, written by the two paths that set a loan

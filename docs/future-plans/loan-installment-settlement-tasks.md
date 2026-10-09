@@ -37,13 +37,13 @@ Every task is safe to merge in any order that respects its dependencies: the mig
 | B3 | #1593 | Settlement types, occurrence slots, facts loader, `datedLoanDebts`, pure planner | B1, B2 | none | [x] | the PR closing #1593 |
 | B4 | #1594 | The action in the rules engine: types, validation, references, planner, lookup rounds, skip reasons | B3 | inert | [x] | the PR closing #1594 |
 | B5 | #1595 | Write path: claim, cursor, trace, fingerprint, snapshot, undo, after-commit reprice; `post()` records its transaction | B4 | inert | [x] | the PR closing #1595 |
-| B6 | #1596 | Chronological fold, ascending run order, import ordering, bank-sync affected accounts | B5 | neutral | [ ] | -- |
-| F1 | #1597 | Frontend action card, types, run preview, skip reasons, en + pseudo | B5 | inert | [ ] | -- |
+| B6 | #1596 | Chronological fold, ascending run order, import ordering, bank-sync affected accounts | B5 | neutral | [x] | PR #1619 |
+| F1 | #1597 | Frontend action card, types, run preview, skip reasons, en + pseudo | B5 | inert | [x] | PR #1621 |
 | B7 | #1598 | Mortgage and setup backend: payment matching, rule creation, auto-post off, original principal, endpoints | B5 | inert | [x] | the PR closing #1598 |
-| F2 | #1599 | Mortgage form and setup dialog: Payment matching, Original principal | F1, B7 | inert | [ ] | -- |
-| F3 | #1600 | Loan Details Payment matching panel | F2, B6 | inert | [ ] | -- |
-| B8 | #1601 | Assistant and MCP name form, hints, rule language, docs | B4 | inert | [ ] | -- |
-| Q | #1602 | Acceptance: all locales, invariants enforced, docs, release note | F3, B8, B6 | none | [ ] | -- |
+| F2 | #1599 | Mortgage form and setup dialog: Payment matching, Original principal | F1, B7 | inert | [x] | PR #1624 |
+| F3 | #1600 | Loan Details Payment matching panel | F2, B6 | inert | [x] | PR #1625 |
+| B8 | #1601 | Assistant and MCP name form, hints, rule language, docs | B4 | inert | [x] | PR #1626 |
+| Q | #1602 | Acceptance: all locales, invariants enforced, docs, release note | F3, B8, B6 | none | [x] | this PR |
 
 **Why F1 waits for B5:** until B5 the validator refuses the action, so a card for it would offer something the server refuses to save.
 

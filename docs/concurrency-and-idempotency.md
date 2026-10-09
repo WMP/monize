@@ -415,6 +415,7 @@ worth keeping: CONC-003 can only be checked against a list of all writers.
 | `transaction-rules/transaction-rules.service.ts` `create`, `update`, `setEnabled`, `remove`, `reorder` | advisory, per user (`lockTransactionRuleList`), first statement of the transaction | Create's `max + 1` position, the per-user cap, delete's compaction and reorder each read the whole rule list before writing it; the deferred unique `(user_id, position)` is the backstop |
 | `bank-sync/bank-sync-writer.service.ts` `write` | `bank_sync_accounts` row `FOR UPDATE`, then the Monize account (`lockAccountsForBalanceWrite`) | Two syncs of one bank account serialize, and a re-link or a new cut-off date committed during the fetch is seen before any row is written |
 | `transaction-rules/transaction-rules-run.service.ts` `run` | `transaction_rules` row `FOR SHARE`, then the candidate `transactions` rows (`lockTransactionRows`, ascending id), then, for a structural action, every target `accounts` row of the plan in one statement (`lockAccountsForBalanceWrite`, ascending id) before the first write | A rule edit waits for a run on it, and the rows are re-read and re-planned under the lock before the fingerprint is compared. The account locks come after the transaction locks, the order the other transaction writers use and not the "accounts before transactions" of section 5 rule 1, and are taken together in id order so two runs converting in opposite directions cannot take two accounts in opposite orders; the run takes no advisory lock. The create path (`TransactionsService.create`) locks a conversion's target account only as its balance delta runs, and a manual undo of a structural run takes no account lock beyond its atomic balance deltas (no two-connection test exists for either) |
+| `loan-installments/loan-settlement-facts.ts`, reached by `settle_loan_installment`'s planner on a create, an import, a bank sync and a manual run alike | the schedule row (`FOR UPDATE`), then `lockAccountsForBalanceWrite(source, loan)` (ascending id), before the facts (claims, `datedLoanDebts`, rates) are read | the same order `post()` takes, so a bill posted by hand and a settlement of the same slot serialize on the schedule row rather than racing on the debt; taken after the run's own transaction-row locks, since a rule holds at most one structural action and so reaches one schedule and one loan (`docs/specs/loan-installment-settlement.md` section 13) |
 
 ### Conditional claims that exist
 
@@ -461,7 +462,16 @@ inside the transaction that writes the money, so the unique key from migration
 counted as a skip, not an error (INV-OCCURRENCE-001). The cron passes the
 occurrence it selected as `expectedDueDate`, because the claim key is only as
 good as the date it is built from: a replica that re-read the schedule after the
-winner advanced it keyed the claim on the next occurrence and posted that. The demo reset
+winner advanced it keyed the claim on the next occurrence and posted that. A
+`settle_loan_installment` rule claims the same row, under the same unique key,
+through `claimLoanOccurrence` (`backend/src/loan-installments/claim-loan-occurrence.ts`):
+the same `INSERT ... ON CONFLICT DO NOTHING RETURNING id`, on the same
+`EntityManager` as the split it books and before the cursor advance, makes
+the index the arbiter between `post()` and a settlement racing the same
+occurrence, whichever wrote first (INV-LOAN-008); the loser's planner refuses
+`occurrence_already_posted` (a skipped action, never a thrown error) when it
+read the claim first, and `ConflictException` is the throwing backstop when
+it did not. The demo reset
 (`backend/src/database/demo-reset.service.ts`) takes
 `claimOnce(JobClaimType.DemoReset, demoUserId, "reset:<UTC day>")` before the
 wipe-and-reseed. The claim is permanent, so it records "reset today" as well as

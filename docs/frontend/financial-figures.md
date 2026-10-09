@@ -122,6 +122,20 @@ Three figures appear on every amortizing-debt surface (the loan detail page's su
 
 `lib/loan-figures.ts` makes the decision once and both surfaces render its output. The data comes from `hooks/useLoanProjection.ts` or a `baseline` the caller already has -- never a second copy of the branching. A failed history load is `status: 'error'` with every figure unknown, never an empty history (which would project a plausible payoff from no payments at all).
 
+## A settled installment's figures are the claim the server wrote, never recomputed
+
+Loan Details' "Payment matching" panel (`components/accounts/loan-detail/PaymentMatchingPanel.tsx`,
+`LoanSettlementsTable.tsx`) renders the rule, the linked schedule and the
+settled installments exactly as `GET /accounts/:id/loan-settlements` returns
+them. A settlement's due date, lines and `debtBefore` are the `pricing` the
+server's claim stored when `settle_loan_installment` priced and booked the
+row (`docs/specs/loan-installment-settlement.md` sections 5.3 and 12,
+INV-LOAN-008); the panel has no pricing engine of its own, so a field the
+claim did not record (a figure predating `pricing`'s addition, or one a
+refusal left out) renders as not recorded, never as a reconstructed zero.
+"Process history" calls the same rule-run endpoint every other run uses and
+reloads the loan afterward; it never prices a row in the browser.
+
 ## "Today" for a financial decision is the user's day -- `useFinancialToday()`, never `toISOString()`
 
 `new Date().toISOString().slice(0, 10)` is a UTC calendar day, and the backend has never used one: `RequestContextInterceptor` resolves `todayYMD()` from `user_preferences.timezone`, falling back to the `X-Client-Timezone` header the axios interceptor sends. A client that slices a UTC instant is on a third calendar for the first hours after local midnight east of Greenwich (fourteen at UTC+14) and the mirror window before it in the west -- long enough that the loan report accepted an anchor the bill had already called overdue and projected from a balance the ledger no longer held.
