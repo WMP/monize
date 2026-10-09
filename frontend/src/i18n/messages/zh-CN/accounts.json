@@ -654,6 +654,70 @@
       "seriesActual": "实际余额",
       "unknown": "未知"
     },
+    "paymentMatching": {
+      "title": "付款匹配",
+      "description": "识别银行对每期还款的自身扣款，并按贷款还款计划将其结算为本金和利息，而不是单独记录账单。",
+      "noSchedule": "付款匹配会根据贷款的计划还款结算银行扣款。请先为此贷款设置还款。",
+      "noRule": "此贷款未关联付款匹配规则。",
+      "createOne": "创建一条",
+      "ruleLabel": "规则：",
+      "ruleLoading": "正在加载规则",
+      "ruleFailed": "无法加载付款匹配规则。",
+      "scheduleLoading": "正在加载计划还款",
+      "scheduleFailed": "无法加载贷款的计划还款。",
+      "retry": "重试",
+      "autoPost": {
+        "title": "计划还款仍会自动记账",
+        "body": "此贷款的账单已开启自动过账，因此规则根据银行扣款结算的每期还款也会被账单再次记账。请在“账单与存款”中关闭该账单的自动过账。"
+      },
+      "preconditions": {
+        "openingBalance": "贷款的期初余额必须是所处理历史开始时的欠款；每期还款的利息都基于此计算。",
+        "originalPrincipal": "原始本金必须是最初借入的金额，而不是期初余额。",
+        "scheduleStart": "日期早于计划还款开始日 {date} 的扣款没有可匹配的还款期。"
+      },
+      "process": {
+        "button": "处理历史记录",
+        "scope": "按从旧到新的顺序，对 {account} 中的扣款运行规则。",
+        "running": "正在处理历史记录：目前已结算 {count, plural, one {# 期还款} other {# 期还款}}。",
+        "done": "{count, plural, =0 {未结算任何还款。} one {已结算 # 期还款。} other {已结算 # 期还款。}}",
+        "undo": "本次运行的每一页都可以在操作历史中撤销。",
+        "failed": "历史记录处理已停止",
+        "stuckTitle": "无法继续处理历史记录",
+        "stuck": "日期为 {date} 的交易超过 {limit, number} 笔，因此运行无法越过该日。请在“工具 > 规则”中使用更精确的筛选条件结算其余交易。",
+        "stuckUnknown": "服务器未告知运行进行到的位置，因此无法继续。请重新加载页面后重试。"
+      },
+      "create": {
+        "title": "创建付款匹配规则",
+        "description": "该规则将结算来自贷款计划还款账户的匹配扣款，并关闭账单的自动过账。",
+        "descriptionWithAccount": "该规则将结算来自 {account} 的匹配扣款，并关闭账单的自动过账。",
+        "submit": "创建规则",
+        "payeePatternRequired": "请输入包含 * 通配符的收款人模式",
+        "descriptionPatternWildcard": "描述模式必须包含 * 通配符",
+        "failed": "无法创建付款匹配规则。",
+        "done": "已创建规则“{name}”"
+      },
+      "settled": {
+        "title": "已结算的还款",
+        "colDueDate": "到期日",
+        "colTransaction": "交易",
+        "colPrincipal": "本金",
+        "colInterest": "利息",
+        "colExtra": "额外本金",
+        "colDebtBefore": "还款前欠款",
+        "openTransaction": "打开交易",
+        "void": "作废",
+        "notRecorded": "未记录",
+        "empty": {
+          "title": "尚无已结算的还款",
+          "body": "处理历史记录或导入银行扣款，以结算还款。"
+        },
+        "error": {
+          "title": "无法加载已结算的还款",
+          "body": "这并不是空列表。请重试以查看哪些还款已结算。",
+          "retry": "重试"
+        }
+      }
+    },
     "lineOfCredit": {
       "currentBalance": "当前余额",
       "creditLimit": "信用额度",

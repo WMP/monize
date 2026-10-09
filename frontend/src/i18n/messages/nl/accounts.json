@@ -654,6 +654,70 @@
       "seriesActual": "Werkelijk saldo",
       "unknown": "Onbekend"
     },
+    "paymentMatching": {
+      "title": "Betalingen matchen",
+      "description": "Herkent de afschrijving van elke termijn door de bank en verrekent die met het schema van de lening als aflossing en rente, in plaats van de rekening apart te boeken.",
+      "noSchedule": "Betalingen matchen verrekent de afschrijvingen van de bank met de geplande betaling van de lening. Stel eerst de betalingen van deze lening in.",
+      "noRule": "Er is geen regel voor betalingen matchen aan deze lening gekoppeld.",
+      "createOne": "Er een maken",
+      "ruleLabel": "Regel:",
+      "ruleLoading": "Regel laden",
+      "ruleFailed": "De regel voor betalingen matchen kon niet worden geladen.",
+      "scheduleLoading": "Geplande betaling laden",
+      "scheduleFailed": "De geplande betaling van de lening kon niet worden geladen.",
+      "retry": "Opnieuw proberen",
+      "autoPost": {
+        "title": "De geplande betaling boekt zichzelf nog steeds",
+        "body": "Automatisch boeken staat aan voor de rekening van deze lening, dus een termijn die de regel verrekent uit de afschrijving van de bank zou ook door de rekening worden geboekt. Zet automatisch boeken voor de rekening uit in Facturen & stortingen."
+      },
+      "preconditions": {
+        "openingBalance": "Het beginsaldo van de lening moet de schuld zijn aan het begin van de verwerkte geschiedenis; de rente van elke termijn wordt daarover berekend.",
+        "originalPrincipal": "De oorspronkelijke hoofdsom moet het oorspronkelijk geleende bedrag zijn, niet het beginsaldo.",
+        "scheduleStart": "Afschrijvingen gedateerd vóór {date}, wanneer de geplande betaling begint, hebben geen termijn om mee te matchen."
+      },
+      "process": {
+        "button": "Geschiedenis verwerken",
+        "scope": "Past de regel toe op de afschrijvingen in {account}, oudste eerst.",
+        "running": "Geschiedenis verwerken: tot nu toe {count, plural, one {# termijn} other {# termijnen}} verrekend.",
+        "done": "{count, plural, =0 {Er zijn geen termijnen verrekend.} one {# termijn is verrekend.} other {# termijnen zijn verrekend.}}",
+        "undo": "Elke pagina van de verwerking kan ongedaan worden gemaakt via de actiegeschiedenis.",
+        "failed": "Verwerken van geschiedenis gestopt",
+        "stuckTitle": "Verwerken van geschiedenis kon niet doorgaan",
+        "stuck": "Meer dan {limit, number} transacties zijn gedateerd op {date}, dus de verwerking kan niet voorbij die dag komen. Verreken de rest via Hulpmiddelen > Regels met een nauwer filter.",
+        "stuckUnknown": "De server heeft niet gemeld hoe ver de verwerking is gekomen, dus deze kan niet doorgaan. Laad de pagina opnieuw en probeer het nog eens."
+      },
+      "create": {
+        "title": "Regel voor betalingen matchen maken",
+        "description": "De regel verrekent overeenkomende afschrijvingen van de rekening van de geplande betaling van de lening, en automatisch boeken voor de rekening wordt uitgezet.",
+        "descriptionWithAccount": "De regel verrekent overeenkomende afschrijvingen van {account}, en automatisch boeken voor de rekening wordt uitgezet.",
+        "submit": "Regel maken",
+        "payeePatternRequired": "Voer een begunstigdepatroon in met een *-jokerteken",
+        "descriptionPatternWildcard": "Een omschrijvingspatroon moet een *-jokerteken bevatten",
+        "failed": "De regel voor betalingen matchen kon niet worden gemaakt.",
+        "done": "Regel \"{name}\" gemaakt"
+      },
+      "settled": {
+        "title": "Verrekende termijnen",
+        "colDueDate": "Vervaldatum",
+        "colTransaction": "Transactie",
+        "colPrincipal": "Hoofdsom",
+        "colInterest": "Rente",
+        "colExtra": "Extra hoofdsom",
+        "colDebtBefore": "Schuld vooraf",
+        "openTransaction": "Transactie openen",
+        "void": "Vervallen",
+        "notRecorded": "Niet vastgelegd",
+        "empty": {
+          "title": "Nog geen termijnen verrekend",
+          "body": "Verwerk de geschiedenis of importeer de afschrijvingen van de bank om termijnen te verrekenen."
+        },
+        "error": {
+          "title": "De verrekende termijnen konden niet worden geladen",
+          "body": "Dit is geen lege lijst. Probeer het opnieuw om te zien welke termijnen zijn verrekend.",
+          "retry": "Opnieuw proberen"
+        }
+      }
+    },
     "lineOfCredit": {
       "currentBalance": "Huidig saldo",
       "creditLimit": "Kredietlimiet",

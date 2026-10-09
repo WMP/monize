@@ -654,6 +654,70 @@
       "seriesActual": "Saldo real",
       "unknown": "Desconhecido"
     },
+    "paymentMatching": {
+      "title": "Correspondência de pagamentos",
+      "description": "Reconhece o próprio débito do banco de cada parcela e o liquida no cronograma do empréstimo como principal e juros, em vez de registrar a fatura separadamente.",
+      "noSchedule": "A correspondência de pagamentos liquida os débitos do banco no pagamento agendado do empréstimo. Configure primeiro os pagamentos deste empréstimo.",
+      "noRule": "Nenhuma regra de correspondência de pagamentos está vinculada a este empréstimo.",
+      "createOne": "Criar uma",
+      "ruleLabel": "Regra:",
+      "ruleLoading": "Carregando a regra",
+      "ruleFailed": "Não foi possível carregar a regra de correspondência de pagamentos.",
+      "scheduleLoading": "Carregando o pagamento agendado",
+      "scheduleFailed": "Não foi possível carregar o pagamento agendado do empréstimo.",
+      "retry": "Tentar novamente",
+      "autoPost": {
+        "title": "O pagamento agendado ainda se registra automaticamente",
+        "body": "O registro automático está ativado na fatura deste empréstimo, então uma parcela que a regra liquida a partir do débito do banco também seria registrada pela fatura. Desative o registro automático da fatura em Faturas e depósitos."
+      },
+      "preconditions": {
+        "openingBalance": "O saldo inicial do empréstimo precisa ser a dívida no início do histórico a ser processado; os juros de cada parcela são calculados sobre ele.",
+        "originalPrincipal": "O principal original precisa ser o valor originalmente emprestado, não o saldo inicial.",
+        "scheduleStart": "Débitos com data anterior a {date}, quando o pagamento agendado começa, não têm parcela para corresponder."
+      },
+      "process": {
+        "button": "Processar histórico",
+        "scope": "Executa a regra sobre os débitos em {account}, dos mais antigos para os mais recentes.",
+        "running": "Processando o histórico: {count, plural, one {# parcela liquidada} other {# parcelas liquidadas}} até agora.",
+        "done": "{count, plural, =0 {Nenhuma parcela foi liquidada.} one {# parcela foi liquidada.} other {# parcelas foram liquidadas.}}",
+        "undo": "Cada página da execução pode ser desfeita pelo histórico de ações.",
+        "failed": "O processamento do histórico parou",
+        "stuckTitle": "Não foi possível continuar o processamento do histórico",
+        "stuck": "Mais de {limit, number} transações têm a data {date}, então a execução não consegue passar desse dia. Liquide o restante em Ferramentas > Regras com um filtro mais restrito.",
+        "stuckUnknown": "O servidor não informou até onde a execução chegou, então ela não pode continuar. Recarregue a página e tente novamente."
+      },
+      "create": {
+        "title": "Criar regra de correspondência de pagamentos",
+        "description": "A regra liquida os débitos correspondentes da conta do pagamento agendado do empréstimo, e o registro automático da fatura é desativado.",
+        "descriptionWithAccount": "A regra liquida os débitos correspondentes de {account}, e o registro automático da fatura é desativado.",
+        "submit": "Criar regra",
+        "payeePatternRequired": "Informe um padrão do beneficiário que inclua um caractere universal *",
+        "descriptionPatternWildcard": "O padrão da descrição deve incluir um caractere universal *",
+        "failed": "Não foi possível criar a regra de correspondência de pagamentos.",
+        "done": "Regra \"{name}\" criada"
+      },
+      "settled": {
+        "title": "Parcelas liquidadas",
+        "colDueDate": "Vencimento",
+        "colTransaction": "Transação",
+        "colPrincipal": "Principal",
+        "colInterest": "Juros",
+        "colExtra": "Principal extra",
+        "colDebtBefore": "Dívida anterior",
+        "openTransaction": "Abrir a transação",
+        "void": "Anulada",
+        "notRecorded": "Não registrado",
+        "empty": {
+          "title": "Nenhuma parcela liquidada ainda",
+          "body": "Processe o histórico, ou importe os débitos do banco, para liquidar parcelas."
+        },
+        "error": {
+          "title": "Não foi possível carregar as parcelas liquidadas",
+          "body": "Esta lista não está vazia. Tente novamente para ver quais parcelas foram liquidadas.",
+          "retry": "Tentar novamente"
+        }
+      }
+    },
     "lineOfCredit": {
       "currentBalance": "Saldo atual",
       "creditLimit": "Limite de crédito",

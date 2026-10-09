@@ -654,6 +654,70 @@
       "seriesActual": "Saldo real",
       "unknown": "Desconhecido"
     },
+    "paymentMatching": {
+      "title": "Associação de pagamentos",
+      "description": "Reconhece o próprio débito do banco de cada prestação e liquida-o no plano do empréstimo como capital e juros, em vez de lançar a fatura separadamente.",
+      "noSchedule": "A associação de pagamentos liquida os débitos do banco no pagamento agendado do empréstimo. Configure primeiro os pagamentos deste empréstimo.",
+      "noRule": "Não há nenhuma regra de associação de pagamentos ligada a este empréstimo.",
+      "createOne": "Criar uma",
+      "ruleLabel": "Regra:",
+      "ruleLoading": "A carregar a regra",
+      "ruleFailed": "Não foi possível carregar a regra de associação de pagamentos.",
+      "scheduleLoading": "A carregar o pagamento agendado",
+      "scheduleFailed": "Não foi possível carregar o pagamento agendado do empréstimo.",
+      "retry": "Tentar novamente",
+      "autoPost": {
+        "title": "O pagamento agendado continua a lançar-se automaticamente",
+        "body": "O lançamento automático está ativado na fatura deste empréstimo, pelo que uma prestação que a regra liquida a partir do débito do banco seria também lançada pela fatura. Desative o lançamento automático da fatura em Faturas e depósitos."
+      },
+      "preconditions": {
+        "openingBalance": "O saldo inicial do empréstimo tem de ser a dívida no início do histórico a processar; os juros de cada prestação são calculados sobre ele.",
+        "originalPrincipal": "O capital original tem de ser o montante inicialmente emprestado, não o saldo inicial.",
+        "scheduleStart": "Os débitos com data anterior a {date}, quando começa o pagamento agendado, não têm nenhuma prestação a associar."
+      },
+      "process": {
+        "button": "Processar histórico",
+        "scope": "Executa a regra sobre os débitos em {account}, dos mais antigos para os mais recentes.",
+        "running": "A processar o histórico: {count, plural, one {# prestação liquidada} other {# prestações liquidadas}} até agora.",
+        "done": "{count, plural, =0 {Nenhuma prestação foi liquidada.} one {# prestação foi liquidada.} other {# prestações foram liquidadas.}}",
+        "undo": "Cada página da execução pode ser anulada no histórico de ações.",
+        "failed": "O processamento do histórico parou",
+        "stuckTitle": "Não foi possível continuar o processamento do histórico",
+        "stuck": "Há mais de {limit, number} transações com data de {date}, pelo que a execução não consegue avançar para além desse dia. Liquide as restantes em Ferramentas > Regras com um filtro mais restrito.",
+        "stuckUnknown": "O servidor não indicou até onde a execução chegou, pelo que não é possível continuar. Recarregue a página e tente novamente."
+      },
+      "create": {
+        "title": "Criar regra de associação de pagamentos",
+        "description": "A regra liquida os débitos correspondentes da conta do pagamento agendado do empréstimo, e o lançamento automático da fatura é desativado.",
+        "descriptionWithAccount": "A regra liquida os débitos correspondentes de {account}, e o lançamento automático da fatura é desativado.",
+        "submit": "Criar regra",
+        "payeePatternRequired": "Introduza um padrão do beneficiário que inclua um carácter universal *",
+        "descriptionPatternWildcard": "O padrão da descrição deve incluir um carácter universal *",
+        "failed": "Não foi possível criar a regra de associação de pagamentos.",
+        "done": "Regra \"{name}\" criada"
+      },
+      "settled": {
+        "title": "Prestações liquidadas",
+        "colDueDate": "Data de vencimento",
+        "colTransaction": "Transação",
+        "colPrincipal": "Capital",
+        "colInterest": "Juros",
+        "colExtra": "Capital extra",
+        "colDebtBefore": "Dívida anterior",
+        "openTransaction": "Abrir a transação",
+        "void": "Anulada",
+        "notRecorded": "Não registado",
+        "empty": {
+          "title": "Ainda não há prestações liquidadas",
+          "body": "Processe o histórico, ou importe os débitos do banco, para liquidar prestações."
+        },
+        "error": {
+          "title": "Não foi possível carregar as prestações liquidadas",
+          "body": "Esta lista não está vazia. Tente novamente para ver que prestações foram liquidadas.",
+          "retry": "Tentar novamente"
+        }
+      }
+    },
     "lineOfCredit": {
       "currentBalance": "Saldo atual",
       "creditLimit": "Limite de crédito",
