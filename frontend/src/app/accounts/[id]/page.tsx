@@ -348,6 +348,16 @@ function AccountDetailContent() {
           onExport={
             detailView === 'loan' ? () => loanExportRef.current?.() : undefined
           }
+          // Same rule as the Accounts list's Edit action: a closed account is
+          // reopened first, and a joint account belongs to its owner.
+          onEdit={
+            account.isClosed || account.isJoint
+              ? undefined
+              : () => {
+                  setPreselectedMortgageType(undefined);
+                  accountModal.openEdit(account);
+                }
+          }
           headerActions={
             detailView === 'investment' ? (
               <InvestmentDetailActions
