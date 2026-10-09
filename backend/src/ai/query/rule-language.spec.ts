@@ -1,4 +1,7 @@
-import { RULE_ACTION_TYPES } from "../../transaction-rules/rule-action.types";
+import {
+  RULE_ACTION_TYPES,
+  SETTLE_LOAN_INSTALLMENT,
+} from "../../transaction-rules/rule-action.types";
 import {
   RULE_ACTIONS_HELP,
   RULE_CONDITION_HELP,
@@ -15,6 +18,14 @@ describe("the rule language text", () => {
 
   it("names every action type", () => {
     for (const type of RULE_ACTION_TYPES) expect(all).toContain(type);
+    expect(all).toContain(SETTLE_LOAN_INSTALLMENT);
+  });
+
+  it("names the settle_loan_installment shape in the name form, never with ids", () => {
+    expect(all).toContain("loanAccountName");
+    expect(all).toContain("interestCategoryName");
+    expect(all).not.toContain("loanAccountId");
+    expect(all).not.toContain("interestCategoryId");
   });
 
   it("writes the structural actions in the name form, never with ids", () => {

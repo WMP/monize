@@ -1,4 +1,7 @@
-import { RULE_ACTION_TYPES } from "./rule-action.types";
+import {
+  RULE_ACTION_TYPES,
+  SETTLE_LOAN_INSTALLMENT,
+} from "./rule-action.types";
 import {
   RULE_CONDITION_FIELDS,
   RULE_FIELDS,
@@ -20,7 +23,10 @@ import {
 
 /** The keys of each action as a model writes them (names, not ids). */
 export const RULE_ACTION_TOOL_KEYS: Readonly<
-  Record<(typeof RULE_ACTION_TYPES)[number], readonly string[]>
+  Record<
+    (typeof RULE_ACTION_TYPES)[number] | typeof SETTLE_LOAN_INSTALLMENT,
+    readonly string[]
+  >
 > = {
   set_category: ["type", "categoryName", "onlyIfEmpty"],
   set_payee: ["type", "payeeName", "onlyIfEmpty"],
@@ -37,6 +43,14 @@ export const RULE_ACTION_TOOL_KEYS: Readonly<
     "payeeName",
   ],
   split: ["type", "payeeName", "parts"],
+  settle_loan_installment: [
+    "type",
+    "loanAccountName",
+    "dueDateWindow",
+    "excess",
+    "shortfall",
+    "interestCategoryName",
+  ],
 };
 
 /** The keys of one `split` part as a model writes them. */
@@ -204,10 +218,15 @@ const HINTS: Record<RuleValidationCode, HintFn> = {
       ? `For field ${String((leaf as Record<string, unknown>).field)} op must be one of: ${ops}.`
       : `op must be one of the operators listed for the field: ${RULE_FIELDS.map((f) => `${f}(${RULE_CONDITION_FIELDS[f].operators.join(",")})`).join(" ")}.`;
   },
-  VALUE_REQUIRED: (segments) =>
-    segments[0] === "actions"
-      ? "convert_to_transfer needs toAccountName (an expense) or fromAccountName (an income)."
-      : 'This operator needs a "value"; only isEmpty takes none.',
+  VALUE_REQUIRED: (segments, definition) => {
+    if (segments[0] !== "actions") {
+      return 'This operator needs a "value"; only isEmpty takes none.';
+    }
+    const action = parentNode(segments, definition);
+    return isRecord(action) && action.type === "settle_loan_installment"
+      ? "settle_loan_installment needs loanAccountName."
+      : "convert_to_transfer needs toAccountName (an expense) or fromAccountName (an income).";
+  },
   VALUE_NOT_ALLOWED: generic('isEmpty takes no "value"; remove it.'),
   VALUE_TYPE: (segments, definition) =>
     segments[0] === "condition"
@@ -250,7 +269,7 @@ const HINTS: Record<RuleValidationCode, HintFn> = {
   DUPLICATE_ACTION: (segments) =>
     inSplitParts(segments)
       ? 'Only one part of a split may have the amount "rest".'
-      : "A rule has at most one request_ai_review action and at most one convert_to_transfer or split action.",
+      : "A rule has at most one request_ai_review action and at most one convert_to_transfer, split or settle_loan_installment action.",
   CONFLICTING_ACTIONS: (segments, definition) => {
     if (inSplitParts(segments)) {
       return "A split part has a category or a transfer account, not both, and a payee only together with a transfer account.";
@@ -262,7 +281,7 @@ const HINTS: Record<RuleValidationCode, HintFn> = {
       ("fromAccountName" in action || "fromAccountId" in action);
     return bothAccounts
       ? "convert_to_transfer takes toAccountName (an expense) or fromAccountName (an income), not both."
-      : "A rule with convert_to_transfer or split must not also have set_category: the structural action decides the category.";
+      : "A rule with convert_to_transfer, split or settle_loan_installment must not also have set_category: the structural action decides the category.";
   },
   INVALID_CAPTURE: generic(
     "A capture is {name} with name a-z0-9, starting with a letter, at most 20 characters, and not 'description'.",

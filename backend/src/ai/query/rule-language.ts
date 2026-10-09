@@ -30,14 +30,14 @@ const RULE_FIELD_OPERATORS = (() => {
  */
 export const RULE_LANGUAGE_GUIDE =
   'Rule JSON: condition is an OBJECT and actions an ARRAY, never strings. Example: condition {"all":[{"field":"description","op":"contains","value":"ASSECO"}]}, actions [{"type":"set_category","categoryName":"Groceries"}]. ' +
-  "Groups: all|any (an array), optional not:true, at most 4 deep. Leaf keys exactly field, op, value (none for isEmpty). Operators by field: " +
+  "Groups: all|any (an array), optional not:true, at most 4 deep. Leaf keys exactly field, op, value (none for isEmpty). Ops by field: " +
   RULE_FIELD_OPERATORS +
-  ". matches is a glob over the WHOLE text (* wildcard, {name} capture); with neither it equals the text (use eq, or contains / matches *text*). No regex: | \\ and [xy] are literal (^ $ and longer [words] are fine); for alternatives use an any group. " +
+  ". matches is a glob over the WHOLE text (* wildcard, {name} capture); else it equals the text (eq, or contains). No regex: | \\ and [xy] are literal; for alternatives use an any group. " +
   "actions (1-" +
   MAX_RULE_ACTIONS +
-  ', in order) are {type, ...}: set_category(categoryName, onlyIfEmpty?), set_payee(payeeName, onlyIfEmpty?), add_tags|remove_tags(tagNames:[...]), request_ai_review(instruction), set_payee_from_text(template, createIfMissing?, onlyIfEmpty?), set_description(template, mode?: replace|append|prepend, onlyIfEmpty?), convert_to_transfer (see actions), split(payeeName?, parts 2-10: {amount:"{capture}"|"rest", categoryName|transferTo, payeeName?, description?}). ' +
-  "activeFrom/activeTo (YYYY-MM-DD, inclusive) bound the transaction dates a rule applies to. " +
-  "Test before create: conditionMatchedCount 0 = condition probably wrong; matchedCount 0 with conditionMatchedCount > 0 = nothing to change.";
+  ', in order) are {type, ...}: set_category(categoryName, onlyIfEmpty?), set_payee(payeeName, onlyIfEmpty?), add_tags|remove_tags(tagNames:[...]), request_ai_review(instruction), set_payee_from_text(template, createIfMissing?, onlyIfEmpty?), set_description(template, mode?: replace|append|prepend, onlyIfEmpty?), convert_to_transfer(see actions), split(payeeName?, parts 2-10: {amount:"{capture}"|"rest", categoryName|transferTo, payeeName?, description?}), settle_loan_installment(loanAccountName, dueDateWindow? {daysBefore,daysAfter}, excess?, shortfall?, interestCategoryName?). ' +
+  "activeFrom/activeTo (YYYY-MM-DD, inclusive) bound a rule's dates. " +
+  "Test before create: conditionMatchedCount 0 = condition wrong; matchedCount 0 with conditionMatchedCount > 0 = nothing to change.";
 
 /** The `condition` field: what a leaf's value looks like per field. */
 export const RULE_CONDITION_HELP =
@@ -45,4 +45,4 @@ export const RULE_CONDITION_HELP =
 
 /** The `actions` field: what the guide leaves out. */
 export const RULE_ACTIONS_HELP =
-  "Names, never ids. Templates read {name} (a matches capture), {payeeText}, {description}. onlyIfEmpty defaults to true (false for set_description). convert_to_transfer(toAccountName|fromAccountName, clearCategory?, payeeName?); transfer and split parts: same currency, amounts add up.";
+  "Names, never ids. Templates read {name} (capture), {payeeText}, {description}. onlyIfEmpty defaults true (false: set_description). convert_to_transfer(toAccountName|fromAccountName, clearCategory?, payeeName?); transfer/split parts: same currency, amounts add up. settle_loan_installment: no amount.";

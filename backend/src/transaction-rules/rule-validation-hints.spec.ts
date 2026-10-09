@@ -1,4 +1,7 @@
-import { RULE_ACTION_TYPES } from "./rule-action.types";
+import {
+  RULE_ACTION_TYPES,
+  SETTLE_LOAN_INSTALLMENT,
+} from "./rule-action.types";
 import { RULE_CONDITION_FIELDS } from "./rule-condition.types";
 import {
   RULE_ACTION_TOOL_KEYS,
@@ -158,9 +161,9 @@ describe("ruleErrorHints", () => {
 });
 
 describe("RULE_ACTION_TOOL_KEYS", () => {
-  it("covers every action type", () => {
+  it("covers every action type, plus settle_loan_installment, which every save path accepts before it joins the editor's mirrored list", () => {
     expect(Object.keys(RULE_ACTION_TOOL_KEYS).sort()).toEqual(
-      [...RULE_ACTION_TYPES].sort(),
+      [...RULE_ACTION_TYPES, SETTLE_LOAN_INSTALLMENT].sort(),
     );
   });
 });
