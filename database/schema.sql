@@ -3048,7 +3048,8 @@ CREATE TABLE push_subscriptions (
 -- and no ownership check covers it, so a takeover would be a cross-tenant
 -- delete on an unverified identifier -- and a silent one. The client answers
 -- the refusal by unsubscribing and subscribing again, which mints a fresh
--- endpoint nobody holds, and logging out releases the endpoint the same way.
+-- endpoint nobody holds. Logging out holds the row (held_at) and releases the
+-- endpoint only when the hold is not confirmed.
 CREATE UNIQUE INDEX idx_push_subscriptions_endpoint ON push_subscriptions(endpoint_hash);
 
 -- Every send starts with "which of this user's devices are still live".

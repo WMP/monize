@@ -20,12 +20,12 @@
 | ID | Task | Depends on | Deploy impact | Status |
 |----|------|-----------|---------------|--------|
 | S1 | Issue #1630 agreeing the design; label `approved-to-build` | -- | none | [ ] |
-| B1 | Migration + `schema.sql`: `push_subscriptions.held_at`; entity field | S1 | inert | [ ] |
-| B2 | Service: `hold`, upsert clears `held_at`, fan-outs skip held rows, sweep, `heldAt` on the DTO; route `POST /push/subscriptions/:id/hold` | B1 | inert | [ ] |
-| F2 | Settings: held state in `PushDevicesPanel`, `PushDiagnostics` line, matrix counts held as live; `PushDevice.heldAt` type | B2 | inert | [ ] |
-| F1 | `lib/push.ts`: marker `held`, `holdDevice`, `holdPushForSignOut`, `resumePushAfterSignIn`; `usePushResumeOnSignIn` in `SwipeShell`; `AppHeader` switches to the hold; banner waits on a held marker | B2, F2 | **live** | [ ] |
-| Q1 | Integration spec: hold and resume under RLS enforcement | B2 | none | [ ] |
-| D1 | `docs/system-invariants.md` INV-PUSH-011 + INV-PUSH-001 failure paragraph; `docs/frontend/pwa-push-share.md`; `docs/backend/notifications-and-push.md` | F1 | none | [ ] |
+| B1 | Migration + `schema.sql`: `push_subscriptions.held_at`; entity field | S1 | inert | [x] |
+| B2 | Service: `hold`, upsert clears `held_at`, fan-outs skip held rows, sweep, `heldAt` on the DTO; route `POST /push/subscriptions/:id/hold` | B1 | inert | [x] |
+| F2 | Settings: held state in `PushDevicesPanel`, `PushDiagnostics` line, matrix counts held as live; `PushDevice.heldAt` type | B2 | inert | [x] |
+| F1 | `lib/push.ts`: marker `held`, `holdDevice`, `holdPushForSignOut`, `resumePushAfterSignIn`; `usePushResumeOnSignIn` in `SwipeShell`; `AppHeader` switches to the hold; banner waits on a held marker | B2, F2 | **live** | [x] |
+| Q1 | Integration spec: hold and resume under RLS enforcement | B2 | none | [x] |
+| D1 | `docs/system-invariants.md` INV-PUSH-011 + INV-PUSH-001 failure paragraph; `docs/frontend/pwa-push-share.md`; `docs/backend/notifications-and-push.md` | F1 | none | [x] |
 | Q2 | Full-locale i18n pass (final commit) | all above | none | [ ] |
 
 ---
