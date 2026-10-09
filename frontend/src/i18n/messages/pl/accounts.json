@@ -659,6 +659,70 @@
       "seriesActual": "Rzeczywiste saldo",
       "unknown": "Nieznane"
     },
+    "paymentMatching": {
+      "title": "Dopasowywanie płatności",
+      "description": "Rozpoznaje obciążenie każdej raty przez bank i rozlicza je z harmonogramem kredytu jako kapitał i odsetki, zamiast osobno księgować rachunek.",
+      "noSchedule": "Dopasowywanie płatności rozlicza obciążenia z banku z zaplanowaną płatnością kredytu. Najpierw skonfiguruj płatności tego kredytu.",
+      "noRule": "Z tym kredytem nie jest powiązana żadna reguła dopasowywania płatności.",
+      "createOne": "Utwórz ją",
+      "ruleLabel": "Reguła:",
+      "ruleLoading": "Wczytywanie reguły",
+      "ruleFailed": "Nie udało się wczytać reguły dopasowywania płatności.",
+      "scheduleLoading": "Wczytywanie zaplanowanej płatności",
+      "scheduleFailed": "Nie udało się wczytać zaplanowanej płatności kredytu.",
+      "retry": "Spróbuj ponownie",
+      "autoPost": {
+        "title": "Zaplanowana płatność nadal księguje się sama",
+        "body": "Auto-księgowanie jest włączone dla rachunku tego kredytu, więc rata, którą reguła rozliczy z obciążenia z banku, zostałaby też zaksięgowana przez rachunek. Wyłącz auto-księgowanie rachunku w sekcji Rachunki i wpłaty."
+      },
+      "preconditions": {
+        "openingBalance": "Saldo początkowe kredytu musi być zadłużeniem na początku przetwarzanej historii; od niego naliczane są odsetki każdej raty.",
+        "originalPrincipal": "Kapitał początkowy musi być kwotą pierwotnie pożyczoną, a nie saldem początkowym.",
+        "scheduleStart": "Obciążenia z datą wcześniejszą niż {date}, kiedy zaczyna się zaplanowana płatność, nie mają raty, do której można je dopasować."
+      },
+      "process": {
+        "button": "Przetwórz historię",
+        "scope": "Stosuje regułę do obciążeń na koncie {account}, od najstarszych.",
+        "running": "Przetwarzanie historii: dotąd rozliczono {count, plural, one {# ratę} few {# raty} many {# rat} other {# raty}}.",
+        "done": "{count, plural, =0 {Nie rozliczono żadnej raty.} one {Rozliczono # ratę.} few {Rozliczono # raty.} many {Rozliczono # rat.} other {Rozliczono # raty.}}",
+        "undo": "Każdą stronę przebiegu można cofnąć w historii działań.",
+        "failed": "Przetwarzanie historii zostało zatrzymane",
+        "stuckTitle": "Nie można kontynuować przetwarzania historii",
+        "stuck": "Ponad {limit, number} transakcji ma datę {date}, więc przebieg nie może wyjść poza ten dzień. Rozlicz resztę w Narzędzia > Reguły, używając węższego filtra.",
+        "stuckUnknown": "Serwer nie podał, dokąd dotarł przebieg, więc nie można go kontynuować. Odśwież stronę i spróbuj ponownie."
+      },
+      "create": {
+        "title": "Utwórz regułę dopasowywania płatności",
+        "description": "Reguła rozlicza pasujące obciążenia z konta zaplanowanej płatności kredytu, a auto-księgowanie rachunku zostaje wyłączone.",
+        "descriptionWithAccount": "Reguła rozlicza pasujące obciążenia z {account}, a auto-księgowanie rachunku zostaje wyłączone.",
+        "submit": "Utwórz regułę",
+        "payeePatternRequired": "Wpisz wzorzec odbiorcy zawierający symbol wieloznaczny *",
+        "descriptionPatternWildcard": "Wzorzec opisu musi zawierać symbol wieloznaczny *",
+        "failed": "Nie udało się utworzyć reguły dopasowywania płatności.",
+        "done": "Utworzono regułę „{name}”"
+      },
+      "settled": {
+        "title": "Rozliczone raty",
+        "colDueDate": "Termin płatności",
+        "colTransaction": "Transakcja",
+        "colPrincipal": "Kapitał",
+        "colInterest": "Odsetki",
+        "colExtra": "Dodatkowy kapitał",
+        "colDebtBefore": "Zadłużenie przed",
+        "openTransaction": "Otwórz transakcję",
+        "void": "Unieważniona",
+        "notRecorded": "Nie zarejestrowano",
+        "empty": {
+          "title": "Nie rozliczono jeszcze żadnych rat",
+          "body": "Przetwórz historię lub zaimportuj obciążenia z banku, aby rozliczyć raty."
+        },
+        "error": {
+          "title": "Nie udało się wczytać rozliczonych rat",
+          "body": "To nie jest pusta lista. Spróbuj ponownie, aby zobaczyć, które raty zostały rozliczone.",
+          "retry": "Spróbuj ponownie"
+        }
+      }
+    },
     "lineOfCredit": {
       "currentBalance": "Bieżące saldo",
       "creditLimit": "Limit kredytowy",

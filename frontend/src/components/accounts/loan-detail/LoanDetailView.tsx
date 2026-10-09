@@ -13,6 +13,10 @@ import { AmortizationScheduleTable } from '@/components/accounts/loan-detail/Amo
 import { OverpaymentSimulator } from '@/components/accounts/loan-detail/OverpaymentSimulator';
 import { PayoffComparisonChart } from '@/components/accounts/loan-detail/PayoffComparisonChart';
 import { RateHistorySidebar } from '@/components/accounts/loan-detail/RateHistorySidebar';
+import {
+  PaymentMatchingPanel,
+  type LoanSettlementsState,
+} from '@/components/accounts/loan-detail/PaymentMatchingPanel';
 import { ComparisonSummaryCards } from '@/components/accounts/loan-detail/ComparisonSummaryCards';
 import { SavedScenariosPanel } from '@/components/accounts/loan-detail/SavedScenariosPanel';
 import {
@@ -86,6 +90,15 @@ interface LoanDetailViewProps {
    * without an edit form leaves it out, and the action is not offered.
    */
   onUseMortgageType?: (type: MortgageType) => void;
+  /**
+   * The Payment matching panel's data and reload, from a container that
+   * loads the loan's settled installments with its history (the account
+   * page). Absent, the panel is not rendered.
+   */
+  paymentMatching?: {
+    settlements: LoanSettlementsState;
+    onChanged: () => void | Promise<void>;
+  };
 }
 
 /**
@@ -107,6 +120,7 @@ export function LoanDetailView({
   onRateChangesChanged,
   exportPdfRef,
   onUseMortgageType,
+  paymentMatching,
 }: LoanDetailViewProps) {
   const t = useTranslations('accounts');
   const { formatCurrency, formatPercentTrimmed } = useNumberFormat();
@@ -372,6 +386,17 @@ export function LoanDetailView({
   // click.
   exportPdfRef.current = handleExportPdf;
 
+  // Beside the Rate History panel, wherever that sits. Keyed by the loan, so
+  // a Process history result never outlives the loan it ran on.
+  const paymentMatchingPanel = paymentMatching ? (
+    <PaymentMatchingPanel
+      key={account.id}
+      account={account}
+      settlements={paymentMatching.settlements}
+      onChanged={paymentMatching.onChanged}
+    />
+  ) : null;
+
   return (
     <div className="space-y-6" ref={viewRef}>
       <LoanSummaryCards
@@ -408,6 +433,7 @@ export function LoanDetailView({
             editing={rateEditing}
             onUseMortgageType={onUseMortgageType}
           />
+          {paymentMatchingPanel}
           <div className="w-full">
             <OverpaymentSimulator
               accountId={account.id}
@@ -488,12 +514,15 @@ export function LoanDetailView({
       {/* Finished loan (no simulator): the Rate History panel goes full-width
           below the schedule. */}
       {!projectionInput && (
-        <RateHistorySidebar
-          account={account}
-          rateChanges={rateChanges}
-          editing={rateEditing}
-          onUseMortgageType={onUseMortgageType}
-        />
+        <>
+          <RateHistorySidebar
+            account={account}
+            rateChanges={rateChanges}
+            editing={rateEditing}
+            onUseMortgageType={onUseMortgageType}
+          />
+          {paymentMatchingPanel}
+        </>
       )}
     </div>
   );

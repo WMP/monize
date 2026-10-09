@@ -654,6 +654,70 @@
       "seriesActual": "Số dư thực tế",
       "unknown": "Không rõ"
     },
+    "paymentMatching": {
+      "title": "Khớp thanh toán",
+      "description": "Nhận diện khoản ghi nợ của chính ngân hàng cho từng kỳ trả góp và tất toán nó theo lịch của khoản vay dưới dạng gốc và lãi, thay vì đăng hóa đơn riêng.",
+      "noSchedule": "Khớp thanh toán tất toán các khoản ghi nợ của ngân hàng theo khoản thanh toán định kỳ của khoản vay. Hãy thiết lập các khoản thanh toán của khoản vay này trước.",
+      "noRule": "Không có quy tắc khớp thanh toán nào được liên kết với khoản vay này.",
+      "createOne": "Tạo một quy tắc",
+      "ruleLabel": "Quy tắc:",
+      "ruleLoading": "Đang tải quy tắc",
+      "ruleFailed": "Không thể tải quy tắc khớp thanh toán.",
+      "scheduleLoading": "Đang tải khoản thanh toán định kỳ",
+      "scheduleFailed": "Không thể tải khoản thanh toán định kỳ của khoản vay.",
+      "retry": "Thử lại",
+      "autoPost": {
+        "title": "Khoản thanh toán định kỳ vẫn tự đăng",
+        "body": "Tự động đăng đang bật cho hóa đơn của khoản vay này, vì vậy một kỳ trả góp mà quy tắc tất toán từ khoản ghi nợ của ngân hàng cũng sẽ bị hóa đơn đăng thêm. Hãy tắt tự động đăng cho hóa đơn trong Hóa đơn & Tiền gửi."
+      },
+      "preconditions": {
+        "openingBalance": "Số dư đầu kỳ của khoản vay phải là số nợ tại thời điểm bắt đầu phần lịch sử được xử lý; lãi của mọi kỳ trả góp đều được tính dựa trên số dư này.",
+        "originalPrincipal": "Gốc ban đầu phải là số tiền đã vay ban đầu, không phải số dư đầu kỳ.",
+        "scheduleStart": "Các khoản ghi nợ có ngày trước {date}, ngày bắt đầu khoản thanh toán định kỳ, không có kỳ trả góp nào để khớp."
+      },
+      "process": {
+        "button": "Xử lý lịch sử",
+        "scope": "Chạy quy tắc trên các khoản ghi nợ trong {account}, từ cũ nhất trở đi.",
+        "running": "Đang xử lý lịch sử: đã tất toán {count, plural, one {# kỳ trả góp} other {# kỳ trả góp}} cho đến nay.",
+        "done": "{count, plural, =0 {Không có kỳ trả góp nào được tất toán.} one {Đã tất toán # kỳ trả góp.} other {Đã tất toán # kỳ trả góp.}}",
+        "undo": "Mỗi trang của lần chạy có thể được hoàn tác từ lịch sử thao tác.",
+        "failed": "Đã dừng xử lý lịch sử",
+        "stuckTitle": "Không thể tiếp tục xử lý lịch sử",
+        "stuck": "Có hơn {limit, number} giao dịch mang ngày {date}, nên lần chạy không thể vượt qua ngày đó. Hãy tất toán phần còn lại từ Công cụ > Quy tắc với bộ lọc hẹp hơn.",
+        "stuckUnknown": "Máy chủ không cho biết lần chạy đã đến đâu, nên không thể tiếp tục. Hãy tải lại trang và thử lại."
+      },
+      "create": {
+        "title": "Tạo quy tắc khớp thanh toán",
+        "description": "Quy tắc tất toán các khoản ghi nợ khớp từ tài khoản thanh toán định kỳ của khoản vay, và tính năng tự động đăng của hóa đơn sẽ bị tắt.",
+        "descriptionWithAccount": "Quy tắc tất toán các khoản ghi nợ khớp từ {account}, và tính năng tự động đăng của hóa đơn sẽ bị tắt.",
+        "submit": "Tạo quy tắc",
+        "payeePatternRequired": "Nhập mẫu người nhận có chứa ký tự đại diện *",
+        "descriptionPatternWildcard": "Mẫu mô tả phải chứa ký tự đại diện *",
+        "failed": "Không thể tạo quy tắc khớp thanh toán.",
+        "done": "Đã tạo quy tắc \"{name}\""
+      },
+      "settled": {
+        "title": "Các kỳ trả góp đã tất toán",
+        "colDueDate": "Ngày đến hạn",
+        "colTransaction": "Giao dịch",
+        "colPrincipal": "Gốc",
+        "colInterest": "Lãi",
+        "colExtra": "Gốc trả thêm",
+        "colDebtBefore": "Nợ trước đó",
+        "openTransaction": "Mở giao dịch",
+        "void": "Hủy bỏ",
+        "notRecorded": "Chưa ghi nhận",
+        "empty": {
+          "title": "Chưa có kỳ trả góp nào được tất toán",
+          "body": "Hãy xử lý lịch sử hoặc nhập các khoản ghi nợ của ngân hàng để tất toán các kỳ trả góp."
+        },
+        "error": {
+          "title": "Không thể tải các kỳ trả góp đã tất toán",
+          "body": "Đây không phải là danh sách trống. Hãy thử lại để xem những kỳ trả góp nào đã được tất toán.",
+          "retry": "Thử lại"
+        }
+      }
+    },
     "lineOfCredit": {
       "currentBalance": "Số dư hiện tại",
       "creditLimit": "Hạn mức tín dụng",

@@ -304,6 +304,7 @@ describe("TransactionRulesRunService", () => {
       // The condition matched t1, t2 and the split t4; LIDL (t3) did not.
       expect(preview.conditionMatchedCount).toBe(3);
       expect(preview.truncated).toBe(false);
+      expect(preview.scannedThrough).toBe(split.transactionDate);
       expect(preview.matched).toEqual([
         {
           transactionId: "t1",
@@ -425,7 +426,11 @@ describe("TransactionRulesRunService", () => {
           startDate: "2026-04-01",
           endDate: "2026-04-01",
         }),
-      ).resolves.toMatchObject({ scanned: 0, matched: [] });
+      ).resolves.toMatchObject({
+        scanned: 0,
+        matched: [],
+        scannedThrough: null,
+      });
     });
 
     it("an empty plan still has a fingerprint", async () => {

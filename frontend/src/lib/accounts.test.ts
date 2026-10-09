@@ -167,6 +167,38 @@ describe('accountsApi', () => {
     });
   });
 
+  it('createPaymentMatchingRule posts the patterns and drops the account, bill and rule lists', async () => {
+    const { dedupe } = await import('./apiCache');
+    invalidateCache('accounts:');
+    const stale = vi.fn().mockResolvedValue(['stale']);
+    await dedupe('accounts:all:false', stale, 60_000);
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { id: 'rule-1' } });
+    const data = { payeePattern: '*ING*' };
+    await expect(accountsApi.createPaymentMatchingRule('acc-1', data)).resolves.toEqual({ id: 'rule-1' });
+    expect(apiClient.post).toHaveBeenCalledWith('/accounts/acc-1/payment-matching-rule', data);
+    await dedupe('accounts:all:false', stale, 60_000);
+    expect(stale).toHaveBeenCalledTimes(2);
+  });
+
+  it('createPaymentMatchingRule drops the lists on a refusal too', async () => {
+    const { dedupe } = await import('./apiCache');
+    invalidateCache('accounts:');
+    const stale = vi.fn().mockResolvedValue(['stale']);
+    await dedupe('accounts:all:false', stale, 60_000);
+    vi.mocked(apiClient.post).mockRejectedValue(new Error('409'));
+    await expect(accountsApi.createPaymentMatchingRule('acc-1', { payeePattern: '*ING*' })).rejects.toThrow('409');
+    await dedupe('accounts:all:false', stale, 60_000);
+    expect(stale).toHaveBeenCalledTimes(2);
+  });
+
+  it('getLoanSettlements reads the loan settlements, uncached', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: [{ claimId: 'c-1' }] });
+    await expect(accountsApi.getLoanSettlements('acc-1')).resolves.toEqual([{ claimId: 'c-1' }]);
+    await accountsApi.getLoanSettlements('acc-1');
+    expect(apiClient.get).toHaveBeenCalledTimes(2);
+    expect(apiClient.get).toHaveBeenCalledWith('/accounts/acc-1/loan-settlements');
+  });
+
   it('previewLoanPaymentSetup posts to the setup preview and returns its answer', async () => {
     const preview = {
       derivesInstallment: true,

@@ -660,6 +660,10 @@ export class TransactionRulesRunService {
         scanOrder: settles ? "oldest_first" : "newest_first",
         conditionMatchedCount,
         truncated,
+        scannedThrough:
+          units.length > 0
+            ? units[units.length - 1].primary.transactionDate
+            : null,
         fingerprint: planFingerprint(
           rule.revision,
           writable.map(({ unit, effects }) => ({

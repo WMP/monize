@@ -65,6 +65,7 @@ function runPreview(rows = 2): RuleRunPreview {
     scanOrder: "newest_first",
     conditionMatchedCount: rows + 1,
     truncated: false,
+    scannedThrough: null,
     fingerprint: "f".repeat(64),
     labels: {
       accounts: {},

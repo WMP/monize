@@ -654,6 +654,70 @@
       "seriesActual": "Solde réel",
       "unknown": "Inconnu"
     },
+    "paymentMatching": {
+      "title": "Rapprochement des paiements",
+      "description": "Reconnaît le prélèvement de chaque échéance par la banque et l'impute sur l'échéancier du prêt en capital et intérêts, au lieu d'enregistrer la facture séparément.",
+      "noSchedule": "Le rapprochement des paiements impute les prélèvements de la banque sur le paiement programmé du prêt. Configurez d'abord les paiements de ce prêt.",
+      "noRule": "Aucune règle de rapprochement des paiements n'est liée à ce prêt.",
+      "createOne": "En créer une",
+      "ruleLabel": "Règle :",
+      "ruleLoading": "Chargement de la règle",
+      "ruleFailed": "La règle de rapprochement des paiements n'a pas pu être chargée.",
+      "scheduleLoading": "Chargement du paiement programmé",
+      "scheduleFailed": "Le paiement programmé du prêt n'a pas pu être chargé.",
+      "retry": "Réessayer",
+      "autoPost": {
+        "title": "Le paiement programmé s'enregistre encore lui-même",
+        "body": "L'enregistrement automatique est activé sur la facture de ce prêt : une échéance que la règle impute à partir du prélèvement de la banque serait donc aussi enregistrée par la facture. Désactivez l'enregistrement automatique de la facture dans Factures et dépôts."
+      },
+      "preconditions": {
+        "openingBalance": "Le solde d'ouverture du prêt doit correspondre à la dette au début de l'historique traité ; les intérêts de chaque échéance sont calculés sur ce montant.",
+        "originalPrincipal": "Le capital initial doit être le montant emprunté à l'origine, et non le solde d'ouverture.",
+        "scheduleStart": "Les prélèvements datés d'avant le {date}, date de début du paiement programmé, n'ont aucune échéance à laquelle être rapprochés."
+      },
+      "process": {
+        "button": "Traiter l'historique",
+        "scope": "Applique la règle aux prélèvements de {account}, du plus ancien au plus récent.",
+        "running": "Traitement de l'historique : {count, plural, one {# échéance imputée} other {# échéances imputées}} jusqu'à présent.",
+        "done": "{count, plural, =0 {Aucune échéance n'a été imputée.} one {# échéance a été imputée.} other {# échéances ont été imputées.}}",
+        "undo": "Chaque page du traitement peut être annulée depuis l'historique des actions.",
+        "failed": "Le traitement de l'historique s'est arrêté",
+        "stuckTitle": "Le traitement de l'historique n'a pas pu continuer",
+        "stuck": "Plus de {limit, number} transactions sont datées du {date}, le traitement ne peut donc pas dépasser ce jour. Imputez le reste depuis Outils > Règles avec un filtre plus précis.",
+        "stuckUnknown": "Le serveur n'a pas indiqué jusqu'où le traitement est allé, il ne peut donc pas continuer. Rechargez la page et réessayez."
+      },
+      "create": {
+        "title": "Créer une règle de rapprochement des paiements",
+        "description": "La règle impute les prélèvements correspondants du compte du paiement programmé du prêt, et l'enregistrement automatique de la facture est désactivé.",
+        "descriptionWithAccount": "La règle impute les prélèvements correspondants de {account}, et l'enregistrement automatique de la facture est désactivé.",
+        "submit": "Créer la règle",
+        "payeePatternRequired": "Saisissez un modèle de bénéficiaire contenant un caractère générique *",
+        "descriptionPatternWildcard": "Un modèle de description doit contenir un caractère générique *",
+        "failed": "La règle de rapprochement des paiements n'a pas pu être créée.",
+        "done": "Règle « {name} » créée"
+      },
+      "settled": {
+        "title": "Échéances imputées",
+        "colDueDate": "Date d'échéance",
+        "colTransaction": "Transaction",
+        "colPrincipal": "Capital",
+        "colInterest": "Intérêts",
+        "colExtra": "Capital supplémentaire",
+        "colDebtBefore": "Dette avant",
+        "openTransaction": "Ouvrir la transaction",
+        "void": "Annulée",
+        "notRecorded": "Non enregistré",
+        "empty": {
+          "title": "Aucune échéance imputée pour l'instant",
+          "body": "Traitez l'historique ou importez les prélèvements de la banque pour imputer des échéances."
+        },
+        "error": {
+          "title": "Les échéances imputées n'ont pas pu être chargées",
+          "body": "Il ne s'agit pas d'une liste vide. Réessayez pour voir quelles échéances ont été imputées.",
+          "retry": "Réessayer"
+        }
+      }
+    },
     "lineOfCredit": {
       "currentBalance": "Solde actuel",
       "creditLimit": "Limite de crédit",

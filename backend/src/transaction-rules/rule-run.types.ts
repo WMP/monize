@@ -69,6 +69,12 @@ export interface RuleRunPreview {
   readonly conditionMatchedCount: number;
   /** More rows matched the filters than `limit` allowed. */
   readonly truncated: boolean;
+  /**
+   * The date (YYYY-MM-DD) of the last row the scan examined, in scan order;
+   * null when it examined none. A truncated oldest-first run's next page
+   * starts on it (loan settlement spec section 14.1).
+   */
+  readonly scannedThrough: string | null;
   /** Hash of the planned changes and the rule revision; the commit must echo it. */
   readonly fingerprint: string;
   readonly labels: RuleEffectsLabels;
