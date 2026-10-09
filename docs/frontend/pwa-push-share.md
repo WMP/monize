@@ -32,9 +32,13 @@ the full release, because a subscription left in a browser whose row still
 delivers would show the departing account's notifications to the next person
 there. `usePushResumeOnSignIn` (mounted in `SwipeShell`) resumes it: only for a
 held marker naming the signed-in user, with permission already granted, by
-re-posting the subscription through the ordinary subscribe; a changed key or a
-server refusal releases instead, and a rotated endpoint retires the old row. An
-ordinary page load without a held marker makes no request. `PushEnableBanner`
+re-posting the subscription through the ordinary subscribe. A changed key or a
+4xx refusal releases the subscription AND retires the held row; a 5xx, a 401 or
+no answer keeps the hold for the next sign-in; a rotated endpoint retires the old
+row before the new one is posted, so it does not count against the device cap.
+The hook forgets its attempt on sign-out, because the shell stays mounted across
+a client-side sign-out and sign-in. An ordinary page load without a held marker
+makes no request. `PushEnableBanner`
 treats a held marker naming the reader as "not yet known" until the resume
 settles, so it does not flash Enable. Account deletion (`DangerZoneSection`)
 keeps `releasePushForSignOut`, and a session that merely expires touches push not

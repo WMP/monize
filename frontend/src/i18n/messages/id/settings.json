@@ -283,6 +283,7 @@
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Perangkat tanpa nama",
       "noLiveDevices": "Belum ada perangkat terdaftar. Aktifkan push di perangkat ini untuk mengirim uji coba.",
+      "noDeliverableDevices": "Semua perangkat sudah keluar, jadi pengujian tidak dapat dikirim ke mana pun. Notifikasi push dilanjutkan di perangkat saat Anda masuk lagi di sana.",
       "notConfigured": "Push peramban tidak tersedia di instans Monize ini. Administrator dapat mengaktifkannya di area Admin.",
       "disabledByAdmin": "Administrator telah mematikan push peramban untuk instans Monize ini.",
       "keyUnreadable": "Monize tidak dapat membaca pasangan kunci push instans ini, sehingga tidak ada yang terkirim. Administrator dapat memulihkannya dengan merotasi pasangan kunci di area Admin.",

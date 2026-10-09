@@ -283,6 +283,7 @@
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Dispositivo sin nombre",
       "noLiveDevices": "Aún no hay ningún dispositivo registrado. Activa el push en este dispositivo para enviar una prueba.",
+      "noDeliverableDevices": "Has cerrado sesión en todos los dispositivos, así que una prueba no tiene adónde llegar. Las notificaciones push se reanudan en un dispositivo cuando vuelvas a iniciar sesión en él.",
       "notConfigured": "El push del navegador no está disponible en esta instancia de Monize. Un administrador puede activarlo en el área de administración.",
       "disabledByAdmin": "Un administrador ha desactivado el push del navegador en esta instancia de Monize.",
       "keyUnreadable": "Monize no puede leer el par de claves push de esta instancia, así que no se entrega nada. Un administrador puede recuperarlo rotando el par de claves en el área de administración.",

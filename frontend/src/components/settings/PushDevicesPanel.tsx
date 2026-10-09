@@ -555,6 +555,13 @@ export function PushDevicesPanel() {
           {t('noLiveDevices')}
         </p>
       )}
+      {/* Every live device is held: the test button is off for a reason the
+          reader would otherwise have to guess. */}
+      {liveDevices.length > 0 && deliverableDevices.length === 0 && (
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          {t('noDeliverableDevices')}
+        </p>
+      )}
 
       {lastTest && lastTest.length > 0 && (
         <div className="mt-3" data-testid="push-test-results">

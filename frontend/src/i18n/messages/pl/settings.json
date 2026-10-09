@@ -283,6 +283,7 @@
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Urządzenie bez nazwy",
       "noLiveDevices": "Nie zarejestrowano jeszcze żadnego urządzenia. Włącz push na tym urządzeniu, aby wysłać test.",
+      "noDeliverableDevices": "Wylogowano na wszystkich urządzeniach, więc test nie ma dokąd trafić. Powiadomienia push zostaną wznowione na urządzeniu po ponownym zalogowaniu się na nim.",
       "notConfigured": "Push w przeglądarce nie jest dostępny w tej instancji Monize. Administrator może go włączyć w sekcji Admin.",
       "disabledByAdmin": "Administrator wyłączył push w przeglądarce dla tej instancji Monize.",
       "keyUnreadable": "Monize nie potrafi odczytać pary kluczy push tej instancji, więc nic nie jest dostarczane. Administrator może to naprawić, wymieniając parę kluczy w sekcji Admin.",

@@ -283,6 +283,7 @@
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Unnamed device",
       "noLiveDevices": "No device is registered yet. Enable push on this device to send a test.",
+      "noDeliverableDevices": "Every device is signed out, so a test has nowhere to go. Push resumes on a device when you sign in there again.",
       "notConfigured": "Browser push is not available on this Monize instance. An administrator can enable it in the Admin area.",
       "disabledByAdmin": "An administrator has switched browser push off for this Monize instance.",
       "keyUnreadable": "Monize cannot read this instance's push key pair, so nothing can be delivered. An administrator can recover it by rotating the key pair in the Admin area.",

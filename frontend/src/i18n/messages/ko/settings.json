@@ -283,6 +283,7 @@
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "이름 없는 기기",
       "noLiveDevices": "아직 등록된 기기가 없습니다. 테스트를 보내려면 이 기기에서 푸시를 켜세요.",
+      "noDeliverableDevices": "모든 기기에서 로그아웃되어 테스트를 보낼 곳이 없습니다. 기기에서 다시 로그인하면 해당 기기에서 푸시 알림이 재개됩니다.",
       "notConfigured": "이 Monize 인스턴스에서는 브라우저 푸시를 사용할 수 없습니다. 관리자가 Admin 영역에서 켤 수 있습니다.",
       "disabledByAdmin": "관리자가 이 Monize 인스턴스의 브라우저 푸시를 껐습니다.",
       "keyUnreadable": "Monize가 이 인스턴스의 푸시 키 쌍을 읽지 못해 아무것도 전달되지 않습니다. 관리자가 Admin 영역에서 키 쌍을 교체하면 복구됩니다.",

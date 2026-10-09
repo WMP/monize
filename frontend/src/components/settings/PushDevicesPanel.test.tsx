@@ -557,6 +557,11 @@ describe('PushDevicesPanel', () => {
       expect(
         screen.getByRole('button', { name: /send test notification/i }),
       ).toBeDisabled();
+      // Said, rather than left for the reader to guess.
+      expect(
+        screen.getByText(/Every device is signed out/i),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/No device is registered yet/i)).toBeNull();
     });
   });
 
