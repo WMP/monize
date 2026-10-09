@@ -69,6 +69,12 @@ export interface PushDeviceDto {
   lastSuccessAt: string | null;
   disabledAt: string | null;
   disabledReason: PushDisabledReason | null;
+  /**
+   * When this device's account signed out of the browser it lives in. Nothing
+   * is delivered to it until the same account signs in there again
+   * (INV-PUSH-011). Null for a device that is signed in.
+   */
+  heldAt: string | null;
 }
 
 /** Per-device result of a test send, so the UI can name the device that failed. */
@@ -124,6 +130,16 @@ export const PUSH_TEST_CONCURRENCY = 4;
 export const RETIRED_DEVICE_RETENTION_DAYS = 30;
 
 /**
+ * How long a held device waits for its account to sign in on it again before
+ * the daily sweep forgets it.
+ *
+ * Deleting it loses nothing: a later resume is a re-registration, which
+ * inserts the row again. The bound exists so a browser nobody signs back in
+ * on does not sit in the device list forever.
+ */
+export const HELD_DEVICE_RETENTION_DAYS = 15;
+
+/**
  * The longest `POST /push/test` can take, derived rather than restated.
  *
  * A round is bounded by the endpoint re-check plus the whole-delivery deadline,
@@ -176,8 +192,14 @@ export class PushSubscriptionService {
    * honest answer, and it is not a dead end: the client answers it by
    * unsubscribing in the browser and subscribing again, which mints a *fresh*
    * endpoint nobody holds (`enablePushOnThisDevice` in
-   * `frontend/src/lib/push.ts`). Logging out releases the endpoint the same
-   * way, so the ordinary shared-browser case never reaches this refusal.
+   * `frontend/src/lib/push.ts`). Logging out holds the row
+   * (`hold`, below), and a hold the client cannot confirm releases the
+   * endpoint instead, so a signed-out browser never delivers to the next
+   * person either way.
+   *
+   * A re-registration by the same account is also how a held device resumes:
+   * the `DO UPDATE` arm clears `held_at`, so the cap, the key check and the
+   * ownership guard apply to a resume unchanged.
    */
   async subscribe(
     userId: string,
@@ -320,7 +342,10 @@ export class PushSubscriptionService {
                 last_seen_at = CURRENT_TIMESTAMP,
                 failure_count = 0,
                 disabled_at = NULL,
-                disabled_reason = NULL
+                disabled_reason = NULL,
+                -- The resume of a held device. Only the same account reaches
+                -- this arm (the WHERE below), so nobody else can lift a hold.
+                held_at = NULL
           WHERE push_subscriptions.user_id = EXCLUDED.user_id
        RETURNING id`,
         [
@@ -363,29 +388,50 @@ export class PushSubscriptionService {
    * and for the same reason: long enough to be acted on, short enough not to
    * accumulate. Re-enabling a device clears `disabled_at`, so nothing live is
    * ever in range.
+   *
+   * A held device nobody resumed goes after `HELD_DEVICE_RETENTION_DAYS`, in
+   * the same transaction. A resume clears `held_at`, so a device its account
+   * signed back in on is never in range either.
    */
   @Cron("30 3 * * *")
   async purgeRetiredDevices(): Promise<void> {
     try {
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - RETIRED_DEVICE_RETENTION_DAYS);
+      const heldCutoff = new Date();
+      heldCutoff.setDate(heldCutoff.getDate() - HELD_DEVICE_RETENTION_DAYS);
 
       // A cross-user sweep with no request behind it, so it seeds its own
       // system context (task C2). Every row it can reach is one whose owner
       // stopped being able to receive on it.
       const removed = await withSystemContext(async () =>
         withScopedDb(this.dataSource, async (manager) => {
-          const result = await manager.query(
+          const retired = await manager.query(
             `DELETE FROM push_subscriptions
                WHERE disabled_at IS NOT NULL AND disabled_at < $1`,
             [cutoff],
           );
-          return affectedRowCount(result);
+          const held = await manager.query(
+            `DELETE FROM push_subscriptions
+               WHERE held_at IS NOT NULL AND held_at < $1`,
+            [heldCutoff],
+          );
+          return {
+            retired: affectedRowCount(retired),
+            held: affectedRowCount(held),
+          };
         }),
       );
 
-      if (removed > 0) {
-        this.logger.log(`Removed ${removed} long-retired push device(s)`);
+      if (removed.retired > 0) {
+        this.logger.log(
+          `Removed ${removed.retired} long-retired push device(s)`,
+        );
+      }
+      if (removed.held > 0) {
+        this.logger.log(
+          `Removed ${removed.held} push device(s) held past ${HELD_DEVICE_RETENTION_DAYS} days`,
+        );
       }
     } catch (error) {
       // A cron that throws takes the scheduler's next run with it on some
@@ -421,6 +467,32 @@ export class PushSubscriptionService {
   }
 
   /**
+   * Hold one of the caller's devices: its account is signing out of the
+   * browser it lives in, so nothing is delivered to it until the same account
+   * registers it again (INV-PUSH-011).
+   *
+   * One guarded statement, so the ownership check and the write are the same
+   * row lock. A retired row cannot be held: the client then falls back to
+   * releasing the subscription, which is what a 404 here tells it to do.
+   * Holding a row that is already held only moves `held_at`.
+   */
+  async hold(userId: string, id: string): Promise<void> {
+    await withScopedDb(this.dataSource, async (manager) => {
+      const result = await manager.query(
+        `UPDATE push_subscriptions
+            SET held_at = CURRENT_TIMESTAMP
+          WHERE id = $1 AND user_id = $2 AND disabled_at IS NULL`,
+        [id, userId],
+      );
+      if (affectedRowCount(result) === 0) {
+        throw new NotFoundException(
+          tr("errors.push.deviceNotFound", "Push device not found."),
+        );
+      }
+    });
+  }
+
+  /**
    * Send the calling user a test notification on every one of their live
    * devices, and record what each attempt did.
    *
@@ -442,7 +514,9 @@ export class PushSubscriptionService {
 
     const targets = await withScopedDb(this.dataSource, (manager) =>
       manager.getRepository(PushSubscription).find({
-        where: { userId, disabledAt: IsNull() },
+        // A held device is signed out: no device this account is signed in on
+        // can receive, so `noDevices` below is the accurate answer.
+        where: { userId, disabledAt: IsNull(), heldAt: IsNull() },
         order: { lastSeenAt: "DESC" },
       }),
     );
@@ -522,6 +596,9 @@ export class PushSubscriptionService {
         where: {
           userId,
           disabledAt: IsNull(),
+          // Skipped, not queued: the notification centre already has the row,
+          // and the bell shows it when the account signs back in.
+          heldAt: IsNull(),
           ...(transports ? { transport: In(transports) } : {}),
         },
         order: { lastSeenAt: "DESC" },
@@ -778,5 +855,6 @@ function toDeviceDto(row: PushSubscription): PushDeviceDto {
       : null,
     disabledAt: row.disabledAt ? new Date(row.disabledAt).toISOString() : null,
     disabledReason: row.disabledReason,
+    heldAt: row.heldAt ? new Date(row.heldAt).toISOString() : null,
   };
 }

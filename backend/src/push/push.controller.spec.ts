@@ -36,6 +36,7 @@ describe("PushController", () => {
       listForUser: jest.fn(),
       subscribe: jest.fn(),
       remove: jest.fn(),
+      hold: jest.fn(),
       sendTest: jest.fn(),
     };
 
@@ -112,6 +113,12 @@ describe("PushController", () => {
     expect(subscriptions.remove).toHaveBeenCalledWith("user-1", "device-1");
   });
 
+  it("scopes a device hold to the caller", () => {
+    controller.hold(CALLER, "device-1");
+
+    expect(subscriptions.hold).toHaveBeenCalledWith("user-1", "device-1");
+  });
+
   it("guards every route with the JWT strategy", () => {
     const guards = new Reflector().get("__guards__", PushController) ?? [];
     const names = guards.map((g: unknown) => (g as { name?: string })?.name);
@@ -126,7 +133,7 @@ describe("PushController", () => {
   // it was grouped with the reads and called "read-only", which a DELETE is not.
   // On one shared account a removal is a stranger deleting the row somebody else
   // is looking at.
-  it.each(["subscribe", "test", "remove"] as const)(
+  it.each(["subscribe", "test", "remove", "hold"] as const)(
     "restricts %s in demo mode",
     (method) => {
       expect(

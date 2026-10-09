@@ -108,6 +108,20 @@ export class PushController {
     return this.subscriptions.remove(req.user.id, id);
   }
 
+  // Sign-out from the header holds this browser's row instead of deleting it,
+  // so the same account signing in again resumes delivery with no prompt
+  // (INV-PUSH-011). Demo-restricted and throttled like every write here.
+  @DemoRestricted()
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
+  @Post("subscriptions/:id/hold")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: "Hold one of the current user's push devices across a sign-out",
+  })
+  hold(@Request() req, @Param("id", ParseUUIDPipe) id: string): Promise<void> {
+    return this.subscriptions.hold(req.user.id, id);
+  }
+
   /** Demo-restricted for the shared-account reason given on `subscribe`. */
   // The one endpoint here that reaches an outbound provider, and it fans out:
   // up to MAX_LIVE_DEVICES_PER_USER endpoints per call. Under the global

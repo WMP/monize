@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { I18nService } from "nestjs-i18n";
-import { In } from "typeorm";
+import { In, IsNull } from "typeorm";
 import {
   PushSubscriptionService,
   ENDPOINT_FINGERPRINT_LENGTH,
@@ -14,6 +14,7 @@ import {
   PUSH_TEST_CONCURRENCY,
   PUSH_TEST_WORST_CASE_MS,
   RETIRED_DEVICE_RETENTION_DAYS,
+  HELD_DEVICE_RETENTION_DAYS,
   hashEndpoint,
 } from "./push-subscription.service";
 import { PushConfigService } from "./push-config.service";
@@ -71,6 +72,7 @@ function storedDevice(overrides: Partial<PushSubscription> = {}) {
     failureCount: 0,
     disabledAt: null,
     disabledReason: null,
+    heldAt: null,
     ...overrides,
   } as PushSubscription;
 }
@@ -365,6 +367,23 @@ describe("PushSubscriptionService", () => {
       expect(sql).toContain("failure_count = 0");
     });
 
+    // A resume after a sign-out is a re-registration by the same account, so
+    // the only arm that may clear the hold is the one the user_id guard covers.
+    it("clears a hold on the conflict arm, under the same ownership guard", async () => {
+      await service.subscribe(USER, DTO, null);
+
+      const [sql] = manager.query.mock.calls.find(([s]) =>
+        String(s).includes("INSERT INTO push_subscriptions"),
+      )!;
+      const updateArm = String(sql).slice(String(sql).indexOf("DO UPDATE"));
+      expect(updateArm).toContain("held_at = NULL");
+      expect(updateArm.indexOf("held_at = NULL")).toBeLessThan(
+        updateArm.indexOf(
+          "WHERE push_subscriptions.user_id = EXCLUDED.user_id",
+        ),
+      );
+    });
+
     // The response is a read model: on the DO UPDATE arm the stored device name
     // may be the one already there (COALESCE), which this request never saw.
     it("builds the response from the committed row, not from the request", async () => {
@@ -547,6 +566,44 @@ describe("PushSubscriptionService", () => {
     });
   });
 
+  describe("hold", () => {
+    it("binds the device and the caller in one guarded update", async () => {
+      manager.query.mockResolvedValue([[], 1]);
+
+      await service.hold(USER, DEVICE_ID);
+
+      expect(manager.query).toHaveBeenCalledTimes(1);
+      const [sql, params] = manager.query.mock.calls[0];
+      expect(String(sql)).toContain("SET held_at = CURRENT_TIMESTAMP");
+      expect(String(sql)).toContain(
+        "WHERE id = $1 AND user_id = $2 AND disabled_at IS NULL",
+      );
+      expect(params).toEqual([DEVICE_ID, USER]);
+    });
+
+    // The client reads any refusal as "release instead", so a foreign, missing
+    // or retired row must answer rather than succeed over nothing.
+    it("reports a device that is not the caller's, or is retired, as missing", async () => {
+      manager.query.mockResolvedValue([[], 0]);
+
+      await expect(service.hold(OTHER_USER, DEVICE_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("exposes the hold on the device list", async () => {
+      subscriptionRepo.find.mockResolvedValue([
+        storedDevice({ heldAt: new Date("2026-10-09T08:00:00Z") }),
+        storedDevice({ id: "other" }),
+      ]);
+
+      const devices = await service.listForUser(USER);
+
+      expect(devices[0].heldAt).toBe("2026-10-09T08:00:00.000Z");
+      expect(devices[1].heldAt).toBeNull();
+    });
+  });
+
   describe("sendTest", () => {
     it("refuses when the instance has push switched off", async () => {
       pushConfig.getPublicConfig.mockResolvedValue({
@@ -575,6 +632,21 @@ describe("PushSubscriptionService", () => {
       expect(where.where.userId).toBe(USER);
       expect(where.where.disabledAt).toBeDefined();
       expect(sender.send).toHaveBeenCalledTimes(1);
+    });
+
+    // INV-PUSH-011: a signed-out device receives nothing, test sends included.
+    it("skips held devices, and refuses when only held devices remain", async () => {
+      subscriptionRepo.find.mockResolvedValue([]);
+
+      await expect(service.sendTest(USER)).rejects.toThrow(BadRequestException);
+
+      const [[query]] = subscriptionRepo.find.mock.calls;
+      expect(query.where).toEqual({
+        userId: USER,
+        disabledAt: IsNull(),
+        heldAt: IsNull(),
+      });
+      expect(sender.send).not.toHaveBeenCalled();
     });
 
     it("carries no financial detail across the push service", async () => {
@@ -792,6 +864,14 @@ describe("PushSubscriptionService", () => {
       expect(sender.send).not.toHaveBeenCalled();
     });
 
+    it("never selects a held device (INV-PUSH-011)", async () => {
+      await service.sendToUser(USER, payload as never);
+
+      const [[query]] = subscriptionRepo.find.mock.calls;
+      expect(query.where.heldAt).toEqual(IsNull());
+      expect(query.where.disabledAt).toEqual(IsNull());
+    });
+
     it("fans out to the caller's live devices with the given payload", async () => {
       subscriptionRepo.find.mockResolvedValue([storedDevice()]);
       manager.query.mockResolvedValue([[{ id: DEVICE_ID }], 1]);
@@ -1007,6 +1087,28 @@ describe("PushSubscriptionService", () => {
         (Date.now() - cutoff.getTime()) / (24 * 60 * 60 * 1000),
       );
       expect(days).toBe(RETIRED_DEVICE_RETENTION_DAYS);
+    });
+
+    it("deletes held rows only once the hold retention has passed", async () => {
+      manager.query.mockResolvedValue([[], 0]);
+
+      await service.purgeRetiredDevices();
+
+      const held = manager.query.mock.calls.find(([sql]) =>
+        String(sql).includes("held_at"),
+      );
+      expect(held).toBeDefined();
+      const [sql, params] = held!;
+      expect(String(sql)).toContain("DELETE FROM push_subscriptions");
+      // Without the NOT NULL every signed-in device goes; without the cutoff a
+      // device signed out an hour ago loses its resume.
+      expect(String(sql)).toContain("held_at IS NOT NULL");
+      expect(String(sql)).toContain("held_at < $1");
+      const cutoff = (params as [Date])[0];
+      const days = Math.round(
+        (Date.now() - cutoff.getTime()) / (24 * 60 * 60 * 1000),
+      );
+      expect(days).toBe(HELD_DEVICE_RETENTION_DAYS);
     });
 
     // A cron has no request to inherit an identity from, so the real
