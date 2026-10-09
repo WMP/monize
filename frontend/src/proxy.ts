@@ -92,11 +92,16 @@ function nextWithCsp(request: NextRequest): NextResponse {
   response.headers.set('Content-Security-Policy', csp);
   if (!fromCookie) {
     // Persist the detected locale so subsequent requests are deterministic
-    // and the backend (nestjs-i18n CookieResolver) sees the same value.
+    // and the backend (nestjs-i18n CookieResolver) sees the same value. Not
+    // HttpOnly: the language pickers rewrite it from the client. Secure on the
+    // same condition as the backend's auth cookies.
     response.cookies.set(LOCALE_COOKIE, locale, {
       path: '/',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 365,
+      secure:
+        process.env.NODE_ENV === 'production' &&
+        process.env.DISABLE_HTTPS_HEADERS !== 'true',
     });
   }
   return response;

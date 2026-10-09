@@ -379,6 +379,44 @@ describe('proxy security headers', () => {
   });
 
   /**
+   * The detected-locale cookie is not HttpOnly (the language pickers rewrite
+   * it from the client), so Secure is what keeps it off plain HTTP. It follows
+   * the backend's auth cookies: production, unless HTTPS headers are disabled.
+   */
+  describe('detected-locale cookie', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    async function localeCookie() {
+      const response = await proxy(
+        makeRequest('/login', { headers: { accept: 'text/html' } }),
+      );
+      return response.cookies.get('NEXT_LOCALE');
+    }
+
+    it('is Secure in production', async () => {
+      vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv('DISABLE_HTTPS_HEADERS', '');
+      const cookie = await localeCookie();
+      expect(cookie?.secure).toBe(true);
+      expect(cookie?.sameSite).toBe('lax');
+    });
+
+    it('is not Secure when DISABLE_HTTPS_HEADERS is set', async () => {
+      vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv('DISABLE_HTTPS_HEADERS', 'true');
+      expect((await localeCookie())?.secure).toBe(false);
+    });
+
+    it('is not Secure outside production', async () => {
+      vi.stubEnv('NODE_ENV', 'development');
+      vi.stubEnv('DISABLE_HTTPS_HEADERS', '');
+      expect((await localeCookie())?.secure).toBe(false);
+    });
+  });
+
+  /**
    * The document scanner compiles a WebAssembly build in a worker, and under a
    * nonce policy `WebAssembly.instantiate` is refused without this source --
    * silently, with nothing in the console pointing at the CSP. It permits WASM
