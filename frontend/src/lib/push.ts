@@ -47,6 +47,13 @@ export interface PushDevice {
   lastSuccessAt: string | null;
   disabledAt: string | null;
   disabledReason: PushDisabledReason | null;
+  /**
+   * When this device's account signed out of the browser it lives in. Nothing
+   * is delivered to it until that account signs in there again, and then it
+   * resumes on its own. Absent on a response from an older backend, and read
+   * as not held, which is the only state such a backend has.
+   */
+  heldAt?: string | null;
 }
 
 export interface PushConfig {

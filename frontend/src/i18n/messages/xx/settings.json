@@ -279,6 +279,7 @@
       "sendingTestButton": "[XX-Sending...-XX]",
       "removeButton": "[XX-Remove-XX]",
       "thisDevice": "[XX-This device-XX]",
+      "held": "[XX-Signed out on this device. Push resumes when you sign in here again.-XX]",
       "unifiedpushBadge": "[XX-UnifiedPush-XX]",
       "unnamedDevice": "[XX-Unnamed device-XX]",
       "noLiveDevices": "[XX-No device is registered yet. Enable push on this device to send a test.-XX]",

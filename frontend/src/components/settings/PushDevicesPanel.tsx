@@ -263,6 +263,10 @@ export function PushDevicesPanel() {
   // listed with the copy telling the user to enable push again, and hiding the
   // button on the strength of that row left them with the instruction and no
   // way to follow it.
+  //
+  // A HELD row of this browser is one: the reader is signed in, so
+  // `usePushResumeOnSignIn` is already resuming it, and an Enable offered here
+  // would duplicate that work.
   const registeredHere = devices.find(
     (device) =>
       thisDevice !== null &&
@@ -270,6 +274,10 @@ export function PushDevicesPanel() {
       !device.disabledAt,
   );
   const liveDevices = devices.filter((device) => !device.disabledAt);
+  // What a test send can reach: a held device is live but receives nothing
+  // until its account signs in there again, and the server answers a test over
+  // held devices alone with "no devices".
+  const deliverableDevices = liveDevices.filter((device) => !device.heldAt);
 
   const handleRemove = async (device: PushDevice) => {
     setRemovingId(device.id);
@@ -431,10 +439,21 @@ export function PushDevicesPanel() {
                     </span>
                   )}
                 </p>
-                {device.disabledAt && (
+                {device.disabledAt ? (
                   <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
                     {t(`disabledReason.${device.disabledReason ?? 'GONE'}`)}
                   </p>
+                ) : (
+                  device.heldAt && (
+                    // Its own state, neither active nor retired: the endpoint
+                    // is healthy and the user has nothing to repair.
+                    <p
+                      className="mt-0.5 text-xs text-gray-600 dark:text-gray-300"
+                      data-testid="push-device-held"
+                    >
+                      {t('held')}
+                    </p>
+                  )
                 )}
                 {/* What tells one registration from another. `deviceName` is
                     derived from the user agent, so several browsers on one
@@ -524,7 +543,7 @@ export function PushDevicesPanel() {
         <Button
           variant="outline"
           size="sm"
-          disabled={isSendingTest || liveDevices.length === 0}
+          disabled={isSendingTest || deliverableDevices.length === 0}
           onClick={handleSendTest}
         >
           {isSendingTest ? t('sendingTestButton') : t('sendTestButton')}

@@ -495,6 +495,71 @@ describe('PushDevicesPanel', () => {
     ).not.toBeInTheDocument();
   });
 
+  describe('a device held across a sign-out', () => {
+    const HELD_AT = '2026-10-09T08:00:00.000Z';
+
+    it('names the hold as its own state, not a retirement', async () => {
+      mockListDevices.mockResolvedValue([
+        device({
+          id: 'd-2',
+          endpointFingerprint: OTHER_DEVICE,
+          deviceName: 'Safari on iOS',
+          heldAt: HELD_AT,
+        }),
+      ]);
+
+      render(<PushDevicesPanel />);
+
+      expect(await screen.findByTestId('push-device-held')).toHaveTextContent(
+        'Signed out on this device. Push resumes when you sign in here again.',
+      );
+      expect(screen.queryByText(/Enable push again/i)).not.toBeInTheDocument();
+    });
+
+    it('can still be removed', async () => {
+      mockListDevices.mockResolvedValue([
+        device({
+          id: 'd-2',
+          endpointFingerprint: OTHER_DEVICE,
+          deviceName: 'Safari on iOS',
+          heldAt: HELD_AT,
+        }),
+      ]);
+      mockRemoveDevice.mockResolvedValue(undefined);
+
+      render(<PushDevicesPanel />);
+      await screen.findByText('Safari on iOS');
+
+      fireEvent.click(screen.getByRole('button', { name: /remove/i }));
+      await waitFor(() => expect(mockRemoveDevice).toHaveBeenCalledWith('d-2'));
+    });
+
+    // The reader is signed in, so the resume hook is already re-registering it.
+    it("counts this browser's held row as registered here", async () => {
+      mockListDevices.mockResolvedValue([device({ heldAt: HELD_AT })]);
+      mockCurrentFingerprint.mockResolvedValue(THIS_DEVICE);
+
+      render(<PushDevicesPanel />);
+
+      await screen.findByTestId('push-device-held');
+      expect(
+        screen.queryByRole('button', { name: /enable on this device/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    // The server answers a test over held devices alone with "no devices".
+    it('offers no test send when every live device is held', async () => {
+      mockListDevices.mockResolvedValue([device({ heldAt: HELD_AT })]);
+
+      render(<PushDevicesPanel />);
+
+      await screen.findByTestId('push-device-held');
+      expect(
+        screen.getByRole('button', { name: /send test notification/i }),
+      ).toBeDisabled();
+    });
+  });
+
   // The whole point of the reason column: each of the three needs a different
   // repair, and "unavailable" with no cause is a dead end.
   it.each([

@@ -248,6 +248,22 @@ describe('NotificationPreferencesMatrix', () => {
     ).toBeInTheDocument();
   });
 
+  // A held device (its account signed out of that browser) resumes on the next
+  // sign-in there, so its preferences still decide what it will receive.
+  it('keeps the push column when the only live device is held', async () => {
+    listDevices.mockResolvedValue([
+      { ...liveDevice, heldAt: '2026-10-09T08:00:00Z' },
+      disabledDevice,
+    ]);
+    await renderMatrix();
+    expect(screen.getAllByRole('switch')[2]).not.toBeDisabled(); // PAYMENTS push
+    expect(
+      screen.queryByText(
+        'No device is registered for push, so this channel cannot deliver.',
+      ),
+    ).toBeNull();
+  });
+
   // The regression this section was missing: the matrix could say the push
   // column needed a device and offer nothing but a pointer to another panel.
   // The channel is registered per ENDPOINT, so the action belongs here.
