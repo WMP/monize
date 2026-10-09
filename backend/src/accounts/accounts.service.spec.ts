@@ -769,6 +769,62 @@ describe("AccountsService", () => {
       ).toBeNull();
     });
 
+    describe("payment source account", () => {
+      const mortgage = {
+        ...mockAccount,
+        id: "mortgage-1",
+        accountType: "MORTGAGE",
+        sourceAccountId: "chequing-old",
+        scheduledTransactionId: "sched-1",
+      };
+
+      it("moves the linked schedule to a changed source account", async () => {
+        mockQueryRunner.manager.findOne
+          .mockResolvedValueOnce({ ...mortgage })
+          .mockResolvedValueOnce({ id: "chequing-new", isClosed: false })
+          .mockResolvedValueOnce({ id: "sched-1", accountId: "chequing-old" });
+        mockQueryRunner.manager.find.mockResolvedValue([]);
+
+        await service.update("user-1", "mortgage-1", {
+          sourceAccountId: "chequing-new",
+        });
+
+        expect(
+          mockQueryRunner.manager.save.mock.calls[0][0].sourceAccountId,
+        ).toBe("chequing-new");
+        expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
+          expect.anything(),
+          { id: "sched-1", userId: "user-1" },
+          { accountId: "chequing-new" },
+        );
+      });
+
+      it("refuses an unowned source account before writing", async () => {
+        mockQueryRunner.manager.findOne
+          .mockResolvedValueOnce({ ...mortgage })
+          .mockResolvedValueOnce(null);
+
+        await expect(
+          service.update("user-1", "mortgage-1", {
+            sourceAccountId: "someone-elses",
+          }),
+        ).rejects.toThrow(BadRequestException);
+        expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
+        expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
+      });
+
+      it("touches nothing when the form resends the stored source", async () => {
+        mockQueryRunner.manager.findOne.mockResolvedValue({ ...mortgage });
+
+        await service.update("user-1", "mortgage-1", {
+          sourceAccountId: "chequing-old",
+        });
+
+        expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
+        expect(mockQueryRunner.manager.findOne).toHaveBeenCalledTimes(1);
+      });
+    });
+
     it("throws BadRequestException for closed account", async () => {
       mockQueryRunner.manager.findOne.mockResolvedValue({
         ...mockAccount,

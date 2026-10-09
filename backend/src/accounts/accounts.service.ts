@@ -71,6 +71,10 @@ import {
 import { assertMortgageMethodTerms } from "./mortgage-installment.util";
 import { applyMortgageMethodColumns } from "./mortgage-method-columns.util";
 import {
+  assertLoanSourceAccount,
+  reassignLoanSourceAccount,
+} from "./loan-source-account";
+import {
   DatedInstallment,
   derivedInstallmentFacts,
 } from "./mortgage-installment-facts";
@@ -957,8 +961,20 @@ export class AccountsService {
           account.paymentStartDate = updateAccountDto.paymentStartDate
             ? new Date(updateAccountDto.paymentStartDate)
             : null;
-        if (updateAccountDto.sourceAccountId !== undefined)
-          account.sourceAccountId = updateAccountDto.sourceAccountId;
+        // A value difference, not the field being sent: the form resends it.
+        // The schedule and the settlement rules follow it after the save.
+        const sourceAccountChanged =
+          updateAccountDto.sourceAccountId !== undefined &&
+          updateAccountDto.sourceAccountId !== account.sourceAccountId;
+        if (sourceAccountChanged) {
+          await assertLoanSourceAccount(
+            m,
+            userId,
+            id,
+            updateAccountDto.sourceAccountId!,
+          );
+          account.sourceAccountId = updateAccountDto.sourceAccountId!;
+        }
         if (updateAccountDto.principalCategoryId !== undefined)
           account.principalCategoryId = updateAccountDto.principalCategoryId;
         if (updateAccountDto.interestCategoryId !== undefined)
@@ -1088,6 +1104,15 @@ export class AccountsService {
         }
 
         const saved = await m.save(account);
+        if (sourceAccountChanged) {
+          await reassignLoanSourceAccount(
+            m,
+            userId,
+            saved,
+            before.sourceAccountId,
+            saved.sourceAccountId!,
+          );
+        }
         // A changed method leaves the template at the previous rule's
         // installment; reprice it in this transaction, after the account row
         // it reads (spec section 5.6).

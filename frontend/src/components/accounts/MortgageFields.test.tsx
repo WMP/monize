@@ -237,6 +237,8 @@ describe('MortgageFields', () => {
     expect(screen.getByText('Payment From Account (required)')).toBeInTheDocument();
     expect(screen.getByText('Main Chequing (CAD)')).toBeInTheDocument();
     expect(screen.getByText('Savings (CAD)')).toBeInTheDocument();
+    // The edit-only note about moving the schedule has nothing to move on create
+    expect(screen.queryByText(/moves the upcoming scheduled payments/)).not.toBeInTheDocument();
   });
 
   it('renders interest category select with sorted categories', () => {
@@ -524,7 +526,11 @@ describe('MortgageFields', () => {
     // Payment-setup fields (create-only) should be hidden
     expect(screen.queryByText('Payment Frequency (required)')).not.toBeInTheDocument();
     expect(screen.queryByText('First Payment Date (required)')).not.toBeInTheDocument();
-    expect(screen.queryByText('Payment From Account (required)')).not.toBeInTheDocument();
+    // The paying account stays editable; the server moves the schedule and rule with it
+    expect(screen.getByText('Payment From Account (required)')).toBeInTheDocument();
+    expect(
+      screen.getByText(/moves the upcoming scheduled payments and the payment matching rule/),
+    ).toBeInTheDocument();
     // Recognition settings (interest category + overpayment) stay available on edit
     expect(screen.getByText('Interest Category')).toBeInTheDocument();
     expect(screen.getByText('Overpayment recognition')).toBeInTheDocument();
