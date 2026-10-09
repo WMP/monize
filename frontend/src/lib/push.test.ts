@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import apiClient from './api';
+import { cleanup } from '@/test/render';
 import { useAuthStore } from '@/store/authStore';
 import {
   ENDPOINT_FINGERPRINT_LENGTH,
@@ -1283,6 +1284,9 @@ describe('holding push across a sign-out, and resuming it', () => {
   });
 
   afterEach(() => {
+    // Nothing is rendered here, but the store reset still follows cleanup()
+    // (`test-hygiene.test.ts`): a no-op unmount costs nothing.
+    cleanup();
     vi.unstubAllGlobals();
     useAuthStore.setState({ user: null });
   });
