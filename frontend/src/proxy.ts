@@ -4,6 +4,7 @@ import { createLogger } from '@/lib/logger';
 import { SHARE_PAGE_PATH, SHARE_TARGET_PATH } from '@/lib/share-target';
 import { isPublicPath } from '@/lib/public-paths';
 import { LOCALE_COOKIE, LOCALE_HEADER } from '@/i18n/config';
+import { PATHNAME_HEADER } from '@/i18n/client-messages';
 import {
   backendBaseUrl,
   backendRequestHeaders,
@@ -81,6 +82,9 @@ function nextWithCsp(request: NextRequest): NextResponse {
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-nonce', nonce);
+  // Overwritten unconditionally so a client cannot choose the root layout's
+  // message scope (src/i18n/client-messages.ts).
+  requestHeaders.set(PATHNAME_HEADER, request.nextUrl.pathname);
   if (process.env.DISABLE_HTTPS_HEADERS !== 'true') {
     requestHeaders.set('x-https-headers-active', 'true');
   }

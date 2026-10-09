@@ -378,6 +378,17 @@ describe('proxy security headers', () => {
     expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
   });
 
+  it('hands the root layout the pathname it saw, overwriting a client-sent one', async () => {
+    const response = await proxy(
+      makeRequest('/login', {
+        headers: { accept: 'text/html', 'x-pathname': '/dashboard' },
+      }),
+    );
+    // NextResponse.next({ request: { headers } }) forwards each overridden
+    // request header under this prefix.
+    expect(response.headers.get('x-middleware-request-x-pathname')).toBe('/login');
+  });
+
   /**
    * The detected-locale cookie is not HttpOnly (the language pickers rewrite
    * it from the client), so Secure is what keeps it off plain HTTP. It follows
