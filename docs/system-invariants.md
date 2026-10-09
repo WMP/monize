@@ -167,7 +167,7 @@ implied.
 | INV-RULE-002 | A transaction rule applies inside the transaction that inserts the row, on every creation path | partial |
 | INV-RULE-003 | The preview, the draft test and the commit of a transaction rule are one planner, and a run commits only the plan the person previewed | partial |
 | INV-RULE-004 | A transaction rule is evaluated only for a row whose date is known and inside the rule's active window | partial |
-| INV-RULE-005 | A rule pass that settles loan installments folds chronologically, and its preview and commit fold the same | unenforced |
+| INV-RULE-005 | A rule pass that settles loan installments folds chronologically, and its preview and commit fold the same | enforced |
 | INV-RECEIPT-001 | A receipt mailbox is read, never written | enforced |
 | INV-RECEIPT-002 | A receipt email is stored once, and the poll cursor moves with the rows it covers | enforced |
 | INV-RECEIPT-003 | A receipt changes the ledger only through the review card and the confirm path, and never moves money | enforced |
@@ -175,7 +175,6 @@ implied.
 | INV-RECEIPT-005 | A mailbox password or OAuth token is encrypted at rest and never returned | enforced |
 | INV-RECEIPT-006 | One poll per mailbox at a time across replicas | enforced |
 | INV-RECEIPT-007 | An OAuth callback completes only the flow the same user started, once | enforced |
-| INV-RULE-005 | A rule pass that settles loan installments folds chronologically, and its preview and commit fold the same | enforced |
 
 ## Imports
 
