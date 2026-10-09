@@ -3027,7 +3027,12 @@ CREATE TABLE push_subscriptions (
     last_success_at TIMESTAMP,
     failure_count INTEGER NOT NULL DEFAULT 0,
     disabled_at TIMESTAMP,
-    disabled_reason VARCHAR(40)
+    disabled_reason VARCHAR(40),
+    -- A push device whose account signed out of this browser. Delivery skips it
+    -- until the same account signs in there again (the subscribe upsert clears
+    -- it). A healthy endpoint, so not a disable: `disabled_at` asks the user for
+    -- a repair, and a hold needs none.
+    held_at TIMESTAMP
 );
 
 -- Globally unique, not unique per user, and that is the security property.
