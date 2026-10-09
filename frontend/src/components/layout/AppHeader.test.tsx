@@ -33,6 +33,20 @@ vi.mock('@/lib/auth', () => ({
   },
 }));
 
+// The sign-out's push step, recorded in the same sequence as the session end.
+const signOutOrder: string[] = [];
+const mockHoldPush = vi.fn(async () => {
+  signOutOrder.push('holdPush');
+});
+const mockReleasePush = vi.fn(async () => {
+  signOutOrder.push('releasePush');
+});
+vi.mock('@/lib/push', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/push')>()),
+  holdPushForSignOut: () => mockHoldPush(),
+  releasePushForSignOut: () => mockReleasePush(),
+}));
+
 // Mock logger
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({
@@ -135,6 +149,21 @@ describe('AppHeader', () => {
       expect(mockLogout).toHaveBeenCalled();
       expect(mockPush).toHaveBeenCalledWith('/login');
     });
+  });
+
+  // Holding the row needs the session that is ending, so it runs first; and a
+  // sign-out holds, while only account deletion releases in full.
+  it('holds push before ending the session, and does not release it', async () => {
+    signOutOrder.length = 0;
+    mockApiLogout.mockImplementationOnce(async () => {
+      signOutOrder.push('authLogout');
+    });
+    render(<AppHeader />);
+    fireEvent.click(screen.getByRole('button', { name: /logout/i }));
+
+    await waitFor(() => expect(mockLogout).toHaveBeenCalled());
+    expect(signOutOrder).toEqual(['holdPush', 'authLogout']);
+    expect(mockReleasePush).not.toHaveBeenCalled();
   });
 
   it('clears the incomplete-logout flag on a confirmed logout', async () => {

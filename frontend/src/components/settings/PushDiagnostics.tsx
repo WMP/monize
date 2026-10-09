@@ -194,6 +194,9 @@ export function PushDiagnostics() {
           ? 'this account'
           : 'another account',
     );
+    // Whether that account signed out here with the server holding its row,
+    // which is what the next sign-in by the same account resumes.
+    add('registeredEndpoint marker.held', marker === null ? 'n/a' : String(marker.held));
 
     // The server's view: is the channel on, and does the server hold a live row
     // for this browser.
