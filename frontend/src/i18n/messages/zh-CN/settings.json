@@ -279,6 +279,7 @@
       "sendingTestButton": "正在发送...",
       "removeButton": "移除",
       "thisDevice": "此设备",
+      "held": "已在此设备上退出登录。在此重新登录后，推送通知将恢复。",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "未命名设备",
       "noLiveDevices": "尚未注册任何设备。请在此设备上启用推送后再发送测试。",

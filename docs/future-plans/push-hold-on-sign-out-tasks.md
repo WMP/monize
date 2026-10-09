@@ -26,7 +26,7 @@
 | F1 | `lib/push.ts`: marker `held`, `holdDevice`, `holdPushForSignOut`, `resumePushAfterSignIn`; `usePushResumeOnSignIn` in `SwipeShell`; `AppHeader` switches to the hold; banner waits on a held marker | B2, F2 | **live** | [x] |
 | Q1 | Integration spec: hold and resume under RLS enforcement | B2 | none | [x] |
 | D1 | `docs/system-invariants.md` INV-PUSH-011 + INV-PUSH-001 failure paragraph; `docs/frontend/pwa-push-share.md`; `docs/backend/notifications-and-push.md` | F1 | none | [x] |
-| Q2 | Full-locale i18n pass (final commit) | all above | none | [ ] |
+| Q2 | Full-locale i18n pass (final commit) | all above | none | [x] |
 
 ---
 

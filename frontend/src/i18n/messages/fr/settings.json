@@ -279,6 +279,7 @@
       "sendingTestButton": "Envoi...",
       "removeButton": "Supprimer",
       "thisDevice": "Cet appareil",
+      "held": "Déconnecté sur cet appareil. Les notifications push reprennent lorsque vous vous reconnectez ici.",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Appareil sans nom",
       "noLiveDevices": "Aucun appareil enregistré pour l'instant. Activez le push sur cet appareil pour envoyer un test.",

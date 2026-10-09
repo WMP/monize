@@ -279,6 +279,7 @@
       "sendingTestButton": "Wird gesendet ...",
       "removeButton": "Entfernen",
       "thisDevice": "Dieses Gerät",
+      "held": "Auf diesem Gerät abgemeldet. Push-Benachrichtigungen werden fortgesetzt, sobald Sie sich hier wieder anmelden.",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Unbenanntes Gerät",
       "noLiveDevices": "Noch kein Gerät registriert. Aktivieren Sie Push auf diesem Gerät, um einen Test zu senden.",

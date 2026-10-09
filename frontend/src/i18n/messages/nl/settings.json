@@ -279,6 +279,7 @@
       "sendingTestButton": "Versturen...",
       "removeButton": "Verwijderen",
       "thisDevice": "Dit apparaat",
+      "held": "Afgemeld op dit apparaat. Pushmeldingen worden hervat zodra je hier weer inlogt.",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Naamloos apparaat",
       "noLiveDevices": "Nog geen apparaat geregistreerd. Schakel push in op dit apparaat om een test te versturen.",

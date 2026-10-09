@@ -279,6 +279,7 @@
       "sendingTestButton": "Gönderiliyor...",
       "removeButton": "Kaldır",
       "thisDevice": "Bu cihaz",
+      "held": "Bu cihazda oturum kapatıldı. Burada yeniden oturum açtığınızda anlık bildirimler devam eder.",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Adsız cihaz",
       "noLiveDevices": "Henüz kayıtlı cihaz yok. Test göndermek için bu cihazda anlık bildirimleri açın.",

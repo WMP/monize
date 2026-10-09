@@ -279,6 +279,7 @@
       "sendingTestButton": "傳送中...",
       "removeButton": "移除",
       "thisDevice": "此裝置",
+      "held": "已在此裝置上登出。在此重新登入後，推播通知將恢復。",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "未命名裝置",
       "noLiveDevices": "尚未註冊任何裝置。請先在此裝置啟用推播再傳送測試。",

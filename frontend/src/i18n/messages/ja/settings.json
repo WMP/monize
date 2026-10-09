@@ -279,6 +279,7 @@
       "sendingTestButton": "送信中...",
       "removeButton": "削除",
       "thisDevice": "この端末",
+      "held": "この端末ではサインアウトしています。ここで再度サインインすると、プッシュ通知が再開されます。",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "名前のない端末",
       "noLiveDevices": "まだ端末が登録されていません。テストを送信するには、この端末でプッシュを有効にしてください。",

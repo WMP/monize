@@ -279,6 +279,7 @@
       "sendingTestButton": "Enviando...",
       "removeButton": "Quitar",
       "thisDevice": "Este dispositivo",
+      "held": "Sesión cerrada en este dispositivo. Las notificaciones push se reanudan cuando vuelvas a iniciar sesión aquí.",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Dispositivo sin nombre",
       "noLiveDevices": "Aún no hay ningún dispositivo registrado. Activa el push en este dispositivo para enviar una prueba.",

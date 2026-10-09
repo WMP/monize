@@ -279,6 +279,7 @@
       "sendingTestButton": "Đang gửi...",
       "removeButton": "Xóa",
       "thisDevice": "Thiết bị này",
+      "held": "Đã đăng xuất trên thiết bị này. Thông báo đẩy sẽ tiếp tục khi bạn đăng nhập lại tại đây.",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Thiết bị chưa đặt tên",
       "noLiveDevices": "Chưa có thiết bị nào được đăng ký. Hãy bật đẩy trên thiết bị này để gửi thử nghiệm.",

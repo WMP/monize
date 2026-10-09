@@ -279,6 +279,7 @@
       "sendingTestButton": "보내는 중...",
       "removeButton": "삭제",
       "thisDevice": "이 기기",
+      "held": "이 기기에서 로그아웃되었습니다. 여기에서 다시 로그인하면 푸시 알림이 재개됩니다.",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "이름 없는 기기",
       "noLiveDevices": "아직 등록된 기기가 없습니다. 테스트를 보내려면 이 기기에서 푸시를 켜세요.",

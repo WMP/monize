@@ -279,6 +279,7 @@
       "sendingTestButton": "Wysyłanie...",
       "removeButton": "Usuń",
       "thisDevice": "To urządzenie",
+      "held": "Wylogowano na tym urządzeniu. Powiadomienia push zostaną wznowione po ponownym zalogowaniu się tutaj.",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Urządzenie bez nazwy",
       "noLiveDevices": "Nie zarejestrowano jeszcze żadnego urządzenia. Włącz push na tym urządzeniu, aby wysłać test.",

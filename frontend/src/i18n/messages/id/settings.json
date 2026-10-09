@@ -279,6 +279,7 @@
       "sendingTestButton": "Mengirim...",
       "removeButton": "Hapus",
       "thisDevice": "Perangkat ini",
+      "held": "Keluar di perangkat ini. Notifikasi push dilanjutkan saat Anda masuk lagi di sini.",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "Perangkat tanpa nama",
       "noLiveDevices": "Belum ada perangkat terdaftar. Aktifkan push di perangkat ini untuk mengirim uji coba.",
