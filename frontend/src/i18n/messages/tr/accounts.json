@@ -1,7 +1,7 @@
 {
   "paymentMatching": {
-    "toggleLabel": "Bankanın hesaptan çekimini tanı",
-    "toggleHelp": "Bankanız bu ödeme için tek bir hesaptan çekim kaydettiğinde Monize bunu takvimle eşleştirir ve ayrı bir fatura işlemi kaydetmek yerine otomatik olarak anapara ve faize böler.",
+    "toggleLabel": "{kind, select, mortgage {İçe aktarılan banka ödemelerini bu konut kredisiyle eşleştir} other {İçe aktarılan banka ödemelerini bu krediyle eşleştir}}",
+    "toggleHelp": "İçe aktarılan bir banka işlemi alıcı kalıbıyla eşleştiğinde Monize onu planlanan ödemeye mahsup eder ve ayrı bir fatura işlemi kaydetmek yerine anapara ve faize böler.",
     "payeePattern": "Alacaklı deseni",
     "payeePatternPlaceholder": "ör. *ING HYPOTHEKEN*",
     "descriptionPattern": "Açıklama deseni (isteğe bağlı)",

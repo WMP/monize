@@ -16,6 +16,8 @@ interface PaymentMatchingFieldsProps {
   descriptionPatternError?: string;
   /** The schedule's source account, named once the switch is on. */
   sourceAccountName?: string;
+  /** Names the account in the switch label ("this mortgage" / "this loan"). */
+  kind: 'mortgage' | 'loan';
 }
 
 /**
@@ -35,15 +37,17 @@ export function PaymentMatchingFields({
   onDescriptionPatternChange,
   descriptionPatternError,
   sourceAccountName,
+  kind,
 }: PaymentMatchingFieldsProps) {
   const t = useTranslations('accounts');
+  const toggleLabel = t('paymentMatching.toggleLabel', { kind });
 
   return (
     <div className="space-y-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
       <div className="flex items-center gap-2">
-        <ToggleSwitch checked={enabled} onChange={onToggle} label={t('paymentMatching.toggleLabel')} />
+        <ToggleSwitch checked={enabled} onChange={onToggle} label={toggleLabel} />
         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          {t('paymentMatching.toggleLabel')}
+          {toggleLabel}
         </span>
         <InfoTooltip text={t('paymentMatching.toggleHelp')} placement="top" usePortal />
       </div>

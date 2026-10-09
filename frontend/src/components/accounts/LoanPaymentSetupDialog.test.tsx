@@ -642,7 +642,7 @@ describe('LoanPaymentSetupDialog', () => {
       expect(autoPost).toBeChecked();
 
       await act(async () =>
-        fireEvent.click(screen.getByRole('switch', { name: "Recognise the bank's debit" })),
+        fireEvent.click(screen.getByRole('switch', { name: 'Match imported bank payments to this loan' })),
       );
 
       expect(autoPost).not.toBeChecked();
@@ -658,7 +658,7 @@ describe('LoanPaymentSetupDialog', () => {
         fireEvent.click(screen.getByLabelText(/Automatically post transactions when due/i)),
       );
       await act(async () =>
-        fireEvent.click(screen.getByRole('switch', { name: "Recognise the bank's debit" })),
+        fireEvent.click(screen.getByRole('switch', { name: 'Match imported bank payments to this loan' })),
       );
       await act(async () =>
         fireEvent.change(screen.getByLabelText('Payee pattern'), {
@@ -684,7 +684,7 @@ describe('LoanPaymentSetupDialog', () => {
       await renderDialog();
 
       await act(async () =>
-        fireEvent.click(screen.getByRole('switch', { name: "Recognise the bank's debit" })),
+        fireEvent.click(screen.getByRole('switch', { name: 'Match imported bank payments to this loan' })),
       );
       await act(async () =>
         fireEvent.change(screen.getByLabelText('Payee pattern'), {
@@ -707,7 +707,7 @@ describe('LoanPaymentSetupDialog', () => {
       await renderDialog();
 
       await act(async () =>
-        fireEvent.click(screen.getByRole('switch', { name: "Recognise the bank's debit" })),
+        fireEvent.click(screen.getByRole('switch', { name: 'Match imported bank payments to this loan' })),
       );
       await act(async () =>
         fireEvent.change(screen.getByLabelText('Payee pattern'), {
@@ -727,7 +727,7 @@ describe('LoanPaymentSetupDialog', () => {
       await renderDialog();
 
       await act(async () =>
-        fireEvent.click(screen.getByRole('switch', { name: "Recognise the bank's debit" })),
+        fireEvent.click(screen.getByRole('switch', { name: 'Match imported bank payments to this loan' })),
       );
 
       expect(screen.getByText(/Matched against debits from My Chequing\./)).toBeInTheDocument();

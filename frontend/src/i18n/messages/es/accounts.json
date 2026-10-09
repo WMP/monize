@@ -1,7 +1,7 @@
 {
   "paymentMatching": {
-    "toggleLabel": "Reconocer el adeudo del banco",
-    "toggleHelp": "Cuando tu banco registra un único adeudo para este pago, Monize lo compara con el calendario y lo divide automáticamente en capital e intereses, en lugar de registrar una transacción de factura por separado.",
+    "toggleLabel": "{kind, select, mortgage {Asociar los pagos bancarios importados a esta hipoteca} other {Asociar los pagos bancarios importados a este préstamo}}",
+    "toggleHelp": "Cuando una transacción bancaria importada coincide con el patrón de beneficiario, Monize la usa para liquidar el pago programado y la divide en capital e intereses, en lugar de registrar una transacción de factura por separado.",
     "payeePattern": "Patrón del beneficiario",
     "payeePatternPlaceholder": "p. ej. *ING HYPOTHEKEN*",
     "descriptionPattern": "Patrón de la descripción (opcional)",

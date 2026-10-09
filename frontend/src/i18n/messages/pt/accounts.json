@@ -1,7 +1,7 @@
 {
   "paymentMatching": {
-    "toggleLabel": "Reconhecer o débito do banco",
-    "toggleHelp": "Quando o seu banco registar um único débito para este pagamento, o Monize associa-o ao calendário e divide-o automaticamente em capital e juros, em vez de registar uma transação de fatura separada.",
+    "toggleLabel": "{kind, select, mortgage {Associar os pagamentos bancários importados a este crédito habitação} other {Associar os pagamentos bancários importados a este empréstimo}}",
+    "toggleHelp": "Quando uma transação bancária importada corresponde ao padrão do beneficiário, o Monize usa-a para liquidar o pagamento agendado e divide-a em capital e juros, em vez de registar uma transação de fatura separada.",
     "payeePattern": "Padrão do beneficiário",
     "payeePatternPlaceholder": "ex.: *ING HYPOTHEKEN*",
     "descriptionPattern": "Padrão da descrição (opcional)",

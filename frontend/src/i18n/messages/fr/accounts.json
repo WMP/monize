@@ -1,7 +1,7 @@
 {
   "paymentMatching": {
-    "toggleLabel": "Reconnaître le prélèvement de la banque",
-    "toggleHelp": "Lorsque votre banque enregistre un seul prélèvement pour ce paiement, Monize le rapproche de l'échéancier et le répartit automatiquement entre capital et intérêts, au lieu d'enregistrer une opération de facture distincte.",
+    "toggleLabel": "{kind, select, mortgage {Associer les paiements bancaires importés à ce prêt hypothécaire} other {Associer les paiements bancaires importés à ce prêt}}",
+    "toggleHelp": "Lorsqu'une opération bancaire importée correspond au modèle de bénéficiaire, Monize l'utilise pour régler le paiement prévu et la répartit entre capital et intérêts, au lieu d'enregistrer une opération de facture distincte.",
     "payeePattern": "Modèle de bénéficiaire",
     "payeePatternPlaceholder": "ex. *ING HYPOTHEKEN*",
     "descriptionPattern": "Modèle de description (facultatif)",

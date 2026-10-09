@@ -1,7 +1,7 @@
 {
   "paymentMatching": {
-    "toggleLabel": "De afschrijving van de bank herkennen",
-    "toggleHelp": "Wanneer je bank één afschrijving voor deze betaling boekt, matcht Monize deze automatisch met het schema en splitst deze in aflossing en rente, in plaats van een afzonderlijke rekeningtransactie te boeken.",
+    "toggleLabel": "{kind, select, mortgage {Geïmporteerde bankbetalingen aan deze hypotheek koppelen} other {Geïmporteerde bankbetalingen aan deze lening koppelen}}",
+    "toggleHelp": "Wanneer een geïmporteerde banktransactie overeenkomt met het begunstigdepatroon, verrekent Monize deze met de geplande betaling en splitst deze in aflossing en rente, in plaats van een afzonderlijke rekeningtransactie te boeken.",
     "payeePattern": "Begunstigdepatroon",
     "payeePatternPlaceholder": "bijv. *ING HYPOTHEKEN*",
     "descriptionPattern": "Omschrijvingspatroon (optioneel)",

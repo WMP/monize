@@ -1,7 +1,7 @@
 {
   "paymentMatching": {
-    "toggleLabel": "Kenali debit dari bank",
-    "toggleHelp": "Saat bank Anda mencatat satu debit untuk pembayaran ini, Monize mencocokkannya dengan jadwal dan memisahkannya secara otomatis menjadi pokok dan bunga, bukan mencatat transaksi tagihan terpisah.",
+    "toggleLabel": "{kind, select, mortgage {Cocokkan pembayaran bank yang diimpor dengan KPR ini} other {Cocokkan pembayaran bank yang diimpor dengan pinjaman ini}}",
+    "toggleHelp": "Saat transaksi bank yang diimpor cocok dengan pola penerima, Monize menggunakannya untuk melunasi pembayaran terjadwal dan memisahkannya menjadi pokok dan bunga, bukan mencatat transaksi tagihan terpisah.",
     "payeePattern": "Pola penerima pembayaran",
     "payeePatternPlaceholder": "mis. *ING HYPOTHEKEN*",
     "descriptionPattern": "Pola deskripsi (opsional)",

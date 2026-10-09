@@ -510,6 +510,7 @@ export function MortgageFields({
             }
             descriptionPatternError={errors.paymentMatchingDescriptionPattern?.message as string | undefined}
             sourceAccountName={sourceAccountName}
+            kind="mortgage"
           />
 
           {/* Mortgage Amortization Preview */}

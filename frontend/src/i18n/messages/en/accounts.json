@@ -4,8 +4,8 @@
     "brokerage": "Brokerage"
   },
   "paymentMatching": {
-    "toggleLabel": "Recognise the bank's debit",
-    "toggleHelp": "When your bank posts one debit for this payment, Monize matches it against the schedule and splits it into principal and interest automatically, instead of posting a separate bill transaction.",
+    "toggleLabel": "{kind, select, mortgage {Match imported bank payments to this mortgage} other {Match imported bank payments to this loan}}",
+    "toggleHelp": "When an imported bank transaction matches the payee pattern, Monize settles the scheduled payment with it and splits it into principal and interest, instead of posting a separate bill transaction.",
     "payeePattern": "Payee pattern",
     "payeePatternPlaceholder": "e.g. *ING HYPOTHEKEN*",
     "descriptionPattern": "Description pattern (optional)",

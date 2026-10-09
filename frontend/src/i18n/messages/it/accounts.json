@@ -1,7 +1,7 @@
 {
   "paymentMatching": {
-    "toggleLabel": "Riconosci l'addebito della banca",
-    "toggleHelp": "Quando la tua banca registra un unico addebito per questo pagamento, Monize lo confronta con il piano e lo suddivide automaticamente in capitale e interessi, invece di registrare una transazione di fattura separata.",
+    "toggleLabel": "{kind, select, mortgage {Associa i pagamenti bancari importati a questo mutuo} other {Associa i pagamenti bancari importati a questo prestito}}",
+    "toggleHelp": "Quando una transazione bancaria importata corrisponde al modello del beneficiario, Monize la usa per saldare il pagamento pianificato e la suddivide in capitale e interessi, invece di registrare una transazione di fattura separata.",
     "payeePattern": "Pattern del beneficiario",
     "payeePatternPlaceholder": "es. *ING HYPOTHEKEN*",
     "descriptionPattern": "Pattern della descrizione (opzionale)",

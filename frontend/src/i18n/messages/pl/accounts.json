@@ -1,7 +1,7 @@
 {
   "paymentMatching": {
-    "toggleLabel": "Rozpoznaj obciążenie z banku",
-    "toggleHelp": "Gdy bank zarejestruje jedno obciążenie za tę płatność, Monize dopasowuje je do harmonogramu i automatycznie dzieli na kapitał i odsetki, zamiast rejestrować osobną transakcję rachunku.",
+    "toggleLabel": "{kind, select, mortgage {Dopasuj zaimportowane płatności bankowe do tego kredytu hipotecznego} other {Dopasuj zaimportowane płatności bankowe do tego kredytu}}",
+    "toggleHelp": "Gdy zaimportowana transakcja bankowa pasuje do wzorca odbiorcy, Monize rozlicza nią zaplanowaną płatność i dzieli ją na kapitał i odsetki, zamiast rejestrować osobną transakcję rachunku.",
     "payeePattern": "Wzorzec odbiorcy",
     "payeePatternPlaceholder": "np. *ING HYPOTHEKEN*",
     "descriptionPattern": "Wzorzec opisu (opcjonalnie)",

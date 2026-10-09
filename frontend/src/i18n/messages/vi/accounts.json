@@ -1,7 +1,7 @@
 {
   "paymentMatching": {
-    "toggleLabel": "Nhận diện khoản ghi nợ của ngân hàng",
-    "toggleHelp": "Khi ngân hàng của bạn ghi một khoản ghi nợ cho khoản thanh toán này, Monize sẽ khớp nó với lịch thanh toán và tự động chia thành gốc và lãi, thay vì ghi một giao dịch hóa đơn riêng.",
+    "toggleLabel": "{kind, select, mortgage {Khớp các khoản thanh toán ngân hàng đã nhập với khoản vay thế chấp này} other {Khớp các khoản thanh toán ngân hàng đã nhập với khoản vay này}}",
+    "toggleHelp": "Khi một giao dịch ngân hàng đã nhập khớp với mẫu người nhận, Monize sẽ dùng nó để thanh toán khoản đã lên lịch và chia thành gốc và lãi, thay vì ghi một giao dịch hóa đơn riêng.",
     "payeePattern": "Mẫu người nhận",
     "payeePatternPlaceholder": "vd. *ING HYPOTHEKEN*",
     "descriptionPattern": "Mẫu mô tả (không bắt buộc)",

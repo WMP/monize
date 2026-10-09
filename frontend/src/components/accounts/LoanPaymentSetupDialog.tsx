@@ -758,6 +758,7 @@ export function LoanPaymentSetupDialog({
                 descriptionPattern={paymentMatchingDescriptionPattern}
                 onDescriptionPatternChange={setPaymentMatchingDescriptionPattern}
                 sourceAccountName={sourceAccountName}
+                kind={isMortgage ? 'mortgage' : 'loan'}
               />
 
               {/* Auto-post */}

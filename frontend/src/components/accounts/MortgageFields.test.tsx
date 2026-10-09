@@ -945,17 +945,17 @@ describe('MortgageFields', () => {
   describe('payment matching', () => {
     it('is offered only while creating', () => {
       const { unmount } = render(<MortgageFields {...defaultProps} />);
-      expect(screen.getByRole('switch', { name: "Recognise the bank's debit" })).toBeInTheDocument();
+      expect(screen.getByRole('switch', { name: 'Match imported bank payments to this mortgage' })).toBeInTheDocument();
       unmount();
       render(<MortgageFields {...defaultProps} isEditing />);
       expect(
-        screen.queryByRole('switch', { name: "Recognise the bank's debit" }),
+        screen.queryByRole('switch', { name: 'Match imported bank payments to this mortgage' }),
       ).not.toBeInTheDocument();
     });
 
     it('prefills the payee pattern from the selected institution when switched on', () => {
       render(<MortgageFields {...defaultProps} institutionName="ING Bank" />);
-      fireEvent.click(screen.getByRole('switch', { name: "Recognise the bank's debit" }));
+      fireEvent.click(screen.getByRole('switch', { name: 'Match imported bank payments to this mortgage' }));
       expect(mockSetValue).toHaveBeenCalledWith('paymentMatchingEnabled', true, { shouldDirty: true });
       expect(mockSetValue).toHaveBeenCalledWith('paymentMatchingPayeePattern', '*ING Bank*', {
         shouldDirty: true,
@@ -971,7 +971,7 @@ describe('MortgageFields', () => {
           paymentMatchingPayeePattern="*Already Typed*"
         />,
       );
-      fireEvent.click(screen.getByRole('switch', { name: "Recognise the bank's debit" }));
+      fireEvent.click(screen.getByRole('switch', { name: 'Match imported bank payments to this mortgage' }));
       expect(mockSetValue).not.toHaveBeenCalledWith(
         'paymentMatchingPayeePattern',
         expect.anything(),

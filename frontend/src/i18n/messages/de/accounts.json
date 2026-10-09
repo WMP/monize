@@ -1,7 +1,7 @@
 {
   "paymentMatching": {
-    "toggleLabel": "Die Bankabbuchung erkennen",
-    "toggleHelp": "Wenn deine Bank eine einzelne Abbuchung für diese Zahlung bucht, gleicht Monize sie automatisch mit dem Zahlungsplan ab und teilt sie in Tilgung und Zinsen auf, statt eine separate Rechnungsbuchung zu erstellen.",
+    "toggleLabel": "{kind, select, mortgage {Importierte Bankzahlungen dieser Hypothek zuordnen} other {Importierte Bankzahlungen diesem Kredit zuordnen}}",
+    "toggleHelp": "Wenn eine importierte Banktransaktion zum Empfängermuster passt, verrechnet Monize sie mit der geplanten Zahlung und teilt sie in Tilgung und Zinsen auf, statt eine separate Rechnungsbuchung zu erstellen.",
     "payeePattern": "Zahlungsempfänger-Muster",
     "payeePatternPlaceholder": "z. B. *ING HYPOTHEKEN*",
     "descriptionPattern": "Beschreibungsmuster (optional)",
