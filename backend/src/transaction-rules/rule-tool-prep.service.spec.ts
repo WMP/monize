@@ -220,6 +220,69 @@ describe("TransactionRuleToolPrepService", () => {
       ]);
     });
 
+    it("resolves settle_loan_installment's loan account and interest category names", async () => {
+      const { service, runService } = build();
+      const condition = {
+        all: [{ field: "payeeText", op: "contains", value: "ING" }],
+      };
+      const prep = await service.prepareCreate(USER_ID, {
+        name: "Mortgage",
+        condition,
+        actions: [
+          {
+            type: "settle_loan_installment",
+            loanAccountName: "Checking",
+            dueDateWindow: { daysBefore: 3, daysAfter: 7 },
+            excess: "extra_principal",
+            shortfall: "refuse",
+            interestCategoryName: "Bills: Streaming",
+          },
+        ],
+      });
+      expect(prep.ok).toBe(true);
+      if (!prep.ok) return;
+      expect(prep.preview.rule.actions).toEqual([
+        {
+          type: "settle_loan_installment",
+          loanAccountId: ACCOUNT_ID,
+          dueDateWindow: { daysBefore: 3, daysAfter: 7 },
+          excess: "extra_principal",
+          shortfall: "refuse",
+          interestCategoryId: CATEGORY_ID,
+        },
+      ]);
+      expect(runService.previewDraft).toHaveBeenCalled();
+    });
+
+    it("refuses an unknown loan account name for settle_loan_installment", async () => {
+      const { service } = build();
+      const prep = await service.prepareCreate(USER_ID, {
+        name: "Mortgage",
+        condition: {
+          all: [{ field: "payeeText", op: "contains", value: "ING" }],
+        },
+        actions: [
+          {
+            type: "settle_loan_installment",
+            loanAccountName: "Nowhere",
+            dueDateWindow: { daysBefore: 3, daysAfter: 7 },
+            excess: "extra_principal",
+            shortfall: "refuse",
+          },
+        ],
+      });
+      expect(prep.ok).toBe(false);
+      if (prep.ok) return;
+      expect(prep.errors).toEqual([
+        {
+          path: "actions[0].loanAccountName",
+          code: "NAME_NOT_FOUND",
+          name: "Nowhere",
+          kind: "accounts",
+        },
+      ]);
+    });
+
     it("resolves names with the shared resolvers and tests the rule with ids", async () => {
       const { service, runService } = build();
       const prep = await service.prepareCreate(USER_ID, {
