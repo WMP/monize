@@ -19,7 +19,7 @@ const logger = createLogger('PushResume');
  * Mounted once, in the authenticated shell, which is where every sign-in path
  * (password, 2FA, OIDC, passkey) lands. It reads the local marker first and
  * makes no request unless the marker is held and names the reader, so an
- * ordinary page load costs nothing. At most one attempt per account per mount.
+ * ordinary page load costs nothing. At most one attempt per sign-in.
  *
  * Nothing here asks for a permission: a resume needs one already granted, and
  * `resumePushAfterSignIn` releases instead when it is not.
@@ -31,7 +31,14 @@ export function usePushResumeOnSignIn(): void {
   const attemptedFor = useRef<string | null>(null);
 
   useEffect(() => {
-    if (userId === null || attemptedFor.current === userId) return;
+    // A sign-out ends the attempt: the shell stays mounted across sign-out and
+    // sign-in (client-side navigation), and the next sign-in by the same
+    // account has a freshly held row to resume.
+    if (userId === null) {
+      attemptedFor.current = null;
+      return;
+    }
+    if (attemptedFor.current === userId) return;
     const marker = readRegisteredEndpoint();
     if (marker === null || !marker.held || marker.userId !== userId) return;
     attemptedFor.current = userId;

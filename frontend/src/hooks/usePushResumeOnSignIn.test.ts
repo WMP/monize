@@ -105,6 +105,30 @@ describe('usePushResumeOnSignIn', () => {
     unsubscribe();
   });
 
+  // The shell stays mounted across a client-side sign-out and sign-in, so the
+  // same account signing in again must get a second attempt.
+  it('resumes again after the same account signs out and back in without a reload', async () => {
+    markRegisteredEndpointHeld('user-1', 'aaaabbbbccccdddd');
+
+    const { rerender } = renderHook(() => usePushResumeOnSignIn());
+    await waitFor(() => expect(mockResume).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      useAuthStore.setState({ isAuthenticated: false, user: null });
+    });
+    rerender();
+    markRegisteredEndpointHeld('user-1', 'aaaabbbbccccdddd');
+    await act(async () => {
+      useAuthStore.setState({
+        isAuthenticated: true,
+        user: { id: 'user-1' } as never,
+      });
+    });
+    rerender();
+
+    await waitFor(() => expect(mockResume).toHaveBeenCalledTimes(2));
+  });
+
   it('does nothing while the instance offers no push', async () => {
     markRegisteredEndpointHeld('user-1', 'aaaabbbbccccdddd');
     mockGetConfig.mockResolvedValue({
