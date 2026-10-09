@@ -16,15 +16,22 @@ import { TransactionsService } from "../transactions/transactions.service";
 import { TransactionToolPrepService } from "../transactions/transaction-tool-prep.service";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionRule } from "../transaction-rules/transaction-rule.entity";
+import { EmailReceipt } from "../email-receipts/entities/email-receipt.entity";
 import { AiReviewRequest } from "./ai-review-request.entity";
 import { AiReviewRequestsService } from "./ai-review-requests.service";
 import {
+  AI_REVIEW_EMAIL_TEXT_MAX_CHARS,
+  AI_REVIEW_MAX_TAG_NAME_LENGTH,
+  AI_REVIEW_MAX_TAG_NAMES,
+  AI_REVIEW_PARSER_EMAIL_TEXT_MAX_CHARS,
   AiReviewInboxItem,
   AiReviewProposalInput,
   AiReviewSubmitResult,
   DEFAULT_AI_REVIEW_TOOL_LIST_LIMIT,
   LlmAiReviewClaim,
+  LlmAiReviewEmailReceipt,
   LlmAiReviewList,
+  LlmAiReviewParserEmail,
   LlmAiReviewRequest,
   MAX_AI_REVIEW_TOOL_LIST_LIMIT,
   StoredAiReviewProposal,
@@ -37,6 +44,15 @@ export const DEFAULT_AI_REVIEW_INBOX_LIMIT = 50;
 const INBOX_STATUSES = ["pending", "claimed", "proposed", "expired"] as const;
 const OPEN_STATUSES = ["pending", "claimed", "proposed"] as const;
 
+/** Whether a text holds a control character (a line break included). */
+function hasControlCharacter(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code < 0x20 || code === 0x7f) return true;
+  }
+  return false;
+}
+
 interface AgentNote {
   reason: string;
   at: string;
@@ -47,6 +63,38 @@ function agentNoteOf(request: AiReviewRequest): AgentNote | undefined {
   return note && typeof note.reason === "string"
     ? { reason: note.reason, at: String(note.at ?? "") }
     : undefined;
+}
+
+/**
+ * What the inbox says about a parser-draft request: the sender domain, how many
+ * emails it names and, once an agent saved its draft, which parser that is.
+ * Null for every other kind.
+ */
+function inboxParserDraft(
+  request: AiReviewRequest,
+): AiReviewInboxItem["parserDraft"] {
+  if (request.kind !== "email_parser_draft") return null;
+  const parserId = (request.proposal as { parserId?: unknown } | null)
+    ?.parserId;
+  return {
+    domain: request.parserDomain ?? "",
+    emailCount: request.emailReceiptIds?.length ?? 0,
+    parserId: typeof parserId === "string" ? parserId : null,
+  };
+}
+
+/** The inbox's view of a stored email: who, what, when -- never its text. */
+function inboxEmail(
+  receipt: EmailReceipt | undefined,
+): AiReviewInboxItem["emailReceipt"] {
+  return receipt
+    ? {
+        id: receipt.id,
+        fromAddress: receipt.fromAddress,
+        subject: receipt.subject,
+        receivedAt: receipt.receivedAt.toISOString(),
+      }
+    : null;
 }
 
 /**
@@ -80,6 +128,9 @@ export class AiReviewWorkService {
       instruction: request.instruction,
       transactionId: request.transactionId,
       ruleId: request.ruleId,
+      emailReceiptId: request.emailReceiptId ?? null,
+      emailReceiptIds: request.emailReceiptIds ?? null,
+      parserDomain: request.parserDomain ?? null,
       claimedByYou: request.claimedBy === caller,
       createdAt: request.createdAt.toISOString(),
       expiresAt: request.expiresAt.toISOString(),
@@ -111,26 +162,149 @@ export class AiReviewWorkService {
   }
 
   /**
-   * Take the oldest pending request for `caller` and read its transaction
+   * Take the oldest pending request (or the one named by `requestId`) for
+   * `caller` and read its transaction
    * through the same projection `list_transactions` uses. A read that fails
    * after the claim gives the request back rather than stranding it.
    */
-  async claim(userId: string, caller: string): Promise<LlmAiReviewClaim> {
-    const request = await this.requests.claimNext(userId, caller);
+  async claim(
+    userId: string,
+    caller: string,
+    requestId?: string,
+  ): Promise<LlmAiReviewClaim> {
+    // A named request is claimed by id (the receipts page hands the assistant
+    // the request it just queued); none is the oldest pending one. A named
+    // request that is not pending, expired or someone else's is "nothing".
+    const request = requestId
+      ? await this.requests.claimById(userId, requestId, caller)
+      : await this.requests.claimNext(userId, caller);
     if (!request) return { request: null };
     try {
+      // A parser-draft request is about emails, not a transaction: its claim
+      // carries the emails and no transaction.
+      if (request.kind === "email_parser_draft") {
+        return {
+          request: this.toLlm(request, caller),
+          emailReceipts: await this.loadParserEmailsForClaim(userId, request),
+        };
+      }
       const transaction = await this.transactionsService.getLlmTransactionById(
         userId,
-        request.transactionId,
+        this.requireTransactionId(request),
       );
-      return { request: this.toLlm(request, caller), transaction };
+      const emailReceipt = await this.loadEmailForClaim(userId, request);
+      return {
+        request: this.toLlm(request, caller),
+        transaction,
+        ...(emailReceipt ? { emailReceipt } : {}),
+      };
     } catch (err) {
       await this.requests.release(userId, request.id, caller, {
         final: false,
-        note: "The transaction could not be read.",
+        note: "The transaction or its email could not be read.",
       });
       throw err;
     }
+  }
+
+  /**
+   * The transaction a request is about. Every kind but `email_parser_draft` has
+   * one (the schema's CHECK), so a null here is a row that should not exist; it is
+   * refused rather than read as "no transaction".
+   */
+  private requireTransactionId(request: AiReviewRequest): string {
+    if (request.transactionId === null) {
+      throw new BadRequestException(
+        tr(
+          "errors.aiReview.noTransaction",
+          "This AI review request is not about a transaction.",
+        ),
+      );
+    }
+    return request.transactionId;
+  }
+
+  /**
+   * The emails of a parser-draft request that still exist, in the order the
+   * request names them: sender, subject, the day the shop sent the order (a
+   * forward's original date, else the arrival day) and the text, each cut to
+   * `AI_REVIEW_PARSER_EMAIL_TEXT_MAX_CHARS`. Read through the user's own scope
+   * by id and owner, so another user's email is absent, never read; a deleted one
+   * is skipped.
+   */
+  private async loadParserEmailsForClaim(
+    userId: string,
+    request: AiReviewRequest,
+  ): Promise<LlmAiReviewParserEmail[]> {
+    const ids = request.emailReceiptIds ?? [];
+    if (ids.length === 0) return [];
+    const receipts = await withScopedDb(this.dataSource, (m) =>
+      m.getRepository(EmailReceipt).find({
+        where: { userId, id: In([...ids]) },
+        select: {
+          id: true,
+          fromAddress: true,
+          subject: true,
+          receivedAt: true,
+          originalSentAt: true,
+          bodyText: true,
+        },
+      }),
+    );
+    const byId = new Map(receipts.map((r) => [r.id, r]));
+    return ids.flatMap((id) => {
+      const receipt = byId.get(id);
+      return receipt
+        ? [
+            {
+              id: receipt.id,
+              fromAddress: receipt.fromAddress,
+              subject: receipt.subject,
+              effectiveDate: (
+                receipt.originalSentAt ?? receipt.receivedAt
+              ).toISOString(),
+              text: receipt.bodyText.slice(
+                0,
+                AI_REVIEW_PARSER_EMAIL_TEXT_MAX_CHARS,
+              ),
+            },
+          ]
+        : [];
+    });
+  }
+
+  /**
+   * The email behind a request of kind `email_receipt`: who sent it, when, and
+   * its text cut to `AI_REVIEW_EMAIL_TEXT_MAX_CHARS`. Read through the user's
+   * own scope by id and owner, so another user's email is absent, never read.
+   * Undefined for any other kind, and when the email was deleted since.
+   */
+  private async loadEmailForClaim(
+    userId: string,
+    request: AiReviewRequest,
+  ): Promise<LlmAiReviewEmailReceipt | undefined> {
+    if (request.kind !== "email_receipt" || !request.emailReceiptId) {
+      return undefined;
+    }
+    const receipt = await withScopedDb(this.dataSource, (m) =>
+      m.getRepository(EmailReceipt).findOne({
+        where: { id: request.emailReceiptId as string, userId },
+        select: {
+          id: true,
+          fromAddress: true,
+          subject: true,
+          receivedAt: true,
+          bodyText: true,
+        },
+      }),
+    );
+    if (!receipt) return undefined;
+    return {
+      fromAddress: receipt.fromAddress,
+      subject: receipt.subject,
+      receivedAt: receipt.receivedAt.toISOString(),
+      text: receipt.bodyText.slice(0, AI_REVIEW_EMAIL_TEXT_MAX_CHARS),
+    };
   }
 
   /** The claim check every agent write starts with; nothing is written before it passes. */
@@ -177,7 +351,8 @@ export class AiReviewWorkService {
       input.splits === undefined &&
       input.categoryName === undefined &&
       input.payeeName === undefined &&
-      input.description === undefined
+      input.description === undefined &&
+      (input.tagNames === undefined || input.tagNames.length === 0)
     ) {
       throw new BadRequestException(
         tr(
@@ -186,6 +361,7 @@ export class AiReviewWorkService {
         ),
       );
     }
+    this.assertTagNames(input.tagNames);
     if (input.splits !== undefined && input.categoryName !== undefined) {
       throw new BadRequestException(
         tr(
@@ -194,9 +370,10 @@ export class AiReviewWorkService {
         ),
       );
     }
+    const transactionId = this.requireTransactionId(request);
     const transaction = await this.transactionsService.findOne(
       userId,
-      request.transactionId,
+      transactionId,
     );
     if (transaction.isTransfer) {
       throw new BadRequestException(
@@ -224,11 +401,13 @@ export class AiReviewWorkService {
       }
     }
     const prep = await this.prepService.prepareUpdate(userId, {
-      transactionId: request.transactionId,
+      transactionId,
       splits: input.splits,
       categoryName: input.categoryName,
       payeeName: input.payeeName,
       description: input.description,
+      tagNames: input.tagNames,
+      categorySource: input.categorySource,
     });
     if (prep.kind !== "standard") {
       throw new BadRequestException(
@@ -247,6 +426,33 @@ export class AiReviewWorkService {
     );
   }
 
+  /** Tag names a proposal may add: a few, each a short plain name. Defence in depth; the producers bound them too. */
+  private assertTagNames(names: readonly string[] | undefined): void {
+    if (names === undefined) return;
+    const valid =
+      Array.isArray(names) &&
+      names.length <= AI_REVIEW_MAX_TAG_NAMES &&
+      names.every(
+        (name) =>
+          typeof name === "string" &&
+          name.trim().length >= 1 &&
+          name.trim().length <= AI_REVIEW_MAX_TAG_NAME_LENGTH &&
+          !hasControlCharacter(name),
+      );
+    if (!valid) {
+      throw new BadRequestException(
+        tr(
+          "errors.aiReview.tagNamesInvalid",
+          `A proposal may add up to ${AI_REVIEW_MAX_TAG_NAMES} tags of 1 to ${AI_REVIEW_MAX_TAG_NAME_LENGTH} characters each, with no control characters.`,
+          {
+            max: AI_REVIEW_MAX_TAG_NAMES,
+            length: AI_REVIEW_MAX_TAG_NAME_LENGTH,
+          },
+        ),
+      );
+    }
+  }
+
   /**
    * Store an agent's proposal for the request it claimed and return the signed
    * card. The conditional UPDATE in `submitProposal` is the authority on the
@@ -259,6 +465,14 @@ export class AiReviewWorkService {
     input: AiReviewProposalInput,
   ): Promise<AiReviewSubmitResult> {
     const request = await this.requireClaim(userId, caller, requestId);
+    if (request.kind === "email_parser_draft") {
+      throw new BadRequestException(
+        tr(
+          "errors.aiReview.parserDraftNotSubmittable",
+          "A parser draft request is answered with the email_receipt_parsers tool (test, then save_draft with this requestId), not with a transaction proposal.",
+        ),
+      );
+    }
     const action = await this.buildCard(userId, request, input);
     const stored: StoredAiReviewProposal = {
       input,
@@ -327,27 +541,51 @@ export class AiReviewWorkService {
     const ruleIds = [
       ...new Set(rows.flatMap((r) => (r.ruleId ? [r.ruleId] : []))),
     ];
-    const { transactions, rules } = await withScopedDb(
+    const receiptIds = [
+      ...new Set(
+        rows.flatMap((r) => (r.emailReceiptId ? [r.emailReceiptId] : [])),
+      ),
+    ];
+    const transactionIds = rows.flatMap((r) =>
+      r.transactionId ? [r.transactionId] : [],
+    );
+    const { transactions, rules, receipts } = await withScopedDb(
       this.dataSource,
       async (m) => ({
-        transactions: await m.getRepository(Transaction).find({
-          where: { userId, id: In(rows.map((r) => r.transactionId)) },
-          relations: ["account", "category"],
-        }),
+        transactions: transactionIds.length
+          ? await m.getRepository(Transaction).find({
+              where: { userId, id: In(transactionIds) },
+              relations: ["account", "category"],
+            })
+          : [],
         rules: ruleIds.length
           ? await m.getRepository(TransactionRule).find({
               where: { userId, id: In(ruleIds) },
               select: { id: true, name: true },
             })
           : [],
+        receipts: receiptIds.length
+          ? await m.getRepository(EmailReceipt).find({
+              where: { userId, id: In(receiptIds) },
+              select: {
+                id: true,
+                fromAddress: true,
+                subject: true,
+                receivedAt: true,
+              },
+            })
+          : [],
       }),
     );
     const txById = new Map(transactions.map((t) => [t.id, t]));
     const ruleName = new Map(rules.map((r) => [r.id, r.name]));
+    const receiptById = new Map(receipts.map((r) => [r.id, r]));
 
     const items: AiReviewInboxItem[] = [];
     for (const request of rows) {
-      const t = txById.get(request.transactionId);
+      const t = request.transactionId
+        ? txById.get(request.transactionId)
+        : undefined;
       const note = agentNoteOf(request);
       const stored = request.proposal as Partial<StoredAiReviewProposal> | null;
       items.push({
@@ -360,6 +598,12 @@ export class AiReviewWorkService {
         ruleName: request.ruleId
           ? (ruleName.get(request.ruleId) ?? null)
           : null,
+        emailReceipt: inboxEmail(
+          request.emailReceiptId
+            ? receiptById.get(request.emailReceiptId)
+            : undefined,
+        ),
+        parserDraft: inboxParserDraft(request),
         createdAt: request.createdAt.toISOString(),
         expiresAt: request.expiresAt.toISOString(),
         transaction: t
@@ -383,6 +627,52 @@ export class AiReviewWorkService {
       });
     }
     return items;
+  }
+
+  /**
+   * The card to approve for one of the user's requests, rebuilt from its stored
+   * proposal against the transaction as it is now (the inbox's own path, so what
+   * is approved is what the inbox shows), or the reason there is none: not the
+   * user's (reads as not found), no longer `proposed`, expired, not a proposal
+   * that has a card (a parser draft), or a proposal the transaction no longer
+   * admits. Reads only; the caller commits the card through
+   * `AiActionsService.confirm`.
+   */
+  async buildApprovalCard(
+    userId: string,
+    requestId: string,
+  ): Promise<{ action: PendingAiAction } | { error: string }> {
+    const request = await this.requests.getForUser(userId, requestId);
+    if (!request) {
+      return {
+        error: tr(
+          "errors.aiReview.notFound",
+          `AI review request with ID ${requestId} not found`,
+          { id: requestId },
+        ),
+      };
+    }
+    const stored = request.proposal as Partial<StoredAiReviewProposal> | null;
+    if (
+      request.status !== "proposed" ||
+      request.expiresAt.getTime() <= Date.now()
+    ) {
+      return {
+        error: tr(
+          "errors.aiReview.notProposed",
+          "This AI review request is no longer waiting for approval, so its proposal was not applied.",
+        ),
+      };
+    }
+    if (request.kind === "email_parser_draft" || !stored?.input) {
+      return {
+        error: tr(
+          "errors.aiReview.noApprovableProposal",
+          "This request has no proposal to approve here.",
+        ),
+      };
+    }
+    return this.rebuiltCard(userId, request, stored.input);
   }
 
   private async rebuiltCard(

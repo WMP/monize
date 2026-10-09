@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "AI 검토 수신함",
-    "subtitle": "규칙이 AI에게 검토를 요청한 거래와, 어시스턴트가 승인용으로 제안한 변경 사항입니다."
+    "subtitle": "규칙이 AI에게 검토를 요청한 거래, 어시스턴트에게 초안 작성을 요청한 프로필, 어시스턴트가 승인용으로 제안한 변경 사항입니다."
   },
   "filter": {
     "label": "상태별 필터",
@@ -12,6 +12,12 @@
     "applied": "적용됨",
     "rejected": "거부됨",
     "expired": "만료됨"
+  },
+  "kindFilter": {
+    "label": "종류별 필터",
+    "all": "전체",
+    "email_receipt": "이메일 영수증",
+    "transaction_review": "규칙"
   },
   "status": {
     "pending": "대기 중",
@@ -32,9 +38,15 @@
     "transactionMissing": "이 거래는 더 이상 존재하지 않습니다",
     "rule": "규칙: {name}",
     "manualRequest": "수동으로 요청됨",
+    "emailReceipt": "이메일 영수증: {sender}의 {subject}",
+    "emailReceiptMissing": "이메일 영수증 (이메일이 삭제됨)",
+    "parserDraft": "프로필 초안: {count, plural, one {이메일 #통} other {이메일 #통}} ({domain})",
+    "viewEmailReceipts": "이메일 영수증 보기",
     "agentNote": "어시스턴트의 메모: {reason}",
     "dates": "생성 {created}, 만료 {expires}",
-    "viewTransaction": "거래 보기"
+    "viewTransaction": "거래 보기",
+    "waitingForAgent": "AI 에이전트를 기다리는 중입니다. <link>설정에서 AI 제공자를 연결</link>하거나 MCP 클라이언트가 맡도록 하세요.",
+    "parserDraftReady": "프로필 초안이 준비되었습니다. <link>프로필 설정에서 테스트하고 승인하세요</link>."
   },
   "actions": {
     "dismiss": "무시"
@@ -42,9 +54,26 @@
   "proposal": {
     "errorTitle": "이 제안은 더 이상 적용할 수 없습니다"
   },
+  "bulk": {
+    "selectRow": "{name} 선택",
+    "selectAll": "표시된 승인 가능한 요청 모두 선택",
+    "approveSelected": "선택 항목 승인 ({count})",
+    "approveAllShown": "표시된 항목 모두 승인 ({count})",
+    "summary": "{approved, plural, one {제안 #건} other {제안 #건}} 적용, {failed, plural, one {#건 미적용} other {#건 미적용}}.",
+    "closeSummary": "닫기",
+    "failure": "{name}: {reason}",
+    "noReason": "이유가 제공되지 않았습니다",
+    "unknownRequest": "요청",
+    "failed": "제안을 적용하지 못했습니다",
+    "dialog": {
+      "title": "{count, plural, one {제안 #건을 적용할까요?} other {제안 #건을 적용할까요?}}",
+      "message": "각 제안은 현재 상태의 거래와 대조해 확인한 뒤 개별적으로 적용됩니다. 더 이상 맞지 않는 제안은 건너뛰고 알려 주며, 나머지는 계속 적용됩니다. 승인하기 전에 제안을 검토하세요.",
+      "confirm": "{count, plural, one {제안 #건 적용} other {제안 #건 적용}}"
+    }
+  },
   "dismissDialog": {
     "title": "이 요청을 무시할까요?",
-    "message": "이 거래를 검토해 달라는 요청은 더 이상 없습니다. 거래 자체는 변경되지 않습니다.",
+    "message": "이 요청을 처리해 달라는 요청은 더 이상 없습니다. 요청과 관련된 항목은 변경되지 않습니다.",
     "confirm": "요청 무시"
   },
   "loading": "검토 요청을 불러오는 중...",

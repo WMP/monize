@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "Caixa de revisão de IA",
-    "subtitle": "Transações que uma regra pediu a uma IA para rever e as alterações que um assistente propõe para a sua aprovação."
+    "subtitle": "Transações que uma regra pediu a uma IA para revisar, perfis que um assistente foi solicitado a rascunhar, e as edições que um assistente propôs para você aprovar."
   },
   "filter": {
     "label": "Filtrar por estado",
@@ -12,6 +12,12 @@
     "applied": "Aplicado",
     "rejected": "Rejeitado",
     "expired": "Expirado"
+  },
+  "kindFilter": {
+    "label": "Filtrar por tipo",
+    "all": "Todos",
+    "email_receipt": "Recibos por e-mail",
+    "transaction_review": "Regras"
   },
   "status": {
     "pending": "Pendente",
@@ -32,9 +38,15 @@
     "transactionMissing": "Esta transação já não existe",
     "rule": "Regra: {name}",
     "manualRequest": "Pedido manualmente",
+    "emailReceipt": "Recibo por e-mail: {subject} de {sender}",
+    "emailReceiptMissing": "Recibo por e-mail (o e-mail foi eliminado)",
+    "parserDraft": "Rascunho de perfil de {count, plural, one {# e-mail} other {# e-mails}} ({domain})",
+    "viewEmailReceipts": "Ver recibos por e-mail",
     "agentNote": "Nota do assistente: {reason}",
     "dates": "Criado em {created}, expira em {expires}",
-    "viewTransaction": "Ver transação"
+    "viewTransaction": "Ver transação",
+    "waitingForAgent": "A aguardar um agente de IA. <link>Ligue um fornecedor de IA nas Definições</link> ou deixe um cliente MCP assumi-lo.",
+    "parserDraftReady": "Rascunho de perfil pronto. <link>Teste e aprove-o nas configurações de perfis</link>."
   },
   "actions": {
     "dismiss": "Dispensar"
@@ -42,9 +54,26 @@
   "proposal": {
     "errorTitle": "Esta proposta já não pode ser aplicada"
   },
+  "bulk": {
+    "selectRow": "Selecionar {name}",
+    "selectAll": "Selecionar todos os pedidos aprováveis apresentados",
+    "approveSelected": "Aprovar os selecionados ({count})",
+    "approveAllShown": "Aprovar todos os apresentados ({count})",
+    "summary": "{approved, plural, one {# proposta aplicada} other {# propostas aplicadas}}, {failed, plural, one {# não aplicada} other {# não aplicadas}}.",
+    "closeSummary": "Fechar",
+    "failure": "{name}: {reason}",
+    "noReason": "Não foi indicado nenhum motivo",
+    "unknownRequest": "Um pedido",
+    "failed": "Não foi possível aplicar as propostas",
+    "dialog": {
+      "title": "{count, plural, one {Aplicar # proposta?} other {Aplicar # propostas?}}",
+      "message": "Cada proposta é verificada com a sua transação tal como está agora e aplicada em separado. Uma que já não se adeque é ignorada e comunicada, e as restantes são aplicadas na mesma. Reveja as propostas antes de as aprovar.",
+      "confirm": "{count, plural, one {Aplicar # proposta} other {Aplicar # propostas}}"
+    }
+  },
   "dismissDialog": {
     "title": "Dispensar este pedido?",
-    "message": "Ninguém voltará a ser solicitado para rever esta transação. A própria transação não é alterada.",
+    "message": "Ninguém voltará a ser solicitado para trabalhar neste pedido. Nada do que lhe dizia respeito é alterado.",
     "confirm": "Dispensar pedido"
   },
   "loading": "A carregar os pedidos de revisão...",

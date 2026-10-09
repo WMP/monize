@@ -359,7 +359,8 @@
         "INVESTMENTS": "[XX-Investment value-XX]",
         "STRATEGIES": "[XX-Strategy signals-XX]",
         "BANK_SYNC": "[XX-Bank connections-XX]",
-        "BANK_SYNC_ACTIVITY": "[XX-Bank sync results-XX]"
+        "BANK_SYNC_ACTIVITY": "[XX-Bank sync results-XX]",
+        "EMAIL_RECEIPTS": "[XX-Email receipts-XX]"
       },
       "channelNotApplicable": "[XX-Not applicable for this notification type-XX]",
       "emailToggleLabel": "[XX-Report email for {category}-XX]",
@@ -966,6 +967,7 @@
     "emergencyAccess": "[XX-Emergency Access-XX]",
     "apiAccess": "[XX-API Access-XX]",
     "aiSettings": "[XX-AI Settings-XX]",
+    "emailReceipts": "[XX-Email Receipts-XX]",
     "backupRestore": "[XX-Backup & Restore-XX]",
     "help": "[XX-Help & Support-XX]",
     "dangerZone": "[XX-Danger Zone-XX]",
@@ -994,6 +996,10 @@
     "aiSettingsCard": {
       "title": "[XX-AI Settings-XX]",
       "description": "[XX-Configure AI providers, manage API keys, and view usage statistics.-XX]"
+    },
+    "emailReceiptsCard": {
+      "title": "[XX-Email Receipts-XX]",
+      "description": "[XX-Connect a mailbox for order confirmations and manage the profiles that read them.-XX]"
     },
     "bankSyncCard": {
       "title": "[XX-Bank Sync-XX]",

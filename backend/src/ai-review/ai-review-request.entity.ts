@@ -11,8 +11,22 @@ import {
 import { User } from "../users/entities/user.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionRule } from "../transaction-rules/transaction-rule.entity";
+import { EmailReceipt } from "../email-receipts/entities/email-receipt.entity";
 
-export type AiReviewRequestKind = "transaction_review";
+/**
+ * What a request asks for. `transaction_review` is a rule's (or a person's)
+ * question about one transaction; `email_receipt` is raised for a stored order
+ * confirmation and carries `emailReceiptId` (email-receipts design section 4);
+ * `email_parser_draft` asks an agent to write a receipt parser from up to five
+ * stored emails of one sender: it has NO transaction and carries
+ * `emailReceiptIds` and `parserDomain` instead. Mirrors the schema's
+ * `ck_ai_review_requests_kind`.
+ */
+export type AiReviewRequestKind =
+  "transaction_review" | "email_receipt" | "email_parser_draft";
+
+/** Most emails one parser-draft request names (the schema's CHECK). */
+export const MAX_PARSER_DRAFT_EMAILS = 5;
 
 export type AiReviewRequestStatus =
   "pending" | "claimed" | "proposed" | "applied" | "rejected" | "expired";
@@ -42,6 +56,11 @@ export const AI_REVIEW_REQUEST_LIFETIME_DAYS = 30;
   unique: true,
   where: "status IN ('pending', 'claimed', 'proposed')",
 })
+@Index("uq_ai_review_requests_parser_draft_open", ["userId", "parserDomain"], {
+  unique: true,
+  where:
+    "kind = 'email_parser_draft' AND status IN ('pending', 'claimed', 'proposed')",
+})
 @Index("idx_ai_review_requests_claim", ["userId", "status", "createdAt"])
 export class AiReviewRequest {
   @PrimaryGeneratedColumn("uuid")
@@ -54,12 +73,13 @@ export class AiReviewRequest {
   @JoinColumn({ name: "user_id" })
   user?: User;
 
-  @Column({ type: "uuid", name: "transaction_id" })
-  transactionId: string;
+  /** Null only for a request of kind `email_parser_draft`, which is about emails. */
+  @Column({ type: "uuid", name: "transaction_id", nullable: true })
+  transactionId: string | null;
 
-  @ManyToOne(() => Transaction, { onDelete: "CASCADE" })
+  @ManyToOne(() => Transaction, { onDelete: "CASCADE", nullable: true })
   @JoinColumn({ name: "transaction_id" })
-  transaction?: Transaction;
+  transaction?: Transaction | null;
 
   /** Null for a manual request, and after the asking rule was deleted. */
   @Column({ type: "uuid", name: "rule_id", nullable: true })
@@ -103,4 +123,38 @@ export class AiReviewRequest {
     default: () => `now() + INTERVAL '${AI_REVIEW_REQUEST_LIFETIME_DAYS} days'`,
   })
   expiresAt: Date;
+
+  /**
+   * The stored email a request of kind `email_receipt` was raised for; null for
+   * every other kind, and after the email was deleted (ON DELETE SET NULL: the
+   * request outlives its email).
+   */
+  @Column({ type: "uuid", name: "email_receipt_id", nullable: true })
+  emailReceiptId: string | null;
+
+  @ManyToOne(() => EmailReceipt, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "email_receipt_id" })
+  emailReceipt?: EmailReceipt | null;
+
+  /**
+   * The stored emails a request of kind `email_parser_draft` was raised for (1 to
+   * 5). No foreign key: a Postgres array has none, so an email deleted since is
+   * simply not found when the request is claimed. Null for every other kind.
+   */
+  @Column({
+    type: "uuid",
+    array: true,
+    name: "email_receipt_ids",
+    nullable: true,
+  })
+  emailReceiptIds: string[] | null;
+
+  /** The sender domain a parser-draft request is for; at most one is open per (user, domain). */
+  @Column({
+    type: "varchar",
+    length: 255,
+    name: "parser_domain",
+    nullable: true,
+  })
+  parserDomain: string | null;
 }

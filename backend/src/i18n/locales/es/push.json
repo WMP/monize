@@ -35,6 +35,10 @@
     "bank_sync_activity": {
       "title": "Sincronización bancaria",
       "body": "Tu sincronización bancaria tiene novedades. Abre Monize para ver los detalles."
+    },
+    "email_receipts": {
+      "title": "Los recibos de correo necesitan atención",
+      "body": "Algunos correos en su bandeja de entrada de recibos necesitan un perfil o una corrección. Abra Monize para más detalles."
     }
   },
   "actions": {

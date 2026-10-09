@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "Yapay zekâ inceleme kutusu",
-    "subtitle": "Bir kuralın yapay zekâya incelettirmek istediği işlemler ve bir asistanın onayınız için önerdiği değişiklikler."
+    "subtitle": "Bir kuralın bir YZ'ye gözden geçirmesini istediği işlemler, bir yardımcının taslak oluşturması istenen profiller ve bir yardımcının sizin onaylamanız için önerdiği düzenlemeler."
   },
   "filter": {
     "label": "Duruma göre filtrele",
@@ -12,6 +12,12 @@
     "applied": "Uygulandı",
     "rejected": "Reddedildi",
     "expired": "Süresi doldu"
+  },
+  "kindFilter": {
+    "label": "Türe göre filtrele",
+    "all": "Tümü",
+    "email_receipt": "E-posta makbuzları",
+    "transaction_review": "Kurallar"
   },
   "status": {
     "pending": "Beklemede",
@@ -32,9 +38,15 @@
     "transactionMissing": "Bu işlem artık yok",
     "rule": "Kural: {name}",
     "manualRequest": "Elle istendi",
+    "emailReceipt": "E-posta makbuzu: {subject}, gönderen: {sender}",
+    "emailReceiptMissing": "E-posta makbuzu (e-posta silindi)",
+    "parserDraft": "{count, plural, one {# e-postadan} other {# e-postadan}} profil taslağı ({domain})",
+    "viewEmailReceipts": "E-posta makbuzlarını görüntüle",
     "agentNote": "Asistanın notu: {reason}",
     "dates": "Oluşturulma {created}, bitiş {expires}",
-    "viewTransaction": "İşlemi görüntüle"
+    "viewTransaction": "İşlemi görüntüle",
+    "waitingForAgent": "Bir yapay zekâ ajanı bekleniyor. <link>Ayarlar'dan bir yapay zekâ sağlayıcısı bağlayın</link> veya bir MCP istemcisinin üstlenmesine izin verin.",
+    "parserDraftReady": "Profil taslağı hazır. <link>Profil ayarlarında test edin ve onaylayın</link>."
   },
   "actions": {
     "dismiss": "Yoksay"
@@ -42,9 +54,26 @@
   "proposal": {
     "errorTitle": "Bu öneri artık uygulanamaz"
   },
+  "bulk": {
+    "selectRow": "{name} öğesini seç",
+    "selectAll": "Gösterilen onaylanabilir tüm istekleri seç",
+    "approveSelected": "Seçilenleri onayla ({count})",
+    "approveAllShown": "Gösterilenlerin tümünü onayla ({count})",
+    "summary": "{approved, plural, one {# öneri} other {# öneri}} uygulandı, {failed, plural, one {# uygulanmadı} other {# uygulanmadı}}.",
+    "closeSummary": "Kapat",
+    "failure": "{name}: {reason}",
+    "noReason": "Hiçbir neden belirtilmedi",
+    "unknownRequest": "Bir istek",
+    "failed": "Öneriler uygulanamadı",
+    "dialog": {
+      "title": "{count, plural, one {# öneri uygulansın mı?} other {# öneri uygulansın mı?}}",
+      "message": "Her öneri, işlemin şu anki haline göre denetlenir ve tek tek uygulanır. Artık uymayan öneri atlanır ve bildirilir, diğerleri yine uygulanır. Önerileri onaylamadan önce inceleyin.",
+      "confirm": "{count, plural, one {# öneriyi uygula} other {# öneriyi uygula}}"
+    }
+  },
   "dismissDialog": {
     "title": "Bu istek yoksayılsın mı?",
-    "message": "Bu işlemi incelemesi için artık kimseden istekte bulunulmayacak. İşlemin kendisi değişmez.",
+    "message": "Bu istek üzerinde çalışması için artık kimseden istekte bulunulmayacak. İsteğin konusu olan hiçbir şey değişmez.",
     "confirm": "İsteği yoksay"
   },
   "loading": "İnceleme istekleri yükleniyor...",

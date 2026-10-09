@@ -58,7 +58,10 @@ describe("AiActionsService", () => {
   let attachments: Record<string, jest.Mock>;
   let attachmentStore: Record<string, jest.Mock>;
   let singleUseTokens: SingleUseTokenMock;
-  let aiReviewRequests: { markApplied: jest.Mock };
+  let aiReviewRequests: {
+    markApplied: jest.Mock;
+    isExemptFromWriteLimit: jest.Mock;
+  };
 
   beforeEach(() => {
     const config = {
@@ -114,7 +117,10 @@ describe("AiActionsService", () => {
       releaseForPrompt: jest.fn(),
     };
     singleUseTokens = createSingleUseTokenMock();
-    aiReviewRequests = { markApplied: jest.fn().mockResolvedValue(undefined) };
+    aiReviewRequests = {
+      markApplied: jest.fn().mockResolvedValue(undefined),
+      isExemptFromWriteLimit: jest.fn().mockResolvedValue(false),
+    };
     service = new AiActionsService(
       transactions as never,
       payees as never,
@@ -978,6 +984,112 @@ describe("AiActionsService", () => {
       await expect(
         service.confirm(USER, dtoFor(reviewDescriptor())),
       ).rejects.toThrow("no longer open");
+    });
+
+    it("hands update() the tag names the card carries, to add (never to replace)", async () => {
+      await service.confirm(
+        USER,
+        dtoFor(reviewDescriptor({ tagNames: ["Allegro", "Gifts"] })),
+      );
+      const options = transactions.update.mock.calls[0][3];
+      expect(options.addTagNames).toEqual(["Allegro", "Gifts"]);
+      // The DTO carries no tagIds: the transaction's own tags are not replaced.
+      expect(transactions.update.mock.calls[0][2].tagIds).toBeUndefined();
+    });
+
+    it("passes no tag names when the card has none", async () => {
+      await service.confirm(USER, dtoFor(reviewDescriptor()));
+      expect(transactions.update.mock.calls[0][3]).not.toHaveProperty(
+        "addTagNames",
+      );
+    });
+
+    describe("the daily AI write limit and a profile's proposal (design 7.1)", () => {
+      const fillLimit = async () => {
+        for (let i = 0; i < AI_DAILY_WRITE_LIMIT; i++) {
+          await limiter.record(USER, "update_transaction");
+        }
+      };
+
+      it("asks the stored request and the stored switch, with the profile's claim key", async () => {
+        await service.confirm(USER, dtoFor(reviewDescriptor()));
+        expect(aiReviewRequests.isExemptFromWriteLimit).toHaveBeenCalledWith(
+          USER,
+          REVIEW,
+          "email-receipts",
+        );
+      });
+
+      it("counts the confirm when the request is not exempt: it is recorded", async () => {
+        await service.confirm(USER, dtoFor(reviewDescriptor()));
+        expect((await limiter.checkLimit(USER)).currentCount).toBe(1);
+      });
+
+      it("refuses a non-exempt confirm at the limit", async () => {
+        await fillLimit();
+        await expect(
+          service.confirm(USER, dtoFor(reviewDescriptor())),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(transactions.update).not.toHaveBeenCalled();
+      });
+
+      it("neither checks nor records the limit for an exempt profile proposal", async () => {
+        aiReviewRequests.isExemptFromWriteLimit.mockResolvedValue(true);
+        await fillLimit();
+
+        const result = await service.confirm(USER, dtoFor(reviewDescriptor()));
+
+        expect(result).toEqual({ type: "update_transaction", id: TX });
+        expect(transactions.update).toHaveBeenCalledTimes(1);
+        // Not counted: still exactly the limit's worth of earlier writes.
+        expect((await limiter.checkLimit(USER)).currentCount).toBe(
+          AI_DAILY_WRITE_LIMIT,
+        );
+      });
+
+      it("counts an ordinary confirm right after an exempt one: the exemption belongs to that request alone", async () => {
+        aiReviewRequests.isExemptFromWriteLimit.mockResolvedValue(true);
+        await service.confirm(USER, dtoFor(reviewDescriptor()));
+        // A plain create right after counts as usual.
+        await service.confirm(USER, dtoFor(createTxDescriptor()));
+        expect((await limiter.checkLimit(USER)).currentCount).toBe(1);
+      });
+
+      it("never asks for an edit that answers no request, or for another kind of action", async () => {
+        await service.confirm(
+          USER,
+          dtoFor(reviewDescriptor({ aiReviewRequestId: undefined })),
+        );
+        await service.confirm(USER, dtoFor(createTxDescriptor()));
+        expect(aiReviewRequests.isExemptFromWriteLimit).not.toHaveBeenCalled();
+      });
+
+      it("does not take the exemption from the client: only the signed request id is read", async () => {
+        // A descriptor field the client could add (and the signature would refuse)
+        // is not what decides: the stored request is.
+        aiReviewRequests.isExemptFromWriteLimit.mockResolvedValue(false);
+        await fillLimit();
+        await expect(
+          service.confirm(
+            USER,
+            dtoFor(
+              reviewDescriptor({
+                ...({ exemptFromLimit: true } as object),
+              } as never),
+            ),
+          ),
+        ).rejects.toBeInstanceOf(BadRequestException);
+      });
+
+      it("releases an exempt confirm's claim like any other when the write fails", async () => {
+        aiReviewRequests.isExemptFromWriteLimit.mockResolvedValue(true);
+        transactions.update.mockRejectedValueOnce(new Error("db down"));
+        const descriptor = reviewDescriptor();
+        await expect(service.confirm(USER, dtoFor(descriptor))).rejects.toThrow(
+          "db down",
+        );
+        expect((await limiter.checkLimit(USER)).currentCount).toBe(0);
+      });
     });
 
     it("leaves an ordinary edit without the hook", async () => {

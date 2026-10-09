@@ -1,4 +1,6 @@
+import { ConflictException } from "@nestjs/common";
 import { DataSource } from "typeorm";
+import { LockScope } from "../common/db/locks";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { AiReviewRequest } from "./ai-review-request.entity";
 import { AiReviewRequestsService } from "./ai-review-requests.service";
@@ -358,5 +360,662 @@ describe("the agent's conditional writes", () => {
     await expect(
       service.markApplied(manager as never, USER, row.id, TX_1),
     ).rejects.toMatchObject({ status: 409 });
+  });
+});
+
+describe("AiReviewRequestsService.enqueueClaimed", () => {
+  const RECEIPT = "40000000-0000-4000-8000-000000000001";
+  const row = (over: Record<string, unknown> = {}) => ({
+    id: "50000000-0000-4000-8000-000000000001",
+    user_id: USER,
+    transaction_id: TX_1,
+    rule_id: null,
+    kind: "email_receipt",
+    instruction: "Enrich from the order email",
+    status: "claimed",
+    claimed_by: "email-receipts",
+    claimed_at: new Date("2026-09-30T10:00:00Z"),
+    proposal: null,
+    created_at: new Date("2026-09-30T10:00:00Z"),
+    updated_at: new Date("2026-09-30T10:00:00Z"),
+    expires_at: new Date("2026-10-30T10:00:00Z"),
+    email_receipt_id: RECEIPT,
+    ...over,
+  });
+  const input = {
+    transactionId: TX_1,
+    kind: "email_receipt" as const,
+    emailReceiptId: RECEIPT,
+    instruction: " Enrich from the order email ",
+    claimedBy: "email-receipts",
+  };
+
+  it("writes one claimed request with the email it was raised for, on the caller's manager", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValueOnce([]).mockResolvedValueOnce([row()]);
+
+    const created = await service.enqueueClaimed(manager as never, USER, input);
+
+    expect(created).toMatchObject({
+      kind: "email_receipt",
+      status: "claimed",
+      claimedBy: "email-receipts",
+      emailReceiptId: RECEIPT,
+      ruleId: null,
+    });
+    const [insertSql, params] = manager.query.mock.calls[1];
+    expect(insertSql).toMatch(/INSERT INTO ai_review_requests/);
+    expect(insertSql).toMatch(/email_receipt_id/);
+    expect(insertSql).toMatch(
+      /ON CONFLICT \(transaction_id, rule_id\)\s+WHERE status IN \('pending', 'claimed', 'proposed'\)\s+DO NOTHING/,
+    );
+    expect(insertSql).toMatch(/RETURNING \*/);
+    expect(insertSql).not.toContain(TX_1);
+    expect(params).toEqual([
+      USER,
+      TX_1,
+      "email_receipt",
+      "Enrich from the order email",
+      "claimed",
+      "email-receipts",
+      RECEIPT,
+    ]);
+  });
+
+  it("takes the transaction's advisory lock before it looks for an open request", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([]);
+
+    await service.enqueueClaimed(manager as never, USER, input);
+
+    const [lockSql, lockParams] = manager.query.mock.calls[0];
+    expect(lockSql).toMatch(/pg_advisory_xact_lock/);
+    expect(lockParams).toEqual([LockScope.AiReviewRequests, TX_1]);
+    expect(manager.query.mock.calls[1][0]).toMatch(/INSERT INTO/);
+  });
+
+  it("excludes a transaction that already has an open, unexpired request with no rule, since the unique index does not see NULL rules", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([]);
+
+    const created = await service.enqueueClaimed(manager as never, USER, input);
+
+    expect(created).toBeNull();
+    const sql = manager.query.mock.calls[1][0] as string;
+    expect(sql).toMatch(/WHERE NOT EXISTS/);
+    expect(sql).toMatch(/open_request\.rule_id IS NULL/);
+    expect(sql).toMatch(
+      /open_request\.status IN \('pending', 'claimed', 'proposed'\)/,
+    );
+    expect(sql).toMatch(/open_request\.expires_at > CURRENT_TIMESTAMP/);
+    expect(sql).toMatch(/open_request\.user_id = \$1::uuid/);
+  });
+
+  it("cuts an instruction to the column's bound", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([]);
+
+    await service.enqueueClaimed(manager as never, USER, {
+      ...input,
+      instruction: "y".repeat(2000),
+    });
+
+    expect(manager.query.mock.calls[1][1][3]).toHaveLength(1000);
+  });
+});
+
+describe("AiReviewRequestsService.enqueuePendingForReceipt", () => {
+  it("writes a pending, unclaimed request of kind email_receipt and reports a duplicate as null", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([]);
+
+    const created = await service.enqueuePendingForReceipt(
+      manager as never,
+      USER,
+      {
+        transactionId: TX_1,
+        emailReceiptId: "40000000-0000-4000-8000-000000000001",
+        instruction: "Enrich",
+      },
+    );
+
+    expect(created).toBeNull();
+    expect(manager.query.mock.calls[1][1]).toEqual([
+      USER,
+      TX_1,
+      "email_receipt",
+      "Enrich",
+      "pending",
+      null,
+      "40000000-0000-4000-8000-000000000001",
+    ]);
+  });
+});
+
+describe("AiReviewRequestsService.claimById", () => {
+  const claimedRow = {
+    id: "50000000-0000-4000-8000-000000000001",
+    user_id: USER,
+    transaction_id: TX_1,
+    rule_id: null,
+    kind: "email_receipt",
+    instruction: "Enrich",
+    status: "claimed",
+    claimed_by: "email-receipts-ai",
+    claimed_at: new Date(),
+    proposal: null,
+    created_at: new Date(),
+    updated_at: new Date(),
+    expires_at: new Date(),
+    email_receipt_id: "40000000-0000-4000-8000-000000000001",
+  };
+
+  it("claims the named request in one conditional UPDATE bound to the user, to pending and to its life", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([claimedRow]);
+
+    const claimed = await service.claimById(
+      USER,
+      claimedRow.id,
+      "email-receipts-ai",
+    );
+
+    expect(claimed).toMatchObject({
+      id: claimedRow.id,
+      status: "claimed",
+      claimedBy: "email-receipts-ai",
+      emailReceiptId: claimedRow.email_receipt_id,
+    });
+    const [sql, params] = manager.query.mock.calls[0];
+    expect(sql).toMatch(/UPDATE ai_review_requests/);
+    expect(sql).toMatch(
+      /WHERE id = \$1\s+AND user_id = \$2\s+AND status = 'pending'/,
+    );
+    expect(sql).toMatch(/expires_at > CURRENT_TIMESTAMP/);
+    expect(params).toEqual([claimedRow.id, USER, "email-receipts-ai"]);
+  });
+
+  it("is null when the request is not pending, not the user's, or expired", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([]);
+    await expect(
+      service.claimById(USER, claimedRow.id, "email-receipts-ai"),
+    ).resolves.toBeNull();
+  });
+});
+
+describe("AiReviewRequestsService row mapping", () => {
+  it("maps email_receipt_id, and reads it as null when a row omits it", async () => {
+    const { service, manager } = setup();
+    const base = {
+      id: "a",
+      user_id: USER,
+      transaction_id: TX_1,
+      rule_id: RULE_1,
+      kind: "transaction_review",
+      instruction: "x",
+      status: "claimed",
+      claimed_by: "k",
+      claimed_at: new Date(),
+      proposal: null,
+      created_at: new Date(),
+      updated_at: new Date(),
+      expires_at: new Date(),
+    };
+    manager.query.mockResolvedValueOnce([
+      { ...base, email_receipt_id: "40000000-0000-4000-8000-000000000001" },
+    ]);
+    manager.query.mockResolvedValueOnce([base]);
+
+    const first = await service.claimNext(USER, "k");
+    const second = await service.claimNext(USER, "k");
+
+    expect(first?.emailReceiptId).toBe("40000000-0000-4000-8000-000000000001");
+    expect(second?.emailReceiptId).toBeNull();
+  });
+});
+
+describe("AiReviewRequestsService.enqueueParserDraft", () => {
+  const R1 = "40000000-0000-4000-8000-000000000001";
+  const R2 = "40000000-0000-4000-8000-000000000002";
+  const row = (over: Record<string, unknown> = {}) => ({
+    id: "60000000-0000-4000-8000-000000000001",
+    user_id: USER,
+    transaction_id: null,
+    rule_id: null,
+    kind: "email_parser_draft",
+    instruction: "Write a parser",
+    status: "pending",
+    claimed_by: null,
+    claimed_at: null,
+    proposal: null,
+    created_at: new Date("2026-10-03T10:00:00Z"),
+    updated_at: new Date("2026-10-03T10:00:00Z"),
+    expires_at: new Date("2026-11-02T10:00:00Z"),
+    email_receipt_id: null,
+    email_receipt_ids: [R1, R2],
+    parser_domain: "shop.example.com",
+    ...over,
+  });
+  const input = {
+    emailReceiptIds: [R1, R2],
+    parserDomain: "shop.example.com",
+    instruction: " Write a parser ",
+  };
+
+  it("serialises on the user and sender, expires and closes what is open for that sender, then inserts, in the caller's transaction", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([row()]);
+
+    const created = await service.enqueueParserDraft(
+      manager as never,
+      USER,
+      input,
+    );
+
+    const statements = manager.query.mock.calls.map((c) => String(c[0]));
+    expect(statements[0]).toContain("pg_advisory_xact_lock");
+    expect(manager.query.mock.calls[0][1]).toEqual([
+      LockScope.AiParserDraftRequests,
+      `${USER}:shop.example.com`,
+    ]);
+    expect(statements[1]).toMatch(/SET status = 'expired'/);
+    expect(statements[1]).toMatch(/expires_at <= CURRENT_TIMESTAMP/);
+    expect(statements[2]).toMatch(/SET status = 'rejected'/);
+    expect(statements[2]).toMatch(/kind = 'email_parser_draft'/);
+    expect(statements[2]).toMatch(/parser_domain = \$2/);
+    expect(statements[3]).toMatch(/INSERT INTO ai_review_requests/);
+    expect(manager.query.mock.calls[3][1]).toEqual([
+      USER,
+      "Write a parser",
+      [R1, R2],
+      "shop.example.com",
+    ]);
+    expect(created).toMatchObject({
+      kind: "email_parser_draft",
+      status: "pending",
+      transactionId: null,
+      emailReceiptIds: [R1, R2],
+      parserDomain: "shop.example.com",
+    });
+    // never keyed on a request-supplied user
+    for (const statement of statements.slice(1, 3)) {
+      expect(statement).toMatch(/user_id = \$1/);
+    }
+  });
+
+  it("closes the open request before it inserts the new one", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([row()]);
+
+    await service.enqueueParserDraft(manager as never, USER, input);
+
+    const order = manager.query.mock.calls.map((c) => String(c[0]));
+    expect(order.findIndex((s) => s.includes("'rejected'"))).toBeLessThan(
+      order.findIndex((s) => s.includes("INSERT INTO")),
+    );
+  });
+
+  it("cuts the instruction to the column's bound", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([row()]);
+
+    await service.enqueueParserDraft(manager as never, USER, {
+      ...input,
+      instruction: "x".repeat(2000),
+    });
+
+    expect((manager.query.mock.calls[3][1] as unknown[])[1]).toHaveLength(1000);
+  });
+
+  it.each([[[]], [[R1, R1, R1, R1, R1, R1]]])(
+    "refuses %j emails before touching the database",
+    async (ids) => {
+      const { service, manager } = setup();
+
+      await expect(
+        service.enqueueParserDraft(manager as never, USER, {
+          ...input,
+          emailReceiptIds: ids,
+        }),
+      ).rejects.toThrow();
+
+      expect(manager.query).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe("AiReviewRequestsService.queueParserDraft", () => {
+  const R1 = "40000000-0000-4000-8000-000000000001";
+  const OPEN = "60000000-0000-4000-8000-000000000001";
+  const row = (over: Record<string, unknown> = {}) => ({
+    id: OPEN,
+    user_id: USER,
+    transaction_id: null,
+    rule_id: null,
+    kind: "email_parser_draft",
+    instruction: "New text",
+    status: "pending",
+    claimed_by: null,
+    claimed_at: null,
+    proposal: null,
+    created_at: new Date("2026-10-03T10:00:00Z"),
+    updated_at: new Date("2026-10-03T10:00:00Z"),
+    expires_at: new Date("2026-11-02T10:00:00Z"),
+    email_receipt_id: null,
+    email_receipt_ids: [R1],
+    parser_domain: "shop.example.com",
+    ...over,
+  });
+  const input = {
+    emailReceiptIds: [R1],
+    parserDomain: "shop.example.com",
+    instruction: " New text ",
+  };
+
+  it("replaces an open UNCLAIMED request in place, under the sender's lock, keeping its id", async () => {
+    const { service, manager } = setup();
+    manager.query
+      .mockResolvedValueOnce([]) // the advisory lock
+      .mockResolvedValueOnce([{ id: OPEN, status: "pending" }])
+      .mockResolvedValueOnce([row()]);
+
+    const request = await service.queueParserDraft(
+      manager as never,
+      USER,
+      input,
+    );
+
+    const statements = manager.query.mock.calls.map((c) => String(c[0]));
+    expect(statements[0]).toContain("pg_advisory_xact_lock");
+    expect(manager.query.mock.calls[0][1]).toEqual([
+      LockScope.AiParserDraftRequests,
+      `${USER}:shop.example.com`,
+    ]);
+    expect(statements[1]).toMatch(/FOR UPDATE/);
+    expect(statements[1]).toMatch(/status IN \('pending', 'claimed'\)/);
+    expect(statements[2]).toMatch(/SET instruction = \$3::text/);
+    expect(statements[2]).toMatch(/status = 'pending'/);
+    expect(statements[2]).toMatch(/user_id = \$2/);
+    expect(manager.query.mock.calls[2][1]).toEqual([
+      OPEN,
+      USER,
+      "New text",
+      [R1],
+    ]);
+    expect(statements.some((s) => s.includes("INSERT INTO"))).toBe(false);
+    expect(request.id).toBe(OPEN);
+  });
+
+  it("refuses with a 409 when an agent has claimed the open request, writing nothing", async () => {
+    const { service, manager } = setup();
+    manager.query
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: OPEN, status: "claimed" }]);
+
+    await expect(
+      service.queueParserDraft(manager as never, USER, input),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    const statements = manager.query.mock.calls.map((c) => String(c[0]));
+    expect(statements.some((s) => /^\s*(UPDATE|INSERT)/.test(s))).toBe(false);
+  });
+
+  it("refuses when the replacing UPDATE matches nothing (the row left pending)", async () => {
+    const { service, manager } = setup();
+    manager.query
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: OPEN, status: "pending" }])
+      .mockResolvedValueOnce([]);
+
+    await expect(
+      service.queueParserDraft(manager as never, USER, input),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it("queues a new request when none is open or unclaimed (a proposed one is closed by the insert path)", async () => {
+    const { service, manager } = setup();
+    manager.query
+      .mockResolvedValueOnce([]) // lock
+      .mockResolvedValueOnce([]) // nothing pending or claimed
+      .mockResolvedValue([row()]);
+
+    const request = await service.queueParserDraft(
+      manager as never,
+      USER,
+      input,
+    );
+
+    const statements = manager.query.mock.calls.map((c) => String(c[0]));
+    expect(statements.some((s) => s.includes("SET status = 'rejected'"))).toBe(
+      true,
+    );
+    expect(statements.some((s) => s.includes("INSERT INTO"))).toBe(true);
+    expect(request.kind).toBe("email_parser_draft");
+  });
+
+  it("cuts the replacing instruction to the column's bound", async () => {
+    const { service, manager } = setup();
+    manager.query
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: OPEN, status: "pending" }])
+      .mockResolvedValueOnce([row()]);
+
+    await service.queueParserDraft(manager as never, USER, {
+      ...input,
+      instruction: "x".repeat(2000),
+    });
+
+    expect((manager.query.mock.calls[2][1] as unknown[])[2]).toHaveLength(1000);
+  });
+
+  it("refuses 0 or 6 emails before touching the database", async () => {
+    const { service, manager } = setup();
+    await expect(
+      service.queueParserDraft(manager as never, USER, {
+        ...input,
+        emailReceiptIds: [],
+      }),
+    ).rejects.toThrow();
+    await expect(
+      service.queueParserDraft(manager as never, USER, {
+        ...input,
+        emailReceiptIds: [R1, R1, R1, R1, R1, R1],
+      }),
+    ).rejects.toThrow();
+    expect(manager.query).not.toHaveBeenCalled();
+  });
+});
+
+describe("AiReviewRequestsService the parser draft lifecycle", () => {
+  const REQUEST = "60000000-0000-4000-8000-000000000001";
+  const PARSER = "70000000-0000-4000-8000-000000000001";
+
+  it("proposes with ONE conditional UPDATE: claimed by this caller, of this kind, alive", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([{ id: REQUEST }]);
+
+    await expect(
+      service.proposeParserDraft(
+        manager as never,
+        USER,
+        REQUEST,
+        "assistant",
+        PARSER,
+      ),
+    ).resolves.toBe(true);
+
+    const [sql, params] = manager.query.mock.calls[0];
+    expect(sql).toMatch(/SET status = 'proposed'/);
+    expect(sql).toMatch(/kind = 'email_parser_draft'/);
+    expect(sql).toMatch(/status = 'claimed'/);
+    expect(sql).toMatch(/claimed_by = \$3/);
+    expect(sql).toMatch(/expires_at > CURRENT_TIMESTAMP/);
+    expect(sql).toMatch(/'parserId', \$4::text/);
+    expect(sql).not.toContain(PARSER);
+    expect(params).toEqual([REQUEST, USER, "assistant", PARSER]);
+  });
+
+  it("does not propose for a caller that does not hold the claim", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([]);
+
+    await expect(
+      service.proposeParserDraft(
+        manager as never,
+        USER,
+        REQUEST,
+        "other",
+        PARSER,
+      ),
+    ).resolves.toBe(false);
+  });
+
+  it("marks applied the proposed requests that proposed this parser, and counts them", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([{ id: "a" }, { id: "b" }]);
+
+    await expect(
+      service.markParserDraftApplied(manager as never, USER, PARSER),
+    ).resolves.toBe(2);
+
+    const [sql, params] = manager.query.mock.calls[0];
+    expect(sql).toMatch(/SET status = 'applied'/);
+    expect(sql).toMatch(/kind = 'email_parser_draft'/);
+    expect(sql).toMatch(/status = 'proposed'/);
+    expect(sql).toMatch(/proposal ->> 'parserId' = \$2::text/);
+    expect(params).toEqual([USER, PARSER]);
+  });
+
+  it("marking applied with nothing matching is not an error (a draft written by hand)", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([]);
+
+    await expect(
+      service.markParserDraftApplied(manager as never, USER, PARSER),
+    ).resolves.toBe(0);
+  });
+
+  it("dismisses the open requests that proposed a deleted parser", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([{ id: "a" }]);
+
+    await expect(
+      service.dismissParserDraftsFor(manager as never, USER, PARSER),
+    ).resolves.toBe(1);
+
+    const [sql, params] = manager.query.mock.calls[0];
+    expect(sql).toMatch(/SET status = 'rejected'/);
+    expect(sql).toMatch(/status IN \('pending', 'claimed', 'proposed'\)/);
+    expect(sql).toMatch(/proposal ->> 'parserId' = \$2::text/);
+    expect(params).toEqual([USER, PARSER]);
+  });
+
+  it("markApplied for a transaction never matches a parser draft (no transaction id)", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([]);
+
+    await expect(
+      service.markApplied(manager as never, USER, REQUEST, TX_1),
+    ).rejects.toThrow();
+
+    expect(String(manager.query.mock.calls[0][0])).toMatch(
+      /transaction_id = \$3/,
+    );
+  });
+
+  it("maps the parser-draft columns, and reads them as null for a row that omits them", async () => {
+    const { service, manager } = setup();
+    const base = {
+      id: "a",
+      user_id: USER,
+      transaction_id: TX_1,
+      rule_id: RULE_1,
+      kind: "transaction_review",
+      instruction: "x",
+      status: "claimed",
+      claimed_by: "k",
+      claimed_at: new Date(),
+      proposal: null,
+      created_at: new Date(),
+      updated_at: new Date(),
+      expires_at: new Date(),
+    };
+    manager.query.mockResolvedValueOnce([
+      {
+        ...base,
+        transaction_id: null,
+        kind: "email_parser_draft",
+        email_receipt_ids: ["r1"],
+        parser_domain: "shop.example.com",
+      },
+    ]);
+    manager.query.mockResolvedValueOnce([base]);
+
+    const draft = await service.claimNext(USER, "k");
+    const other = await service.claimNext(USER, "k");
+
+    expect(draft).toMatchObject({
+      transactionId: null,
+      emailReceiptIds: ["r1"],
+      parserDomain: "shop.example.com",
+    });
+    expect(other).toMatchObject({ emailReceiptIds: null, parserDomain: null });
+  });
+});
+
+describe("AiReviewRequestsService.isExemptFromWriteLimit (email-receipts design 7.1)", () => {
+  const REQUEST = "30000000-0000-4000-8000-000000000001";
+  const KEY = "email-receipts";
+
+  it("is exempt only when the stored switch is off for a proposed request submitted under the profile's key", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([{ counts: false }]);
+
+    await expect(
+      service.isExemptFromWriteLimit(USER, REQUEST, KEY),
+    ).resolves.toBe(true);
+
+    const [sql, params] = manager.query.mock.calls[0];
+    expect(String(sql)).toContain("profile_proposals_count_toward_ai_limit");
+    expect(String(sql)).toContain("r.kind = 'email_receipt'");
+    expect(String(sql)).toContain("r.status = 'proposed'");
+    expect(String(sql)).toContain("r.claimed_by = $3");
+    expect(String(sql)).toContain("r.user_id = $2");
+    expect(String(sql)).toContain(
+      "JOIN email_receipt_mailboxes mb ON mb.user_id = r.user_id",
+    );
+    expect(params).toEqual([REQUEST, USER, KEY]);
+    // A read: it never writes the request or the mailbox.
+    expect(String(sql).trim()).toMatch(/^SELECT/);
+  });
+
+  it("counts (not exempt) while the switch is on, which is the default", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([{ counts: true }]);
+    await expect(
+      service.isExemptFromWriteLimit(USER, REQUEST, KEY),
+    ).resolves.toBe(false);
+  });
+
+  it.each([
+    [
+      "a request that is not found, is another user's, is another kind or key, or is not proposed",
+      [],
+    ],
+  ])("counts for %s", async (_label, rows) => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue(rows);
+    await expect(
+      service.isExemptFromWriteLimit(USER, REQUEST, KEY),
+    ).resolves.toBe(false);
+  });
+
+  it("counts when the switch reads as anything but false (a null is no information)", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([{ counts: null }]);
+    await expect(
+      service.isExemptFromWriteLimit(USER, REQUEST, KEY),
+    ).resolves.toBe(false);
   });
 });

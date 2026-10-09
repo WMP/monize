@@ -492,6 +492,53 @@ describe("TransactionToolPrepService", () => {
       );
     });
 
+    it("marks a single category the AI chose on the preview, and never otherwise", async () => {
+      const marked = await service.prepareUpdate(userId, {
+        transactionId: "t1",
+        categoryName: "Dining",
+        categorySource: "ai",
+      });
+      expect(marked.kind === "standard" && marked.preview.categorySource).toBe(
+        "ai",
+      );
+      const plain = await service.prepareUpdate(userId, {
+        transactionId: "t1",
+        categoryName: "Dining",
+      });
+      expect(plain.kind === "standard" && plain.preview).not.toHaveProperty(
+        "categorySource",
+      );
+    });
+
+    it("carries the AI mark of a split line to its resolved line, for the card", async () => {
+      const result = await service.prepareUpdate(userId, {
+        transactionId: "t1",
+        splits: [
+          { categoryName: "Dining", amount: -20, categorySource: "ai" },
+          { categoryName: "Dining", amount: -10 },
+        ],
+      });
+      expect(result.kind === "standard" && result.splits?.[0]).toMatchObject({
+        categorySource: "ai",
+      });
+      expect(
+        result.kind === "standard" && result.splits?.[1],
+      ).not.toHaveProperty("categorySource");
+    });
+
+    it("hands the tag names to the preview, which decides which of them are additions", async () => {
+      await service.prepareUpdate(userId, {
+        transactionId: "t1",
+        description: "x",
+        tagNames: ["Allegro"],
+      });
+      expect(transactions.previewUpdate).toHaveBeenCalledWith(
+        userId,
+        "t1",
+        expect.objectContaining({ tagNames: ["Allegro"] }),
+      );
+    });
+
     it("resolves splits against the effective amount and clears the category", async () => {
       const result = await service.prepareUpdate(userId, {
         transactionId: "t1",

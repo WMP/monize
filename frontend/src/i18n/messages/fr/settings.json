@@ -359,11 +359,17 @@
         "INVESTMENTS": "Valeur des placements",
         "STRATEGIES": "Signaux de stratégie",
         "BANK_SYNC": "Connexions bancaires",
-        "BANK_SYNC_ACTIVITY": "Résultats de la synchronisation bancaire"
+        "BANK_SYNC_ACTIVITY": "Résultats de la synchronisation bancaire",
+        "EMAIL_RECEIPTS": "Reçus par courrier"
       },
       "channelNotApplicable": "Non applicable à ce type de notification",
       "emailToggleLabel": "E-mail (rapport) pour {category}",
+      "emailNotificationToggleLabel": "E-mail d'alerte pour {category}",
+      "pushToggleLabel": "Push pour {category}",
+      "unifiedpushToggleLabel": "UnifiedPush pour {category}",
       "saveFailed": "Impossible d'enregistrer ce réglage",
+      "emailUnavailable": "Activez les notifications par e-mail ci-dessus pour les envoyer par e-mail.",
+      "pushUnavailable": "Aucun appareil n'est enregistré pour le push, ce canal ne peut donc rien remettre.",
       "throttle": {
         "label": "Délai",
         "ariaLabel": "Délai pour {category}",
@@ -378,11 +384,6 @@
           "1440": "24 heures"
         }
       },
-      "emailNotificationToggleLabel": "E-mail d'alerte pour {category}",
-      "pushToggleLabel": "Push pour {category}",
-      "unifiedpushToggleLabel": "UnifiedPush pour {category}",
-      "emailUnavailable": "Activez les notifications par e-mail ci-dessus pour les envoyer par e-mail.",
-      "pushUnavailable": "Aucun appareil n'est enregistré pour le push, ce canal ne peut donc rien remettre.",
       "pushEnableHint": "Ce navigateur n'est pas enregistré pour les notifications push."
     }
   },
@@ -757,8 +758,8 @@
       },
       "toasts": {
         "success": "Sauvegarde téléchargée avec succès",
-        "incomplete": "Sauvegarde téléchargée, mais elle est INCOMPLÈTE : {unusable} pièce(s) jointe(s) sur {total} n'ont pas pu être enregistrées intactes ({missing} manquante(s), {inconsistent} ayant échoué au contrôle d'intégrité). Ne considérez pas ce fichier comme une sauvegarde complète — corrigez le stockage des pièces jointes et exportez à nouveau.",
-        "failed": "Échec de la création de la sauvegarde"
+        "failed": "Échec de la création de la sauvegarde",
+        "incomplete": "Sauvegarde téléchargée, mais elle est INCOMPLÈTE : {unusable} pièce(s) jointe(s) sur {total} n'ont pas pu être enregistrées intactes ({missing} manquante(s), {inconsistent} ayant échoué au contrôle d'intégrité). Ne considérez pas ce fichier comme une sauvegarde complète — corrigez le stockage des pièces jointes et exportez à nouveau."
       }
     },
     "restore": {
@@ -788,9 +789,9 @@
       "title": "Restauration terminée",
       "description": "Vos données ont été restaurées avec succès. Voici un résumé de ce qui a été restauré :",
       "totalRecords": "Total des enregistrements",
-      "doneButton": "Terminer",
       "skippedAttachments": "{count, plural, one {# pièce jointe n'a pas été restaurée} other {# pièces jointes n'ont pas été restaurées}} : la sauvegarde ne contenait pas d'octets utilisables pour elles — ils manquaient ou ont échoué au contrôle de somme lors de l'export, ou le fichier est antérieur aux sauvegardes autonomes. Exportez une nouvelle sauvegarde lorsque le stockage des pièces jointes est sain.",
-      "unusableAiProviderKeys": "{count, plural, one {# fournisseur d'IA a été restauré sans clé d'API utilisable} other {# fournisseurs d'IA ont été restaurés sans clé d'API utilisable}} : la sauvegarde a été créée avant que les clés de fournisseur y soient incluses, donc la clé enregistrée appartient au serveur qui a produit le fichier, ou ce serveur n'a aucune clé de chiffrement configurée pour en stocker une. Ouvrez Paramètres → Fournisseurs d'IA et saisissez à nouveau la clé d'API."
+      "unusableAiProviderKeys": "{count, plural, one {# fournisseur d'IA a été restauré sans clé d'API utilisable} other {# fournisseurs d'IA ont été restaurés sans clé d'API utilisable}} : la sauvegarde a été créée avant que les clés de fournisseur y soient incluses, donc la clé enregistrée appartient au serveur qui a produit le fichier, ou ce serveur n'a aucune clé de chiffrement configurée pour en stocker une. Ouvrez Paramètres → Fournisseurs d'IA et saisissez à nouveau la clé d'API.",
+      "doneButton": "Terminer"
     },
     "storedBackups": {
       "heading": "Sauvegardes automatiques",
@@ -966,6 +967,7 @@
     "emergencyAccess": "Accès d'urgence",
     "apiAccess": "Accès API",
     "aiSettings": "Paramètres IA",
+    "emailReceipts": "Reçus par e-mail",
     "backupRestore": "Sauvegarde et restauration",
     "help": "Aide et support",
     "dangerZone": "Zone dangereuse",
@@ -994,6 +996,10 @@
     "aiSettingsCard": {
       "title": "Paramètres IA",
       "description": "Configurez les fournisseurs d'IA, gérez les clés API et consultez les statistiques d'utilisation."
+    },
+    "emailReceiptsCard": {
+      "title": "Reçus par e-mail",
+      "description": "Connectez une boîte mail pour les confirmations de commande et gérez les profils qui les lisent."
     },
     "bankSyncCard": {
       "title": "Synchronisation bancaire",

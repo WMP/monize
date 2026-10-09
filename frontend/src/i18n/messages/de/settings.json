@@ -359,11 +359,17 @@
         "INVESTMENTS": "Anlagewert",
         "STRATEGIES": "Strategiesignale",
         "BANK_SYNC": "Bankverbindungen",
-        "BANK_SYNC_ACTIVITY": "Ergebnisse der Bank-Synchronisierung"
+        "BANK_SYNC_ACTIVITY": "Ergebnisse der Bank-Synchronisierung",
+        "EMAIL_RECEIPTS": "E-Mail-Belege"
       },
       "channelNotApplicable": "Für diese Benachrichtigungsart nicht zutreffend",
       "emailToggleLabel": "Bericht-E-Mail für {category}",
+      "emailNotificationToggleLabel": "Warn-E-Mail für {category}",
+      "pushToggleLabel": "Push für {category}",
+      "unifiedpushToggleLabel": "UnifiedPush für {category}",
       "saveFailed": "Diese Einstellung konnte nicht gespeichert werden",
+      "emailUnavailable": "Aktivieren Sie oben die E-Mail-Benachrichtigungen, um diese per E-Mail zu senden.",
+      "pushUnavailable": "Für Push ist kein Gerät registriert, daher kann dieser Kanal nichts zustellen.",
       "throttle": {
         "label": "Sperrzeit",
         "ariaLabel": "Abklingzeit für {category}",
@@ -378,11 +384,6 @@
           "1440": "24 Stunden"
         }
       },
-      "emailNotificationToggleLabel": "Warn-E-Mail für {category}",
-      "pushToggleLabel": "Push für {category}",
-      "unifiedpushToggleLabel": "UnifiedPush für {category}",
-      "emailUnavailable": "Aktivieren Sie oben die E-Mail-Benachrichtigungen, um diese per E-Mail zu senden.",
-      "pushUnavailable": "Für Push ist kein Gerät registriert, daher kann dieser Kanal nichts zustellen.",
       "pushEnableHint": "Dieser Browser ist nicht für Push-Benachrichtigungen registriert."
     }
   },
@@ -757,8 +758,8 @@
       },
       "toasts": {
         "success": "Backup erfolgreich heruntergeladen",
-        "incomplete": "Backup heruntergeladen, aber es ist UNVOLLSTÄNDIG: {unusable} von {total} Anhang/Anhängen konnte(n) nicht unbeschädigt gesichert werden ({missing} fehlen, {inconsistent} haben die Integritätsprüfung nicht bestanden). Behandeln Sie diese Datei nicht als vollständiges Backup — beheben Sie den Anhangsspeicher und exportieren Sie erneut.",
-        "failed": "Backup konnte nicht erstellt werden"
+        "failed": "Backup konnte nicht erstellt werden",
+        "incomplete": "Backup heruntergeladen, aber es ist UNVOLLSTÄNDIG: {unusable} von {total} Anhang/Anhängen konnte(n) nicht unbeschädigt gesichert werden ({missing} fehlen, {inconsistent} haben die Integritätsprüfung nicht bestanden). Behandeln Sie diese Datei nicht als vollständiges Backup — beheben Sie den Anhangsspeicher und exportieren Sie erneut."
       }
     },
     "restore": {
@@ -788,9 +789,9 @@
       "title": "Wiederherstellung abgeschlossen",
       "description": "Ihre Daten wurden erfolgreich wiederhergestellt. Hier eine Zusammenfassung der wiederhergestellten Daten:",
       "totalRecords": "Datensätze gesamt",
-      "doneButton": "Fertig",
       "skippedAttachments": "{count, plural, one {# Anhang wurde nicht wiederhergestellt} other {# Anhänge wurden nicht wiederhergestellt}}: Das Backup enthielt keine verwendbaren Bytes dafür — sie fehlten beim Export oder scheiterten an ihrer Prüfsumme, oder die Datei stammt aus der Zeit vor eigenständigen Backups. Erstelle ein neues Backup, sobald der Anhangsspeicher in Ordnung ist.",
-      "unusableAiProviderKeys": "{count, plural, one {# KI-Anbieter wurde ohne nutzbaren API-Schlüssel wiederhergestellt} other {# KI-Anbieter wurden ohne nutzbare API-Schlüssel wiederhergestellt}}: Die Sicherung entstand, bevor Anbieterschlüssel mitgeführt wurden — der gespeicherte Schlüssel gehört also zu dem Server, der die Datei erstellt hat, oder auf diesem Server ist kein Verschlüsselungsschlüssel eingerichtet, unter dem einer abgelegt werden könnte. Öffnen Sie Einstellungen → KI-Anbieter und geben Sie den API-Schlüssel erneut ein."
+      "unusableAiProviderKeys": "{count, plural, one {# KI-Anbieter wurde ohne nutzbaren API-Schlüssel wiederhergestellt} other {# KI-Anbieter wurden ohne nutzbare API-Schlüssel wiederhergestellt}}: Die Sicherung entstand, bevor Anbieterschlüssel mitgeführt wurden — der gespeicherte Schlüssel gehört also zu dem Server, der die Datei erstellt hat, oder auf diesem Server ist kein Verschlüsselungsschlüssel eingerichtet, unter dem einer abgelegt werden könnte. Öffnen Sie Einstellungen → KI-Anbieter und geben Sie den API-Schlüssel erneut ein.",
+      "doneButton": "Fertig"
     },
     "storedBackups": {
       "heading": "Automatische Sicherungen",
@@ -966,6 +967,7 @@
     "emergencyAccess": "Notfallzugang",
     "apiAccess": "API-Zugang",
     "aiSettings": "KI-Einstellungen",
+    "emailReceipts": "E-Mail-Belege",
     "backupRestore": "Backup & Wiederherstellung",
     "help": "Hilfe & Support",
     "dangerZone": "Gefahrenbereich",
@@ -994,6 +996,10 @@
     "aiSettingsCard": {
       "title": "KI-Einstellungen",
       "description": "KI-Anbieter konfigurieren, API-Schlüssel verwalten und Nutzungsstatistiken einsehen."
+    },
+    "emailReceiptsCard": {
+      "title": "E-Mail-Belege",
+      "description": "Verbinde ein Postfach für Bestellbestätigungen und verwalte die Profile, die sie lesen."
     },
     "bankSyncCard": {
       "title": "Bank-Synchronisierung",

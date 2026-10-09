@@ -359,11 +359,17 @@
         "INVESTMENTS": "Valore degli investimenti",
         "STRATEGIES": "Segnali di strategia",
         "BANK_SYNC": "Collegamenti bancari",
-        "BANK_SYNC_ACTIVITY": "Risultati della sincronizzazione bancaria"
+        "BANK_SYNC_ACTIVITY": "Risultati della sincronizzazione bancaria",
+        "EMAIL_RECEIPTS": "Ricevute email"
       },
       "channelNotApplicable": "Non applicabile a questo tipo di notifica",
       "emailToggleLabel": "Email (report) per {category}",
+      "emailNotificationToggleLabel": "Email di avviso per {category}",
+      "pushToggleLabel": "Push per {category}",
+      "unifiedpushToggleLabel": "UnifiedPush per {category}",
       "saveFailed": "Impossibile salvare questa impostazione",
+      "emailUnavailable": "Attiva le notifiche email qui sopra per inviarle via email.",
+      "pushUnavailable": "Nessun dispositivo è registrato per il push, quindi questo canale non può consegnare nulla.",
       "throttle": {
         "label": "Intervallo",
         "ariaLabel": "Intervallo per {category}",
@@ -378,11 +384,6 @@
           "1440": "24 ore"
         }
       },
-      "emailNotificationToggleLabel": "Email di avviso per {category}",
-      "pushToggleLabel": "Push per {category}",
-      "unifiedpushToggleLabel": "UnifiedPush per {category}",
-      "emailUnavailable": "Attiva le notifiche email qui sopra per inviarle via email.",
-      "pushUnavailable": "Nessun dispositivo è registrato per il push, quindi questo canale non può consegnare nulla.",
       "pushEnableHint": "Questo browser non è registrato per le notifiche push."
     }
   },
@@ -757,8 +758,8 @@
       },
       "toasts": {
         "success": "Backup scaricato con successo",
-        "incomplete": "Backup scaricato, ma è INCOMPLETO: {unusable} allegato/i su {total} non è stato possibile salvarli integri ({missing} mancanti, {inconsistent} non hanno superato il controllo di integrità). Non considerare questo file un backup completo: correggi l'archiviazione degli allegati ed esporta di nuovo.",
-        "failed": "Impossibile creare il backup"
+        "failed": "Impossibile creare il backup",
+        "incomplete": "Backup scaricato, ma è INCOMPLETO: {unusable} allegato/i su {total} non è stato possibile salvarli integri ({missing} mancanti, {inconsistent} non hanno superato il controllo di integrità). Non considerare questo file un backup completo: correggi l'archiviazione degli allegati ed esporta di nuovo."
       }
     },
     "restore": {
@@ -788,9 +789,9 @@
       "title": "Ripristino completato",
       "description": "I tuoi dati sono stati ripristinati con successo. Ecco un riepilogo di quanto è stato ripristinato:",
       "totalRecords": "Record totali",
-      "doneButton": "Fatto",
       "skippedAttachments": "{count, plural, one {# allegato non è stato ripristinato} other {# allegati non sono stati ripristinati}}: il backup non conteneva byte utilizzabili per essi — erano assenti o non hanno superato il checksum al momento dell'esportazione, oppure il file precede i backup autonomi. Esporta un nuovo backup quando l'archivio degli allegati è integro.",
-      "unusableAiProviderKeys": "{count, plural, one {# provider AI è stato ripristinato senza una chiave API utilizzabile} other {# provider AI sono stati ripristinati senza chiavi API utilizzabili}}: il backup è stato creato prima che le chiavi dei provider viaggiassero al suo interno, quindi la chiave memorizzata appartiene al server che ha prodotto il file, oppure questo server non ha una chiave di cifratura configurata per conservarla. Apri Impostazioni → Provider AI e inserisci di nuovo la chiave API."
+      "unusableAiProviderKeys": "{count, plural, one {# provider AI è stato ripristinato senza una chiave API utilizzabile} other {# provider AI sono stati ripristinati senza chiavi API utilizzabili}}: il backup è stato creato prima che le chiavi dei provider viaggiassero al suo interno, quindi la chiave memorizzata appartiene al server che ha prodotto il file, oppure questo server non ha una chiave di cifratura configurata per conservarla. Apri Impostazioni → Provider AI e inserisci di nuovo la chiave API.",
+      "doneButton": "Fatto"
     },
     "storedBackups": {
       "heading": "Backup automatici",
@@ -966,6 +967,7 @@
     "emergencyAccess": "Accesso di emergenza",
     "apiAccess": "Accesso API",
     "aiSettings": "Impostazioni AI",
+    "emailReceipts": "Ricevute via email",
     "backupRestore": "Backup e ripristino",
     "help": "Guida e supporto",
     "dangerZone": "Zona pericolosa",
@@ -994,6 +996,10 @@
     "aiSettingsCard": {
       "title": "Impostazioni AI",
       "description": "Configura i provider AI, gestisci le chiavi API e visualizza le statistiche di utilizzo."
+    },
+    "emailReceiptsCard": {
+      "title": "Ricevute via email",
+      "description": "Collega una casella di posta per le conferme d'ordine e gestisci i profili che le leggono."
     },
     "bankSyncCard": {
       "title": "Sincronizzazione bancaria",

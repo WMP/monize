@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "Skrzynka przeglądów AI",
-    "subtitle": "Transakcje, które reguła kazała sprawdzić sztucznej inteligencji, oraz zmiany zaproponowane przez asystenta do Twojej akceptacji."
+    "subtitle": "Transakcje, które reguła kazała sprawdzić sztucznej inteligencji, profile, które asystent miał przygotować, oraz zmiany zaproponowane przez asystenta do Twojej akceptacji."
   },
   "filter": {
     "label": "Filtruj według statusu",
@@ -12,6 +12,12 @@
     "applied": "Zastosowane",
     "rejected": "Odrzucone",
     "expired": "Wygasłe"
+  },
+  "kindFilter": {
+    "label": "Filtruj według rodzaju",
+    "all": "Wszystkie",
+    "email_receipt": "Paragony z e-maili",
+    "transaction_review": "Reguły"
   },
   "status": {
     "pending": "Oczekuje",
@@ -32,9 +38,15 @@
     "transactionMissing": "Ta transakcja już nie istnieje",
     "rule": "Reguła: {name}",
     "manualRequest": "Zgłoszono ręcznie",
+    "emailReceipt": "Paragon z e-maila: {subject}, nadawca: {sender}",
+    "emailReceiptMissing": "Paragon z e-maila (wiadomość została usunięta)",
+    "parserDraft": "Szkic profilu z {count, plural, one {# wiadomości} few {# wiadomości} many {# wiadomości} other {# wiadomości}} ({domain})",
+    "viewEmailReceipts": "Zobacz paragony z e-maili",
     "agentNote": "Uwaga asystenta: {reason}",
     "dates": "Utworzono {created}, wygasa {expires}",
-    "viewTransaction": "Zobacz transakcję"
+    "viewTransaction": "Zobacz transakcję",
+    "waitingForAgent": "Oczekiwanie na agenta AI. <link>Połącz dostawcę AI w Ustawieniach</link> lub pozwól klientowi MCP ją przejąć.",
+    "parserDraftReady": "Szkic profilu gotowy. <link>Przetestuj i zatwierdź go w ustawieniach profili</link>."
   },
   "actions": {
     "dismiss": "Odrzuć"
@@ -42,9 +54,26 @@
   "proposal": {
     "errorTitle": "Tej propozycji nie można już zastosować"
   },
+  "bulk": {
+    "selectRow": "Zaznacz: {name}",
+    "selectAll": "Zaznacz wszystkie pokazane prośby, które można zatwierdzić",
+    "approveSelected": "Zatwierdź zaznaczone ({count})",
+    "approveAllShown": "Zatwierdź wszystkie pokazane ({count})",
+    "summary": "{approved, plural, one {Zastosowano # propozycję} few {Zastosowano # propozycje} many {Zastosowano # propozycji} other {Zastosowano # propozycji}}, nie zastosowano: {failed}.",
+    "closeSummary": "Zamknij",
+    "failure": "{name}: {reason}",
+    "noReason": "Nie podano powodu",
+    "unknownRequest": "Prośba",
+    "failed": "Nie udało się zastosować propozycji",
+    "dialog": {
+      "title": "{count, plural, one {Zastosować # propozycję?} few {Zastosować # propozycje?} many {Zastosować # propozycji?} other {Zastosować # propozycji?}}",
+      "message": "Każda propozycja jest sprawdzana względem transakcji w jej obecnym stanie i stosowana osobno. Propozycja, która już nie pasuje, jest pomijana i zgłaszana, a pozostałe są nadal stosowane. Przejrzyj propozycje przed ich zatwierdzeniem.",
+      "confirm": "{count, plural, one {Zastosuj # propozycję} few {Zastosuj # propozycje} many {Zastosuj # propozycji} other {Zastosuj # propozycji}}"
+    }
+  },
   "dismissDialog": {
     "title": "Odrzucić tę prośbę?",
-    "message": "Nikt nie zostanie ponownie poproszony o sprawdzenie tej transakcji. Sama transakcja nie zostanie zmieniona.",
+    "message": "Nikt nie zostanie ponownie poproszony o zajęcie się tą prośbą. Nic, czego dotyczyła, nie zostanie zmienione.",
     "confirm": "Odrzuć prośbę"
   },
   "loading": "Wczytywanie próśb o przegląd...",

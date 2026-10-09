@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "AIレビュー受信箱",
-    "subtitle": "ルールがAIにレビューを依頼した取引と、アシスタントが承認用に提案した変更です。"
+    "subtitle": "ルールがAIにレビューを依頼した取引、アシスタントに下書きが依頼されたプロフィール、アシスタントが承認用に提案した変更です。"
   },
   "filter": {
     "label": "ステータスで絞り込み",
@@ -12,6 +12,12 @@
     "applied": "適用済み",
     "rejected": "却下",
     "expired": "期限切れ"
+  },
+  "kindFilter": {
+    "label": "種類で絞り込み",
+    "all": "すべて",
+    "email_receipt": "メールレシート",
+    "transaction_review": "ルール"
   },
   "status": {
     "pending": "保留中",
@@ -32,9 +38,15 @@
     "transactionMissing": "この取引は既に存在しません",
     "rule": "ルール: {name}",
     "manualRequest": "手動で依頼",
+    "emailReceipt": "メールレシート: {subject} ({sender})",
+    "emailReceiptMissing": "メールレシート (メールは削除されました)",
+    "parserDraft": "{count, plural, one {# 通のメール} other {# 通のメール}}からのプロフィールの下書き ({domain})",
+    "viewEmailReceipts": "メールレシートを表示",
     "agentNote": "アシスタントからのメモ: {reason}",
     "dates": "作成日 {created}、期限 {expires}",
-    "viewTransaction": "取引を表示"
+    "viewTransaction": "取引を表示",
+    "waitingForAgent": "AIエージェントを待っています。<link>設定でAIプロバイダーを接続する</link>か、MCPクライアントに引き受けさせてください。",
+    "parserDraftReady": "プロフィールの下書きができました。<link>プロフィールの設定でテストして承認する</link>。"
   },
   "actions": {
     "dismiss": "却下する"
@@ -42,9 +54,26 @@
   "proposal": {
     "errorTitle": "この提案はもう適用できません"
   },
+  "bulk": {
+    "selectRow": "{name} を選択",
+    "selectAll": "表示中の承認可能なリクエストをすべて選択",
+    "approveSelected": "選択した項目を承認 ({count})",
+    "approveAllShown": "表示中の項目をすべて承認 ({count})",
+    "summary": "{approved, plural, one {# 件の提案} other {# 件の提案}}を適用、{failed, plural, one {# 件は未適用} other {# 件は未適用}}です。",
+    "closeSummary": "閉じる",
+    "failure": "{name}: {reason}",
+    "noReason": "理由は示されませんでした",
+    "unknownRequest": "リクエスト",
+    "failed": "提案を適用できませんでした",
+    "dialog": {
+      "title": "{count, plural, one {# 件の提案を適用しますか?} other {# 件の提案を適用しますか?}}",
+      "message": "各提案は、現在の取引の状態と照らして確認され、個別に適用されます。合わなくなった提案はスキップして報告し、残りは引き続き適用されます。承認する前に提案を確認してください。",
+      "confirm": "{count, plural, one {# 件の提案を適用} other {# 件の提案を適用}}"
+    }
+  },
   "dismissDialog": {
     "title": "この依頼を却下しますか?",
-    "message": "この取引のレビューは今後依頼されません。取引自体は変更されません。",
+    "message": "この依頼への対応は今後依頼されません。依頼の対象は変更されません。",
     "confirm": "依頼を却下"
   },
   "loading": "レビュー依頼を読み込み中...",

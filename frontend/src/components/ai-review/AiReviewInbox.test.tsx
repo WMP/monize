@@ -6,12 +6,18 @@ import { AiReviewInbox } from './AiReviewInbox';
 import { makeReviewItem, PROPOSED_ACTION } from './ai-review-fixtures';
 import type { AiReviewItem } from '@/types/ai-review';
 
-const api = vi.hoisted(() => ({ list: vi.fn(), dismiss: vi.fn() }));
+const api = vi.hoisted(() => ({ list: vi.fn(), dismiss: vi.fn(), approveBatch: vi.fn() }));
+const nav = vi.hoisted(() => ({ search: '', replace: vi.fn() }));
 const confirmAction = vi.hoisted(() => vi.fn());
 const clearAllCache = vi.hoisted(() => vi.fn());
 const notifyAiAction = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/ai-review-api', () => ({ aiReviewApi: api }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: nav.replace, back: vi.fn(), prefetch: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => '/ai-reviews',
+  useSearchParams: () => new URLSearchParams(nav.search),
+}));
 vi.mock('@/lib/ai', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/ai')>()),
   aiApi: { confirmAction },
@@ -56,6 +62,7 @@ async function click(element: HTMLElement) {
 describe('AiReviewInbox', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    nav.search = '';
     api.list.mockResolvedValue([]);
   });
 
@@ -227,5 +234,170 @@ describe('AiReviewInbox', () => {
     await renderInbox();
     expect(screen.getByText('This transaction no longer exists')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'View transaction' })).not.toBeInTheDocument();
+  });
+
+  describe('a profile draft request among the others', () => {
+    const draft = (over: Partial<AiReviewItem> = {}) =>
+      makeReviewItem({
+        id: 'req-draft',
+        kind: 'email_parser_draft',
+        ruleId: null,
+        ruleName: null,
+        transactionId: null,
+        transaction: null,
+        parserDraft: { domain: 'shop.example.com', emailCount: 2, parserId: null },
+        ...over,
+      });
+
+    it('lists it with an ordinary request, each in its own shape', async () => {
+      api.list.mockResolvedValue([draft(), makeReviewItem()]);
+      await renderInbox();
+      expect(screen.getByText('Profile draft from 2 emails (shop.example.com)')).toBeInTheDocument();
+      expect(screen.getByText('Rule: Allegro orders')).toBeInTheDocument();
+    });
+
+    it('dismisses it after the confirmation dialog, like any other request', async () => {
+      api.list.mockResolvedValueOnce([draft()]).mockResolvedValue([]);
+      api.dismiss.mockResolvedValue(draft({ status: 'rejected' }));
+      await renderInbox();
+      await click(screen.getByRole('button', { name: 'Dismiss' }));
+      await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Dismiss request' }));
+      expect(api.dismiss).toHaveBeenCalledWith('req-draft');
+      expect(toast.success).toHaveBeenCalledWith('Request dismissed');
+    });
+
+    it('points a proposed one at the profile settings and offers no approve button here', async () => {
+      api.list.mockResolvedValue([draft({ status: 'proposed', parserDraft: { domain: 'shop.example.com', emailCount: 2, parserId: 'p-1' } })]);
+      await renderInbox();
+      expect(screen.getByRole('link', { name: 'Test and approve it in the profile settings' })).toHaveAttribute(
+        'href',
+        '/email-receipts?tab=profiles',
+      );
+      expect(screen.queryByRole('button', { name: /Approve|Confirm|Apply/ })).not.toBeInTheDocument();
+      expect(confirmAction).not.toHaveBeenCalled();
+    });
+  });
+  describe('kind filter and bulk approval', () => {
+    const receipt = (id: string, over: Partial<AiReviewItem> = {}) =>
+      makeReviewItem({
+        id,
+        kind: 'email_receipt',
+        ruleId: null,
+        ruleName: null,
+        status: 'proposed',
+        proposal: { action: { ...PROPOSED_ACTION, actionId: `act-${id}` } },
+        emailReceipt: {
+          id: `er-${id}`,
+          subject: `Order ${id}`,
+          fromAddress: 'shop@example.com',
+          receivedAt: '2026-09-01T10:00:00.000Z',
+        },
+        ...over,
+      });
+
+    it('narrows the loaded list to one kind and writes it to the URL', async () => {
+      api.list.mockResolvedValue([receipt('r1'), makeReviewItem({ id: 'rule-1' })]);
+      await renderInbox();
+      expect(screen.getByText('Rule: Allegro orders')).toBeInTheDocument();
+      await click(screen.getByRole('button', { name: 'Email receipts' }));
+      expect(screen.queryByText('Rule: Allegro orders')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Email receipts' })).toHaveAttribute('aria-pressed', 'true');
+      expect(nav.replace).toHaveBeenLastCalledWith('/ai-reviews?kind=email_receipt', { scroll: false });
+      await click(screen.getByRole('button', { name: 'All' }));
+      expect(nav.replace).toHaveBeenLastCalledWith('/ai-reviews', { scroll: false });
+      expect(api.list).toHaveBeenCalledTimes(1);
+    });
+
+    it('starts from ?kind= and ignores a value that is no kind', async () => {
+      nav.search = 'kind=email_receipt';
+      api.list.mockResolvedValue([receipt('r1'), makeReviewItem({ id: 'rule-1' })]);
+      await renderInbox();
+      expect(screen.queryByText('Rule: Allegro orders')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Email receipts' })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('offers no selection when nothing can be approved', async () => {
+      api.list.mockResolvedValue([makeReviewItem()]);
+      await renderInbox();
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Approve selected/ })).not.toBeInTheDocument();
+    });
+
+    it('approves the selected proposals after one confirmation and reports the result', async () => {
+      api.list.mockResolvedValue([receipt('r1'), receipt('r2'), makeReviewItem({ id: 'pending-1' })]);
+      api.approveBatch.mockResolvedValue({
+        results: [{ id: 'r1', ok: true }],
+        approved: 1,
+        failed: 0,
+      });
+      await renderInbox();
+      expect(screen.getByRole('button', { name: 'Approve selected (0)' })).toBeDisabled();
+      await click(screen.getByRole('checkbox', { name: 'Select Order r1' }));
+      expect(screen.getByRole('button', { name: 'Approve selected (1)' })).toBeEnabled();
+      await click(screen.getByRole('button', { name: 'Approve selected (1)' }));
+      expect(api.approveBatch).not.toHaveBeenCalled();
+      await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Apply 1 proposal' }));
+
+      expect(api.approveBatch).toHaveBeenCalledWith(['r1']);
+      expect(clearAllCache).toHaveBeenCalledTimes(1);
+      expect(notifyAiAction).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('status')).toHaveTextContent('1 proposal applied, 0 not applied.');
+      // The list is read again after the bulk approval.
+      expect(api.list).toHaveBeenCalledTimes(2);
+    });
+
+    it('approves everything shown, in chunks, and lists why a request was not applied', async () => {
+      const many = Array.from({ length: 101 }, (_, i) => receipt(`r${i}`));
+      api.list.mockResolvedValue(many);
+      api.approveBatch
+        .mockResolvedValueOnce({
+          results: many.slice(0, 100).map((item) => ({ id: item.id, ok: true })),
+          approved: 100,
+          failed: 0,
+        })
+        .mockResolvedValueOnce({
+          results: [{ id: 'r100', ok: false, error: 'The transaction changed' }],
+          approved: 0,
+          failed: 1,
+        });
+      await renderInbox();
+      await click(screen.getByRole('button', { name: 'Approve all shown (101)' }));
+      await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Apply 101 proposals' }));
+
+      expect(api.approveBatch).toHaveBeenCalledTimes(2);
+      expect(api.approveBatch.mock.calls[0][0]).toHaveLength(100);
+      expect(api.approveBatch.mock.calls[1][0]).toEqual(['r100']);
+      expect(screen.getByRole('status')).toHaveTextContent('100 proposals applied, 1 not applied.');
+      expect(screen.getByText(/The transaction changed/)).toBeInTheDocument();
+    });
+
+    it('selects every approvable row with the header checkbox', async () => {
+      api.list.mockResolvedValue([receipt('r1'), receipt('r2')]);
+      await renderInbox();
+      await click(screen.getByRole('checkbox', { name: 'Select all approvable requests shown' }));
+      expect(screen.getByRole('button', { name: 'Approve selected (2)' })).toBeEnabled();
+      await click(screen.getByRole('checkbox', { name: 'Select all approvable requests shown' }));
+      expect(screen.getByRole('button', { name: 'Approve selected (0)' })).toBeDisabled();
+    });
+
+    it('does not approve anything when the confirmation is cancelled', async () => {
+      api.list.mockResolvedValue([receipt('r1')]);
+      await renderInbox();
+      await click(screen.getByRole('button', { name: 'Approve all shown (1)' }));
+      await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
+      expect(api.approveBatch).not.toHaveBeenCalled();
+    });
+
+    it('names a failed bulk call, applies nothing locally and still reloads the list', async () => {
+      api.list.mockResolvedValue([receipt('r1')]);
+      api.approveBatch.mockRejectedValue(new Error('server down'));
+      await renderInbox();
+      await click(screen.getByRole('button', { name: 'Approve all shown (1)' }));
+      await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Apply 1 proposal' }));
+      expect(toast.error).toHaveBeenCalled();
+      expect(clearAllCache).not.toHaveBeenCalled();
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      expect(api.list).toHaveBeenCalledTimes(2);
+    });
   });
 });

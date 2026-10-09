@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "Bandeja de revisión de IA",
-    "subtitle": "Transacciones que una regla pidió revisar a una IA y las modificaciones que un asistente propone para que las apruebes."
+    "subtitle": "Transacciones que una regla pidió revisar a una IA, perfiles que se pidió redactar a un asistente y modificaciones que un asistente propone para que las apruebes."
   },
   "filter": {
     "label": "Filtrar por estado",
@@ -12,6 +12,12 @@
     "applied": "Aplicada",
     "rejected": "Rechazada",
     "expired": "Caducada"
+  },
+  "kindFilter": {
+    "label": "Filtrar por tipo",
+    "all": "Todas",
+    "email_receipt": "Recibos por correo",
+    "transaction_review": "Reglas"
   },
   "status": {
     "pending": "Pendiente",
@@ -32,9 +38,15 @@
     "transactionMissing": "Esta transacción ya no existe",
     "rule": "Regla: {name}",
     "manualRequest": "Solicitada manualmente",
+    "emailReceipt": "Recibo por correo: {subject} de {sender}",
+    "emailReceiptMissing": "Recibo por correo (el correo se eliminó)",
+    "parserDraft": "Borrador de perfil a partir de {count, plural, one {# correo} other {# correos}} ({domain})",
+    "viewEmailReceipts": "Ver recibos por correo",
     "agentNote": "Nota del asistente: {reason}",
     "dates": "Creada el {created}, caduca el {expires}",
-    "viewTransaction": "Ver transacción"
+    "viewTransaction": "Ver transacción",
+    "waitingForAgent": "Esperando a un agente de IA. <link>Conecta un proveedor de IA en Ajustes</link> o deja que un cliente MCP la tome.",
+    "parserDraftReady": "Borrador de perfil listo. <link>Pruébalo y apruébalo en la configuración de perfiles</link>."
   },
   "actions": {
     "dismiss": "Descartar"
@@ -42,9 +54,26 @@
   "proposal": {
     "errorTitle": "Esta propuesta ya no se puede aplicar"
   },
+  "bulk": {
+    "selectRow": "Seleccionar {name}",
+    "selectAll": "Seleccionar todas las solicitudes aprobables mostradas",
+    "approveSelected": "Aprobar las seleccionadas ({count})",
+    "approveAllShown": "Aprobar todas las mostradas ({count})",
+    "summary": "{approved, plural, one {# propuesta aplicada} other {# propuestas aplicadas}}, {failed, plural, one {# no aplicada} other {# no aplicadas}}.",
+    "closeSummary": "Cerrar",
+    "failure": "{name}: {reason}",
+    "noReason": "No se indicó ningún motivo",
+    "unknownRequest": "Una solicitud",
+    "failed": "No se pudieron aplicar las propuestas",
+    "dialog": {
+      "title": "{count, plural, one {¿Aplicar # propuesta?} other {¿Aplicar # propuestas?}}",
+      "message": "Cada propuesta se comprueba con su transacción tal como está ahora y se aplica por separado. Una que ya no encaja se omite y se notifica, y las demás se aplican igualmente. Revisa las propuestas antes de aprobarlas.",
+      "confirm": "{count, plural, one {Aplicar # propuesta} other {Aplicar # propuestas}}"
+    }
+  },
   "dismissDialog": {
     "title": "¿Descartar esta solicitud?",
-    "message": "Nadie volverá a recibir la petición de revisar esta transacción. La transacción no se modifica.",
+    "message": "Nadie volverá a recibir la petición de trabajar en esta solicitud. No se modifica nada de lo que trataba.",
     "confirm": "Descartar solicitud"
   },
   "loading": "Cargando solicitudes de revisión...",

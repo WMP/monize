@@ -135,5 +135,9 @@
     "importedMessage": "毎日の同期で {institution} からインポートした取引: {imported} 件。",
     "importedNoneTitle": "{institution}: 新しい取引はありません",
     "importedNoneMessage": "{institution} の毎日の同期では新しい取引が見つかりませんでした。"
+  },
+  "emailReceiptsAttention": {
+    "title": "メール領収書に注意が必要です",
+    "message": "受信トレイには、プロファイルなしの{noParser}とそのプロファイルが認識できなかった{parseFailed}があります。確認のために開いてください。"
   }
 }

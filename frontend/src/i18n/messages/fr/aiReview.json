@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "Boîte de révision par l'IA",
-    "subtitle": "Les transactions qu'une règle a demandé de faire réviser par une IA, et les modifications qu'un assistant propose à votre approbation."
+    "subtitle": "Les transactions qu'une règle a demandé de faire réviser par une IA, les profils qu'on a demandé à un assistant de rédiger, et les modifications qu'un assistant propose à votre approbation."
   },
   "filter": {
     "label": "Filtrer par statut",
@@ -12,6 +12,12 @@
     "applied": "Appliquée",
     "rejected": "Rejetée",
     "expired": "Expirée"
+  },
+  "kindFilter": {
+    "label": "Filtrer par type",
+    "all": "Tous",
+    "email_receipt": "Reçus par e-mail",
+    "transaction_review": "Règles"
   },
   "status": {
     "pending": "En attente",
@@ -32,9 +38,15 @@
     "transactionMissing": "Cette transaction n'existe plus",
     "rule": "Règle : {name}",
     "manualRequest": "Demandée manuellement",
+    "emailReceipt": "Reçu par e-mail : {subject} de {sender}",
+    "emailReceiptMissing": "Reçu par e-mail (l'e-mail a été supprimé)",
+    "parserDraft": "Brouillon d'profil à partir de {count, plural, one {# e-mail} other {# e-mails}} ({domain})",
+    "viewEmailReceipts": "Voir les reçus par e-mail",
     "agentNote": "Note de l'assistant : {reason}",
     "dates": "Créée le {created}, expire le {expires}",
-    "viewTransaction": "Voir la transaction"
+    "viewTransaction": "Voir la transaction",
+    "waitingForAgent": "En attente d'un agent IA. <link>Connectez un fournisseur d'IA dans les Paramètres</link> ou laissez un client MCP la prendre en charge.",
+    "parserDraftReady": "Brouillon d'profil prêt. <link>Testez-le et approuvez-le dans les paramètres des profils</link>."
   },
   "actions": {
     "dismiss": "Ignorer"
@@ -42,9 +54,26 @@
   "proposal": {
     "errorTitle": "Cette proposition ne peut plus être appliquée"
   },
+  "bulk": {
+    "selectRow": "Sélectionner {name}",
+    "selectAll": "Sélectionner toutes les demandes approuvables affichées",
+    "approveSelected": "Approuver la sélection ({count})",
+    "approveAllShown": "Approuver toutes celles affichées ({count})",
+    "summary": "{approved, plural, one {# proposition appliquée} other {# propositions appliquées}}, {failed, plural, one {# non appliquée} other {# non appliquées}}.",
+    "closeSummary": "Fermer",
+    "failure": "{name} : {reason}",
+    "noReason": "Aucun motif n'a été indiqué",
+    "unknownRequest": "Une demande",
+    "failed": "Impossible d'appliquer les propositions",
+    "dialog": {
+      "title": "{count, plural, one {Appliquer # proposition ?} other {Appliquer # propositions ?}}",
+      "message": "Chaque proposition est vérifiée par rapport à sa transaction dans son état actuel et appliquée séparément. Une proposition qui ne convient plus est ignorée et signalée, et les autres sont tout de même appliquées. Relisez les propositions avant de les approuver.",
+      "confirm": "{count, plural, one {Appliquer # proposition} other {Appliquer # propositions}}"
+    }
+  },
   "dismissDialog": {
     "title": "Ignorer cette demande ?",
-    "message": "Plus personne ne sera sollicité pour réviser cette transaction. La transaction elle-même n'est pas modifiée.",
+    "message": "Plus personne ne sera sollicité pour traiter cette demande. Rien de ce qu'elle concernait n'est modifié.",
     "confirm": "Ignorer la demande"
   },
   "loading": "Chargement des demandes de révision...",

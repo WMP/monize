@@ -359,11 +359,17 @@
         "INVESTMENTS": "投資價值",
         "STRATEGIES": "策略訊號",
         "BANK_SYNC": "銀行連線",
-        "BANK_SYNC_ACTIVITY": "銀行同步結果"
+        "BANK_SYNC_ACTIVITY": "銀行同步結果",
+        "EMAIL_RECEIPTS": "電子郵件收據"
       },
       "channelNotApplicable": "不適用於此通知類型",
       "emailToggleLabel": "{category} 的報告郵件",
+      "emailNotificationToggleLabel": "{category} 的提醒電子郵件",
+      "pushToggleLabel": "{category} 的推播",
+      "unifiedpushToggleLabel": "{category} 的 UnifiedPush",
       "saveFailed": "無法儲存該設定",
+      "emailUnavailable": "在上方開啟電子郵件通知，即可透過電子郵件傳送。",
+      "pushUnavailable": "沒有裝置註冊推播，因此此管道無法投遞。",
       "throttle": {
         "label": "間隔",
         "ariaLabel": "{category} 的冷卻時間",
@@ -378,11 +384,6 @@
           "1440": "24 小時"
         }
       },
-      "emailNotificationToggleLabel": "{category} 的提醒電子郵件",
-      "pushToggleLabel": "{category} 的推播",
-      "unifiedpushToggleLabel": "{category} 的 UnifiedPush",
-      "emailUnavailable": "在上方開啟電子郵件通知，即可透過電子郵件傳送。",
-      "pushUnavailable": "沒有裝置註冊推播，因此此管道無法投遞。",
       "pushEnableHint": "此瀏覽器尚未註冊推播通知。"
     }
   },
@@ -757,8 +758,8 @@
       },
       "toasts": {
         "success": "備份下載成功",
-        "incomplete": "備份已下載，但內容不完整：{total} 個附件中有 {unusable} 個無法完整保存（{missing} 個缺失，{inconsistent} 個未通過完整性檢查）。請勿將此檔案視為完整備份——修復附件儲存後重新匯出。",
-        "failed": "建立備份失敗"
+        "failed": "建立備份失敗",
+        "incomplete": "備份已下載，但內容不完整：{total} 個附件中有 {unusable} 個無法完整保存（{missing} 個缺失，{inconsistent} 個未通過完整性檢查）。請勿將此檔案視為完整備份——修復附件儲存後重新匯出。"
       }
     },
     "restore": {
@@ -788,9 +789,9 @@
       "title": "還原完成",
       "description": "您的資料已成功還原。以下是已還原內容的摘要：",
       "totalRecords": "總記錄數",
-      "doneButton": "完成",
       "skippedAttachments": "{count, plural, other {# 個附件未被還原}}：備份中沒有可用的位元組——匯出時它們缺失或未通過總和檢查，或該檔案早於自包含備份。請在附件儲存恢復正常後重新匯出備份。",
-      "unusableAiProviderKeys": "{count, plural, other {# 個 AI 提供者在還原後沒有可用的 API 金鑰}}：此備份建立於提供者金鑰隨備份一同保存之前，因此儲存的金鑰屬於產生該檔案的伺服器，或者本伺服器沒有設定用來保存金鑰的加密金鑰。請開啟「設定 → AI 提供者」並重新輸入 API 金鑰。"
+      "unusableAiProviderKeys": "{count, plural, other {# 個 AI 提供者在還原後沒有可用的 API 金鑰}}：此備份建立於提供者金鑰隨備份一同保存之前，因此儲存的金鑰屬於產生該檔案的伺服器，或者本伺服器沒有設定用來保存金鑰的加密金鑰。請開啟「設定 → AI 提供者」並重新輸入 API 金鑰。",
+      "doneButton": "完成"
     },
     "storedBackups": {
       "heading": "自動備份",
@@ -966,6 +967,7 @@
     "emergencyAccess": "緊急存取",
     "apiAccess": "API 存取",
     "aiSettings": "AI 設定",
+    "emailReceipts": "郵件收據",
     "backupRestore": "備份與還原",
     "help": "說明與支援",
     "dangerZone": "危險區域",
@@ -994,6 +996,10 @@
     "aiSettingsCard": {
       "title": "AI 設定",
       "description": "設定 AI 提供者、管理 API 金鑰並查看使用統計。"
+    },
+    "emailReceiptsCard": {
+      "title": "郵件收據",
+      "description": "連接用於接收訂單確認郵件的信箱，並管理讀取這些郵件的設定檔。"
     },
     "bankSyncCard": {
       "title": "銀行同步",

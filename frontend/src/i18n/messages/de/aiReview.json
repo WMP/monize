@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "KI-Prüfungseingang",
-    "subtitle": "Buchungen, die eine Regel von einer KI prüfen lassen wollte, und die Änderungen, die ein Assistent zur Freigabe vorschlägt."
+    "subtitle": "Buchungen, die eine Regel von einer KI prüfen lassen wollte, Profil, die ein Assistent entwerfen sollte, und die Änderungen, die ein Assistent zur Freigabe vorschlägt."
   },
   "filter": {
     "label": "Nach Status filtern",
@@ -12,6 +12,12 @@
     "applied": "Angewendet",
     "rejected": "Abgelehnt",
     "expired": "Abgelaufen"
+  },
+  "kindFilter": {
+    "label": "Nach Art filtern",
+    "all": "Alle",
+    "email_receipt": "E-Mail-Belege",
+    "transaction_review": "Regeln"
   },
   "status": {
     "pending": "Ausstehend",
@@ -32,9 +38,15 @@
     "transactionMissing": "Diese Buchung existiert nicht mehr",
     "rule": "Regel: {name}",
     "manualRequest": "Manuell angefordert",
+    "emailReceipt": "E-Mail-Beleg: {subject} von {sender}",
+    "emailReceiptMissing": "E-Mail-Beleg (die E-Mail wurde gelöscht)",
+    "parserDraft": "Profil-Entwurf aus {count, plural, one {# E-Mail} other {# E-Mails}} ({domain})",
+    "viewEmailReceipts": "E-Mail-Belege anzeigen",
     "agentNote": "Hinweis des Assistenten: {reason}",
     "dates": "Erstellt {created}, läuft ab {expires}",
-    "viewTransaction": "Buchung anzeigen"
+    "viewTransaction": "Buchung anzeigen",
+    "waitingForAgent": "Wartet auf einen KI-Agenten. <link>Verbinde in den Einstellungen einen KI-Anbieter</link> oder lass einen MCP-Client die Anfrage übernehmen.",
+    "parserDraftReady": "Profil-Entwurf bereit. <link>Teste und gib ihn in den Profil-Einstellungen frei</link>."
   },
   "actions": {
     "dismiss": "Verwerfen"
@@ -42,9 +54,26 @@
   "proposal": {
     "errorTitle": "Dieser Vorschlag kann nicht mehr angewendet werden"
   },
+  "bulk": {
+    "selectRow": "{name} auswählen",
+    "selectAll": "Alle angezeigten freigabefähigen Anfragen auswählen",
+    "approveSelected": "Ausgewählte freigeben ({count})",
+    "approveAllShown": "Alle angezeigten freigeben ({count})",
+    "summary": "{approved, plural, one {# Vorschlag} other {# Vorschläge}} angewendet, {failed, plural, one {# nicht angewendet} other {# nicht angewendet}}.",
+    "closeSummary": "Schließen",
+    "failure": "{name}: {reason}",
+    "noReason": "Es wurde kein Grund angegeben",
+    "unknownRequest": "Eine Anfrage",
+    "failed": "Die Vorschläge konnten nicht angewendet werden",
+    "dialog": {
+      "title": "{count, plural, one {# Vorschlag anwenden?} other {# Vorschläge anwenden?}}",
+      "message": "Jeder Vorschlag wird mit dem aktuellen Stand seiner Buchung abgeglichen und einzeln angewendet. Ein Vorschlag, der nicht mehr passt, wird übersprungen und gemeldet, die übrigen werden trotzdem angewendet. Die Vorschläge sollten vor der Freigabe geprüft werden.",
+      "confirm": "{count, plural, one {# Vorschlag anwenden} other {# Vorschläge anwenden}}"
+    }
+  },
   "dismissDialog": {
     "title": "Diese Anfrage verwerfen?",
-    "message": "Niemand wird erneut gebeten, diese Buchung zu prüfen. Die Buchung selbst wird nicht geändert.",
+    "message": "Niemand wird erneut gebeten, an dieser Anfrage zu arbeiten. Nichts, worum es dabei ging, wird geändert.",
     "confirm": "Anfrage verwerfen"
   },
   "loading": "Prüfungsanfragen werden geladen...",

@@ -359,11 +359,17 @@
         "INVESTMENTS": "Nilai investasi",
         "STRATEGIES": "Sinyal strategi",
         "BANK_SYNC": "Koneksi bank",
-        "BANK_SYNC_ACTIVITY": "Hasil sinkronisasi bank"
+        "BANK_SYNC_ACTIVITY": "Hasil sinkronisasi bank",
+        "EMAIL_RECEIPTS": "Tanda terima email"
       },
       "channelNotApplicable": "Tidak berlaku untuk jenis notifikasi ini",
       "emailToggleLabel": "Email laporan untuk {category}",
+      "emailNotificationToggleLabel": "Email peringatan untuk {category}",
+      "pushToggleLabel": "Push untuk {category}",
+      "unifiedpushToggleLabel": "UnifiedPush untuk {category}",
       "saveFailed": "Tidak dapat menyimpan setelan itu",
+      "emailUnavailable": "Aktifkan notifikasi email di atas untuk mengirimnya melalui email.",
+      "pushUnavailable": "Tidak ada perangkat yang terdaftar untuk push, jadi kanal ini tidak dapat mengirim apa pun.",
       "throttle": {
         "label": "Jeda",
         "ariaLabel": "Jeda untuk {category}",
@@ -378,11 +384,6 @@
           "1440": "24 jam"
         }
       },
-      "emailNotificationToggleLabel": "Email peringatan untuk {category}",
-      "pushToggleLabel": "Push untuk {category}",
-      "unifiedpushToggleLabel": "UnifiedPush untuk {category}",
-      "emailUnavailable": "Aktifkan notifikasi email di atas untuk mengirimnya melalui email.",
-      "pushUnavailable": "Tidak ada perangkat yang terdaftar untuk push, jadi kanal ini tidak dapat mengirim apa pun.",
       "pushEnableHint": "Peramban ini belum terdaftar untuk notifikasi push."
     }
   },
@@ -757,8 +758,8 @@
       },
       "toasts": {
         "success": "Cadangan berhasil diunduh",
-        "incomplete": "Backup terunduh, tetapi TIDAK LENGKAP: {unusable} dari {total} lampiran tidak dapat disimpan utuh ({missing} hilang, {inconsistent} gagal pemeriksaan integritas). Jangan perlakukan berkas ini sebagai backup lengkap — perbaiki penyimpanan lampiran dan ekspor ulang.",
-        "failed": "Gagal membuat cadangan"
+        "failed": "Gagal membuat cadangan",
+        "incomplete": "Backup terunduh, tetapi TIDAK LENGKAP: {unusable} dari {total} lampiran tidak dapat disimpan utuh ({missing} hilang, {inconsistent} gagal pemeriksaan integritas). Jangan perlakukan berkas ini sebagai backup lengkap — perbaiki penyimpanan lampiran dan ekspor ulang."
       }
     },
     "restore": {
@@ -788,9 +789,9 @@
       "title": "Pemulihan Selesai",
       "description": "Data Anda telah berhasil dipulihkan. Berikut ringkasan apa yang dipulihkan:",
       "totalRecords": "Total rekaman",
-      "doneButton": "Selesai",
       "skippedAttachments": "{count, plural, other {# lampiran tidak dipulihkan}}: backup tidak memuat byte yang dapat digunakan untuk lampiran tersebut — saat diekspor lampiran hilang atau gagal checksum, atau berkas dibuat sebelum backup mandiri. Ekspor backup baru setelah penyimpanan lampiran sehat.",
-      "unusableAiProviderKeys": "{count, plural, other {# penyedia AI dipulihkan tanpa kunci API yang dapat digunakan}}: cadangan ini dibuat sebelum kunci penyedia ikut disertakan, jadi kunci yang tersimpan milik server yang membuat berkasnya, atau server ini tidak punya kunci enkripsi untuk menyimpannya. Buka Pengaturan → Penyedia AI lalu masukkan kembali kunci API."
+      "unusableAiProviderKeys": "{count, plural, other {# penyedia AI dipulihkan tanpa kunci API yang dapat digunakan}}: cadangan ini dibuat sebelum kunci penyedia ikut disertakan, jadi kunci yang tersimpan milik server yang membuat berkasnya, atau server ini tidak punya kunci enkripsi untuk menyimpannya. Buka Pengaturan → Penyedia AI lalu masukkan kembali kunci API.",
+      "doneButton": "Selesai"
     },
     "storedBackups": {
       "heading": "Cadangan Otomatis",
@@ -966,6 +967,7 @@
     "emergencyAccess": "Akses Darurat",
     "apiAccess": "Akses API",
     "aiSettings": "Pengaturan AI",
+    "emailReceipts": "Struk Surel",
     "backupRestore": "Cadangkan & Pulihkan",
     "help": "Bantuan & Dukungan",
     "dangerZone": "Zona Berbahaya",
@@ -994,6 +996,10 @@
     "aiSettingsCard": {
       "title": "Pengaturan AI",
       "description": "Konfigurasikan penyedia AI, kelola kunci API, dan lihat statistik penggunaan."
+    },
+    "emailReceiptsCard": {
+      "title": "Struk Surel",
+      "description": "Hubungkan kotak surel untuk konfirmasi pesanan dan kelola profil yang membacanya."
     },
     "bankSyncCard": {
       "title": "Sinkronisasi Bank",

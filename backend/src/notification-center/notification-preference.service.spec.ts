@@ -49,6 +49,8 @@ const PINNED_DEFAULTS: Record<
   },
   // What only reports: the bell alone.
   [NotificationCategory.BANK_SYNC_ACTIVITY]: GLOBAL_DEFAULT,
+  // Waiting receipts: the global rule until the user opts in to interruptions.
+  [NotificationCategory.EMAIL_RECEIPTS]: GLOBAL_DEFAULT,
 };
 
 describe("NotificationPreferenceService", () => {

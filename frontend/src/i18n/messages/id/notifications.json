@@ -135,5 +135,9 @@
     "importedMessage": "Transaksi yang diimpor dari {institution} oleh sinkronisasi harian: {imported}.",
     "importedNoneTitle": "{institution}: tidak ada transaksi baru",
     "importedNoneMessage": "Sinkronisasi harian {institution} tidak menemukan transaksi baru."
+  },
+  "emailReceiptsAttention": {
+    "title": "Tanda terima email memerlukan perhatian",
+    "message": "Kotak masuk tanda terima Anda berisi {noParser} tanpa profil dan {parseFailed} yang profilnya tidak dikenali. Buka untuk ditinjau."
   }
 }

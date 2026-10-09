@@ -359,7 +359,8 @@
         "INVESTMENTS": "Investment value",
         "STRATEGIES": "Strategy signals",
         "BANK_SYNC": "Bank connections",
-        "BANK_SYNC_ACTIVITY": "Bank sync results"
+        "BANK_SYNC_ACTIVITY": "Bank sync results",
+        "EMAIL_RECEIPTS": "Email receipts"
       },
       "channelNotApplicable": "Not applicable for this notification type",
       "emailToggleLabel": "Report email for {category}",
@@ -966,6 +967,7 @@
     "emergencyAccess": "Emergency Access",
     "apiAccess": "API Access",
     "aiSettings": "AI Settings",
+    "emailReceipts": "Email Receipts",
     "backupRestore": "Backup & Restore",
     "help": "Help & Support",
     "dangerZone": "Danger Zone",
@@ -994,6 +996,10 @@
     "aiSettingsCard": {
       "title": "AI Settings",
       "description": "Configure AI providers, manage API keys, and view usage statistics."
+    },
+    "emailReceiptsCard": {
+      "title": "Email Receipts",
+      "description": "Connect a mailbox for order confirmations and manage the profiles that read them."
     },
     "bankSyncCard": {
       "title": "Bank Sync",

@@ -324,6 +324,10 @@
       "importedMessage": "Проводки, импортированные из {{ institution }} ежедневной синхронизацией: {{ imported }}.",
       "importedNoneTitle": "{{ institution }}: новых проводок нет",
       "importedNoneMessage": "Ежедневная синхронизация {{ institution }} не нашла новых проводок."
+    },
+    "emailReceiptsAttention": {
+      "title": "Письма-квитанции требуют внимания",
+      "message": "Ваша папка квитанций содержит {{ noParser }} без профиля и {{ parseFailed }}, которые профиль не распознал. Откройте для проверки."
     }
   },
   "backupOffsite": {

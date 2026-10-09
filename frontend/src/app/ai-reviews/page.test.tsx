@@ -10,7 +10,7 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }),
 }));
 vi.mock('@/lib/ai-review-api', () => ({
-  aiReviewApi: { list: vi.fn().mockResolvedValue([]), dismiss: vi.fn() },
+  aiReviewApi: { list: vi.fn().mockResolvedValue([]), dismiss: vi.fn(), approveBatch: vi.fn() },
 }));
 
 const replace = vi.hoisted(() => vi.fn());
@@ -19,6 +19,8 @@ let actingAsUserId: string | null = null;
 vi.mock('next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('next/navigation')>()),
   useRouter: () => ({ replace, push: vi.fn() }),
+  usePathname: () => '/ai-reviews',
+  useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock('@/store/authStore', () => ({
   useAuthStore: (selector: (state: unknown) => unknown) => selector({ actingAsUserId }),

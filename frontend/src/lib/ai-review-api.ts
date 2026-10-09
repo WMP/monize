@@ -1,5 +1,5 @@
 import apiClient from './api';
-import type { AiReviewFilter, AiReviewItem } from '@/types/ai-review';
+import type { AiReviewApproveBatchResult, AiReviewFilter, AiReviewItem } from '@/types/ai-review';
 
 /**
  * The review inbox. Deliberately uncached: the queue changes under the page
@@ -15,6 +15,16 @@ export const aiReviewApi = {
     const response = await apiClient.get<AiReviewItem[]>('/ai-review-requests', {
       params: filter === 'open' ? undefined : { status: filter },
     });
+    return response.data;
+  },
+
+  /**
+   * Approve up to 100 proposals, one after the other, through the same confirm a
+   * single approval uses (each rebuilt against its transaction as it is now). One
+   * result per id; nothing is partly written.
+   */
+  approveBatch: async (ids: readonly string[]): Promise<AiReviewApproveBatchResult> => {
+    const response = await apiClient.post<AiReviewApproveBatchResult>('/ai-review-requests/approve-batch', { ids });
     return response.data;
   },
 

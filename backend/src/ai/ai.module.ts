@@ -37,6 +37,9 @@ import { CurrenciesModule } from "../currencies/currencies.module";
 import { TransactionRulesModule } from "../transaction-rules/transaction-rules.module";
 import { AiReviewModule } from "../ai-review/ai-review.module";
 import { AiReviewQueueModule } from "../ai-review/ai-review-queue.module";
+import { AiReviewApprovalController } from "../ai-review/ai-review-approval.controller";
+import { AiReviewApprovalService } from "../ai-review/ai-review-approval.service";
+import { EmailReceiptParsersModule } from "../email-receipts/parsers/email-receipt-parsers.module";
 
 @Module({
   imports: [
@@ -74,6 +77,9 @@ import { AiReviewQueueModule } from "../ai-review/ai-review-queue.module";
     // the assistant work the queue.
     AiReviewModule,
     AiReviewQueueModule,
+    // The `email_receipt_parsers` tool's logic. A forwardRef: the module reaches
+    // `PayeesModule`, which reaches back here through the payee lookup.
+    forwardRef(() => EmailReceiptParsersModule),
   ],
   providers: [
     AiService,
@@ -89,6 +95,7 @@ import { AiReviewQueueModule } from "../ai-review/ai-review-queue.module";
     ForecastAggregatorService,
     AiActionsService,
     AiWriteLimiter,
+    AiReviewApprovalService,
   ],
   controllers: [
     AiController,
@@ -96,9 +103,18 @@ import { AiReviewQueueModule } from "../ai-review/ai-review-queue.module";
     AiInsightsController,
     AiForecastController,
     AiActionsController,
+    AiReviewApprovalController,
   ],
   // AiActionsService: the MCP rule tools commit a descriptor a client's own
   // dialog approved through the same executors `/ai/actions/confirm` uses.
-  exports: [AiService, AiUsageService, EncryptionModule, AiActionsService],
+  exports: [
+    AiService,
+    AiUsageService,
+    EncryptionModule,
+    AiActionsService,
+    // The profile wizard runs the assistant synchronously
+    // (`EmailReceiptParserGenerateService`).
+    AiQueryService,
+  ],
 })
 export class AiModule {}

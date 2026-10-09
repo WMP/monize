@@ -35,6 +35,10 @@
     "bank_sync_activity": {
       "title": "銀行同步",
       "body": "您的銀行同步有新消息。開啟 Monize 查看詳細資訊。"
+    },
+    "email_receipts": {
+      "title": "電子郵件收據需要關注",
+      "body": "您的收據收件箱中的一些電子郵件需要個人檔案或修正。打開 Monize 以瞭解詳情。"
     }
   },
   "actions": {

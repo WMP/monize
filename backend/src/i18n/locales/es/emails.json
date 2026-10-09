@@ -324,6 +324,10 @@
       "importedMessage": "Transacciones importadas de {{ institution }} por la sincronización diaria: {{ imported }}.",
       "importedNoneTitle": "{{ institution }}: sin transacciones nuevas",
       "importedNoneMessage": "La sincronización diaria de {{ institution }} no encontró transacciones nuevas."
+    },
+    "emailReceiptsAttention": {
+      "title": "Los recibos de correo necesitan atención",
+      "message": "Su bandeja de recibos contiene {{ noParser }} sin perfil y {{ parseFailed }} que su perfil no reconoció. Abra para revisar."
     }
   },
   "backupOffsite": {

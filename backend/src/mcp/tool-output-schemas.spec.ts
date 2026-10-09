@@ -852,6 +852,56 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
     },
   },
   {
+    name: "aiReviewRequestsOutput (claim of a parser draft request)",
+    schema: schemas.aiReviewRequestsOutput,
+    raw: {
+      request: { id: "q1", status: "claimed", kind: "email_parser_draft" },
+      emailReceipts: [{ id: "r1", subject: "Order", text: "Total 5" }],
+      message: "Use email_receipt_parsers.",
+    },
+  },
+  // email_receipt_parsers: categories, test (valid and invalid), save_draft.
+  {
+    name: "emailReceiptParsersOutput (categories)",
+    schema: schemas.emailReceiptParsersOutput,
+    raw: {
+      categories: [{ id: "c1", name: "Books" }],
+      totalCount: 1,
+      truncated: false,
+    },
+  },
+  {
+    name: "emailReceiptParsersOutput (test)",
+    schema: schemas.emailReceiptParsersOutput,
+    raw: {
+      valid: true,
+      errors: [],
+      unknownCategoryIds: [],
+      emails: [{ receiptId: "r1", parsed: { total: 15, complete: true } }],
+      allComplete: true,
+    },
+  },
+  {
+    name: "emailReceiptParsersOutput (test, invalid definition)",
+    schema: schemas.emailReceiptParsersOutput,
+    raw: {
+      valid: false,
+      errors: [{ path: "total[0]", code: "capture_missing" }],
+      emails: [],
+      allComplete: false,
+    },
+  },
+  {
+    name: "emailReceiptParsersOutput (save_draft)",
+    schema: schemas.emailReceiptParsersOutput,
+    raw: {
+      parserId: "p1",
+      status: "draft",
+      requestProposed: true,
+      message: "Draft saved.",
+    },
+  },
+  {
     name: "aiReviewRequestsOutput (reject)",
     schema: schemas.aiReviewRequestsOutput,
     raw: {

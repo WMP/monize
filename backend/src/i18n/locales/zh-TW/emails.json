@@ -324,6 +324,10 @@
       "importedMessage": "每日同步從 {{ institution }} 匯入的交易：{{ imported }} 筆。",
       "importedNoneTitle": "{{ institution }}：沒有新交易",
       "importedNoneMessage": "{{ institution }} 的每日同步沒有發現新交易。"
+    },
+    "emailReceiptsAttention": {
+      "title": "電子郵件收據需要關注",
+      "message": "您的收據收件箱包含 {{ noParser }} 個沒有個人檔案的郵件和 {{ parseFailed }} 個其個人檔案未識別的郵件。打開以查閱。"
     }
   },
   "backupOffsite": {

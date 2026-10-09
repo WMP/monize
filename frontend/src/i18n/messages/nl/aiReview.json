@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "AI-controlepostvak",
-    "subtitle": "Transacties die een regel door een AI wilde laten controleren, en de wijzigingen die een assistent ter goedkeuring voorstelt."
+    "subtitle": "Transacties die een regel door een AI wilde laten controleren, profiels die een assistent moest opstellen, en de wijzigingen die een assistent ter goedkeuring voorstelt."
   },
   "filter": {
     "label": "Filteren op status",
@@ -12,6 +12,12 @@
     "applied": "Toegepast",
     "rejected": "Afgewezen",
     "expired": "Verlopen"
+  },
+  "kindFilter": {
+    "label": "Filteren op soort",
+    "all": "Alle",
+    "email_receipt": "E-mailbonnen",
+    "transaction_review": "Regels"
   },
   "status": {
     "pending": "In afwachting",
@@ -32,9 +38,15 @@
     "transactionMissing": "Deze transactie bestaat niet meer",
     "rule": "Regel: {name}",
     "manualRequest": "Handmatig aangevraagd",
+    "emailReceipt": "E-mailbon: {subject} van {sender}",
+    "emailReceiptMissing": "E-mailbon (de e-mail is verwijderd)",
+    "parserDraft": "Profielconcept uit {count, plural, one {# e-mail} other {# e-mails}} ({domain})",
+    "viewEmailReceipts": "E-mailbonnen bekijken",
     "agentNote": "Opmerking van de assistent: {reason}",
     "dates": "Aangemaakt op {created}, verloopt op {expires}",
-    "viewTransaction": "Transactie bekijken"
+    "viewTransaction": "Transactie bekijken",
+    "waitingForAgent": "Wacht op een AI-agent. <link>Koppel een AI-provider in de Instellingen</link> of laat een MCP-client het verzoek oppakken.",
+    "parserDraftReady": "Profielconcept klaar. <link>Test en keur het goed in de profielinstellingen</link>."
   },
   "actions": {
     "dismiss": "Negeren"
@@ -42,9 +54,26 @@
   "proposal": {
     "errorTitle": "Dit voorstel kan niet meer worden toegepast"
   },
+  "bulk": {
+    "selectRow": "{name} selecteren",
+    "selectAll": "Alle getoonde goed te keuren verzoeken selecteren",
+    "approveSelected": "Geselecteerde goedkeuren ({count})",
+    "approveAllShown": "Alle getoonde goedkeuren ({count})",
+    "summary": "{approved, plural, one {# voorstel} other {# voorstellen}} toegepast, {failed, plural, one {# niet toegepast} other {# niet toegepast}}.",
+    "closeSummary": "Sluiten",
+    "failure": "{name}: {reason}",
+    "noReason": "Er is geen reden opgegeven",
+    "unknownRequest": "Een verzoek",
+    "failed": "De voorstellen konden niet worden toegepast",
+    "dialog": {
+      "title": "{count, plural, one {# voorstel toepassen?} other {# voorstellen toepassen?}}",
+      "message": "Elk voorstel wordt gecontroleerd tegen zijn transactie zoals die nu is en apart toegepast. Een voorstel dat niet meer past, wordt overgeslagen en gemeld, en de rest wordt gewoon toegepast. Bekijk de voorstellen voordat je ze goedkeurt.",
+      "confirm": "{count, plural, one {# voorstel toepassen} other {# voorstellen toepassen}}"
+    }
+  },
   "dismissDialog": {
     "title": "Dit verzoek negeren?",
-    "message": "Niemand wordt nog gevraagd deze transactie te controleren. De transactie zelf wordt niet gewijzigd.",
+    "message": "Niemand wordt nog gevraagd aan dit verzoek te werken. Er wordt niets gewijzigd van waar het over ging.",
     "confirm": "Verzoek negeren"
   },
   "loading": "Controleverzoeken laden...",

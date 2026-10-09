@@ -20,6 +20,7 @@ export const NOTIFICATION_PREFERENCE_CATEGORIES: readonly NotificationCategory[]
     'STRATEGIES',
     'BANK_SYNC',
     'BANK_SYNC_ACTIVITY',
+    'EMAIL_RECEIPTS',
   ];
 
 /**
@@ -59,6 +60,7 @@ export const NOTIFICATION_CATEGORY_CHANNELS: Record<
   // No report-mode digest for bank sync, so its report-email cell is not applicable.
   BANK_SYNC: { email: false, emailNotification: true, push: true, unifiedpush: true },
   BANK_SYNC_ACTIVITY: { email: false, emailNotification: true, push: true, unifiedpush: true },
+  EMAIL_RECEIPTS: { email: true, emailNotification: true, push: true, unifiedpush: true },
 };
 
 /**

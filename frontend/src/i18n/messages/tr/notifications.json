@@ -135,5 +135,9 @@
     "importedMessage": "Günlük senkronizasyonla {institution} kaynağından içe aktarılan işlemler: {imported}.",
     "importedNoneTitle": "{institution}: yeni işlem yok",
     "importedNoneMessage": "{institution} günlük senkronizasyonu yeni işlem bulamadı."
+  },
+  "emailReceiptsAttention": {
+    "title": "E-posta makbuzları ilgilenilmesi gerekiyor",
+    "message": "Makbuz gelen kutunuz {noParser} profil olmadan ve {parseFailed} ki profili tanımadığı içeriyor. Gözden geçirmek için açın."
   }
 }

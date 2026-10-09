@@ -1312,4 +1312,44 @@ describe('NotificationList', () => {
       expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
     });
   });
+  describe('email receipts attention', () => {
+    const attention = (overrides: Partial<Notification> = {}) =>
+      makeNotification({
+        id: 'receipts-1',
+        budgetId: null,
+        budgetCategoryId: null,
+        type: 'EMAIL_RECEIPTS_ATTENTION',
+        category: 'EMAIL_RECEIPTS',
+        severity: 'info',
+        title: 'stored title',
+        message: 'stored message',
+        data: { noParser: 3, parseFailed: 2 },
+        target: '/email-receipts?tab=emails',
+        ...overrides,
+      });
+
+    it('composes the copy from both counts and opens the receipts hub', () => {
+      mockPush.mockClear();
+      render(<NotificationList {...defaultProps} notifications={[attention()]} />);
+      expect(screen.getByText('Email receipts need attention')).toBeInTheDocument();
+      expect(
+        screen.getByText(/holds 3 without a profile and 2 that their profile did not recognize/),
+      ).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('notification-item-receipts-1'));
+      expect(mockPush).toHaveBeenCalledWith('/email-receipts?tab=emails');
+    });
+
+    it('falls back to the stored English when the counts are missing, and to the hub route without a target', () => {
+      mockPush.mockClear();
+      render(
+        <NotificationList
+          {...defaultProps}
+          notifications={[attention({ data: {}, target: null })]}
+        />,
+      );
+      expect(screen.getByText('stored title')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('notification-item-receipts-1'));
+      expect(mockPush).toHaveBeenCalledWith('/email-receipts?tab=emails');
+    });
+  });
 });

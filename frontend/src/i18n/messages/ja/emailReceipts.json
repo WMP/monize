@@ -1,0 +1,998 @@
+{
+  "settingsPage": {
+    "redirecting": "メールレシートのページを開いています...",
+    "redirectLink": "メールボックスの設定へ移動"
+  },
+  "page": {
+    "title": "メールレシート",
+    "subtitle": "メールボックスから注文確認メールを読み取り、明細付きの取引に変換します。接続の状況、各メールの処理状況、そしてあなたの対応待ちを確認できます"
+  },
+  "mailbox": {
+    "heading": "メールボックス",
+    "description": "注文確認メールは、専用のメールボックスからIMAPで読み取ります。Monizeは読み取るだけで、メッセージの変更、移動、削除は一切行いません。",
+    "loading": "メールボックスを読み込み中",
+    "dedicatedWarning": "専用のメールボックスを使用してください。フォルダ内のすべてのメッセージが読み取られるため、注文確認メール以外は入れないでください。",
+    "encryptionUnavailable": "このサーバーはシークレットを暗号化できないため、メールボックスのパスワードや接続を保存できません。管理者に暗号化の設定を依頼してください。",
+    "error": {
+      "title": "メールボックスを読み込めませんでした",
+      "body": "リクエストが失敗したため、メールボックスの状態はまだわかりません。もう一度お試しください。",
+      "retry": "再試行"
+    },
+    "oauth": {
+      "heading": "アカウントを接続",
+      "explanation": "GoogleやMicrosoft 365では、通常のパスワードは受け付けられないことが多くあります。代わりにプロバイダーでサインインしてください。Monizeにメールボックスへのアクセスを許可するだけで、パスワードをここで入力する必要はありません。",
+      "connect": {
+        "google": "Googleで接続",
+        "microsoft": "Microsoftで接続"
+      },
+      "providerNames": {
+        "google": "Google",
+        "microsoft": "Microsoft 365"
+      },
+      "providersUnavailable": "GoogleまたはMicrosoftのサインインが利用できるかどうかを確認できませんでした。下の手動フォームは引き続き使用できます。",
+      "startFailed": "サインインを開始できませんでした",
+      "badAuthorizationUrl": "サーバーが返したサインイン先は安全なWebページではないため、開きませんでした。",
+      "connectedAs": "{provider} に {username} として接続しています。",
+      "notConnected": "{provider} への接続が有効ではないため、メールボックスは読み取られていません。再開するには、もう一度接続してください。",
+      "reconnect": "再接続",
+      "disconnect": "接続を解除",
+      "disconnectDialog": {
+        "title": "メールボックスの接続を解除しますか?",
+        "message": "Monizeは保存している {provider} へのアクセス情報を削除し、メールボックスの読み取りを停止します。保存済みのメールはそのまま残ります。"
+      },
+      "disconnected": "メールボックスの接続を解除しました",
+      "disconnectFailed": "メールボックスの接続を解除できませんでした",
+      "revokeNote": "接続を解除しても、付与した権限は取り消されません。権限を取り消すには、{provider} の権限ページでMonizeを削除してください。",
+      "revokeLink": {
+        "google": "Googleアカウントの権限を開く",
+        "microsoft": "Microsoftアプリの権限を開く"
+      },
+      "saveButton": "設定を保存",
+      "saved": "メールボックスの設定を保存しました",
+      "saveFailed": "メールボックスの設定を保存できませんでした"
+    },
+    "form": {
+      "intro": "または、任意のIMAPメールボックスの情報を入力してください。ほとんどのプロバイダーでは、アカウントのパスワードではなくアプリパスワードが必要です。",
+      "hostLabel": "IMAPサーバー",
+      "portLabel": "ポート",
+      "securityLabel": "接続のセキュリティ",
+      "securityOptions": {
+        "tls": "TLS (通常はポート993)",
+        "starttls": "STARTTLS (通常はポート143)"
+      },
+      "usernameLabel": "ユーザー名",
+      "passwordLabel": "パスワード",
+      "passwordStoredPlaceholder": "パスワードは保存済みです。置き換えるには入力してください。",
+      "passwordRequiredHelp": "新しいメールボックスの場合、またはサーバーやユーザー名を変更する場合は必須です。",
+      "passwordKeepHelp": "保存済みのパスワードを維持するには空欄のままにしてください。パスワードが再表示されることはありません。",
+      "saveButton": "メールボックスを保存",
+      "saved": "メールボックスを保存しました",
+      "saveFailed": "メールボックスを保存できませんでした",
+      "test": {
+        "button": "接続をテスト",
+        "ok": "{count, plural, one {接続できました。フォルダには # 件のメッセージがあります。} other {接続できました。フォルダには # 件のメッセージがあります。}}",
+        "error": "接続に失敗しました: {error}",
+        "failed": "接続をテストできませんでした"
+      }
+    },
+    "settings": {
+      "folderLabel": "フォルダ",
+      "folderHelp": "読み取るフォルダです。読み取り専用で開かれます。",
+      "enabledLabel": "メールボックスを自動で読み取る",
+      "enabledHelp": "自動の読み取りだけを制御します。オンにすると、Monizeがメールボックスを15分ごとに読み取ります。オフにしてもメールボックスの接続は解除されません。「今すぐ確認」は、この設定がオンでもオフでもメールボックスを読み取ります。",
+      "aiModeLabel": "AIモード",
+      "aiModeHelp": "確認時に、レシート用に設定したAIプロバイダーを使えるかどうかです。「AIで認識」と「AIでプロフィールを準備」は、モードに関係なくチャットでアシスタントに依頼し、AIの回答は常に、あなたが承認する提案または下書きです。",
+      "aiModes": {
+        "off": "オフ",
+        "on_demand": "オンデマンド",
+        "automatic": "自動"
+      },
+      "aiModeDescriptions": {
+        "off": "確認の際、レシートにAIは使用されません。",
+        "on_demand": "確認でAIが呼び出されることはありません。「AIで認識」または「AIでプロフィールを準備」で、あなた自身がアシスタントに依頼します。",
+        "automatic": "承認済みのプロフィールでは完全に読み取れなかった一致済みレシートについて確認時にAIに問い合わせ、プロフィールがない送信者にはプロフィールの下書きを作成します。"
+      },
+      "autoApplyLabel": "提案を自動で適用",
+      "autoApplyHelp": "デフォルトではオフです。提案が確認なしで適用されるのは、次のすべてに当てはまる場合だけです: 承認済みのプロフィールがメール全体を読み取った、取引が注文番号または参照番号、あるいは金額と取引先の完全一致で見つかった、候補が1件だけである、提案が端数まで合計と一致している。それ以外はすべて、あなたの承認を待ちます。",
+      "profileLimitLabel": "プロフィールの提案を1日のAI上限に含める",
+      "profileLimitHelp": "デフォルトでオンです。プロフィールがメールから提案した編集は、他のAI提案と同様に、AIが提案する変更の1日あたりの上限に含まれます。保存済みメールの大量のバッチで上限を使い切ってしまう場合はオフにしてください。対象外となるのはプロフィールからの提案のみで、すべての提案は引き続きあなたの承認を待ちます。"
+    },
+    "status": {
+      "lastPolled": "前回の確認",
+      "lastSuccess": "前回の成功した確認",
+      "never": "なし",
+      "lastError": "前回のエラー: {error}",
+      "lastErrorAt": "前回のエラー ({at}): {error}",
+      "pollNow": "今すぐ確認",
+      "pollResult": "確認が完了しました: {fetched, plural, one {# 件のメールを保存} other {# 件のメールを保存}}、{skipped} 件をスキップ、{processed} 件を処理しました。",
+      "pollResultLink": "保存したメールを表示",
+      "pollFailed": "確認に失敗しました",
+      "deleteButton": "メールボックスを削除",
+      "deleteDialog": {
+        "title": "メールボックスを削除しますか?",
+        "message": "メールボックスの設定と保存済みのすべてのメールが削除され、それらに紐づく未処理のレビュー依頼は却下されます。メールボックス内のメールには手を加えません。"
+      },
+      "deleted": "メールボックスを削除しました",
+      "deleteFailed": "メールボックスを削除できませんでした"
+    }
+  },
+  "parsers": {
+    "heading": "プロフィール",
+    "description": "プロフィールは、あなたが作成または確認したパターンを使って、1つの送信者の注文確認メールを読み取り、銀行取引をどう探すかを指定します。承認されると、AIなしで動作します。",
+    "newButton": "新規プロフィールを手動で作成",
+    "loading": "プロフィールを読み込み中",
+    "error": {
+      "title": "プロフィールを読み込めませんでした",
+      "body": "リクエストが失敗しました。もう一度お試しください。",
+      "retry": "再試行"
+    },
+    "empty": {
+      "title": "プロフィールはまだありません",
+      "body": "注文確認メールの送信元ごとにプロフィールを作成するか、メールレシートのページで保存済みのメールから下書きしてください。"
+    },
+    "columns": {
+      "name": "プロフィール",
+      "status": "ステータス",
+      "payee": "支払先",
+      "actions": "操作"
+    },
+    "status": {
+      "draft": "下書き",
+      "approved": "承認済み"
+    },
+    "source": {
+      "manual": "自分で作成",
+      "ai": "AIが下書き"
+    },
+    "invalid": "無効",
+    "noPayee": "支払先なし",
+    "payeeUnknown": "支払先が見つかりません",
+    "payeeUnavailable": "支払先の一覧を利用できません",
+    "actions": {
+      "approve": "承認",
+      "viewJson": "JSONを表示"
+    },
+    "toasts": {
+      "approved": "プロフィールを承認しました",
+      "approveFailed": "プロフィールを承認できませんでした",
+      "changedElsewhere": "このプロフィールは別の場所で変更されました。一覧を再読み込みしました。",
+      "deleted": "プロフィールを削除しました",
+      "deleteFailed": "プロフィールを削除できませんでした"
+    },
+    "deleteDialog": {
+      "title": "プロフィールを削除しますか?",
+      "message": "プロフィール {name} を削除します。すでに読み取ったメールの結果は残ります。"
+    },
+    "jsonDialog": {
+      "title": "{name} の定義",
+      "help": "保存されているプロフィールの定義です。マッチングのセクションには、既定値を含む有効な設定が表示されます。ここでは読み取り専用です。変更するには「編集」を使ってください。",
+      "contentLabel": "定義のJSON",
+      "copy": "コピー",
+      "copied": "JSONをコピーしました",
+      "copyFailed": "JSONをコピーできませんでした"
+    },
+    "processOffer": {
+      "title": "保存済みのメールを今すぐ処理しますか?",
+      "message": "{domains} の保存済みメール{count, plural, one {# 件} other {# 件}}を今すぐ処理しますか? 各メールはこのプロフィールで再度読み取られます。提案内容は、自動適用がオンでない限り、レビュー受信箱で待機します。",
+      "confirm": "今すぐ処理",
+      "later": "後で"
+    },
+    "reparse": "メールを再解析 ({count})"
+  },
+  "editor": {
+    "createTitle": "新規プロフィール",
+    "editTitle": "プロフィールを編集",
+    "loading": "支払先とカテゴリを読み込み中",
+    "lookupsError": {
+      "title": "支払先とカテゴリを読み込めませんでした",
+      "body": "選択項目に必要なため、エディターはまだ開けません。もう一度お試しください。",
+      "retry": "再試行"
+    },
+    "draftNote": "このプロフィールは下書きです。承認するまで何も読み取りません。",
+    "draftAiNote": "AIがサンプルメールからこのプロフィールの下書きを作成しました。それぞれのメールでテストしてすべてのパターンを確認し、一覧から承認してください。承認するまで何も読み取りません。",
+    "identityHeading": "読み取るメール",
+    "nameLabel": "名前",
+    "payeeLabel": "支払先",
+    "payeePlaceholder": "支払先なし",
+    "domainsLabel": "送信元ドメイン",
+    "domainsHelp": "1行に1つ、最大 {max} 個です。一覧にあるドメインのサブドメインも一致します。",
+    "subjectLabel": "件名に含まれる語句",
+    "subjectHelp": "任意です。1行に1つ、最大 {max} 個。件名にそのうち少なくとも1つが含まれている必要があります (大文字と小文字は区別しません)。",
+    "saveButton": "プロフィールを保存",
+    "created": "プロフィールを作成しました",
+    "updated": "プロフィールを保存しました",
+    "saveFailed": "プロフィールを保存できませんでした",
+    "conflict": "このプロフィールは、開いた後に別の場所で変更されました。再読み込みして最新版を確認してください。ここでの編集内容は保存されていません。",
+    "conflictReload": "プロフィールを再読み込み",
+    "patterns": {
+      "sourceLabel": "行のソース",
+      "sourceHint": "以下のパターンを、メールのどの表現と照合するかを選びます。テキストはメールのテキスト部分で、改行ごとに1行になります。HTMLはHTML部分を読み取り、ブロックと表のセルがそれぞれ1行になるため、テキストでは複数行に分かれてしまう商品名も1行のまま保たれます。メールの「行」表示で、各ソースが返す内容をそのまま確認できます。",
+      "sourceOptions": {
+        "text": "テキスト",
+        "html": "HTML"
+      },
+      "globHelp": "各パターンは、メールの1行全体と照合されます (大文字と小文字は区別しません)。任意のテキストには {star} を、値を取り込むには {capture} のように波かっこで囲んだ名前を使います。各フィールドには最大 {max} 個のパターンを、1行に1つずつ指定できます。",
+      "orderIdLabel": "注文番号のパターン",
+      "orderIdHint": "{capture} を取り込む必要があります。例: 注文番号: {capture}",
+      "totalLabel": "合計のパターン",
+      "amountHint": "{capture} を取り込む必要があります。例: ご注文合計 {capture}",
+      "shippingLabel": "送料のパターン",
+      "discountLabel": "割引のパターン",
+      "feesLabel": "手数料のパターン",
+      "itemsHeading": "明細行",
+      "startAfterLabel": "明細の開始位置",
+      "startAfterHint": "任意です。このテキストを含む最初の行の次の行から、明細を読み取ります。",
+      "stopAtLabel": "明細の終了位置",
+      "stopAtHint": "任意です。このテキストを含む最初の行の手前で、明細を終了します。",
+      "itemPatternsLabel": "明細のパターン",
+      "itemPatternsHint": "{name} と、{amount} (行の合計) または {price} (単価。{qty} を併用可) のいずれかを取り込む必要があります。両方は指定できません。例: {name} x {qty} {price}"
+    },
+    "categories": {
+      "heading": "カテゴリ",
+      "help": "カテゴリ名を入力して、一覧から選択します。名前はプロフィールに保存され、プロフィールを保存する時点でそのカテゴリが存在している必要があります。",
+      "categoryPlaceholder": "カテゴリなし",
+      "defaultLabel": "既定のカテゴリ",
+      "defaultHelp": "どのルールにも一致しない商品に使用されます。",
+      "shippingLabel": "送料のカテゴリ",
+      "shippingHelp": "送料の行に設定するカテゴリです。",
+      "feesLabel": "手数料のカテゴリ",
+      "feesHelp": "手数料の行のカテゴリです。",
+      "unknownCategory": "{name} という名前のカテゴリはありません。一覧から選ぶか、先にカテゴリを作成してください。",
+      "rulesInJson": "明細名によるカテゴリルールは上級者向けのオプションです。JSONモードでプロフィールの定義に追加してください。"
+    },
+    "mode": {
+      "label": "編集モード",
+      "form": "フォーム",
+      "json": "JSON",
+      "formUnavailable": "この定義には、フォームで表示できないものが含まれています。ラベル付きの項目、複数行の明細、対応するフィールドがないキーなどです。JSONとして編集してください。",
+      "jsonInvalid": "JSONがまだ有効ではないため、フォームを表示できません。先に修正してください。"
+    },
+    "json": {
+      "label": "プロフィールの定義 (JSON)",
+      "help": "フォームが作成するものと同じ定義です。保存時にサーバーが検証し、下のテストは現在の内容のまま読み取ります。",
+      "parseError": "有効なJSONではないか、JSONオブジェクトではありません。プロフィールを保存またはテストするには修正してください。"
+    },
+    "matching": {
+      "heading": "照合",
+      "help": "メールが支払った銀行の取引をどう見つけるかを設定します。方式は順に試され、取引がちょうど1件に絞れた最初の方式が決定します。複数残ると判断できず、0件なら次の方式に進みます。",
+      "instruction": "最適なのは、銀行取引の説明から取り出した参照番号です。ない場合は、日付と金額が使われます。既定では、次の順に方式が試されます: 参照番号 (プロフィールに参照パターンがある場合)、注文番号、金額と取引先、金額と日付。",
+      "referenceLabel": "参照パターン",
+      "referenceHint": "店舗や決済ゲートウェイが銀行の取引に入れる識別子です。明細書の摘要や振込名などが該当します。{capture} を取り込む必要があります。",
+      "strategiesLabel": "照合方式 (試す順)",
+      "strategiesHelp": "注文番号と参照は、取引の説明、支払先、または参照番号から値を探します。金額と支払先は、金額に加えて支払先の手がかりが必要です。金額と日付は、期間内であれば金額だけで照合します。少なくとも1つはオンのままにしてください。",
+      "strategyPosition": "{position}. {name}",
+      "moveUp": "{name} を前へ移動",
+      "moveDown": "{name} を後ろへ移動",
+      "strategies": {
+        "reference": "参照",
+        "orderId": "注文番号",
+        "amount_payee": "金額と支払先",
+        "amount_date": "金額と日付"
+      },
+      "referenceNeeded": "参照の方式はオンですが、参照パターンがないため、何も見つかりません。",
+      "referenceInLabel": "参照と注文番号を探す場所",
+      "referenceInHint": "4文字未満の値は検索されません。",
+      "referenceIn": {
+        "description": "説明",
+        "payee": "支払先名",
+        "referenceNumber": "参照番号"
+      },
+      "daysBeforeLabel": "購入日より前の日数",
+      "daysAfterLabel": "購入日より後の日数",
+      "daysHint": "購入日を中心とした期間です。既定は {default}、最大 {max} です。",
+      "toleranceLabel": "金額の許容差",
+      "toleranceHint": "銀行の金額とメールの合計とのずれの許容範囲です。既定は 0、最大 {max} です。"
+    },
+    "proposal": {
+      "heading": "提案",
+      "tagLabel": "このプロフィールが分類する取引にタグを追加",
+      "tagHelp": "同じ名前のタグがなければ作成されます。タグは提案に表示され、承認するまで何も書き込まれません。",
+      "tagNameLabel": "タグ名",
+      "aiCategoriesLabel": "どのルールにも一致しない商品のカテゴリをAIに選ばせる",
+      "aiCategoriesHelp": "商品がどのカテゴリルールにも一致せず、既定のカテゴリもない場合は、あなたのカテゴリ一覧からAIがカテゴリを選びます。その選択は提案上でAIによるものと表示されます。オフにすると、AIには一切問い合わせません。"
+    }
+  },
+  "problems": {
+    "heading": "プロフィールの定義が無効です:",
+    "item": "{where}: {problem}",
+    "paths": {
+      "definition": "定義",
+      "line": "{field}、{line} 行目",
+      "rule": "カテゴリのルール {rule}、{part}",
+      "entryPart": "{field}、項目 {line}、{part}",
+      "skipLine": "スキップする行 {line}",
+      "recordStep": "レコードのステップ {step}",
+      "recordStepPart": "レコードのステップ {step}、{part}",
+      "recordAlternative": "レコードのステップ {step}、代替 {alternative}"
+    },
+    "fields": {
+      "orderId": "注文番号のパターン",
+      "total": "合計のパターン",
+      "shipping": "送料のパターン",
+      "discount": "割引のパターン",
+      "itemPatterns": "明細のパターン",
+      "startAfter": "明細の開始位置",
+      "stopAt": "明細の終了位置",
+      "items": "明細行",
+      "categoryRules": "カテゴリのルール",
+      "rulePattern": "パターン",
+      "ruleCategory": "カテゴリ",
+      "defaultCategory": "既定のカテゴリ",
+      "shippingCategory": "送料のカテゴリ",
+      "feesCategory": "手数料のカテゴリ",
+      "balanceTolerance": "残高の許容差",
+      "fees": "手数料のパターン",
+      "skipLines": "スキップする行",
+      "record": "レコード",
+      "label": "ラベル",
+      "value": "値",
+      "within": "範囲内",
+      "line": "行",
+      "optional": "任意",
+      "paid": "支払額のパターン",
+      "payee": "販売元のパターン",
+      "requireLine": "必須の行",
+      "skipIfLine": "メールをスキップする行",
+      "waitIfLine": "メールを保留にする行",
+      "source": "行のソース",
+      "single": "単一の明細",
+      "singleName": "単一の明細の名前",
+      "joinWrapped": "折り返された行を連結",
+      "ruleField": "フィールド",
+      "reference": "参照パターン",
+      "match": "照合セクション",
+      "matchBy": "照合方式",
+      "matchReferenceIn": "参照を探すフィールド",
+      "matchDaysBefore": "購入日より前の日数",
+      "matchDaysAfter": "購入日より後の日数",
+      "matchTolerance": "金額の許容差",
+      "tag": "タグ",
+      "aiCategories": "AIカテゴリ"
+    },
+    "codes": {
+      "not_object": "は有効な定義ではありません",
+      "unknown_key": "はプロフィールに含められないものです",
+      "unsupported_version": "はこのサーバーが読み取れないバージョンです (バージョン 2 を使用してください)",
+      "invalid_type": "の値の種類が正しくありません",
+      "empty": "は空にできません",
+      "too_many": "の項目数が多すぎます (最大 {max} 個)",
+      "too_long": "が長すぎます (最大 {max} 文字)",
+      "control_character": "に制御文字が含まれています",
+      "malformed_capture": "の波かっこで囲んだキャプチャが正しくありません",
+      "too_many_captures": "のキャプチャが多すぎます",
+      "duplicate_capture": "で同じキャプチャ名が2回使われています",
+      "capture_not_allowed": "でこのフィールドが受け付けないキャプチャ名が使われています",
+      "capture_missing": "に、このフィールドに必要なキャプチャがありません",
+      "capture_conflict": "が行の合計と単価の両方を取り込んでいます。どちらか一方にしてください。",
+      "invalid_uuid": "は有効なカテゴリではありません",
+      "out_of_range": "は 1 から {max} までの整数にしてください",
+      "items_patterns_and_record": "にパターンとレコードの両方があります。どちらか一方にしてください。",
+      "items_shape_missing": "にはパターンかレコードのどちらかが必要です",
+      "skip_lines_need_record": "はレコードと一緒にのみ使用できます",
+      "record_name_missing": "は、いずれかのステップで {capture} を取り込む必要があります",
+      "items_single_conflict": "にパターンまたはレコードのほかに単一の明細があります。どちらか一方にしてください。",
+      "join_wrapped_needs_patterns": "は明細のパターンでのみ機能します",
+      "invalid_value": "に、このフィールドが受け付けない値があります",
+      "duplicate_entry": "に同じ項目が2回含まれています",
+      "reference_field_missing": "には参照パターンが必要です (参照の方式がオンです)",
+      "out_of_range_days": "は 0 から {max} までの整数にしてください",
+      "out_of_range_tolerance": "は 0.00 から {max} までの金額にしてください"
+    }
+  },
+  "test": {
+    "heading": "保存済みのメールでテスト",
+    "help": "上のパターン (保存前でも可) で保存済みのメールを読み取り、何が見つかるか、どの取引に一致するかを表示します。何も書き込まれません。",
+    "loadFailed": "保存済みのメールを読み込めなかったため、まだテストする対象がありません。",
+    "noReceipts": "保存されたメールはまだありません。先にメールボックスを確認してください。",
+    "receiptLabel": "メール",
+    "choosePlaceholder": "メールを選択",
+    "receiptOption": "{subject} ({sender}、{date})",
+    "button": "テスト",
+    "failed": "テストに失敗しました",
+    "matchHeading": "取引の一致",
+    "matched": "{date} の {amount} の取引 ({payee}) に、{how} で見つかって紐づけられます。",
+    "matchKinds": {
+      "order_id": "注文番号",
+      "amount_payee": "金額と支払先",
+      "amount_only": "金額",
+      "manual": "あなたの選択",
+      "reference": "参照",
+      "amount_date": "金額と日付"
+    },
+    "noPayee": "支払先なし",
+    "ambiguous": "{count, plural, one {# 件の取引が} other {# 件の取引が}}同じ程度に一致するため、あなたが選ぶまでどれにも紐づけられません。",
+    "unmatched": "{count, plural, one {# 件の候補} other {# 件の候補}}のうち、一致する取引はありません。",
+    "jsonInvalid": "JSONが有効ではないため、まだテストするものがありません。",
+    "outcome": {
+      "not_applicable": "このプロフィールはこのメールを読み取りません。必須の行がどれも含まれていないため、その送信者の次のプロフィールが試されます。",
+      "skip_line": "このプロフィールはこのメールを脇に置きます。スキップ対象の行が含まれています。",
+      "wait_line": "このプロフィールはこのメールを保留します。注文が確定していないことを示す行があるため、後でもう一度読み取られます。",
+      "no_html": "このプロフィールはメールのHTML部分を読み取りますが、このメールにはHTML部分がないため、読み取り不可 (HTMLなし) として記録されます。"
+    },
+    "matchedBy": {
+      "heading": "一致した内容",
+      "none": "このメールから読み取られた値はありません。",
+      "fields": {
+        "orderId": "注文番号",
+        "total": "合計",
+        "paid": "支払額",
+        "shipping": "送料",
+        "discount": "割引",
+        "payee": "販売元",
+        "requireLine": "必須の行",
+        "skipIfLine": "スキップする行",
+        "waitIfLine": "保留にする行",
+        "reference": "参照"
+      },
+      "entryLine": "項目 {entry} ({pattern})、{line} 行目: {text}",
+      "entrySubject": "項目 {entry} ({pattern})、件名: {text}",
+      "labelled": "項目 {entry}、{labelLine} 行目 ({labelText}) のラベル {label}、{line} 行目の値 {pattern}: {text}",
+      "item": "明細 {number}",
+      "itemLine": "{pattern}、{line} 行目: {text}"
+    },
+    "trace": {
+      "heading": "照合が確認した内容",
+      "window": "{from} から {to} までの取引 (購入日の {before} 日前から {after} 日後): {considered, plural, one {# 件を対象にしました} other {# 件を対象にしました}}。",
+      "tolerance": "金額は {amount} までの差を許容します。",
+      "attempt": "{position}. {name}",
+      "kept": "{count, plural, =0 {該当なし} one {# 件の取引が残りました} other {# 件の取引が残りました}}",
+      "decided": "決定",
+      "transaction": "{date}、{amount}、{payee}",
+      "noPayee": "支払先なし",
+      "strategies": {
+        "reference": "参照",
+        "orderId": "注文番号",
+        "amount_payee": "金額と支払先",
+        "amount_date": "金額と日付"
+      }
+    }
+  },
+  "parsed": {
+    "notFound": "見つかりません",
+    "noCategory": "カテゴリなし",
+    "unknownCategory": "不明なカテゴリ",
+    "categoryUnavailable": "カテゴリが読み込まれていません",
+    "noItems": "明細行は読み取られませんでした。",
+    "orderId": "注文番号",
+    "total": "合計",
+    "shipping": "送料",
+    "discount": "割引",
+    "columns": {
+      "item": "商品",
+      "qty": "数量",
+      "amount": "金額",
+      "category": "カテゴリ"
+    },
+    "complete": "完全に読み取れました",
+    "incomplete": "完全には読み取れませんでした",
+    "reasons": {
+      "no_total": "メールに合計が記載されていません。",
+      "no_items": "明細行が見つかりませんでした。",
+      "items_unbalanced": "明細行の合計が総額と一致しません。",
+      "items_uncategorized": "カテゴリのない明細行があります。",
+      "shipping_uncategorized": "送料の行にカテゴリがありません。",
+      "item_amount_missing": "明細に金額がなく、メールにも割り当てられる単一の合計がありません。"
+    },
+    "readByAi": "AIが読み取り",
+    "readFromStructuredData": "構造化データから読み取り",
+    "paid": "支払額",
+    "payee": "販売元",
+    "reference": "参照",
+    "categoryByAi": "AI"
+  },
+  "state": {
+    "pending": "読み取り待ち",
+    "skipped": "スキップ",
+    "no_parser": "No プロフィール",
+    "parse_failed": "読み取れませんでした",
+    "unmatched": "取引が見つかりません",
+    "ambiguous": "複数の取引が一致",
+    "review_conflict": "別の依頼が未処理",
+    "ignored": "無視済み",
+    "proposed": "承認待ち",
+    "applied": "適用済み",
+    "dismissed": "却下済み",
+    "expired": "期限切れ",
+    "pending_ai": "AIの回答待ち",
+    "request_missing": "依頼が見つかりません"
+  },
+  "receipts": {
+    "loading": "メールを読み込み中",
+    "links": {
+      "reviewInbox": "AIレビュー受信箱を開く",
+      "settings": "メールボックスの設定"
+    },
+    "filter": {
+      "label": "状態で絞り込み",
+      "option": "{label} ({count})",
+      "all": "すべて",
+      "pending": "読み取り待ち",
+      "skipped": "スキップ",
+      "no_parser": "No プロフィール",
+      "parse_failed": "読み取れませんでした",
+      "unmatched": "取引が見つかりません",
+      "ambiguous": "複数の取引が一致",
+      "review_conflict": "別の依頼が未処理",
+      "review": "レビュー中",
+      "ignored": "無視済み"
+    },
+    "domainFilter": {
+      "label": "送信元ドメイン",
+      "all": "すべての送信元",
+      "option": "{domain} ({count})",
+      "unknown": "送信者ごとの件数を読み込めませんでした。",
+      "help": "{domain} とそのサブドメインのメールを表示しています。送信者のプロフィールの下書きを1つ作成するには、複数を選択してください。",
+      "waitingForAi": "AI待ち"
+    },
+    "columns": {
+      "select": "選択",
+      "date": "日付",
+      "email": "メール",
+      "transaction": "取引",
+      "state": "状態",
+      "actions": "操作"
+    },
+    "transactionSummary": "{date}、{amount}、{payee}",
+    "noPayee": "支払先なし",
+    "noTransaction": "まだありません",
+    "error": {
+      "title": "メールを読み込めませんでした",
+      "body": "リクエストが失敗したため、メールの状態はまだわかりません。もう一度お試しください。",
+      "retry": "再試行"
+    },
+    "empty": {
+      "title": "メールはありません",
+      "body": "メールボックスが読み取られると、注文確認メールがここに表示されます。",
+      "filteredTitle": "この状態のメールはありません",
+      "filteredBody": "ほかのメールを見るには、別の状態を選んでください。",
+      "noMailboxBody": "メールボックスはまだ接続されていません。注文確認メールの読み取りを始めるには、接続してください。",
+      "connectButton": "メールボックスを接続"
+    },
+    "actions": {
+      "view": "表示",
+      "reprocess": "再処理",
+      "link": "取引を選択",
+      "recognizeAi": "AIで認識",
+      "approve": "承認",
+      "draftParser": "AIでプロフィールを準備",
+      "createParser": "プロフィールを作成",
+      "ignore": "無視"
+    },
+    "toasts": {
+      "approved": "提案を承認しました",
+      "approveFailed": "提案を承認できませんでした",
+      "reprocessed": "メールを再処理しました",
+      "reprocessFailed": "メールを再処理できませんでした",
+      "ignored": "メールを無視しました",
+      "ignoreFailed": "メールを無視できませんでした",
+      "deleted": "メールを削除しました",
+      "deleteFailed": "メールを削除できませんでした"
+    },
+    "ignoreDialog": {
+      "title": "このメールを無視しますか?",
+      "message": "メール {subject} からは何も提案されなくなり、未処理のレビュー依頼は却下されます。",
+      "confirm": "無視"
+    },
+    "deleteDialog": {
+      "title": "このメールを削除しますか?",
+      "message": "保存済みのメール {subject} を削除し、未処理のレビュー依頼を却下します。メールボックス内のメッセージには手を加えず、以降の確認でも再取得されません。"
+    },
+    "selection": {
+      "label": "選択したメール",
+      "select": "{subject} を選択",
+      "selectAll": "この一覧のすべてのメールを選択 (最大 {max} 件)",
+      "count": "{count, plural, one {# 件のメールを選択中} other {# 件のメールを選択中}} (最大 {max} 件)",
+      "draftButton": "AIでプロフィールを準備 ({count})",
+      "clear": "選択を解除",
+      "differentSenders": "選択したメールは異なる送信者 ({domains}) からのものです。プロフィールは1つの送信者のメールを読み取るため、1つの送信者のメールを選択してください。"
+    },
+    "draft": {
+      "failed": "プロフィールの下書きを開始できませんでした",
+      "queued": "キューに追加しました: 依頼はAIレビュー受信箱でエージェントを待ちます。現在応答できるアシスタントがありません。",
+      "handoffFailed": "依頼はキューに追加されましたが、チャットでメールを開けませんでした。AIレビュー受信箱でエージェントを待ちます。",
+      "inboxLink": "AIレビュー受信箱を開く",
+      "opened": "メールを添付してチャットを開きました。メッセージを確認して送信を押してください。",
+      "chatPrompt": "{domain} から届いた{count, plural, one {この注文メール} other {これら # 通の注文メール}}用に、メールレシートのプロフィールを作成してください。AIレビュー依頼 {requestId} を引き受け、email_receipt_profiles ツールで添付されたすべてのメールでプロフィールをテストし、各メールが完全に読み取れるまで修正してから、依頼 {requestId} 用の下書きとして保存してください。"
+    }
+  },
+  "detail": {
+    "title": "メールレシート",
+    "loading": "メールを読み込み中",
+    "error": {
+      "title": "メールを読み込めませんでした",
+      "body": "リクエストが失敗しました。もう一度お試しください。",
+      "retry": "再試行"
+    },
+    "from": "送信元",
+    "received": "受信日時",
+    "forwardedBy": "転送した人",
+    "originalSent": "ショップが送信",
+    "subject": "件名",
+    "state": "状態",
+    "parser": "プロフィール",
+    "noParser": "なし",
+    "structuredSource": "構造化データ",
+    "matchedBy": "一致の根拠",
+    "matchKinds": {
+      "order_id": "注文番号",
+      "amount_payee": "金額と支払先",
+      "amount_only": "金額",
+      "manual": "あなたの選択",
+      "reference": "参照",
+      "amount_date": "金額と日付"
+    },
+    "transaction": "取引",
+    "transactionSummary": "{date}、{amount}、{payee}",
+    "noPayee": "支払先なし",
+    "viewTransaction": "取引を表示",
+    "noTransaction": "まだありません",
+    "reasons": {
+      "too_large": "メールがサイズの上限を超えているため、読み取らずに保存しました。",
+      "undecodable": "メールをデコードできなかったため、読み取らずに保存しました。",
+      "draft_failed": "AIはこの送信者のプロフィールの下書きを作成できませんでした。",
+      "parser_invalid": "この送信者のプロフィールは無効です。プロフィール設定で編集してください。",
+      "no_total": "プロフィールはこのメールで合計を見つけられませんでした。",
+      "no_items": "プロフィールは明細行を見つけられませんでした。",
+      "items_unbalanced": "明細行の合計が総額と一致しません。",
+      "items_uncategorized": "カテゴリのない明細行があります。",
+      "shipping_uncategorized": "送料の行にカテゴリがありません。",
+      "amount_differs": "読み取った合計が取引の金額と異なるため、説明のみを提案しています。",
+      "proposal_fallback": "明細付きの提案は拒否されたため、説明のみを提案しています。",
+      "nothing_to_propose": "このメールからこの取引に追加できる情報はありません。",
+      "proposal_refused": "提案が拒否されたため、何も提案されませんでした。",
+      "skip_line": "このプロフィールがスキップ対象とする行が見つかったため、メールは無視されました。",
+      "wait_line": "注文がまだ確定していないことを示す行があるため、メールは後でもう一度読み取られます。",
+      "no_html": "このプロフィールはメールのHTML部分を読み取りますが、このメールにはHTML部分がありません。",
+      "schema_org": "プロフィールは不要でした。注文はメール内の構造化データ (schema.org) から読み取られました。",
+      "item_amount_missing": "明細に金額がなく、メールにも割り当てられる単一の合計がありません。"
+    },
+    "reasonUnknown": "理由: {reason}",
+    "requestNote": "レビュー依頼 ({state}): {note}",
+    "parsedHeading": "プロフィールが読み取った内容",
+    "notParsed": "このメールからはまだ何も読み取られていません。",
+    "candidatesHeading": "一致する取引",
+    "candidatesHelp": "このメールと同じ程度に一致する取引が複数あります。このメールが支払った取引を選んでください。",
+    "linkButton": "この取引に紐づける",
+    "linked": "メールを取引に紐づけました",
+    "linkFailed": "メールを紐づけられませんでした",
+    "bodyHeading": "メール",
+    "textLabel": "メールの本文",
+    "noText": "メールに本文がありません。",
+    "bodyView": {
+      "label": "メールの表示形式",
+      "html": "HTML",
+      "text": "テキスト",
+      "lines": "行"
+    },
+    "remoteImagesNote": "外部の画像は読み込まれません。",
+    "htmlFrameTitle": "送信元が整形したままのメール",
+    "structured": {
+      "heading": "構造化データ (schema.org)",
+      "help": "メールクライアント向けのマークアップとしてメールに含まれる注文または請求書です。適用されるプロフィールがない場合や、プロフィールが合計を見つけられない場合にだけ読み取られます。",
+      "found": "見つかりました",
+      "notFound": "見つかりません",
+      "notFoundHelp": "メールに注文のマークアップがないか、マークアップに合計も明細もありません。",
+      "seller": "販売元",
+      "currency": "通貨",
+      "orderDate": "注文日",
+      "unitPrice": "単価"
+    },
+    "lines": {
+      "help": "プロフィールのパターンと照合される行です。テストの「一致した内容」リストと同じ方法で番号が付けられています。",
+      "sourceLabel": "行のソース",
+      "sources": {
+        "text": "テキスト",
+        "html": "HTML"
+      },
+      "noHtml": "このメールにはHTML部分がないため、HTMLを読み取るプロフィールでは読み取れません。",
+      "capped": "最初の {max} 行のみが読み取られます。",
+      "empty": "行がありません。",
+      "listLabel": "メールの番号付き行"
+    }
+  },
+  "picker": {
+    "heading": "取引を選択",
+    "help": "自動で一致した取引はありません。次の日付範囲の取引です。範囲は最初、購入日の前後の日付になっています。このメールが支払った取引を選ぶか、日付を変更してさらに広く探してください。",
+    "fromLabel": "開始日",
+    "toLabel": "終了日",
+    "searchLabel": "検索",
+    "searchPlaceholder": "支払先、説明、または金額",
+    "searchButton": "検索",
+    "loading": "取引を読み込み中",
+    "error": "取引を読み込めませんでした。",
+    "retry": "再試行",
+    "empty": "この期間に紐づけられる取引はありません。上の日付を広げてさらに探せます。",
+    "emptySearch": "この期間に検索条件に一致する取引はありません。上の日付を広げられます。",
+    "rangeReversed": "開始日が終了日より後になっています。",
+    "rangeIncomplete": "取引を一覧表示するには、両方の日付を入力してください。",
+    "row": "{date}、{amount}、{payee}",
+    "noPayee": "支払先なし",
+    "linkButton": "紐づける",
+    "hasMore": "最初の {count} 件のみ表示しています。検索で絞り込んでください。",
+    "ai": {
+      "heading": "AIに使う取引を選択",
+      "help": "次の日付範囲の取引です。範囲は最初、購入日の前後の日付になっています。メールに記載された商品ごとにAIに分割させる取引を選ぶか、日付を変更してさらに広く探してください。",
+      "linkButton": "この取引を使う"
+    },
+    "sample": {
+      "heading": "このメールの支払いに対応する取引を選択",
+      "help": "以下の日付範囲にあるあなたの取引です。範囲は最初、購入日前後の数日になっています。選択内容はウィザード内に保持され、プロフィールの確認に使われます。メールには何も紐づけられません。さらに探すには日付を変更してください。",
+      "linkButton": "この取引を使う"
+    }
+  },
+  "callback": {
+    "title": "メールボックスを接続中",
+    "connecting": "接続を完了しています",
+    "toasts": {
+      "connected": "メールボックスを接続しました"
+    },
+    "success": {
+      "title": "メールボックスを接続しました",
+      "body": "{username} として接続しました。設定に戻ります。"
+    },
+    "providerError": {
+      "title": "サインインが完了しませんでした",
+      "withDescription": "プロバイダーからの報告: {error}。{description}",
+      "withoutDescription": "プロバイダーからの報告: {error}。"
+    },
+    "missingParameters": {
+      "title": "サインインの結果なしでこのページが開かれました",
+      "body": "メールレシートの設定から最初にやり直し、いずれかの「接続」ボタンを使用してください。"
+    },
+    "failed": {
+      "title": "メールボックスを接続できませんでした",
+      "fallback": "サーバーが接続を拒否しました。メールレシートの設定から最初にやり直してください。"
+    },
+    "backLink": "メールレシートの設定に戻る"
+  },
+  "recognize": {
+    "title": "AIで認識",
+    "transactionSummary": "{date}、{amount}、{payee}",
+    "noPayee": "支払先なし",
+    "confirmMessage": "このメールは取引 {summary} に紐づいています。AIがメールを読み取り、この取引を商品ごとに分割する方法を提案します。この取引で続行しますか？",
+    "confirm": "AIで認識",
+    "chooseOther": "別の取引を選択",
+    "candidatesHeading": "メールが支払った取引はどれですか？",
+    "candidatesHelp": "このメールに該当する取引が複数あります。AIに使わせる取引を選ぶか、別の取引を検索してください。",
+    "candidatesLoading": "該当する取引を読み込み中",
+    "candidatesError": "該当する取引を読み込めませんでした。",
+    "retry": "再試行",
+    "useButton": "この取引を使う",
+    "searchOther": "他の取引を検索",
+    "back": "戻る",
+    "failed": "認識を開始できませんでした",
+    "queued": "キューに追加しました: 現在応答できるAIアシスタントがないため、依頼はAIレビュー受信箱でエージェント (たとえばMCP経由) を待ちます。",
+    "handoffFailed": "依頼はキューに追加されましたが、チャットでメールを開けませんでした。AIレビュー受信箱でエージェント (たとえばMCP経由) を待ちます。",
+    "inboxLink": "AIレビュー受信箱を開く",
+    "opened": "メールを添付してチャットを開きました。メッセージを確認して送信を押してください。",
+    "chatPrompt": "添付された注文メールの商品、数量、価格を認識し、{date} の私の取引 ({payee}、{amount}) を、それぞれにカテゴリを付けて商品ごとに分割してください。AIレビュー依頼 {requestId} を引き受け、その提案を送信してください。"
+  },
+  "hub": {
+    "tabs": {
+      "ariaLabel": "メールレシートのセクション",
+      "overview": "概要",
+      "emails": "メール",
+      "profiles": "プロフィール",
+      "mailbox": "メールボックス"
+    },
+    "demoRestricted": {
+      "heading": "デモモードでは利用できません",
+      "body": "デモモードでは、メールボックスの接続とプロフィールの作成は無効です。"
+    }
+  },
+  "process": {
+    "retryFailed": "失敗したメールを再試行 ({count})",
+    "starting": "開始しています...",
+    "progress": "{processed, plural, one {# 件のメールを処理しました} other {# 件のメールを処理しました}}。残り {remaining} 件。",
+    "cancel": "キャンセル",
+    "cancelling": "キャンセルしています...",
+    "summary": "{count, plural, one {# 件のメールを処理しました。} other {# 件のメールを処理しました。}}",
+    "cancelledSummary": "{count, plural, one {# 件のメールを処理した時点でキャンセルしました。} other {# 件のメールを処理した時点でキャンセルしました。}}",
+    "outcomes": "結果: {outcomes}。",
+    "passedOver": "{count, plural, one {# 件のメールでエラーが発生したため、スキップしました。} other {# 件のメールでエラーが発生したため、スキップしました。}}",
+    "failed": "リクエストが失敗したため、処理を停止しました。",
+    "failedWithReason": "処理を停止しました: {reason}",
+    "outcome": "{count} {state}",
+    "close": "閉じる"
+  },
+  "overview": {
+    "loading": "概要を読み込んでいます...",
+    "error": {
+      "title": "概要を読み込めませんでした",
+      "body": "リクエストが失敗したため、ここに表示されていないものを「ない」とは受け取らないでください。もう一度お試しください。",
+      "retry": "再試行"
+    },
+    "mailbox": {
+      "title": "メールボックス",
+      "none": "メールボックスはまだ接続されていません。",
+      "connect": "メールボックスを接続",
+      "manage": "メールボックスの設定を開く",
+      "state": {
+        "notConnected": "未接続",
+        "failing": "前回の確認に失敗",
+        "off": "確認はオフです",
+        "polling": "確認中"
+      },
+      "auth": {
+        "password": "パスワードでログイン",
+        "oauth2": "プロバイダーでサインイン"
+      },
+      "lastSuccess": "前回の確認成功: {when}",
+      "neverPolled": "まだ確認に成功していません。",
+      "lastError": "前回のエラー: {error}"
+    },
+    "emails": {
+      "title": "メール",
+      "stored": "保存済み",
+      "processable": "{count, plural, one {# 件のメールを再処理できます} other {# 件のメールを再処理できます}}。",
+      "open": "メールを開く"
+    },
+    "proposals": {
+      "title": "提案",
+      "waiting": "承認待ち",
+      "review": "提案を確認",
+      "open": "レビュー受信箱を開く"
+    },
+    "profiles": {
+      "title": "プロフィール",
+      "approved": "承認済み",
+      "drafts": "{count, plural, one {# 件の下書きが承認待ちです} other {# 件の下書きが承認待ちです}}。",
+      "manage": "プロフィールを開く"
+    },
+    "uncovered": {
+      "title": "プロフィールのない送信者",
+      "help": "これらの送信者から届いたメールを読み取るプロフィールはありません。いずれかの送信者のプロフィールを作成してください。「プロフィール」タブのウィザードが手順を案内します。",
+      "none": "保存済みメールのすべての送信者がプロフィールの対象になっています。",
+      "row": "{domain} ({count, plural, one {# 件のメール} other {# 件のメール}})",
+      "create": "プロフィールを作成"
+    }
+  },
+  "wizard": {
+    "heading": "メールレシートを始めましょう",
+    "intro": "何もない状態から最初の提案まで、4つのステップです。",
+    "done": "(完了)",
+    "steps": {
+      "mailbox": {
+        "title": "メールボックスを接続",
+        "body": "注文確認メールを受信する専用のメールボックスを使用してください。Monize は読み取りだけを行います。",
+        "action": "メールボックスを接続"
+      },
+      "emails": {
+        "title": "メールを取得",
+        "body": "メールはメールボックスの確認時に読み取られます。最初のメールを表示するには、メールボックスの設定から確認を実行してください。",
+        "action": "メールを開く"
+      },
+      "profile": {
+        "title": "送信者のプロフィールを作成",
+        "body": "プロフィールは、1つの送信者の注文確認メールをMonizeがどう読み取るかを定めます。自分で作成するか、保存済みメールから下書きを作成します。",
+        "action": "プロフィールを開く"
+      },
+      "review": {
+        "title": "提案を確認",
+        "body": "各メールは取引に対する提案になります。承認するまで何も変更されません。",
+        "action": "レビュー受信箱を開く"
+      }
+    }
+  },
+  "profileWizard": {
+    "heading": "{domain} のプロフィールを作成",
+    "stepsLabel": "ウィザードのステップ",
+    "stepName": "{number}. {name}",
+    "steps": {
+      "samples": "サンプル",
+      "generate": "生成",
+      "preview": "プレビューと承諾"
+    },
+    "cancel": "キャンセル",
+    "existingDraft": "このドメインには、すでにプロフィールの下書きがあります。",
+    "useExistingDraft": "下書きでプレビューから始める",
+    "uncovered": {
+      "heading": "ドメインのプロフィールを作成",
+      "help": "保存済みメールがあり、承認済みのプロフィールがない送信者ドメインです。ウィザードを始めるには1つ選択してください。",
+      "loading": "送信者ドメインを読み込み中",
+      "error": "送信者ドメインを読み込めませんでした。",
+      "retry": "再試行",
+      "none": "保存済みメールのすべての送信者がプロフィールの対象になっています。"
+    },
+    "samples": {
+      "loading": "メールを読み込み中",
+      "error": "メールを読み込めませんでした。",
+      "retry": "再試行",
+      "empty": {
+        "title": "このドメインからのメールはありません",
+        "body": "{domain} に送信者がいる保存済みメールはありません。"
+      },
+      "help": "メールをクリックして内容を読み、そのメールの支払いに対応する取引を選択します。次に、プロフィールの作成に使うメールを最大 {max} 件チェックします。メールをチェックできるのは、取引を選択した後だけです。",
+      "columns": {
+        "select": "使用",
+        "date": "日付",
+        "email": "メール",
+        "transaction": "取引"
+      },
+      "select": "メール {subject} をサンプルとして使用",
+      "needsTransaction": "先にこのメールの取引を選択してください。",
+      "limitReached": "サンプルは最大 {max} 件までです。別のものを選ぶには、どれかのチェックを外してください。",
+      "noTransaction": "未選択",
+      "selectedCount": "{max} 件中 {count} 件のサンプルをチェック済み",
+      "continue": "アシスタントに進む",
+      "emailLoading": "メールを読み込み中",
+      "emailError": "メールを読み込めませんでした。",
+      "dialogTitle": "メールと取引: {subject}",
+      "emailHeading": "メール"
+    },
+    "generate": {
+      "help": "アシスタントがこれらのメールとその支払いに対応する取引を読み取り、{domain} のプロフィールの下書きを作成します。まだ何も承認されていません。",
+      "reviseHelp": "変更してほしい点をアシスタントに伝えてください。これらのメールと取引から、同じ下書きを更新します。",
+      "feedbackLabel": "変更する内容",
+      "feedbackPlaceholder": "例: 合計は小計ではなく、「お支払い金額」と書かれた行です。",
+      "send": "AIに送信",
+      "sendFeedback": "AIにメモを送信",
+      "retry": "AIに再送信",
+      "back": "戻る",
+      "running": "アシスタントがプロフィールを作成中...",
+      "runningHint": "1分ほどかかる場合があります。このページを開いたままにしてください。",
+      "noDraft": "アシスタントは下書きを保存しませんでした。",
+      "tryAgain": "もう一度送信するか、戻ってサンプルを変更できます。",
+      "failed": "アシスタントに接続できませんでした。",
+      "sendFailed": "リクエストを送信できませんでした。"
+    },
+    "waiting": {
+      "heading": "AIエージェントを待っています",
+      "body": "AI受信トレイに送信しました。エージェントが接続したときにプロファイルを作成します。このページを閉じて、後で戻ってきても構いません。",
+      "working": "エージェントがリクエストを受け取り、作業中です。",
+      "polling": "このページを開いている間、{seconds}秒ごとに確認します。",
+      "checkFailed": "リクエストを確認できませんでした。まもなく再試行します。",
+      "ended": "新しい下書きなしでリクエストが終了しました(破棄または期限切れ)。最初からやり直せます。",
+      "inboxLink": "AI受信トレイを開く",
+      "checkNow": "今すぐ確認",
+      "startOver": "最初からやり直す"
+    },
+    "preview": {
+      "loading": "下書きでメールを読み取り中...",
+      "error": "プレビューを実行できませんでした。",
+      "retry": "再試行",
+      "assistantSaid": "アシスタントのコメント",
+      "help": "このドメインのメールに対して下書きが行う処理の結果です。何も保存や紐づけはされていません。",
+      "selectedHeading": "選択したメール",
+      "othersHeading": "このドメインのその他のメール",
+      "othersCapped": "その他のメール {total} 件のうち、新しい {shown} 件を表示しています。",
+      "columns": {
+        "email": "メール",
+        "expected": "期待される取引",
+        "parsed": "下書きの読み取り結果",
+        "agrees": "一致",
+        "outcome": "結果",
+        "matched": "一致した取引"
+      },
+      "nothingRead": "何も読み取れませんでした",
+      "notStated": "記載なし",
+      "parsedDate": "日付: {date}",
+      "parsedTotal": "合計: {total}",
+      "parsedLines": "{count, plural, one {# 行} other {# 行}}",
+      "noExpectation": "なし",
+      "noMatch": "取引なし",
+      "agreesYes": "はい",
+      "agreesNo": "いいえ",
+      "agreesUnknown": "未確認",
+      "nothingToShow": "下書きに表示するメールがありません。",
+      "backToSamples": "サンプルに戻る",
+      "backToAi": "AIに戻る",
+      "accept": "承諾して処理",
+      "approved": "プロフィールを承認しました",
+      "changedElsewhere": "プロフィールが別の場所で変更されました。プレビューを再読み込みしてください。",
+      "approveFailed": "プロフィールを承認できませんでした。",
+      "approvedProcessing": "プロフィールを承認しました。{domain} の保存済みメールをこのプロフィールで読み取っています。",
+      "done": "完了",
+      "outcomes": {
+        "matched": "取引に一致",
+        "ambiguous": "複数の取引が一致",
+        "unmatched": "一致する取引なし",
+        "parse_failed": "読み取れませんでした",
+        "not_applicable": "このプロフィールでは読み取れません",
+        "skip_line": "スキップ (スキップ行を検出)",
+        "wait_line": "保留 (注文が未確定)",
+        "no_html": "HTML部分なし"
+      }
+    }
+  }
+}
