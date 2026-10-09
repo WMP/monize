@@ -307,6 +307,7 @@
     "paymentFrequency": "Tần suất thanh toán (bắt buộc)",
     "firstPaymentDate": "Ngày thanh toán đầu tiên (bắt buộc)",
     "paymentFromAccount": "Thanh toán từ tài khoản (bắt buộc)",
+    "paymentFromAccountEditHelp": "Thay đổi mục này sẽ chuyển các khoản thanh toán theo lịch sắp tới và quy tắc đối chiếu thanh toán sang tài khoản mới. Các khoản thanh toán đã ghi sổ không thay đổi.",
     "interestCategory": "Danh mục lãi suất",
     "interestBookingMode": {
       "label": "Lãi được ghi nhận thế nào?",

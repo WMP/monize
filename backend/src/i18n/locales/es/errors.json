@@ -65,6 +65,7 @@
     "onlyLoanMortgageLoc": "Solo las cuentas de préstamo, hipoteca y línea de crédito admiten configuración de pago planificado",
     "alreadyHasScheduledPayment": "Esta cuenta ya tiene un pago planificado configurado. Edita la transacción planificada existente.",
     "sourceNotFound": "Cuenta de origen no encontrada",
+    "invalidSourceAccount": "Elija una cuenta abierta, distinta del propio préstamo, desde la que pagar",
     "ambiguousBrokerage": "\"{{ query }}\" coincide con varias cuentas de corretaje: {{ list }}. Use el nombre exacto de la cuenta.",
     "unknownInvestmentAccount": "Cuenta desconocida: {{ name }}. Use un nombre exacto de la lista de cuentas del usuario.",
     "notACreditCard": "Los ciclos de facturación solo están disponibles para cuentas de tarjeta de crédito",

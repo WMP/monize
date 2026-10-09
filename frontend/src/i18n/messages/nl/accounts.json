@@ -307,6 +307,7 @@
     "paymentFrequency": "Betalingsfrequentie (vereist)",
     "firstPaymentDate": "Datum eerste betaling (vereist)",
     "paymentFromAccount": "Betaling van rekening (vereist)",
+    "paymentFromAccountEditHelp": "Als u dit wijzigt, worden de komende geplande betalingen en de betalingskoppelingsregel naar de nieuwe rekening verplaatst. Reeds geboekte betalingen veranderen niet.",
     "interestCategory": "Rentecategorie",
     "interestBookingMode": {
       "label": "Hoe wordt rente geboekt?",

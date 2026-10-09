@@ -307,6 +307,7 @@
     "paymentFrequency": "[XX-Payment Frequency (required)-XX]",
     "firstPaymentDate": "[XX-First Payment Date (required)-XX]",
     "paymentFromAccount": "[XX-Payment From Account (required)-XX]",
+    "paymentFromAccountEditHelp": "[XX-Changing this moves the upcoming scheduled payments and the payment matching rule to the new account. Payments already posted are not changed.-XX]",
     "interestCategory": "[XX-Interest Category-XX]",
     "interestBookingMode": {
       "label": "[XX-How is interest recorded?-XX]",

@@ -471,20 +471,34 @@ export function MortgageFields({
               {...register('paymentStartDate')}
             />
           </div>
+        </>
+      )}
 
-          <Select
-            label={t('mortgageFields.paymentFromAccount')}
-            options={[
-              { value: '', label: t('mortgageFields.selectAccount') },
-              ...buildAccountDropdownOptions(
-                accounts,
-                () => true,
-                (a) => `${a.name} (${a.currencyCode})`,
-              ),
-            ]}
-            error={errors.sourceAccountId?.message as string | undefined}
-            {...register('sourceAccountId')}
-          />
+      {/* Editable after creation: the server moves the scheduled payment and
+          the payment-matching rule to the new account on save. */}
+      <div>
+        <Select
+          label={t('mortgageFields.paymentFromAccount')}
+          options={[
+            { value: '', label: t('mortgageFields.selectAccount') },
+            ...buildAccountDropdownOptions(
+              accounts,
+              () => true,
+              (a) => `${a.name} (${a.currencyCode})`,
+            ),
+          ]}
+          error={errors.sourceAccountId?.message as string | undefined}
+          {...register('sourceAccountId')}
+        />
+        {isEditing && (
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {t('mortgageFields.paymentFromAccountEditHelp')}
+          </p>
+        )}
+      </div>
+
+      {!isEditing && (
+        <>
 
           {/* Payment matching: the rule that settles the bank's own debit of
               this payment against each installment instead of posting the

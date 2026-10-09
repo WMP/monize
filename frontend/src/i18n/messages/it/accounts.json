@@ -307,6 +307,7 @@
     "paymentFrequency": "Frequenza pagamento (obbligatoria)",
     "firstPaymentDate": "Data primo pagamento (obbligatoria)",
     "paymentFromAccount": "Pagamento dal conto (obbligatorio)",
+    "paymentFromAccountEditHelp": "Modificandolo, i prossimi pagamenti pianificati e la regola di abbinamento dei pagamenti passano al nuovo conto. I pagamenti già registrati non cambiano.",
     "interestCategory": "Categoria interessi",
     "interestBookingMode": {
       "label": "Come vengono registrati gli interessi?",
