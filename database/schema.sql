@@ -3027,7 +3027,12 @@ CREATE TABLE push_subscriptions (
     last_success_at TIMESTAMP,
     failure_count INTEGER NOT NULL DEFAULT 0,
     disabled_at TIMESTAMP,
-    disabled_reason VARCHAR(40)
+    disabled_reason VARCHAR(40),
+    -- A push device whose account signed out of this browser. Delivery skips it
+    -- until the same account signs in there again (the subscribe upsert clears
+    -- it). A healthy endpoint, so not a disable: `disabled_at` asks the user for
+    -- a repair, and a hold needs none.
+    held_at TIMESTAMP
 );
 
 -- Globally unique, not unique per user, and that is the security property.
@@ -3043,7 +3048,8 @@ CREATE TABLE push_subscriptions (
 -- and no ownership check covers it, so a takeover would be a cross-tenant
 -- delete on an unverified identifier -- and a silent one. The client answers
 -- the refusal by unsubscribing and subscribing again, which mints a fresh
--- endpoint nobody holds, and logging out releases the endpoint the same way.
+-- endpoint nobody holds. Logging out holds the row (held_at) and releases the
+-- endpoint only when the hold is not confirmed.
 CREATE UNIQUE INDEX idx_push_subscriptions_endpoint ON push_subscriptions(endpoint_hash);
 
 -- Every send starts with "which of this user's devices are still live".

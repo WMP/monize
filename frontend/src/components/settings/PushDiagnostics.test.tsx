@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, cleanup, screen } from '@testing-library/react';
 import { render } from '@/test/render';
 import { PushDiagnostics } from './PushDiagnostics';
+import { markRegisteredEndpointHeld } from '@/lib/push';
 
 // Keep the pure helpers real; stub only the network, so the mount gather does
 // not reach axios.
@@ -79,6 +80,18 @@ describe('PushDiagnostics', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('pushManager.permissionState')).toBeInTheDocument();
     expect(screen.getByText('server devices')).toBeInTheDocument();
+  });
+
+  // Whether the browser kept a subscription across a sign-out for the server
+  // to hold, which is the state a "push did not come back" report turns on.
+  it('reports whether the stored marker is held', async () => {
+    markRegisteredEndpointHeld('someone', 'aaaabbbbccccdddd');
+
+    await renderDiagnostics();
+
+    const label = screen.getByText('registeredEndpoint marker.held');
+    expect(label.nextElementSibling).toHaveTextContent('true');
+    window.localStorage.clear();
   });
 
   /**

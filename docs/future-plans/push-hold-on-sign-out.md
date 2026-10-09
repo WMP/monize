@@ -196,8 +196,13 @@ other writes in the module. `push-route-throttle.spec.ts` scans for both.
   4. With no row, or with any error in steps 2-3, run today's
      `removeThisBrowsersRegistration` (decision 3).
 
-  If the bound elapses, the result is the same as today: whatever has not
-  finished is abandoned.
+  If the bound elapses before the hold is confirmed, the browser
+  subscription is released locally without being awaited, and a hold that
+  resolves afterwards does not flag the marker. Abandoning it as the release
+  does would keep a subscription whose row may still be delivering, and a hold
+  that committed late only leaves a row the sweep removes. (Implementation
+  note: this tightens the "same as today" wording agreed in #1630 so the
+  governing rule in the task list holds on the timeout path too.)
 - **`releasePushForSignOut`** is unchanged and stays the account-deletion path.
 - **`resumePushAfterSignIn(publicKey)`** never throws. It acts only when all
   of the following hold:

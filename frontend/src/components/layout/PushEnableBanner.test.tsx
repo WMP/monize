@@ -3,8 +3,11 @@ import { render, screen, waitFor, fireEvent, act, cleanup } from '@/test/render'
 import toast from 'react-hot-toast';
 import { PushPermissionError,
   defaultDeviceName,
+  markRegisteredEndpointHeld,
+  rememberRegisteredEndpoint,
   PushServiceError,
 } from '@/lib/push';
+import { notifyPushDevicesChanged } from '@/lib/pushDevicesSignal';
 import { useAuthStore } from '@/store/authStore';
 import { PushEnableBanner } from './PushEnableBanner';
 
@@ -223,6 +226,52 @@ describe('PushEnableBanner', () => {
     expect(
       await screen.findByRole('button', { name: /turn on/i }),
     ).toBeInTheDocument();
+  });
+
+  // A browser that kept the reader's subscription across their own sign-out is
+  // about to resume on its own (`usePushResumeOnSignIn`); offering Enable over
+  // it is a flash of the wrong answer.
+  describe('a subscription held across the reader\'s sign-out', () => {
+    it('offers nothing until the resume settles, then re-reads', async () => {
+      markRegisteredEndpointHeld('user-1', 'aaaabbbbccccdddd');
+
+      await renderBanner();
+      await waitFor(() => expect(mockListDevices).toHaveBeenCalled());
+      expect(
+        screen.queryByRole('button', { name: /turn on/i }),
+      ).not.toBeInTheDocument();
+
+      // The resume was refused and released the subscription.
+      window.localStorage.clear();
+      mockFingerprint.mockResolvedValue(null);
+      await act(async () => {
+        notifyPushDevicesChanged();
+      });
+
+      expect(
+        await screen.findByRole('button', { name: /turn on/i }),
+      ).toBeInTheDocument();
+    });
+
+    it('is not waited on when the held marker names another account', async () => {
+      markRegisteredEndpointHeld('user-2', 'aaaabbbbccccdddd');
+
+      await renderBanner();
+
+      expect(
+        await screen.findByRole('button', { name: /turn on/i }),
+      ).toBeInTheDocument();
+    });
+
+    it('is not waited on once the marker is no longer held', async () => {
+      rememberRegisteredEndpoint('user-1', 'aaaabbbbccccdddd');
+
+      await renderBanner();
+
+      expect(
+        await screen.findByRole('button', { name: /turn on/i }),
+      ).toBeInTheDocument();
+    });
   });
 
   it('keeps out of the way on the settings page, which already offers this', async () => {

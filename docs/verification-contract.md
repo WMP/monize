@@ -158,6 +158,7 @@ INV-LOAN-002's entry names the missing source scan while its row said `--`.
 | INV-PUSH-008 transport gates its wire | **required** | -- | optional | -- | -- | -- | -- | optional |
 | INV-PUSH-009 unsupported channel forced off | **required** | **required** | -- | -- | -- | -- | -- | -- |
 | INV-PUSH-010 endpoint validated, transport list held equal | **required** | **required** | -- | -- | -- | -- | -- | -- |
+| INV-PUSH-011 a held device receives nothing until its own account resumes it | **required** | -- | **required** | -- | -- | -- | -- | optional |
 | INV-CRON-001 one effect per tick | supporting | -- | required | required | **required** | optional | -- | -- |
 | INV-PROVIDER-001 outage reported once | required | **required** | required | optional | required | -- | required | -- |
 | INV-ALERT-001 system alert raised once | required | -- | **required** | optional | required | -- | -- | -- |

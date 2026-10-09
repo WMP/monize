@@ -27,6 +27,14 @@ vi.mock('@/store/authStore', () => ({
   ),
 }));
 
+const mockReleasePush = vi.fn().mockResolvedValue(undefined);
+const mockHoldPush = vi.fn().mockResolvedValue(undefined);
+vi.mock('@/lib/push', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/push')>()),
+  releasePushForSignOut: () => mockReleasePush(),
+  holdPushForSignOut: () => mockHoldPush(),
+}));
+
 vi.mock('@/lib/errors', () => ({
   getErrorMessage: vi.fn((_error: unknown, fallback: string) => fallback),
 }));
@@ -125,6 +133,25 @@ describe('DangerZoneSection', () => {
         expect(userSettingsApi.deleteAccount).toHaveBeenCalledWith({ password: 'mypass' });
         expect(toast.success).toHaveBeenCalledWith('Account deleted');
       });
+    });
+
+    // Only the header sign-out holds a device. A deleted or downgraded account
+    // cannot resume one, so its row and subscription are released in full.
+    it('releases push in full rather than holding it', async () => {
+      (userSettingsApi.deleteAccount as ReturnType<typeof vi.fn>).mockResolvedValue({
+        downgraded: true,
+      });
+
+      render(<DangerZoneSection user={localUser} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete Account' }));
+      fireEvent.change(screen.getByPlaceholderText('Type DELETE'), { target: { value: 'DELETE' } });
+      fireEvent.change(screen.getByPlaceholderText('Enter your password'), { target: { value: 'mypass' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
+
+      await waitFor(() => expect(authState.logout).toHaveBeenCalled());
+      expect(mockReleasePush).toHaveBeenCalledTimes(1);
+      expect(mockHoldPush).not.toHaveBeenCalled();
     });
 
     it('shows a downgrade-aware toast when the backend reports downgraded=true', async () => {

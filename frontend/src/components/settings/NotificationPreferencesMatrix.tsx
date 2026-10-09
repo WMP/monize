@@ -169,6 +169,8 @@ export function NotificationPreferencesMatrix({
   // can toggle push, not unifiedpush. A device from before the transport field
   // reads as web push, today's only browser wire -- never as UnifiedPush, so an
   // old row cannot light a column whose endpoint does not exist.
+  // A held device (its account signed out of that browser) counts: it resumes
+  // when the account signs in there again, so the preference still matters.
   const live = devices.filter((device) => device.disabledAt === null);
   const pushAvailable = live.some(
     (device) => (device.transport ?? 'webpush') === 'webpush',

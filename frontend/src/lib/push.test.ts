@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import apiClient from './api';
+import { cleanup } from '@/test/render';
 import { useAuthStore } from '@/store/authStore';
 import {
   ENDPOINT_FINGERPRINT_LENGTH,
@@ -8,6 +9,9 @@ import {
   disablePushOnThisDevice,
   releaseLocalPushSubscription,
   releasePushForSignOut,
+  holdPushForSignOut,
+  resumePushAfterSignIn,
+  markRegisteredEndpointHeld,
   SIGN_OUT_PUSH_RELEASE_TIMEOUT_MS,
   ENDPOINT_CLAIMED_CODE,
   ServiceWorkerUnavailableError,
@@ -455,9 +459,34 @@ describe('the registered-endpoint marker', () => {
     expect(readRegisteredEndpoint()).toEqual({
       userId: 'user-1',
       fingerprint: 'abc123',
+      held: false,
     });
     forgetRegisteredEndpoint();
     expect(readRegisteredEndpoint()).toBeNull();
+  });
+
+  it('records a confirmed hold, and a fresh registration clears it', () => {
+    withStore();
+
+    markRegisteredEndpointHeld('user-1', 'abc123');
+    expect(readRegisteredEndpoint()).toEqual({
+      userId: 'user-1',
+      fingerprint: 'abc123',
+      held: true,
+    });
+    rememberRegisteredEndpoint('user-1', 'abc123');
+    expect(readRegisteredEndpoint()?.held).toBe(false);
+  });
+
+  // Written before the hold existed: it reads exactly as it did then.
+  it('reads a marker without the held flag as not held', () => {
+    withStore('{"userId":"user-1","fingerprint":"abc123"}');
+
+    expect(readRegisteredEndpoint()).toEqual({
+      userId: 'user-1',
+      fingerprint: 'abc123',
+      held: false,
+    });
   });
 
   // The pre-owner format was a bare fingerprint. Read as an owner-less marker it
@@ -731,6 +760,7 @@ describe('enabling and disabling push on this device', () => {
     expect(readRegisteredEndpoint()).toEqual({
       userId: 'user-1',
       fingerprint: 'server-digest',
+      held: false,
     });
   });
 
@@ -945,6 +975,7 @@ describe('enabling and disabling push on this device', () => {
     expect(readRegisteredEndpoint()).toEqual({
       userId: 'user-2',
       fingerprint: await fingerprintEndpoint(ENDPOINT),
+      held: false,
     });
   });
 
@@ -1196,5 +1227,352 @@ describe('PushServiceError', () => {
     expect(brave.brave).toBe(true);
     expect(brave.message).toMatch(/Brave/);
     expect((brave as { cause?: Error }).cause?.message).toMatch(/push service error/);
+  });
+});
+
+/**
+ * INV-PUSH-011 on the client: a sign-out holds this browser's row and keeps
+ * the subscription only once the server has confirmed the hold; the same
+ * account's next sign-in resumes it. Every other outcome releases.
+ */
+describe('holding push across a sign-out, and resuming it', () => {
+  let getSubscription: ReturnType<typeof vi.fn>;
+  let unsubscribe: ReturnType<typeof vi.fn>;
+  let fingerprint: string;
+
+  function browserSubscription(
+    endpoint = ENDPOINT,
+    applicationServerKey: ArrayBuffer | null = urlBase64ToUint8Array(
+      PUBLIC_KEY,
+    ).buffer,
+  ) {
+    return {
+      endpoint,
+      options: { applicationServerKey },
+      unsubscribe,
+      toJSON: () => ({ endpoint, keys: { p256dh: 'p', auth: 'a' } }),
+    };
+  }
+
+  function httpError(status: number, errorCode?: string) {
+    return Object.assign(new Error(`HTTP ${status}`), {
+      response: { status, data: errorCode ? { errorCode } : {} },
+    });
+  }
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+    fingerprint = await fingerprintEndpoint(ENDPOINT);
+    unsubscribe = vi.fn(async () => true);
+    getSubscription = vi.fn(async () => browserSubscription());
+    vi.stubGlobal('Notification', {
+      requestPermission: vi.fn(),
+      permission: 'granted',
+    });
+    vi.stubGlobal('navigator', {
+      serviceWorker: {
+        ready: Promise.resolve({ pushManager: { getSubscription } }),
+      },
+    });
+    useAuthStore.setState({ user: { id: 'user-1' } as never });
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: [{ id: 'd-1', endpointFingerprint: fingerprint }],
+    });
+    vi.mocked(apiClient.post).mockResolvedValue({ data: undefined });
+    vi.mocked(apiClient.delete).mockResolvedValue({ data: undefined });
+  });
+
+  afterEach(() => {
+    // Nothing is rendered here, but the store reset still follows cleanup()
+    // (`test-hygiene.test.ts`): a no-op unmount costs nothing.
+    cleanup();
+    vi.unstubAllGlobals();
+    useAuthStore.setState({ user: null });
+  });
+
+  describe('holdPushForSignOut', () => {
+    it('asks nothing of a subscription another account registered', async () => {
+      rememberRegisteredEndpoint('user-2', fingerprint);
+
+      await holdPushForSignOut();
+
+      expect(apiClient.get).not.toHaveBeenCalled();
+      expect(apiClient.post).not.toHaveBeenCalled();
+      expect(apiClient.delete).not.toHaveBeenCalled();
+      expect(unsubscribe).not.toHaveBeenCalled();
+      expect(readRegisteredEndpoint()?.userId).toBe('user-2');
+    });
+
+    it('keeps the subscription and flags the marker once the hold is confirmed', async () => {
+      rememberRegisteredEndpoint('user-1', fingerprint);
+
+      await holdPushForSignOut();
+
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/push/subscriptions/d-1/hold',
+        undefined,
+        { _skipAuthRedirect: true },
+      );
+      expect(unsubscribe).not.toHaveBeenCalled();
+      expect(apiClient.delete).not.toHaveBeenCalled();
+      expect(readRegisteredEndpoint()).toEqual({
+        userId: 'user-1',
+        fingerprint,
+        held: true,
+      });
+    });
+
+    // A cleared store must not turn a confirmed hold into a subscription
+    // nothing will ever resume.
+    it('writes the held marker even when none was stored', async () => {
+      await holdPushForSignOut();
+
+      expect(readRegisteredEndpoint()).toEqual({
+        userId: 'user-1',
+        fingerprint,
+        held: true,
+      });
+    });
+
+    // Decision 3: an unconfirmed hold releases. 404 is also an older backend,
+    // 403 a delegate session.
+    it.each([
+      ['a 404', httpError(404)],
+      ['a 403', httpError(403)],
+      ['a network error', new Error('Network Error')],
+    ])('releases both halves when the hold answers %s', async (_name, failure) => {
+      rememberRegisteredEndpoint('user-1', fingerprint);
+      vi.mocked(apiClient.post).mockRejectedValue(failure);
+
+      await holdPushForSignOut();
+
+      expect(apiClient.delete).toHaveBeenCalledWith('/push/subscriptions/d-1', {
+        _skipAuthRedirect: true,
+      });
+      expect(unsubscribe).toHaveBeenCalledTimes(1);
+      expect(readRegisteredEndpoint()).toBeNull();
+    });
+
+    it('releases when the server has no row for this browser', async () => {
+      rememberRegisteredEndpoint('user-1', fingerprint);
+      vi.mocked(apiClient.get).mockResolvedValue({
+        data: [{ id: 'd-other', endpointFingerprint: '0000000000000000' }],
+      });
+
+      await holdPushForSignOut();
+
+      expect(apiClient.post).not.toHaveBeenCalled();
+      expect(unsubscribe).toHaveBeenCalledTimes(1);
+      expect(readRegisteredEndpoint()).toBeNull();
+    });
+
+    it('releases when the device list cannot be read', async () => {
+      vi.mocked(apiClient.get).mockRejectedValue(httpError(500));
+
+      await holdPushForSignOut();
+
+      expect(apiClient.post).not.toHaveBeenCalled();
+      expect(unsubscribe).toHaveBeenCalledTimes(1);
+    });
+
+    // Real timers and a short bound: the fingerprint is a real digest, which
+    // fake time does not wait for, so each test waits for the hold request
+    // itself rather than letting it land in the next test.
+    it('returns within the bound, releasing locally rather than keeping an unconfirmed subscription', async () => {
+      rememberRegisteredEndpoint('user-1', fingerprint);
+      vi.mocked(apiClient.post).mockReturnValue(new Promise<never>(() => {}));
+
+      await expect(holdPushForSignOut(20)).resolves.toBeUndefined();
+
+      await vi.waitFor(() => expect(apiClient.post).toHaveBeenCalled());
+      await vi.waitFor(() => expect(unsubscribe).toHaveBeenCalledTimes(1));
+      expect(readRegisteredEndpoint()).toBeNull();
+    });
+
+    it('does not flag a hold that is confirmed after the bound elapsed', async () => {
+      rememberRegisteredEndpoint('user-1', fingerprint);
+      let confirm: ((value: unknown) => void) | null = null;
+      vi.mocked(apiClient.post).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            confirm = resolve;
+          }),
+      );
+
+      await holdPushForSignOut(20);
+      await vi.waitFor(() => expect(confirm).not.toBeNull());
+      await vi.waitFor(() => expect(unsubscribe).toHaveBeenCalledTimes(1));
+      confirm!({ data: undefined });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(readRegisteredEndpoint()).toBeNull();
+      expect(apiClient.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resumePushAfterSignIn', () => {
+    it('requests nothing when the marker is not held', async () => {
+      rememberRegisteredEndpoint('user-1', fingerprint);
+
+      await expect(resumePushAfterSignIn(PUBLIC_KEY)).resolves.toBe(false);
+
+      expect(apiClient.get).not.toHaveBeenCalled();
+      expect(apiClient.post).not.toHaveBeenCalled();
+      expect(getSubscription).not.toHaveBeenCalled();
+    });
+
+    it("requests nothing for a hold another account made", async () => {
+      markRegisteredEndpointHeld('user-2', fingerprint);
+
+      await expect(resumePushAfterSignIn(PUBLIC_KEY)).resolves.toBe(false);
+
+      expect(apiClient.post).not.toHaveBeenCalled();
+      expect(unsubscribe).not.toHaveBeenCalled();
+      expect(readRegisteredEndpoint()?.held).toBe(true);
+    });
+
+    it('releases and retires the held row once permission is no longer granted', async () => {
+      markRegisteredEndpointHeld('user-1', fingerprint);
+      vi.stubGlobal('Notification', { permission: 'denied' });
+
+      await expect(resumePushAfterSignIn(PUBLIC_KEY)).resolves.toBe(true);
+
+      expect(unsubscribe).toHaveBeenCalledTimes(1);
+      expect(apiClient.delete).toHaveBeenCalledWith(
+        '/push/subscriptions/d-1',
+        undefined,
+      );
+      expect(apiClient.post).not.toHaveBeenCalled();
+      expect(readRegisteredEndpoint()).toBeNull();
+    });
+
+    // A browser that will not disclose its key reads as a mismatch too, and
+    // then the held row is still live: it is retired with the subscription.
+    it.each([
+      ['a different key', new Uint8Array([1, 2, 3]).buffer],
+      ['an undisclosed key', null],
+    ])('releases and retires the held row, without posting, under %s', async (_name, key) => {
+      markRegisteredEndpointHeld('user-1', fingerprint);
+      getSubscription.mockResolvedValue(browserSubscription(ENDPOINT, key));
+
+      await expect(resumePushAfterSignIn(PUBLIC_KEY)).resolves.toBe(true);
+
+      expect(apiClient.post).not.toHaveBeenCalled();
+      expect(unsubscribe).toHaveBeenCalledTimes(1);
+      expect(apiClient.delete).toHaveBeenCalledWith(
+        '/push/subscriptions/d-1',
+        undefined,
+      );
+      expect(readRegisteredEndpoint()).toBeNull();
+    });
+
+    it('re-posts the same endpoint once and clears the held flag', async () => {
+      markRegisteredEndpointHeld('user-1', fingerprint);
+      vi.mocked(apiClient.post).mockResolvedValue({
+        data: { id: 'd-1', endpointFingerprint: fingerprint },
+      });
+
+      await expect(resumePushAfterSignIn(PUBLIC_KEY)).resolves.toBe(true);
+
+      expect(apiClient.post).toHaveBeenCalledTimes(1);
+      expect(apiClient.post).toHaveBeenCalledWith('/push/subscriptions', {
+        endpoint: ENDPOINT,
+        p256dh: 'p',
+        auth: 'a',
+        applicationServerKey: PUBLIC_KEY,
+        deviceName: undefined,
+      });
+      expect(apiClient.delete).not.toHaveBeenCalled();
+      expect(unsubscribe).not.toHaveBeenCalled();
+      expect(readRegisteredEndpoint()).toEqual({
+        userId: 'user-1',
+        fingerprint,
+        held: false,
+      });
+    });
+
+    it('registers a rotated endpoint and retires the row it replaced', async () => {
+      const rotated = 'https://updates.push.services.mozilla.com/wpush/v2/rotated';
+      const rotatedFingerprint = await fingerprintEndpoint(rotated);
+      markRegisteredEndpointHeld('user-1', fingerprint);
+      getSubscription.mockResolvedValue(browserSubscription(rotated));
+      vi.mocked(apiClient.post).mockResolvedValue({
+        data: { id: 'd-2', endpointFingerprint: rotatedFingerprint },
+      });
+      vi.mocked(apiClient.get).mockResolvedValue({
+        data: [
+          { id: 'd-1', endpointFingerprint: fingerprint },
+          { id: 'd-2', endpointFingerprint: rotatedFingerprint },
+        ],
+      });
+
+      await expect(resumePushAfterSignIn(PUBLIC_KEY)).resolves.toBe(true);
+
+      expect(apiClient.post).toHaveBeenCalledTimes(1);
+      expect(apiClient.delete).toHaveBeenCalledWith(
+        '/push/subscriptions/d-1',
+        undefined,
+      );
+      // Retired BEFORE the new endpoint is posted, so the old held row does not
+      // count against the device cap the new row is checked under.
+      expect(
+        vi.mocked(apiClient.delete).mock.invocationCallOrder[0],
+      ).toBeLessThan(vi.mocked(apiClient.post).mock.invocationCallOrder[0]);
+      expect(readRegisteredEndpoint()).toEqual({
+        userId: 'user-1',
+        fingerprint: rotatedFingerprint,
+        held: false,
+      });
+    });
+
+    it.each([
+      ['a 409 claimed', httpError(409, ENDPOINT_CLAIMED_CODE)],
+      ['the device cap', httpError(400)],
+    ])('releases locally and retires the held row on %s', async (_name, refusal) => {
+      markRegisteredEndpointHeld('user-1', fingerprint);
+      vi.mocked(apiClient.post).mockRejectedValue(refusal);
+
+      await expect(resumePushAfterSignIn(PUBLIC_KEY)).resolves.toBe(true);
+
+      expect(unsubscribe).toHaveBeenCalledTimes(1);
+      expect(apiClient.delete).toHaveBeenCalledWith(
+        '/push/subscriptions/d-1',
+        undefined,
+      );
+      expect(readRegisteredEndpoint()).toBeNull();
+    });
+
+    // Not a refusal of this registration: the next sign-in or load tries again.
+    it.each([
+      ['no answer at all', new Error('Network Error')],
+      ['a 503 from a gateway mid-deploy', httpError(503)],
+      ['a 500', httpError(500)],
+      ['a 401', httpError(401)],
+      ['a 429', httpError(429)],
+    ])('keeps the subscription and the held marker on %s', async (_name, failure) => {
+      markRegisteredEndpointHeld('user-1', fingerprint);
+      vi.mocked(apiClient.post).mockRejectedValue(failure);
+
+      await expect(resumePushAfterSignIn(PUBLIC_KEY)).resolves.toBe(false);
+
+      expect(unsubscribe).not.toHaveBeenCalled();
+      expect(apiClient.delete).not.toHaveBeenCalled();
+      expect(readRegisteredEndpoint()?.held).toBe(true);
+    });
+
+    it('forgets a held marker the browser no longer has a subscription for', async () => {
+      markRegisteredEndpointHeld('user-1', fingerprint);
+      getSubscription.mockResolvedValue(null);
+
+      await expect(resumePushAfterSignIn(PUBLIC_KEY)).resolves.toBe(true);
+
+      expect(apiClient.post).not.toHaveBeenCalled();
+      expect(apiClient.delete).toHaveBeenCalledWith(
+        '/push/subscriptions/d-1',
+        undefined,
+      );
+      expect(readRegisteredEndpoint()).toBeNull();
+    });
   });
 });

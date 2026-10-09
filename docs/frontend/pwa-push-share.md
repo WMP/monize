@@ -22,6 +22,28 @@ to make, and sign-out leaves such a subscription alone for the same reason. A
 value in the pre-owner format, or one with no reader identity, reads as "no
 information" -- which errs toward doing nothing.
 
+**Sign-out holds this browser's device; it releases only when the hold is not
+confirmed** (INV-PUSH-011). `AppHeader.handleLogout` calls `holdPushForSignOut`:
+it finds this browser's row by fingerprint, asks the server to hold it, and only
+when that request succeeds keeps the subscription and flags the marker `held`
+(`markRegisteredEndpointHeld`). Every other outcome -- no row, a refusal, an
+older backend's 404, a delegate session's 403, the 1.5 s bound elapsing -- runs
+the full release, because a subscription left in a browser whose row still
+delivers would show the departing account's notifications to the next person
+there. `usePushResumeOnSignIn` (mounted in `SwipeShell`) resumes it: only for a
+held marker naming the signed-in user, with permission already granted, by
+re-posting the subscription through the ordinary subscribe. A changed key or a
+4xx refusal releases the subscription AND retires the held row; a 5xx, a 401 or
+no answer keeps the hold for the next sign-in; a rotated endpoint retires the old
+row before the new one is posted, so it does not count against the device cap.
+The hook forgets its attempt on sign-out, because the shell stays mounted across
+a client-side sign-out and sign-in. An ordinary page load without a held marker
+makes no request. `PushEnableBanner`
+treats a held marker naming the reader as "not yet known" until the resume
+settles, so it does not flash Enable. Account deletion (`DangerZoneSection`)
+keeps `releasePushForSignOut`, and a session that merely expires touches push not
+at all.
+
 **Replacing this browser's endpoint means retiring the row for the one it
 replaced** (`retireServerRowFor`). Nothing else ever would: a row is retired by a
 delivery's own 404, and nothing delivers to an endpoint that no longer exists --

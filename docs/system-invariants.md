@@ -141,6 +141,7 @@ implied.
 | INV-PUSH-008 | A subscription's transport gates its delivery: the `push` and `unifiedpush` channels reach only their own wire's devices | enforced |
 | INV-PUSH-009 | A channel a category does not expose is forced off at resolution, whatever the stored row says | enforced |
 | INV-PUSH-010 | A UnifiedPush endpoint is validated as a server-outbound URL, and its transport is bounded to one list held equal across DTO, schema and client | enforced |
+| INV-PUSH-011 | A held device receives nothing until its own account resumes it | enforced |
 | INV-CRON-001 | One logical cron effect per schedule tick, across replicas | partial |
 | INV-PROVIDER-001 | An unreachable provider stops being called, and produces at most one alert pair per outage | enforced |
 | INV-ALERT-001 | A system alert row lands at most once per (recipient, dedupe key), and only the insert winner emails | enforced |
@@ -4607,10 +4608,14 @@ Retry semantics     Safe: a repeat subscribe from the same browser refreshes the
                     one row rather than adding a device.
 Failure response    409, having written nothing. Not a dead end: the client
                     unsubscribes and subscribes again for a fresh endpoint
-                    (enablePushOnThisDevice, exactly one retry), and logout
-                    releases the endpoint the same way
-                    (releaseLocalPushSubscription), so the ordinary
-                    shared-browser case never reaches the refusal.
+                    (enablePushOnThisDevice, exactly one retry). Logout HOLDS
+                    the departing account's row (INV-PUSH-011) and keeps the
+                    browser subscription only once the server confirms the
+                    hold; release is the fallback whenever it is not confirmed
+                    (holdPushForSignOut -> releaseLocalPushSubscription). A
+                    second account enabling push in that browser then takes
+                    this 409 path, and the first account's held row stays
+                    theirs, undeliverable, until the hold sweep removes it.
                     Both refusals on the subscribe path -- the channel being off,
                     and a superseded applicationServerKey -- are decided from a
                     read taken INSIDE the transaction that writes. Read outside
@@ -5054,6 +5059,57 @@ Required tests      push-endpoint validator specs (unchanged);
 Why it exists       An endpoint is a URL the server will POST to (CWE-918), and
                     a list that means something is written once in the place
                     that can check it.
+Status              enforced
+```
+
+### INV-PUSH-011 -- a held device receives nothing until its own account resumes it
+
+```text
+Statement           A device whose account signed out of its browser from the
+                    header is HELD: no push is sent to it, and none is queued,
+                    until the same account signs in on that browser again. Only
+                    that account can lift the hold.
+Source of truth     push_subscriptions.held_at (NULL = deliverable)
+Enforcement         Delivery: sendToUser and sendTest select
+                    `held_at IS NULL` beside `disabled_at IS NULL`, so a held
+                    row is never attempted (and so never counted as failing,
+                    INV-PUSH-004). Hold: PushSubscriptionService.hold is one
+                    UPDATE bound to `id AND user_id AND disabled_at IS NULL`,
+                    404 on no row. Resume: only the subscribe upsert clears
+                    held_at, on its DO UPDATE arm, whose
+                    `WHERE push_subscriptions.user_id = EXCLUDED.user_id` is the
+                    INV-PUSH-001 guard -- another account's subscribe on the
+                    endpoint is a 409 that leaves the hold in place. Client:
+                    holdPushForSignOut keeps the browser subscription only when
+                    the hold request resolved; any refusal, a missing row, an
+                    older backend's 404, a delegate's 403 or an elapsed bound
+                    releases the subscription instead, so a signed-out browser
+                    never keeps one whose row still delivers.
+                    resumePushAfterSignIn acts only on a marker flagged held
+                    that names the signed-in user.
+Concurrency scope   per row. A fan-out that read the row before the hold
+                    committed still delivers that one push: the same window as
+                    the delete the hold replaced.
+Retry semantics     Safe: holding a held row only moves held_at; resuming is a
+                    re-registration and idempotent.
+Failure response    Hold: 404 on a foreign, missing or retired row, and the
+                    client releases. Resume: a server refusal releases the
+                    browser subscription; no answer leaves the hold for the next
+                    page load. A hold nobody resumes is deleted by
+                    purgeRetiredDevices after HELD_DEVICE_RETENTION_DAYS (15).
+Required tests      push-subscription.service.spec.ts (hold binds id and
+                    user_id and 404s; the upsert clears held_at on its guarded
+                    arm; both fan-outs query heldAt IsNull; sendTest over held
+                    devices alone is noDevices; the sweep's cutoff);
+                    push-hold.integration.spec.ts (under RLS enforcement:
+                    another account cannot hold or lift the hold, the owner's
+                    subscribe resumes it, the fan-out skips it, the sweep
+                    removes a backdated hold); push.test.ts (the
+                    holdPushForSignOut and resumePushAfterSignIn truth tables).
+Why it exists       Signing out used to throw the subscription away, so push
+                    stayed off on that browser after the same person signed back
+                    in. The bell already holds every notification, so a skipped
+                    push loses nothing the reader cannot see on return.
 Status              enforced
 ```
 
