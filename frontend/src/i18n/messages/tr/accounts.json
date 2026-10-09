@@ -307,6 +307,7 @@
     "paymentFrequency": "Ödeme Sıklığı (zorunlu)",
     "firstPaymentDate": "İlk Ödeme Tarihi (zorunlu)",
     "paymentFromAccount": "Ödeme Hesabı (zorunlu)",
+    "paymentFromAccountEditHelp": "Değiştirmek, yaklaşan planlı ödemeleri ve ödeme eşleştirme kuralını yeni hesaba taşır. Zaten kaydedilmiş ödemeler değişmez.",
     "interestCategory": "Faiz Kategorisi",
     "interestBookingMode": {
       "label": "Faiz nasıl kaydedilir?",

@@ -65,6 +65,7 @@
     "onlyLoanMortgageLoc": "Chỉ tài khoản vay, thế chấp và hạn mức tín dụng mới hỗ trợ thiết lập thanh toán theo lịch",
     "alreadyHasScheduledPayment": "Tài khoản này đã có thanh toán theo lịch được cấu hình. Hãy chỉnh sửa giao tác theo lịch hiện có.",
     "sourceNotFound": "Không tìm thấy tài khoản nguồn",
+    "invalidSourceAccount": "Chọn một tài khoản đang mở, khác với chính khoản vay, để thanh toán",
     "ambiguousBrokerage": "\"{{ query }}\" khớp với nhiều tài khoản môi giới: {{ list }}. Hãy dùng tên tài khoản chính xác.",
     "unknownInvestmentAccount": "Tài khoản không xác định: {{ name }}. Hãy dùng tên chính xác từ danh sách tài khoản của người dùng.",
     "notACreditCard": "Chu kỳ sao kê chỉ khả dụng cho tài khoản thẻ tín dụng",

@@ -307,6 +307,7 @@
     "paymentFrequency": "還款頻率（必填）",
     "firstPaymentDate": "首次還款日期（必填）",
     "paymentFromAccount": "從科目付款（必填）",
+    "paymentFromAccountEditHelp": "變更後，即將到來的排定付款和付款比對規則將移至新帳戶。已入帳的付款不會變更。",
     "interestCategory": "利息類別",
     "interestBookingMode": {
       "label": "利息如何記帳？",

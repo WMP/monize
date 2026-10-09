@@ -65,6 +65,7 @@
     "onlyLoanMortgageLoc": "Apenas contas de empréstimo, hipoteca e linha de crédito suportam a configuração de pagamento agendado",
     "alreadyHasScheduledPayment": "Esta conta já tem um pagamento agendado configurado. Edite a transação agendada existente.",
     "sourceNotFound": "Conta de origem não encontrada",
+    "invalidSourceAccount": "Escolha uma conta aberta, diferente do próprio empréstimo, para pagar",
     "ambiguousBrokerage": "\"{{ query }}\" corresponde a várias contas de corretagem: {{ list }}. Use o nome exato da conta.",
     "unknownInvestmentAccount": "Conta desconhecida: {{ name }}. Use um nome exato da lista de contas do usuário.",
     "notACreditCard": "Os ciclos de fatura só estão disponíveis para contas de cartão de crédito",

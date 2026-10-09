@@ -307,6 +307,7 @@
     "paymentFrequency": "Frekuensi Pembayaran (wajib)",
     "firstPaymentDate": "Tanggal Pembayaran Pertama (wajib)",
     "paymentFromAccount": "Pembayaran Dari Akun (wajib)",
+    "paymentFromAccountEditHelp": "Mengubahnya memindahkan pembayaran terjadwal mendatang dan aturan pencocokan pembayaran ke akun baru. Pembayaran yang sudah dicatat tidak berubah.",
     "interestCategory": "Kategori Bunga",
     "interestBookingMode": {
       "label": "Bagaimana bunga dicatat?",

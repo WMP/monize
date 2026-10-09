@@ -307,6 +307,7 @@
     "paymentFrequency": "Częstotliwość płatności (wymagane)",
     "firstPaymentDate": "Data pierwszej płatności (wymagane)",
     "paymentFromAccount": "Płatność z konta (wymagane)",
+    "paymentFromAccountEditHelp": "Zmiana przenosi nadchodzące zaplanowane płatności i regułę dopasowywania płatności na nowe konto. Już zaksięgowane płatności nie ulegają zmianie.",
     "interestCategory": "Kategoria odsetek",
     "interestBookingMode": {
       "label": "Jak księgowane są odsetki?",

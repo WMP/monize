@@ -307,6 +307,7 @@
     "paymentFrequency": "Fréquence de paiement (obligatoire)",
     "firstPaymentDate": "Date du premier paiement (obligatoire)",
     "paymentFromAccount": "Paiement depuis le compte (obligatoire)",
+    "paymentFromAccountEditHelp": "La modifier transfère les prochains paiements planifiés et la règle de rapprochement des paiements vers le nouveau compte. Les paiements déjà comptabilisés ne changent pas.",
     "interestCategory": "Catégorie d'intérêts",
     "interestBookingMode": {
       "label": "Comment les intérêts sont-ils enregistrés ?",

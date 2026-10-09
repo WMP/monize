@@ -307,6 +307,7 @@
     "paymentFrequency": "Frequência do Pagamento (obrigatório)",
     "firstPaymentDate": "Data do Primeiro Pagamento (obrigatório)",
     "paymentFromAccount": "Pagar a Partir da Conta (obrigatório)",
+    "paymentFromAccountEditHelp": "Alterá-la move os próximos pagamentos agendados e a regra de correspondência de pagamentos para a nova conta. Os pagamentos já lançados não são alterados.",
     "interestCategory": "Categoria de Juros",
     "interestBookingMode": {
       "label": "Como os juros são registrados?",

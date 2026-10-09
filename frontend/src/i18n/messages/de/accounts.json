@@ -307,6 +307,7 @@
     "paymentFrequency": "Zahlungsintervall (erforderlich)",
     "firstPaymentDate": "Datum der ersten Zahlung (erforderlich)",
     "paymentFromAccount": "Zahlung vom Konto (erforderlich)",
+    "paymentFromAccountEditHelp": "Eine Änderung verschiebt die anstehenden geplanten Zahlungen und die Zahlungsabgleichsregel auf das neue Konto. Bereits gebuchte Zahlungen bleiben unverändert.",
     "interestCategory": "Zinskategorie",
     "interestBookingMode": {
       "label": "Wie werden Zinsen erfasst?",

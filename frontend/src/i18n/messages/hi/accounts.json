@@ -307,6 +307,7 @@
     "paymentFrequency": "भुगतान आवृत्ति (आवश्यक)",
     "firstPaymentDate": "पहली भुगतान तिथि (आवश्यक)",
     "paymentFromAccount": "भुगतान खाता (आवश्यक)",
+    "paymentFromAccountEditHelp": "इसे बदलने से आगामी निर्धारित भुगतान और भुगतान मिलान नियम नए खाते में चले जाते हैं। पहले से दर्ज भुगतान नहीं बदलते।",
     "interestCategory": "ब्याज श्रेणी",
     "interestBookingMode": {
       "label": "ब्याज कैसे दर्ज होता है?",

@@ -307,6 +307,7 @@
     "paymentFrequency": "Frecuencia de Pago (obligatoria)",
     "firstPaymentDate": "Fecha del Primer Pago (obligatoria)",
     "paymentFromAccount": "Pagar desde Cuenta (obligatorio)",
+    "paymentFromAccountEditHelp": "Al cambiarla, los próximos pagos programados y la regla de conciliación de pagos pasan a la nueva cuenta. Los pagos ya registrados no cambian.",
     "interestCategory": "Categoría de Interés",
     "interestBookingMode": {
       "label": "¿Cómo se registran los intereses?",

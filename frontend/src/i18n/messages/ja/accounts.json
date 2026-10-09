@@ -307,6 +307,7 @@
     "paymentFrequency": "支払い頻度（必須）",
     "firstPaymentDate": "初回支払日（必須）",
     "paymentFromAccount": "支払い元勘定科目（必須）",
+    "paymentFromAccountEditHelp": "変更すると、今後の予定支払いと支払い照合ルールが新しい口座に移動します。記帳済みの支払いは変更されません。",
     "interestCategory": "利息カテゴリ",
     "interestBookingMode": {
       "label": "利息の記録方法は？",

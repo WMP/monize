@@ -307,6 +307,7 @@
     "paymentFrequency": "납부 주기 (필수)",
     "firstPaymentDate": "첫 납부일 (필수)",
     "paymentFromAccount": "납부 출금 계정 (필수)",
+    "paymentFromAccountEditHelp": "변경하면 예정된 향후 결제와 결제 매칭 규칙이 새 계좌로 이동합니다. 이미 기록된 결제는 변경되지 않습니다.",
     "interestCategory": "이자 카테고리",
     "interestBookingMode": {
       "label": "이자를 어떻게 기록하나요?",

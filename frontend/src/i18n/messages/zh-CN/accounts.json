@@ -307,6 +307,7 @@
     "paymentFrequency": "还款频率（必填）",
     "firstPaymentDate": "首次还款日期（必填）",
     "paymentFromAccount": "还款来源账户（必填）",
+    "paymentFromAccountEditHelp": "更改后，即将到来的计划付款和付款匹配规则将转移到新账户。已入账的付款不会改变。",
     "interestCategory": "利息科目",
     "interestBookingMode": {
       "label": "利息如何记账？",
