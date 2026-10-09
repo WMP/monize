@@ -1142,15 +1142,19 @@ async function holdThisBrowsersRegistration(attempt: {
  *   is released and the held row retired rather than left for the sweep.
  * - No subscription any more: the marker is stale; it is forgotten and the
  *   held row retired.
- * - Minted under a key the instance no longer uses: released locally. The row
- *   is already retired as `KEY_ROTATED`, and Enable is the repair.
- * - The browser replaced the endpoint while signed out: the new endpoint is
- *   registered and the old row retired, the repair the settings panel makes
- *   for a rotation.
- * - Any refusal from the server (409 claimed included): released locally, so
- *   the browser holds no subscription the server will not deliver to. A
- *   request that never got an answer changes nothing, and the next page load
- *   tries again.
+ * - Minted under a key the instance no longer uses, or one the browser will
+ *   not disclose: released locally and the held row retired (a real rotation
+ *   has already retired it, and retiring it again is harmless). Enable is the
+ *   repair.
+ * - The browser replaced the endpoint while signed out: the old row is retired
+ *   FIRST, so it does not hold a slot under the device cap against the new
+ *   one, then the new endpoint is registered -- the repair the settings panel
+ *   makes for a rotation.
+ * - A refusal from the server (409 claimed, the device cap, any other 4xx):
+ *   released locally and the held row retired, so neither half promises a
+ *   delivery that will not happen. A request that never got an answer, or got
+ *   a 5xx, a 401, a 408 or a 429, changes nothing, and the next sign-in or
+ *   page load tries again.
  *
  * Returns whether it changed anything, so the caller knows to re-read the
  * device state. Never throws.
@@ -1185,19 +1189,21 @@ export async function resumePushAfterSignIn(publicKey: string): Promise<boolean>
       )
     ) {
       await releaseLocalPushSubscription();
+      await retireServerRowFor(marker.fingerprint);
       return true;
     }
 
     const current = await fingerprintEndpoint(subscription.endpoint);
+    if (current !== marker.fingerprint) {
+      await retireServerRowFor(marker.fingerprint);
+    }
     try {
       await postSubscription(subscription, publicKey);
     } catch (error) {
       if (!isServerRefusal(error)) return false;
       await releaseLocalPushSubscription();
-      return true;
-    }
-    if (current !== marker.fingerprint) {
       await retireServerRowFor(marker.fingerprint);
+      return true;
     }
     return true;
   } catch {
@@ -1206,11 +1212,23 @@ export async function resumePushAfterSignIn(publicKey: string): Promise<boolean>
   }
 }
 
-/** The server answered and said no, as opposed to never answering at all. */
+/**
+ * The server answered and refused THIS registration, as opposed to never
+ * answering, failing on its own side (5xx, a gateway mid-deploy), losing the
+ * session (401) or asking to be retried (408, 429). Only a refusal justifies
+ * dropping the browser subscription.
+ */
+const RETRYABLE_CLIENT_STATUSES: readonly number[] = [401, 408, 429];
+
 function isServerRefusal(error: unknown): boolean {
-  const response = (error as { response?: { status?: unknown } } | null)
-    ?.response;
-  return typeof response?.status === 'number';
+  const status = (error as { response?: { status?: unknown } } | null)
+    ?.response?.status;
+  return (
+    typeof status === 'number' &&
+    status >= 400 &&
+    status < 500 &&
+    !RETRYABLE_CLIENT_STATUSES.includes(status)
+  );
 }
 
 async function removeThisBrowsersRegistration(): Promise<void> {

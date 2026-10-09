@@ -1443,16 +1443,23 @@ describe('holding push across a sign-out, and resuming it', () => {
       expect(readRegisteredEndpoint()).toBeNull();
     });
 
-    it('releases locally without posting when the key changed while signed out', async () => {
+    // A browser that will not disclose its key reads as a mismatch too, and
+    // then the held row is still live: it is retired with the subscription.
+    it.each([
+      ['a different key', new Uint8Array([1, 2, 3]).buffer],
+      ['an undisclosed key', null],
+    ])('releases and retires the held row, without posting, under %s', async (_name, key) => {
       markRegisteredEndpointHeld('user-1', fingerprint);
-      getSubscription.mockResolvedValue(
-        browserSubscription(ENDPOINT, new Uint8Array([1, 2, 3]).buffer),
-      );
+      getSubscription.mockResolvedValue(browserSubscription(ENDPOINT, key));
 
       await expect(resumePushAfterSignIn(PUBLIC_KEY)).resolves.toBe(true);
 
       expect(apiClient.post).not.toHaveBeenCalled();
       expect(unsubscribe).toHaveBeenCalledTimes(1);
+      expect(apiClient.delete).toHaveBeenCalledWith(
+        '/push/subscriptions/d-1',
+        undefined,
+      );
       expect(readRegisteredEndpoint()).toBeNull();
     });
 
@@ -1503,6 +1510,11 @@ describe('holding push across a sign-out, and resuming it', () => {
         '/push/subscriptions/d-1',
         undefined,
       );
+      // Retired BEFORE the new endpoint is posted, so the old held row does not
+      // count against the device cap the new row is checked under.
+      expect(
+        vi.mocked(apiClient.delete).mock.invocationCallOrder[0],
+      ).toBeLessThan(vi.mocked(apiClient.post).mock.invocationCallOrder[0]);
       expect(readRegisteredEndpoint()).toEqual({
         userId: 'user-1',
         fingerprint: rotatedFingerprint,
@@ -1513,24 +1525,35 @@ describe('holding push across a sign-out, and resuming it', () => {
     it.each([
       ['a 409 claimed', httpError(409, ENDPOINT_CLAIMED_CODE)],
       ['the device cap', httpError(400)],
-    ])('releases locally on %s', async (_name, refusal) => {
+    ])('releases locally and retires the held row on %s', async (_name, refusal) => {
       markRegisteredEndpointHeld('user-1', fingerprint);
       vi.mocked(apiClient.post).mockRejectedValue(refusal);
 
       await expect(resumePushAfterSignIn(PUBLIC_KEY)).resolves.toBe(true);
 
       expect(unsubscribe).toHaveBeenCalledTimes(1);
+      expect(apiClient.delete).toHaveBeenCalledWith(
+        '/push/subscriptions/d-1',
+        undefined,
+      );
       expect(readRegisteredEndpoint()).toBeNull();
     });
 
-    // Never answered is not a refusal: the next page load tries again.
-    it('keeps the held marker when the request never got an answer', async () => {
+    // Not a refusal of this registration: the next sign-in or load tries again.
+    it.each([
+      ['no answer at all', new Error('Network Error')],
+      ['a 503 from a gateway mid-deploy', httpError(503)],
+      ['a 500', httpError(500)],
+      ['a 401', httpError(401)],
+      ['a 429', httpError(429)],
+    ])('keeps the subscription and the held marker on %s', async (_name, failure) => {
       markRegisteredEndpointHeld('user-1', fingerprint);
-      vi.mocked(apiClient.post).mockRejectedValue(new Error('Network Error'));
+      vi.mocked(apiClient.post).mockRejectedValue(failure);
 
       await expect(resumePushAfterSignIn(PUBLIC_KEY)).resolves.toBe(false);
 
       expect(unsubscribe).not.toHaveBeenCalled();
+      expect(apiClient.delete).not.toHaveBeenCalled();
       expect(readRegisteredEndpoint()?.held).toBe(true);
     });
 
