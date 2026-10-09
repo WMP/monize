@@ -112,7 +112,7 @@ INV-LOAN-002's entry names the missing source scan while its row said `--`.
 | INV-LOAN-005 first payment is payment 1 | **required** | **required** | -- | -- | -- | -- | -- | -- |
 | INV-LOAN-006 dated installment pricing | **required** | **required** | required | -- | -- | -- | -- | optional |
 | INV-LOAN-007 one method per mortgage type | **required** | **required** | required | -- | -- | -- | -- | optional |
-| INV-LOAN-008 one settlement per occurrence | **required** (not yet met) | -- | **required** (not yet met) | required (not yet met) | -- | -- | -- | optional |
+| INV-LOAN-008 one settlement per occurrence | **required** | -- | **required** | required | -- | -- | -- | optional |
 | INV-LOAN-HISTORY-001 ledger-backed loan interest | **required** | required | -- | -- | -- | -- | -- | optional |
 | INV-OCCURRENCE-001 one effect | supporting | -- | required | required | **required** | required | -- | required |
 | INV-OCCURRENCE-002 override price | required | -- | -- | -- | -- | -- | -- | required |
@@ -183,7 +183,7 @@ INV-LOAN-002's entry names the missing source scan while its row said `--`.
 | INV-RULE-001 a rule moves only a structural action's counterpart | **required** | -- | **required** | -- | -- | -- | -- | -- |
 | INV-RULE-003 a rule run commits only the plan that was previewed | **required** | -- | **required** | -- | -- | -- | -- | -- |
 | INV-RULE-004 a rule runs only inside its active window | **required** | -- | **required** | -- | -- | -- | -- | -- |
-| INV-RULE-005 a settling pass folds chronologically | **required** (not yet met) | -- | required (not yet met) | -- | -- | -- | -- | -- |
+| INV-RULE-005 a settling pass folds chronologically | **required** | -- | required | -- | -- | -- | -- | -- |
 | INV-RULE-002 a rule applies inside the inserting transaction | supporting | **required** | **required** | -- | -- | required | -- | optional |
 
 Bold marks the kind that is load-bearing -- the one whose absence means the

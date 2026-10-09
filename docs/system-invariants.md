@@ -95,7 +95,7 @@ implied.
 | INV-LOAN-005 | The first payment date is payment number 1 | enforced |
 | INV-LOAN-006 | A scheduled loan installment prices the ledger debt, the rate, and the remaining count through its own due date | enforced |
 | INV-LOAN-007 | One amortization method per mortgage type, from preview to pricing to projection | enforced |
-| INV-LOAN-008 | One settlement per scheduled occurrence, and the claim commits with the split | unenforced |
+| INV-LOAN-008 | One settlement per scheduled occurrence, and the claim commits with the split | enforced |
 | INV-LOAN-HISTORY-001 | Historical loan interest counted as paid is ledger-backed | partial |
 | INV-OCCURRENCE-001 | One scheduled occurrence has at most one financial effect | enforced |
 | INV-OCCURRENCE-002 | A stored override price survives reopening | enforced |
@@ -167,7 +167,7 @@ implied.
 | INV-RULE-002 | A transaction rule applies inside the transaction that inserts the row, on every creation path | partial |
 | INV-RULE-003 | The preview, the draft test and the commit of a transaction rule are one planner, and a run commits only the plan the person previewed | partial |
 | INV-RULE-004 | A transaction rule is evaluated only for a row whose date is known and inside the rule's active window | partial |
-| INV-RULE-005 | A rule pass that settles loan installments folds chronologically, and its preview and commit fold the same | unenforced |
+| INV-RULE-005 | A rule pass that settles loan installments folds chronologically, and its preview and commit fold the same | enforced |
 
 ## Imports
 
@@ -2377,8 +2377,10 @@ Statement           The interest of a scheduled loan installment is
                     and never accounts.interest_rate alone, which a recorded
                     rate change deliberately does not write. The next
                     scheduled bill, the amounts an occurrence actually posts,
-                    and the amortization report's first projected row all price
-                    that one balance (issue #1253).
+                    the amortization report's first projected row, and a
+                    settle_loan_installment rule's priced installment for the
+                    matched occurrence (INV-LOAN-008) all price that one
+                    balance (issue #1253).
                     The principal of a mortgage whose method is not ANNUITY
                     (INV-LOAN-007) is dated the same way: a LOWER_INSTALLMENT
                     LINEAR principal is roundMoney(debt / remaining), and an
@@ -2410,6 +2412,13 @@ Enforcement         resolveInstallmentCore and the pure priceInstallment
                     split is a template/read model, so a principal movement
                     committed between occurrences reaches the amounts actually
                     posted without any mutation path having to invalidate it.
+                    planLoanSettlement (backend/src/loan-installments/plan-loan-settlement.ts)
+                    is the fourth consumer, called by settle_loan_installment
+                    with the matched slot's own date and the debt the fold of
+                    INV-RULE-005 derives (docs/specs/scheduled-loan-installment-pricing.md
+                    section 2); it shares priceInstallment with the three
+                    above and answers the same way with a different caller's
+                    missing-data rule.
                     The amortization report anchors its projection on
                     GET /scheduled-transactions/loan-anchor/:accountId (the same
                     due-date-bounded debt) through buildLoanProjectionInput's
@@ -2618,11 +2627,11 @@ Source of truth     scheduled_transaction_postings (one row per claimed
                     occurrence; transaction_id, source, rule_id and pricing
                     once B1 lands), the settled transaction and its split
                     lines.
-Enforcement         The write path exists (B5 of
-                    docs/future-plans/loan-installment-settlement-tasks.md);
-                    the chronological fold and the import ordering (B6) and
-                    the rule creation (B7) do not, and the acceptance task (Q)
-                    flips the status. The mechanism: idx_stp_occurrence,
+Enforcement         The write path (B5), the chronological fold and the
+                    import ordering (B6), and the rule creation on the
+                    mortgage and loan-setup paths (B7) are all built
+                    (docs/future-plans/loan-installment-settlement-tasks.md).
+                    The mechanism: idx_stp_occurrence,
                     claimed with INSERT ... ON CONFLICT DO NOTHING RETURNING id
                     by post() and by claimLoanOccurrence
                     (backend/src/loan-installments/claim-loan-occurrence.ts)
@@ -2686,7 +2695,7 @@ Known gaps          On the import paths the source account is held before the
                     settlements exist is allowed and leaves their interest
                     priced on the older debt; a cursor moved back into a paid
                     period lets post() pay it again (spec section 15).
-Status              unenforced
+Status              enforced
 ```
 
 ### INV-LOAN-HISTORY-001 -- historical loan interest counted as paid is ledger-backed
@@ -5704,10 +5713,13 @@ Statement           Running a rule never changes the matched row's amount,
                     account, date or status, and never deletes or relinks a row
                     that exists, so the matched row's own account balance never
                     moves. The only balance a rule moves is the one a structural
-                    action creates: the counterpart leg of convert_to_transfer
-                    and the counterpart legs of the transfer parts of split,
-                    each by exactly the counterpart's amount, written in the
-                    transaction that inserts the row or commits the run. Every
+                    action creates: the counterpart leg of convert_to_transfer,
+                    the counterpart legs of the transfer parts of split, and
+                    the counterpart legs settle_loan_installment plans as a
+                    split (the loan's principal, its extra principal, and the
+                    interest expense), each by exactly the counterpart's
+                    amount, written in the transaction that inserts the row or
+                    commits the run. Every
                     other action changes only a row's category, payee (with its
                     payee_name), description and tags, or queues a request for a
                     human-approved AI review that does not touch the row. A
@@ -5724,7 +5736,8 @@ Enforcement         The action list is a closed union: RULE_ACTION_TYPES and
                     RuleAction in backend/src/transaction-rules/rule-action.types.ts
                     (add_tags, remove_tags, set_category, set_payee,
                     set_payee_from_text, set_description, request_ai_review,
-                    convert_to_transfer, split), so an action that writes
+                    convert_to_transfer, split, settle_loan_installment), so
+                    an action that writes
                     anything else is not representable, and rule-validation.ts
                     refuses a stored or submitted action outside it. The pure
                     planner (planRuleEffects) decides every structural refusal
@@ -5736,7 +5749,10 @@ Enforcement         The action list is a closed union: RULE_ACTION_TYPES and
                     the caller's EntityManager: convertRowToTransfer
                     (backend/src/transactions/convert-to-transfer.ts) for a
                     conversion, TransactionSplitService.validateSplits and
-                    createSplits for a split. The only columns it sets on the
+                    createSplits for a split or for the split
+                    settle_loan_installment plans, followed in the same
+                    EntityManager transaction by its occurrence claim and
+                    cursor advance (INV-LOAN-008). The only columns it sets on the
                     matched row besides the patch are isTransfer,
                     linkedTransactionId, isSplit and categoryId; it never
                     assigns amount, account, date or status. The target
@@ -6040,8 +6056,12 @@ Enforcement         Built (B6 of
                     eligibleImportRuleIds for a Money file, and the rules
                     batches of BankSyncWriterService, which also returns the
                     accounts a rule moved for the after-commit recompute
-                    (INV-CACHE-001). The status flips in the acceptance task
-                    Q, with the locales and the release note.
+                    (INV-CACHE-001). The rules editor's action card and run
+                    preview (F1), the rule creation on the mortgage and
+                    loan-setup paths (B7), the Loan Details Payment matching
+                    panel (F3) and the assistant/MCP name form (B8) are all
+                    built, with every locale carrying the action's strings
+                    (Q).
 Concurrency scope   the run (its locks, INV-RULE-003); per import transaction
 Retry semantics     A re-run plans the same fold from the same ledger; rows
                     already settled are splits and are skipped.
@@ -6062,7 +6082,7 @@ Required tests      transaction-rules-run.loan-settlement.spec.ts (ASC only
                     transaction-rules-loan-fold.integration.spec.ts (a file
                     listed newest first settles three months in a chain, and
                     the same rows settled by one run store the same price).
-Status              unenforced
+Status              enforced
 ```
 
 ### INV-RULE-002 -- a rule applies inside the inserting transaction, on every creation path

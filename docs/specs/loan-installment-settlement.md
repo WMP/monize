@@ -1,12 +1,12 @@
 # Spec: loan installment settlement
 
-Status: approved for implementation; nothing is built yet (S1). The plan is
-`docs/future-plans/loan-installment-settlement.md`, the task list
-`docs/future-plans/loan-installment-settlement-tasks.md`.
+Status: implemented (Q, the final task of the task list, closes the
+feature). The plan is `docs/future-plans/loan-installment-settlement.md`,
+the task list `docs/future-plans/loan-installment-settlement-tasks.md`.
 Governs: issue #1589 (tracking) and its sub-issues #1590 to #1602, agreed in
 discussion #1486 and in the planning session recorded on #1589.
 Registers INV-LOAN-008 and INV-RULE-005 in `docs/system-invariants.md`
-(status `unenforced` at S1, flipped by the final task, Q), extends INV-LOAN-006
+(status `enforced`, flipped by the final task, Q), extends INV-LOAN-006
 with a fourth consumer, and restates INV-RULE-001, INV-RULE-003,
 INV-OCCURRENCE-001 and INV-CACHE-001 for the new action.
 
