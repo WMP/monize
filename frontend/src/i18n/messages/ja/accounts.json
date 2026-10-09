@@ -174,8 +174,6 @@
     "statementDueDayPlaceholder": "例：15",
     "statementSettlementDayPlaceholder": "例：25",
     "fxFeeTitle": "外貨換算手数料 （任意）",
-    "fxFeePercent": "手数料率",
-    "fxFeePercentPlaceholder": "例: 2.5",
     "jointSharedWith": "{count, plural, other {# 人}}と共有している共同口座",
     "jointManage": "共有を管理",
     "cashSection": {

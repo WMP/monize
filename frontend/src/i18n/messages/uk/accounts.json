@@ -174,8 +174,6 @@
     "statementDueDayPlaceholder": "напр. 15",
     "statementSettlementDayPlaceholder": "напр. 25",
     "fxFeeTitle": "Комісія за конвертацію валюти (необов'язково)",
-    "fxFeePercent": "Відсоток комісії",
-    "fxFeePercentPlaceholder": "напр. 2,5",
     "jointSharedWith": "Спільний рахунок, доступ мають {count, plural, one {# особа} few {# особи} many {# осіб} other {# особи}}",
     "jointManage": "Керувати доступом",
     "cashSection": {

@@ -174,8 +174,6 @@
     "statementDueDayPlaceholder": "mis. 15",
     "statementSettlementDayPlaceholder": "mis. 25",
     "fxFeeTitle": "Biaya konversi mata uang asing (opsional)",
-    "fxFeePercent": "Persentase biaya",
-    "fxFeePercentPlaceholder": "mis. 2,5",
     "jointSharedWith": "Akun bersama dibagikan dengan {count, plural, other {# orang}}",
     "jointManage": "Kelola berbagi",
     "cashSection": {

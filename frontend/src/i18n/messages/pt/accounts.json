@@ -174,8 +174,6 @@
     "statementDueDayPlaceholder": "ex.: 15",
     "statementSettlementDayPlaceholder": "ex.: 25",
     "fxFeeTitle": "Comissão de conversão de moeda estrangeira (opcional)",
-    "fxFeePercent": "Percentagem da comissão",
-    "fxFeePercentPlaceholder": "ex.: 2,5",
     "jointSharedWith": "Conta conjunta partilhada com {count, plural, one {# pessoa} other {# pessoas}}",
     "jointManage": "Gerir partilha",
     "cashSection": {

@@ -174,8 +174,6 @@
     "statementDueDayPlaceholder": "например, 15",
     "statementSettlementDayPlaceholder": "например, 25",
     "fxFeeTitle": "Комиссия за конвертацию валюты (необязательно)",
-    "fxFeePercent": "Процент комиссии",
-    "fxFeePercentPlaceholder": "напр. 2,5",
     "jointSharedWith": "Совместный счёт, доступ открыт для {count, plural, one {# человека} few {# человек} many {# человек} other {# человека}}",
     "jointManage": "Управлять доступом",
     "cashSection": {

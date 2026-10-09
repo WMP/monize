@@ -174,8 +174,6 @@
     "statementDueDayPlaceholder": "ör. 15",
     "statementSettlementDayPlaceholder": "ör. 25",
     "fxFeeTitle": "Yabancı para dönüştürme ücreti (isteğe bağlı)",
-    "fxFeePercent": "Ücret yüzdesi",
-    "fxFeePercentPlaceholder": "örn. 2,5",
     "jointSharedWith": "{count, plural, other {# kişiyle}} paylaşılan ortak hesap",
     "jointManage": "Paylaşımı yönet",
     "cashSection": {

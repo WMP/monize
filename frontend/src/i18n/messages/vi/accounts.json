@@ -174,8 +174,6 @@
     "statementDueDayPlaceholder": "vd. 15",
     "statementSettlementDayPlaceholder": "vd. 25",
     "fxFeeTitle": "Phí chuyển đổi ngoại tệ (tùy chọn)",
-    "fxFeePercent": "Phần trăm phí",
-    "fxFeePercentPlaceholder": "vd. 2,5",
     "jointSharedWith": "Tài khoản chung được chia sẻ với {count, plural, other {# người}}",
     "jointManage": "Quản lý chia sẻ",
     "cashSection": {

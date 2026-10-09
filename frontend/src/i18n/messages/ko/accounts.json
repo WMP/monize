@@ -174,8 +174,6 @@
     "statementDueDayPlaceholder": "예: 15",
     "statementSettlementDayPlaceholder": "예: 25",
     "fxFeeTitle": "외화 환전 수수료 (선택)",
-    "fxFeePercent": "수수료 비율",
-    "fxFeePercentPlaceholder": "예: 2.5",
     "jointSharedWith": "{count, plural, other {#명}}과 공유된 공동 계좌",
     "jointManage": "공유 관리",
     "cashSection": {

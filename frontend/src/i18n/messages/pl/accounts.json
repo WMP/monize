@@ -174,8 +174,6 @@
     "statementDueDayPlaceholder": "np. 15",
     "statementSettlementDayPlaceholder": "np. 25",
     "fxFeeTitle": "Opłata za przewalutowanie (opcjonalnie)",
-    "fxFeePercent": "Procent opłaty",
-    "fxFeePercentPlaceholder": "np. 2,5",
     "jointSharedWith": "Wspólne konto udostępnione {count, plural, one {# osobie} few {# osobom} many {# osobom} other {# osobom}}",
     "jointManage": "Zarządzaj udostępnianiem",
     "cashSection": {

@@ -174,8 +174,6 @@
     "statementDueDayPlaceholder": "उदा. 15",
     "statementSettlementDayPlaceholder": "उदा. 25",
     "fxFeeTitle": "विदेशी मुद्रा रूपांतरण शुल्क (वैकल्पिक)",
-    "fxFeePercent": "शुल्क प्रतिशत",
-    "fxFeePercentPlaceholder": "उदा. 2.5",
     "jointSharedWith": "संयुक्त खाता, {count, plural, one {# व्यक्ति} other {# लोगों}} के साथ साझा",
     "jointManage": "साझाकरण प्रबंधित करें",
     "cashSection": {

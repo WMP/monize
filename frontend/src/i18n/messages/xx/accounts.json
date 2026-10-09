@@ -181,8 +181,6 @@
     "statementDueDayPlaceholder": "[XX-e.g. 15-XX]",
     "statementSettlementDayPlaceholder": "[XX-e.g. 25-XX]",
     "fxFeeTitle": "[XX-Foreign Currency Conversion Fee (optional)-XX]",
-    "fxFeePercent": "[XX-Fee Percentage-XX]",
-    "fxFeePercentPlaceholder": "[XX-e.g. 2.5-XX]",
     "jointSharedWith": "[XX-Joint account shared with {count, plural, one {# person} other {# people}}-XX]",
     "jointManage": "[XX-Manage sharing-XX]"
   },

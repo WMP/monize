@@ -174,8 +174,6 @@
     "statementDueDayPlaceholder": "bijv. 15",
     "statementSettlementDayPlaceholder": "bijv. 25",
     "fxFeeTitle": "Kosten voor omrekening van vreemde valuta (optioneel)",
-    "fxFeePercent": "Kostenpercentage",
-    "fxFeePercentPlaceholder": "bijv. 2,5",
     "jointSharedWith": "Gezamenlijke rekening gedeeld met {count, plural, one {# persoon} other {# personen}}",
     "jointManage": "Delen beheren",
     "cashSection": {

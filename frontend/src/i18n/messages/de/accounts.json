@@ -174,8 +174,6 @@
     "statementDueDayPlaceholder": "z. B. 15",
     "statementSettlementDayPlaceholder": "z. B. 25",
     "fxFeeTitle": "Fremdwährungsumrechnungsgebühr (optional)",
-    "fxFeePercent": "Gebührensatz",
-    "fxFeePercentPlaceholder": "z. B. 2,5",
     "jointSharedWith": "Gemeinschaftskonto, geteilt mit {count, plural, one {# Person} other {# Personen}}",
     "jointManage": "Freigabe verwalten",
     "cashSection": {

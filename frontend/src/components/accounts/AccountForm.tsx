@@ -1002,20 +1002,24 @@ export function AccountForm({
         />
       </div>
 
-      {/* Credit Limit and Interest Rate - hide for loans, mortgages, and assets */}
-      {!isAssetAccount && (
-        <div className="grid grid-cols-2 gap-4">
-          {!isLoanAccount && !isMortgageAccount && (
-            <CurrencyInput
-              label={t('form.creditLimit')}
-              prefix={currencySymbol}
-              value={watchedCreditLimit}
-              onChange={(value) => setValue('creditLimit', value, { shouldValidate: true })}
-              error={errors.creditLimit?.message}
-              allowNegative={false}
-            />
-          )}
+      {/* Credit Limit (not loans/mortgages/assets), Interest Rate (not assets)
+          and the Foreign Currency Conversion Fee: the bank's FX fee (a
+          percentage), folded into the converted amount on foreign-entered
+          transactions. The fee renders for every type (the release tour
+          anchors on it). */}
+      <div className="grid grid-cols-2 gap-4">
+        {!isAssetAccount && !isLoanAccount && !isMortgageAccount && (
+          <CurrencyInput
+            label={t('form.creditLimit')}
+            prefix={currencySymbol}
+            value={watchedCreditLimit}
+            onChange={(value) => setValue('creditLimit', value, { shouldValidate: true })}
+            error={errors.creditLimit?.message}
+            allowNegative={false}
+          />
+        )}
 
+        {!isAssetAccount && (
           <Controller
             name="interestRate"
             control={control}
@@ -1035,10 +1039,30 @@ export function AccountForm({
               />
             )}
           />
+        )}
 
-          {(isLoanAccount || isMortgageAccount) && <div />} {/* Spacer for grid alignment */}
+        <div {...tourAnchor(TOUR_ANCHORS.accountFxFeePercent)}>
+          <Controller
+            name="fxFeePercent"
+            control={control}
+            render={({ field }) => (
+              <NumericInput
+                label={t('form.fxFeeTitle')}
+                decimalPlaces={2}
+                min={0}
+                max={100}
+                suffix="%"
+                error={errors.fxFeePercent?.message}
+                value={field.value}
+                onChange={field.onChange}
+                name={field.name}
+                onBlur={field.onBlur}
+                ref={field.ref}
+              />
+            )}
+          />
         </div>
-      )}
+      </div>
 
       {/* Balance-threshold alerts (edit only; docs/specs/balance-threshold-notifications.md) */}
       {account && (
@@ -1133,35 +1157,6 @@ export function AccountForm({
           </div>
         </div>
       )}
-
-      {/* Foreign Currency Conversion Fee: the bank's FX fee (a percentage),
-          folded into the converted amount on foreign-entered transactions. */}
-      <div className="space-y-3" {...tourAnchor(TOUR_ANCHORS.accountFxFeePercent)}>
-        <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          {t('form.fxFeeTitle')}
-        </h3>
-        <div className="grid grid-cols-2 gap-4">
-          <Controller
-            name="fxFeePercent"
-            control={control}
-            render={({ field }) => (
-              <NumericInput
-                label={`${t('form.fxFeePercent')} (%)`}
-                decimalPlaces={2}
-                min={0}
-                max={100}
-                placeholder={t('form.fxFeePercentPlaceholder')}
-                error={errors.fxFeePercent?.message}
-                value={field.value}
-                onChange={field.onChange}
-                name={field.name}
-                onBlur={field.onBlur}
-                ref={field.ref}
-              />
-            )}
-          />
-        </div>
-      </div>
 
       {isLoanAccount && !account && (
         <LoanFields

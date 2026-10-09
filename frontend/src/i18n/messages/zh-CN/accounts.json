@@ -174,8 +174,6 @@
     "statementDueDayPlaceholder": "例如 15",
     "statementSettlementDayPlaceholder": "例如 25",
     "fxFeeTitle": "外币兑换手续费 （可选）",
-    "fxFeePercent": "手续费百分比",
-    "fxFeePercentPlaceholder": "例如 2.5",
     "jointSharedWith": "联名账户，已与 {count, plural, other {# 人}}共享",
     "jointManage": "管理共享",
     "cashSection": {
