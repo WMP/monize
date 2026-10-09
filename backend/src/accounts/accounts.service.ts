@@ -2044,12 +2044,16 @@ export class AccountsService {
           FROM account_daily
         )
         -- Downsample: keep every $5th day (aligned across accounts, since all
-        -- share the same date series) plus always the final/latest point.
+        -- share the same date series) plus always the final/latest point and
+        -- today. With future-dated transactions the final point is in the
+        -- future, and a thinned-out today would leave callers reading
+        -- "current" off an earlier sampled day.
         SELECT date::TEXT, balance::NUMERIC, account_id, currency_code
         FROM numbered
         WHERE $5::int <= 1 OR idx % $5::int = 0 OR idx = cnt - 1
+           OR date = $7::DATE
         ORDER BY date, account_id`,
-        [userId, accountIdsParam, start, end, step, jointIdsParam],
+        [userId, accountIdsParam, start, end, step, jointIdsParam, todayYMD()],
       ),
     );
 

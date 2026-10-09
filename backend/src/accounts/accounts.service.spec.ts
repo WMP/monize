@@ -4317,6 +4317,30 @@ describe("AccountsService", () => {
       expect(params[4]).toBeGreaterThan(1); // ~5479 days / 400 -> step 14
     });
 
+    it("keeps today's point when downsampling a range that ends in the future", async () => {
+      // A future-dated transaction moves the series' final point past today;
+      // with a step > 1, today could fall between samples and the chart's
+      // "Current" would read an earlier day's balance instead.
+      jest.useFakeTimers({ now: new Date(2026, 9, 8, 12) });
+      try {
+        const ds = mockQueryRunner.manager as unknown as { query: jest.Mock };
+        ds.query = jest
+          .fn()
+          .mockResolvedValueOnce([{ max_date: "2026-10-17" }])
+          .mockResolvedValueOnce([]);
+        await service.getDailyBalances("user-1", "2024-09-21", undefined, [
+          "a1",
+        ]);
+        const [sql, params] = ds.query.mock.calls[1];
+        expect(params[3]).toBe("2026-10-17");
+        expect(params[4]).toBe(2); // 757 days -> step 2
+        expect(params[6]).toBe("2026-10-08");
+        expect(sql).toMatch(/OR date = \$7::DATE/);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
     it("spans earliest to latest transaction when allTime and no startDate", async () => {
       const ds = mockQueryRunner.manager as unknown as { query: jest.Mock };
       ds.query = jest
