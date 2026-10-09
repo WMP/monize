@@ -109,7 +109,10 @@ jobs:
       postgres:
         # Pinned by digest to satisfy zizmor's unpinned-images audit. Refresh
         # alongside production postgres bumps so CI matches what we ship.
-        image: postgres:16-alpine@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
+        # Pulled from the ECR Public mirror of the official image (same digest):
+        # a service container starts before any login step can run, and an
+        # anonymous Docker Hub pull from a shared runner IP is rate-limited.
+        image: public.ecr.aws/docker/library/postgres:16-alpine@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
         env:
           POSTGRES_DB: monize_test
           POSTGRES_USER: monize_test
@@ -282,6 +285,16 @@ jobs:
       - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
         with:
           persist-credentials: false
+      - name: Log in to Docker Hub
+        # Authenticated pulls are counted per account instead of per shared
+        # runner IP. A fork's pull_request gets no secrets, so it skips this
+        # and pulls anonymously as before.
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Verify schema.sql matches migrations state
         run: scripts/verify-schema.sh
 
@@ -1484,6 +1497,16 @@ jobs:
       - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: 24
+
+      - name: Log in to Docker Hub
+        # Authenticated pulls are counted per account instead of per shared
+        # runner IP. A fork's pull_request gets no secrets, so it skips this
+        # and pulls anonymously as before.
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build application images
         run: docker compose -f docker-compose.e2e.yml build

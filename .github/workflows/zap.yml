@@ -32,6 +32,16 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Log in to Docker Hub
+        # Authenticated pulls are counted per account instead of per shared
+        # runner IP. A fork's pull_request gets no secrets, so it skips this
+        # and pulls anonymously as before.
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Build application images
         # docker-compose.zap.yml overlays the e2e stack to run the frontend as a
         # production build (the dev/Turbopack image inflates the scan with
