@@ -5,10 +5,12 @@ with the server holding delivery to that device until the same account signs
 in on it again. The task list is
 [`push-hold-on-sign-out-tasks.md`](./push-hold-on-sign-out-tasks.md).
 
-Status: **proposal**. It needs its own discussion with the `approved-to-build`
-label before any task starts (`CONTRIBUTING.md`). It changes push behaviour on
-both layers and adds a column, so it lands as one PR whose commits follow the
-task list.
+Status: **decisions agreed** in issue #1630 (2026-10-09): skip rather than
+queue (decision 1), only the header sign-out holds (decision 7), and a 15-day
+`HELD_DEVICE_RETENTION_DAYS`. Implementation waits for the `approved-to-build`
+label on that issue (`CONTRIBUTING.md`). It changes push behaviour on both
+layers and adds a column, so it lands as one PR whose commits follow the task
+list.
 
 ## 1. What happens today
 
@@ -51,7 +53,7 @@ automatic resume. The subscription was simply thrown away.
 | A different account signs in | Clean browser; the banner offers Enable | The marker reads `foreign` and the banner offers Enable. Enabling takes the existing 409 path: unsubscribe, then subscribe fresh. The first account's held row stays until the sweep removes it |
 | Account deletion | Full release | **Unchanged**: full release |
 | Session expiry | Push left alone, still delivering | **Unchanged** |
-| A held row nobody resumes | n/a | Deleted by the daily sweep after `HELD_DEVICE_RETENTION_DAYS` (30) |
+| A held row nobody resumes | n/a | Deleted by the daily sweep after `HELD_DEVICE_RETENTION_DAYS` (15) |
 
 ## 3. Product decisions
 
@@ -61,8 +63,8 @@ automatic resume. The subscription was simply thrown away.
    push is dispatched), so the bell shows what was missed when the user signs
    back in. Queueing would mean replaying stale alerts in a burst, adding a
    second store whose lifecycle PostgreSQL cannot roll back, and deciding
-   which of them still matter. *Open for the discussion:* if a queue is wanted,
-   it is a separate proposal.
+   which of them still matter. Agreed in #1630; a queue, if ever wanted, is a
+   separate proposal.
 2. **The hold is a column, not a disable.** `disabled_at` means the endpoint
    is dead and the user has to repair it. A held endpoint is healthy and needs
    nothing from the user. Reusing `disabled_reason` would show a repair message
@@ -90,7 +92,7 @@ automatic resume. The subscription was simply thrown away.
    when you sign in here again." The user can still Remove the row, and it
    behaves like any other device.
 7. **Only the header sign-out holds.** Account deletion keeps the full release
-   (a downgraded account's row would otherwise sit held for 30 days with no
+   (a downgraded account's row would otherwise sit held for 15 days with no
    way to resume). Session expiry stays as it is.
 8. **Delegate context falls back.** `PushController` is `@OwnerOnly()`. A
    sign-out while acting as an owner gets a 403 on the hold. Under decision 3
@@ -156,7 +158,7 @@ writes anything incorrect.
    WHERE held_at IS NOT NULL AND held_at < $1
   ```
 
-  This uses `HELD_DEVICE_RETENTION_DAYS = 30`, exported beside
+  This uses `HELD_DEVICE_RETENTION_DAYS = 15`, exported beside
   `RETIRED_DEVICE_RETENTION_DAYS`. Deleting the row loses nothing: a later
   resume inserts it again.
 
@@ -221,7 +223,7 @@ other writes in the module. `push-route-throttle.spec.ts` scans for both.
 
   When permission is no longer `granted`, it releases locally and calls
   `retireServerRowFor(marker.fingerprint)`. The subscription cannot be shown,
-  and the held row would otherwise wait the full 30 days.
+  and the held row would otherwise wait the full 15 days.
 
 ### 5.2 Where resume runs
 

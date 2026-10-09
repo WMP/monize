@@ -19,7 +19,7 @@
 
 | ID | Task | Depends on | Deploy impact | Status |
 |----|------|-----------|---------------|--------|
-| S1 | Discussion agreeing the design; label `approved-to-build`; decision 1 (skip, not queue) confirmed | -- | none | [ ] |
+| S1 | Issue #1630 agreeing the design; label `approved-to-build` | -- | none | [ ] |
 | B1 | Migration + `schema.sql`: `push_subscriptions.held_at`; entity field | S1 | inert | [ ] |
 | B2 | Service: `hold`, upsert clears `held_at`, fan-outs skip held rows, sweep, `heldAt` on the DTO; route `POST /push/subscriptions/:id/hold` | B1 | inert | [ ] |
 | F2 | Settings: held state in `PushDevicesPanel`, `PushDiagnostics` line, matrix counts held as live; `PushDevice.heldAt` type | B2 | inert | [ ] |
@@ -32,14 +32,14 @@
 
 ## S1: Agree the design
 
-Open a Discussion linking the design. The approval has to settle these points:
+Issue #1630 carries the design. The maintainer agreed these on 2026-10-09:
 
-- decision 1, that a held device's pushes are skipped and not queued;
-- decision 7, that only the header sign-out holds;
-- the 30-day `HELD_DEVICE_RETENTION_DAYS`.
+- decision 1: a held device's pushes are skipped, not queued;
+- decision 7: only the header sign-out holds;
+- `HELD_DEVICE_RETENTION_DAYS` is 15.
 
-**Acceptance:** the discussion carries `approved-to-build`, and any answer
-that changes the design is written back into it before B1.
+**Acceptance:** #1630 carries `approved-to-build`, and any later answer that
+changes the design is written back into it before B1.
 
 ## B1: Schema
 
@@ -165,7 +165,7 @@ This is the PR's final commit.
 
 ## PR body
 
-Use `.github/pull_request_template.md`. Link the S1 discussion, and list the
+Use `.github/pull_request_template.md`. Link issue #1630, and list the
 invariants INV-PUSH-001, INV-PUSH-004 and INV-PUSH-011. The behaviour change
 to note for reviewers: signing out no longer turns push off in that browser.
 It pauses push until the same account signs in there again.
