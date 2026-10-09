@@ -3,9 +3,9 @@
     "toggleLabel": "{kind, select, mortgage {Khớp các khoản thanh toán ngân hàng đã nhập với khoản vay thế chấp này} other {Khớp các khoản thanh toán ngân hàng đã nhập với khoản vay này}}",
     "toggleHelp": "Khi một giao dịch ngân hàng đã nhập khớp với mẫu người nhận, Monize sẽ dùng nó để thanh toán khoản đã lên lịch và chia thành gốc và lãi, thay vì ghi một giao dịch hóa đơn riêng.",
     "payeePattern": "Mẫu người nhận",
-    "payeePatternPlaceholder": "vd. *ING HYPOTHEKEN*",
+    "payeePatternPlaceholder": "vd. *NGÂN HÀNG CỦA TÔI*",
     "descriptionPattern": "Mẫu mô tả (không bắt buộc)",
-    "descriptionPatternPlaceholder": "vd. *Hypotheek*",
+    "descriptionPatternPlaceholder": "vd. *Trả nợ vay*",
     "fromAccount": "Được khớp với các khoản ghi nợ từ {account}."
   },
   "nameSuffix": {

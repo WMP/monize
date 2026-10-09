@@ -3,9 +3,9 @@
     "toggleLabel": "{kind, select, mortgage {Dopasuj zaimportowane płatności bankowe do tego kredytu hipotecznego} other {Dopasuj zaimportowane płatności bankowe do tego kredytu}}",
     "toggleHelp": "Gdy zaimportowana transakcja bankowa pasuje do wzorca odbiorcy, Monize rozlicza nią zaplanowaną płatność i dzieli ją na kapitał i odsetki, zamiast rejestrować osobną transakcję rachunku.",
     "payeePattern": "Wzorzec odbiorcy",
-    "payeePatternPlaceholder": "np. *ING HYPOTHEKEN*",
+    "payeePatternPlaceholder": "np. *MÓJ BANK*",
     "descriptionPattern": "Wzorzec opisu (opcjonalnie)",
-    "descriptionPatternPlaceholder": "np. *Hypotheek*",
+    "descriptionPatternPlaceholder": "np. *Rata kredytu*",
     "fromAccount": "Dopasowywane do obciążeń z {account}."
   },
   "nameSuffix": {

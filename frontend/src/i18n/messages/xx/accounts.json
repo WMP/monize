@@ -7,9 +7,9 @@
     "toggleLabel": "[XX-{kind, select, mortgage {Match imported bank payments to this mortgage} other {Match imported bank payments to this loan}}-XX]",
     "toggleHelp": "[XX-When an imported bank transaction matches the payee pattern, Monize settles the scheduled payment with it and splits it into principal and interest, instead of posting a separate bill transaction.-XX]",
     "payeePattern": "[XX-Payee pattern-XX]",
-    "payeePatternPlaceholder": "[XX-e.g. *ING HYPOTHEKEN*-XX]",
+    "payeePatternPlaceholder": "[XX-e.g. *MY BANK*-XX]",
     "descriptionPattern": "[XX-Description pattern (optional)-XX]",
-    "descriptionPatternPlaceholder": "[XX-e.g. *Hypotheek*-XX]",
+    "descriptionPatternPlaceholder": "[XX-e.g. *Loan payment*-XX]",
     "fromAccount": "[XX-Matched against debits from {account}.-XX]"
   },
   "page": {

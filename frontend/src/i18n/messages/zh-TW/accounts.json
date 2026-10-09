@@ -3,9 +3,9 @@
     "toggleLabel": "{kind, select, mortgage {將匯入的銀行付款與此房貸比對} other {將匯入的銀行付款與此貸款比對}}",
     "toggleHelp": "當匯入的銀行交易符合收款人模式時，Monize 會用它結清排定的付款，並將其拆分為本金和利息，而不是記錄單獨的帳單交易。",
     "payeePattern": "收款人模式",
-    "payeePatternPlaceholder": "例如 *ING HYPOTHEKEN*",
+    "payeePatternPlaceholder": "例如 *我的銀行*",
     "descriptionPattern": "描述模式（選用）",
-    "descriptionPatternPlaceholder": "例如 *Hypotheek*",
+    "descriptionPatternPlaceholder": "例如 *貸款還款*",
     "fromAccount": "與來自 {account} 的扣款進行比對。"
   },
   "nameSuffix": {

@@ -3,9 +3,9 @@
     "toggleLabel": "{kind, select, mortgage {Geïmporteerde bankbetalingen aan deze hypotheek koppelen} other {Geïmporteerde bankbetalingen aan deze lening koppelen}}",
     "toggleHelp": "Wanneer een geïmporteerde banktransactie overeenkomt met het begunstigdepatroon, verrekent Monize deze met de geplande betaling en splitst deze in aflossing en rente, in plaats van een afzonderlijke rekeningtransactie te boeken.",
     "payeePattern": "Begunstigdepatroon",
-    "payeePatternPlaceholder": "bijv. *ING HYPOTHEKEN*",
+    "payeePatternPlaceholder": "bijv. *MIJN BANK*",
     "descriptionPattern": "Omschrijvingspatroon (optioneel)",
-    "descriptionPatternPlaceholder": "bijv. *Hypotheek*",
+    "descriptionPatternPlaceholder": "bijv. *Aflossing lening*",
     "fromAccount": "Gematcht met afschrijvingen van {account}."
   },
   "nameSuffix": {

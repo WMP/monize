@@ -3,9 +3,9 @@
     "toggleLabel": "{kind, select, mortgage {आयात किए गए बैंक भुगतानों को इस गृह ऋण से मिलाएँ} other {आयात किए गए बैंक भुगतानों को इस ऋण से मिलाएँ}}",
     "toggleHelp": "जब आयात किया गया कोई बैंक लेनदेन प्राप्तकर्ता पैटर्न से मेल खाता है, तो Monize उससे निर्धारित भुगतान का निपटान करता है और अलग बिल लेनदेन दर्ज करने के बजाय उसे मूलधन और ब्याज में विभाजित करता है।",
     "payeePattern": "पेयी पैटर्न",
-    "payeePatternPlaceholder": "उदा. *ING HYPOTHEKEN*",
+    "payeePatternPlaceholder": "उदा. *मेरा बैंक*",
     "descriptionPattern": "विवरण पैटर्न (वैकल्पिक)",
-    "descriptionPatternPlaceholder": "उदा. *Hypotheek*",
+    "descriptionPatternPlaceholder": "उदा. *ऋण किस्त*",
     "fromAccount": "{account} से डेबिट के साथ मिलान किया गया।"
   },
   "nameSuffix": {

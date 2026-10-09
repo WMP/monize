@@ -3,9 +3,9 @@
     "toggleLabel": "{kind, select, mortgage {Asociar los pagos bancarios importados a esta hipoteca} other {Asociar los pagos bancarios importados a este préstamo}}",
     "toggleHelp": "Cuando una transacción bancaria importada coincide con el patrón de beneficiario, Monize la usa para liquidar el pago programado y la divide en capital e intereses, en lugar de registrar una transacción de factura por separado.",
     "payeePattern": "Patrón del beneficiario",
-    "payeePatternPlaceholder": "p. ej. *ING HYPOTHEKEN*",
+    "payeePatternPlaceholder": "p. ej. *MI BANCO*",
     "descriptionPattern": "Patrón de la descripción (opcional)",
-    "descriptionPatternPlaceholder": "p. ej. *Hypotheek*",
+    "descriptionPatternPlaceholder": "p. ej. *Pago del préstamo*",
     "fromAccount": "Comparado con los adeudos de {account}."
   },
   "nameSuffix": {

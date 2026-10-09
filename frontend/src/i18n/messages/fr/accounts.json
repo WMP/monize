@@ -3,9 +3,9 @@
     "toggleLabel": "{kind, select, mortgage {Associer les paiements bancaires importés à ce prêt hypothécaire} other {Associer les paiements bancaires importés à ce prêt}}",
     "toggleHelp": "Lorsqu'une opération bancaire importée correspond au modèle de bénéficiaire, Monize l'utilise pour régler le paiement prévu et la répartit entre capital et intérêts, au lieu d'enregistrer une opération de facture distincte.",
     "payeePattern": "Modèle de bénéficiaire",
-    "payeePatternPlaceholder": "ex. *ING HYPOTHEKEN*",
+    "payeePatternPlaceholder": "ex. *MA BANQUE*",
     "descriptionPattern": "Modèle de description (facultatif)",
-    "descriptionPatternPlaceholder": "ex. *Hypotheek*",
+    "descriptionPatternPlaceholder": "ex. *Échéance de prêt*",
     "fromAccount": "Rapproché des prélèvements de {account}."
   },
   "nameSuffix": {

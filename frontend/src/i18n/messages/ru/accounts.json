@@ -3,9 +3,9 @@
     "toggleLabel": "{kind, select, mortgage {Сопоставлять импортированные банковские платежи с этой ипотекой} other {Сопоставлять импортированные банковские платежи с этим кредитом}}",
     "toggleHelp": "Когда импортированная банковская операция соответствует шаблону получателя, Monize засчитывает её в счёт запланированного платежа и разделяет на основной долг и проценты, вместо регистрации отдельной операции по счёту.",
     "payeePattern": "Шаблон получателя",
-    "payeePatternPlaceholder": "например, *ING HYPOTHEKEN*",
+    "payeePatternPlaceholder": "например, *МОЙ БАНК*",
     "descriptionPattern": "Шаблон описания (необязательно)",
-    "descriptionPatternPlaceholder": "например, *Hypotheek*",
+    "descriptionPatternPlaceholder": "например, *Платёж по кредиту*",
     "fromAccount": "Сопоставляется со списаниями с {account}."
   },
   "nameSuffix": {

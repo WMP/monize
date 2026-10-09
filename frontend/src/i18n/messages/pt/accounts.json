@@ -3,9 +3,9 @@
     "toggleLabel": "{kind, select, mortgage {Associar os pagamentos bancários importados a este crédito habitação} other {Associar os pagamentos bancários importados a este empréstimo}}",
     "toggleHelp": "Quando uma transação bancária importada corresponde ao padrão do beneficiário, o Monize usa-a para liquidar o pagamento agendado e divide-a em capital e juros, em vez de registar uma transação de fatura separada.",
     "payeePattern": "Padrão do beneficiário",
-    "payeePatternPlaceholder": "ex.: *ING HYPOTHEKEN*",
+    "payeePatternPlaceholder": "ex.: *O MEU BANCO*",
     "descriptionPattern": "Padrão da descrição (opcional)",
-    "descriptionPatternPlaceholder": "ex.: *Hypotheek*",
+    "descriptionPatternPlaceholder": "ex.: *Prestação do empréstimo*",
     "fromAccount": "Associado aos débitos de {account}."
   },
   "nameSuffix": {

@@ -3,9 +3,9 @@
     "toggleLabel": "{kind, select, mortgage {İçe aktarılan banka ödemelerini bu konut kredisiyle eşleştir} other {İçe aktarılan banka ödemelerini bu krediyle eşleştir}}",
     "toggleHelp": "İçe aktarılan bir banka işlemi alıcı kalıbıyla eşleştiğinde Monize onu planlanan ödemeye mahsup eder ve ayrı bir fatura işlemi kaydetmek yerine anapara ve faize böler.",
     "payeePattern": "Alacaklı deseni",
-    "payeePatternPlaceholder": "ör. *ING HYPOTHEKEN*",
+    "payeePatternPlaceholder": "ör. *BANKAM*",
     "descriptionPattern": "Açıklama deseni (isteğe bağlı)",
-    "descriptionPatternPlaceholder": "ör. *Hypotheek*",
+    "descriptionPatternPlaceholder": "ör. *Kredi taksiti*",
     "fromAccount": "{account} hesabındaki çekimlerle eşleştirildi."
   },
   "nameSuffix": {

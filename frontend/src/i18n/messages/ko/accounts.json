@@ -3,9 +3,9 @@
     "toggleLabel": "{kind, select, mortgage {가져온 은행 결제를 이 주택담보대출과 대조} other {가져온 은행 결제를 이 대출과 대조}}",
     "toggleHelp": "가져온 은행 거래가 수취인 패턴과 일치하면 Monize는 이를 예정된 결제에 충당하고, 별도의 청구 거래를 기록하는 대신 원금과 이자로 분할합니다.",
     "payeePattern": "수취인 패턴",
-    "payeePatternPlaceholder": "예: *ING HYPOTHEKEN*",
+    "payeePatternPlaceholder": "예: *내 은행*",
     "descriptionPattern": "설명 패턴(선택 사항)",
-    "descriptionPatternPlaceholder": "예: *Hypotheek*",
+    "descriptionPatternPlaceholder": "예: *대출 상환*",
     "fromAccount": "{account}의 출금과 대조됩니다."
   },
   "nameSuffix": {

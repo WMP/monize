@@ -3,9 +3,9 @@
     "toggleLabel": "{kind, select, mortgage {Cocokkan pembayaran bank yang diimpor dengan KPR ini} other {Cocokkan pembayaran bank yang diimpor dengan pinjaman ini}}",
     "toggleHelp": "Saat transaksi bank yang diimpor cocok dengan pola penerima, Monize menggunakannya untuk melunasi pembayaran terjadwal dan memisahkannya menjadi pokok dan bunga, bukan mencatat transaksi tagihan terpisah.",
     "payeePattern": "Pola penerima pembayaran",
-    "payeePatternPlaceholder": "mis. *ING HYPOTHEKEN*",
+    "payeePatternPlaceholder": "mis. *BANK SAYA*",
     "descriptionPattern": "Pola deskripsi (opsional)",
-    "descriptionPatternPlaceholder": "mis. *Hypotheek*",
+    "descriptionPatternPlaceholder": "mis. *Angsuran pinjaman*",
     "fromAccount": "Dicocokkan dengan debit dari {account}."
   },
   "nameSuffix": {

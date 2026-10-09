@@ -3,9 +3,9 @@
     "toggleLabel": "{kind, select, mortgage {インポートした銀行の支払いをこの住宅ローンと照合する} other {インポートした銀行の支払いをこのローンと照合する}}",
     "toggleHelp": "インポートした銀行取引が受取人パターンに一致すると、Monizeはそれを予定された支払いに充当し、別の請求取引を登録する代わりに元本と利息に分割します。",
     "payeePattern": "受取人パターン",
-    "payeePatternPlaceholder": "例：*ING HYPOTHEKEN*",
+    "payeePatternPlaceholder": "例：*マイバンク*",
     "descriptionPattern": "説明パターン（任意）",
-    "descriptionPatternPlaceholder": "例：*Hypotheek*",
+    "descriptionPatternPlaceholder": "例：*ローン返済*",
     "fromAccount": "{account} からの引き落としと照合されます。"
   },
   "nameSuffix": {

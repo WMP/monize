@@ -3,9 +3,9 @@
     "toggleLabel": "{kind, select, mortgage {将导入的银行付款与此房贷匹配} other {将导入的银行付款与此贷款匹配}}",
     "toggleHelp": "当导入的银行交易与收款人模式匹配时，Monize 会用它结清计划付款，并将其拆分为本金和利息，而不是记录单独的账单交易。",
     "payeePattern": "收款人模式",
-    "payeePatternPlaceholder": "例如 *ING HYPOTHEKEN*",
+    "payeePatternPlaceholder": "例如 *我的银行*",
     "descriptionPattern": "描述模式（可选）",
-    "descriptionPatternPlaceholder": "例如 *Hypotheek*",
+    "descriptionPatternPlaceholder": "例如 *贷款还款*",
     "fromAccount": "与来自 {account} 的扣款进行匹配。"
   },
   "nameSuffix": {

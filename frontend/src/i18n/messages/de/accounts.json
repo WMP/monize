@@ -3,9 +3,9 @@
     "toggleLabel": "{kind, select, mortgage {Importierte Bankzahlungen dieser Hypothek zuordnen} other {Importierte Bankzahlungen diesem Kredit zuordnen}}",
     "toggleHelp": "Wenn eine importierte Banktransaktion zum Empfängermuster passt, verrechnet Monize sie mit der geplanten Zahlung und teilt sie in Tilgung und Zinsen auf, statt eine separate Rechnungsbuchung zu erstellen.",
     "payeePattern": "Zahlungsempfänger-Muster",
-    "payeePatternPlaceholder": "z. B. *ING HYPOTHEKEN*",
+    "payeePatternPlaceholder": "z. B. *MEINE BANK*",
     "descriptionPattern": "Beschreibungsmuster (optional)",
-    "descriptionPatternPlaceholder": "z. B. *Hypotheek*",
+    "descriptionPatternPlaceholder": "z. B. *Kreditrate*",
     "fromAccount": "Abgeglichen mit Abbuchungen von {account}."
   },
   "nameSuffix": {
