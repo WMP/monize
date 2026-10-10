@@ -216,7 +216,10 @@ projection assumption (`cpiYoY`, `nbpReference`). Output:
 asOf, seriesCode, termsVersion, quantity
 currentPeriod      { index, start, end, annualRate, rateSource } | null
 principal          per-bond compounded base at the start of the period | null
-accruedInterest    lot, since the last capitalization or coupon | null
+accruedInterest    lot | null: grossValue - faceValue x quantity, i.e. all
+                   capitalized interest plus the current accrual for a
+                   compounding bond, and the current period's accrual for a
+                   coupon bond
 grossValue         lot, principal + accrued interest, no fee | null
 earlyRedemptionValue  lot | null, earlyRedemptionRefusal
 knownCashflows     [{ date, type: INTEREST | PRINCIPAL, amount, status: KNOWN }]
@@ -259,8 +262,9 @@ valuationComplete  all three flags true
 | >= 2 | no | no | no | `max(0, assumption) + margin` | `PROJECTED` | projected; `null` if no assumption is given and no observation exists |
 
 The default projection assumption is the newest stored observation of the
-series, and the assumption string names it ("PL_CPI_GUS_YOY = 2.90% (2026-08),
-assumed for every later period").
+series, and the assumption string names it as the stored fraction
+("PL_CPI_GUS_YOY = 0.0290 (2026-08), assumed for every later period"); a
+percentage a person reads is localized by the surface that shows it.
 
 ## 5. Numerical examples
 
