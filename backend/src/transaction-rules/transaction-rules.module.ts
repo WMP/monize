@@ -7,6 +7,7 @@ import { AiReviewModule } from "../ai-review/ai-review.module";
 import { TagsModule } from "../tags/tags.module";
 import { TransactionRulesApplierService } from "./transaction-rules-applier.service";
 import { TransactionRulesRunService } from "./transaction-rules-run.service";
+import { TransactionRulesMatchService } from "./transaction-rules-match.service";
 import { TransactionRuleApplicationsRetentionService } from "./transaction-rule-applications-retention.service";
 import { TransactionRulesService } from "./transaction-rules.service";
 import { TransactionRulesController } from "./transaction-rules.controller";
@@ -36,6 +37,7 @@ import { TransactionsModule } from "../transactions/transactions.module";
     TransactionRulesService,
     TransactionRulesApplierService,
     TransactionRulesRunService,
+    TransactionRulesMatchService,
     TransactionRuleToolPrepService,
     TransactionRuleApplicationsRetentionService,
   ],

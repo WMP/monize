@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createAction, createSplitPart, type EditorAction } from './rule-actions';
 import { emptyDraft, type RuleDraft } from './rule-draft';
 import {
+  conditionGaps,
   draftGaps,
   isKnownRuleErrorCode,
   isRevisionConflict,
@@ -397,5 +398,30 @@ describe('the loan settlement action', () => {
         shortfall: ['INVALID_ENUM'],
       },
     });
+  });
+});
+
+describe('conditionGaps', () => {
+  const leaf = (over: Partial<EditorLeaf>): EditorLeaf => ({ ...createLeaf('referenceNumber'), ...over });
+
+  it('is empty for a complete condition, with no name or action needed', () => {
+    expect(conditionGaps(createGroup('all', [leaf({ value: 'x' })]))).toEqual([]);
+  });
+
+  it('gives the condition entries draftGaps gives, at the same paths', () => {
+    const condition = createGroup('all', [leaf({ value: 'x' }), leaf({ value: '' })]);
+    const draft = { ...emptyDraft(), name: '', condition };
+    expect(conditionGaps(condition)).toEqual(
+      draftGaps(draft).filter((entry) => entry.path.startsWith('condition')),
+    );
+    expect(conditionGaps(condition)).toEqual([{ path: 'condition.all[1]', code: 'VALUE_REQUIRED' }]);
+  });
+
+  it('leaves out the glob-trap advice, which a match does not apply', () => {
+    const condition = createGroup('all', [leaf({ field: 'payeeText', op: 'matches', value: 'NETFLIX.COM' })]);
+    expect(draftGaps({ ...emptyDraft(), name: 'n', condition }).map((e) => e.code)).toContain(
+      'PATTERN_WITHOUT_WILDCARD',
+    );
+    expect(conditionGaps(condition)).toEqual([]);
   });
 });

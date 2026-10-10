@@ -407,6 +407,19 @@
     "failed": "No se pudo completar la prueba. {message}",
     "stale": "La regla o los filtros han cambiado desde este resultado. Prueba de nuevo para ver el resultado actual."
   },
+  "match": {
+    "button": "Probar regla",
+    "buttonLabel": "Probar regla: condiciones",
+    "incomplete": "Completa las condiciones de arriba para ver con qué transacciones coinciden.",
+    "windowBackwards": "Las fechas activas terminan antes de empezar, así que ninguna transacción puede coincidir.",
+    "summary": "{count, plural, =0 {Ninguna transacción coincide} one {# transacción coincide} other {# transacciones coinciden}}",
+    "summaryPending": "Transacciones que coinciden",
+    "running": "Buscando transacciones que coinciden...",
+    "failed": "No se pudieron cargar las transacciones que coinciden. {message}",
+    "empty": "Ninguna transacción existente coincide con estas condiciones.",
+    "truncated": "Solo se revisaron las {scanned, number} transacciones más recientes.",
+    "stale": "Las condiciones cambiaron desde esta prueba. Selecciona Probar regla de nuevo para ver las coincidencias actuales."
+  },
   "run": {
     "title": "Ejecutar «{name}» en transacciones existentes",
     "description": "Previsualiza lo que cambiaría la regla y luego confirma. Puedes deshacer la ejecución desde el historial de acciones.",

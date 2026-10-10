@@ -407,6 +407,19 @@
     "failed": "De test kon niet worden voltooid. {message}",
     "stale": "De regel of de filters zijn gewijzigd sinds dit resultaat. Test opnieuw voor het huidige resultaat."
   },
+  "match": {
+    "button": "Regel testen",
+    "buttonLabel": "Regel testen: voorwaarden",
+    "incomplete": "Vul de voorwaarden hierboven aan om te zien met welke transacties ze overeenkomen.",
+    "windowBackwards": "De actieve datums eindigen voordat ze beginnen, dus geen enkele transactie kan overeenkomen.",
+    "summary": "{count, plural, =0 {Geen overeenkomende transacties} one {# overeenkomende transactie} other {# overeenkomende transacties}}",
+    "summaryPending": "Overeenkomende transacties",
+    "running": "Overeenkomende transacties zoeken...",
+    "failed": "De overeenkomende transacties konden niet worden geladen. {message}",
+    "empty": "Geen bestaande transacties komen overeen met deze voorwaarden.",
+    "truncated": "Alleen de nieuwste {scanned, number} transacties zijn gecontroleerd.",
+    "stale": "De voorwaarden zijn sinds deze test gewijzigd. Selecteer opnieuw Regel testen om de huidige overeenkomsten te zien."
+  },
   "run": {
     "title": "“{name}” uitvoeren op bestaande transacties",
     "description": "Bekijk vooraf wat de regel zou wijzigen en bevestig dan. Je kunt de uitvoering ongedaan maken via de actiegeschiedenis.",

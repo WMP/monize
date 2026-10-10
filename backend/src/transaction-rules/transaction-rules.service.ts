@@ -23,7 +23,12 @@ import {
   checkReferences,
   withActionDefaults,
 } from "./rule-references";
-import { RuleDefinition, validateRuleDefinition } from "./rule-validation";
+import type { RuleConditionNode } from "./rule-condition.types";
+import {
+  RuleDefinition,
+  validateRuleCondition,
+  validateRuleDefinition,
+} from "./rule-validation";
 import { toRuleResponse, toRuleResponses } from "./transaction-rule-view";
 import { MAX_TRANSACTION_RULES_PER_USER } from "./transaction-rules.limits";
 
@@ -388,6 +393,27 @@ export class TransactionRulesService {
     const missing = await checkReferences(m, userId, definition);
     if (missing.length > 0) throw this.invalidDefinition(missing);
     return definition;
+  }
+
+  /**
+   * `checkedDefinition` for a condition alone, with the same 400: the shape,
+   * then that every id it names is the caller's. No authoring advice, because
+   * a match only reads; the save and the Test still give it.
+   */
+  async checkedCondition(
+    m: EntityManager,
+    userId: string,
+    condition: unknown,
+  ): Promise<RuleConditionNode> {
+    const shapeErrors = validateRuleCondition(condition);
+    if (shapeErrors.length > 0) throw this.invalidDefinition(shapeErrors);
+    const checked = condition as RuleConditionNode;
+    const missing = await checkReferences(m, userId, {
+      condition: checked,
+      actions: [],
+    });
+    if (missing.length > 0) throw this.invalidDefinition(missing);
+    return checked;
   }
 
   /**

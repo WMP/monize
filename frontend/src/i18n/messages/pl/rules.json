@@ -407,6 +407,19 @@
     "failed": "Nie udało się ukończyć testu. {message}",
     "stale": "Reguła lub filtry zmieniły się od czasu tego wyniku. Przetestuj ponownie, aby zobaczyć aktualny wynik."
   },
+  "match": {
+    "button": "Przetestuj regułę",
+    "buttonLabel": "Przetestuj regułę: warunki",
+    "incomplete": "Uzupełnij warunki powyżej, aby zobaczyć, do których transakcji pasują.",
+    "windowBackwards": "Daty aktywności kończą się przed rozpoczęciem, więc żadna transakcja nie może pasować.",
+    "summary": "{count, plural, =0 {Brak pasujących transakcji} one {# pasująca transakcja} few {# pasujące transakcje} many {# pasujących transakcji} other {# pasującej transakcji}}",
+    "summaryPending": "Pasujące transakcje",
+    "running": "Wyszukiwanie pasujących transakcji...",
+    "failed": "Nie udało się wczytać pasujących transakcji. {message}",
+    "empty": "Żadne istniejące transakcje nie spełniają tych warunków.",
+    "truncated": "Sprawdzono tylko {scanned, number} najnowszych transakcji.",
+    "stale": "Warunki zmieniły się od tego testu. Wybierz ponownie Przetestuj regułę, aby zobaczyć aktualne dopasowania."
+  },
   "run": {
     "title": "Uruchom „{name}” na istniejących transakcjach",
     "description": "Zobacz podgląd zmian, które wprowadziłaby reguła, a następnie potwierdź. Uruchomienie można cofnąć w historii akcji.",

@@ -31,7 +31,11 @@ import type { RuleRowExplanation } from "./rule-row-explain";
 import { withActionDefaults } from "./rule-references";
 import { PayeeResolution, PlannableRule } from "./rule-effects";
 import { loadAttachmentPresence } from "./rule-facts";
-import { effectiveRunLimit, loadCandidateUnits } from "./rule-run-candidates";
+import {
+  effectiveRunLimit,
+  loadCandidateUnits,
+  unitRowInput,
+} from "./rule-run-candidates";
 import { loadRuleApplications } from "./rule-run-applications";
 import { planFingerprint } from "./rule-run-fingerprint";
 import { PlannedUnit, buildRunSnapshots } from "./rule-run-snapshot";
@@ -566,25 +570,7 @@ export class TransactionRulesRunService {
       const { primary } = unit;
       const effects = await this.applier.planResolved(
         userId,
-        {
-          accountId: primary.accountId,
-          currencyCode: primary.currencyCode,
-          amount: primary.amount,
-          isTransfer: unit.isTransfer,
-          fromAccountId: unit.fromAccountId,
-          toAccountId: unit.toAccountId,
-          payeeId: primary.payeeId,
-          payeeText: primary.payeeName,
-          payeeName: primary.payeeName,
-          categoryId: primary.categoryId,
-          description: primary.description,
-          tagIds: tagsByRow.get(primary.id) ?? [],
-          hasSplits: primary.isSplit,
-          referenceNumber: primary.referenceNumber,
-          transactionDate: primary.transactionDate,
-          status: primary.status,
-          hasAttachment: attached.has(primary.id),
-        },
+        unitRowInput(unit, tagsByRow, attached),
         [rule],
         chains,
         {

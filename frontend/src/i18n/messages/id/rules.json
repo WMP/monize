@@ -407,6 +407,19 @@
     "failed": "Pengujian tidak dapat diselesaikan. {message}",
     "stale": "Aturan atau filter berubah sejak hasil ini. Uji lagi untuk melihat hasil terbaru."
   },
+  "match": {
+    "button": "Uji aturan",
+    "buttonLabel": "Uji aturan: kondisi",
+    "incomplete": "Lengkapi kondisi di atas untuk melihat transaksi mana yang cocok.",
+    "windowBackwards": "Tanggal aktif berakhir sebelum dimulai, jadi tidak ada transaksi yang bisa cocok.",
+    "summary": "{count, plural, =0 {Tidak ada transaksi yang cocok} other {# transaksi yang cocok}}",
+    "summaryPending": "Transaksi yang cocok",
+    "running": "Mencari transaksi yang cocok...",
+    "failed": "Transaksi yang cocok tidak dapat dimuat. {message}",
+    "empty": "Tidak ada transaksi yang ada yang cocok dengan kondisi ini.",
+    "truncated": "Hanya {scanned, number} transaksi terbaru yang diperiksa.",
+    "stale": "Kondisi berubah sejak pengujian ini. Pilih Uji aturan lagi untuk melihat kecocokan saat ini."
+  },
   "run": {
     "title": "Jalankan “{name}” pada transaksi yang ada",
     "description": "Pratinjau apa yang akan diubah aturan, lalu konfirmasi. Anda dapat membatalkan proses ini dari riwayat tindakan.",

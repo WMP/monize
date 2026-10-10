@@ -655,13 +655,32 @@ function isPlannable(rule: PlannableRule): RuleSkipReason | null {
  * calendar date is known and inside it, inclusive at both ends. Dates compare
  * as `YYYY-MM-DD` strings. A rule without a window is always inside.
  */
-function isOutsideActiveWindow(rule: PlannableRule, facts: RuleFacts): boolean {
+function isOutsideActiveWindow(
+  rule: Pick<PlannableRule, "activeFrom" | "activeTo">,
+  facts: RuleFacts,
+): boolean {
   const from = rule.activeFrom ?? null;
   const to = rule.activeTo ?? null;
   if (from === null && to === null) return false;
   if (facts.date === null) return true;
   return (
     (from !== null && facts.date < from) || (to !== null && facts.date > to)
+  );
+}
+
+/**
+ * Whether a rule's condition holds for a row, inside its active window: the
+ * question `planRuleEffects` asks before it plans any action, without the
+ * actions. For a read that only wants to know which rows a condition reaches
+ * (the editor's Test match), so a draft with no action yet can be asked too.
+ */
+export function ruleConditionMatches(
+  rule: Pick<PlannableRule, "condition" | "activeFrom" | "activeTo">,
+  facts: RuleFacts,
+): boolean {
+  return (
+    !isOutsideActiveWindow(rule, facts) &&
+    evaluateRuleConditionWithCaptures(rule.condition, facts).matched
   );
 }
 

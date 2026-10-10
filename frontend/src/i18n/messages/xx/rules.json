@@ -407,6 +407,19 @@
     "failed": "[XX-The test could not be completed. {message}-XX]",
     "stale": "[XX-The rule or the filters changed since this result. Test again to see the current result.-XX]"
   },
+  "match": {
+    "button": "[XX-Test rule-XX]",
+    "buttonLabel": "[XX-Test rule conditions-XX]",
+    "incomplete": "[XX-Complete the conditions above to see which transactions they match.-XX]",
+    "windowBackwards": "[XX-The active dates end before they start, so no transaction can match.-XX]",
+    "summary": "[XX-{count, plural, =0 {No matching transactions} one {# matching transaction} other {# matching transactions}}-XX]",
+    "summaryPending": "[XX-Matching transactions-XX]",
+    "running": "[XX-Finding matching transactions...-XX]",
+    "failed": "[XX-The matching transactions could not be loaded. {message}-XX]",
+    "empty": "[XX-No existing transactions match these conditions.-XX]",
+    "truncated": "[XX-Only the newest {scanned, number} transactions were checked.-XX]",
+    "stale": "[XX-The conditions changed since this test. Select Test rule again to see the current matches.-XX]"
+  },
   "run": {
     "title": "[XX-Run \"{name}\" on existing transactions-XX]",
     "description": "[XX-Preview what the rule would change, then confirm. You can undo the run from the action history.-XX]",

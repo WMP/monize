@@ -11,6 +11,7 @@ import {
   EntityManager,
   In,
   DataSource,
+  SelectQueryBuilder,
   WhereExpressionBuilder,
 } from "typeorm";
 import { Transaction, TransactionStatus } from "./entities/transaction.entity";
@@ -1214,31 +1215,9 @@ export class TransactionsService {
     // math, and investment/attachment enrichment -- is one read block on a
     // single withScopedDb manager.
     return withScopedDb(this.dataSource, async (m) => {
-      const queryBuilder = m
-        .getRepository(Transaction)
-        .createQueryBuilder("transaction")
-        .leftJoinAndSelect("transaction.account", "account")
-        .leftJoinAndSelect("transaction.payee", "payee")
-        .leftJoinAndSelect("transaction.category", "category")
-        .leftJoinAndSelect("transaction.tags", "tags")
-        .leftJoinAndSelect("transaction.splits", "splits")
-        .leftJoinAndSelect("splits.category", "splitCategory")
-        .leftJoinAndSelect("splits.transferAccount", "splitTransferAccount")
-        .leftJoinAndSelect("splits.tags", "splitTags")
-        .leftJoinAndSelect("splits.investmentTransaction", "splitInvestmentTx")
-        .leftJoinAndSelect(
-          "splitInvestmentTx.security",
-          "splitInvestmentSecurity",
-        )
-        .leftJoinAndSelect("transaction.linkedTransaction", "linkedTransaction")
-        .leftJoinAndSelect("linkedTransaction.account", "linkedAccount")
-        .leftJoinAndSelect("linkedTransaction.splits", "linkedSplits")
-        .leftJoinAndSelect("linkedSplits.category", "linkedSplitCategory")
-        .leftJoinAndSelect(
-          "linkedSplits.transferAccount",
-          "linkedSplitTransferAccount",
-        )
-        .where(this.registerScope("transaction", userId, jointAccountIds));
+      const queryBuilder = this.registerRowsQuery(m).where(
+        this.registerScope("transaction", userId, jointAccountIds),
+      );
       // The joined aliases are handed over so a sort by account or category
       // orders by the name the reader sees. Only this query joins them; the
       // three that sum the rows newer than a page pass none, which is what
@@ -1458,6 +1437,61 @@ export class TransactionsService {
         startingBalanceWithheld,
       };
     });
+  }
+
+  /**
+   * Rows chosen by id, in the register's shape: the same joins and the same
+   * investment-link and attachment enrichment as `findAll`. For a surface that
+   * picks the rows itself (the rule editor's Test match) and draws them with
+   * the register's list. The rows come back in the order of `ids`, which the
+   * caller already chose in register order; ordering them again here would be
+   * a second copy of the register's order. Only the caller's own rows are
+   * read; an id that is not one is left out.
+   */
+  async findRegisterRowsByIds(
+    userId: string,
+    ids: readonly string[],
+  ): Promise<TransactionWithInvestmentLink[]> {
+    if (ids.length === 0) return [];
+    return withScopedDb(this.dataSource, async (m) => {
+      const rows = await this.registerRowsQuery(m)
+        .where("transaction.userId = :userId", { userId })
+        .andWhere("transaction.id IN (:...ids)", { ids: [...ids] })
+        .getMany();
+      const byId = new Map(rows.map((row) => [row.id, row]));
+      const ordered = ids
+        .map((id) => byId.get(id))
+        .filter((row): row is Transaction => row !== undefined);
+      return this.enrichWithInvestmentLinks(m, ordered);
+    });
+  }
+
+  /** The register's row query: every relation a listed row is drawn with. */
+  private registerRowsQuery(m: EntityManager): SelectQueryBuilder<Transaction> {
+    return m
+      .getRepository(Transaction)
+      .createQueryBuilder("transaction")
+      .leftJoinAndSelect("transaction.account", "account")
+      .leftJoinAndSelect("transaction.payee", "payee")
+      .leftJoinAndSelect("transaction.category", "category")
+      .leftJoinAndSelect("transaction.tags", "tags")
+      .leftJoinAndSelect("transaction.splits", "splits")
+      .leftJoinAndSelect("splits.category", "splitCategory")
+      .leftJoinAndSelect("splits.transferAccount", "splitTransferAccount")
+      .leftJoinAndSelect("splits.tags", "splitTags")
+      .leftJoinAndSelect("splits.investmentTransaction", "splitInvestmentTx")
+      .leftJoinAndSelect(
+        "splitInvestmentTx.security",
+        "splitInvestmentSecurity",
+      )
+      .leftJoinAndSelect("transaction.linkedTransaction", "linkedTransaction")
+      .leftJoinAndSelect("linkedTransaction.account", "linkedAccount")
+      .leftJoinAndSelect("linkedTransaction.splits", "linkedSplits")
+      .leftJoinAndSelect("linkedSplits.category", "linkedSplitCategory")
+      .leftJoinAndSelect(
+        "linkedSplits.transferAccount",
+        "linkedSplitTransferAccount",
+      );
   }
 
   private async applyCategoryFilters(

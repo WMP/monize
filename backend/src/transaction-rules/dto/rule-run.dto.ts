@@ -18,7 +18,10 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsCalendarDate } from "../../common/validators/is-calendar-date.validator";
 import { MAX_RULE_ACTIONS } from "../rule-validation";
 import {
+  DEFAULT_RULE_MATCH_PAGE_LIMIT,
   DEFAULT_RULE_RUN_LIMIT,
+  MAX_RULE_MATCH_PAGE_LIMIT,
+  MAX_RULE_MATCH_SCAN,
   MAX_RULE_RUN_ACCOUNTS,
   MAX_RULE_RUN_LIMIT,
 } from "../transaction-rules.limits";
@@ -132,4 +135,60 @@ export class PreviewDraftRuleDto {
   @ValidateNested()
   @Type(() => RuleRunFiltersDto)
   filters?: RuleRunFiltersDto;
+}
+
+/**
+ * An unsaved condition to match (the editor's Test match): which existing
+ * transactions it reaches, a page at a time. Actions are not part of it, so a
+ * draft can be matched before it has one.
+ */
+export class MatchDraftRuleDto {
+  @ApiProperty({ type: "object", additionalProperties: true })
+  @IsObject()
+  condition: Record<string, unknown>;
+
+  @ApiPropertyOptional({
+    example: "2026-10-01",
+    nullable: true,
+    description:
+      "The draft's active window start (inclusive); rows dated before it do not match, as for a saved rule",
+  })
+  @IsOptional()
+  @ValidateIf((_o, v) => v !== null && v !== "")
+  @IsCalendarDate({
+    message: "activeFrom must be a real YYYY-MM-DD calendar date",
+  })
+  activeFrom?: string | null;
+
+  @ApiPropertyOptional({
+    example: "2026-12-31",
+    nullable: true,
+    description:
+      "The draft's active window end (inclusive); rows dated after it do not match, as for a saved rule",
+  })
+  @IsOptional()
+  @ValidateIf((_o, v) => v !== null && v !== "")
+  @IsCalendarDate({
+    message: "activeTo must be a real YYYY-MM-DD calendar date",
+  })
+  activeTo?: string | null;
+
+  @ApiPropertyOptional({ description: "1-indexed", default: 1, minimum: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(MAX_RULE_MATCH_SCAN)
+  page?: number;
+
+  @ApiPropertyOptional({
+    description: "Matches per page",
+    default: DEFAULT_RULE_MATCH_PAGE_LIMIT,
+    minimum: 1,
+    maximum: MAX_RULE_MATCH_PAGE_LIMIT,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(MAX_RULE_MATCH_PAGE_LIMIT)
+  limit?: number;
 }

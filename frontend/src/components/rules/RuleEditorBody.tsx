@@ -13,6 +13,7 @@ import { RuleErrorList } from '@/components/rules/RuleCardShell';
 import { RuleIfSection } from '@/components/rules/RuleIfSection';
 import { RuleApplications } from '@/components/rules/RuleApplications';
 import { RuleSection } from '@/components/rules/RuleSection';
+import { RuleTestMatch } from '@/components/rules/RuleTestMatch';
 import { RuleTestPanel, type RuleTestOutcome } from '@/components/rules/RuleTestPanel';
 import { RunRuleDialog } from '@/components/rules/RunRuleDialog';
 import { RuleWhenSection } from '@/components/rules/RuleWhenSection';
@@ -237,7 +238,21 @@ export function RuleEditorBody({ rule, lookups, onSaved, onReload }: RuleEditorB
           onActiveToChange={(activeTo) => edit((current) => ({ ...current, activeTo }))}
         />
 
-        <RuleIfSection expression={expression} env={env} index={index} conditionCodes={conditionCodes} />
+        <RuleIfSection
+          expression={expression}
+          env={env}
+          index={index}
+          conditionCodes={conditionCodes}
+          footer={
+            <RuleTestMatch
+              condition={draft.condition}
+              activeFrom={draft.activeFrom}
+              activeTo={draft.activeTo}
+              blocked={expression.error !== null}
+              categories={lookups.categories}
+            />
+          }
+        />
 
         <RuleSection
           title={t('sections.then')}

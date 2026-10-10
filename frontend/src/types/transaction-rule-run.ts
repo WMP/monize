@@ -3,6 +3,7 @@
  * `backend/src/transaction-rules/rule-run.types.ts` and
  * `dto/rule-run.dto.ts`.
  */
+import type { PaginationInfo, Transaction } from '@/types/transaction';
 import type { RuleAction, RuleConditionNode } from '@/types/transaction-rule';
 
 /** Which existing transactions a test or a manual run looks at. */
@@ -237,6 +238,30 @@ export interface PreviewDraftRuleData {
   activeFrom?: string | null;
   activeTo?: string | null;
   filters?: RuleRunFilters;
+}
+
+/** An unsaved condition to match, a page at a time (the editor's Test rule in If). */
+export interface MatchDraftRuleData {
+  condition: RuleConditionNode;
+  /** The draft's active window, `YYYY-MM-DD`; absent is open on that side (INV-RULE-004). */
+  activeFrom?: string | null;
+  activeTo?: string | null;
+  /** 1-indexed. */
+  page?: number;
+  limit?: number;
+}
+
+/**
+ * One page of the transactions a draft condition matches, as the register
+ * returns them (`RuleMatchPage` in `transaction-rules-match.service.ts`).
+ */
+export interface RuleMatchPage {
+  data: Transaction[];
+  pagination: PaginationInfo;
+  /** Transactions examined, newest first. */
+  scanned: number;
+  /** Older transactions were not examined. */
+  truncated: boolean;
 }
 
 export type RuleApplicationSource = 'create' | 'import' | 'manual';

@@ -407,6 +407,19 @@
     "failed": "Le test n’a pas pu aboutir. {message}",
     "stale": "La règle ou les filtres ont changé depuis ce résultat. Testez à nouveau pour voir le résultat actuel."
   },
+  "match": {
+    "button": "Tester la règle",
+    "buttonLabel": "Tester la règle : conditions",
+    "incomplete": "Complétez les conditions ci-dessus pour voir les transactions auxquelles elles correspondent.",
+    "windowBackwards": "Les dates d'activité se terminent avant de commencer, aucune transaction ne peut donc correspondre.",
+    "summary": "{count, plural, =0 {Aucune transaction correspondante} one {# transaction correspondante} other {# transactions correspondantes}}",
+    "summaryPending": "Transactions correspondantes",
+    "running": "Recherche des transactions correspondantes...",
+    "failed": "Les transactions correspondantes n'ont pas pu être chargées. {message}",
+    "empty": "Aucune transaction existante ne correspond à ces conditions.",
+    "truncated": "Seules les {scanned, number} transactions les plus récentes ont été vérifiées.",
+    "stale": "Les conditions ont changé depuis ce test. Sélectionnez à nouveau Tester la règle pour voir les correspondances actuelles."
+  },
   "run": {
     "title": "Exécuter « {name} » sur les transactions existantes",
     "description": "Prévisualisez ce que la règle modifierait, puis confirmez. Vous pouvez annuler l’exécution depuis l’historique des actions.",
