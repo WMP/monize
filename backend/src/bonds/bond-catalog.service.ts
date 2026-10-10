@@ -3,7 +3,9 @@ import { DataSource, EntityManager } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { withSystemContext } from "../common/db/with-context";
 import { BondAdapter, CatalogEntry } from "./bond-adapter";
+import { bondInstrumentId } from "./bond-instrument-id";
 import { INSTALLED_BOND_ADAPTERS } from "./bond-adapters";
+import { BondInstrumentSummary } from "./bond-valuation.service";
 import { contentHash } from "./canonical-json";
 import { BondTerms, parseBondTerms } from "./domain/bond-terms";
 
@@ -46,6 +48,32 @@ export class BondCatalogService implements OnApplicationBootstrap {
         }
       }
     });
+  }
+
+  /** The catalog for the link picker, ordered by country, issuer and series. */
+  async listInstruments(): Promise<BondInstrumentSummary[]> {
+    const rows: Array<{
+      id: string;
+      issuer_country_code: string;
+      issuer_code: string;
+      program_code: string;
+      series_code: string;
+      currency_code: string;
+    }> = await withScopedDb(this.dataSource, (m) =>
+      m.query(
+        `SELECT id, issuer_country_code, issuer_code, program_code, series_code, currency_code
+           FROM bond_instruments
+          ORDER BY issuer_country_code, issuer_code, series_code`,
+      ),
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      issuerCountryCode: r.issuer_country_code,
+      issuerCode: r.issuer_code,
+      programCode: r.program_code,
+      seriesCode: r.series_code,
+      currencyCode: r.currency_code,
+    }));
   }
 
   /** The series rows alone, for a refresh that must not depend on boot order. */
@@ -115,10 +143,13 @@ export class BondCatalogService implements OnApplicationBootstrap {
       return;
     }
 
+    // The id is derived from the unique key, not generated: the table is not in
+    // the user backup, so a security's link survives a restore onto another
+    // deployment only if the same series has the same id there.
     await m.query(
       `INSERT INTO bond_instruments
-         (issuer_country_code, issuer_code, program_code, series_code, currency_code, marketability)
-       VALUES ($1, $2, $3, $4, $5, $6)
+         (id, issuer_country_code, issuer_code, program_code, series_code, currency_code, marketability)
+       VALUES ($7::uuid, $1, $2, $3, $4, $5, $6)
        ON CONFLICT (issuer_country_code, issuer_code, series_code) DO NOTHING`,
       [
         instrument.issuerCountryCode,
@@ -127,6 +158,11 @@ export class BondCatalogService implements OnApplicationBootstrap {
         instrument.seriesCode,
         instrument.currency,
         instrument.marketability,
+        bondInstrumentId(
+          instrument.issuerCountryCode,
+          instrument.issuerCode,
+          instrument.seriesCode,
+        ),
       ],
     );
     const rows: Array<{ id: string }> = await m.query(

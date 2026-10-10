@@ -302,6 +302,11 @@ export class BackupRestoreService {
                 // restoring the tables with FK references to currencies(code).
                 await this.db.ensureCurrenciesExist(manager, data, userId);
 
+                // Phase 2a': a security's bond link survives only where this
+                // deployment's catalog holds the instrument; else it is restored
+                // unlinked (the table is reference data, not part of a backup).
+                await this.db.severUnavailableBondLinks(manager, data);
+
                 // Phase 2b: insert every backed-up table in FK-safe order. The order,
                 // the row-count key and whether user_id is forced live in
                 // RESTORE_PLAN, which restore-plan.spec.ts checks against the schema's

@@ -942,6 +942,7 @@ CREATE TABLE securities (
     market_timezone VARCHAR(64),     -- IANA zone the instrument trades in, from the provider (e.g. America/New_York)
     market_open_time TIME,           -- start of the regular session, in market_timezone local time
     market_close_time TIME,          -- end of the regular session, in market_timezone local time
+    bond_instrument_id UUID,         -- linked bond instrument (FK fk_securities_bond_instrument, added below); a linked security is priced by the bond engine only
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, symbol),
@@ -953,6 +954,7 @@ CREATE INDEX idx_securities_user_id ON securities(user_id);
 CREATE INDEX idx_securities_symbol ON securities(symbol);
 CREATE INDEX idx_securities_exchange ON securities(exchange);
 CREATE INDEX idx_securities_user_favourite ON securities(user_id, is_favourite);
+CREATE INDEX idx_securities_bond_instrument ON securities(bond_instrument_id) WHERE bond_instrument_id IS NOT NULL;
 
 -- Security Tags (many-to-many) -- reuses the shared tags pool, mirrors transaction_tags
 CREATE TABLE security_tags (
@@ -1202,7 +1204,7 @@ CREATE TABLE security_prices (
     close_price NUMERIC(24, 10) NOT NULL,
     adjusted_close NUMERIC(24, 10),
     volume BIGINT,
-    source VARCHAR(50), -- yahoo_finance, msn_finance, manual, or transaction action (buy, sell, reinvest, transfer_in, transfer_out)
+    source VARCHAR(50), -- yahoo_finance, msn_finance, manual, bond_engine (a bond-linked security's engine price), or transaction action (buy, sell, reinvest, transfer_in, transfer_out)
     quoted_at TIMESTAMPTZ, -- instant the provider says the quote was struck; NULL for manual/transaction-derived rows
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(security_id, price_date)
@@ -1299,6 +1301,13 @@ CREATE TABLE benchmark_values (
     retrieved_at     TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (benchmark_code, observation_date)
 );
+
+-- A security's link to a bond instrument. Declared here because securities is
+-- created before the bond tables. RESTRICT: an instrument is never deleted from
+-- under a security that points at it.
+ALTER TABLE securities
+    ADD CONSTRAINT fk_securities_bond_instrument
+    FOREIGN KEY (bond_instrument_id) REFERENCES bond_instruments(id) ON DELETE RESTRICT;
 
 CREATE OR REPLACE FUNCTION bond_reject_mutation() RETURNS TRIGGER
 LANGUAGE plpgsql AS $$

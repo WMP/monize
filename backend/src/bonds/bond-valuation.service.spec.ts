@@ -1,3 +1,4 @@
+import { NotFoundException } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { manifestDocument } from "./adapters/pl/pl-test-input";
@@ -24,6 +25,10 @@ interface Store {
   rates: Row[];
   series: Row[];
   values: Row[];
+  /** `securities` rows for valueSecurity. */
+  securities: Row[];
+  /** `investment_transactions` rows for valueSecurity, in register order. */
+  ledger: Row[];
 }
 
 function setup(store: Partial<Store>) {
@@ -33,13 +38,18 @@ function setup(store: Partial<Store>) {
     rates: [],
     series: [],
     values: [],
+    securities: [],
+    ledger: [],
     ...store,
   };
   const { manager, dataSource } = createScopedDbMocks();
   const calls: Array<{ sql: string; params: unknown[] }> = [];
   manager.query.mockImplementation(async (sql: string, params: unknown[]) => {
     calls.push({ sql, params });
-    if (sql.includes("FROM bond_instruments")) return data.instruments;
+    if (sql.includes("FROM bond_instruments")) {
+      // By id (the link) or by key (the request); the rows are the same.
+      return data.instruments;
+    }
     if (sql.includes("FROM bond_terms_versions")) {
       const wanted = sql.includes("version = $2") ? params[1] : undefined;
       return data.terms
@@ -49,6 +59,8 @@ function setup(store: Partial<Store>) {
     if (sql.includes("FROM bond_period_rates")) return data.rates;
     if (sql.includes("FROM benchmark_series")) return data.series;
     if (sql.includes("FROM benchmark_values")) return data.values;
+    if (sql.includes("FROM securities")) return data.securities;
+    if (sql.includes("FROM investment_transactions")) return data.ledger;
     throw new Error(`unexpected query: ${sql}`);
   });
   const service = new BondValuationService(dataSource as unknown as DataSource);
@@ -266,5 +278,198 @@ describe("BondValuationService", () => {
     await expect(service.valueLot(request())).rejects.toThrow(
       /Invalid bond terms/,
     );
+  });
+
+  describe("loadReference and valueLotFrom: the data is read once", () => {
+    it("loads by instrument id, then values any number of (lot, asOf) pairs without another query", async () => {
+      const { service, manager, calls } = setup({});
+      const reference = await service.loadReference(manager as never, "i1");
+      const queries = calls.length;
+      expect(
+        calls.find((c) => c.sql.includes("FROM bond_instruments"))?.params,
+      ).toEqual(["i1"]);
+      expect(reference).toMatchObject({
+        termsVersion: 1,
+        instrument: {
+          id: "i1",
+          seriesCode: "TOS1029",
+          currencyCode: "PLN",
+        },
+      });
+
+      const values = ["2026-10-15", "2026-10-16", "2027-04-15"].map((asOf) =>
+        service.valueLotFrom(
+          reference,
+          { purchaseDate: "2026-10-15", quantity: 25 },
+          asOf,
+        ),
+      );
+
+      expect(calls).toHaveLength(queries);
+      // 25 bonds, 182 days into the 365-day period: 25 x 102.19.
+      expect(values.map((v) => v.grossValue)).toEqual([
+        "2500.00",
+        "2500.25",
+        "2554.75",
+      ]);
+    });
+
+    it("agrees with valueLot", async () => {
+      const { service, manager } = setup({});
+      const reference = await service.loadReference(manager as never, "i1");
+      expect(
+        service.valueLotFrom(reference, request().lot, request().asOf),
+      ).toEqual(await service.valueLot(request()));
+    });
+
+    it("throws not-found for an id that is not stored, and refuses contradicting rows", async () => {
+      const missing = setup({ instruments: [] });
+      await expect(
+        missing.service.loadReference(missing.manager as never, "nope"),
+      ).rejects.toBeInstanceOf(BondDataNotFoundError);
+
+      const wrong = setup({
+        instruments: [
+          { id: "i1", series_code: "TOS1029", currency_code: "EUR" },
+        ],
+      });
+      await expect(
+        wrong.service.loadReference(wrong.manager as never, "i1"),
+      ).rejects.toBeInstanceOf(BondDataInconsistentError);
+    });
+  });
+
+  describe("valueSecurity", () => {
+    const owned = [
+      {
+        id: "sec-1",
+        user_id: "user-1",
+        symbol: "TOS1029",
+        currency_code: "PLN",
+        bond_instrument_id: "i1",
+      },
+    ];
+    const buy = (date: string, quantity: string) => ({
+      action: "BUY",
+      status: "UNRECONCILED",
+      tx_date: date,
+      quantity,
+      paired_transfer: false,
+    });
+
+    it("values every lot open on asOf and totals them exactly", async () => {
+      const { service, calls } = setup({
+        securities: owned,
+        ledger: [
+          buy("2026-10-15", "25.00000000"),
+          buy("2026-11-15", "10.00000000"),
+          // After asOf: not open on that day, so neither listed nor totalled.
+          buy("2027-05-01", "99.00000000"),
+        ],
+      });
+
+      const result = await service.valueSecurity(
+        "user-1",
+        "sec-1",
+        "2027-04-15",
+      );
+
+      expect(
+        calls.find((c) => c.sql.includes("FROM securities"))?.params,
+      ).toEqual(["sec-1", "user-1"]);
+      expect(result.instrument).toMatchObject({
+        id: "i1",
+        seriesCode: "TOS1029",
+      });
+      expect(result.refusal).toBeNull();
+      expect(
+        result.lots.map((l) => [
+          l.purchaseDate,
+          l.quantity,
+          l.purchaseDateAssumed,
+          l.valuation.grossValue,
+        ]),
+      ).toEqual([
+        // 182 days in: 102.19 per bond.
+        ["2026-10-15", 25, false, "2554.75"],
+        // 151 days in: 101.82 per bond.
+        ["2026-11-15", 10, false, "1018.20"],
+      ]);
+      expect(result.totals).toMatchObject({
+        quantity: 35,
+        grossValue: "3572.95",
+      });
+      expect(result.totals.accruedInterest).toBe("72.95");
+    });
+
+    it("makes a total null unless every lot has the figure: a subtotal is not a total", async () => {
+      const { service } = setup({
+        securities: owned,
+        // Bought 3 days ago, so early redemption is outside its window, while
+        // the older lot is inside it.
+        ledger: [buy("2026-10-15", "25"), buy("2027-04-12", "10")],
+      });
+      const result = await service.valueSecurity(
+        "user-1",
+        "sec-1",
+        "2027-04-15",
+      );
+      expect(result.lots[0].valuation.earlyRedemptionValue).not.toBeNull();
+      expect(result.lots[1].valuation.earlyRedemptionValue).toBeNull();
+      expect(result.totals.earlyRedemptionValue).toBeNull();
+      expect(result.totals.grossValue).not.toBeNull();
+    });
+
+    it("reports a known zero when nothing is held, and names the refusal when the lots cannot be derived", async () => {
+      const none = setup({ securities: owned, ledger: [] });
+      expect(
+        (await none.service.valueSecurity("user-1", "sec-1", "2027-04-15"))
+          .totals,
+      ).toEqual({
+        quantity: 0,
+        grossValue: "0.00",
+        earlyRedemptionValue: "0.00",
+        accruedInterest: "0.00",
+      });
+
+      const split = setup({
+        securities: owned,
+        ledger: [
+          buy("2026-10-15", "25"),
+          { ...buy("2026-12-01", "2"), action: "SPLIT" },
+        ],
+      });
+      const result = await split.service.valueSecurity(
+        "user-1",
+        "sec-1",
+        "2027-04-15",
+      );
+      expect(result.lots).toEqual([]);
+      expect(result.refusal).toMatchObject({ code: "SPLIT" });
+      expect(result.totals).toEqual({
+        quantity: null,
+        grossValue: null,
+        earlyRedemptionValue: null,
+        accruedInterest: null,
+      });
+      // The same ledger, a day before the split: lots are known.
+      expect(
+        (await split.service.valueSecurity("user-1", "sec-1", "2026-11-30"))
+          .refusal,
+      ).toBeNull();
+    });
+
+    it("answers 404 for another user's, a missing or an unlinked security", async () => {
+      const foreign = setup({ securities: [] });
+      await expect(
+        foreign.service.valueSecurity("user-2", "sec-1", "2027-04-15"),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      const unlinked = setup({
+        securities: [{ ...owned[0], bond_instrument_id: null }],
+      });
+      await expect(
+        unlinked.service.valueSecurity("user-1", "sec-1", "2027-04-15"),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
   });
 });

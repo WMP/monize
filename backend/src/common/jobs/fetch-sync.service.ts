@@ -24,6 +24,7 @@ export const FetchSyncJob = {
   MarketIndexes: "market-indexes",
   AttachmentRelocation: "attachment-relocation",
   BondBenchmarks: "bond-benchmarks",
+  BondPrices: "bond-prices",
 } as const;
 
 export type FetchSyncJob = (typeof FetchSyncJob)[keyof typeof FetchSyncJob];

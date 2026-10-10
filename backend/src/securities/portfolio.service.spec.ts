@@ -3885,6 +3885,31 @@ describe("PortfolioService", () => {
       expect(result.points[0].value).toBeCloseTo(10336, 4);
     });
 
+    it("never asks a quote provider for a bond-linked holding's intraday bars (INV-BOND-005)", async () => {
+      accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
+      holdingsRepository.find.mockResolvedValue([
+        mockHoldingAAPL,
+        {
+          ...mockHoldingVFV,
+          security: {
+            ...mockSecurityVFV,
+            bondInstrumentId: "11111111-1111-5111-8111-111111111111",
+          } as any,
+        },
+      ]);
+      yahooFinanceService.fetchIntradaySeries.mockResolvedValue([
+        { timestamp: new Date("2026-05-06T13:30:00.000Z"), close: 100 },
+      ]);
+      exchangeRateService.getLatestRate.mockResolvedValue(1.4);
+
+      await service.getIntradayValueSeries(userId, { range: "1d" });
+
+      const asked = yahooFinanceService.fetchIntradaySeries.mock.calls.map(
+        ([symbol]: [string]) => symbol,
+      );
+      expect(asked).toEqual([mockSecurityAAPL.symbol]);
+    });
+
     it("caches results for 60 seconds keyed by user/range/accounts/currency", async () => {
       accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
       holdingsRepository.find.mockResolvedValue([mockHoldingAAPL]);

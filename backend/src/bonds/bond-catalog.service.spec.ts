@@ -4,6 +4,7 @@ import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { POLISH_BOND_ADAPTER } from "./adapters/pl";
 import { BondAdapter } from "./bond-adapter";
 import { BondCatalogService } from "./bond-catalog.service";
+import { bondInstrumentId } from "./bond-instrument-id";
 import { contentHash } from "./canonical-json";
 
 jest.mock("../common/db/scoped-db", () =>
@@ -43,6 +44,18 @@ function setup(adapters: readonly BondAdapter[], seed: Partial<Db> = {}) {
         db.instruments.push({ id: `id-${params[3]}`, series_code: params[3] });
       }
       return [];
+    }
+    if (sql.includes("ORDER BY issuer_country_code")) {
+      return [
+        {
+          id: "i-1",
+          issuer_country_code: "PL",
+          issuer_code: "PL_MF",
+          program_code: "TOS",
+          series_code: "TOS1029",
+          currency_code: "PLN",
+        },
+      ];
     }
     if (sql.includes("SELECT id FROM bond_instruments")) {
       return db.instruments
@@ -92,6 +105,20 @@ describe("BondCatalogService", () => {
       ),
     ).toHaveLength(2);
     expect(error).not.toHaveBeenCalled();
+  });
+
+  it("inserts each instrument under its deterministic id, so a link survives a restore elsewhere", async () => {
+    const { service, manager } = setup([POLISH_BOND_ADAPTER]);
+    await service.seed([POLISH_BOND_ADAPTER]);
+    const inserts = manager.query.mock.calls.filter(([s]) =>
+      String(s).includes("INSERT INTO bond_instruments"),
+    );
+    expect(inserts).toHaveLength(8);
+    for (const [sql, params] of inserts) {
+      expect(String(sql)).toMatch(/\(id, issuer_country_code/);
+      expect(params[6]).toBe(bondInstrumentId(params[0], params[1], params[3]));
+    }
+    expect(new Set(inserts.map(([, p]) => p[6])).size).toBe(8);
   });
 
   it("never writes covered_through when seeding a series", async () => {
@@ -161,6 +188,23 @@ describe("BondCatalogService", () => {
     await service.seed([POLISH_BOND_ADAPTER]);
     expect(db.instruments).toHaveLength(0);
     expect(error).toHaveBeenCalledTimes(8);
+  });
+
+  it("lists the catalog ordered by country, issuer and series, in the API's shape", async () => {
+    const { service, statements } = setup([POLISH_BOND_ADAPTER]);
+    await expect(service.listInstruments()).resolves.toEqual([
+      {
+        id: "i-1",
+        issuerCountryCode: "PL",
+        issuerCode: "PL_MF",
+        programCode: "TOS",
+        seriesCode: "TOS1029",
+        currencyCode: "PLN",
+      },
+    ]);
+    expect(statements[0]).toMatch(
+      /ORDER BY issuer_country_code, issuer_code, series_code/,
+    );
   });
 
   it("seeds the series alone for the refresh", async () => {

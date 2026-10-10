@@ -102,6 +102,7 @@ implied.
 | INV-BOND-002 | A missing bond rate is unknown, never substituted | enforced |
 | INV-BOND-003 | Bond money is exact until the issue document rounds it | enforced |
 | INV-BOND-004 | Known and projected bond values never mix | enforced |
+| INV-BOND-005 | A linked security's automatic price comes only from the bond engine, and a bond_engine row never overwrites a manual or transaction price | enforced |
 | INV-OCCURRENCE-001 | One scheduled occurrence has at most one financial effect | enforced |
 | INV-OCCURRENCE-002 | A stored override price survives reopening | enforced |
 | INV-OCCURRENCE-003 | Every surface reports the effective occurrence: its current amount and currency, its direction, on the date it falls | enforced |
@@ -3028,6 +3029,65 @@ Retry semantics     --
 Crash semantics     --
 Failure response    the figure moves to the projected fields
 Required tests      bond-engine.spec.ts known/projected cases.
+Status              enforced
+```
+
+### INV-BOND-005 -- a linked security's automatic price is the bond engine's, and it overwrites nobody
+
+```text
+Statement           A security linked to a bond instrument
+                    (securities.bond_instrument_id) is priced automatically
+                    by the bond engine and by no quote provider; and a
+                    bond_engine price row never replaces a manual or a
+                    transaction-derived price on the same day, nor is an
+                    unchanged day rewritten.
+Source of truth     securities.bond_instrument_id; security_prices.source
+Enforcement         Two mechanisms.
+                    1. One predicate, isPricedByQuoteProvider
+                       (backend/src/securities/provider-priced.util.ts), read by
+                       every path that asks a provider about a security:
+                       isRefreshEligible (the quote refresh, the selected
+                       refresh, the settlement, the historical backfill and the
+                       on-demand fill), fetchAndStoreRange (every backfill, even
+                       a forced one), backfillSecurityHoldingPeriod and the
+                       intraday chart. provider-priced.guard.spec.ts fails when
+                       a method that reaches a provider stops consulting it.
+                    2. BondPriceService.upsertPrices
+                       (backend/src/bonds/bond-price.service.ts): one
+                       INSERT ... ON CONFLICT (security_id, price_date) DO UPDATE
+                       whose WHERE admits only source = 'bond_engine' AND a
+                       close that differs; the same constant
+                       BOND_ENGINE_PRICE_SOURCE is bound by the delete of days
+                       that no longer get a price.
+                    The link itself: the instrument must exist and be priced in
+                    the security's currency (INV-PRICE-001), checked in the
+                    write's own transaction before it (SecuritiesService
+                    assertBondLink); fk_securities_bond_instrument is
+                    ON DELETE RESTRICT.
+Concurrency scope   per security; two recomputes write the same pure function of
+                    the ledger and converge (the conditional upsert is
+                    idempotent); the last commit wins and the next run repairs
+                    a stale one.
+Retry semantics     A retried recompute writes nothing it already wrote
+                    (written = 0, deleted = 0).
+Crash semantics     Reads, the upsert, the delete and the account updated_at
+                    marker share one transaction; the portfolio memo and the
+                    net-worth recompute are dispatched after the commit
+                    (INV-CACHE-001), and a lost debounce is recovered from the
+                    marker by sweepStaleSnapshots.
+Failure response    refuse a link the instrument cannot honour (400, nothing
+                    written); a day whose lots have no gross value gets no row
+                    (INV-BOND-002); lots that cannot be derived (a split, a
+                    fractional or over-removed quantity) price nothing and the
+                    valuation names why.
+Required tests      bond-prices.integration.spec.ts (real PostgreSQL: a manual,
+                    a transaction and a provider price on a day survive; an
+                    unchanged day is not rewritten; stale rows are deleted; every
+                    refresh path skips a linked security with an explicit provider
+                    override; another user's security answers 404);
+                    bond-price.service.spec.ts, bond-lots.spec.ts,
+                    securities.service.spec.ts (link refusals),
+                    provider-priced.guard.spec.ts.
 Status              enforced
 ```
 

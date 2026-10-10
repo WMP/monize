@@ -27,6 +27,7 @@ describe("SecuritiesService", () => {
   let mockSecurityPriceService: Record<string, jest.Mock>;
   let mockActionHistoryService: Record<string, jest.Mock>;
   let mockYahooFinanceService: Record<string, jest.Mock>;
+  let mockBondPriceService: Record<string, jest.Mock>;
   let queryRunnerManager: Record<string, jest.Mock>;
   let scopedRepository: Record<string, any>;
   let scopedManager: Record<string, jest.Mock>;
@@ -109,6 +110,12 @@ describe("SecuritiesService", () => {
       record: jest.fn().mockResolvedValue(null),
     };
 
+    mockBondPriceService = {
+      recomputeSecurity: jest
+        .fn()
+        .mockResolvedValue({ written: 0, deleted: 0 }),
+    };
+
     mockYahooFinanceService = {
       fetchSecurityProfileDescription: jest.fn(),
       fetchSecurityProfile: jest.fn().mockResolvedValue(null),
@@ -164,6 +171,7 @@ describe("SecuritiesService", () => {
       mockYahooFinanceService as never,
       mockActionHistoryService as never,
       dataSource as never,
+      mockBondPriceService as never,
     );
   });
 
@@ -430,6 +438,92 @@ describe("SecuritiesService", () => {
   });
 
   describe("create", () => {
+    describe("bond link (spec 12.1)", () => {
+      const INSTRUMENT = "11111111-1111-5111-8111-111111111111";
+      const bond = {
+        symbol: "TOS1029",
+        name: "TOS 3y",
+        securityType: "BOND",
+        currencyCode: "PLN",
+        bondInstrumentId: INSTRUMENT,
+      };
+
+      it("checks the instrument in the write's transaction, before the save, then recomputes after it", async () => {
+        queryRunnerManager.findOne.mockResolvedValue(null);
+        queryRunnerManager.query.mockResolvedValue([{ currency_code: "PLN" }]);
+        const order: string[] = [];
+        queryRunnerManager.query.mockImplementation(async () => {
+          order.push("check");
+          return [{ currency_code: "PLN" }];
+        });
+        queryRunnerManager.save.mockImplementation(async (a, b) => {
+          order.push("save");
+          return b ?? a;
+        });
+        mockBondPriceService.recomputeSecurity.mockImplementation(async () => {
+          order.push("recompute");
+          return { written: 0, deleted: 0 };
+        });
+
+        await service.create("user-1", bond);
+
+        expect(queryRunnerManager.query).toHaveBeenCalledWith(
+          expect.stringContaining("FROM bond_instruments"),
+          [INSTRUMENT],
+        );
+        expect(order).toEqual(["check", "save", "recompute"]);
+        expect(mockBondPriceService.recomputeSecurity).toHaveBeenCalledWith(
+          "user-1",
+          "new-sec",
+        );
+      });
+
+      it("refuses an instrument that does not exist, writing nothing and recomputing nothing", async () => {
+        queryRunnerManager.findOne.mockResolvedValue(null);
+        queryRunnerManager.query.mockResolvedValue([]);
+
+        await expect(service.create("user-1", bond)).rejects.toThrow(
+          BadRequestException,
+        );
+        expect(queryRunnerManager.save).not.toHaveBeenCalled();
+        expect(mockBondPriceService.recomputeSecurity).not.toHaveBeenCalled();
+      });
+
+      it("refuses a security whose currency differs from the instrument's (INV-PRICE-001)", async () => {
+        queryRunnerManager.findOne.mockResolvedValue(null);
+        queryRunnerManager.query.mockResolvedValue([{ currency_code: "PLN" }]);
+
+        await expect(
+          service.create("user-1", { ...bond, currencyCode: "USD" }),
+        ).rejects.toThrow(/recorded in USD.*priced in PLN/);
+        expect(queryRunnerManager.save).not.toHaveBeenCalled();
+      });
+
+      it("does not look at the catalog for an unlinked security", async () => {
+        queryRunnerManager.findOne.mockResolvedValue(null);
+        await service.create("user-1", {
+          symbol: "MSFT",
+          name: "Microsoft",
+          currencyCode: "USD",
+        });
+        expect(queryRunnerManager.query).not.toHaveBeenCalledWith(
+          expect.stringContaining("bond_instruments"),
+          expect.anything(),
+        );
+        expect(mockBondPriceService.recomputeSecurity).not.toHaveBeenCalled();
+      });
+
+      it("keeps the security when the recompute fails: it is saved, the daily job repairs it", async () => {
+        queryRunnerManager.findOne.mockResolvedValue(null);
+        queryRunnerManager.query.mockResolvedValue([{ currency_code: "PLN" }]);
+        mockBondPriceService.recomputeSecurity.mockRejectedValue(
+          new Error("catalog empty"),
+        );
+        await expect(service.create("user-1", bond)).resolves.toMatchObject({
+          bondInstrumentId: INSTRUMENT,
+        });
+      });
+    });
     it("creates a new security", async () => {
       queryRunnerManager.findOne.mockResolvedValue(null);
 
@@ -639,6 +733,111 @@ describe("SecuritiesService", () => {
   });
 
   describe("update", () => {
+    describe("bond link (spec 12.1)", () => {
+      const INSTRUMENT = "11111111-1111-5111-8111-111111111111";
+      const OTHER = "22222222-2222-5222-8222-222222222222";
+      const pln = { ...mockSecurity, currencyCode: "PLN" };
+
+      it("links a security, checking inside the write transaction before the save, and recomputes after", async () => {
+        securitiesRepository.findOne.mockResolvedValue({ ...pln });
+        const order: string[] = [];
+        queryRunnerManager.query.mockImplementation(async () => {
+          order.push("check");
+          return [{ currency_code: "PLN" }];
+        });
+        queryRunnerManager.save.mockImplementation(async (a, b) => {
+          order.push("save");
+          return b ?? a;
+        });
+        mockBondPriceService.recomputeSecurity.mockImplementation(async () => {
+          order.push("recompute");
+          return { written: 0, deleted: 0 };
+        });
+
+        await service.update("user-1", "sec-1", {
+          bondInstrumentId: INSTRUMENT,
+        });
+
+        expect(order).toEqual(["check", "save", "recompute"]);
+        expect(mockBondPriceService.recomputeSecurity).toHaveBeenCalledWith(
+          "user-1",
+          "sec-1",
+        );
+      });
+
+      it("refuses a link to a missing instrument or one in another currency, writing nothing", async () => {
+        securitiesRepository.findOne.mockResolvedValue({ ...pln });
+        queryRunnerManager.query.mockResolvedValue([]);
+        await expect(
+          service.update("user-1", "sec-1", { bondInstrumentId: INSTRUMENT }),
+        ).rejects.toThrow(BadRequestException);
+
+        // A fresh row per request, as the database would return one.
+        securitiesRepository.findOne.mockResolvedValue({ ...pln });
+        queryRunnerManager.query.mockResolvedValue([{ currency_code: "EUR" }]);
+        await expect(
+          service.update("user-1", "sec-1", { bondInstrumentId: INSTRUMENT }),
+        ).rejects.toThrow(/recorded in PLN.*priced in EUR/);
+
+        expect(queryRunnerManager.save).not.toHaveBeenCalled();
+        expect(mockBondPriceService.recomputeSecurity).not.toHaveBeenCalled();
+      });
+
+      it("refuses a currency change of a security that stays linked", async () => {
+        securitiesRepository.findOne.mockResolvedValue({
+          ...pln,
+          bondInstrumentId: INSTRUMENT,
+        });
+        queryRunnerManager.query.mockResolvedValue([{ currency_code: "PLN" }]);
+
+        await expect(
+          service.update("user-1", "sec-1", { currencyCode: "USD" }),
+        ).rejects.toThrow(/stays in the instrument's currency \(PLN\)/);
+        expect(queryRunnerManager.save).not.toHaveBeenCalled();
+      });
+
+      it("allows a currency change together with unlinking, and checks nothing", async () => {
+        securitiesRepository.findOne.mockResolvedValue({
+          ...pln,
+          bondInstrumentId: INSTRUMENT,
+        });
+
+        const result = await service.update("user-1", "sec-1", {
+          currencyCode: "USD",
+          bondInstrumentId: null,
+        });
+
+        expect(result.bondInstrumentId).toBeNull();
+        expect(queryRunnerManager.query).not.toHaveBeenCalledWith(
+          expect.stringContaining("bond_instruments"),
+          expect.anything(),
+        );
+        expect(mockBondPriceService.recomputeSecurity).not.toHaveBeenCalled();
+      });
+
+      it("does not check or recompute when an edit leaves the link and the currency alone", async () => {
+        securitiesRepository.findOne.mockResolvedValue({
+          ...pln,
+          bondInstrumentId: INSTRUMENT,
+        });
+        await service.update("user-1", "sec-1", { name: "Renamed" });
+        expect(queryRunnerManager.query).not.toHaveBeenCalledWith(
+          expect.stringContaining("bond_instruments"),
+          expect.anything(),
+        );
+        expect(mockBondPriceService.recomputeSecurity).not.toHaveBeenCalled();
+      });
+
+      it("recomputes when the link moves to another instrument", async () => {
+        securitiesRepository.findOne.mockResolvedValue({
+          ...pln,
+          bondInstrumentId: INSTRUMENT,
+        });
+        queryRunnerManager.query.mockResolvedValue([{ currency_code: "PLN" }]);
+        await service.update("user-1", "sec-1", { bondInstrumentId: OTHER });
+        expect(mockBondPriceService.recomputeSecurity).toHaveBeenCalledTimes(1);
+      });
+    });
     it("updates security fields", async () => {
       securitiesRepository.findOne.mockResolvedValue({ ...mockSecurity });
 

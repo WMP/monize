@@ -527,7 +527,17 @@
     "dateMustBeYMD": "date must be in YYYY-MM-DD format",
     "loanLedgerUnreadable": "This loan payment could not be priced because its ledger balance could not be read. Try again."
   },
+  "bonds": {
+    "securityNotLinked": "Security {{ securityId }} not found or not linked to a bond instrument",
+    "dataNotFound": "The stored bond data needed for this valuation is not available: {{ detail }}",
+    "dataInconsistent": "The stored bond data contradicts itself, so no valuation is given: {{ detail }}",
+    "invalidInput": "The valuation request is not valid: {{ detail }}"
+  },
   "securities": {
+    "bondPricedByEngine": "This security is linked to a bond instrument and is priced by the bond engine, not by a quote provider. Use Recompute prices instead.",
+    "bondInstrumentNotFound": "Bond instrument {{ id }} does not exist",
+    "bondCurrencyMismatch": "The security is recorded in {{ currency }} but the bond instrument is priced in {{ instrumentCurrency }}. Use the instrument's currency.",
+    "bondCurrencyLocked": "A security linked to a bond instrument stays in the instrument's currency ({{ instrumentCurrency }}). Unlink it from the bond before changing its currency.",
     "accountMustBeInvestment": "Account must be of type INVESTMENT",
     "transferPairSameRow": "A transfer's two legs cannot be the same transaction",
     "transferPairNotFound": "One of the two transactions no longer exists",

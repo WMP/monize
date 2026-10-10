@@ -84,6 +84,10 @@ security-create time, reads the same `normalizeQuoteCurrency`, so the currency a
 security is created with is comparable letter for letter with the one every later
 answer is measured against. INV-PRICE-001.
 
+## A bond-linked security is priced by the bond engine, never by a provider
+
+A security with `bond_instrument_id` set (`docs/specs/polish-retail-bonds.md` section 12) has one automatic price source, `BondPriceService` (`source = 'bond_engine'`). Every path that asks a quote provider about a security -- the quote refresh, the selected refresh, the settlement, both backfills, the on-demand report fill and the intraday chart -- asks `isPricedByQuoteProvider` (`securities/provider-priced.util.ts`) first, directly or through `isRefreshEligible`; `provider-priced.guard.spec.ts` fails a new path that does not, and a forced backfill ignores `skipPriceUpdates`, never the link. The engine's upsert replaces only a `bond_engine` row, so a manual or transaction-derived price on the same day wins and the quote path's own `source IS DISTINCT FROM 'manual'` rule is not needed for it. The link is refused unless the instrument's currency equals the security's (INV-PRICE-001), and a linked security's currency cannot change while it stays linked. INV-BOND-005.
+
 ## A payload coarser than daily is a different series, not a sparse one
 
 A provider asked for a long range may answer weekly or monthly bars; written into a daily table they overwrite the real daily rows on those dates, and under the one-basis-per-series rule monthly rows carrying adjusted closes made `loadPriceSeries` *drop every daily row around them*. `assertDailySeries` (`providers/daily-spacing.util.ts`) is the one test, and it runs inside `bulkUpsertPrices` -- not in its four callers, because a guard one caller forgets is not a guard (each caller already reports a failed security, so the throw surfaces as "this one did not update"). The threshold, the median (never the mean -- one long exchange closure must not make a daily series look weekly) and the minimum sample size live there too; `daily-spacing.util.spec.ts` fails on a second copy of any of them under `securities/`.

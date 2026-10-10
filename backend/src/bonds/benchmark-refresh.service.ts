@@ -85,7 +85,7 @@ export class BenchmarkRefreshService implements OnApplicationBootstrap {
    * context (`docs/backend/cron-and-background-work.md`); the wrapper goes
    * around the whole lease call.
    */
-  @Cron("25 6 * * 1-5", { timeZone: WARSAW })
+  @Cron("25 6 * * 1-5", { timeZone: "Europe/Warsaw" })
   async scheduledRefresh(): Promise<void> {
     await withSystemContext(() =>
       this.fetchSync.withLease(

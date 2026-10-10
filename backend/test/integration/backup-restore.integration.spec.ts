@@ -9,6 +9,7 @@ import {
   BackupPasswordRequiredError,
   RESTORABLE_TABLES,
 } from "@/backup/backup.service";
+import { bondInstrumentId } from "@/bonds/bond-instrument-id";
 import { BackupExportService } from "@/backup/backup-export.service";
 import { BackupRestoreService } from "@/backup/backup-restore.service";
 import { BackupAttachmentTransferService } from "@/backup/backup-attachment-transfer.service";
@@ -965,6 +966,86 @@ describe("Backup export/restore round-trip (integration)", () => {
         end_date: "2026-06-18",
         body: "Rent moved to the 15th",
       },
+    ]);
+  });
+
+  it("keeps a security's bond link where this deployment's catalog has the instrument and restores it unlinked elsewhere", async () => {
+    // bond_instruments is reference data a backup does not carry, so the link
+    // survives only where the target's catalog holds the same instrument (its
+    // id is derived from the series, hence the same on every deployment), and a
+    // restore never fails on the foreign key for one it lacks.
+    const userA = await createTestUserDirect(dataSource, {
+      email: "bond-a@example.com",
+    });
+    const userB = await createTestUserDirect(dataSource, {
+      email: "bond-b@example.com",
+    });
+    await dataSource.query(
+      `INSERT INTO currencies (code, name, symbol, decimal_places, is_active)
+       VALUES ('PLN', 'Zloty', 'zl', 2, true) ON CONFLICT (code) DO NOTHING`,
+    );
+    const instrumentId = bondInstrumentId("PL", "PL_MF", "TOS1029");
+    await dataSource.query(
+      `INSERT INTO bond_instruments (id, issuer_country_code, issuer_code, program_code, series_code, currency_code, marketability)
+       VALUES ($1, 'PL', 'PL_MF', 'TOS', 'TOS1029', 'PLN', 'RETAIL_REDEEMABLE')`,
+      [instrumentId],
+    );
+    const insert = (symbol: string, currency: string) =>
+      dataSource.query(
+        `INSERT INTO securities (user_id, symbol, name, security_type, currency_code, bond_instrument_id)
+         VALUES ($1, $2, $2, 'BOND', $3, $4)`,
+        [userA.id, symbol, currency, instrumentId],
+      );
+    await insert("LINKED", "PLN");
+    await insert("UNKNOWN-SERIES", "PLN");
+    await insert("WRONG-CCY", "PLN");
+
+    const { buffer } = await withUserContext(userA.id, () =>
+      service.exportToBuffer(userA.id),
+    );
+    const exported = JSON.parse(gunzipSync(buffer).toString("utf-8"));
+    expect(
+      exported.securities.map(
+        (r: { symbol: string; bond_instrument_id: string }) => [
+          r.symbol,
+          r.bond_instrument_id,
+        ],
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        ["LINKED", instrumentId],
+        ["UNKNOWN-SERIES", instrumentId],
+      ]),
+    );
+
+    // The file as another deployment's export would read: one series this
+    // catalog has never seeded, and one pair a crafted file could hold.
+    const absent = randomUUID();
+    for (const row of exported.securities) {
+      if (row.symbol === "UNKNOWN-SERIES") row.bond_instrument_id = absent;
+      if (row.symbol === "WRONG-CCY") row.currency_code = "USD";
+    }
+    await dataSource.query(
+      `INSERT INTO currencies (code, name, symbol, decimal_places, is_active)
+       VALUES ('USD', 'US Dollar', '$', 2, true) ON CONFLICT (code) DO NOTHING`,
+    );
+    const edited = gzipSync(Buffer.from(JSON.stringify(exported)));
+
+    await withUserContext(userB.id, () =>
+      service.restoreData(userB.id, {
+        compressedData: edited,
+        password: PASSWORD,
+      }),
+    );
+
+    const restored = await dataSource.query(
+      `SELECT symbol, bond_instrument_id FROM securities WHERE user_id = $1 ORDER BY symbol`,
+      [userB.id],
+    );
+    expect(restored).toEqual([
+      { symbol: "LINKED", bond_instrument_id: instrumentId },
+      { symbol: "UNKNOWN-SERIES", bond_instrument_id: null },
+      { symbol: "WRONG-CCY", bond_instrument_id: null },
     ]);
   });
 

@@ -214,6 +214,20 @@ export class CreateSecurityDto {
 
   @ApiProperty({
     description:
+      "The bond instrument (GET /bonds/instruments) to link this security to; " +
+      "null unlinks. A linked security is priced by the bond engine only, and " +
+      "its currency must equal the instrument's.",
+    required: false,
+    nullable: true,
+    format: "uuid",
+  })
+  @IsOptional()
+  @ValidateIf((_o, value) => value !== null && value !== undefined)
+  @IsUUID()
+  bondInstrumentId?: string | null;
+
+  @ApiProperty({
+    description:
       "Manual country allocation for ETFs/funds: [{name, weight}] where weight " +
       "is a decimal 0-1. Slices need not sum to 1.0 (the remainder is 'Other').",
     required: false,

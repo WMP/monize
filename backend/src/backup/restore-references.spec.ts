@@ -4,6 +4,7 @@ import { canonicalUuid, collectRowIdRemap } from "./backup-id-remap.util";
 import { BackupData } from "./backup-format";
 import { DEFERRED_FK_COLUMNS, RESTORE_PLAN } from "./restore-plan";
 import {
+  CATALOG_REFERENCE_COLUMNS,
   NON_UUID_ID_TABLES,
   remapRestoreRow,
   resolveRestoreReferences,
@@ -183,19 +184,47 @@ describe("RESTORE_REFERENCE_COLUMNS against database/schema.sql", () => {
     expect(schemaReferences.size).toBeGreaterThan(60);
   });
 
-  it("leaves only users and currencies outside the restored graph", () => {
+  it("leaves only users, currencies and declared catalog references outside the restored graph", () => {
     // A foreign key from a restored table to a table the restore does not
-    // write would need its own rule for which rows the user may reference.
+    // write would need its own rule for which rows the user may reference. The
+    // catalog columns have one (CATALOG_REFERENCE_COLUMNS: kept only where the
+    // deployment's own catalog holds the row, else NULL).
     const outside = foreignKeys
       .filter(
         (fk) =>
           restored.has(fk.table) &&
           !restored.has(fk.referencedTable) &&
           fk.referencedTable !== "users" &&
-          fk.referencedTable !== "currencies",
+          fk.referencedTable !== "currencies" &&
+          CATALOG_REFERENCE_COLUMNS[fk.table]?.[fk.column] !==
+            fk.referencedTable,
       )
       .map((fk) => `${fk.table}.${fk.column} -> ${fk.referencedTable}`);
     expect(outside).toEqual([]);
+  });
+
+  it("declares only catalog references the schema has, to tables the restore does not write, on nullable columns", () => {
+    for (const [table, columns] of Object.entries(CATALOG_REFERENCE_COLUMNS)) {
+      for (const [column, target] of Object.entries(columns)) {
+        expect(restored.has(table)).toBe(true);
+        expect(restored.has(target)).toBe(false);
+        expect(
+          foreignKeys.some(
+            (fk) =>
+              fk.table === table &&
+              fk.column === column &&
+              fk.referencedTable === target,
+          ),
+        ).toBe(true);
+        const definition = new RegExp(
+          `CREATE TABLE(?: IF NOT EXISTS)?\\s+${table}\\s*\\(([\\s\\S]*?)\\n\\);`,
+        ).exec(schema)![1];
+        const line = new RegExp(`^\\s*${column}\\s+[^\\n]*$`, "m").exec(
+          definition,
+        )![0];
+        expect(line).not.toMatch(/NOT NULL/);
+      }
+    }
   });
 
   it("classifies every scalar UUID column of every restored table", () => {
@@ -210,7 +239,10 @@ describe("RESTORE_REFERENCE_COLUMNS against database/schema.sql", () => {
       for (const { name, type } of columns!) {
         if (type !== "UUID") continue;
         if (name === "id" || name === "user_id") continue;
-        if (RESTORE_REFERENCE_COLUMNS[table]?.[name] === undefined) {
+        if (
+          RESTORE_REFERENCE_COLUMNS[table]?.[name] === undefined &&
+          CATALOG_REFERENCE_COLUMNS[table]?.[name] === undefined
+        ) {
           unclassified.push(`${table}.${name}`);
         }
       }
@@ -269,6 +301,38 @@ describe("resolveRestoreReferences", () => {
     const before = JSON.stringify(data);
     resolveRestoreReferences(data);
     expect(JSON.stringify(data)).toBe(before);
+  });
+
+  it("canonicalises a catalog reference and leaves its existence to the restore", () => {
+    const INSTRUMENT = "9f2c7a10-1234-5a6b-8c7d-0e1f2a3b4c5d";
+    const data = backup({
+      securities: [
+        { id: SECURITY, user_id: "u", bond_instrument_id: INSTRUMENT },
+        {
+          id: SECURITY.replace(/3/g, "4"),
+          user_id: "u",
+          bond_instrument_id: INSTRUMENT.toUpperCase(),
+        },
+      ],
+    });
+    const { data: resolved, severed } = resolveRestoreReferences(data);
+    expect(severed).toEqual([]);
+    expect(
+      (resolved.securities as Record<string, unknown>[]).map(
+        (r) => r.bond_instrument_id,
+      ),
+    ).toEqual([INSTRUMENT, INSTRUMENT]);
+  });
+
+  it("refuses a catalog reference that is not a UUID", () => {
+    const data = backup({
+      securities: [
+        { id: SECURITY, user_id: "u", bond_instrument_id: "not-a-uuid" },
+      ],
+    });
+    expect(refusal(() => resolveRestoreReferences(data))).toContain(
+      "securities.bond_instrument_id",
+    );
   });
 
   it("refuses a transaction on another user's account", () => {
