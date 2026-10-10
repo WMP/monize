@@ -402,6 +402,13 @@ security is never refreshed from a quote provider: the bond engine is its only
 automatic price source (spec section 1 of the discussion: Yahoo and MSN are not
 a source of retail bond terms or values).
 
+`bond_instruments` is reference data excluded from the user backup and seeded
+per deployment from the adapters' catalogs, so an instrument's id is
+deterministic: a UUIDv5 of `issuerCountryCode|issuerCode|seriesCode`. A
+restored link therefore points at the same instrument on any deployment
+whose catalog has it; a restore onto a deployment without it restores the
+link as `NULL` and says so, rather than failing the restore.
+
 ### 12.2 Lots
 
 The lots of a linked security are derived from the user's investment
