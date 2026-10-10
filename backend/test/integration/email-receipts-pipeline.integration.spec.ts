@@ -458,6 +458,20 @@ describe("email receipts pipeline (integration)", () => {
     await db.query(
       `UPDATE ai_review_requests SET status = 'rejected' WHERE kind = 'transaction_review'`,
     );
+    // The rematch reads an unmatched email only while it is recent
+    // (`REMATCH_DAYS` after `received_at`, against the database clock). The
+    // fixture email arrived on 2026-09-10, which the calendar has since put
+    // outside that window, so move this email and its transaction to the
+    // clock together (the candidate window is anchored on the email's date):
+    // the case is about the closed request, not about either window.
+    await db.query(
+      `UPDATE email_receipts SET received_at = CURRENT_TIMESTAMP - INTERVAL '1 day' WHERE id = $1`,
+      [waiting.id],
+    );
+    await db.query(
+      `UPDATE transactions SET transaction_date = CURRENT_DATE WHERE id = $1`,
+      [txId],
+    );
     await pollAlice();
     const [matched] = await receiptRows();
     expect(matched).toMatchObject({ status: "review", transaction_id: txId });
