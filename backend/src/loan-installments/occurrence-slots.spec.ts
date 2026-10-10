@@ -2,6 +2,7 @@ import {
   installmentNumberOf,
   occurrenceSlotsInRange,
   periodSpan,
+  precedingSlotDate,
   scheduleCadenceMatchesLoan,
   selectOccurrenceSlot,
   settlementWindow,
@@ -252,6 +253,47 @@ describe("occurrence slots", () => {
         to: "2024-04-28",
       });
       expect(periodSpan([])).toBeNull();
+    });
+  });
+
+  describe("the preceding slot, prev(D) (pricing spec 7.3)", () => {
+    const loan = (overrides: Partial<SlotCalendarSchedule> = {}) =>
+      monthly({
+        startDate: "2023-02-03",
+        nextDueDate: "2023-05-03",
+        ...overrides,
+      });
+
+    it("is the slot before the cursor, from the history stepped off the start date", () => {
+      expect(precedingSlotDate(loan(), "2023-05-03")).toBe("2023-04-03");
+    });
+
+    it("is none for the first slot, or a date before it", () => {
+      expect(precedingSlotDate(loan(), "2023-02-03")).toBeNull();
+      expect(precedingSlotDate(loan(), "2023-01-15")).toBeNull();
+      expect(
+        precedingSlotDate(loan({ nextDueDate: "2023-02-03" }), "2023-02-03"),
+      ).toBeNull();
+    });
+
+    it("steps forward from the cursor for a later date, and reads the calendar for a date off it", () => {
+      expect(precedingSlotDate(loan(), "2023-07-03")).toBe("2023-06-03");
+      expect(precedingSlotDate(loan(), "2023-04-20")).toBe("2023-04-03");
+    });
+
+    it("keeps the history when the cursor has run past end_date", () => {
+      expect(
+        precedingSlotDate(loan({ endDate: "2023-04-30" }), "2023-05-03"),
+      ).toBe("2023-04-03");
+    });
+
+    it("is none for a schedule without a calendar to read", () => {
+      expect(
+        precedingSlotDate(
+          loan({ startDate: undefined as unknown as string }),
+          "2023-05-03",
+        ),
+      ).toBeNull();
     });
   });
 

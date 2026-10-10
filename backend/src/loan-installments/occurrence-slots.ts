@@ -173,6 +173,35 @@ export function occurrenceSlotsInRange(
 }
 
 /**
+ * `prev(D)`: the latest slot of the schedule's calendar dated before `date`,
+ * or null when `date` is the first slot or precedes it
+ * (`docs/specs/scheduled-loan-installment-pricing.md` section 7.3). The
+ * calendar is the one above, built around the cursor with history stepped
+ * from `start_date`, so it holds no posting date: an occurrence posted late
+ * or moved by an override does not change which installment a rate change
+ * first applies to. A schedule without a start date has no calendar to read
+ * and answers null, which the advancement reads as "not newly applying".
+ */
+export function precedingSlotDate(
+  schedule: SlotCalendarSchedule,
+  date: string,
+): string | null {
+  if (!schedule.startDate || !schedule.nextDueDate) return null;
+  const from =
+    schedule.startDate < schedule.nextDueDate
+      ? schedule.startDate
+      : schedule.nextDueDate;
+  if (from >= date) return null;
+  let previous: string | null = null;
+  for (const slot of occurrenceSlotsInRange(schedule, { from, to: date })) {
+    if (slot.date < date && (previous === null || slot.date > previous)) {
+      previous = slot.date;
+    }
+  }
+  return previous;
+}
+
+/**
  * The span of dates the periods of `slots` cover, `[from, to)`, or null for
  * no slots. A facts loader reads the schedule's claims over it, because a
  * claim occupies the slot whose period holds its `original_due_date`, which

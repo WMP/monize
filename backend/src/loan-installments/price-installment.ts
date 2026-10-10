@@ -18,12 +18,16 @@ import {
 } from "../accounts/loan-payment-waterfall.util";
 import { LOAN_LIKE_ACCOUNT_TYPES } from "../common/currency-minor-unit.util";
 import { datedLoanDebt } from "../accounts/dated-loan-debt.util";
-import { LoanRateChange } from "../loan-rate-changes/entities/loan-rate-change.entity";
+import {
+  LoanRateChange,
+  LoanRateChangeSource,
+} from "../loan-rate-changes/entities/loan-rate-change.entity";
 import { effectiveAnnualRateOn } from "../accounts/effective-loan-rate.util";
 import {
   DEFAULT_PERIODS_PER_YEAR,
   periodsPerYearForStoredFrequency,
 } from "../accounts/payment-frequency.util";
+import { precedingSlotDate, SlotCalendarSchedule } from "./occurrence-slots";
 
 /**
  * The one pricing path for a scheduled loan installment (INV-LOAN-006,
@@ -34,11 +38,13 @@ import {
  * -- prices through the same code without importing a Nest service.
  *
  * Two halves. `resolveInstallmentCore` does the I/O: the dated ledger debt,
- * the dated rate, the template's managed lines. `priceInstallment` is the pure
- * tail: the method principal, the interest, the waterfall. A caller that
- * gathers its own facts (the settlement planner) calls the tail directly with
- * its own missing-data rule; the scheduled-transaction service calls the core
- * and keeps the posting path's defaults.
+ * the dated rate and the dated annuity payment (both from one read of the
+ * rate timeline, INV-LOAN-009, spec section 7), the template's managed
+ * lines. `priceInstallment` is the pure tail: the method principal, the
+ * interest, the waterfall. A caller that gathers its own facts (the
+ * settlement planner) calls the tail directly with its own missing-data
+ * rule; the scheduled-transaction service calls the core and keeps the
+ * posting path's defaults.
  *
  * This module imports no service from `transactions/`,
  * `scheduled-transactions/` or `transaction-rules/` and declares no provider;
@@ -77,10 +83,18 @@ export interface LoanTemplateSplits {
  *
  * `settlement` prices the installment a bank debit paid for its due date
  * (`docs/specs/loan-installment-settlement.md` section 7). An annuity's
- * payment is `accounts.payment_amount` when positive, else the template's
- * amount; the extra is the template's standing extra line, never grown toward
- * the account's configured extra; LINEAR and INTEREST_ONLY derive the
- * installment from the method, as the template purpose does.
+ * payment is the one dated at the slot (`datedAnnuityPayment`, the planner
+ * refuses before pricing when there is none); the extra is the template's
+ * standing extra line, never grown toward the account's configured extra;
+ * LINEAR and INTEREST_ONLY derive the installment from the method, as the
+ * template purpose does.
+ *
+ * The annuity payment every purpose but `reconfigure` prices from is dated
+ * at `asOfDate` (INV-LOAN-009, spec section 7.2): `template` takes it exactly
+ * when it newly applies to the installment (7.3) and otherwise grows the
+ * template toward it; `settlement` takes it exactly; `posting` keeps the
+ * bill shown. `reconfigure` alone targets `accounts.payment_amount`, the
+ * column a method change re-levels in the same transaction (7.6, item 3).
  */
 export type InstallmentPurpose =
   "template" | "posting" | "reconfigure" | "settlement";
@@ -267,16 +281,169 @@ export async function datedAnnualRate(
   loanAccount: Pick<Account, "id" | "interestRate">,
   asOfDate: string,
 ): Promise<number | null> {
+  return annualRateOn(
+    await readRateTimeline(m, loanAccount.id),
+    loanAccount,
+    asOfDate,
+  );
+}
+
+/** The rows a rate-change row must carry for the two dated reads. */
+export type RateTimelineRow = Pick<
+  LoanRateChange,
+  "effectiveDate" | "annualRate" | "newPaymentAmount" | "source"
+>;
+
+/**
+ * The account's rate timeline, oldest first: the one read both dated inputs
+ * (the rate and the annuity payment) are resolved from, so a consumer that
+ * prices through the core dates both from the same rows.
+ */
+async function readRateTimeline(
+  m: EntityManager,
+  accountId: string,
+): Promise<RateTimelineRow[]> {
+  return m.getRepository(LoanRateChange).find({
+    where: { accountId },
+    order: { effectiveDate: "ASC" },
+  });
+}
+
+/** The pure half of `datedAnnualRate`, over rows already read. */
+function annualRateOn(
+  rows: readonly RateTimelineRow[],
+  loanAccount: Pick<Account, "interestRate">,
+  asOfDate: string,
+): number | null {
   const scalar =
     loanAccount.interestRate === null || loanAccount.interestRate === undefined
       ? NaN
       : Number(loanAccount.interestRate);
   const fallback = Number.isFinite(scalar) ? scalar : null;
-  const rows = await m.getRepository(LoanRateChange).find({
-    where: { accountId: loanAccount.id },
-    order: { effectiveDate: "ASC" },
-  });
   return effectiveAnnualRateOn(rows, asOfDate, fallback);
+}
+
+/**
+ * The annuity payment at a date, and which figure it states (INV-LOAN-009,
+ * spec section 7.1; the settlement spec's decision 12).
+ */
+export interface DatedAnnuityPayment {
+  readonly amount: number;
+  /**
+   * True when `amount` is the base installment `B` (a `manual` or `inferred`
+   * rate-change row); false when it already holds the standing extra
+   * (`accounts.payment_amount`, or an `initial` row's verbatim copy of it).
+   */
+  readonly statesBase: boolean;
+  /**
+   * The `effective_date` of the row that states the payment, or null when
+   * `accounts.payment_amount` does: what `paymentNewlyApplies` compares with
+   * the slot before the installment.
+   */
+  readonly effectiveDate: string | null;
+  /** The stating row's source, or null when the account column states it. */
+  readonly source: LoanRateChangeSource | null;
+}
+
+/**
+ * The annuity payment at `asOfDate` (spec 7.1, `payment(D)`): the
+ * `new_payment_amount` of the latest rate-change row effective on or before
+ * the date that carries one (a tie on the date goes to the row read last
+ * over an ascending read, as `effectiveAnnualRateOn`), else
+ * `accounts.payment_amount`; null when neither says anything. The two
+ * sources hold different figures (`statesBase`): the rate-change resync adds
+ * the standing extra on top of a stated payment, while the setup path stores
+ * the total with the extra inside it, and an `initial` row copies that
+ * column. The one rule for the advancement, the settlement, the sync and the
+ * projection; `datedPaymentAmount` is its I/O half.
+ */
+export function datedAnnuityPayment(
+  rateChanges: readonly Pick<
+    LoanRateChange,
+    "effectiveDate" | "newPaymentAmount" | "source"
+  >[],
+  asOfDate: string,
+  configuredPayment: number | string | null | undefined,
+): DatedAnnuityPayment | null {
+  let latest: Pick<
+    LoanRateChange,
+    "effectiveDate" | "newPaymentAmount" | "source"
+  > | null = null;
+  for (const row of rateChanges) {
+    if (row.effectiveDate > asOfDate) continue;
+    const amount = Number(row.newPaymentAmount);
+    if (
+      row.newPaymentAmount == null ||
+      !Number.isFinite(amount) ||
+      amount <= 0
+    ) {
+      continue;
+    }
+    if (latest === null || row.effectiveDate >= latest.effectiveDate) {
+      latest = row;
+    }
+  }
+  if (latest !== null) {
+    return {
+      amount: Number(latest.newPaymentAmount),
+      statesBase: latest.source !== "initial",
+      effectiveDate: latest.effectiveDate,
+      source: latest.source,
+    };
+  }
+  const configured = Number(configuredPayment);
+  return configuredPayment != null &&
+    Number.isFinite(configured) &&
+    configured > 0
+    ? {
+        amount: configured,
+        statesBase: false,
+        effectiveDate: null,
+        source: null,
+      }
+    : null;
+}
+
+/**
+ * The annuity payment this loan carries on `asOfDate`, from its recorded rate
+ * history, falling back to `accounts.payment_amount`, and `null` when neither
+ * states one: `datedAnnuityPayment` over the same read as `datedAnnualRate`.
+ * The payment is dated for the reason the rate is (INV-LOAN-009): a change
+ * recorded for a later installment belongs to that installment, not to the
+ * one the template happens to hold.
+ */
+export async function datedPaymentAmount(
+  m: EntityManager,
+  loanAccount: Pick<Account, "id" | "paymentAmount">,
+  asOfDate: string,
+): Promise<DatedAnnuityPayment | null> {
+  return datedAnnuityPayment(
+    await readRateTimeline(m, loanAccount.id),
+    asOfDate,
+    loanAccount.paymentAmount,
+  );
+}
+
+/**
+ * `newly(D)` (spec 7.3): the dated payment comes from a row that is not an
+ * `initial` row and is dated after the slot before the installment
+ * (`precedingSlotDate`), so it applies to this installment for the first
+ * time and the template takes it exactly, down as well as up. An `initial`
+ * row restates `accounts.payment_amount` as it stood when the first change
+ * was recorded, so it never newly applies; a payment the account column
+ * states has no date and never does either.
+ */
+export function paymentNewlyApplies(
+  payment: DatedAnnuityPayment | null,
+  precedingSlot: string | null,
+): boolean {
+  return (
+    payment !== null &&
+    payment.effectiveDate !== null &&
+    payment.source !== "initial" &&
+    precedingSlot !== null &&
+    payment.effectiveDate > precedingSlot
+  );
 }
 
 /**
@@ -312,6 +479,18 @@ export interface PriceInstallmentInput {
   template: LoanTemplateSplits;
   /** The template parent's amount, unsigned. */
   templateAmount: number;
+  /**
+   * The annuity payment dated at `asOfDate` (`datedAnnuityPayment`), null
+   * when nothing states one. Read by the `template` and `settlement`
+   * purposes; ignored by `posting` (the bill shown), by `reconfigure` (the
+   * account column) and by a derived method (LINEAR, INTEREST_ONLY).
+   */
+  datedPayment: DatedAnnuityPayment | null;
+  /**
+   * `newly(D)`: whether `datedPayment`'s row first applies to this installment
+   * (`paymentNewlyApplies`). Read by the `template` purpose only.
+   */
+  paymentNewlyApplies: boolean;
   /** The stored cadence, in either spelling of the frequency column. */
   frequency: string;
   asOfDate: string;
@@ -340,6 +519,8 @@ export function priceInstallment(
     loanAccount,
     template,
     templateAmount,
+    datedPayment,
+    paymentNewlyApplies: newlyApplies,
     frequency,
     asOfDate,
     purpose,
@@ -373,10 +554,11 @@ export function priceInstallment(
   // interest spike consuming the extra). Deriving the *configured* payment
   // from it therefore ratchets: the clamp becomes the configuration and
   // nothing can grow back, even after the balance is restored by a void or
-  // an import (review #1131). The durable configuration lives on the
-  // account (payment_amount / extra_payment_amount, kept in sync when the
-  // user edits the schedule); the template only wins where it is larger,
-  // which can only mean a user edit the account columns have not seen.
+  // an import (review #1131). The durable configuration is the dated
+  // payment (the timeline, else `accounts.payment_amount`) and the account's
+  // `extra_payment_amount`; the template only wins where it is larger, which
+  // can only mean a user edit the timeline has not seen, until a stated
+  // payment newly applies (spec 7.3).
   const templateExtraAmount = extraPrincipalSplit
     ? Math.abs(Number(extraPrincipalSplit.amount))
     : 0;
@@ -414,10 +596,22 @@ export function priceInstallment(
         )
       : null;
 
-  // Only a template advancement may grow back toward the configured payment;
-  // a posting re-divides the bill it was shown (see `InstallmentPurpose`). A
-  // reconfigure and a settlement take the account's configured payment
-  // exactly when it has one, else the template's amount.
+  // The annuity payment is the one dated at `asOfDate` (INV-LOAN-009, spec
+  // 7.1): `total(D, E)` is a stated base plus the standing extra this purpose
+  // prices with, or the account's (or an `initial` row's) figure, which holds
+  // the extra already. Each purpose reads it as spec 7.2 says. Only a
+  // template advancement may grow back toward it, and it steps into it
+  // exactly, down as well as up, when the stating row newly applies to this
+  // installment (7.3); a posting re-divides the bill it was shown (see
+  // `InstallmentPurpose`); a settlement takes it exactly; a reconfigure
+  // alone targets `accounts.payment_amount`, which the method change
+  // re-levels. With no dated payment the template's amount stands.
+  const datedTotal =
+    datedPayment === null
+      ? null
+      : datedPayment.statesBase
+        ? roundMoney(datedPayment.amount + extraPrincipalAmount)
+        : datedPayment.amount;
   const configuredPayment = Number(loanAccount.paymentAmount) || 0;
   const paymentAmount = methodInstallment
     ? roundMoney(
@@ -427,10 +621,15 @@ export function priceInstallment(
       )
     : purpose === "posting"
       ? templateAmount
-      : (purpose === "reconfigure" || purpose === "settlement") &&
-          configuredPayment > 0
-        ? configuredPayment
-        : Math.max(templateAmount, configuredPayment);
+      : purpose === "reconfigure"
+        ? configuredPayment > 0
+          ? configuredPayment
+          : templateAmount
+        : datedTotal === null
+          ? templateAmount
+          : purpose === "settlement" || newlyApplies
+            ? datedTotal
+            : Math.max(templateAmount, datedTotal);
   const basePaymentAmount = paymentAmount - extraPrincipalAmount;
   const newPrincipal = methodInstallment
     ? methodInstallment.principal
@@ -466,7 +665,22 @@ export function priceInstallment(
 
 /** What `resolveInstallmentCore` reads the installment from. */
 export interface ResolveInstallmentInput {
-  scheduledTransaction: Pick<ScheduledTransaction, "amount" | "frequency">;
+  /**
+   * The schedule: its amount and cadence for every purpose, and its calendar
+   * columns (`start_date`, `next_due_date`, `end_date`,
+   * `occurrences_remaining`) for the `template` purpose, which reads the slot
+   * before `asOfDate` from them to decide whether a stated payment newly
+   * applies (spec 7.3). `rewriteLoanTemplate` passes the row it locked.
+   */
+  scheduledTransaction: Pick<
+    ScheduledTransaction,
+    | "amount"
+    | "frequency"
+    | "startDate"
+    | "nextDueDate"
+    | "endDate"
+    | "occurrencesRemaining"
+  >;
   splits: ScheduledTransactionSplit[];
   loanAccount: Account;
   /** The date the installment's money moves, which the interest accrues to. */
@@ -477,7 +691,8 @@ export interface ResolveInstallmentInput {
 /**
  * Resolve one installment of a scheduled loan payment: identify the managed
  * template lines, measure the debt through `asOfDate` from the ledger, read
- * the rate dated to it, and hand the facts to `priceInstallment`.
+ * the rate and the annuity payment dated to it, and hand the facts to
+ * `priceInstallment`.
  *
  * The debt is checked AFTER the shape, so "paid off" can say whether this is
  * a bill whose every line the payoff settles. The order is the whole point:
@@ -488,9 +703,10 @@ export interface ResolveInstallmentInput {
  * A rate nothing records is 0 % for the template, posting and reconfigure
  * purposes, the posting path's historical default
  * (`docs/specs/loan-installment-settlement.md` section 15 item 5); a
- * settlement declines, naming the rate (decision 16). The rate is read only
- * once the shape and the debt have passed, because a retired or unmanaged
- * template needs none.
+ * settlement declines, naming the rate (decision 16), and declines an
+ * annuity nothing states a payment for, naming the payment (spec 7.2). Both
+ * come from one read of the timeline, taken only once the shape and the debt
+ * have passed, because a retired or unmanaged template needs neither.
  */
 export async function resolveInstallmentCore(
   m: EntityManager,
@@ -526,8 +742,11 @@ export async function resolveInstallmentCore(
   }
 
   // Read after the shape and debt checks: a retired or unmanaged template
-  // needs no rate, and the answer does not change which of those it is.
-  const recordedRate = await datedAnnualRate(m, loanAccount, asOfDate);
+  // needs no rate, and the answer does not change which of those it is. One
+  // read serves both dated inputs, so the rate and the payment of an
+  // installment are read from the same rows at the same date.
+  const timeline = await readRateTimeline(m, loanAccountId);
+  const recordedRate = annualRateOn(timeline, loanAccount, asOfDate);
   if (recordedRate === null && purpose === "settlement") {
     return {
       kind: "declined",
@@ -540,6 +759,29 @@ export async function resolveInstallmentCore(
   // for every purpose, this one included, until the planner checks
   // `periodsPerYearForStoredFrequency` itself before calling the tail.
 
+  // The dated annuity payment (INV-LOAN-009). A derived method reads none;
+  // the tail ignores it there, and only an annuity settlement declines
+  // without one.
+  const datedPayment = isAnnuity(loanAccount)
+    ? datedAnnuityPayment(timeline, asOfDate, loanAccount.paymentAmount)
+    : null;
+  if (
+    datedPayment === null &&
+    purpose === "settlement" &&
+    isAnnuity(loanAccount)
+  ) {
+    return {
+      kind: "declined",
+      reason: `no payment is recorded for loan account ${loanAccountId} on ${asOfDate}`,
+    };
+  }
+  const newlyApplies =
+    purpose === "template" &&
+    paymentNewlyApplies(
+      datedPayment,
+      precedingSlotDate(slotCalendarOf(scheduledTransaction), asOfDate),
+    );
+
   return priceInstallment({
     debt,
     annualRate: recordedRate ?? 0,
@@ -550,8 +792,31 @@ export async function resolveInstallmentCore(
       extraPrincipalSplit: identified.extraPrincipalSplit,
     },
     templateAmount,
+    datedPayment,
+    paymentNewlyApplies: newlyApplies,
     frequency,
     asOfDate,
     purpose,
   });
+}
+
+/** Whether the account's installment is an annuity: every loan-like account but a LINEAR or INTEREST_ONLY mortgage. */
+function isAnnuity(loanAccount: Account): boolean {
+  return (
+    loanAccount.accountType !== AccountType.MORTGAGE ||
+    amortizationMethodFor(mortgageTypeOf(loanAccount)) === "ANNUITY"
+  );
+}
+
+/** The schedule's calendar columns as `occurrence-slots.ts` reads them. */
+function slotCalendarOf(
+  scheduledTransaction: ResolveInstallmentInput["scheduledTransaction"],
+): SlotCalendarSchedule {
+  return {
+    startDate: scheduledTransaction.startDate,
+    nextDueDate: scheduledTransaction.nextDueDate,
+    frequency: scheduledTransaction.frequency,
+    endDate: scheduledTransaction.endDate ?? null,
+    occurrencesRemaining: scheduledTransaction.occurrencesRemaining ?? null,
+  };
 }

@@ -11,7 +11,6 @@ import {
 import { occurrenceSlotsInRange } from "./occurrence-slots";
 import {
   applyAmountPolicy,
-  datedAnnuityPayment,
   LoanSettlementRow,
   planLoanSettlement,
 } from "./plan-loan-settlement";
@@ -1532,58 +1531,156 @@ describe("planLoanSettlement", () => {
     });
   });
 
-  describe("the dated annuity payment (decision 12)", () => {
-    const rows = [
-      { effectiveDate: "2024-01-01", newPaymentAmount: 1500, source: "manual" },
-      { effectiveDate: "2024-03-01", newPaymentAmount: null, source: "manual" },
-      {
-        effectiveDate: "2024-06-01",
-        newPaymentAmount: "1600.0000",
-        source: "inferred",
-      },
-    ] as unknown as LoanRateChange[];
+  /**
+   * The dated annuity payment at the matched slot (decision 12; the pricing
+   * spec's section 7.2 and the settlement rows S1 to S3 after its table
+   * 7.4), on that spec's fixture 5.1: ANNUITY, 100,000.00 over 300 monthly
+   * payments from 2023-02-03, 584.59 at 5.0 %, Timeline A 4.5 % / 560.00
+   * effective 2023-04-15, each slot before the matched one posted on its
+   * due date. The rule itself (`datedAnnuityPayment`) is asserted once, in
+   * `price-installment.spec.ts`, for every caller.
+   */
+  describe("the dated annuity payment at the slot (decision 12, pricing spec 7.4 S1 to S3)", () => {
+    const fixtureAccount = (overrides: Partial<Account> = {}): Account =>
+      linearAccount({
+        mortgageType: "ANNUITY",
+        interestRate: 5,
+        paymentAmount: 584.59,
+        paymentStartDate: "2023-02-03" as unknown as Date,
+        amortizationMonths: 300,
+        originalPrincipal: 100000,
+        openingBalance: -100000,
+        currentBalance: -100000,
+        ...overrides,
+      });
+    const rateRow = (
+      effectiveDate: string,
+      annualRate: number,
+      newPaymentAmount: number | null,
+      source: "initial" | "manual" = "manual",
+    ) =>
+      ({
+        effectiveDate,
+        annualRate,
+        newPaymentAmount,
+        source,
+      }) as unknown as LoanRateChange;
+    const timelineA = (initialPayment = 584.59) => [
+      rateRow("2023-02-03", 5, initialPayment, "initial"),
+      rateRow("2023-04-15", 4.5, 560),
+    ];
+    const atSlot = (
+      slot: string,
+      debt: number,
+      overrides: Partial<Parameters<typeof makeFacts>[0]> = {},
+    ) =>
+      makeFacts({
+        account: fixtureAccount(),
+        principal: 169.33,
+        interest: 415.26,
+        rateChanges: timelineA(),
+        schedule: { startDate: "2023-02-03", nextDueDate: slot },
+        range: { from: "2023-01-01", to: "2025-12-31" },
+        debt: { [slot]: debt },
+        ...overrides,
+      });
 
-    it("is the latest row on or before the date that carries one, stating the base", () => {
-      expect(datedAnnuityPayment(rows, "2024-04-01", 1000)).toEqual({
-        amount: 1500,
-        statesBase: true,
-      });
-      expect(datedAnnuityPayment(rows, "2024-06-01", 1000)).toEqual({
-        amount: 1600,
-        statesBase: true,
-      });
-      expect(datedAnnuityPayment(rows, "2024-07-15", 1000)).toEqual({
-        amount: 1600,
-        statesBase: true,
+    it("S1: the slot before the change prices the initial row's 584.59", () => {
+      const settlement = planned(
+        plan(
+          -584.59,
+          atSlot("2023-04-03", 99663.46),
+          {},
+          { date: "2023-04-03" },
+        ),
+      );
+      expect(settlement).toMatchObject({
+        dueDate: "2023-04-03",
+        installmentNumber: 3,
+        debtBefore: 99663.46,
+        annualRate: 5,
+        principal: 169.33,
+        interest: 415.26,
+        extraPrincipal: 0,
+        outcome: "exact",
       });
     });
 
-    it("an initial row is a copy of accounts.payment_amount and holds the extra", () => {
-      const initial = [
-        {
-          effectiveDate: "2024-01-01",
-          newPaymentAmount: 1600,
-          source: "initial",
-        },
-      ] as unknown as LoanRateChange[];
-      expect(datedAnnuityPayment(initial, "2024-02-01", null)).toEqual({
-        amount: 1600,
-        statesBase: false,
+    it("S2: the first slot the change applies to prices the stated 560.00", () => {
+      const settlement = planned(
+        plan(-560, atSlot("2023-05-03", 99494.13), {}, { date: "2023-05-03" }),
+      );
+      expect(settlement).toMatchObject({
+        dueDate: "2023-05-03",
+        installmentNumber: 4,
+        debtBefore: 99494.13,
+        annualRate: 4.5,
+        principal: 186.9,
+        interest: 373.1,
+        extraPrincipal: 0,
+        outcome: "exact",
+      });
+      // The same slot paid at the old 584.59 is money above the priced total.
+      expect(
+        lines(
+          plan(
+            -584.59,
+            atSlot("2023-05-03", 99494.13),
+            {},
+            { date: "2023-05-03" },
+          ),
+        ),
+      ).toEqual([186.9, 373.1, 24.59, "extra_principal"]);
+    });
+
+    it("S3: a stated base takes the standing extra of 50.00 on top", () => {
+      const settlement = planned(
+        plan(
+          -610,
+          atSlot("2023-05-03", 99343.51, {
+            account: fixtureAccount({
+              paymentAmount: 634.59,
+              extraPaymentAmount: 50,
+            }),
+            extra: 50,
+            rateChanges: timelineA(634.59),
+          }),
+          {},
+          { date: "2023-05-03" },
+        ),
+      );
+      expect(settlement).toMatchObject({
+        debtBefore: 99343.51,
+        principal: 187.46,
+        interest: 372.54,
+        extraPrincipal: 50,
+        outcome: "exact",
       });
     });
 
-    it("falls back to the account's payment before any row applies, and to null without one", () => {
-      expect(datedAnnuityPayment(rows, "2023-12-31", 1000)).toEqual({
-        amount: 1000,
-        statesBase: false,
+    it("Timeline B: the 2024-06-03 slot prices the stated 557.00 (table 5.3, row 17)", () => {
+      const settlement = planned(
+        plan(
+          -557,
+          atSlot("2024-06-03", 97227.62, {
+            rateChanges: [
+              rateRow("2023-02-03", 5, 584.59, "initial"),
+              rateRow("2024-05-15", 4.5, 557),
+              rateRow("2025-06-15", 4.0, 531.1),
+            ],
+          }),
+          {},
+          { date: "2024-06-03" },
+        ),
+      );
+      expect(settlement).toMatchObject({
+        installmentNumber: 17,
+        debtBefore: 97227.62,
+        annualRate: 4.5,
+        principal: 192.4,
+        interest: 364.6,
+        outcome: "exact",
       });
-      expect(datedAnnuityPayment(rows, "2023-12-31", "1200.5")).toEqual({
-        amount: 1200.5,
-        statesBase: false,
-      });
-      expect(datedAnnuityPayment(rows, "2023-12-31", null)).toBeNull();
-      expect(datedAnnuityPayment(rows, "2023-12-31", 0)).toBeNull();
-      expect(datedAnnuityPayment([], "2024-01-01", undefined)).toBeNull();
     });
   });
 

@@ -2734,28 +2734,27 @@ Source of truth     loan_rate_changes (new_payment_amount, effective_date,
                     source) bounded by the installment's own date, then
                     accounts.payment_amount; the schedule's slot calendar for
                     the slot before D.
-Enforcement         None yet for the advancement, the sync or the projection.
-                    The settlement already prices the dated payment
-                    (datedAnnuityPayment in
-                    backend/src/loan-installments/plan-loan-settlement.ts,
-                    settlement spec decision 12). Violated today:
-                    priceInstallment reads max(template,
-                    accounts.payment_amount) for every date on advancement,
-                    and the rate-change sync (buildScheduledUpdate) writes the
-                    payment in force today into a template whose
-                    next_due_date may be earlier, through
-                    ScheduledTransactionsService.update, which also writes
-                    accounts.payment_amount (issue #1637). The mechanism,
-                    built by docs/future-plans/dated-loan-payment-tasks.md:
-                    datedAnnuityPayment moved beside datedAnnualRate in
-                    backend/src/loan-installments/price-installment.ts and
-                    read by a datedPaymentAmount inside
-                    resolveInstallmentCore, with priceInstallment taking the
-                    dated payment as an input so no purpose but reconfigure
-                    (which targets the column a type change re-levels, by
-                    decision) reads it around the rule (B1); newly(D) from the slot calendar
-                    (occurrence-slots.ts) in the template purpose (B1); one
-                    plan function for the sync's preview and apply, priced at
+Enforcement         The core and the advancement (B1, issue #1639):
+                    datedAnnuityPayment beside datedAnnualRate in
+                    backend/src/loan-installments/price-installment.ts, read
+                    by datedPaymentAmount and by resolveInstallmentCore from
+                    the one read of the timeline that also dates the rate,
+                    with priceInstallment taking the dated payment as an
+                    input so no purpose but reconfigure (which targets the
+                    column a type change re-levels, by decision) reads
+                    accounts.payment_amount around the rule; newly(D) from
+                    precedingSlotDate on the schedule's slot calendar
+                    (occurrence-slots.ts) in the template purpose; the
+                    settlement prices through the same function (settlement
+                    spec decision 12). Still violated: the rate-change sync
+                    (buildScheduledUpdate) writes the payment in force today
+                    into a template whose next_due_date may be earlier,
+                    through ScheduledTransactionsService.update, which also
+                    writes accounts.payment_amount (issue #1637); no read
+                    prices an occurrence other than the next one. The
+                    remaining mechanism, built by
+                    docs/future-plans/dated-loan-payment-tasks.md: one plan
+                    function for the sync's preview and apply, priced at
                     next_due_date and written through rewriteLoanTemplate,
                     which writes nothing on the account, held by a source scan
                     refusing ScheduledTransactionsService.update in the
@@ -2776,11 +2775,14 @@ Failure response    The projection answers 503
                     complete: false with a null amount from the first
                     occurrence without a rate; the settlement refuses
                     loan_not_configured with missing payment (unchanged).
-Required tests      Owed: every row of the spec's tables 7.4 (with the
-                    settlement rows), 7.5 and 8.6 as
-                    named unit cases (B1, B2, B3); a PG integration case for
-                    the advancement across a stated change and for the sync
-                    leaving accounts.payment_amount unchanged (B1, B2); the
+Required tests      Met (B1): every row of the spec's table 7.4, its
+                    settlement rows and table 5.3 as named unit cases
+                    (price-installment.spec.ts, plan-loan-settlement.spec.ts,
+                    scheduled-transaction-loan.service.spec.ts); the PG
+                    integration case for the advancement across a stated
+                    change (dated-loan-payment.integration.spec.ts). Owed:
+                    tables 7.5 and 8.6 (B2, B3); the PG case for the sync
+                    leaving accounts.payment_amount unchanged (B2); the
                     source scan of B2.
 Known gaps          A cursor moved without an advancement (skip, an edit of
                     next_due_date) can miss the step into a lower payment; an
