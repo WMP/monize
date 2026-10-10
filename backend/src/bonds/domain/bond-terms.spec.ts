@@ -3,7 +3,16 @@ import { BondTermsError, parseBondTerms } from "./bond-terms";
 
 type Doc = Record<string, any>;
 
-const NAMES: ManifestName[] = ["tos1029", "ror1027", "coi1030", "edo1036"];
+const NAMES: ManifestName[] = [
+  "tos1029",
+  "ror1027",
+  "coi1030",
+  "edo1036",
+  "dor1028",
+  "ros1032",
+  "rod1038",
+  "ots0127",
+];
 
 function mutated(name: ManifestName, change: (doc: Doc) => void): unknown {
   const doc = manifestDocument(name);
@@ -62,6 +71,72 @@ describe("parseBondTerms", () => {
         proceedsFloor: { appliesTo: "ALL_PERIODS" },
       },
       schedule: { periodCount: 10 },
+    });
+  });
+
+  it("carries the letter values of the OTS manifest", () => {
+    expect(parseBondTerms(manifestDocument("ots0127"))).toMatchObject({
+      rateRule: { type: "FIXED", annualRate: "0.0200" },
+      schedule: { periodCount: 1, periodMonths: 3 },
+      capitalization: { type: "NONE" },
+      redemption: {
+        penalties: [{ type: "FORFEIT_ACCRUED_SINCE_LAST_PAYMENT" }],
+        proceedsFloor: null,
+        blackouts: [],
+      },
+      source: { document: "List emisyjny nr 94/2026" },
+    });
+  });
+
+  it("accepts the forfeit penalty without fields and refuses an extra one", () => {
+    expect(
+      parseBondTerms(
+        mutated("ror1027", (d) => {
+          d.redemption.penalties = [
+            { type: "FORFEIT_ACCRUED_SINCE_LAST_PAYMENT" },
+          ];
+        }),
+      ).redemption,
+    ).toMatchObject({
+      penalties: [{ type: "FORFEIT_ACCRUED_SINCE_LAST_PAYMENT" }],
+    });
+    expect(
+      refusalOf((d) => {
+        d.redemption.penalties = [
+          { type: "FORFEIT_ACCRUED_SINCE_LAST_PAYMENT", amount: "1.00" },
+        ];
+      }).field,
+    ).toBe("terms.redemption.penalties[0].amount");
+  });
+
+  it("carries the letter values of the DOR, ROS and ROD manifests", () => {
+    expect(parseBondTerms(manifestDocument("dor1028"))).toMatchObject({
+      rateRule: { firstPeriodRate: "0.0415", spread: "0.0015" },
+      redemption: {
+        penalties: [{ amount: "0.70" }],
+        blackouts: [{ businessDays: 5 }],
+        proceedsFloor: { appliesTo: "FIRST_PERIOD" },
+      },
+      schedule: { periodCount: 24, periodMonths: 1 },
+      source: { document: "List emisyjny nr 96/2026" },
+    });
+    expect(parseBondTerms(manifestDocument("ros1032"))).toMatchObject({
+      rateRule: { firstPeriodRate: "0.0500", margin: "0.0200" },
+      redemption: {
+        penalties: [{ amount: "2.00" }],
+        proceedsFloor: { appliesTo: "ALL_PERIODS" },
+      },
+      schedule: { periodCount: 6, periodMonths: 12 },
+      source: { document: "List emisyjny nr 100/2026" },
+    });
+    expect(parseBondTerms(manifestDocument("rod1038"))).toMatchObject({
+      rateRule: { firstPeriodRate: "0.0560", margin: "0.0250" },
+      redemption: {
+        penalties: [{ amount: "3.00" }],
+        proceedsFloor: { appliesTo: "ALL_PERIODS" },
+      },
+      schedule: { periodCount: 12, periodMonths: 12 },
+      source: { document: "List emisyjny nr 101/2026" },
     });
   });
 

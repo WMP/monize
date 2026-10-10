@@ -165,7 +165,14 @@ export function valueBondLot(input: BondEngineInput): BondValuation {
       gross = lot(grossBond);
       accrued = lot(grossBond.sub(nominal));
       if (refusal === null)
-        early = lot(proceedsPerBond(terms, value, current.index));
+        early = lot(
+          proceedsPerBond(
+            terms,
+            value,
+            baseAt(terms, inputs.prior),
+            current.index,
+          ),
+        );
     } else if (refusal === null) {
       refusal = "RATE_UNKNOWN";
     }

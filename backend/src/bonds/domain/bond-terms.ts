@@ -46,10 +46,15 @@ export type Blackout = {
   readonly calendarId: string;
 };
 
-export type Penalty = {
-  readonly type: "FIXED_FEE_PER_UNIT";
-  readonly amount: string;
-};
+export type Penalty =
+  | {
+      readonly type: "FIXED_FEE_PER_UNIT";
+      readonly amount: string;
+    }
+  | {
+      /** The interest accrued since the period start is not paid. */
+      readonly type: "FORFEIT_ACCRUED_SINCE_LAST_PAYMENT";
+    };
 
 export type ProceedsFloor = {
   readonly type: "FACE_VALUE";
@@ -334,7 +339,14 @@ function parseRedemption(value: unknown, path: string): Redemption {
       };
     }),
     penalties: list(r.penalties, `${path}.penalties`, (item, at): Penalty => {
-      const t = primitive(item, at, ["FIXED_FEE_PER_UNIT"] as const);
+      const t = primitive(item, at, [
+        "FIXED_FEE_PER_UNIT",
+        "FORFEIT_ACCRUED_SINCE_LAST_PAYMENT",
+      ] as const);
+      if (t === "FORFEIT_ACCRUED_SINCE_LAST_PAYMENT") {
+        object(item, at, ["type"]);
+        return { type: t };
+      }
       const p = object(item, at, ["type", "amount"]);
       return { type: t, amount: decimal(p.amount, `${at}.amount`) };
     }),

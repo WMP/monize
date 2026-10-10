@@ -65,10 +65,15 @@ export function windowRefusal(
   }
 }
 
-/** Per-bond proceeds of an early redemption: value less penalties, then the floor. */
+/**
+ * Per-bond proceeds of an early redemption: value less penalties, then the floor.
+ * `periodBase` is what the bond is worth at the start of the period, so the
+ * interest accrued since then is `valueBeforePenalty - periodBase`.
+ */
 export function proceedsPerBond(
   terms: BondTerms,
   valueBeforePenalty: ExactDecimal,
+  periodBase: ExactDecimal,
   periodIndex: number,
 ): ExactDecimal {
   const redemption = terms.redemption;
@@ -78,8 +83,10 @@ export function proceedsPerBond(
     switch (p.type) {
       case "FIXED_FEE_PER_UNIT":
         return sum.add(ExactDecimal.parse(p.amount));
+      case "FORFEIT_ACCRUED_SINCE_LAST_PAYMENT":
+        return sum.add(valueBeforePenalty.sub(periodBase));
       default:
-        return assertNever(p.type);
+        return assertNever(p);
     }
   }, ExactDecimal.ZERO);
   const net = roundMoney(terms, valueBeforePenalty.sub(penalty));

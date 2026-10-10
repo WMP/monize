@@ -4,17 +4,33 @@ import { EMPTY_CALENDAR_REGISTRY } from "../../domain/calendar-registry";
 import { BondEngineInput } from "../../engine/bond-engine-types";
 import { registerPolishCalendars } from ".";
 import coi from "./manifests/coi1030.terms.json";
+import dor from "./manifests/dor1028.terms.json";
 import edo from "./manifests/edo1036.terms.json";
+import ots from "./manifests/ots0127.terms.json";
+import rod from "./manifests/rod1038.terms.json";
 import ror from "./manifests/ror1027.terms.json";
+import ros from "./manifests/ros1032.terms.json";
 import tos from "./manifests/tos1029.terms.json";
 
-export type ManifestName = "tos1029" | "ror1027" | "coi1030" | "edo1036";
+export type ManifestName =
+  | "tos1029"
+  | "ror1027"
+  | "coi1030"
+  | "edo1036"
+  | "dor1028"
+  | "ros1032"
+  | "rod1038"
+  | "ots0127";
 
 const DOCUMENTS: Record<ManifestName, unknown> = {
   tos1029: tos,
   ror1027: ror,
   coi1030: coi,
   edo1036: edo,
+  dor1028: dor,
+  ros1032: ros,
+  rod1038: rod,
+  ots0127: ots,
 };
 
 export function manifest(name: ManifestName): BondTerms {

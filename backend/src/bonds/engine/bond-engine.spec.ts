@@ -511,6 +511,29 @@ describe("valueBondLot: early redemption window", () => {
     );
     expect(v.earlyRedemptionValue).toBe("99.67");
   });
+
+  it("a forfeit penalty returns the base of the period, the rounded N1 in period 2", () => {
+    const forfeit = (extra: Record<string, unknown>[]) =>
+      variant(
+        "tos1029",
+        (d) => {
+          d.redemption.proceedsFloor = null;
+          d.redemption.penalties = [
+            { type: "FORFEIT_ACCRUED_SINCE_LAST_PAYMENT" },
+            ...extra,
+          ];
+        },
+        "2026-10-15",
+        "2028-01-15",
+      );
+    // N1 = round(100 x 1.044) = 104.40, the base of period 2 (TOS annex 2).
+    expect(forfeit([]).earlyRedemptionValue).toBe("104.40");
+    // Combined with a fixed fee, both are deducted: 104.40 - 1.00.
+    expect(
+      forfeit([{ type: "FIXED_FEE_PER_UNIT", amount: "1.00" }])
+        .earlyRedemptionValue,
+    ).toBe("103.40");
+  });
 });
 
 describe("valueBondLot: unknown calendars are incomplete terms, never guessed", () => {

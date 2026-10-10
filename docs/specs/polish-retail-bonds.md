@@ -96,7 +96,8 @@ redemption      { type: MATURITY_ONLY }
                   latestDaysBeforeMaturity,
                   blackouts: [{ type: RECORD_DAY_BEFORE_COUPON, businessDays,
                                 calendarId }],
-                  penalties: [{ type: FIXED_FEE_PER_UNIT, amount }],
+                  penalties: [{ type: FIXED_FEE_PER_UNIT, amount }
+                            | { type: FORFEIT_ACCRUED_SINCE_LAST_PAYMENT }],
                   proceedsFloor: { type: FACE_VALUE,
                                    appliesTo: ALL_PERIODS | FIRST_PERIOD } | null }
 rounding        { moneyDecimals: 2, mode: HALF_UP }
@@ -117,6 +118,27 @@ The four Polish series in this vocabulary:
 | penalty | 1.00 | 0.50 | 2.00 | 3.00 |
 | `proceedsFloor.appliesTo` | `ALL_PERIODS` | `FIRST_PERIOD` | `FIRST_PERIOD` | `ALL_PERIODS` |
 | blackouts | none | record day, 5 | record day, 5 | none |
+
+`FORFEIT_ACCRUED_SINCE_LAST_PAYMENT` was added for OTS: its letter (para 23,
+points 3 and 4) pays the face value on early redemption and "no interest is
+due". The penalty is the interest accrued since the period start, so the
+proceeds are the period's base. This is the first primitive a product needed
+after the engine was written; it changed the terms union, the parser and one
+engine case, and nothing country-specific.
+
+The other Polish series on sale in October 2026 use the same vocabulary:
+
+| Field | OTS0127 | DOR1028 | ROS1032 | ROD1038 |
+| --- | --- | --- | --- | --- |
+| `periodMonths` x `periodCount` | 3 x 1 | 1 x 24 | 12 x 6 | 12 x 12 |
+| `rateRule` | `FIXED` 0.0200 | `BENCHMARK_PLUS_SPREAD`, first 0.0415, spread 0.0015 | `INFLATION_PLUS_MARGIN_AS_RATE`, first 0.0500, margin 0.0200 | same, first 0.0560, margin 0.0250 |
+| `capitalization` | `NONE` | `NONE` | `COMPOUND_AT_PERIOD_END`, `NONE` | `COMPOUND_AT_PERIOD_END`, `NONE` |
+| penalties | `FORFEIT_ACCRUED_SINCE_LAST_PAYMENT` | 0.70 | 2.00 | 3.00 |
+| `proceedsFloor.appliesTo` | -- | `FIRST_PERIOD` | `ALL_PERIODS` | `ALL_PERIODS` |
+
+ROS and ROD are sold only to holders of the 800+ benefit; eligibility is not
+modelled. Letters: OTS nr 94/2026, DOR nr 96/2026, ROS nr 100/2026, ROD nr
+101/2026, all of 21 September 2026.
 
 ### 2.1.1 One accrual formula
 
