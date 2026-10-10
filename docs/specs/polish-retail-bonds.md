@@ -367,3 +367,90 @@ values are shown to a user.
 | Country-agnostic engine | guard | no domain or engine file imports an adapter or names a country or product literal (section 2.0) |
 | Immutability | integration | update and delete of a terms version and of an announced rate raise |
 | Read service | integration | loads the newest version, applies announced over derived, names the version |
+
+## 12. Portfolio integration (phase 3)
+
+### 12.1 Link
+
+A user's `securities` row may point at one bond instrument through a nullable
+`securities.bond_instrument_id` (`ON DELETE RESTRICT`). The link is refused
+unless the security's currency equals the instrument's currency (INV-PRICE-001:
+a stored price is in the currency the security is recorded in). A linked
+security is never refreshed from a quote provider: the bond engine is its only
+automatic price source (spec section 1 of the discussion: Yahoo and MSN are not
+a source of retail bond terms or values).
+
+### 12.2 Lots
+
+The lots of a linked security are derived from the user's investment
+transactions on it, across all accounts, in register order, `VOID` rows
+excluded:
+
+| Action (base) | Effect |
+| --- | --- |
+| `BUY`, `REINVEST`, `ADD_SHARES` | a new lot dated `transaction_date` |
+| `TRANSFER_IN` with a linked `TRANSFER_OUT` of the same security | none (the pair moves a lot between the user's accounts and keeps its purchase date) |
+| `TRANSFER_IN` without a linked leg | a new lot dated `transaction_date`, flagged `purchaseDateAssumed` |
+| `SELL`, `REDEEM`, `REMOVE_SHARES`, unlinked `TRANSFER_OUT` | removes quantity first-in first-out |
+| `SPLIT` | lots unknown (a bond does not split); valuation refused with the reason |
+| cash-only actions | none |
+
+A lot quantity that is not a whole number of bonds, or a removal larger than
+the open lots, makes the lots unknown; the reason is named, nothing is
+guessed.
+
+### 12.3 Daily price
+
+For each calendar day `D` from the earliest lot date to today, the unit price
+of a linked security is
+
+```text
+price(D) = sum over lots open on D of grossValue(lot, asOf = D) / sum of their quantities
+```
+
+rounded half-up to 10 decimals (`security_prices.close_price` is
+`NUMERIC(24,10)`), computed with `ExactDecimal`. `grossValue` is principal
+plus accrued interest, before the early redemption fee and tax: the economic
+value of the holding. The early redemption value is shown beside it in the
+detail view (section 13), never instead of it.
+
+A day on which any open lot has no `grossValue` (a started period without a
+rate, INV-BOND-002) gets no price row. The portfolio then carries the last
+priced day, as for any security, and the detail view names what is missing.
+
+Rows are written with `source = 'bond_engine'` by
+`INSERT ... ON CONFLICT (security_id, price_date) DO UPDATE ... WHERE
+security_prices.source = 'bond_engine' AND close_price IS DISTINCT FROM
+EXCLUDED.close_price`: a manual price or a transaction-derived price on the
+same day is never overwritten, and an unchanged day is not rewritten. A bond
+engine row for a day that no longer has a price (lots changed) is deleted.
+
+### 12.4 When prices are written
+
+- after a link is set or changed (the request recomputes that security);
+- daily, after the benchmark refresh, for every linked security of every user
+  (system fan-out, then each user in its own context; one user's failure does
+  not stop the others);
+- on demand through `POST /bonds/securities/:securityId/recompute`.
+
+The recompute runs after the commit of the change that triggered it, never
+inside it (INV-CACHE-001).
+
+### 12.5 Read API
+
+- `GET /bonds/instruments`: the catalog (id, issuer country, issuer, program,
+  series, currency), for the link picker.
+- `GET /bonds/securities/:securityId/valuation?asOf=YYYY-MM-DD`: the lots and
+  one `BondValuation` per lot (section 2.6), plus the lot totals, for the
+  detail view. Owner-scoped by RLS; another user's security answers 404.
+
+## 13. Detail view (phase 4)
+
+For a linked security the security page shows, per lot and in total: series,
+purchase date, maturity, current period and its rate with `rateSource`,
+principal, accrued interest, gross value, early redemption value or the
+refusal reason, next cash flow, known and projected maturity value, the
+projection assumptions and the `missing` list with the publisher to obtain each
+item from. Percentages and amounts are localized by the reader's number
+format preference. The security form offers the instrument picker when the
+security type is `BOND`.
