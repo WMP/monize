@@ -6,7 +6,8 @@
  * refresh, but the reason for a breaker is the same: a dead upstream must not
  * be called once per payee across a whole deployment. Enable Banking is the
  * bank-sync aggregator: the daily sync calls it once per linked bank account
- * for every user, the same fan-out shape.
+ * for every user, the same fan-out shape. NBP and GUS publish the benchmark
+ * series (reference rate, CPI) that bond valuations read.
  *
  * The id is what goes in `provider_health.provider` and must stay stable -- it
  * is the primary key of the durable notification state, so renaming one starts
@@ -20,6 +21,8 @@ export const TRACKED_PROVIDERS = {
   deutsche_boerse: "Deutsche Börse",
   google_places: "Google Places",
   enable_banking: "Enable Banking",
+  nbp: "Narodowy Bank Polski",
+  gus: "Główny Urząd Statystyczny",
 } as const;
 
 export type TrackedProviderId = keyof typeof TRACKED_PROVIDERS;

@@ -221,6 +221,11 @@ const WITH_CONTEXT_ALLOWLIST = [
   // it: the rows it writes are global reference data with no owner, exactly like
   // the exchange-rate refresh above.
   "src/securities/market-index.service.ts",
+  // The bond catalog seed and the benchmark refresh write global reference data
+  // with no owner (bond instruments, terms versions, NBP and GUS series), the
+  // same as the market-index refresh above; neither has a request behind it.
+  "src/bonds/bond-catalog.service.ts",
+  "src/bonds/benchmark-refresh.service.ts",
   "src/securities/securities.controller.ts",
   "src/securities/security-price.service.ts",
   // GEM recommendation-change cron: a deployment-wide fan-out (system context

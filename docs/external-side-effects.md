@@ -508,6 +508,24 @@ least correct on failure: the provider is called and the response parsed before
 anything is saved, so a failed call leaves no partial rows, and a total provider
 failure throws rather than fabricating a result.
 
+### Bond reference data (NBP, GUS)
+
+`BenchmarkRefreshService` reads the NBP reference rate and the GUS year-on-year
+CPI and writes them to `benchmark_values`; it has no effect at the publisher to
+undo. Each outbound call is gated by the `nbp` or `gus` circuit breaker
+(`ProviderHealthService`), and the whole body is read before the breaker records
+a success. The fetch and parse finish before anything is written, so a failed or
+unparseable document leaves no partial rows, and one series failing does not
+stop the other. The write is one transaction per series: the observations
+(`ON CONFLICT (benchmark_code, observation_date) DO UPDATE ... WHERE value IS
+DISTINCT FROM EXCLUDED.value`, so a revision corrects a row and a repeat
+converges) then `covered_through = GREATEST(...)`, which only moves forward. The
+lease `bond-benchmarks` stops N replicas fetching at once and is not what keeps
+the data correct. `BondCatalogService` seeds the curated terms with
+`ON CONFLICT DO NOTHING`; a stored terms version is never rewritten (INV-BOND-001),
+so a catalog entry whose content differs from the stored one is logged and
+skipped, and a correction is a new `termsVersion`.
+
 ### Bank sync
 
 A bank sync reads from the provider and writes only to PostgreSQL, so the

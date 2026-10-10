@@ -1,7 +1,7 @@
 import { DataSource } from "typeorm";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { manifestDocument } from "./adapters/pl/pl-test-input";
-import { BOND_CALENDARS } from "./bond-calendars";
+import { BOND_CALENDARS } from "./bond-adapters";
 import {
   BondDataInconsistentError,
   BondDataNotFoundError,

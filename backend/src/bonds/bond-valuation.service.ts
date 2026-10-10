@@ -3,7 +3,7 @@ import { DataSource, EntityManager } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { BenchmarkData } from "./domain/benchmark";
 import { BondTerms, parseBondTerms } from "./domain/bond-terms";
-import { BOND_CALENDARS } from "./bond-calendars";
+import { BOND_CALENDARS } from "./bond-adapters";
 import {
   BondDataInconsistentError,
   BondDataNotFoundError,
