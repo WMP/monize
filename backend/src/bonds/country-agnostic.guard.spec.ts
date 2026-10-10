@@ -13,6 +13,14 @@ const FORBIDDEN = /\b(PL|PLN|TOS|ROR|COI|EDO|NBP|GUS)\b/;
 const ADAPTER_IMPORT =
   /from\s+["'][^"']*adapters[^"']*["']|require\(\s*["'][^"']*adapters/;
 
+/**
+ * INV-BOND-003: money and rates are ExactDecimal. JavaScript number parsing and
+ * Math belong only to the calendar-date module, which counts days.
+ */
+const FLOAT_ARITHMETIC =
+  /\bparseFloat\s*\(|\bNumber\s*\(|\bNumber\.parse|\bMath\./;
+const DATE_MODULE = "calendar-date.ts";
+
 const HOW_TO_FIX =
   "Express the rule as a primitive in the terms data (a new union member in " +
   "domain/bond-terms.ts plus one engine case) and keep the market-specific part " +
@@ -42,9 +50,12 @@ function guardedFiles(): string[] {
   return out;
 }
 
-function offenders(pattern: RegExp): string[] {
+function offenders(
+  pattern: RegExp,
+  exempt: (file: string) => boolean = () => false,
+): string[] {
   const found: string[] = [];
-  for (const file of guardedFiles()) {
+  for (const file of guardedFiles().filter((f) => !exempt(f))) {
     stripComments(readFileSync(file, "utf8"))
       .split("\n")
       .forEach((line, i) => {
@@ -78,7 +89,27 @@ describe("bonds domain and engine are country-agnostic", () => {
     }
   });
 
+  it("does no number arithmetic outside the calendar-date module (INV-BOND-003)", () => {
+    const found = offenders(FLOAT_ARITHMETIC, (f) => f.endsWith(DATE_MODULE));
+    if (found.length) {
+      throw new Error(
+        `number arithmetic in domain/ or engine/:\n${found.join("\n")}\n` +
+          "Compute money and rates with ExactDecimal (domain/exact-decimal.ts); " +
+          "only calendar-date.ts may count days with numbers.",
+      );
+    }
+  });
+
   describe("the scanner", () => {
+    it("catches number parsing and Math, not ExactDecimal", () => {
+      expect(FLOAT_ARITHMETIC.test("const x = Number(row.amount);")).toBe(true);
+      expect(FLOAT_ARITHMETIC.test("const x = parseFloat(v);")).toBe(true);
+      expect(FLOAT_ARITHMETIC.test("const x = Math.round(v * 100);")).toBe(
+        true,
+      );
+      expect(FLOAT_ARITHMETIC.test("ExactDecimal.parse(v).mul(q)")).toBe(false);
+    });
+
     it("lets a comment name what code may not, and catches code", () => {
       const prose = stripComments(
         "// TOS note\n/* ROR\nPLN */\nconst a = 1;\n",
