@@ -113,6 +113,7 @@ INV-LOAN-002's entry names the missing source scan while its row said `--`.
 | INV-LOAN-006 dated installment pricing | **required** | **required** | required | -- | -- | -- | -- | optional |
 | INV-LOAN-007 one method per mortgage type | **required** | **required** | required | -- | -- | -- | -- | optional |
 | INV-LOAN-008 one settlement per occurrence | **required** | -- | **required** | required | -- | -- | -- | optional |
+| INV-LOAN-009 dated annuity payment | **required** | required | **required** | -- | -- | -- | -- | optional |
 | INV-LOAN-HISTORY-001 ledger-backed loan interest | **required** | required | -- | -- | -- | -- | -- | optional |
 | INV-OCCURRENCE-001 one effect | supporting | -- | required | required | **required** | required | -- | required |
 | INV-OCCURRENCE-002 override price | required | -- | -- | -- | -- | -- | -- | required |
