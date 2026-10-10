@@ -55,6 +55,12 @@ describe("effectiveRunLimit", () => {
     expect(effectiveRunLimit(2500)).toBe(1000);
     expect(effectiveRunLimit(7.9)).toBe(7);
   });
+
+  it("takes a caller's own ceiling in place of the run's", () => {
+    expect(effectiveRunLimit(5000, 5000)).toBe(5000);
+    expect(effectiveRunLimit(9000, 5000)).toBe(5000);
+    expect(effectiveRunLimit(undefined, 5000)).toBe(200);
+  });
 });
 
 describe("loadCandidateUnits", () => {

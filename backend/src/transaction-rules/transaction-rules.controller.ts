@@ -26,8 +26,10 @@ import { AuthGuard } from "@nestjs/passport";
 import { OwnerOnly } from "../delegation/decorators/delegate-access.decorator";
 import { TransactionRulesService } from "./transaction-rules.service";
 import { TransactionRulesRunService } from "./transaction-rules-run.service";
+import { TransactionRulesMatchService } from "./transaction-rules-match.service";
 import { ExplainRuleRowDto } from "./dto/explain-rule-row.dto";
 import {
+  MatchDraftRuleDto,
   PreviewDraftRuleDto,
   RuleRunFiltersDto,
   RunTransactionRuleDto,
@@ -54,6 +56,7 @@ export class TransactionRulesController {
   constructor(
     private readonly rulesService: TransactionRulesService,
     private readonly runService: TransactionRulesRunService,
+    private readonly matchService: TransactionRulesMatchService,
   ) {}
 
   @Get()
@@ -104,6 +107,25 @@ export class TransactionRulesController {
     @Body() dto: PreviewDraftRuleDto,
   ) {
     return this.runService.previewDraft(req.user.id, dto);
+  }
+
+  // Registered before the `:id` routes, like "preview-draft". Read-only.
+  @Post("match-draft")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Which existing transactions an unsaved condition matches, a page at a time (writes nothing)",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "One page of matching transactions, in register shape",
+  })
+  @ApiResponse({ status: 400, description: "Invalid condition" })
+  matchDraft(
+    @Request() req: { user: { id: string } },
+    @Body() dto: MatchDraftRuleDto,
+  ) {
+    return this.matchService.matchDraft(req.user.id, dto);
   }
 
   // Registered before the `:id` routes, like "preview-draft". Read-only: the

@@ -5206,6 +5206,66 @@ describe("TransactionsService", () => {
         expect(result.startingBalance).toBe(2500);
       });
     });
+
+    describe("findRegisterRowsByIds", () => {
+      it("reads nothing for no ids", async () => {
+        await expect(
+          service.findRegisterRowsByIds("user-1", []),
+        ).resolves.toEqual([]);
+        expect(
+          transactionsRepository.createQueryBuilder,
+        ).not.toHaveBeenCalled();
+      });
+
+      it("loads the ids with the register's joins, scoped to the caller, in register order", async () => {
+        const mockQb = createMockQueryBuilder();
+        mockQb.getMany.mockResolvedValue([{ id: "tx-2" }, { id: "tx-1" }]);
+        transactionsRepository.createQueryBuilder.mockReturnValue(mockQb);
+        investmentTxRepository.find.mockResolvedValue([
+          { id: "inv-1", transactionId: "tx-1" },
+        ]);
+
+        const rows = await service.findRegisterRowsByIds("user-1", [
+          "tx-1",
+          "tx-2",
+        ]);
+
+        expect(mockQb.where).toHaveBeenCalledWith(
+          "transaction.userId = :userId",
+          { userId: "user-1" },
+        );
+        expect(mockQb.andWhere).toHaveBeenCalledWith(
+          "transaction.id IN (:...ids)",
+          { ids: ["tx-1", "tx-2"] },
+        );
+        expect(mockQb.leftJoinAndSelect).toHaveBeenCalledWith(
+          "transaction.linkedTransaction",
+          "linkedTransaction",
+        );
+        expect(mockQb.orderBy).toHaveBeenCalledWith(
+          expect.stringContaining("transaction"),
+          "DESC",
+          undefined,
+        );
+        expect(rows.map((r) => r.id)).toEqual(["tx-2", "tx-1"]);
+        expect(rows[1].linkedInvestmentTransactionId).toBe("inv-1");
+        expect(rows[0].attachmentCount).toBe(0);
+      });
+
+      it("joins exactly what findAll joins, so a row is drawn the same on both", async () => {
+        const listQb = createMockQueryBuilder();
+        transactionsRepository.createQueryBuilder.mockReturnValue(listQb);
+        investmentTxRepository.find.mockResolvedValue([]);
+        await service.findAll("user-1");
+        const idsQb = createMockQueryBuilder();
+        transactionsRepository.createQueryBuilder.mockReturnValue(idsQb);
+        await service.findRegisterRowsByIds("user-1", ["tx-1"]);
+
+        expect(idsQb.leftJoinAndSelect.mock.calls).toEqual(
+          listQb.leftJoinAndSelect.mock.calls,
+        );
+      });
+    });
   });
 
   describe("getReconciliationData", () => {

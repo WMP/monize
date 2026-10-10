@@ -4,6 +4,7 @@ import { applyInvestmentTransactionFilters } from "../common/investment-filter.u
 import { applyRegisterOrder } from "../transactions/register-order";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { RuleRunFilters } from "./rule-run.types";
+import type { RuleRowInput } from "./transaction-rules-applier.service";
 import {
   DEFAULT_RULE_RUN_LIMIT,
   MAX_RULE_RUN_LIMIT,
@@ -34,11 +35,14 @@ export interface CandidateSet {
   readonly truncated: boolean;
 }
 
-/** The limit a caller asked for, inside 1..MAX. */
-export function effectiveRunLimit(limit: number | undefined): number {
+/** The limit a caller asked for, inside 1..max (the run's ceiling unless the caller names its own). */
+export function effectiveRunLimit(
+  limit: number | undefined,
+  max: number = MAX_RULE_RUN_LIMIT,
+): number {
   return Math.min(
     Math.max(Math.trunc(limit ?? DEFAULT_RULE_RUN_LIMIT), 1),
-    MAX_RULE_RUN_LIMIT,
+    max,
   );
 }
 
@@ -116,9 +120,14 @@ export async function loadCandidateUnits(
   m: EntityManager,
   userId: string,
   filters: RuleRunFilters,
-  options: { lock: boolean; direction?: CandidateDirection },
+  options: {
+    lock: boolean;
+    direction?: CandidateDirection;
+    /** A ceiling other than the run's, for a read that writes nothing (the match). */
+    maxLimit?: number;
+  },
 ): Promise<CandidateSet> {
-  const limit = effectiveRunLimit(filters.limit);
+  const limit = effectiveRunLimit(filters.limit, options.maxLimit);
   const qb = m
     .getRepository(Transaction)
     .createQueryBuilder("transaction")
@@ -196,4 +205,35 @@ export async function loadCandidateUnits(
     units.push(unit);
   }
   return { units, truncated };
+}
+
+/**
+ * The facts input of a unit, read from its primary row. One spelling for the
+ * run's plan and the match, so the two can never evaluate a row differently.
+ */
+export function unitRowInput(
+  unit: CandidateUnit,
+  tagsByRow: ReadonlyMap<string, readonly string[]>,
+  attached: ReadonlySet<string>,
+): RuleRowInput {
+  const { primary } = unit;
+  return {
+    accountId: primary.accountId,
+    currencyCode: primary.currencyCode,
+    amount: primary.amount,
+    isTransfer: unit.isTransfer,
+    fromAccountId: unit.fromAccountId,
+    toAccountId: unit.toAccountId,
+    payeeId: primary.payeeId,
+    payeeText: primary.payeeName,
+    payeeName: primary.payeeName,
+    categoryId: primary.categoryId,
+    description: primary.description,
+    tagIds: tagsByRow.get(primary.id) ?? [],
+    hasSplits: primary.isSplit,
+    referenceNumber: primary.referenceNumber,
+    transactionDate: primary.transactionDate,
+    status: primary.status,
+    hasAttachment: attached.has(primary.id),
+  };
 }

@@ -6,6 +6,7 @@ import {
   MAX_RULE_TEXT_LENGTH,
   MAX_RULE_VALUE_LIST,
   RuleValidationCode,
+  validateRuleCondition,
   validateRuleDefinition,
 } from "./rule-validation";
 
@@ -406,5 +407,27 @@ describe("validateRuleDefinition: there is no memo field", () => {
       { path: "condition.field", code: "UNKNOWN_FIELD" },
     ]);
     expect(RULE_FIELDS).not.toContain("memo");
+  });
+});
+
+describe("validateRuleCondition", () => {
+  it("accepts a condition with no actions beside it", () => {
+    expect(validateRuleCondition(leaf("payeeText", "contains", "x"))).toEqual(
+      [],
+    );
+  });
+
+  it("reports the same paths and codes as the whole definition's condition half", () => {
+    const bad = { all: [leaf("payeeText", "nope", "x"), nested(9)] };
+    const whole = check(bad).filter((e) => e.path.startsWith("condition"));
+    expect(validateRuleCondition(bad, { authoring: true })).toEqual(whole);
+  });
+
+  it("gives the glob-trap advice only when authoring", () => {
+    const bare = leaf("payeeText", "matches", "coffee");
+    expect(validateRuleCondition(bare)).toEqual([]);
+    expect(
+      validateRuleCondition(bare, { authoring: true }).map((e) => e.code),
+    ).toContain("PATTERN_WITHOUT_WILDCARD");
   });
 });

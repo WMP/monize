@@ -144,7 +144,29 @@ export function validateRuleDefinition(
 ): RuleValidationError[] {
   const errors: RuleValidationError[] = [];
   const push: Sink = (path, code) => errors.push({ path, code });
-  const budget: Budget = {
+  const budget = newBudget(options);
+  validateNode(input.condition, "condition", 1, budget, push);
+  validateActions(input.actions, budget.captures, push);
+  return errors;
+}
+
+/**
+ * The condition half of `validateRuleDefinition`, with the same paths and
+ * codes: for a read that asks which rows a condition reaches before the rule
+ * has any action (the editor's Test match).
+ */
+export function validateRuleCondition(
+  condition: unknown,
+  options: { readonly authoring?: boolean } = {},
+): RuleValidationError[] {
+  const errors: RuleValidationError[] = [];
+  const push: Sink = (path, code) => errors.push({ path, code });
+  validateNode(condition, "condition", 1, newBudget(options), push);
+  return errors;
+}
+
+function newBudget(options: { readonly authoring?: boolean }): Budget {
+  return {
     leaves: 0,
     nodes: 0,
     leavesReported: false,
@@ -152,9 +174,6 @@ export function validateRuleDefinition(
     captures: new Set<string>(),
     authoring: options.authoring === true,
   };
-  validateNode(input.condition, "condition", 1, budget, push);
-  validateActions(input.actions, budget.captures, push);
-  return errors;
 }
 
 interface Budget {

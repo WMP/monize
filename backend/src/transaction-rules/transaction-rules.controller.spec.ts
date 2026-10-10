@@ -6,10 +6,11 @@ import { PATH_METADATA, METHOD_METADATA } from "@nestjs/common/constants";
 import { TransactionRulesController } from "./transaction-rules.controller";
 import { TransactionRulesService } from "./transaction-rules.service";
 import { TransactionRulesRunService } from "./transaction-rules-run.service";
+import { TransactionRulesMatchService } from "./transaction-rules-match.service";
 import { ALLOW_DELEGATE_KEY } from "../delegation/decorators/delegate-access.decorator";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
-import { PreviewDraftRuleDto } from "./dto/rule-run.dto";
+import { MatchDraftRuleDto, PreviewDraftRuleDto } from "./dto/rule-run.dto";
 import { CreateTransactionRuleDto } from "./dto/create-transaction-rule.dto";
 import { UpdateTransactionRuleDto } from "./dto/update-transaction-rule.dto";
 import { ExplainRuleRowDto } from "./dto/explain-rule-row.dto";
@@ -19,6 +20,7 @@ describe("TransactionRulesController", () => {
   let controller: TransactionRulesController;
   let service: Record<string, jest.Mock>;
   let runService: Record<string, jest.Mock>;
+  let matchService: Record<string, jest.Mock>;
   const req = { user: { id: "user-1" } };
 
   beforeEach(async () => {
@@ -38,11 +40,13 @@ describe("TransactionRulesController", () => {
       run: jest.fn(),
       applications: jest.fn(),
     };
+    matchService = { matchDraft: jest.fn() };
     const module = await Test.createTestingModule({
       controllers: [TransactionRulesController],
       providers: [
         { provide: TransactionRulesService, useValue: service },
         { provide: TransactionRulesRunService, useValue: runService },
+        { provide: TransactionRulesMatchService, useValue: matchService },
       ],
     }).compile();
     controller = module.get(TransactionRulesController);
@@ -68,6 +72,55 @@ describe("TransactionRulesController", () => {
     await controller.previewDraft(req, dto);
 
     expect(runService.previewDraft).toHaveBeenCalledWith("user-1", dto);
+  });
+
+  it("matches an unsaved condition for the JWT user", async () => {
+    matchService.matchDraft.mockResolvedValue({ data: [] });
+    const dto = { condition: {}, page: 2 } as MatchDraftRuleDto;
+
+    await controller.matchDraft(req, dto);
+
+    expect(matchService.matchDraft).toHaveBeenCalledWith("user-1", dto);
+  });
+
+  describe("match-draft body, through the app's validation pipe", () => {
+    const pipe = new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    });
+    const meta = { type: "body", metatype: MatchDraftRuleDto } as const;
+    const condition = { field: "payeeText", op: "contains", value: "x" };
+
+    it("lets a condition with a page and a window through, with no actions", async () => {
+      await expect(
+        pipe.transform(
+          {
+            condition,
+            page: 2,
+            limit: 10,
+            activeFrom: "2026-10-01",
+            activeTo: "",
+          },
+          meta,
+        ),
+      ).resolves.toMatchObject({ page: 2, limit: 10 });
+    });
+
+    it.each([
+      ["a page size over the ceiling", { condition, limit: 51 }],
+      ["a page below one", { condition, page: 0 }],
+      [
+        "a date that is not a calendar date",
+        { condition, activeFrom: "2026-02-30" },
+      ],
+      ["a field the body does not take", { condition, actions: [] }],
+      ["no condition", {}],
+    ])("refuses %s", async (_label, body) => {
+      await expect(pipe.transform(body, meta)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
   });
 
   it("explains a row for the JWT user, with the body the pipe validated", async () => {
@@ -269,6 +322,10 @@ describe("TransactionRulesController", () => {
         path: "preview-draft",
         method: RequestMethod.POST,
       });
+      expect(route("matchDraft")).toEqual({
+        path: "match-draft",
+        method: RequestMethod.POST,
+      });
       expect(route("explainRow")).toEqual({
         path: "explain-row",
         method: RequestMethod.POST,
@@ -299,6 +356,13 @@ describe("TransactionRulesController", () => {
     it("registers preview-draft before the :id routes so it is not read as a UUID", () => {
       const order = Object.getOwnPropertyNames(proto);
       expect(order.indexOf("previewDraft")).toBeLessThan(
+        order.indexOf("findOne"),
+      );
+    });
+
+    it("registers match-draft before the :id routes so it is not read as a UUID", () => {
+      const order = Object.getOwnPropertyNames(proto);
+      expect(order.indexOf("matchDraft")).toBeLessThan(
         order.indexOf("findOne"),
       );
     });

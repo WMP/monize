@@ -244,3 +244,45 @@ describe("TransactionRulesService create", () => {
     ]);
   });
 });
+
+describe("TransactionRulesService checkedCondition", () => {
+  it("accepts a condition with no action beside it", async () => {
+    const h = buildHarness();
+
+    await expect(
+      h.service.checkedCondition(h.manager as never, USER_ID, VALID_CONDITION),
+    ).resolves.toEqual(VALID_CONDITION);
+  });
+
+  it("refuses a condition naming another user's id, at the leaf", async () => {
+    const h = buildHarness();
+
+    const error = await thrown(
+      h.service.checkedCondition(h.manager as never, USER_ID, {
+        all: [{ field: "accountId", op: "eq", value: FOREIGN_ID }],
+      }),
+    );
+
+    expect(error).toBeInstanceOf(BadRequestException);
+    expect(error.getResponse()).toEqual(
+      expect.objectContaining({
+        errors: [{ path: "condition.all[0]", code: "REFERENCE_NOT_FOUND" }],
+      }),
+    );
+  });
+
+  it("refuses a malformed condition before looking anything up", async () => {
+    const h = buildHarness();
+
+    const error = await thrown(
+      h.service.checkedCondition(h.manager as never, USER_ID, {
+        field: "payeeText",
+        op: "nope",
+        value: "x",
+      }),
+    );
+
+    expect(error).toBeInstanceOf(BadRequestException);
+    expect(h.refs.accounts.find).not.toHaveBeenCalled();
+  });
+});

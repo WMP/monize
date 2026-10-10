@@ -4,6 +4,13 @@ export const MAX_TRANSACTION_RULES_PER_USER = 200;
 /** Manual run and test panel: rows examined per call (default and ceiling). */
 export const DEFAULT_RULE_RUN_LIMIT = 200;
 export const MAX_RULE_RUN_LIMIT = 1000;
+/**
+ * Test match: the newest rows whose condition is evaluated per request (no
+ * write, so a wider scan than a run), and the page of matches returned.
+ */
+export const MAX_RULE_MATCH_SCAN = 5000;
+export const DEFAULT_RULE_MATCH_PAGE_LIMIT = 10;
+export const MAX_RULE_MATCH_PAGE_LIMIT = 50;
 /** Accounts a run may be narrowed to. */
 export const MAX_RULE_RUN_ACCOUNTS = 100;
 /** Latest applications returned by the trace read (default and ceiling). */
