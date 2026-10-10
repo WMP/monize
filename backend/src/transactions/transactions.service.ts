@@ -1440,11 +1440,13 @@ export class TransactionsService {
   }
 
   /**
-   * Rows chosen by id, in the shape and order the register lists them: the
-   * same joins and the same investment-link and attachment enrichment as
-   * `findAll`. For a surface that picks the rows itself (the rule editor's
-   * Test match) and draws them with the register's list. Only the caller's
-   * own rows are read; an id that is not one is left out.
+   * Rows chosen by id, in the register's shape: the same joins and the same
+   * investment-link and attachment enrichment as `findAll`. For a surface that
+   * picks the rows itself (the rule editor's Test match) and draws them with
+   * the register's list. The rows come back in the order of `ids`, which the
+   * caller already chose in register order; ordering them again here would be
+   * a second copy of the register's order. Only the caller's own rows are
+   * read; an id that is not one is left out.
    */
   async findRegisterRowsByIds(
     userId: string,
@@ -1452,11 +1454,15 @@ export class TransactionsService {
   ): Promise<TransactionWithInvestmentLink[]> {
     if (ids.length === 0) return [];
     return withScopedDb(this.dataSource, async (m) => {
-      const queryBuilder = this.registerRowsQuery(m)
+      const rows = await this.registerRowsQuery(m)
         .where("transaction.userId = :userId", { userId })
-        .andWhere("transaction.id IN (:...ids)", { ids: [...ids] });
-      applyRegisterOrder(queryBuilder, "transaction", "DESC");
-      return this.enrichWithInvestmentLinks(m, await queryBuilder.getMany());
+        .andWhere("transaction.id IN (:...ids)", { ids: [...ids] })
+        .getMany();
+      const byId = new Map(rows.map((row) => [row.id, row]));
+      const ordered = ids
+        .map((id) => byId.get(id))
+        .filter((row): row is Transaction => row !== undefined);
+      return this.enrichWithInvestmentLinks(m, ordered);
     });
   }
 

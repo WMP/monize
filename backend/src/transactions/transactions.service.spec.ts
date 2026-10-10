@@ -5217,7 +5217,7 @@ describe("TransactionsService", () => {
         ).not.toHaveBeenCalled();
       });
 
-      it("loads the ids with the register's joins, scoped to the caller, in register order", async () => {
+      it("loads the ids with the register's joins, scoped to the caller, in the order given", async () => {
         const mockQb = createMockQueryBuilder();
         mockQb.getMany.mockResolvedValue([{ id: "tx-2" }, { id: "tx-1" }]);
         transactionsRepository.createQueryBuilder.mockReturnValue(mockQb);
@@ -5242,14 +5242,11 @@ describe("TransactionsService", () => {
           "transaction.linkedTransaction",
           "linkedTransaction",
         );
-        expect(mockQb.orderBy).toHaveBeenCalledWith(
-          expect.stringContaining("transaction"),
-          "DESC",
-          undefined,
-        );
-        expect(rows.map((r) => r.id)).toEqual(["tx-2", "tx-1"]);
-        expect(rows[1].linkedInvestmentTransactionId).toBe("inv-1");
-        expect(rows[0].attachmentCount).toBe(0);
+        // The caller's order, not the query's: the ids arrive in register order.
+        expect(mockQb.orderBy).not.toHaveBeenCalled();
+        expect(rows.map((r) => r.id)).toEqual(["tx-1", "tx-2"]);
+        expect(rows[0].linkedInvestmentTransactionId).toBe("inv-1");
+        expect(rows[1].attachmentCount).toBe(0);
       });
 
       it("joins exactly what findAll joins, so a row is drawn the same on both", async () => {
