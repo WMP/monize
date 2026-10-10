@@ -1,10 +1,12 @@
 import {
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
   ConflictException,
   ForbiddenException,
   BadRequestException,
+  forwardRef,
 } from "@nestjs/common";
 import { tr } from "../i18n/translate";
 import { DataSource, EntityManager, In } from "typeorm";
@@ -17,6 +19,7 @@ import { Tag } from "../tags/entities/tag.entity";
 import { CreateSecurityDto } from "./dto/create-security.dto";
 import { UpdateSecurityDto } from "./dto/update-security.dto";
 import { SecurityPriceService } from "./security-price.service";
+import { BondPriceService } from "../bonds/bond-price.service";
 import { YahooFinanceService } from "./yahoo-finance.service";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { SecurityLookupResult } from "./providers/quote-provider.interface";
@@ -157,7 +160,76 @@ export class SecuritiesService {
     private yahooFinanceService: YahooFinanceService,
     private actionHistoryService: ActionHistoryService,
     private dataSource: DataSource,
+    // forwardRef: BondsModule reaches NetWorthModule, which lies on a cycle with
+    // this module (see bonds.module.ts).
+    @Inject(forwardRef(() => BondPriceService))
+    private bondPriceService: BondPriceService,
   ) {}
+
+  /**
+   * Refuse a bond link the instrument cannot honour, inside the write's own
+   * transaction and before the write: the instrument must exist and be priced in
+   * the security's resulting currency (INV-PRICE-001 -- a stored price is in the
+   * currency the security is recorded in, and the engine prices in the
+   * instrument's). `currencyChanged` picks the message for a currency change of
+   * a security that stays linked.
+   */
+  private async assertBondLink(
+    m: EntityManager,
+    bondInstrumentId: string,
+    currencyCode: string,
+    currencyChanged: boolean,
+  ): Promise<void> {
+    const rows: Array<{ currency_code: string }> = await m.query(
+      `SELECT currency_code FROM bond_instruments WHERE id = $1`,
+      [bondInstrumentId],
+    );
+    if (rows.length === 0) {
+      throw new BadRequestException(
+        tr(
+          "errors.securities.bondInstrumentNotFound",
+          `Bond instrument ${bondInstrumentId} does not exist`,
+          { id: bondInstrumentId },
+        ),
+      );
+    }
+    const instrumentCurrency = rows[0].currency_code;
+    if (instrumentCurrency === currencyCode) return;
+    throw new BadRequestException(
+      currencyChanged
+        ? tr(
+            "errors.securities.bondCurrencyLocked",
+            `A security linked to a bond instrument stays in the instrument's currency (${instrumentCurrency}). Unlink it from the bond before changing its currency.`,
+            { instrumentCurrency },
+          )
+        : tr(
+            "errors.securities.bondCurrencyMismatch",
+            `The security is recorded in ${currencyCode} but the bond instrument is priced in ${instrumentCurrency}. Use the instrument's currency.`,
+            { currency: currencyCode, instrumentCurrency },
+          ),
+    );
+  }
+
+  /**
+   * After the commit that set or changed a link: price the security from the
+   * engine (spec 12.4). The security is already saved, so a failure here is
+   * logged, not thrown -- the daily job and `POST /bonds/securities/:id/recompute`
+   * repair it, and a 500 would tell the caller the link was not made.
+   */
+  private async recomputeBondPrices(
+    userId: string,
+    securityId: string,
+  ): Promise<void> {
+    try {
+      await this.bondPriceService.recomputeSecurity(userId, securityId);
+    } catch (error) {
+      this.logger.warn(
+        `Bond price recompute after linking security ${securityId} failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
 
   /**
    * Best-effort suggested description for a security from the Yahoo provider's
@@ -447,6 +519,15 @@ export class SecuritiesService {
         );
       }
 
+      if (securityData.bondInstrumentId) {
+        await this.assertBondLink(
+          m,
+          securityData.bondInstrumentId,
+          securityData.currencyCode,
+          false,
+        );
+      }
+
       const security = m.create(Security, {
         ...securityData,
         countryWeightings:
@@ -469,6 +550,10 @@ export class SecuritiesService {
         `Background price backfill failed for ${saved.symbol}: ${err.message}`,
       );
     });
+
+    if (saved.bondInstrumentId) {
+      await this.recomputeBondPrices(userId, saved.id);
+    }
 
     this.actionHistoryService.record(userId, {
       entityType: "security",
@@ -658,6 +743,8 @@ export class SecuritiesService {
       security.quoteProvider = updateSecurityDto.quoteProvider ?? null;
     if (updateSecurityDto.msnInstrumentId !== undefined)
       security.msnInstrumentId = updateSecurityDto.msnInstrumentId ?? null;
+    if (updateSecurityDto.bondInstrumentId !== undefined)
+      security.bondInstrumentId = updateSecurityDto.bondInstrumentId;
     if (updateSecurityDto.countryWeightings !== undefined)
       security.countryWeightings = this.normalizeAllocationWeightings(
         updateSecurityDto.countryWeightings,
@@ -677,6 +764,21 @@ export class SecuritiesService {
     // Persist the scalar fields and the tag set together so a security and its
     // classification never drift apart on a partial failure.
     await withScopedDb(this.dataSource, async (m) => {
+      // A link the instrument cannot honour is refused here, in the write's own
+      // transaction and before it. Also on a currency change of a security that
+      // stays linked: the engine prices in the instrument's currency.
+      const linkChanged =
+        security.bondInstrumentId !== beforeData.bondInstrumentId;
+      const currencyChanged = security.currencyCode !== beforeData.currencyCode;
+      if (security.bondInstrumentId && (linkChanged || currencyChanged)) {
+        await this.assertBondLink(
+          m,
+          security.bondInstrumentId,
+          security.currencyCode,
+          !linkChanged,
+        );
+      }
+
       // The relation is loaded onto `security`; strip it before save so
       // TypeORM does not try to cascade-write the join table itself.
       const { tags: _tags, ...scalars } = security;
@@ -687,6 +789,15 @@ export class SecuritiesService {
     });
 
     const saved = await this.findOne(userId, id);
+
+    // After the commit, never inside it (INV-CACHE-001): a link set or changed
+    // is priced from the engine now rather than at the next daily run.
+    if (
+      saved.bondInstrumentId &&
+      saved.bondInstrumentId !== beforeData.bondInstrumentId
+    ) {
+      await this.recomputeBondPrices(userId, id);
+    }
 
     this.actionHistoryService.record(userId, {
       entityType: "security",

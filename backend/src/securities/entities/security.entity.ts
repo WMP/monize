@@ -237,6 +237,15 @@ export class Security {
   @Column({ type: "time", nullable: true, name: "market_close_time" })
   marketCloseTime: string | null;
 
+  @ApiProperty({
+    nullable: true,
+    description:
+      "The bond instrument this security is linked to (global catalog row). " +
+      "A linked security is priced by the bond engine only, never by a quote provider.",
+  })
+  @Column({ type: "uuid", nullable: true, name: "bond_instrument_id" })
+  bondInstrumentId: string | null;
+
   @ApiProperty({ description: "User-defined tags classifying this security" })
   @ManyToMany(() => Tag)
   @JoinTable({

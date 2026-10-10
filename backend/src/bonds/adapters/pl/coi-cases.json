@@ -1,0 +1,51 @@
+{
+  "manifest": "coi1030",
+  "cases": [
+    {
+      "id": "E8",
+      "description": "COI1030 coupon, period 1",
+      "lot": {
+        "purchaseDate": "2026-10-15",
+        "quantity": 1
+      },
+      "asOf": "2026-10-20",
+      "expect": {},
+      "knownCashflows": [
+        {
+          "date": "2027-10-15",
+          "type": "INTEREST",
+          "amount": "4.75",
+          "status": "KNOWN",
+          "period": 1
+        }
+      ]
+    },
+    {
+      "id": "E9",
+      "description": "COI1030 early, period 1, below floor (99.20 -> 100.00)",
+      "lot": {
+        "purchaseDate": "2026-10-15",
+        "quantity": 1
+      },
+      "asOf": "2027-01-15",
+      "expect": {
+        "earlyRedemptionValue": "100.00"
+      }
+    },
+    {
+      "id": "E10",
+      "description": "COI1030 early, period 2, no floor, r2 = 4.40% (hypothetical)",
+      "lot": {
+        "purchaseDate": "2026-10-15",
+        "quantity": 1
+      },
+      "asOf": "2027-10-16",
+      "announcedRates": {
+        "2": "0.0440"
+      },
+      "expect": {
+        "earlyRedemptionValue": "98.01"
+      }
+    }
+  ]
+}

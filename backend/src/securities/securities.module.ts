@@ -46,6 +46,7 @@ import { NetWorthModule } from "../net-worth/net-worth.module";
 import { ActionHistoryModule } from "../action-history/action-history.module";
 import { DelegationModule } from "../delegation/delegation.module";
 import { ProviderHealthModule } from "../provider-health/provider-health.module";
+import { BondsModule } from "../bonds/bonds.module";
 
 @Module({
   imports: [
@@ -72,6 +73,8 @@ import { ProviderHealthModule } from "../provider-health/provider-health.module"
     forwardRef(() => NetWorthModule),
     ActionHistoryModule,
     forwardRef(() => DelegationModule),
+    // A bond link recomputes the security's engine prices after its commit.
+    forwardRef(() => BondsModule),
   ],
   providers: [
     SecuritiesService,

@@ -187,7 +187,15 @@ before re-authentication -- it is free, and it writes nothing:
   whose counterpart is another user's transaction on a cross-owner transfer --
   so a restore now comes back with such a leg unlinked rather than re-linked
   one-way to a row the file cannot vouch for -- and `accounts.institution_id`
-  from a backup older than the institution export.
+  from a backup older than the institution export;
+- a reference to reference data the backup never carries is a catalog reference
+  (`CATALOG_REFERENCE_COLUMNS`: `securities.bond_instrument_id` -> the bond
+  catalog), canonicalised like any other and then kept only where this
+  deployment's own catalog holds the row and, for a bond link, in the security's
+  currency; otherwise it is written NULL and logged
+  (`BackupRestoreDatabaseService.severUnavailableBondLinks`), so a restore never
+  fails on a series this deployment has not seeded. The instrument id is derived
+  from the series (`bondInstrumentId`), so it is the same on every deployment.
 
 Every key is then remapped to a fresh id, so the restored graph is closed over
 rows this restore inserted. A UUID nested in a JSONB or array value

@@ -4093,4 +4093,91 @@ describe("SecurityPriceService", () => {
       expect(priceWrites()).toHaveLength(0);
     });
   });
+  // INV-BOND-005: the bond engine is a linked security's only automatic price
+  // source. Each path below fetches from a provider for some other security
+  // class; none may fetch for this one. provider-priced.guard.spec.ts holds that
+  // every such path consults the predicate; these hold what it does.
+  describe("a bond-linked security is never priced by a quote provider", () => {
+    const linked = {
+      ...mockSecurity,
+      symbol: "TOS1029",
+      bondInstrumentId: "11111111-1111-5111-8111-111111111111",
+      // The strongest opt-in a user can give a provider: an explicit override.
+      quoteProvider: "yahoo",
+      skipPriceUpdates: false,
+    } as Security;
+
+    beforeEach(() => {
+      global.fetch = jest.fn() as jest.Mock;
+      securitiesRepository.find.mockResolvedValue([linked]);
+    });
+
+    it("is skipped by the scheduled quote refresh", async () => {
+      const result = await service.refreshAllPrices();
+      expect(result.totalSecurities).toBe(0);
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(msnFinanceService.fetchQuote).not.toHaveBeenCalled();
+    });
+
+    it("is skipped by the refresh of selected securities", async () => {
+      const result = await service.refreshPricesForSecurities(["sec-1"]);
+      expect(result.totalSecurities).toBe(0);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("is skipped by the daily settlement", async () => {
+      const result = await service.settleDailyBars();
+      expect(result.totalSecurities).toBe(0);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("is skipped by the scheduled historical backfill", async () => {
+      dataSourceMock.query.mockResolvedValueOnce([]);
+      const result = await service.backfillHistoricalPrices();
+      expect(result.totalSecurities).toBe(0);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("is skipped by the on-demand fill behind a report", async () => {
+      const loaded = await service.ensurePricesForDate(["sec-1"], "2026-10-01");
+      expect(loaded).toBe(0);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("is skipped by the one-year backfill a new security gets, forced or not", async () => {
+      await service.backfillSecurity(linked);
+      await expect(
+        service.backfillSecurityRange(linked, "max", { force: true }),
+      ).resolves.toBe(0);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("answers an explicit holding-period backfill with the reason, fetching nothing", async () => {
+      securitiesRepository.findOne.mockResolvedValue(linked);
+
+      for (const range of [undefined, "5y" as const]) {
+        const result = await service.backfillSecurityHoldingPeriod(
+          TEST_USER_ID,
+          "sec-1",
+          range,
+        );
+        expect(result.success).toBe(false);
+        expect(result.error).toMatch(/priced by the bond engine/);
+      }
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("leaves an unlinked security with the same override eligible", async () => {
+      securitiesRepository.find.mockResolvedValue([
+        { ...mockSecurity, bondInstrumentId: null, quoteProvider: "yahoo" },
+      ]);
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(
+          createMockFetchResponse(makeYahooChartResponse()),
+        ) as jest.Mock;
+      const result = await service.refreshPricesForSecurities(["sec-1"]);
+      expect(result.totalSecurities).toBe(1);
+    });
+  });
 });

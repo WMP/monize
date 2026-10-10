@@ -157,6 +157,26 @@ export const RESTORE_REFERENCE_COLUMNS: Readonly<
 };
 
 /**
+ * Foreign-key columns of restored tables that point at reference data a backup
+ * does not carry, as `table -> column -> referenced table`. Neither a row of
+ * the file (so not a `RESTORE_REFERENCE_COLUMNS` entry: nothing to resolve
+ * inside the file) nor a table the restore may leave unchecked.
+ *
+ * The rule: the value is canonicalised here, and the restore keeps it only when
+ * the target deployment's own catalog holds that row (and, for a bond link, in
+ * the security's currency); otherwise it is written as NULL and logged
+ * (`BackupRestoreDatabaseService.severUnavailableBondLinks`). A restore never
+ * fails because a deployment has not seeded an instrument, and never links a
+ * security to a row it cannot vouch for. `restore-references.spec.ts` checks
+ * this list against `database/schema.sql`.
+ */
+export const CATALOG_REFERENCE_COLUMNS: Readonly<
+  Record<string, Readonly<Record<string, string>>>
+> = {
+  securities: { bond_instrument_id: "bond_instruments" },
+};
+
+/**
  * The references a genuine export can carry without the row they name, keyed
  * `table.column`, each with the reason. One of these that does not resolve
  * inside the file is set NULL and logged -- never followed, because the row it
@@ -293,12 +313,25 @@ export function resolveRestoreReferences(
   for (const [table, rows] of withCanonicalIds) {
     const references = RESTORE_REFERENCE_COLUMNS[table] ?? {};
     const columns = Object.entries(references);
+    const catalogColumns = Object.keys(CATALOG_REFERENCE_COLUMNS[table] ?? {});
     result[table] =
-      columns.length === 0
+      columns.length === 0 && catalogColumns.length === 0
         ? rows
         : rows.map((row) => {
             if (!isRow(row)) return row;
             let next = row;
+            // A catalog reference names a row of the deployment, not of the
+            // file: only its spelling is settled here, its existence is the
+            // restore transaction's question.
+            for (const column of catalogColumns) {
+              const value = row[column];
+              if (value === null || value === undefined) continue;
+              const canonical = canonicalUuid(value);
+              if (canonical === null) {
+                throw invalidIdentifier(table, column, value);
+              }
+              if (canonical !== value) next = { ...next, [column]: canonical };
+            }
             for (const [column, referencedTable] of columns) {
               const value = row[column];
               if (value === null || value === undefined) continue;

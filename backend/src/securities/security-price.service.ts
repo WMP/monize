@@ -13,7 +13,8 @@ import {
   FetchSyncJob,
   FetchSyncService,
 } from "../common/jobs/fetch-sync.service";
-import { lockAccountsForBalanceWrite } from "../common/db/locks";
+import { markHoldingAccountsDirty } from "./holding-accounts-dirty.util";
+import { isPricedByQuoteProvider } from "./provider-priced.util";
 import {
   QuoteProvider,
   QuoteProviderName,
@@ -185,7 +186,9 @@ function orderProvidersByDefault(
 }
 
 /**
- * A security is eligible for price refresh when skipPriceUpdates is false,
+ * A security linked to a bond instrument is never eligible: the bond engine is
+ * its only automatic price source (`isPricedByQuoteProvider`, INV-BOND-005).
+ * Otherwise, a security is eligible for price refresh when skipPriceUpdates is false,
  * OR the user has explicitly opted in by setting a per-security provider
  * override or supplying an MSN Instrument ID. The latter exists because
  * QIF/OFX imports auto-flag securities with skipPriceUpdates=true (since the
@@ -196,7 +199,9 @@ function isRefreshEligible(s: {
   skipPriceUpdates: boolean;
   quoteProvider: string | null;
   msnInstrumentId: string | null;
+  bondInstrumentId?: string | null;
 }): boolean {
+  if (!isPricedByQuoteProvider(s)) return false;
   if (!s.skipPriceUpdates) return true;
   return Boolean(s.quoteProvider) || Boolean(s.msnInstrumentId);
 }
@@ -1836,6 +1841,8 @@ export class SecurityPriceService {
     range: string,
     opts: { force?: boolean } = {},
   ): Promise<number> {
+    // A forced backfill ignores skipPriceUpdates, never the bond link.
+    if (!isPricedByQuoteProvider(security)) return 0;
     if (security.skipPriceUpdates && !opts.force) return 0;
 
     const [ctx] =
@@ -2108,6 +2115,18 @@ export class SecurityPriceService {
           { securityId },
         ),
       );
+    }
+
+    // The user asked for it explicitly, so say why nothing will be fetched.
+    if (!isPricedByQuoteProvider(security)) {
+      return {
+        symbol: security.symbol,
+        success: false,
+        error: tr(
+          "errors.securities.bondPricedByEngine",
+          "This security is linked to a bond instrument and is priced by the bond engine, not by a quote provider. Use Recompute prices instead.",
+        ),
+      };
     }
 
     const ctx = (await this.loadUserContexts([userId])).get(userId) ?? {
@@ -2447,35 +2466,15 @@ export class SecurityPriceService {
    *
    * Returns the affected account ids so the caller can, after commit, schedule
    * the debounced recompute as a latency optimization on top of the marker.
+   * The statement itself is `markHoldingAccountsDirty`
+   * (`holding-accounts-dirty.util.ts`), shared with the bond-engine price writer.
    */
   private async markHoldingAccountsDirty(
     manager: EntityManager,
     securityId: string,
     userId: string,
   ): Promise<string[]> {
-    const rows: Array<{ account_id: string }> = await manager.query(
-      `SELECT DISTINCT account_id FROM investment_transactions
-        WHERE security_id = $1 AND status != 'VOID'`,
-      [securityId],
-    );
-    const accountIds = (rows ?? []).map((r) => r.account_id);
-    if (accountIds.length > 0) {
-      // Take the account row locks in ascending-id order *before* the UPDATE,
-      // exactly as every other account writer does (common/db/locks.ts). The
-      // UPDATE's own `WHERE id = ANY(...)` would otherwise lock rows in scan
-      // order, and the debounced recompute this mutation schedules runs in the
-      // background -- so saving a second manual price while a prior save's
-      // recompute is in flight could lock the same holding accounts in opposite
-      // orders, a 40P01 deadlock surfacing as a generic 500 (review MZ-1242,
-      // same class as audit RV4-005).
-      await lockAccountsForBalanceWrite(manager, accountIds, userId);
-      await manager.query(
-        `UPDATE accounts SET updated_at = now()
-          WHERE id = ANY($1::UUID[]) AND user_id = $2`,
-        [accountIds, userId],
-      );
-    }
-    return accountIds;
+    return markHoldingAccountsDirty(manager, securityId, userId);
   }
 
   /**

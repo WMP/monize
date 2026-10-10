@@ -942,6 +942,7 @@ CREATE TABLE securities (
     market_timezone VARCHAR(64),     -- IANA zone the instrument trades in, from the provider (e.g. America/New_York)
     market_open_time TIME,           -- start of the regular session, in market_timezone local time
     market_close_time TIME,          -- end of the regular session, in market_timezone local time
+    bond_instrument_id UUID,         -- linked bond instrument (FK fk_securities_bond_instrument, added below); a linked security is priced by the bond engine only
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, symbol),
@@ -953,6 +954,7 @@ CREATE INDEX idx_securities_user_id ON securities(user_id);
 CREATE INDEX idx_securities_symbol ON securities(symbol);
 CREATE INDEX idx_securities_exchange ON securities(exchange);
 CREATE INDEX idx_securities_user_favourite ON securities(user_id, is_favourite);
+CREATE INDEX idx_securities_bond_instrument ON securities(bond_instrument_id) WHERE bond_instrument_id IS NOT NULL;
 
 -- Security Tags (many-to-many) -- reuses the shared tags pool, mirrors transaction_tags
 CREATE TABLE security_tags (
@@ -1202,7 +1204,7 @@ CREATE TABLE security_prices (
     close_price NUMERIC(24, 10) NOT NULL,
     adjusted_close NUMERIC(24, 10),
     volume BIGINT,
-    source VARCHAR(50), -- yahoo_finance, msn_finance, manual, or transaction action (buy, sell, reinvest, transfer_in, transfer_out)
+    source VARCHAR(50), -- yahoo_finance, msn_finance, manual, bond_engine (a bond-linked security's engine price), or transaction action (buy, sell, reinvest, transfer_in, transfer_out)
     quoted_at TIMESTAMPTZ, -- instant the provider says the quote was struck; NULL for manual/transaction-derived rows
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(security_id, price_date)
@@ -1238,6 +1240,92 @@ CREATE TABLE market_index_sync (
     last_success_at TIMESTAMPTZ,
     last_error TEXT
 );
+
+-- Sovereign bond reference data, any issuer country (docs/specs/polish-retail-bonds.md;
+-- migration 20261010170817_bond_reference_tables.sql). Global reference data with
+-- no owner column: one instrument's terms or one CPI print serves every account,
+-- so these are RLS-exempt (see the marker block at the foot of the RLS section).
+-- INV-BOND-001: terms versions and period rates are immutable, enforced by
+-- bond_reject_mutation().
+CREATE TABLE bond_instruments (
+    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    issuer_country_code CHAR(2) NOT NULL,
+    issuer_code         VARCHAR(40) NOT NULL,
+    program_code        VARCHAR(40) NOT NULL,
+    series_code         VARCHAR(40) NOT NULL,
+    currency_code       VARCHAR(3) NOT NULL REFERENCES currencies(code),
+    marketability       VARCHAR(30) NOT NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (issuer_country_code, issuer_code, series_code)
+);
+
+CREATE TABLE bond_terms_versions (
+    bond_instrument_id UUID NOT NULL REFERENCES bond_instruments(id) ON DELETE RESTRICT,
+    version            INTEGER NOT NULL CHECK (version >= 1),
+    terms              JSONB NOT NULL,
+    content_hash       VARCHAR(64) NOT NULL,
+    source_url         TEXT NOT NULL,
+    published_at       DATE,
+    retrieved_at       TIMESTAMPTZ NOT NULL,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (bond_instrument_id, version)
+);
+
+CREATE TABLE bond_period_rates (
+    bond_instrument_id UUID NOT NULL REFERENCES bond_instruments(id) ON DELETE RESTRICT,
+    period_number      INTEGER NOT NULL CHECK (period_number >= 1),
+    annual_rate        NUMERIC(20, 10) NOT NULL,
+    source_url         TEXT NOT NULL,
+    retrieved_at       TIMESTAMPTZ NOT NULL,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (bond_instrument_id, period_number)
+);
+
+CREATE TABLE benchmark_series (
+    code            VARCHAR(40) PRIMARY KEY,
+    kind            VARCHAR(10) NOT NULL CHECK (kind IN ('STEP', 'MONTHLY')),
+    publisher       VARCHAR(40) NOT NULL,
+    source_url      TEXT NOT NULL,
+    unit            VARCHAR(20) NOT NULL,
+    covered_through DATE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE benchmark_values (
+    benchmark_code   VARCHAR(40) NOT NULL REFERENCES benchmark_series(code) ON DELETE RESTRICT,
+    observation_date DATE NOT NULL,
+    value            NUMERIC(20, 10) NOT NULL,
+    published_on     DATE,
+    source_url       TEXT NOT NULL,
+    retrieved_at     TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (benchmark_code, observation_date)
+);
+
+-- A security's link to a bond instrument. Declared here because securities is
+-- created before the bond tables. RESTRICT: an instrument is never deleted from
+-- under a security that points at it.
+ALTER TABLE securities
+    ADD CONSTRAINT fk_securities_bond_instrument
+    FOREIGN KEY (bond_instrument_id) REFERENCES bond_instruments(id) ON DELETE RESTRICT;
+
+CREATE OR REPLACE FUNCTION bond_reject_mutation() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+BEGIN
+    RAISE EXCEPTION
+      '% rows are immutable once written (INV-BOND-001); % is refused. Publish a new version instead.',
+      TG_TABLE_NAME, TG_OP
+      USING ERRCODE = 'raise_exception';
+END;
+$$;
+
+CREATE TRIGGER trg_bond_terms_versions_immutable
+    BEFORE UPDATE OR DELETE ON bond_terms_versions
+    FOR EACH ROW EXECUTE FUNCTION bond_reject_mutation();
+
+CREATE TRIGGER trg_bond_period_rates_immutable
+    BEFORE UPDATE OR DELETE ON bond_period_rates
+    FOR EACH ROW EXECUTE FUNCTION bond_reject_mutation();
 
 -- The upstream release check's answer, as one row. Held on the deployment
 -- rather than in a field per process: two replicas answering /updates from two
@@ -3999,6 +4087,11 @@ CREATE POLICY emergency_access_contacts_isolation ON emergency_access_contacts
 --
 -- rls-exempt: auth_attempt_counters
 -- rls-exempt: auto_backup_policy
+-- rls-exempt: benchmark_series
+-- rls-exempt: benchmark_values
+-- rls-exempt: bond_instruments
+-- rls-exempt: bond_period_rates
+-- rls-exempt: bond_terms_versions
 -- rls-exempt: currencies
 -- rls-exempt: exchange_rate_coverage
 -- rls-exempt: exchange_rates

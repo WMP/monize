@@ -98,6 +98,11 @@ implied.
 | INV-LOAN-008 | One settlement per scheduled occurrence, and the claim commits with the split | enforced |
 | INV-LOAN-009 | An annuity installment's payment is the one stated for its own due date | unenforced |
 | INV-LOAN-HISTORY-001 | Historical loan interest counted as paid is ledger-backed | partial |
+| INV-BOND-001 | A bond's published terms and period rates are immutable | enforced |
+| INV-BOND-002 | A missing bond rate is unknown, never substituted | enforced |
+| INV-BOND-003 | Bond money is exact until the issue document rounds it | enforced |
+| INV-BOND-004 | Known and projected bond values never mix | enforced |
+| INV-BOND-005 | A linked security's automatic price comes only from the bond engine, and a bond_engine row never overwrites a manual or transaction price | enforced |
 | INV-OCCURRENCE-001 | One scheduled occurrence has at most one financial effect | enforced |
 | INV-OCCURRENCE-002 | A stored override price survives reopening | enforced |
 | INV-OCCURRENCE-003 | Every surface reports the effective occurrence: its current amount and currency, its direction, on the date it falls | enforced |
@@ -2937,6 +2942,154 @@ to the stored contractual payment, and where the rate timeline records the
 payment in effect that value is authoritative even when it does not amortize
 (`INV-LOAN-HISTORY-001` covers the interest; the payment's authority ordering is
 documented in `docs/frontend/financial-figures.md`).
+
+## Sovereign bonds
+
+The bond engine is country-agnostic (`docs/specs/polish-retail-bonds.md`
+section 2.0); these invariants hold for every adapter.
+
+### INV-BOND-001 -- published terms and period rates are immutable
+
+```text
+Statement           A stored bond terms version and a stored announced period
+                    rate are never updated or deleted; a correction is a new
+                    terms version.
+Source of truth     bond_terms_versions, bond_period_rates
+Enforcement         bond_reject_mutation(), a BEFORE UPDATE OR DELETE trigger on
+                    both tables (migration 20261010170817_bond_reference_tables.sql);
+                    ON DELETE RESTRICT from both to bond_instruments.
+Concurrency scope   global (per instrument)
+Retry semantics     A retried insert of the same (instrument, version) or
+                    (instrument, period) fails on the primary key; it never
+                    overwrites.
+Crash semantics     Single-row inserts; nothing partial to recover.
+Failure response    refuse (the statement raises)
+Required tests      bond-reference-tables.integration.spec.ts: update and delete
+                    of both tables raise and leave the row unchanged.
+Status              enforced
+```
+
+### INV-BOND-002 -- a missing rate is unknown, never substituted
+
+```text
+Statement           A period whose rate is neither in the terms, announced, nor
+                    derivable from a stored benchmark observation has no rate.
+                    Nothing substitutes another month's observation, the latest
+                    value, 0 or the first-period rate.
+Source of truth     benchmark_values, benchmark_series.covered_through,
+                    bond_period_rates
+Enforcement         resolvePeriodRates (backend/src/bonds/engine/rate-resolution.ts):
+                    a started period without a rate yields null values, a
+                    `missing` entry naming the benchmark, the observation and
+                    its publisher, and referenceDataComplete = false; a future
+                    period is PROJECTED only with a named assumption.
+Concurrency scope   --
+Retry semantics     -- (computed on read)
+Crash semantics     -- (nothing stored)
+Failure response    null with the missing observation named
+Required tests      bond-engine.spec.ts truth-table rows (spec section 4) and the
+                    STEP coverage rule.
+Status              enforced (engine); no surface reads it yet
+```
+
+### INV-BOND-003 -- money is exact until the issue document rounds it
+
+```text
+Statement           Bond amounts and rates are computed in exact rational
+                    arithmetic and rounded only where the issue document
+                    rounds, per bond, then multiplied by the quantity.
+Source of truth     the terms document (rounding, capitalization.baseRounding)
+Enforcement         ExactDecimal (backend/src/bonds/domain/exact-decimal.ts)
+                    parses only decimal strings; the engine's formulas take
+                    and return ExactDecimal. Golden tests E1 to E16 pin the
+                    rounding points. country-agnostic.guard.spec.ts fails
+                    parseFloat, Number( or Math. in domain/ or engine/ outside
+                    the calendar-date module.
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     --
+Failure response    --
+Required tests      unit (golden fixtures) and the source scan above.
+Status              enforced
+```
+
+### INV-BOND-004 -- known and projected never mix
+
+```text
+Statement           A bond cash flow or maturity value is KNOWN only when every
+                    rate it depends on comes from the terms, an announcement or
+                    a stored observation; otherwise it is PROJECTED and the
+                    valuation lists the assumption.
+Source of truth     the resolved period rates of one valuation
+Enforcement         valueBondLot (backend/src/bonds/engine/bond-engine.ts):
+                    maturityValueKnown is null while any rate it needs is
+                    projected; each cash flow carries its status.
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     --
+Failure response    the figure moves to the projected fields
+Required tests      bond-engine.spec.ts known/projected cases.
+Status              enforced
+```
+
+### INV-BOND-005 -- a linked security's automatic price is the bond engine's, and it overwrites nobody
+
+```text
+Statement           A security linked to a bond instrument
+                    (securities.bond_instrument_id) is priced automatically
+                    by the bond engine and by no quote provider; and a
+                    bond_engine price row never replaces a manual or a
+                    transaction-derived price on the same day, nor is an
+                    unchanged day rewritten.
+Source of truth     securities.bond_instrument_id; security_prices.source
+Enforcement         Two mechanisms.
+                    1. One predicate, isPricedByQuoteProvider
+                       (backend/src/securities/provider-priced.util.ts), read by
+                       every path that asks a provider about a security:
+                       isRefreshEligible (the quote refresh, the selected
+                       refresh, the settlement, the historical backfill and the
+                       on-demand fill), fetchAndStoreRange (every backfill, even
+                       a forced one), backfillSecurityHoldingPeriod and the
+                       intraday chart. provider-priced.guard.spec.ts fails when
+                       a method that reaches a provider stops consulting it.
+                    2. BondPriceService.upsertPrices
+                       (backend/src/bonds/bond-price.service.ts): one
+                       INSERT ... ON CONFLICT (security_id, price_date) DO UPDATE
+                       whose WHERE admits only source = 'bond_engine' AND a
+                       close that differs; the same constant
+                       BOND_ENGINE_PRICE_SOURCE is bound by the delete of days
+                       that no longer get a price.
+                    The link itself: the instrument must exist and be priced in
+                    the security's currency (INV-PRICE-001), checked in the
+                    write's own transaction before it (SecuritiesService
+                    assertBondLink); fk_securities_bond_instrument is
+                    ON DELETE RESTRICT.
+Concurrency scope   per security; two recomputes write the same pure function of
+                    the ledger and converge (the conditional upsert is
+                    idempotent); the last commit wins and the next run repairs
+                    a stale one.
+Retry semantics     A retried recompute writes nothing it already wrote
+                    (written = 0, deleted = 0).
+Crash semantics     Reads, the upsert, the delete and the account updated_at
+                    marker share one transaction; the portfolio memo and the
+                    net-worth recompute are dispatched after the commit
+                    (INV-CACHE-001), and a lost debounce is recovered from the
+                    marker by sweepStaleSnapshots.
+Failure response    refuse a link the instrument cannot honour (400, nothing
+                    written); a day whose lots have no gross value gets no row
+                    (INV-BOND-002); lots that cannot be derived (a split, a
+                    fractional or over-removed quantity) price nothing and the
+                    valuation names why.
+Required tests      bond-prices.integration.spec.ts (real PostgreSQL: a manual,
+                    a transaction and a provider price on a day survive; an
+                    unchanged day is not rewritten; stale rows are deleted; every
+                    refresh path skips a linked security with an explicit provider
+                    override; another user's security answers 404);
+                    bond-price.service.spec.ts, bond-lots.spec.ts,
+                    securities.service.spec.ts (link refusals),
+                    provider-priced.guard.spec.ts.
+Status              enforced
+```
 
 ## Scheduled occurrences
 

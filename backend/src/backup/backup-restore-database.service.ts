@@ -503,6 +503,73 @@ export class BackupRestoreDatabaseService {
     }
   }
 
+  /**
+   * Write NULL over a security's bond link the target deployment cannot honour.
+   *
+   * `bond_instruments` is reference data seeded per deployment and not part of a
+   * backup, so a link survives a restore only where the same instrument exists
+   * here (its id is derived from the series, so it is the same id on every
+   * deployment). A link to an instrument this catalog lacks -- a series a newer
+   * release seeds, an adapter this build does not install -- is restored
+   * unlinked rather than failing the restore on the foreign key, and a link to
+   * an instrument in another currency than the security is dropped too: that
+   * pair would price the security in the wrong currency (INV-PRICE-001), and
+   * a crafted file is the only way to produce one. Replaces `data.securities`
+   * with new rows; returns how many links were dropped, each counted in the log.
+   */
+  async severUnavailableBondLinks(
+    manager: EntityManager,
+    data: BackupData,
+  ): Promise<number> {
+    const securities = data.securities;
+    if (!securities) return 0;
+    const wanted = [
+      ...new Set(
+        securities
+          .map((row) => row.bond_instrument_id)
+          .filter((id): id is string => typeof id === "string"),
+      ),
+    ];
+    if (wanted.length === 0) return 0;
+
+    const found: Array<{ id: string; currency_code: string }> =
+      await manager.query(
+        `SELECT id, currency_code FROM bond_instruments WHERE id = ANY($1::uuid[])`,
+        [wanted],
+      );
+    const currencyById = new Map(found.map((r) => [r.id, r.currency_code]));
+
+    let absent = 0;
+    let foreignCurrency = 0;
+    data.securities = securities.map((row) => {
+      const id = row.bond_instrument_id;
+      if (typeof id !== "string") return row;
+      const currency = currencyById.get(id);
+      if (currency === undefined) {
+        absent += 1;
+      } else if (currency === row.currency_code) {
+        return row;
+      } else {
+        foreignCurrency += 1;
+      }
+      return { ...row, bond_instrument_id: null };
+    });
+
+    if (absent > 0) {
+      this.logger.warn(
+        `Backup restore: ${absent} security link(s) to a bond instrument this ` +
+          "deployment's catalog does not carry were restored unlinked.",
+      );
+    }
+    if (foreignCurrency > 0) {
+      this.logger.warn(
+        `Backup restore: ${foreignCurrency} security link(s) to a bond ` +
+          "instrument in another currency than the security were restored unlinked.",
+      );
+    }
+    return absent + foreignCurrency;
+  }
+
   async insertRows(
     manager: EntityManager,
     table: string,

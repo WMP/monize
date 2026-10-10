@@ -1,0 +1,101 @@
+{
+  "manifest": "tos1029",
+  "cases": [
+    {
+      "id": "E1-N1",
+      "description": "TOS1029 N1 = 104.40 (base of period 2)",
+      "lot": {
+        "purchaseDate": "2026-10-15",
+        "quantity": 1
+      },
+      "asOf": "2027-10-20",
+      "expect": {
+        "principal": "104.40"
+      }
+    },
+    {
+      "id": "E1-N2",
+      "description": "TOS1029 N2 = 108.99 (base of period 3)",
+      "lot": {
+        "purchaseDate": "2026-10-15",
+        "quantity": 1
+      },
+      "asOf": "2028-10-20",
+      "expect": {
+        "principal": "108.99"
+      }
+    },
+    {
+      "id": "E1-W",
+      "description": "TOS1029 maturity value W = 113.79",
+      "lot": {
+        "purchaseDate": "2026-10-15",
+        "quantity": 1
+      },
+      "asOf": "2026-10-20",
+      "expect": {
+        "maturityValueKnown": "113.79",
+        "maturityValueProjected": null
+      },
+      "knownCashflows": [
+        {
+          "date": "2029-10-15",
+          "type": "PRINCIPAL",
+          "amount": "113.79",
+          "status": "KNOWN",
+          "period": 3
+        }
+      ]
+    },
+    {
+      "id": "E2",
+      "description": "TOS1029 early, period 1",
+      "lot": {
+        "purchaseDate": "2026-10-15",
+        "quantity": 1
+      },
+      "asOf": "2027-04-15",
+      "expect": {
+        "earlyRedemptionValue": "101.19",
+        "earlyRedemptionRefusal": null
+      }
+    },
+    {
+      "id": "E3",
+      "description": "TOS1029 early, period 1, below floor (99.12 -> 100.00)",
+      "lot": {
+        "purchaseDate": "2026-10-15",
+        "quantity": 1
+      },
+      "asOf": "2026-10-25",
+      "expect": {
+        "earlyRedemptionValue": "100.00"
+      }
+    },
+    {
+      "id": "E4",
+      "description": "TOS1029 early, period 2",
+      "lot": {
+        "purchaseDate": "2026-10-15",
+        "quantity": 1
+      },
+      "asOf": "2028-01-15",
+      "expect": {
+        "earlyRedemptionValue": "104.55"
+      }
+    },
+    {
+      "id": "E16",
+      "description": "E2 with quantity 25",
+      "lot": {
+        "purchaseDate": "2026-10-15",
+        "quantity": 25
+      },
+      "asOf": "2027-04-15",
+      "expect": {
+        "earlyRedemptionValue": "2529.75",
+        "quantity": 25
+      }
+    }
+  ]
+}

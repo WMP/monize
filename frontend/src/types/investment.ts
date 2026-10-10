@@ -56,6 +56,14 @@ export interface Security {
   quoteProvider: QuoteProviderName | null;
   msnInstrumentId: string | null;
   /**
+   * The bond instrument (`GET /bonds/instruments`) this security is linked to,
+   * or null. A linked security is priced by the bond engine only; its currency
+   * equals the instrument's. Optional for the rolling-deploy reason `lastPrice`
+   * is: a backend that predates the column sends nothing, and absent means
+   * "not linked" to every reader.
+   */
+  bondInstrumentId?: string | null;
+  /**
    * Where and when the instrument trades, as reported by the provider. The
    * session times are local to `marketTimezone` ("HH:mm:ss"). All three are
    * null until a price refresh reports them, and for providers that do not.
@@ -809,6 +817,8 @@ export interface CreateSecurityData {
   tagIds?: string[];
   quoteProvider?: QuoteProviderName | null;
   msnInstrumentId?: string;
+  /** A bond instrument id, or null to unlink; the currency must match the instrument's. */
+  bondInstrumentId?: string | null;
   isFavourite?: boolean;
   priceAlertPercent?: number | null;
   priceChartEnabled?: boolean;

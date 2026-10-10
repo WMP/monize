@@ -1,0 +1,59 @@
+{
+  "manifest": "ror1027",
+  "cases": [
+    {
+      "id": "E11",
+      "description": "ROR1027 coupon, period 1, D = 30",
+      "lot": {
+        "purchaseDate": "2026-10-31",
+        "quantity": 1
+      },
+      "asOf": "2026-11-05",
+      "expect": {},
+      "knownCashflows": [
+        {
+          "date": "2026-11-30",
+          "type": "INTEREST",
+          "amount": "0.33",
+          "status": "KNOWN",
+          "period": 1
+        }
+      ]
+    },
+    {
+      "id": "E12",
+      "description": "ROR1027 early, period 1 (99.67 -> 100.00)",
+      "lot": {
+        "purchaseDate": "2026-10-31",
+        "quantity": 1
+      },
+      "asOf": "2026-11-15",
+      "expect": {
+        "earlyRedemptionValue": "100.00"
+      }
+    },
+    {
+      "id": "E13",
+      "description": "ROR1027 coupon, period 3, D = 31, r3 = 3.75% (hypothetical)",
+      "lot": {
+        "purchaseDate": "2026-10-31",
+        "quantity": 1
+      },
+      "asOf": "2026-11-05",
+      "announcedRates": {
+        "2": "0.0400",
+        "3": "0.0375"
+      },
+      "expect": {},
+      "knownCashflows": [
+        {
+          "date": "2027-01-31",
+          "type": "INTEREST",
+          "amount": "0.31",
+          "status": "KNOWN",
+          "period": 3
+        }
+      ]
+    }
+  ]
+}
