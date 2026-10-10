@@ -24,6 +24,16 @@ export const RLS_EXEMPT_TABLES: Readonly<Record<string, string>> = {
     "Rate-limit and lockout counters keyed by opaque scope/key hash; no owner column, written on the failure path before any identity is established.",
   auto_backup_policy:
     "Singleton deployment automatic-backup policy (one schedule, folder and retention per instance); no owner column, and putting it on an administrator's row is what let an ordinary account operation rewrite it.",
+  benchmark_series:
+    "Global reference data with no owner column; one benchmark series (policy rate, CPI) serves every account and every country's instrument.",
+  benchmark_values:
+    "Global reference data with no owner column; one published benchmark observation serves every account, same story as exchange_rates.",
+  bond_instruments:
+    "Global reference data with no owner column; one bond instrument serves every account, whatever the issuer country.",
+  bond_period_rates:
+    "Global reference data with no owner column; one instrument's published period rate serves every account, immutable (INV-BOND-001).",
+  bond_terms_versions:
+    "Global reference data with no owner column; one instrument's published terms serve every account, immutable (INV-BOND-001).",
   currencies:
     "Global reference data keyed by ISO 4217 code; created_by_user_id is attribution, not ownership.",
   exchange_rate_coverage:
