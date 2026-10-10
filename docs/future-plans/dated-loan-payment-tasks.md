@@ -5,7 +5,7 @@
 ## How to use this list (read first, every session)
 
 - **One task per session/PR.** Each task lists its files. Touching files outside the task's scope is a scope violation -- stop and leave a note on the task's issue instead.
-- **The spec is the authority on every number.** A fixture is copied from spec sections 5.1 to 5.3, 7.4, 7.5 and 8.6, never from the implementation's own output. If the code and the spec disagree, the spec is changed first, in its own commit, with the reason.
+- **The spec is the authority on every number.** A fixture is copied from spec sections 5.1 to 5.3, 7.4 (with its settlement rows), 7.5 and 8.6, never from the implementation's own output. If the code and the spec disagree, the spec is changed first, in its own commit, with the reason.
 - **The governing invariants apply to every task:** the annuity payment is the one stated for the installment's own due date (INV-LOAN-009), beside the dated rate and debt (INV-LOAN-006); the occurrence view reads a server-priced occurrence (INV-OCCURRENCE-003); a template rewrite invalidates the bill caches (INV-CACHE-001). Name each one the task touches in the PR.
 - **Definition of done for every task** (in addition to per-task acceptance):
   - `backend/`: `npm run lint && npx tsc --noEmit && npm run typecheck`, `npm run test:changed`; plus `npm run build && npm run test:integration` when a query, an entity or an RLS context changed.
@@ -64,7 +64,7 @@ Every task is safe to merge in any order that respects its dependencies: nothing
 - Move `datedAnnuityPayment` beside `datedAnnualRate`; add `datedPaymentAmount(m, loanAccount, asOfDate)`; `resolveInstallmentCore` reads it at `asOfDate` and passes the dated payment to `priceInstallment`, which stops reading `accounts.payment_amount` for the `template` purpose (spec 7.1, 7.2).
 - The `template` purpose applies `newly(D)` (spec 7.3): `prev(D)` from the slot calendar of the schedule being rewritten, so `rewriteLoanTemplate` passes the schedule's `start_date`, `next_due_date` and cadence through to the core.
 - `posting`, `settlement` and `reconfigure` price as spec 7.2 says; their existing specs stay green unchanged.
-- Acceptance: every row of spec table 7.4 as a named case, and table 5.3's rows 16, 17, 29 and 30 through successive advancements; the settlement's existing cases unchanged; the integration case of spec section 6 (the advancement across a stated change on a real ledger).
+- Acceptance: every row of spec table 7.4 and of the settlement table after it (A1 to A16, S1 to S3) as a named case, and table 5.3's rows 16, 17, 29 and 30 through successive advancements; the settlement's existing cases unchanged; the integration case of spec section 6 (the advancement across a stated change on a real ledger).
 
 ### B2 -- The rate-change sync
 
@@ -74,7 +74,7 @@ Every task is safe to merge in any order that respects its dependencies: nothing
 - `update` and `remove` return `scheduledPaymentPreview` and apply nothing, as `create` with `deferScheduledSync` does today; `create` loses the immediate-apply path. The mortgage rate update prices the template by the same function.
 - `ScheduledPaymentPreview` gains `dueDate` and `nextPaymentChange` (spec 7.5).
 - No rate-change path calls `ScheduledTransactionsService.update`: a source-scanning case in the service's spec fails such a call, and the apply's unit case asserts the account row is not saved.
-- Acceptance: every row of spec table 7.5; Scenario 2 of #1637 (edit to 560.00) leaves the template at 584.59 and `accounts.payment_amount` unchanged; delete returns a preview and writes nothing until applied.
+- Acceptance: every row of spec table 7.5, the raised-template row included; Scenario 2 of #1637 (edit to 560.00) leaves the template at 584.59 and `accounts.payment_amount` unchanged; delete returns a preview and writes nothing until applied.
 - Doc line: the "Until B2" clauses of `docs/specs/mortgage-types.md` 5.3 and 5.6 removed.
 
 ### B3 -- The loan occurrence projection read
@@ -103,7 +103,7 @@ Every task is safe to merge in any order that respects its dependencies: nothing
 
 ### Q -- Acceptance
 
-**Files:** every locale's catalogs the tasks touched, `docs/system-invariants.md` (INV-LOAN-009 flipped to `enforced` with its tests named; INV-LOAN-006 and INV-OCCURRENCE-003 name the projection), `docs/verification-contract.md` (the row met), the spec's status lines, a release note under `docs/release-notes/` (the stepped payment, the confirmation on edit and delete, and that a template written by the old sync is repaired by confirming a sync).
+**Files:** every locale's catalogs the tasks touched, `docs/system-invariants.md` (INV-LOAN-009 flipped to `enforced` with its tests named; INV-LOAN-006 and INV-OCCURRENCE-003 name the projection), `docs/verification-contract.md` (the row met), the spec's status lines, a release note under `docs/release-notes/` (the stepped payment, the confirmation on edit and delete, that a confirmed sync replaces a raised template with the timeline's figure, and that a template written by the old sync is repaired by confirming a sync).
 
 - Dev data: confirm a sync on the affected dev accounts (BBTest, AAMortgage) and record the before and after template in the PR.
 

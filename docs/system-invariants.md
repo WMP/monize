@@ -2717,8 +2717,9 @@ Statement           The configured payment of an annuity installment (LOAN,
                     accounts.payment_amount; a manual or inferred row states
                     the base installment and the standing extra rides on top.
                     The template advancement takes it exactly when the row is
-                    dated after the slot before D (it newly applies to this
-                    installment), else max(template, dated payment); posting
+                    not an initial row and is dated after the slot before D
+                    (it newly applies to this installment), else
+                    max(template, dated payment); posting
                     re-divides the bill shown; the settlement prices it at the
                     matched slot; the rate-change sync prices the template at
                     its own next_due_date and writes it only on confirmation;
@@ -2750,8 +2751,9 @@ Enforcement         None yet for the advancement, the sync or the projection.
                     backend/src/loan-installments/price-installment.ts and
                     read by a datedPaymentAmount inside
                     resolveInstallmentCore, with priceInstallment taking the
-                    dated payment as an input so no purpose reads the column
-                    around it (B1); newly(D) from the slot calendar
+                    dated payment as an input so no purpose but reconfigure
+                    (which targets the column a type change re-levels, by
+                    decision) reads it around the rule (B1); newly(D) from the slot calendar
                     (occurrence-slots.ts) in the template purpose (B1); one
                     plan function for the sync's preview and apply, priced at
                     next_due_date and written through rewriteLoanTemplate,
@@ -2768,11 +2770,14 @@ Retry semantics     Safe: the advancement and the sync are recomputed from the
 Crash semantics     The template rewrite is one withScopedDb transaction:
                     before commit the old template stands, after commit the new
                     one does.
-Failure response    The projection answers 503 on an unreadable ledger and
+Failure response    The projection answers 503
+                    (errors.scheduled.loanLedgerUnreadable) on an unreadable
+                    ledger and
                     complete: false with a null amount from the first
                     occurrence without a rate; the settlement refuses
                     loan_not_configured with missing payment (unchanged).
-Required tests      Owed: every row of the spec's tables 7.4, 7.5 and 8.6 as
+Required tests      Owed: every row of the spec's tables 7.4 (with the
+                    settlement rows), 7.5 and 8.6 as
                     named unit cases (B1, B2, B3); a PG integration case for
                     the advancement across a stated change and for the sync
                     leaving accounts.payment_amount unchanged (B1, B2); the

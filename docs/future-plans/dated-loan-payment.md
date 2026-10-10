@@ -57,7 +57,8 @@ ones that decide the shape of the work:
 
 1. **The payment is dated by one function.** `datedAnnuityPayment` is the
    rule for the advancement, the settlement, the sync and the projection, so
-   no consumer reads `accounts.payment_amount` around it (spec 7.1).
+   no consumer other than `reconfigure` (by decision, spec 7.6 item 3) reads
+   `accounts.payment_amount` around it (spec 7.1).
 2. **The advancement steps only when the payment newly applies** (spec 7.3);
    otherwise the `max` that keeps a user-raised template and the grow-back
    after a clamp stands. Posting is unchanged.
@@ -91,7 +92,7 @@ written the user did not see); F1 follows B2 directly.
 | Rule | Mechanism | Task |
 | --- | --- | --- |
 | The annuity payment is dated (INV-LOAN-009) | `datedAnnuityPayment` read by `datedPaymentAmount` inside `resolveInstallmentCore`; `priceInstallment` takes the payment as an input | B1 |
-| The advancement steps into a new payment | `newly(D)` from the slot calendar in the template purpose | B1 |
+| The advancement steps into a new payment | `newly(D)` from the slot calendar in the template purpose; an `initial` row never newly applies | B1 |
 | The sync prices its template's own due date | one plan function, called by the preview and the apply, at `next_due_date` | B2 |
 | No rate-change path writes `accounts.payment_amount` | the apply goes through `rewriteLoanTemplate`; a spec asserting the account row is not saved and a source scan refusing `ScheduledTransactionsService.update` in the rate-change service | B2 |
 | A rate change asks before it rewrites the bill | create, update and delete return a preview; only `apply-scheduled-payment` writes | B2, F1 |
@@ -119,6 +120,7 @@ written the user did not see); F1 follows B2 directly.
 | Risk | Mitigation |
 | --- | --- |
 | A user-raised template is replaced by a newly applying stated payment | By decision 2 (spec A8); the release note says so (Q) |
+| A confirmed sync replaces a user-raised template with the timeline's figure at its due date, even for a change dated later | By decision 3 (spec 7.5, the A7 row); the preview shows the current and proposed figures before the user confirms, and the release note says so (Q) |
 | A skipped slot misses the step into a lower payment | Named as a known gap (spec 7.6 item 1); the projection shows it, and re-running the sync repairs it |
 | Edit and delete stop applying until F1 ships | F1 follows B2; the interim is "not yet applied", never a wrong write (section 4) |
 | Templates written by the old sync stay wrong | Q resyncs the dev data; the release note tells users to confirm a sync (decision 6) |

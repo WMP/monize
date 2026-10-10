@@ -402,8 +402,8 @@ advanced after it (section 7.3).
   browser fallback -- so a boundary case discriminates on any runner rather
   than only on one whose `TZ` happens to sit on the wrong side of it.
 - Unit (dated payment, B1 to B3 of
-  `docs/future-plans/dated-loan-payment-tasks.md`): every row of tables 7.4,
-  7.5 and 8.6 as a named case, the figures copied from this spec, not from
+  `docs/future-plans/dated-loan-payment-tasks.md`): every row of table 7.4 (the
+  advancement and the settlement rows), 7.5 and 8.6 as a named case, the figures copied from this spec, not from
   the implementation's output; the shared `datedAnnuityPayment` asserted once
   for both callers (the advancement and the settlement); the sync's preview
   and apply asserted equal through one call; the projection's first
@@ -468,8 +468,8 @@ keeps the import one-directional) and adds `datedPaymentAmount`, the I/O half
 that reads the account's rows as `datedAnnualRate` does.
 `resolveInstallmentCore` reads both at `asOfDate`, and `priceInstallment`
 takes the dated payment as an input instead of reading
-`accounts.payment_amount` itself, so no purpose can reach the undated column
-around the rule. The frontend projection already dates a stated payment the
+`accounts.payment_amount` itself, so no purpose other than `reconfigure`
+(7.2, and 7.6 item 3, by decision) reaches the undated column around the rule. The frontend projection already dates a stated payment the
 same way: `generateLoanSchedule` (`frontend/src/lib/loan-schedule.ts`) applies
 it to every row dated on or after its effective date.
 
@@ -498,8 +498,16 @@ direction.
 prev(D)  = the latest slot of the schedule's calendar dated before D: the
            calendar `occurrence-slots.ts` builds around next_due_date, with
            history stepped from start_date; none when D is the first slot
-newly(D) = row(D) exists, prev(D) exists, and row(D).effective_date > prev(D)
+newly(D) = row(D) exists, row(D).source <> 'initial', prev(D) exists, and
+           row(D).effective_date > prev(D)
 ```
+
+An `initial` row never newly applies: it restates `accounts.payment_amount`
+as it stood when the first change was recorded, and is dated the day before
+that change when `payment_start_date` is null or not before it
+(`insertInitialRowIfFirst`), so without the condition a first change that
+states only a rate would make the column's own value replace a raised
+template (row A16).
 
 When the payment dated at the new `next_due_date` comes from a row dated
 after the preceding slot, that row's payment newly applies to this
@@ -533,11 +541,24 @@ installment due on `prev(D)` posted on its due date. Amounts in cents.
 | A11 | A10 with 4.5 % / 560.00 dated after the A9 slot | 301.25 | next | the A9 slot | that row | yes | 560.00 | 37.50 | 522.50 | 10,000.00 |
 | A12 | no `loan_rate_changes` row at all | 584.59 | 2023-03-03 | 2023-02-03 | none | no | `max(584.59, accounts.payment_amount 584.59)` = 584.59 (today's rule) | 415.97 | 168.62 | 99,832.08 |
 | A13 | Scenario 2 data before any resync: the template holds 560.00 at 2023-02-03 and posted 560.00 = 416.67 + 143.33 (posting unchanged) | 560.00 | 2023-03-03 | 2023-02-03 | `initial` 2023-02-03 | no | `max(560.00, 584.59)` = 584.59 | 416.07 | 168.52 | 99,856.67 |
-| A14 | A1 on a loan set up with a standing extra of 50.00: `accounts.payment_amount` and the `initial` row 634.59, the extra line and `accounts.extra_payment_amount` 50.00 | 634.59 | 2023-05-03 | 2023-04-03 | 2023-04-15 (`manual`: states the base) | yes | 560.00 + 50.00 = 610.00 (extra 50.00) | 373.10 | 186.90 | 99,494.13 |
-| A15 | no row; `accounts.payment_amount` 634.59 (setup stored base plus extra), extra line 50.00 | 634.59 | 2023-03-03 | 2023-02-03 | none | no | `max(634.59, 634.59)` = 634.59 (extra 50.00) | 415.97 | 168.62 | 99,832.08 |
+| A14 | A1 on a loan set up with a standing extra of 50.00: `accounts.payment_amount` and the `initial` row 634.59, the extra line and `accounts.extra_payment_amount` 50.00 | 634.59 | 2023-05-03 | 2023-04-03 | 2023-04-15 (`manual`: states the base) | yes | 560.00 + 50.00 = 610.00 (extra 50.00) | 372.54 | 187.46 | 99,343.51 (three postings of 634.59, each retiring its 50.00 extra) |
+| A15 | no row; `accounts.payment_amount` 634.59 (setup stored base plus extra), extra line 50.00 | 634.59 | 2023-03-03 | 2023-02-03 | none | no | `max(634.59, 634.59)` = 634.59 (extra 50.00) | 415.76 | 168.83 | 99,782.08 (2023-02-03 posted 634.59 = 416.67 + 167.92 + 50.00) |
+
+| A16 | `payment_start_date` null; the A7 template (600.00, 2023-02-03 posted 584.59, 2023-03-03 and 2023-04-03 posted 600.00); the first change is 4.5 % / no payment eff. 2023-04-15, so the `initial` row 5.0 % / 584.59 is dated 2023-04-14 | 600.00 | 2023-05-03 | 2023-04-03 | `initial` 2023-04-14 | no (`initial`) | `max(600.00, 584.59)` = 600.00 | 372.99 | 227.01 | 99,463.25 |
 
 Table 5.3 is the same rule over a longer ledger: rows 17 and 30 are `newly`,
 rows 16 and 29 are not yet in effect.
+
+The settlement reads the same dated payment at the slot a bank row paid
+(7.2; `docs/specs/loan-installment-settlement.md` decision 12, whose 9.2 and
+E16 cases stay its own fixtures). On fixture 5.1, each slot before it posted
+on its due date:
+
+| # | Loan | Slot | `row(slot)` | `statesBase` | Priced | Interest | Principal | Extra | Debt before |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| S1 | Timeline A | 2023-04-03 | `initial` 2023-02-03 | no | 584.59 | 415.26 | 169.33 | 0.00 | 99,663.46 |
+| S2 | Timeline A | 2023-05-03 | 2023-04-15 (`manual`) | yes | 560.00 | 373.10 | 186.90 | 0.00 | 99,494.13 |
+| S3 | the A14 loan (standing extra 50.00) | 2023-05-03 | 2023-04-15 (`manual`) | yes | 560.00 + 50.00 = 610.00 | 372.54 | 187.46 | 50.00 | 99,343.51 |
 
 ### 7.5 The rate-change sync (B2)
 
@@ -548,7 +569,15 @@ Decision 3 of issue #1637.
   `D` = the template's `next_due_date`, with the payment of 7.2's last row.
   Mechanism: one function computes the plan, and the apply calls it and writes
   what it returned, so the preview and the commit cannot price two dates. A
-  change dated after `D` leaves the installment at `D` as it is.
+  change dated after `D` does not move the payment at `D`, which stays the
+  timeline's figure for `D`.
+- **The figure at `D` is the timeline's, exactly.** It replaces whatever the
+  template holds, a payment the user raised on the template included (the
+  third row below): that is the price of repairing Scenario 2, where the
+  template is wrong only by being lower than the timeline, and it is what
+  today's sync already does (`buildScheduledUpdate` writes the timeline's
+  payment with no `max`). The preview shows the current and the proposed figure side by side,
+  so the user sees the raise go before confirming, and declining keeps it.
 - **Applied through `rewriteLoanTemplate`, never `ScheduledTransactionsService.update`.**
   `rewriteLoanTemplate` writes the template's parent and its managed lines and
   nothing on the account, so the sync does not write `accounts.payment_amount`
@@ -575,6 +604,7 @@ Decision 3 of issue #1637.
 | --- | --- | --- |
 | Timeline A added, nothing posted, `D` = 2023-02-03 | 584.59 = 416.67 + 167.92 | 2023-05-03, 560.00 |
 | Timeline A edited (Scenario 2: the template held 560.00) | 584.59 = 416.67 + 167.92 | 2023-05-03, 560.00 |
+| Timeline A added with the A7 template (600.00, 2023-02-03 posted 584.59, 2023-03-03 posted 600.00), `D` = 2023-04-03 | 584.59 = 415.20 + 169.39 on 99,648.05: the raise is replaced (current 600.00 shown beside it) | 2023-05-03, 560.00 |
 | Timeline A, `D` = 2023-06-03 (2023-02-03 to 2023-05-03 posted per table 5.2) | 560.00 = 372.40 + 187.60 | null |
 | Timeline A deleted, `D` = 2023-02-03 | 584.59 = 416.67 + 167.92 (the `initial` row) | null |
 
@@ -705,7 +735,7 @@ deactivates the schedule.
 
 | Missing | Response |
 | --- | --- |
-| The ledger cannot be read (`datedLoanDebts` answers null) | the read fails: 503 with `errors.accounts.loanLedgerUnreadable`, never a guessed figure |
+| The ledger cannot be read (`datedLoanDebts` answers null) | the read fails: 503 with `errors.scheduled.loanLedgerUnreadable` (the message the posting path already refuses with), never a guessed figure |
 | No rate at an occurrence's `dueDate` or slot (`datedAnnualRate` null) | that occurrence and every later one `complete: false` with `amount`, `principal`, `interest` and `extraPrincipal` null; that occurrence still carries its `debtBefore`, the later ones null |
 | An unknown cadence (`periodsPerYearForStoredFrequency` null) | every occurrence as for a missing rate |
 | No dated payment for an annuity (`payment(D)` null) | none: the advancement keeps the template's amount (7.2), as it does today |
