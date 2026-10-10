@@ -228,6 +228,22 @@ function isAuthoring(draft: RuleDraft, loaded: RuleDraft | null | undefined): bo
 }
 
 /**
+ * The gaps in a condition alone, as the match endpoint would answer them: the
+ * same entries `draftGaps` gives for the condition, without the glob-trap
+ * advice, which the match does not apply (it only reads).
+ */
+export function conditionGaps(condition: EditorGroup): RuleErrorEntry[] {
+  const out: RuleErrorEntry[] = [];
+  conditionEntries(condition, 'condition', out);
+  for (const issue of scanCaptures(condition).issues) {
+    for (const code of issue.codes) {
+      if (!AUTHORING_CODES.includes(code)) out.push({ path: issue.path, code });
+    }
+  }
+  return out;
+}
+
+/**
  * The gaps in a draft, as the entries the server would answer with, so they
  * land on the same cards. Only completeness is checked here; the server stays
  * the authority on everything else (bounds, ownership of each id).

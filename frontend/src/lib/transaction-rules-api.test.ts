@@ -113,6 +113,14 @@ describe('transactionRulesApi', () => {
       expect(preview.fingerprint).toBe('f');
     });
 
+    it('matchDraft posts the condition, the window and the page', async () => {
+      const answer = { data: [], pagination: { page: 2, limit: 10, total: 0, totalPages: 0, hasMore: false }, scanned: 0, truncated: false };
+      vi.mocked(apiClient.post).mockResolvedValue({ data: answer });
+      const body = { condition: { all: [] }, activeFrom: '2026-10-01', page: 2, limit: 10 };
+      await expect(transactionRulesApi.matchDraft(body)).resolves.toEqual(answer);
+      expect(apiClient.post).toHaveBeenCalledWith('/transaction-rules/match-draft', body);
+    });
+
     it('explainRow posts the row and the trigger, caches nothing and drops no cache', async () => {
       const answer = { rules: [], labels: { accounts: {}, payees: {}, categories: {}, tags: {} } };
       vi.mocked(apiClient.post).mockResolvedValue({ data: answer });
