@@ -24,52 +24,108 @@ is listed in section 10.
 
 In scope for the first PR:
 
-- the generic bond domain: issue, versioned issue terms, rate rule,
-  capitalization rule, redemption policy, holding lot, cash flow, valuation;
+- the country-agnostic bond domain (section 2.0): instrument, versioned
+  terms, rate, observation, principal, capitalization, accrual and
+  redemption primitives, holding lot, cash flow, valuation;
 - a calculation engine in exact decimal arithmetic;
-- the four products above;
-- persistence of issue terms, announced period rates and reference data
-  (NBP reference rate, GUS CPI) in global tables;
+- the Polish adapter: business-day calendar, benchmark definitions and the
+  four terms manifests above;
+- persistence of instruments, terms versions, announced period rates and
+  benchmark series and values in global, country-agnostic tables;
 - a read service that values one holding lot from the stored data.
 
 Out of scope for the first PR (the plan orders them): fetching terms from the
-Ministry of Finance, NBP or GUS; linking a `securities` row to a bond issue;
+Ministry of Finance, NBP or GUS; linking a `securities` row to a bond instrument;
 feeding bond values into portfolio valuation; any UI; OTS, DOR, ROS, ROD;
-taxes; the IKE/IKZE fee waiver; market-traded bonds, yields and day-count
-conventions (discussion section 38).
+taxes; the IKE/IKZE fee waiver; other countries, and the primitives they
+need (indexed principal, day-count conventions, market quotes, yields)
+(discussion section 38). Section 2.0 is the rule that keeps them addable.
 
 ## 2. The model
 
-### 2.1 Issue and terms
+### 2.0 Country-agnostic engine (binding rule)
 
-A **bond issue** is one series (`TOS1029`). Its **terms** are what its issue
-letter says. Terms are stored as an immutable, versioned document: version 1 is
-what the letter says at issue, and a correction is a new version, never an edit.
-A valuation names the terms version it used.
+The engine is one deterministic cash-flow engine for every country. It is
+composed of financial **primitives** (rate rule, observation rule, principal
+rule, capitalization, accrual, redemption policy, penalty, rounding), and it
+never branches on a country, an issuer, a program or a product code. A
+country is an **adapter**: data (terms manifests, benchmark definitions) and
+a business-day calendar, registered by id. The Polish products in this
+specification are four terms documents built only from primitives.
+
+Adding a country is: a calendar, benchmark definitions, terms manifests and
+golden tests. A new primitive (a new union member and one engine case) is
+added only when an instrument has a new economic construction, for example
+an inflation-indexed principal (`INDEX_RATIO`, US TIPS) or a day-count
+convention (`ACT/365F`, `BUS/252`). The research note behind this rule is
+the global sovereign bond study attached to discussion kenlasko/monize#1650,
+sections 4 to 6, 11 and 19.
+
+Two rules make this checkable:
+
+- A source-scanning guard fails when a file of the domain or the engine
+  imports an adapter or names a country or product literal.
+- The terms parser refuses an unknown primitive with `UNSUPPORTED_PRIMITIVE`
+  and the path of the field. An unknown calendar or benchmark id is not a
+  parse error: the valuation reports it as missing data.
+
+### 2.1 Instrument and terms
+
+A **bond instrument** is one series (`TOS1029`), identified by
+`(issuerCountryCode, issuerCode, seriesCode)`. Its **terms** are what its
+issue document says. Terms are stored as an immutable, versioned document:
+version 1 is what the document says at issue, and a correction is a new
+version, never an edit. A valuation names the terms version it used.
 
 The terms document (`schemaVersion` 1):
 
 ```text
-productCode        TOS | ROR | COI | EDO
-seriesCode         e.g. TOS1029
-currency           PLN
-faceValue          "100.00"
-saleWindow         { from, to }                  calendar dates
-periodCount        3 | 12 | 4 | 10
-periodMonths       12 | 1
-rateRule           see 2.2
-capitalization     NONE | COMPOUND_AT_PERIOD_END
-compoundBaseRounding  PER_PERIOD | NONE          see 2.4
-earlyRedemption    { fee, feeCappedAtAccruedInterestInFirstPeriodOnly,
-                     floorAtFaceValue: ALL_PERIODS | FIRST_PERIOD,
-                     earliestDaysAfterPurchase: 7,
-                     latestDaysBeforeMaturity: 20,
-                     excludesRecordDay }
-source             { provider: PL_MF, url, document }
+instrument      { issuerCountryCode, issuerCode, programCode, seriesCode,
+                  currency, marketability: RETAIL_REDEEMABLE, faceValue }
+saleWindow      { from, to } | null
+schedule        { anchor: LOT_PURCHASE_DATE, periodMonths, periodCount,
+                  rollDay: ANCHOR_DAY_CLAMPED, calendarId }
+accrual         { type: ACTUAL_DAYS_IN_PERIOD }
+principalRule   { type: FIXED_NOMINAL }
+rateRule        FIXED | BENCHMARK_PLUS_SPREAD | INFLATION_PLUS_MARGIN_AS_RATE
+                (see 2.2)
+capitalization  { type: NONE } | { type: COMPOUND_AT_PERIOD_END,
+                                   baseRounding: PER_PERIOD | NONE }
+redemption      { type: MATURITY_ONLY }
+              | { type: ON_DEMAND, earliestDaysAfterPurchase,
+                  latestDaysBeforeMaturity,
+                  blackouts: [{ type: RECORD_DAY_BEFORE_COUPON, businessDays,
+                                calendarId }],
+                  penalties: [{ type: FIXED_FEE_PER_UNIT, amount }],
+                  proceedsFloor: { type: FACE_VALUE,
+                                   appliesTo: ALL_PERIODS | FIRST_PERIOD } | null }
+rounding        { moneyDecimals: 2, mode: HALF_UP }
+source          { provider, url, document }
 ```
 
 Every rate and amount is a decimal string, never a JSON number. Rates are
 fractions (`"0.0440"` for 4.40%).
+
+The four Polish series in this vocabulary:
+
+| Field | TOS1029 | ROR1027 | COI1030 | EDO1036 |
+| --- | --- | --- | --- | --- |
+| `periodMonths` x `periodCount` | 12 x 3 | 1 x 12 | 12 x 4 | 12 x 10 |
+| `rateRule` | `FIXED` 0.0440 | `BENCHMARK_PLUS_SPREAD` `PL_NBP_REFERENCE`, first 0.0400, spread 0, floor 0 | `INFLATION_PLUS_MARGIN_AS_RATE` `PL_CPI_GUS_YOY`, first 0.0475, margin 0.0150, floor 0 | same, first 0.0535, margin 0.0200, floor 0 |
+| `observation` | -- | `STEP_VALUE_ON_NTH_BUSINESS_DAY_BEFORE_START_MONTH`, 10, `PL` | `MONTHLY_VALUE_MONTHS_BEFORE_START`, 2 | same |
+| `capitalization` | `COMPOUND_AT_PERIOD_END`, `PER_PERIOD` | `NONE` | `NONE` | `COMPOUND_AT_PERIOD_END`, `NONE` |
+| penalty | 1.00 | 0.50 | 2.00 | 3.00 |
+| `proceedsFloor.appliesTo` | `ALL_PERIODS` | `FIRST_PERIOD` | `FIRST_PERIOD` | `ALL_PERIODS` |
+| blackouts | none | record day, 5 | record day, 5 | none |
+
+### 2.1.1 One accrual formula
+
+With `F = 12 / periodMonths`, the interest a base `B` accrues in a period at
+annual rate `r` after `a` of its `D` days is `B r a / (D F)`. This is the
+formula of every Polish letter: ROR annex 2 (`F = 12`), and COI annex 3, TOS
+annex 2 and EDO annex 3 (`F = 1`, `D = ACT`). A full-period coupon is
+`round(B r / F)` (COI annex 2: `N r`), and the compounded value at maturity is
+`round(N prod(1 + r_i / F))`.
 
 ### 2.2 Rate rules
 
@@ -79,8 +135,13 @@ fractions (`"0.0440"` for 4.40%).
 | `BENCHMARK_PLUS_SPREAD` | ROR | k = 1: `firstPeriodRate`; k >= 2: `max(0, NBP) + spread` (ROR letter, para 15, 16, annex 1) |
 | `INFLATION_PLUS_MARGIN_AS_RATE` | COI, EDO | k = 1: `firstPeriodRate`; k >= 2: `max(0, CPI) + margin` (COI letter, para 15 to 17; EDO letter, para 15 to 17, annex 1) |
 
-Observation rules:
+Observation rules (generic primitive, then the Polish use of it):
 
+- `STEP_VALUE_ON_NTH_BUSINESS_DAY_BEFORE_START_MONTH` reads a `STEP`
+  benchmark (a value in force from its effective date) on the n-th business
+  day, in the named calendar, before the first day of the calendar month in
+  which the period starts. `MONTHLY_VALUE_MONTHS_BEFORE_START` reads a
+  `MONTHLY` benchmark at the reference month `startMonth - months`.
 - **NBP** (`PL_NBP_REFERENCE`): the reference rate in force on the 10th
   business day before the first day of the calendar month in which period k
   starts (ROR letter, para 16). A business day excludes Saturdays, Sundays
@@ -231,8 +292,8 @@ fixtures copy these values, never the implementation's output.
   the series. No valuation is produced.
 - A started period without a rate: section 4. `missing` names the series and
   the observation (`PL_CPI_GUS_YOY 2027-08`, or `PL_NBP_REFERENCE on
-  2026-10-19`) and the source that publishes it (GUS, NBP).
-- NBP coverage: a day after the series' `covered_through` date is unknown, even
+  2026-10-19`) and the publisher stored with the benchmark series (GUS, NBP).
+- Coverage of a `STEP` benchmark (NBP): a day after the series' `covered_through` date is unknown, even
   if an older rate exists, because a newer change may not be stored yet.
 - CPI: a reference month with no stored row is unknown. A negative value is
   stored as is and floored at 0 in the rate rule only.
@@ -247,11 +308,15 @@ Global reference data with no owner (RLS bucket: exempt, same rationale as
 
 | Table | Key | Mutability |
 | --- | --- | --- |
-| `bond_issues` | `id`; unique `(country, series_code)` | insert only |
-| `bond_terms_versions` | `(bond_issue_id, version)` | immutable (INV-BOND-001) |
-| `bond_period_rates` | `(bond_issue_id, period_number)` | immutable (INV-BOND-001) |
-| `bond_reference_observations` | `(series_code, observation_date)` | insert, correction by update |
-| `bond_reference_coverage` | `series_code` | `covered_through` moves forward |
+| `bond_instruments` | `id`; unique `(issuer_country_code, issuer_code, series_code)` | insert only |
+| `bond_terms_versions` | `(bond_instrument_id, version)`, with `content_hash` | immutable (INV-BOND-001) |
+| `bond_period_rates` | `(bond_instrument_id, period_number)` | immutable (INV-BOND-001) |
+| `benchmark_series` | `code`; `kind` `STEP` or `MONTHLY`, `publisher`, `unit`, `covered_through` | insert; `covered_through` moves forward |
+| `benchmark_values` | `(benchmark_code, observation_date)` | insert, correction by update |
+
+No table names a country or a product: a German, US or Japanese instrument is
+a row in the same tables. The Polish data enters through the adapter, never
+through the migration.
 
 Rates are `NUMERIC(20,10)` (an exchange-rate-like quantity, not money); the
 face value is `NUMERIC(20,4)`. All five tables are excluded from the user
@@ -294,6 +359,7 @@ values are shown to a user.
 | Products | golden | E1 to E16 from a JSON fixture per product |
 | Missing data | unit | each row of section 4; `missing` content; matured lot; `asOf` before purchase |
 | Window | unit | day 6 and 7 after purchase, 21 and 20 days before maturity, ROR record day |
-| Terms parsing | unit | a valid document per product; unknown field, number instead of string, unknown product refused |
+| Terms parsing | unit | a valid document per Polish manifest; unknown field, number instead of string, unknown primitive (`UNSUPPORTED_PRIMITIVE`) refused; unknown calendar or benchmark id reported as missing data |
+| Country-agnostic engine | guard | no domain or engine file imports an adapter or names a country or product literal (section 2.0) |
 | Immutability | integration | update and delete of a terms version and of an announced rate raise |
 | Read service | integration | loads the newest version, applies announced over derived, names the version |
