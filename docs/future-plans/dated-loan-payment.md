@@ -38,7 +38,7 @@ not in the approved scope.
 | Need | Existing piece | Notes |
 | --- | --- | --- |
 | One pricing path | `resolveInstallmentCore`, `priceInstallment`, `datedAnnualRate` (`backend/src/loan-installments/price-installment.ts`) | B1 adds `datedPaymentAmount` beside `datedAnnualRate` and passes the dated payment into `priceInstallment`. |
-| The dated payment rule | `datedAnnuityPayment` (`backend/src/loan-installments/plan-loan-settlement.ts`) | Already the settlement's rule (settlement spec decision 12). B1 moves it beside `datedAnnualRate`; the planner imports it from there. |
+| The dated payment rule | `datedAnnuityPayment` (`backend/src/loan-installments/price-installment.ts`) | Already the settlement's rule (settlement spec decision 12). B1 moved it there from the settlement planner, beside `datedAnnualRate`; the planner imports it from there. |
 | The template rewrite | `rewriteLoanTemplate` (`backend/src/loan-installments/reprice-template.ts`) | The advancement (B1) and the sync's apply (B2). |
 | The slot calendar | `occurrenceSlotsInRange` (`backend/src/loan-installments/occurrence-slots.ts`) | Answers `prev(D)` for B1's `newly` (spec 7.3). |
 | Occurrence identity | `expandOccurrenceSlots` (`backend/src/common/scheduled-occurrences.ts`) | The projection's occurrences (B3). |

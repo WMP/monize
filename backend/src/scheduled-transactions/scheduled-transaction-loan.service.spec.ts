@@ -1173,6 +1173,114 @@ describe("ScheduledTransactionLoanService", () => {
       expect(interestSave[0].amount).toBe(-1000);
     });
 
+    /**
+     * The dated payment (INV-LOAN-009, `docs/specs/scheduled-loan-installment-pricing.md`
+     * table 5.3, Timeline B on fixture 5.1): the advancement after installment
+     * 16 posted on 2024-05-03 moves the template to 2024-06-03, the first
+     * installment the 4.5 % / 557.00 change effective 2024-05-15 applies to,
+     * and the template steps into 557.00 exactly, down from 584.59.
+     */
+    describe("the advancement steps into a stated payment (spec 7.3)", () => {
+      const fixtureAccount = () =>
+        makeLoanAccount({
+          accountType: "MORTGAGE",
+          mortgageType: "ANNUITY",
+          currentBalance: -97227.62,
+          interestRate: 5,
+          paymentFrequency: "MONTHLY",
+          paymentAmount: 584.59,
+          paymentStartDate: "2023-02-03",
+          amortizationMonths: 300,
+          originalPrincipal: 100000,
+        } as unknown as Partial<Account>);
+      const initial = {
+        effectiveDate: "2023-02-03",
+        annualRate: "5.0000",
+        newPaymentAmount: "584.5900",
+        source: "initial",
+      };
+      const template = (amount: number) =>
+        makeScheduledTransaction({
+          amount: -amount,
+          startDate: "2023-02-03",
+          nextDueDate: "2024-06-03",
+          splits: [
+            {
+              id: "split-principal",
+              transferAccountId: loanAccountId,
+              categoryId: null,
+              amount: -178.73,
+              memo: "Principal",
+            },
+            {
+              id: "split-interest",
+              transferAccountId: null,
+              categoryId: "cat-interest",
+              amount: -405.86,
+              memo: "Interest",
+            },
+          ],
+        } as never);
+      const cents = (value: number) => Math.round(value * 100) / 100;
+      const written = () => {
+        const parent = scheduledTransactionsRepository.update.mock.calls.find(
+          (call: any) => call[1]?.amount !== undefined,
+        );
+        const interest = splitsRepository.save.mock.calls.find(
+          (call: any) => call[0].categoryId === "cat-interest",
+        );
+        const principal = splitsRepository.save.mock.calls.find(
+          (call: any) => call[0].transferAccountId === loanAccountId,
+        );
+        return {
+          parent: parent ? parent[1].amount : undefined,
+          interest: cents(interest![0].amount),
+          principal: cents(principal![0].amount),
+        };
+      };
+
+      it("rewrites the template from 584.59 to 557.00 = 364.60 + 192.40 at the first installment the change applies to", async () => {
+        accountsRepository.findOne.mockResolvedValue(fixtureAccount());
+        rateChangesRepository.find.mockResolvedValue([
+          initial,
+          {
+            effectiveDate: "2024-05-15",
+            annualRate: "4.5000",
+            newPaymentAmount: "557.0000",
+            source: "manual",
+          },
+        ]);
+        scheduledTransactionsRepository.findOne.mockResolvedValue(
+          template(584.59),
+        );
+
+        await service.recalculateLoanPaymentSplits(scheduledTransactionId);
+
+        expect(written()).toEqual({
+          parent: -557,
+          interest: -364.6,
+          principal: -192.4,
+        });
+      });
+
+      it("keeps a user-raised template of 600.00 when no new change applies", async () => {
+        accountsRepository.findOne.mockResolvedValue(fixtureAccount());
+        rateChangesRepository.find.mockResolvedValue([initial]);
+        scheduledTransactionsRepository.findOne.mockResolvedValue(
+          template(600),
+        );
+
+        await service.recalculateLoanPaymentSplits(scheduledTransactionId);
+
+        // max(600.00, 584.59): the parent is not rewritten, the lines are.
+        expect(written()).toEqual({
+          parent: undefined,
+          interest: -405.12,
+          principal: -194.88,
+        });
+      });
+    });
+
     it("measures the balance from the ledger through the next due date", async () => {
       // `accounts.current_balance` excludes future-dated rows, so after a
       // future-dated regular or principal-only payment posts it repeats the

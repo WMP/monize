@@ -14,8 +14,8 @@ import {
 } from "../accounts/loan-payment-waterfall.util";
 import { currencyMinorUnitDecimals } from "../common/currency-minor-unit.util";
 import { MONEY_DECIMALS, roundMoney } from "../common/round.util";
-import { LoanRateChange } from "../loan-rate-changes/entities/loan-rate-change.entity";
 import {
+  datedAnnuityPayment,
   identifyLoanTemplate,
   LoanTemplateSplits,
   periodicRateFor,
@@ -101,66 +101,6 @@ function scalarRate(account: Pick<Account, "interestRate">): number | null {
   }
   const value = Number(account.interestRate);
   return Number.isFinite(value) ? value : null;
-}
-
-/** The annuity payment at a slot, and which figure it states (spec decision 12). */
-export interface DatedAnnuityPayment {
-  readonly amount: number;
-  /**
-   * True when `amount` is the base installment `B` (a `manual` or `inferred`
-   * rate-change row); false when it already holds the standing extra
-   * (`accounts.payment_amount`, or an `initial` row's verbatim copy of it).
-   */
-  readonly statesBase: boolean;
-}
-
-/**
- * The annuity payment at `asOfDate` (spec decision 12): the `new_payment_amount`
- * of the latest rate-change row effective on or before the date that carries
- * one, else `accounts.payment_amount`; null when neither says anything. The
- * two sources hold different figures (`statesBase`): the rate-change resync
- * adds the standing extra on top of a stated payment, while the setup path
- * stores the total with the extra inside it, and an `initial` row copies that
- * column.
- */
-export function datedAnnuityPayment(
-  rateChanges: readonly Pick<
-    LoanRateChange,
-    "effectiveDate" | "newPaymentAmount" | "source"
-  >[],
-  asOfDate: string,
-  configuredPayment: number | string | null | undefined,
-): DatedAnnuityPayment | null {
-  let latest: Pick<
-    LoanRateChange,
-    "effectiveDate" | "newPaymentAmount" | "source"
-  > | null = null;
-  for (const row of rateChanges) {
-    if (row.effectiveDate > asOfDate) continue;
-    const amount = Number(row.newPaymentAmount);
-    if (
-      row.newPaymentAmount == null ||
-      !Number.isFinite(amount) ||
-      amount <= 0
-    ) {
-      continue;
-    }
-    if (latest === null || row.effectiveDate >= latest.effectiveDate) {
-      latest = row;
-    }
-  }
-  if (latest !== null) {
-    return {
-      amount: Number(latest.newPaymentAmount),
-      statesBase: latest.source !== "initial",
-    };
-  }
-  const configured = Number(configuredPayment);
-  return configuredPayment != null &&
-    Number.isFinite(configured) &&
-    configured > 0
-    ? { amount: configured, statesBase: false }
-    : null;
 }
 
 interface PolicyLines {
@@ -400,28 +340,18 @@ export function planLoanSettlement(
     return refuse("loan_debt_retired", { dueDate });
   }
 
-  // Section 7.3: the one pricing path, bounded by the slot.
-  // `priceInstallment` reads `paymentAmount` as the total with the standing
-  // extra inside it; a stated base takes the template's extra on top (spec
-  // section 7.3 step 3, `payment(s) + E`).
-  const templateExtra = template.extraPrincipalSplit
-    ? Math.abs(Number(template.extraPrincipalSplit.amount))
-    : 0;
-  const pricingAccount: Account =
-    method === "ANNUITY" && payment !== null
-      ? ({
-          ...loanAccount,
-          paymentAmount: payment.statesBase
-            ? roundMoney(payment.amount + templateExtra)
-            : payment.amount,
-        } as Account)
-      : loanAccount;
+  // Section 7.3: the one pricing path, bounded by the slot. The settlement
+  // purpose takes the dated payment exactly; a stated base takes the
+  // template's extra on top inside the tail (spec section 7.3 step 3,
+  // `payment(s) + E`; pricing spec 7.1, `total(D, E)`).
   const priced = priceInstallment({
     debt: debtBefore,
     annualRate,
-    loanAccount: pricingAccount,
+    loanAccount,
     template,
     templateAmount: Math.abs(Number(schedule.amount)),
+    datedPayment: payment,
+    paymentNewlyApplies: false,
     // Narrowed above: an unknown cadence was refused as `paymentFrequency`.
     frequency: frequency as string,
     asOfDate: dueDate,

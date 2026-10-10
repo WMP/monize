@@ -33,7 +33,7 @@ Every task is safe to merge in any order that respects its dependencies: nothing
 | ID | Issue | Task | Depends on | Deploy class | Status | PR |
 |----|-------|------|-----------|--------------|--------|----|
 | S1 | #1638 | Spec sections and plan pair; INV-LOAN-009 registered `unenforced` | -- | none | [x] | the PR closing #1638 |
-| B1 | #1639 | Dated payment in the pricing core and the template advancement | S1 | neutral | [ ] | |
+| B1 | #1639 | Dated payment in the pricing core and the template advancement | S1 | neutral | [x] | the PR closing #1639 |
 | B2 | #1640 | Rate-change sync prices the template's own due date; confirm on create, update, delete; no `payment_amount` write | B1 | neutral | [ ] | |
 | B3 | #1641 | Loan occurrence projection read | B1 | inert | [ ] | |
 | F1 | #1642 | Rate-change dialogs: confirm on edit and delete, preview names the due date | B2 | inert | [ ] | |

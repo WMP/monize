@@ -549,6 +549,18 @@ installment due on `prev(D)` posted on its due date. Amounts in cents.
 Table 5.3 is the same rule over a longer ledger: rows 17 and 30 are `newly`,
 rows 16 and 29 are not yet in effect.
 
+Asserted by: every row A1 to A16, and table 5.3's rows 16, 17, 29 and 30
+through successive advancements, by `backend/src/loan-installments/price-installment.spec.ts`
+("the dated payment: the advancement"), through `resolveInstallmentCore` on
+the fixture's rows and calendar, in cents; `datedAnnuityPayment` and
+`paymentNewlyApplies` by the same spec, once for every caller; `prev(D)` by
+`backend/src/loan-installments/occurrence-slots.spec.ts` ("the preceding
+slot"); row 17 and the A7 raise through the service's advancement by
+`backend/src/scheduled-transactions/scheduled-transaction-loan.service.spec.ts`
+("the advancement steps into a stated payment"); the step on a real ledger,
+timeline and schedule (section 6's integration case) by
+`backend/test/integration/dated-loan-payment.integration.spec.ts`.
+
 The settlement reads the same dated payment at the slot a bank row paid
 (7.2; `docs/specs/loan-installment-settlement.md` decision 12, whose 9.2 and
 E16 cases stay its own fixtures). On fixture 5.1, each slot before it posted
@@ -559,6 +571,11 @@ on its due date:
 | S1 | Timeline A | 2023-04-03 | `initial` 2023-02-03 | no | 584.59 | 415.26 | 169.33 | 0.00 | 99,663.46 |
 | S2 | Timeline A | 2023-05-03 | 2023-04-15 (`manual`) | yes | 560.00 | 373.10 | 186.90 | 0.00 | 99,494.13 |
 | S3 | the A14 loan (standing extra 50.00) | 2023-05-03 | 2023-04-15 (`manual`) | yes | 560.00 + 50.00 = 610.00 | 372.54 | 187.46 | 50.00 | 99,343.51 |
+
+Asserted by: S1 to S3, and table 5.3's row 17 at its slot, by
+`backend/src/loan-installments/plan-loan-settlement.spec.ts` ("the dated
+annuity payment at the slot"), through `planLoanSettlement` on the fixture's
+facts.
 
 ### 7.5 The rate-change sync (B2)
 
