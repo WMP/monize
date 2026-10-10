@@ -96,6 +96,7 @@ implied.
 | INV-LOAN-006 | A scheduled loan installment prices the ledger debt, the rate, and the remaining count through its own due date | enforced |
 | INV-LOAN-007 | One amortization method per mortgage type, from preview to pricing to projection | enforced |
 | INV-LOAN-008 | One settlement per scheduled occurrence, and the claim commits with the split | enforced |
+| INV-LOAN-009 | An annuity installment's payment is the one stated for its own due date | unenforced |
 | INV-LOAN-HISTORY-001 | Historical loan interest counted as paid is ledger-backed | partial |
 | INV-OCCURRENCE-001 | One scheduled occurrence has at most one financial effect | enforced |
 | INV-OCCURRENCE-002 | A stored override price survives reopening | enforced |
@@ -2704,6 +2705,90 @@ Known gaps          On the import paths the source account is held before the
                     priced on the older debt; a cursor moved back into a paid
                     period lets post() pay it again (spec section 15).
 Status              enforced
+```
+
+### INV-LOAN-009 -- an annuity installment's payment is the one stated for its own due date
+
+```text
+Statement           The configured payment of an annuity installment (LOAN,
+                    and the ANNUITY and CANADIAN_FIXED mortgage types) due on
+                    D is the new_payment_amount of the latest loan_rate_changes
+                    row effective on or before D that states one, else
+                    accounts.payment_amount; a manual or inferred row states
+                    the base installment and the standing extra rides on top.
+                    The template advancement takes it exactly when the row is
+                    not an initial row and is dated after the slot before D
+                    (it newly applies to this installment), else
+                    max(template, dated payment); posting
+                    re-divides the bill shown; the settlement prices it at the
+                    matched slot; the rate-change sync prices the template at
+                    its own next_due_date and writes it only on confirmation;
+                    the occurrence projection prices every listed occurrence
+                    by the same rule. No rate-change path writes
+                    accounts.payment_amount. LINEAR and INTEREST_ONLY
+                    installments are derived per date (INV-LOAN-007) and read
+                    no payment. The rate beside it is INV-LOAN-006's.
+                    docs/specs/scheduled-loan-installment-pricing.md sections
+                    7 and 8 are the authority.
+Source of truth     loan_rate_changes (new_payment_amount, effective_date,
+                    source) bounded by the installment's own date, then
+                    accounts.payment_amount; the schedule's slot calendar for
+                    the slot before D.
+Enforcement         None yet for the advancement, the sync or the projection.
+                    The settlement already prices the dated payment
+                    (datedAnnuityPayment in
+                    backend/src/loan-installments/plan-loan-settlement.ts,
+                    settlement spec decision 12). Violated today:
+                    priceInstallment reads max(template,
+                    accounts.payment_amount) for every date on advancement,
+                    and the rate-change sync (buildScheduledUpdate) writes the
+                    payment in force today into a template whose
+                    next_due_date may be earlier, through
+                    ScheduledTransactionsService.update, which also writes
+                    accounts.payment_amount (issue #1637). The mechanism,
+                    built by docs/future-plans/dated-loan-payment-tasks.md:
+                    datedAnnuityPayment moved beside datedAnnualRate in
+                    backend/src/loan-installments/price-installment.ts and
+                    read by a datedPaymentAmount inside
+                    resolveInstallmentCore, with priceInstallment taking the
+                    dated payment as an input so no purpose but reconfigure
+                    (which targets the column a type change re-levels, by
+                    decision) reads it around the rule (B1); newly(D) from the slot calendar
+                    (occurrence-slots.ts) in the template purpose (B1); one
+                    plan function for the sync's preview and apply, priced at
+                    next_due_date and written through rewriteLoanTemplate,
+                    which writes nothing on the account, held by a source scan
+                    refusing ScheduledTransactionsService.update in the
+                    rate-change service (B2); the occurrence projection read
+                    through priceInstallment (B3).
+Concurrency scope   per schedule: rewriteLoanTemplate takes the schedule row
+                    lock (pessimistic_write) before it reads the template, as
+                    the advancement does today; the projection is a read
+Retry semantics     Safe: the advancement and the sync are recomputed from the
+                    ledger and the timeline, so a repeat writes the same
+                    template; the projection writes nothing.
+Crash semantics     The template rewrite is one withScopedDb transaction:
+                    before commit the old template stands, after commit the new
+                    one does.
+Failure response    The projection answers 503
+                    (errors.scheduled.loanLedgerUnreadable) on an unreadable
+                    ledger and
+                    complete: false with a null amount from the first
+                    occurrence without a rate; the settlement refuses
+                    loan_not_configured with missing payment (unchanged).
+Required tests      Owed: every row of the spec's tables 7.4 (with the
+                    settlement rows), 7.5 and 8.6 as
+                    named unit cases (B1, B2, B3); a PG integration case for
+                    the advancement across a stated change and for the sync
+                    leaving accounts.payment_amount unchanged (B1, B2); the
+                    source scan of B2.
+Known gaps          A cursor moved without an advancement (skip, an edit of
+                    next_due_date) can miss the step into a lower payment; an
+                    initial row outranks a later edit of the account's payment;
+                    a method change re-levels the column, not the timeline; an
+                    override with an amount and no lines posts over the
+                    template's lines (spec 7.6).
+Status              unenforced
 ```
 
 ### INV-LOAN-HISTORY-001 -- historical loan interest counted as paid is ledger-backed
