@@ -407,6 +407,19 @@
     "failed": "无法完成测试。{message}",
     "stale": "自该结果生成后，规则或筛选条件已更改。请重新测试以查看当前结果。"
   },
+  "match": {
+    "button": "测试规则",
+    "buttonLabel": "测试规则：条件",
+    "incomplete": "请完成上方的条件，以查看它们匹配哪些交易。",
+    "windowBackwards": "生效日期的结束早于开始，因此没有交易能匹配。",
+    "summary": "{count, plural, =0 {没有匹配的交易} other {# 笔匹配的交易}}",
+    "summaryPending": "匹配的交易",
+    "running": "正在查找匹配的交易...",
+    "failed": "无法加载匹配的交易。{message}",
+    "empty": "没有现有交易符合这些条件。",
+    "truncated": "仅检查了最新的 {scanned, number} 笔交易。",
+    "stale": "自此次测试以来条件已更改。请再次选择“测试规则”以查看当前的匹配结果。"
+  },
   "run": {
     "title": "在现有交易上运行“{name}”",
     "description": "先预览规则会更改什么，再确认。你可以在操作历史中撤销此次运行。",

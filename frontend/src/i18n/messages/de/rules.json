@@ -407,6 +407,19 @@
     "failed": "Der Test konnte nicht abgeschlossen werden. {message}",
     "stale": "Die Regel oder die Filter haben sich seit diesem Ergebnis geändert. Teste erneut, um das aktuelle Ergebnis zu sehen."
   },
+  "match": {
+    "button": "Regel testen",
+    "buttonLabel": "Regel testen: Bedingungen",
+    "incomplete": "Vervollständige die Bedingungen oben, um zu sehen, auf welche Buchungen sie zutreffen.",
+    "windowBackwards": "Die aktiven Daten enden, bevor sie beginnen, daher kann keine Buchung zutreffen.",
+    "summary": "{count, plural, =0 {Keine passenden Buchungen} one {# passende Buchung} other {# passende Buchungen}}",
+    "summaryPending": "Passende Buchungen",
+    "running": "Passende Buchungen werden gesucht...",
+    "failed": "Die passenden Buchungen konnten nicht geladen werden. {message}",
+    "empty": "Keine bestehenden Buchungen entsprechen diesen Bedingungen.",
+    "truncated": "Nur die neuesten {scanned, number} Buchungen wurden geprüft.",
+    "stale": "Die Bedingungen haben sich seit diesem Test geändert. Wähle erneut „Regel testen“, um die aktuellen Treffer zu sehen."
+  },
   "run": {
     "title": "„{name}“ auf bestehende Buchungen anwenden",
     "description": "Sieh dir vorab an, was die Regel ändern würde, und bestätige dann. Du kannst die Ausführung im Aktionsverlauf rückgängig machen.",

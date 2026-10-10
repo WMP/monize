@@ -407,6 +407,19 @@
     "failed": "Não foi possível concluir o teste. {message}",
     "stale": "A regra ou os filtros mudaram desde este resultado. Teste novamente para ver o resultado atual."
   },
+  "match": {
+    "button": "Testar regra",
+    "buttonLabel": "Testar regra: condições",
+    "incomplete": "Complete as condições acima para ver com que transações correspondem.",
+    "windowBackwards": "As datas ativas terminam antes de começar, por isso nenhuma transação pode corresponder.",
+    "summary": "{count, plural, =0 {Nenhuma transação correspondente} one {# transação correspondente} other {# transações correspondentes}}",
+    "summaryPending": "Transações correspondentes",
+    "running": "A procurar transações correspondentes...",
+    "failed": "Não foi possível carregar as transações correspondentes. {message}",
+    "empty": "Nenhuma transação existente corresponde a estas condições.",
+    "truncated": "Só foram verificadas as {scanned, number} transações mais recentes.",
+    "stale": "As condições mudaram desde este teste. Selecione Testar regra novamente para ver as correspondências atuais."
+  },
   "run": {
     "title": "Executar «{name}» nas transações existentes",
     "description": "Veja antes o que a regra alteraria e depois confirme. Pode anular a execução no histórico de ações.",

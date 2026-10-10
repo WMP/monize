@@ -407,6 +407,19 @@
     "failed": "Không thể hoàn tất kiểm tra. {message}",
     "stale": "Quy tắc hoặc bộ lọc đã thay đổi kể từ kết quả này. Hãy kiểm tra lại để xem kết quả hiện tại."
   },
+  "match": {
+    "button": "Kiểm tra quy tắc",
+    "buttonLabel": "Kiểm tra quy tắc: điều kiện",
+    "incomplete": "Hoàn thành các điều kiện ở trên để xem chúng khớp với những giao dịch nào.",
+    "windowBackwards": "Ngày hiệu lực kết thúc trước khi bắt đầu, nên không giao dịch nào có thể khớp.",
+    "summary": "{count, plural, =0 {Không có giao dịch khớp} other {# giao dịch khớp}}",
+    "summaryPending": "Giao dịch khớp",
+    "running": "Đang tìm giao dịch khớp...",
+    "failed": "Không thể tải các giao dịch khớp. {message}",
+    "empty": "Không có giao dịch hiện có nào khớp với các điều kiện này.",
+    "truncated": "Chỉ {scanned, number} giao dịch mới nhất được kiểm tra.",
+    "stale": "Các điều kiện đã thay đổi kể từ lần kiểm tra này. Chọn Kiểm tra quy tắc lần nữa để xem các kết quả khớp hiện tại."
+  },
   "run": {
     "title": "Chạy “{name}” trên các giao dịch hiện có",
     "description": "Xem trước những gì quy tắc sẽ thay đổi, sau đó xác nhận. Bạn có thể hoàn tác lần chạy từ lịch sử hành động.",

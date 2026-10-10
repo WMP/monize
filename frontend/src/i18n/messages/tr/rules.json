@@ -407,6 +407,19 @@
     "failed": "Test tamamlanamadı. {message}",
     "stale": "Bu sonuçtan sonra kural veya filtreler değişti. Güncel sonucu görmek için yeniden test edin."
   },
+  "match": {
+    "button": "Kuralı test et",
+    "buttonLabel": "Kuralı test et: koşullar",
+    "incomplete": "Hangi işlemlerle eşleştiklerini görmek için yukarıdaki koşulları tamamlayın.",
+    "windowBackwards": "Etkin tarihler başlamadan bitiyor, bu yüzden hiçbir işlem eşleşemez.",
+    "summary": "{count, plural, =0 {Eşleşen işlem yok} one {# eşleşen işlem} other {# eşleşen işlem}}",
+    "summaryPending": "Eşleşen işlemler",
+    "running": "Eşleşen işlemler aranıyor...",
+    "failed": "Eşleşen işlemler yüklenemedi. {message}",
+    "empty": "Bu koşullarla eşleşen mevcut işlem yok.",
+    "truncated": "Yalnızca en yeni {scanned, number} işlem kontrol edildi.",
+    "stale": "Bu testten sonra koşullar değişti. Güncel eşleşmeleri görmek için Kuralı test et'i yeniden seçin."
+  },
   "run": {
     "title": "“{name}” kuralını mevcut işlemlerde çalıştır",
     "description": "Kuralın nelerin değişeceğini önizleyin, sonra onaylayın. Çalıştırmayı işlem geçmişinden geri alabilirsiniz.",

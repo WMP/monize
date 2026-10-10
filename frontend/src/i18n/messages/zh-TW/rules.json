@@ -407,6 +407,19 @@
     "failed": "無法完成測試。{message}",
     "stale": "自此結果產生後，規則或篩選條件已變更。請重新測試以查看目前結果。"
   },
+  "match": {
+    "button": "測試規則",
+    "buttonLabel": "測試規則：條件",
+    "incomplete": "請完成上方的條件，以查看它們符合哪些交易。",
+    "windowBackwards": "生效日期的結束早於開始，因此沒有交易能符合。",
+    "summary": "{count, plural, =0 {沒有符合的交易} other {# 筆符合的交易}}",
+    "summaryPending": "符合的交易",
+    "running": "正在尋找符合的交易...",
+    "failed": "無法載入符合的交易。{message}",
+    "empty": "沒有現有交易符合這些條件。",
+    "truncated": "僅檢查了最新的 {scanned, number} 筆交易。",
+    "stale": "自此次測試以來條件已變更。請再次選擇「測試規則」以查看目前的符合結果。"
+  },
   "run": {
     "title": "在現有交易上執行「{name}」",
     "description": "先預覽規則會變更什麼，再確認。你可以在操作記錄中復原此次執行。",
