@@ -490,6 +490,50 @@ RRSP cash -> Checking 7,066 with `accountIds=[Checking]` stays inflow 7,066 /
 outflow 0 (section 10.4). A split transfer leg follows the same table through
 `transfer_account_id`.
 
+### 10.8.1 "All Accounts" is every offered account (Phase 3 follow-up)
+
+Follow-up from the reporter's test of the funding-view build. With the account
+picker on its default "All Accounts", Income by Source showed no tagged entry and
+Monthly Breakdown showed tagged inflows AND outflows; selecting every account in
+the picker by hand (13 of them) showed the inflow only. The same label gave two
+answers: no `accountIds` meant "both legs count" (section 10.8, last bullet),
+while an explicit selection of every offered account left out the transfers
+between those accounts and counted what came in from an investment cash sleeve
+the picker does not offer.
+
+**Rule.** "All Accounts" bounds the tagged flows by the accounts the picker
+offers, so it reads exactly what selecting all of them reads:
+
+- The client sends `transferScopeAccountIds` (comma-separated, `@IsUUID("4", {
+  each: true })`, `@ArrayMaxSize(200)`, on `IncomeVsExpensesQueryDto` and
+  `CashFlowQueryDto`) = the ids the picker offers, only while the selection is
+  empty and a tag key is chosen (`frontend/src/lib/transfer-scope.ts`).
+- The server applies it to the two tagged-flow queries exactly as section 10.8
+  applies `accountIds` (leg on a boundary account, counterpart outside it), and
+  to nothing else: income, expenses, net and the value buckets' totals stay the
+  unfiltered report's. A non-empty `accountIds` wins and the field is ignored.
+- The boundary is named by the client because "the accounts the picker offers"
+  is the non-investment accounts by TYPE, a predicate the server must not spell
+  (INV-REPORT-001, `common/investment-filter.guard.spec.ts`).
+- While the offered accounts load, the breakdown (or the funding fetch) is not
+  requested: the unbounded flows are not a figure to show first. A failed
+  account load, no offered account, or more than 200 sends no boundary, which is
+  section 10.8's unscoped behaviour.
+- Applies to Income vs Expenses, Cash Flow and the funding fetch of all four
+  section-11 reports (Budget vs Actual, which has no picker, uses the same
+  offered accounts). Each report's OWN figures under "All Accounts" are
+  unchanged.
+
+Truth table, key `scope`, value `household`, offered accounts [Savings,
+Checking]; RRSP cash sleeve -> Checking 7,066 and Savings -> Checking 500, all
+legs tagged; 750 of income in the sleeve:
+
+| Request | taggedInflows | taggedOutflows | income |
+|---|---|---|---|
+| no `accountIds`, no boundary (before) | 7,566 | 7,566 | 750 |
+| `transferScopeAccountIds=[Savings, Checking]` ("All Accounts", now) | 7,066 | 0 | 750 |
+| `accountIds=[Savings, Checking]` (every account selected) | 7,066 | 0 | 0 |
+
 ### 10.9 Balance view (Phase 1d)
 
 The reporter wants, per month, Income, Tagged inflows, Expenses, then a Balance
@@ -557,12 +601,12 @@ their own numbers, not a per-value copy of them.
 |---|---|
 | F1 | **Inert by default.** With no tag key chosen, or no value chosen, or the switch off, every report, request, response and label is exactly what it is today. The only requests a report adds are the ones named below, and only while a tag key AND a value are chosen. |
 | F2 | **A tagged transfer is never income, an expense, a category total or a budget actual (INV-REPORT-003).** The funding figure is separate and separately named ("Tagged transfers", "Available funds"). No report writes it into its own totals, shares or budget figures. |
-| F3 | **One source for the funding figure.** Every surface reads the Income vs Expenses answer (`GET /built-in-reports/income-vs-expenses?tagKey=K&accountIds=...`, bucket `month`) for the same window and the same account scope, and derives the figure through `frontend/src/lib/tagged-balance.ts` (`taggedBalance`, `taggedBalanceWindow`, `periodBalanceFields`, plus the new `taggedFunds` below). No component restates the arithmetic, and the server grows no second implementation of the tagged flows. |
+| F3 | **One source for the funding figure.** Every surface reads the Income vs Expenses answer (`GET /built-in-reports/income-vs-expenses?tagKey=K&accountIds=...`, or `&transferScopeAccountIds=...` under "All Accounts" per section 10.8.1, bucket `month`) for the same window and the same account scope, and derives the figure through `frontend/src/lib/tagged-balance.ts` (`taggedBalance`, `taggedBalanceWindow`, `periodBalanceFields`, plus the new `taggedFunds` below). No component restates the arithmetic, and the server grows no second implementation of the tagged flows. |
 | F4 | **Cents, not floats.** Sums go through `sumMoney` (integer cents); a percentage is divided once and rounded to two decimals; a non-finite input is unknown. |
 | F5 | **Unknown is not zero.** A month or window the Income vs Expenses answer does not cover is unknown (a dash, a gap in a line), never 0. A missing exchange rate leaves the figure a subtotal: it is marked through `PartialTotal` (windows) or an asterisk and the missing currencies (series). Balance % is withheld when its base is not a total. |
 | F6 | **The untagged tab never shows flows.** The value control offers the values of the chosen key and no "untagged" choice; a transfer that carries no `K:*` tag appears nowhere. |
 | F7 | **The switch, not the value, turns the funding view on.** Choosing a key and a value narrows only what the report's own server query supports (11.3 and 11.4 say which); the switch "Include tagged transfers" (persisted per report, default OFF, shown only while a key and a value are chosen) adds the funding figure. |
-| F8 | **Same account scope for every call of a page.** A page with an account filter sends one `accountIds` to its own report and to the funding fetch, or its figures would describe different sets of accounts. Internal transfers inside the scope are already left out of the tagged flows (section 10.8). |
+| F8 | **Same account scope for every call of a page.** A page with an account filter sends one `accountIds` to its own report and to the funding fetch, or its figures would describe different sets of accounts. Internal transfers inside the scope are already left out of the tagged flows (section 10.8); under "All Accounts" the scope is every offered account (section 10.8.1). |
 
 Funding arithmetic, `taggedFunds({income, taggedInflows, taggedOutflows})`:
 

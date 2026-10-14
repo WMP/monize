@@ -246,9 +246,16 @@ export class IncomeReportsService {
       bucket?: IncomeExpenseBucket;
       weekStartsOn?: WeekStartsOn;
       tagKey?: string;
+      transferScopeAccountIds?: string[];
     } = {},
   ): Promise<IncomeVsExpensesResponse> {
-    const { accountIds, bucket = "month", weekStartsOn = 1, tagKey } = options;
+    const {
+      accountIds,
+      bucket = "month",
+      weekStartsOn = 1,
+      tagKey,
+      transferScopeAccountIds,
+    } = options;
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
     const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
@@ -355,7 +362,7 @@ export class IncomeReportsService {
       userId,
       startDate,
       endDate,
-      { accountIds, bucket, weekStartsOn },
+      { accountIds, bucket, weekStartsOn, transferScopeAccountIds },
       trimmedTagKey,
       defaultCurrency,
       rateMap,
@@ -520,12 +527,26 @@ export class IncomeReportsService {
       accountIds?: string[];
       bucket: IncomeExpenseBucket;
       weekStartsOn: WeekStartsOn;
+      transferScopeAccountIds?: string[];
     },
     tagKey: string,
     defaultCurrency: string,
     rateMap: RateMap,
   ): Promise<IncomeExpenseTagBucket[]> {
-    const { accountIds, bucket, weekStartsOn } = windowOptions;
+    const { accountIds, bucket, weekStartsOn, transferScopeAccountIds } =
+      windowOptions;
+    // The accounts a tagged transfer is judged against (spec 10.8 and 10.8.1):
+    // the account filter when there is one; otherwise the boundary the client
+    // names for "All Accounts" (the accounts its picker offers), so the default
+    // and an explicit every-account selection read the same flows. Only the
+    // flow queries below use it -- the categorized population keeps
+    // `accountIds` alone, so income and expenses are never narrowed by it.
+    const flowScopeIds =
+      accountIds && accountIds.length > 0
+        ? accountIds
+        : transferScopeAccountIds && transferScopeAccountIds.length > 0
+          ? transferScopeAccountIds
+          : undefined;
 
     // ---- The categorized population, value-partitioned (B1-B4) ----
     const valueParams: (string | string[] | number)[] = [userId, endDate];
@@ -632,13 +653,12 @@ export class IncomeReportsService {
       `$${wholeFlowParams.length}`,
     );
 
-    // The other leg of a whole transfer, joined only under an account filter:
+    // The other leg of a whole transfer, joined only when the flows are scoped:
     // `linked_transaction_id` names at most one row, so the join never
     // multiplies a leg.
-    const counterpartJoin =
-      accountIds && accountIds.length > 0
-        ? "LEFT JOIN transactions lt ON lt.id = t.linked_transaction_id"
-        : "";
+    const counterpartJoin = flowScopeIds
+      ? "LEFT JOIN transactions lt ON lt.id = t.linked_transaction_id"
+      : "";
 
     let wholeFlowQuery = `
       WITH transfer_rows AS (
@@ -662,9 +682,9 @@ export class IncomeReportsService {
       wholeFlowQuery += ` AND t.transaction_date >= $${wholeFlowParams.length + 1}`;
       wholeFlowParams.push(startDate);
     }
-    if (accountIds && accountIds.length > 0) {
+    if (flowScopeIds) {
       const accountsParam = `$${wholeFlowParams.length + 1}::uuid[]`;
-      wholeFlowParams.push(accountIds);
+      wholeFlowParams.push(flowScopeIds);
       // A transfer whose other leg is also inside the chosen accounts moves no
       // money into or out of the scope (spec 10.8). The counterpart is joined
       // in the CTE below (`counterpartJoin`); a leg with no visible
@@ -724,9 +744,9 @@ export class IncomeReportsService {
       splitFlowQuery += ` AND t.transaction_date >= $${splitFlowParams.length + 1}`;
       splitFlowParams.push(startDate);
     }
-    if (accountIds && accountIds.length > 0) {
+    if (flowScopeIds) {
       const accountsParam = `$${splitFlowParams.length + 1}::uuid[]`;
-      splitFlowParams.push(accountIds);
+      splitFlowParams.push(flowScopeIds);
       // Same internal-transfer rule as the whole-transfer query (spec 10.8).
       splitFlowQuery += `
           AND t.account_id = ANY(${accountsParam})

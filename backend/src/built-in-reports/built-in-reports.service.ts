@@ -114,6 +114,7 @@ export class BuiltInReportsService {
       bucket?: IncomeExpenseBucket;
       weekStartsOn?: WeekStartsOn;
       tagKey?: string;
+      transferScopeAccountIds?: string[];
     },
   ): Promise<IncomeVsExpensesResponse> {
     return this.incomeReports.getIncomeVsExpenses(

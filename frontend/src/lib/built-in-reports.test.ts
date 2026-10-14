@@ -71,6 +71,19 @@ describe('builtInReportsApi', () => {
     expect(apiClient.get).toHaveBeenLastCalledWith(url, { params });
   });
 
+  it.each([
+    ['getCashFlow', '/built-in-reports/cash-flow'],
+    ['getIncomeVsExpenses', '/built-in-reports/income-vs-expenses'],
+  ] as const)('%s sends transferScopeAccountIds as one comma-separated value and omits an empty one', async (method, url) => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: {} });
+    await builtInReportsApi[method]({ ...params, transferScopeAccountIds: ['a1', 'a2'] });
+    expect(apiClient.get).toHaveBeenLastCalledWith(url, {
+      params: { ...params, transferScopeAccountIds: 'a1,a2' },
+    });
+    await builtInReportsApi[method]({ ...params, transferScopeAccountIds: [] });
+    expect(apiClient.get).toHaveBeenLastCalledWith(url, { params });
+  });
+
   it('getYearOverYear defaults to 2 years', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: {} });
     await builtInReportsApi.getYearOverYear();

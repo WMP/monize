@@ -34,6 +34,7 @@ export function useFundingReportControls(params: {
     startDate: params.startDate,
     endDate: params.endDate,
     accountIds: scope.selectedAccountIds,
+    transferScope: scope.transferScope,
   });
   return { scope, filter, funding };
 }

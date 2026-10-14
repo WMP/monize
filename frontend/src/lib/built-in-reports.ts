@@ -27,17 +27,26 @@ import {
 import { MonthlyComparisonResponse } from '@/types/monthly-comparison';
 
 /**
- * The server takes the account filter as one comma-separated value; an empty
- * selection means "every account", so it is left off entirely.
+ * The server takes each account-id list (the filter, and the tagged-transfer
+ * boundary of spec 10.8.1) as one comma-separated value; an empty list means
+ * "none given", so it is left off entirely.
  */
-function serializeAccountIds<T extends { accountIds?: string[] }>(
+function serializeAccountIds<
+  T extends { accountIds?: string[]; transferScopeAccountIds?: string[] },
+>(
   params: T,
-): Omit<T, 'accountIds'> & { accountIds?: string } {
-  const { accountIds, ...rest } = params;
+): Omit<T, 'accountIds' | 'transferScopeAccountIds'> & {
+  accountIds?: string;
+  transferScopeAccountIds?: string;
+} {
+  const { accountIds, transferScopeAccountIds, ...rest } = params;
   return {
     ...rest,
     ...(accountIds && accountIds.length > 0
       ? { accountIds: accountIds.join(',') }
+      : {}),
+    ...(transferScopeAccountIds && transferScopeAccountIds.length > 0
+      ? { transferScopeAccountIds: transferScopeAccountIds.join(',') }
       : {}),
   };
 }

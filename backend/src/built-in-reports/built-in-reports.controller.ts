@@ -127,6 +127,7 @@ export class BuiltInReportsController {
         bucket: query.bucket,
         weekStartsOn: query.weekStartsOn as WeekStartsOn | undefined,
         tagKey: query.tagKey,
+        transferScopeAccountIds: query.transferScopeAccountIds,
       },
     );
   }
@@ -143,7 +144,11 @@ export class BuiltInReportsController {
       req.user.id,
       query.startDate,
       query.endDate,
-      { tagKey: query.tagKey, accountIds: query.accountIds },
+      {
+        tagKey: query.tagKey,
+        accountIds: query.accountIds,
+        transferScopeAccountIds: query.transferScopeAccountIds,
+      },
     );
   }
 

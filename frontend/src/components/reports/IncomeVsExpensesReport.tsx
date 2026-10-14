@@ -20,6 +20,7 @@ import { IncomeExpensePeriodItem } from "@/types/built-in-reports";
 import type { Account } from "@/types/account";
 import { accountsApi } from "@/lib/accounts";
 import { usePersistedAccountFilter } from "@/hooks/usePersistedAccountFilter";
+import { transferScopeFor, transferScopeKey } from '@/lib/transfer-scope';
 import { ReportAccountMultiSelect } from "@/components/reports/ReportAccountMultiSelect";
 import { useNumberFormat } from "@/hooks/useNumberFormat";
 import { useDateRange } from "@/hooks/useDateRange";
@@ -142,7 +143,10 @@ export function IncomeVsExpensesReport() {
 
   const { start: rangeStart, end: rangeEnd } = resolvedRange;
 
-  const { data: accountsData } = useReportData(() => accountsApi.getAll(), []);
+  const { data: accountsData, error: accountsError } = useReportData(
+    () => accountsApi.getAll(),
+    [],
+  );
   const offeredAccounts = useMemo(
     () => (accountsData ?? []).filter(nonInvestmentAccounts),
     [accountsData],
@@ -154,6 +158,21 @@ export function IncomeVsExpensesReport() {
     offeredAccounts,
   );
   const accountIdsKey = selectedAccountIds.join(',');
+  // "All Accounts" bounds the tagged flows by every offered account, so it reads
+  // them as an explicit every-account selection does (spec 10.8.1). While the
+  // offered accounts load, the breakdown is not asked for: the unbounded flows
+  // are not a figure to show first.
+  const offeredIds = useMemo(
+    () =>
+      accountsData !== null || accountsError !== null
+        ? offeredAccounts.map((a) => a.id)
+        : null,
+    [accountsData, accountsError, offeredAccounts],
+  );
+  const transferScope = transferScopeFor(selectedAccountIds, offeredIds);
+  const breakdownKey = transferScope.pending ? '' : tagKey;
+  // Without a breakdown the boundary changes nothing, so it must not refetch.
+  const scopeKey = breakdownKey ? transferScopeKey(transferScope) : '';
 
   const { data: response, isLoading, error, reload } = useReportData(
     () =>
@@ -162,10 +181,13 @@ export function IncomeVsExpensesReport() {
             startDate: rangeStart || undefined,
             endDate: rangeEnd,
             ...(selectedAccountIds.length > 0 ? { accountIds: selectedAccountIds } : {}),
-            ...(tagKey ? { tagKey } : {}),
+            ...(breakdownKey ? { tagKey: breakdownKey } : {}),
+            ...(breakdownKey && transferScope.accountIds
+              ? { transferScopeAccountIds: transferScope.accountIds }
+              : {}),
           })
         : Promise.resolve(null),
-    [isValid, rangeStart, rangeEnd, tagKey, accountIdsKey],
+    [isValid, rangeStart, rangeEnd, breakdownKey, accountIdsKey, scopeKey],
   );
 
   // The bucket the breakdown card shows, and so the one whose tagged flows the

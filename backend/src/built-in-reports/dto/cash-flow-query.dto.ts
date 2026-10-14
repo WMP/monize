@@ -38,6 +38,19 @@ export class CashFlowQueryDto extends ReportQueryDto {
   @IsUUID("4", { each: true })
   accountIds?: string[];
 
+  /** The tagged-transfer boundary when `accountIds` is absent; see `IncomeVsExpensesQueryDto`. */
+  @ApiPropertyOptional({
+    description:
+      "Account ids (comma-separated) that bound the tagged transfer flows when accountIds is absent. Income and expenses are not filtered by it.",
+    type: [String],
+  })
+  @IsOptional()
+  @Transform(csv)
+  @IsArray()
+  @ArrayMaxSize(200)
+  @IsUUID("4", { each: true })
+  transferScopeAccountIds?: string[];
+
   @ApiPropertyOptional({
     description:
       "Bare KEY of a KEY:VALUE tag to break the report down by (e.g. 'scope'). Absent renders today's response unchanged.",
