@@ -48,6 +48,26 @@ export class IncomeVsExpensesQueryDto extends ReportQueryDto {
   @IsUUID("4", { each: true })
   accountIds?: string[];
 
+  /**
+   * The account boundary a tagged transfer is judged against when `accountIds`
+   * is absent (`docs/specs/report-tag-key-breakdown.md` section 10.8.1): the
+   * accounts the client's account picker offers, so the default "All Accounts"
+   * reads the tagged flows exactly as selecting every offered account does.
+   * Scopes ONLY `taggedInflows` / `taggedOutflows`; income, expenses and net
+   * stay unfiltered. Ignored when `accountIds` is non-empty.
+   */
+  @ApiPropertyOptional({
+    description:
+      "Account ids (comma-separated) that bound the tagged transfer flows when accountIds is absent. Income and expenses are not filtered by it.",
+    type: [String],
+  })
+  @IsOptional()
+  @Transform(csv)
+  @IsArray()
+  @ArrayMaxSize(200)
+  @IsUUID("4", { each: true })
+  transferScopeAccountIds?: string[];
+
   @ApiPropertyOptional({
     description: "Width of one bar. Defaults to month.",
     enum: ["month", "week"],

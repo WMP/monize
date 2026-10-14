@@ -247,6 +247,50 @@ describe("BuiltInReportsController", () => {
     });
   });
 
+  describe("transferScopeAccountIds (spec 10.8.1)", () => {
+    it("passes the tagged-transfer boundary through on Income vs Expenses", async () => {
+      mockService.getIncomeVsExpenses.mockResolvedValue({ data: [] });
+
+      await controller.getIncomeVsExpenses(mockReq, {
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
+        tagKey: "scope",
+        transferScopeAccountIds: ["acct-1", "acct-2"],
+      } as any);
+
+      expect(mockService.getIncomeVsExpenses).toHaveBeenCalledWith(
+        "user-1",
+        "2024-01-01",
+        "2024-12-31",
+        expect.objectContaining({
+          tagKey: "scope",
+          transferScopeAccountIds: ["acct-1", "acct-2"],
+        }),
+      );
+    });
+
+    it("passes the tagged-transfer boundary through on Cash Flow", async () => {
+      mockService.getIncomeVsExpenses.mockResolvedValue({ data: [] });
+
+      await controller.getCashFlow(mockReq, {
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
+        tagKey: "scope",
+        transferScopeAccountIds: ["acct-1"],
+      } as any);
+
+      expect(mockService.getIncomeVsExpenses).toHaveBeenCalledWith(
+        "user-1",
+        "2024-01-01",
+        "2024-12-31",
+        expect.objectContaining({
+          tagKey: "scope",
+          transferScopeAccountIds: ["acct-1"],
+        }),
+      );
+    });
+  });
+
   describe("getCashFlow()", () => {
     it("delegates to service.getIncomeVsExpenses (cash flow reuses same logic)", async () => {
       const query = { startDate: "2024-01-01", endDate: "2024-12-31" };

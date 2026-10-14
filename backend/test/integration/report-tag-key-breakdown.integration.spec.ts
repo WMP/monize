@@ -658,6 +658,85 @@ describe("Income vs Expenses tag-key breakdown (integration)", () => {
     });
   });
 
+  describe("the default 'All Accounts' boundary (spec 10.8.1)", () => {
+    // The reporter's case: the picker offers the non-investment accounts
+    // (here Savings and Checking); "All Accounts" sent no ids, so both legs of
+    // every tagged transfer counted, while selecting every offered account
+    // counted only what came in from outside them.
+    const offered = () => [savingsId, checkingId];
+
+    async function reporterLedger() {
+      // From the investment cash sleeve, which the picker does not offer.
+      const fromSleeve = await insertTransferPair({
+        fromAccountId: cashSleeveId,
+        toAccountId: checkingId,
+        amount: 7066,
+      });
+      // Between two offered accounts: internal to the default scope.
+      const internal = await insertTransferPair({
+        fromAccountId: savingsId,
+        toAccountId: checkingId,
+        amount: 500,
+      });
+      for (const leg of [
+        fromSleeve.outLeg,
+        fromSleeve.inLeg,
+        internal.outLeg,
+        internal.inLeg,
+      ]) {
+        await tagTransaction(leg.id, "scope:household");
+      }
+      // Ordinary income in the sleeve: real money the unfiltered report counts.
+      await insertTransaction({
+        accountId: cashSleeveId,
+        amount: 750,
+        categoryId: incomeCategoryId,
+        payeeName: "Acme Payroll",
+      });
+    }
+
+    function run(options: {
+      accountIds?: string[];
+      transferScopeAccountIds?: string[];
+    }) {
+      return withUserContext(userId, () =>
+        income.getIncomeVsExpenses(userId, START, END, {
+          tagKey: "scope",
+          ...options,
+        }),
+      );
+    }
+
+    it("reads the same tagged flows as selecting every offered account", async () => {
+      await reporterLedger();
+
+      const byDefault = bucketByValue(
+        (await run({ transferScopeAccountIds: offered() })).buckets,
+        "household",
+      );
+      const explicit = bucketByValue(
+        (await run({ accountIds: offered() })).buckets,
+        "household",
+      );
+
+      expect(byDefault?.taggedInflows).toBe(7066);
+      expect(byDefault?.taggedOutflows).toBe(0);
+      expect(byDefault?.taggedInflows).toBe(explicit?.taggedInflows);
+      expect(byDefault?.taggedOutflows).toBe(explicit?.taggedOutflows);
+    });
+
+    it("leaves income unfiltered: the sleeve's income still counts", async () => {
+      await reporterLedger();
+
+      const unfiltered = await run({});
+      const byDefault = await run({ transferScopeAccountIds: offered() });
+
+      expect(byDefault.totals.income).toBe(750);
+      expect(byDefault.totals).toEqual(unfiltered.totals);
+      expect(byDefault.data).toEqual(unfiltered.data);
+    });
+  });
+
   describe("internal transfers under an account filter (spec 10.8)", () => {
     function flows(accountIds: string[]) {
       return withUserContext(userId, async () => {

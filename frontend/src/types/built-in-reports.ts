@@ -209,6 +209,12 @@ export interface IncomeVsExpensesParams extends ReportQueryParams {
   /** Day a week bucket starts on, 0 = Sunday through 6 = Saturday. */
   weekStartsOn?: number;
   /**
+   * The tagged-transfer boundary when `accountIds` is empty: the accounts the
+   * picker offers (`lib/transfer-scope.ts`, spec 10.8.1). Bounds only the
+   * tagged flows; income and expenses are not filtered by it.
+   */
+  transferScopeAccountIds?: string[];
+  /**
    * Bare KEY of a `KEY:VALUE` tag (e.g. "scope") to break the report down by
    * (`docs/specs/report-tag-key-breakdown.md`). Absent renders today's
    * response unchanged.
@@ -231,6 +237,12 @@ export interface IncomeBySourceParams extends ReportQueryParams {
 export interface CashFlowParams extends ReportQueryParams {
   /** Restrict to these accounts; omit or leave empty for every account. */
   accountIds?: string[];
+  /**
+   * The tagged-transfer boundary when `accountIds` is empty: the accounts the
+   * picker offers (`lib/transfer-scope.ts`, spec 10.8.1). Bounds only the
+   * tagged flows; income and expenses are not filtered by it.
+   */
+  transferScopeAccountIds?: string[];
   /**
    * Bare KEY of a `KEY:VALUE` tag (e.g. "scope") to break the report down by
    * (`docs/specs/report-tag-key-breakdown.md`). Absent renders today's

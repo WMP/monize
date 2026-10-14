@@ -37,10 +37,12 @@ import { BudgetFundsNote } from '@/components/reports/BudgetFundsNote';
 import { BudgetFundsTooltip } from '@/components/reports/BudgetFundsTooltip';
 import { useTaggedFundsFilter } from '@/hooks/useTaggedFundsFilter';
 import { useTaggedFunding } from '@/hooks/useTaggedFunding';
+import { useDefaultTransferScope } from '@/hooks/useReportAccountScope';
 import { budgetFundsSeries, trendWindow } from '@/lib/budget-available-funds';
 
 const INCLUDE_TRANSFERS_STORAGE_KEY = 'monize-reports-budget-vs-actual-include-transfers';
-// The budget's own actual is not account-scoped, so the funding fetch is not either.
+// The budget's own actual is not account-scoped, so the funding fetch is not
+// either; its tagged flows are bounded like "All Accounts" (spec 10.8.1).
 const NO_ACCOUNTS: string[] = [];
 
 type BudgetTrendSortField = 'month' | 'budgeted' | 'actual' | 'variance' | 'percentUsed';
@@ -238,6 +240,7 @@ export function BudgetVsActualReport() {
   const fundsFilter = useTaggedFundsFilter(INCLUDE_TRANSFERS_STORAGE_KEY);
   const fundsWindow = useMemo(() => trendWindow(trendData), [trendData]);
   const showFunds = fundsFilter.include && viewMode === 'overview' && fundsWindow !== null;
+  const transferScope = useDefaultTransferScope();
   const funding = useTaggedFunding({
     enabled: showFunds,
     tagKey: fundsFilter.tagKey,
@@ -245,6 +248,7 @@ export function BudgetVsActualReport() {
     startDate: fundsWindow?.startDate,
     endDate: fundsWindow?.endDate ?? '',
     accountIds: NO_ACCOUNTS,
+    transferScope,
   });
   const fundsSeries = useMemo(
     () =>

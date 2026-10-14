@@ -551,6 +551,40 @@ describe("IncomeVsExpensesReport", () => {
       expect(mockGetIncomeVsExpenses.mock.calls.at(-1)?.[0]).not.toHaveProperty("accountIds");
     });
 
+    it("bounds the breakdown's tagged flows by the offered accounts under 'All Accounts' (spec 10.8.1)", async () => {
+      mockGetAllTags.mockResolvedValue([{ id: "t1", name: "scope:household" }]);
+      mockGetAllAccounts.mockResolvedValue(accounts);
+      mockGetIncomeVsExpenses.mockResolvedValue(empty);
+      render(<IncomeVsExpensesReport />);
+      const select = await screen.findByRole("combobox", { name: "Break down by tag key" });
+      await waitFor(() => expect(mockGetAllAccounts).toHaveBeenCalled());
+
+      await act(async () => {
+        fireEvent.change(select, { target: { value: "scope" } });
+      });
+
+      await waitFor(() =>
+        expect(mockGetIncomeVsExpenses.mock.calls.at(-1)?.[0]).toMatchObject({
+          tagKey: "scope",
+          // The picker's offer (the RRSP sleeve is not in it), never accountIds:
+          // income and expenses stay the unfiltered report's.
+          transferScopeAccountIds: ["acct-checking"],
+        }),
+      );
+      expect(mockGetIncomeVsExpenses.mock.calls.at(-1)?.[0]).not.toHaveProperty("accountIds");
+    });
+
+    it("sends no transferScopeAccountIds without a breakdown", async () => {
+      mockGetAllAccounts.mockResolvedValue(accounts);
+      mockGetIncomeVsExpenses.mockResolvedValue(empty);
+      render(<IncomeVsExpensesReport />);
+      await waitFor(() => expect(mockGetAllAccounts).toHaveBeenCalled());
+      await waitFor(() => expect(mockGetIncomeVsExpenses).toHaveBeenCalled());
+      for (const [params] of mockGetIncomeVsExpenses.mock.calls) {
+        expect(params).not.toHaveProperty("transferScopeAccountIds");
+      }
+    });
+
     it("offers non-investment accounts only and reloads with the chosen accountIds", async () => {
       mockGetAllAccounts.mockResolvedValue(accounts);
       mockGetIncomeVsExpenses.mockResolvedValue(empty);

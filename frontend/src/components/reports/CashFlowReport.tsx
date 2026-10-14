@@ -19,6 +19,7 @@ import { builtInReportsApi } from "@/lib/built-in-reports";
 import type { Account } from "@/types/account";
 import { accountsApi } from "@/lib/accounts";
 import { usePersistedAccountFilter } from "@/hooks/usePersistedAccountFilter";
+import { transferScopeFor, transferScopeKey } from '@/lib/transfer-scope';
 import { ReportAccountMultiSelect } from "@/components/reports/ReportAccountMultiSelect";
 import {
   IncomeExpensePeriodItem,
@@ -96,7 +97,10 @@ export function CashFlowReport() {
 
   const { start: rangeStart, end: rangeEnd } = resolvedRange;
 
-  const { data: accountsData } = useReportData(() => accountsApi.getAll(), []);
+  const { data: accountsData, error: accountsError } = useReportData(
+    () => accountsApi.getAll(),
+    [],
+  );
   const offeredAccounts = useMemo(
     () => (accountsData ?? []).filter(nonInvestmentAccounts),
     [accountsData],
@@ -108,6 +112,21 @@ export function CashFlowReport() {
     offeredAccounts,
   );
   const accountIdsKey = selectedAccountIds.join(',');
+  // "All Accounts" bounds the tagged flows by every offered account, so it reads
+  // them as an explicit every-account selection does (spec 10.8.1). While the
+  // offered accounts load, the breakdown is not asked for: the unbounded flows
+  // are not a figure to show first.
+  const offeredIds = useMemo(
+    () =>
+      accountsData !== null || accountsError !== null
+        ? offeredAccounts.map((a) => a.id)
+        : null,
+    [accountsData, accountsError, offeredAccounts],
+  );
+  const transferScope = transferScopeFor(selectedAccountIds, offeredIds);
+  const breakdownKey = transferScope.pending ? '' : tagKey;
+  // Without a breakdown the boundary changes nothing, so it must not refetch.
+  const scopeKey = breakdownKey ? transferScopeKey(transferScope) : '';
 
   const { data: response, isLoading, error, reload } = useReportData(
     async () => {
@@ -124,14 +143,19 @@ export function CashFlowReport() {
         await Promise.all([
           builtInReportsApi.getCashFlow({
             ...params,
-            ...(tagKey ? { tagKey } : {}),
+            ...(breakdownKey ? { tagKey: breakdownKey } : {}),
+            // Only the tagged flows take the boundary; the two sibling reads
+            // and the cash-flow totals keep the page's own scope.
+            ...(breakdownKey && transferScope.accountIds
+              ? { transferScopeAccountIds: transferScope.accountIds }
+              : {}),
           }),
           builtInReportsApi.getIncomeBySource(params),
           builtInReportsApi.getSpendingByCategory(params),
         ]);
       return { cashFlowResponse, incomeResponse, spendingResponse };
     },
-    [isValid, rangeStart, rangeEnd, tagKey, accountIdsKey],
+    [isValid, rangeStart, rangeEnd, breakdownKey, accountIdsKey, scopeKey],
   );
 
   const { activeBucket, flowBucket, flowsByPeriod } = useTaggedFlowBucket(

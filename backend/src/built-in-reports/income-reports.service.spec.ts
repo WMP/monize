@@ -1098,6 +1098,114 @@ describe("IncomeReportsService", () => {
       expect(splitSql).not.toContain("NOT (ts.transfer_account_id");
     });
 
+    it("bounds ONLY the flow queries by transferScopeAccountIds when accountIds is absent (spec 10.8.1)", async () => {
+      scopedManager.query.mockResolvedValue([]);
+
+      await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-01-31",
+        { tagKey: "scope", transferScopeAccountIds: ["acct-1", "acct-2"] },
+      );
+
+      const [baseSql, baseParams] = scopedManager.query.mock.calls[0];
+      const [valueSql, valueParams] = scopedManager.query.mock.calls[1];
+      const [wholeSql, wholeParams] = scopedManager.query.mock.calls[2];
+      const [splitSql, splitParams] = scopedManager.query.mock.calls[3];
+      const norm = (sql: string) => sql.replace(/\s+/g, " ");
+      const wholeIdx = wholeParams.findIndex((p: unknown) => Array.isArray(p));
+      const splitIdx = splitParams.findIndex((p: unknown) => Array.isArray(p));
+
+      // Income and expenses -- the All totals and the value buckets -- are
+      // never narrowed by the boundary.
+      expect(baseSql).not.toContain("t.account_id = ANY");
+      expect(baseParams.some((p: unknown) => Array.isArray(p))).toBe(false);
+      expect(valueSql).not.toContain("t.account_id = ANY");
+      expect(valueParams.some((p: unknown) => Array.isArray(p))).toBe(false);
+
+      // The flows read the boundary exactly as an explicit selection would.
+      expect(wholeParams[wholeIdx]).toEqual(["acct-1", "acct-2"]);
+      expect(norm(wholeSql)).toContain(
+        "LEFT JOIN transactions lt ON lt.id = t.linked_transaction_id",
+      );
+      expect(norm(wholeSql)).toContain(
+        `AND t.account_id = ANY($${wholeIdx + 1}::uuid[]) AND (lt.id IS NULL OR NOT (lt.account_id = ANY($${wholeIdx + 1}::uuid[])))`,
+      );
+      expect(splitParams[splitIdx]).toEqual(["acct-1", "acct-2"]);
+      expect(norm(splitSql)).toContain(
+        `AND t.account_id = ANY($${splitIdx + 1}::uuid[]) AND NOT (ts.transfer_account_id = ANY($${splitIdx + 1}::uuid[]))`,
+      );
+    });
+
+    it("builds the same flow queries for transferScopeAccountIds as for the same accountIds (spec 10.8.1)", async () => {
+      scopedManager.query.mockResolvedValue([]);
+      const ids = ["acct-1", "acct-2"];
+
+      await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-01-31",
+        {
+          tagKey: "scope",
+          accountIds: ids,
+        },
+      );
+      const explicit = scopedManager.query.mock.calls.slice(2, 4);
+      scopedManager.query.mockClear();
+
+      await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-01-31",
+        {
+          tagKey: "scope",
+          transferScopeAccountIds: ids,
+        },
+      );
+      const byDefault = scopedManager.query.mock.calls.slice(2, 4);
+
+      expect(byDefault).toEqual(explicit);
+    });
+
+    it("lets a non-empty accountIds win over transferScopeAccountIds", async () => {
+      scopedManager.query.mockResolvedValue([]);
+
+      await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-01-31",
+        {
+          tagKey: "scope",
+          accountIds: ["acct-1"],
+          transferScopeAccountIds: ["acct-1", "acct-2"],
+        },
+      );
+
+      for (const [, params] of scopedManager.query.mock.calls.slice(1, 4)) {
+        expect(params).toContainEqual(["acct-1"]);
+        expect(params).not.toContainEqual(["acct-1", "acct-2"]);
+      }
+    });
+
+    it("treats an empty transferScopeAccountIds as no boundary (both legs count)", async () => {
+      scopedManager.query.mockResolvedValue([]);
+
+      await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-01-31",
+        {
+          tagKey: "scope",
+          transferScopeAccountIds: [],
+        },
+      );
+
+      const [wholeSql] = scopedManager.query.mock.calls[2];
+      const [splitSql] = scopedManager.query.mock.calls[3];
+      expect(wholeSql).not.toContain("linked_transaction_id");
+      expect(splitSql).not.toContain("NOT (ts.transfer_account_id");
+    });
+
     it("buckets by week and omits the startDate filter, on all three extra queries, when asked", async () => {
       scopedManager.query.mockResolvedValue([]);
 

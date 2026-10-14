@@ -162,6 +162,7 @@ export function SpendingByCategoryReport() {
     startDate: rangeStart || undefined,
     endDate: rangeEnd,
     accountIds: selectedAccountIds,
+    transferScope: scope.transferScope,
   });
 
   const chartData = useMemo<ChartDataItem[]>(() => {
