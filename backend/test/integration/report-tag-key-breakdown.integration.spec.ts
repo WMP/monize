@@ -591,4 +591,255 @@ describe("Income vs Expenses tag-key breakdown (integration)", () => {
       expect(travel?.excludedCount).toBeGreaterThan(0);
     });
   });
+
+  describe("per-period tagged flows and the account scope", () => {
+    async function twoMonthTransfers() {
+      const feb = await insertTransferPair({
+        fromAccountId: savingsId,
+        toAccountId: checkingId,
+        amount: 700,
+        date: "2026-02-10",
+      });
+      const mar = await insertTransferPair({
+        fromAccountId: savingsId,
+        toAccountId: checkingId,
+        amount: 300.25,
+        date: "2026-03-10",
+      });
+      for (const leg of [feb.outLeg, feb.inLeg, mar.outLeg, mar.inLeg]) {
+        await tagTransaction(leg.id, "scope:household");
+      }
+    }
+
+    function report(accountIds?: string[]) {
+      return withUserContext(userId, () =>
+        income.getIncomeVsExpenses(userId, "2026-01-01", "2026-03-31", {
+          tagKey: "scope",
+          accountIds,
+        }),
+      );
+    }
+
+    it("lands each transfer in its own month, with a zero month between, and the totals are the sum", async () => {
+      await twoMonthTransfers();
+
+      const household = bucketByValue((await report()).buckets, "household");
+
+      expect(
+        household?.data.map((d) => [
+          d.period,
+          d.taggedInflows,
+          d.taggedOutflows,
+        ]),
+      ).toEqual([
+        ["2026-01", 0, 0],
+        ["2026-02", 700, 700],
+        ["2026-03", 300.25, 300.25],
+      ]);
+      expect(household?.taggedInflows).toBe(1000.25);
+      expect(household?.taggedOutflows).toBe(1000.25);
+      expect(household?.totals.income).toBe(0);
+    });
+
+    it("with accountIds = the destination only, counts the inflow and no outflow, and income stays 0", async () => {
+      await twoMonthTransfers();
+
+      const result = await report([checkingId]);
+      const household = bucketByValue(result.buckets, "household");
+
+      expect(household?.taggedInflows).toBe(1000.25);
+      expect(household?.taggedOutflows).toBe(0);
+      expect(household?.data.map((d) => d.taggedInflows)).toEqual([
+        0, 700, 300.25,
+      ]);
+      expect(result.totals.income).toBe(0);
+      expect(result.totals.expenses).toBe(0);
+      expect(result.totals.net).toBe(0);
+    });
+  });
+
+  describe("the default 'All Accounts' boundary (spec 10.8.1)", () => {
+    // The reporter's case: the picker offers the non-investment accounts
+    // (here Savings and Checking); "All Accounts" sent no ids, so both legs of
+    // every tagged transfer counted, while selecting every offered account
+    // counted only what came in from outside them.
+    const offered = () => [savingsId, checkingId];
+
+    async function reporterLedger() {
+      // From the investment cash sleeve, which the picker does not offer.
+      const fromSleeve = await insertTransferPair({
+        fromAccountId: cashSleeveId,
+        toAccountId: checkingId,
+        amount: 7066,
+      });
+      // Between two offered accounts: internal to the default scope.
+      const internal = await insertTransferPair({
+        fromAccountId: savingsId,
+        toAccountId: checkingId,
+        amount: 500,
+      });
+      for (const leg of [
+        fromSleeve.outLeg,
+        fromSleeve.inLeg,
+        internal.outLeg,
+        internal.inLeg,
+      ]) {
+        await tagTransaction(leg.id, "scope:household");
+      }
+      // Ordinary income in the sleeve: real money the unfiltered report counts.
+      await insertTransaction({
+        accountId: cashSleeveId,
+        amount: 750,
+        categoryId: incomeCategoryId,
+        payeeName: "Acme Payroll",
+      });
+    }
+
+    function run(options: {
+      accountIds?: string[];
+      transferScopeAccountIds?: string[];
+    }) {
+      return withUserContext(userId, () =>
+        income.getIncomeVsExpenses(userId, START, END, {
+          tagKey: "scope",
+          ...options,
+        }),
+      );
+    }
+
+    it("reads the same tagged flows as selecting every offered account", async () => {
+      await reporterLedger();
+
+      const byDefault = bucketByValue(
+        (await run({ transferScopeAccountIds: offered() })).buckets,
+        "household",
+      );
+      const explicit = bucketByValue(
+        (await run({ accountIds: offered() })).buckets,
+        "household",
+      );
+
+      expect(byDefault?.taggedInflows).toBe(7066);
+      expect(byDefault?.taggedOutflows).toBe(0);
+      expect(byDefault?.taggedInflows).toBe(explicit?.taggedInflows);
+      expect(byDefault?.taggedOutflows).toBe(explicit?.taggedOutflows);
+    });
+
+    it("leaves income unfiltered: the sleeve's income still counts", async () => {
+      await reporterLedger();
+
+      const unfiltered = await run({});
+      const byDefault = await run({ transferScopeAccountIds: offered() });
+
+      expect(byDefault.totals.income).toBe(750);
+      expect(byDefault.totals).toEqual(unfiltered.totals);
+      expect(byDefault.data).toEqual(unfiltered.data);
+    });
+  });
+
+  describe("internal transfers under an account filter (spec 10.8)", () => {
+    function flows(accountIds: string[]) {
+      return withUserContext(userId, async () => {
+        const result = await income.getIncomeVsExpenses(userId, START, END, {
+          tagKey: "scope",
+          accountIds,
+        });
+        const household = bucketByValue(result.buckets, "household");
+        return [household?.taggedInflows ?? 0, household?.taggedOutflows ?? 0];
+      });
+    }
+
+    async function savingsToChecking() {
+      const pair = await insertTransferPair({
+        fromAccountId: savingsId,
+        toAccountId: checkingId,
+        amount: 500,
+      });
+      await tagTransaction(pair.outLeg.id, "scope:household");
+      await tagTransaction(pair.inLeg.id, "scope:household");
+    }
+
+    it("whole transfer: no filter in 500 / out 500; one side counts; both sides count nothing", async () => {
+      await savingsToChecking();
+
+      expect(await flows([])).toEqual([500, 500]);
+      expect(await flows([checkingId])).toEqual([500, 0]);
+      expect(await flows([savingsId, checkingId])).toEqual([0, 0]);
+      expect(await flows([savingsId])).toEqual([0, 500]);
+    });
+
+    it("split transfer leg: counted from one side, not when both accounts are selected", async () => {
+      const { parent } = await insertSplitTransaction(
+        { accountId: savingsId },
+        [
+          {
+            amount: -500,
+            kind: SplitKind.TRANSFER,
+            transferAccountId: checkingId,
+          },
+        ],
+      );
+      await tagTransaction(parent.id, "scope:household");
+
+      expect(await flows([])).toEqual([0, 500]);
+      expect(await flows([savingsId])).toEqual([0, 500]);
+      expect(await flows([savingsId, checkingId])).toEqual([0, 0]);
+    });
+
+    it("an unlinked transfer leg has no counterpart to exclude and still counts", async () => {
+      const leg = await insertTransaction({
+        accountId: checkingId,
+        amount: 500,
+        isTransfer: true,
+        categoryId: null,
+      });
+      await tagTransaction(leg.id, "scope:household");
+
+      expect(await flows([savingsId, checkingId])).toEqual([500, 0]);
+    });
+  });
+
+  describe("income by source and the account scope (Cash Flow page)", () => {
+    function bySource(accountIds?: string[]) {
+      return withUserContext(userId, () =>
+        income.getIncomeBySource(userId, START, END, { accountIds }),
+      );
+    }
+
+    async function seedIncome() {
+      await insertTransaction({
+        accountId: checkingId,
+        amount: 1000,
+        categoryId: incomeCategoryId,
+      });
+      await insertTransaction({
+        accountId: savingsId,
+        amount: 400,
+        categoryId: incomeCategoryId,
+      });
+      // A VOID row in the filtered account never counts.
+      await insertTransaction({
+        accountId: checkingId,
+        amount: 99,
+        categoryId: incomeCategoryId,
+        status: TransactionStatus.VOID,
+      });
+    }
+
+    it("absent or empty accountIds is the unscoped report", async () => {
+      await seedIncome();
+
+      const unscoped = await bySource();
+      expect(unscoped.totalIncome).toBe(1400);
+      expect(await bySource([])).toEqual(unscoped);
+    });
+
+    it("restricts the totals to the chosen accounts", async () => {
+      await seedIncome();
+
+      expect((await bySource([checkingId])).totalIncome).toBe(1000);
+      expect((await bySource([savingsId])).totalIncome).toBe(400);
+      expect((await bySource([checkingId, savingsId])).totalIncome).toBe(1400);
+    });
+  });
 });

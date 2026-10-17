@@ -53,11 +53,68 @@ gate (the plan's "What to run") passes and is quoted in the commit/PR.
       the current environment; backend integration + frontend component tests
       cover the behaviour. Run before merge where the stack is available.)
 
-## Phase 2 -- Spending by Category + Income by Source (stub)
+## Phase 1b -- Account scope and the funding series (Income vs Expenses)
 
-- [ ] Reuse the Phase 1 DTO mixin, bucket shape, control and i18n; value
-      partitioning only (no transfer flows).
+Spec section 10.
 
-## Phase 3 -- Budget vs Actual (stub)
+- [x] Backend: `IncomeExpenseTagPeriodItem`; both flow queries grouped by the
+      period start; per-period flows sum to the window figures; tests (unit +
+      integration) for periods, `accountIds` with `tagKey`, FX per period.
+- [x] Frontend: `ReportAccountMultiSelect` on `IncomeVsExpensesReport` (persisted,
+      empty = all; Cash Flow follows in Phase 1c); `TagKeyBreakdownBuckets`
+      controlled mode; two indigo series, table columns and tooltip for the
+      active non-untagged bucket.
+- [x] i18n: `reports.tagBreakdown.inflowsSeries` / `outflowsSeries`.
 
-- [ ] Design note first (budgets module, budget-period + category based).
+## Phase 1c -- Opt-in stacking and Cash Flow parity
+
+Spec section 10.7.
+
+- [x] Refactor: `IncomeVsExpensesTable` extracted (the report was at the file
+      size limit); no behaviour change.
+- [x] Backend: `CashFlowQueryDto.accountIds` passed through the controller;
+      `income-by-source` `accountIds` (DTO, service, `ANY($n::uuid[])`); other
+      callers of `getIncomeBySource` unchanged; unit + integration tests.
+- [x] Frontend: client serialises `accountIds` for `getCashFlow` and
+      `getIncomeBySource`; shared active-bucket hook and stacking switch;
+      Income vs Expenses stacking (default off, persisted); Cash Flow account
+      filter on all three calls, controlled tabs, tagged series, stacking.
+- [x] i18n: `reports.tagBreakdown.stackFlows`; every locale last.
+
+## Phase 1d -- Internal transfers and the Balance view
+
+Spec sections 10.8 and 10.9.
+
+- [x] Backend: exclude a tagged transfer leg whose counterpart is also in
+      `accountIds` (whole transfer and split leg); truth table in unit and
+      integration tests.
+- [x] Frontend: `tagged-balance.ts` helper; "Include tagged transfers" switch;
+      Balance and Balance % on Income vs Expenses and Cash Flow (chart, tooltip,
+      cards, table, CSV); completeness via `PartialTotal`.
+- [x] i18n: `reports.tagBreakdown.includeTransfers` and the Balance labels; the
+      old `stackFlows` key removed if unused; every locale last.
+
+## Phase 2 -- Funding view on Income by Source, Spending by Category, Monthly Breakdown
+
+Spec section 11.
+
+- [x] Shared: `taggedFunds` (`lib/tagged-balance.ts`), `collectTagValues`,
+      `useTaggedFundsFilter`, `useTaggedFunding`, `useReportAccountScope`,
+      `TaggedFundsControls`, `TaggedFundsStrip`.
+- [x] Income by Source: account filter, controls, "Tagged transfers: <value>"
+      entry and Available funds, shares unchanged; i18n.
+- [x] Spending by Category: backend `tagKey` + `tagValue` filter (DTO, shared
+      `tagValuesArrayExpr`, unit + integration); frontend account filter,
+      controls, Available funds / Spent / Balance strip.
+- [x] Monthly Breakdown: backend `accountIds` (DTO, both queries, unit +
+      integration); frontend account filter, controls, per-month summary block in
+      new files (the report file only gains wiring).
+- [x] i18n: every locale last.
+
+## Phase 3 -- Budget vs Actual funding overlay
+
+Spec section 11.6.
+
+- [x] Frontend: controls, funding fetch aligned by `monthKey`, Available funds
+      series, tooltip rows, completeness note; budget figures unchanged.
+- [x] i18n: every locale last.

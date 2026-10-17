@@ -152,6 +152,54 @@ describe("IncomeReportsService", () => {
       expect(result.totalIncome).toBe(0);
     });
 
+    it("sends no account predicate when accountIds is absent or empty", async () => {
+      scopedManager.query.mockResolvedValue([]);
+      categoriesRepository.find.mockResolvedValue([]);
+
+      await service.getIncomeBySource(mockUserId, "2025-01-01", "2025-12-31");
+      await service.getIncomeBySource(mockUserId, "2025-01-01", "2025-12-31", {
+        accountIds: [],
+      });
+
+      for (const [sql, params] of scopedManager.query.mock.calls) {
+        expect(sql).not.toContain("account_id = ANY");
+        expect(params).toEqual([mockUserId, "2025-12-31", "2025-01-01"]);
+      }
+    });
+
+    it("filters by accountIds with a parameterized uuid[] predicate and keeps every other predicate", async () => {
+      scopedManager.query.mockResolvedValue([]);
+      categoriesRepository.find.mockResolvedValue([]);
+      const ids = ["a1b2c3d4-0000-4000-8000-000000000001"];
+
+      await service.getIncomeBySource(mockUserId, "2025-01-01", "2025-12-31", {
+        accountIds: ids,
+      });
+
+      const [sql, params] = scopedManager.query.mock.calls[0];
+      expect(sql).toContain("AND t.account_id = ANY($4::uuid[])");
+      expect(params).toEqual([mockUserId, "2025-12-31", "2025-01-01", ids]);
+      expect(sql).toContain("(t.status IS NULL OR t.status != 'VOID')");
+      expect(sql).toContain("t.is_transfer = false");
+      expect(sql.indexOf("account_id = ANY")).toBeLessThan(
+        sql.indexOf("GROUP BY"),
+      );
+    });
+
+    it("numbers the account parameter $3 when there is no start date", async () => {
+      scopedManager.query.mockResolvedValue([]);
+      categoriesRepository.find.mockResolvedValue([]);
+      const ids = ["a1b2c3d4-0000-4000-8000-000000000001"];
+
+      await service.getIncomeBySource(mockUserId, undefined, "2025-12-31", {
+        accountIds: ids,
+      });
+
+      const [sql, params] = scopedManager.query.mock.calls[0];
+      expect(sql).toContain("AND t.account_id = ANY($3::uuid[])");
+      expect(params).toEqual([mockUserId, "2025-12-31", ids]);
+    });
+
     it("keeps subcategories separate with 'Parent: Child' name format", async () => {
       scopedManager.query.mockResolvedValue([
         { category_id: "cat-child", currency_code: "USD", total: "1000.00" },
@@ -665,7 +713,14 @@ describe("IncomeReportsService", () => {
       inflow: string,
       outflow: string,
       currency = "USD",
-    ) => ({ value, currency_code: currency, inflow, outflow });
+      periodStart = "2025-01-01",
+    ) => ({
+      period_start: periodStart,
+      value,
+      currency_code: currency,
+      inflow,
+      outflow,
+    });
 
     function bucketByValue(
       buckets: IncomeExpenseTagBucket[] | undefined,
@@ -988,6 +1043,169 @@ describe("IncomeReportsService", () => {
       expect(splitFlowParams).toContainEqual(["acct-1"]);
     });
 
+    it("leaves out a transfer leg whose counterpart is also in accountIds, by the same parameter (spec 10.8)", async () => {
+      scopedManager.query.mockResolvedValue([]);
+
+      await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-01-31",
+        { tagKey: "scope", accountIds: ["acct-1", "acct-2"] },
+      );
+
+      const [wholeSql, wholeParams] = scopedManager.query.mock.calls[2];
+      const [splitSql, splitParams] = scopedManager.query.mock.calls[3];
+      const wholeIdx = wholeParams.findIndex(
+        (p: unknown) => Array.isArray(p) && p.length === 2,
+      );
+      const splitIdx = splitParams.findIndex(
+        (p: unknown) => Array.isArray(p) && p.length === 2,
+      );
+      const norm = (sql: string) => sql.replace(/\s+/g, " ");
+
+      expect(norm(wholeSql)).toContain(
+        "LEFT JOIN transactions lt ON lt.id = t.linked_transaction_id",
+      );
+      expect(norm(wholeSql)).toContain(
+        `AND (lt.id IS NULL OR NOT (lt.account_id = ANY($${wholeIdx + 1}::uuid[])))`,
+      );
+      expect(norm(splitSql)).toContain(
+        `NOT (ts.transfer_account_id = ANY($${splitIdx + 1}::uuid[]))`,
+      );
+      // The array is bound once per query and reused by both predicates.
+      expect(wholeParams.filter((p: unknown) => Array.isArray(p))).toHaveLength(
+        1,
+      );
+      expect(splitParams.filter((p: unknown) => Array.isArray(p))).toHaveLength(
+        1,
+      );
+    });
+
+    it("emits no counterpart predicate without accountIds, so both legs count (spec 10.8)", async () => {
+      scopedManager.query.mockResolvedValue([]);
+
+      await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-01-31",
+        { tagKey: "scope" },
+      );
+
+      const [wholeSql] = scopedManager.query.mock.calls[2];
+      const [splitSql] = scopedManager.query.mock.calls[3];
+      expect(wholeSql).not.toContain("linked_transaction_id");
+      expect(wholeSql).not.toContain("lt.");
+      expect(splitSql).not.toContain("NOT (ts.transfer_account_id");
+    });
+
+    it("bounds ONLY the flow queries by transferScopeAccountIds when accountIds is absent (spec 10.8.1)", async () => {
+      scopedManager.query.mockResolvedValue([]);
+
+      await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-01-31",
+        { tagKey: "scope", transferScopeAccountIds: ["acct-1", "acct-2"] },
+      );
+
+      const [baseSql, baseParams] = scopedManager.query.mock.calls[0];
+      const [valueSql, valueParams] = scopedManager.query.mock.calls[1];
+      const [wholeSql, wholeParams] = scopedManager.query.mock.calls[2];
+      const [splitSql, splitParams] = scopedManager.query.mock.calls[3];
+      const norm = (sql: string) => sql.replace(/\s+/g, " ");
+      const wholeIdx = wholeParams.findIndex((p: unknown) => Array.isArray(p));
+      const splitIdx = splitParams.findIndex((p: unknown) => Array.isArray(p));
+
+      // Income and expenses -- the All totals and the value buckets -- are
+      // never narrowed by the boundary.
+      expect(baseSql).not.toContain("t.account_id = ANY");
+      expect(baseParams.some((p: unknown) => Array.isArray(p))).toBe(false);
+      expect(valueSql).not.toContain("t.account_id = ANY");
+      expect(valueParams.some((p: unknown) => Array.isArray(p))).toBe(false);
+
+      // The flows read the boundary exactly as an explicit selection would.
+      expect(wholeParams[wholeIdx]).toEqual(["acct-1", "acct-2"]);
+      expect(norm(wholeSql)).toContain(
+        "LEFT JOIN transactions lt ON lt.id = t.linked_transaction_id",
+      );
+      expect(norm(wholeSql)).toContain(
+        `AND t.account_id = ANY($${wholeIdx + 1}::uuid[]) AND (lt.id IS NULL OR NOT (lt.account_id = ANY($${wholeIdx + 1}::uuid[])))`,
+      );
+      expect(splitParams[splitIdx]).toEqual(["acct-1", "acct-2"]);
+      expect(norm(splitSql)).toContain(
+        `AND t.account_id = ANY($${splitIdx + 1}::uuid[]) AND NOT (ts.transfer_account_id = ANY($${splitIdx + 1}::uuid[]))`,
+      );
+    });
+
+    it("builds the same flow queries for transferScopeAccountIds as for the same accountIds (spec 10.8.1)", async () => {
+      scopedManager.query.mockResolvedValue([]);
+      const ids = ["acct-1", "acct-2"];
+
+      await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-01-31",
+        {
+          tagKey: "scope",
+          accountIds: ids,
+        },
+      );
+      const explicit = scopedManager.query.mock.calls.slice(2, 4);
+      scopedManager.query.mockClear();
+
+      await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-01-31",
+        {
+          tagKey: "scope",
+          transferScopeAccountIds: ids,
+        },
+      );
+      const byDefault = scopedManager.query.mock.calls.slice(2, 4);
+
+      expect(byDefault).toEqual(explicit);
+    });
+
+    it("lets a non-empty accountIds win over transferScopeAccountIds", async () => {
+      scopedManager.query.mockResolvedValue([]);
+
+      await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-01-31",
+        {
+          tagKey: "scope",
+          accountIds: ["acct-1"],
+          transferScopeAccountIds: ["acct-1", "acct-2"],
+        },
+      );
+
+      for (const [, params] of scopedManager.query.mock.calls.slice(1, 4)) {
+        expect(params).toContainEqual(["acct-1"]);
+        expect(params).not.toContainEqual(["acct-1", "acct-2"]);
+      }
+    });
+
+    it("treats an empty transferScopeAccountIds as no boundary (both legs count)", async () => {
+      scopedManager.query.mockResolvedValue([]);
+
+      await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-01-31",
+        {
+          tagKey: "scope",
+          transferScopeAccountIds: [],
+        },
+      );
+
+      const [wholeSql] = scopedManager.query.mock.calls[2];
+      const [splitSql] = scopedManager.query.mock.calls[3];
+      expect(wholeSql).not.toContain("linked_transaction_id");
+      expect(splitSql).not.toContain("NOT (ts.transfer_account_id");
+    });
+
     it("buckets by week and omits the startDate filter, on all three extra queries, when asked", async () => {
       scopedManager.query.mockResolvedValue([]);
 
@@ -1032,6 +1250,169 @@ describe("IncomeReportsService", () => {
       expect(household.totals.income).toBe(300);
       // EUR->USD is 1.1 in the fixture rates.
       expect(household.taggedInflows).toBe(50 + 10 * 1.1);
+    });
+
+    // -- per-period tagged flows (spec section 10) -------------------------------
+
+    it("puts each transfer in its own period, with zero periods present, and the window totals are the sum of the periods", async () => {
+      scopedManager.query
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          flowRow("household", "7066.00", "7066.00", "USD", "2025-01-01"),
+          flowRow("household", "100.10", "0.00", "USD", "2025-03-01"),
+        ])
+        .mockResolvedValueOnce([
+          flowRow("household", "0.20", "50.00", "USD", "2025-03-01"),
+        ]);
+
+      const result = await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-03-31",
+        { tagKey: "scope" },
+      );
+
+      const household = bucketByValue(result.buckets, "household");
+      expect(
+        household.data.map((d) => [
+          d.period,
+          d.taggedInflows,
+          d.taggedOutflows,
+        ]),
+      ).toEqual([
+        ["2025-01", 7066, 7066],
+        ["2025-02", 0, 0],
+        ["2025-03", 100.3, 50],
+      ]);
+      expect(household.taggedInflows).toBe(7166.3);
+      expect(household.taggedOutflows).toBe(7116);
+      // Aligned with the All periods, and never folded into income/expenses/net.
+      expect(household.data.map((d) => d.period)).toEqual(
+        result.data.map((d) => d.period),
+      );
+      for (const d of household.data) {
+        expect([d.income, d.expenses, d.net]).toEqual([0, 0, 0]);
+      }
+      // The untagged bucket still carries a zero-flow row per period.
+      const untagged = bucketByValue(result.buckets, UNTAGGED_TAG_BUCKET_ID);
+      expect(untagged.data.every((d) => d.taggedInflows === 0)).toBe(true);
+      expect(untagged.data).toHaveLength(3);
+      // The All series is untouched by flows (I2).
+      expect(result.data[0]).not.toHaveProperty("taggedInflows");
+    });
+
+    it("keeps a period that only a tagged flow touched when the window has no start date", async () => {
+      scopedManager.query
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          flowRow("household", "10.00", "0.00", "USD", "2025-02-01"),
+        ])
+        .mockResolvedValueOnce([]);
+
+      const result = await service.getIncomeVsExpenses(
+        mockUserId,
+        undefined,
+        "2025-02-28",
+        { tagKey: "scope" },
+      );
+
+      const household = bucketByValue(result.buckets, "household");
+      expect(household.data.map((d) => d.period)).toEqual(["2025-02"]);
+      expect(household.taggedInflows).toBe(10);
+    });
+
+    it("drops only the period whose flow has no rate, names the currency, and keeps the other periods", async () => {
+      scopedManager.query
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          flowRow("household", "30.00", "0.00", "USD", "2025-01-01"),
+          flowRow("household", "300000.00", "0.00", "JPY", "2025-02-01"),
+        ])
+        .mockResolvedValueOnce([]);
+
+      const result = await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-02-28",
+        { tagKey: "scope" },
+      );
+
+      const household = bucketByValue(result.buckets, "household");
+      expect(household.data.map((d) => d.taggedInflows)).toEqual([30, 0]);
+      expect(household.taggedInflows).toBe(30);
+      expect(household.missingCurrencies).toEqual(["JPY"]);
+      expect(household.excludedCount).toBe(1);
+      expect(household.totals.income).toBeNull();
+    });
+
+    it("groups the flow queries by the same period start as the value query, week offset included", async () => {
+      scopedManager.query.mockResolvedValue([]);
+
+      await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-01-31",
+        {
+          tagKey: "scope",
+          bucket: "week",
+          weekStartsOn: 0,
+        },
+      );
+
+      for (const call of [2, 3]) {
+        const [sql, params] = scopedManager.query.mock.calls[call];
+        expect(sql).toContain("date_trunc('week'");
+        expect(sql).toContain("GROUP BY tr.period_start, tv.value");
+        expect(params.slice(0, 4)).toEqual([
+          mockUserId,
+          "2025-01-31",
+          "scope",
+          1,
+        ]);
+      }
+      scopedManager.query.mockClear();
+      await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-01-31",
+        { tagKey: "scope" },
+      );
+      const [monthSql] = scopedManager.query.mock.calls[2];
+      expect(monthSql).toContain("date_trunc('month'");
+    });
+
+    it("counts only the destination leg when accountIds excludes the investment side (truth table 10.1b)", async () => {
+      // The database applies the account filter; the service must hand it to
+      // both flow queries and report whatever comes back.
+      scopedManager.query
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          flowRow("household", "7066.00", "0.00", "USD", "2025-01-01"),
+        ])
+        .mockResolvedValueOnce([]);
+
+      const result = await service.getIncomeVsExpenses(
+        mockUserId,
+        "2025-01-01",
+        "2025-01-31",
+        { tagKey: "scope", accountIds: ["checking-id"] },
+      );
+
+      for (const call of [1, 2, 3]) {
+        const [sql, params] = scopedManager.query.mock.calls[call];
+        expect(sql).toContain("t.account_id = ANY(");
+        expect(params).toContainEqual(["checking-id"]);
+      }
+      const household = bucketByValue(result.buckets, "household");
+      expect(household.taggedInflows).toBe(7066);
+      expect(household.taggedOutflows).toBe(0);
+      expect(result.totals.income).toBe(0);
+      expect(result.totals.expenses).toBe(0);
+      expect(result.totals.net).toBe(0);
     });
   });
 });

@@ -46,16 +46,59 @@ Observable when done: switching "Break down by tag key" to `scope` on Income vs
 Expenses shows Household / Stall / (untagged) buckets; a tagged RRSP->Checking
 transfer shows under Household as a tagged inflow and adds nothing to income.
 
-### Phase 2 -- Spending by Category + Income by Source
+### Phase 1b -- account scope and the funding series (Income vs Expenses)
 
-Value partitioning only (no transfer flows). Reuses the Phase 1 DTO mixin,
-response-bucket shape, frontend control and i18n keys. Smaller because there is
-no transfer-flow branch.
+Follow-up from the reporter's screenshots; spec section 10. C: an account
+multi-select on `IncomeVsExpensesReport` (the backend already honours
+`accountIds`; Cash Flow follows in Phase 1c). B:
+`IncomeExpenseTagPeriodItem` (per-period `taggedInflows` / `taggedOutflows`) in
+each bucket, and two indigo series on the main chart for the active non-untagged
+bucket. Order: spec commit, backend (DTO, both flow queries, tests), frontend
+(types, controlled `TagKeyBreakdownBuckets`, report), translations last.
 
-### Phase 3 -- Budget vs Actual
+### Phase 1c -- opt-in stacking and Cash Flow parity
 
-Deferred; budget-period + category based in the budgets module. Separate design
-note before implementation.
+Spec section 10.7. An opt-in, default-off "Stack tagged flows" switch (inflows
+on the Income / Inflows bar, outflows on the Expenses / Outflows bar; presentation
+only, INV-REPORT-003 unchanged) on Income vs Expenses and Cash Flow, and Cash Flow
+parity: account filter sent to all three endpoints (`income-by-source` gains
+`accountIds`), controlled breakdown tabs, tagged series. Order: extract the
+Income vs Expenses table (file size), spec, backend (`cash-flow` and
+`income-by-source` `accountIds`), frontend, translations last.
+
+### Phase 1d -- internal transfers and the Balance view
+
+Spec sections 10.8 and 10.9. Backend: with `accountIds`, a tagged transfer leg
+whose counterpart account is also selected is left out of the tagged flows (whole
+transfer via `linked_transaction_id`, split leg via `transfer_account_id`).
+Frontend: the stacking switch becomes "Include tagged transfers" and, when on,
+shows Balance and Balance % (one pure helper) in the chart, tooltip, cards,
+table and CSV of Income vs Expenses and Cash Flow. Order: spec, backend,
+frontend, translations last.
+
+### Phase 2 -- the funding view on Income by Source, Spending by Category and Monthly Breakdown
+
+Spec section 11. The reporter wants regular income plus transferred money as the
+month's available spending money, compared with actual expenses, in reports and
+graphs. Each report gets the account filter (Monthly Breakdown also on the
+server), a tag key + value control and the "Include tagged transfers" switch;
+nothing changes while the key, the value or the switch is off. Shared pieces
+first (`taggedFunds`, `collectTagValues`, `useTaggedFundsFilter`,
+`useTaggedFunding`, `TaggedFundsControls`, `TaggedFundsStrip`), then one commit
+per report: Income by Source (a distinct "Tagged transfers: <value>" entry and
+an Available funds total, shares untouched), Spending by Category
+(`tagKey`/`tagValue` filter on the server, plus the Available funds / Spent /
+Balance strip), Monthly Breakdown (`accountIds` on both queries, a per-month
+Balance summary block in new files). Value partitioning of Income by Source and
+Spending by Category stays deferred (spec 11.7).
+
+### Phase 3 -- Budget vs Actual funding overlay
+
+Spec section 11.6, replacing the earlier "deferred" decision. Frontend only: an
+Available funds series (income + tagged inflows - tagged outflows per month, from
+the Income vs Expenses answer) beside Budgeted and Actual, with "Actual vs
+available" in the tooltip. Budget figures are untouched; months align by
+`monthKey`; a month missing from either side is unknown, not 0.
 
 ### Not in scope: a rules engine
 

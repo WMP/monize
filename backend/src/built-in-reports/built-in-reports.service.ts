@@ -50,7 +50,12 @@ export class BuiltInReportsService {
     userId: string,
     startDate: string | undefined,
     endDate: string,
-    options?: { rollupToParent?: boolean; accountIds?: string[] },
+    options?: {
+      rollupToParent?: boolean;
+      accountIds?: string[];
+      tagKey?: string;
+      tagValue?: string;
+    },
   ): Promise<SpendingByCategoryResponse> {
     return this.spendingReports.getSpendingByCategory(
       userId,
@@ -72,8 +77,14 @@ export class BuiltInReportsService {
     userId: string,
     startDate: string | undefined,
     endDate: string,
+    options: { accountIds?: string[] } = {},
   ): Promise<IncomeBySourceResponse> {
-    return this.incomeReports.getIncomeBySource(userId, startDate, endDate);
+    return this.incomeReports.getIncomeBySource(
+      userId,
+      startDate,
+      endDate,
+      options,
+    );
   }
 
   getMonthlySpendingTrend(
@@ -97,6 +108,7 @@ export class BuiltInReportsService {
       bucket?: IncomeExpenseBucket;
       weekStartsOn?: WeekStartsOn;
       tagKey?: string;
+      transferScopeAccountIds?: string[];
     },
   ): Promise<IncomeVsExpensesResponse> {
     return this.incomeReports.getIncomeVsExpenses(
@@ -212,11 +224,13 @@ export class BuiltInReportsService {
     userId: string,
     startDate: string | undefined,
     endDate: string,
+    options?: { accountIds?: string[] },
   ): Promise<MonthlyCategoryBreakdownResponse> {
     return this.monthlyCategoryBreakdown.getMonthlyCategoryBreakdown(
       userId,
       startDate,
       endDate,
+      options,
     );
   }
 }
