@@ -1,0 +1,91 @@
+{{- if eq (include "monize.postgresProvider" .) "cnpg" }}
+{{- /*
+  The CloudNativePG Cluster the backend connects to when postgresql.provider is
+  cnpg. The operator itself is not installed by this chart (it is cluster-wide
+  and ships CRDs); this is the one resource that asks it for a database.
+
+  The spec is built as a dict and merged with postgresql.cnpg.spec rather than
+  templated line by line, so everything the chart does not model -- backup,
+  monitoring, affinity, postgresql.parameters, minSyncReplicas -- is reachable
+  without a new chart value each time, and a map the operator names keeps the
+  rest of what is rendered here.
+
+  assertPostgresql has already refused every value that would make this
+  resource wrong (a name past 50 characters, an owner that is the runtime role,
+  an instance count that is not a count); it runs from configmap-backend.yaml,
+  which every render includes.
+*/}}
+{{- $pg := .Values.postgresql }}
+{{- $cnpg := $pg.cnpg | default dict }}
+{{- $storage := $pg.storage | default dict }}
+{{- $appRole := $pg.appRole | default dict }}
+
+{{- $volume := dict "size" (toString $storage.size) }}
+{{- if $storage.storageClass }}
+{{- $_ := set $volume "storageClass" $storage.storageClass }}
+{{- end }}
+
+{{- $spec := dict
+      "instances" (int $pg.instances)
+      "imageName" ($cnpg.imageName | default (printf "ghcr.io/cloudnative-pg/postgresql:%s" (toString $pg.version)))
+      "bootstrap" (dict "initdb" (dict "database" $pg.database "owner" $pg.owner))
+      "storage" $volume }}
+
+{{- /* Per instance. Omitted when empty so the operator's own default applies. */}}
+{{- if $pg.resources }}
+{{- $_ := set $spec "resources" (deepCopy $pg.resources) }}
+{{- end }}
+
+{{- if $appRole.passwordSecret }}
+{{- /*
+  The row-level-security runtime role, declared so CNPG creates it with the
+  password from the Secret. The owner CNPG bootstraps has no CREATEROLE, so the
+  backend could not create the role itself at startup.
+
+  The attributes are the unprivileged set the backend itself applies to this
+  role -- APP_ROLE_ATTRIBUTES, "LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
+  NOBYPASSRLS NOREPLICATION NOINHERIT", in backend/src/common/db/app-role.ts --
+  spelled out one by one here because CNPG's defaults are not that set (inherit
+  defaults to true). If one list changes, change the other. The backend's
+  startup check refuses to serve on a role that holds SUPERUSER, BYPASSRLS,
+  REPLICATION, CREATEROLE or CREATEDB (FORBIDDEN_RUNTIME_ATTRIBUTES in
+  backend/src/common/db/runtime-role-check.ts); NOINHERIT is not checked there
+  and is kept so this role matches the one db-init creates elsewhere.
+*/}}
+{{- $_ := set $spec "managed" (dict "roles" (list (dict
+      "name" ($.Values.backend.rls.DATABASE_APP_USER | default "monize_app")
+      "ensure" "present"
+      "login" true
+      "superuser" false
+      "createdb" false
+      "createrole" false
+      "inherit" false
+      "replication" false
+      "bypassrls" false
+      "passwordSecret" (dict "name" $appRole.passwordSecret)))) }}
+{{- end }}
+
+{{- /*
+  mergeOverwrite writes into its first argument and reads the second; the copy
+  keeps the user's values from being aliased into the rendered spec. Maps merge
+  key by key, lists and scalars replace -- 0, false and "" included, so
+  cnpg.spec can override a value assertPostgresql has just checked; values.yaml
+  says so.
+*/}}
+{{- $_ := mergeOverwrite $spec (deepCopy ($cnpg.spec | default dict)) }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ $pg.clusterName | quote }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "monize.postgresql.labels" . | nindent 4 }}
+  annotations:
+    # `helm uninstall`, or switching postgresql.provider back to external, must
+    # never delete the database: the Cluster holds every user's financial data,
+    # and CNPG's PersistentVolumeClaims are owned by it and go with it. Delete it
+    # deliberately, with kubectl, when the data is really meant to go.
+    helm.sh/resource-policy: keep
+spec:
+  {{- toYaml $spec | nindent 2 }}
+{{- end }}

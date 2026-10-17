@@ -73,8 +73,9 @@ export const APP_ROLE_PASSWORD_GUC = "monize.app_password";
  * deployment may provision the role declaratively (CNPG `managed.roles`) where
  * this SQL never runs; PostgreSQL 16 stores inheritance on each membership grant,
  * so `GRANT owner TO app WITH INHERIT TRUE` overrides the role default; and the
- * `ALTER` below degrades to a warning without `CREATEROLE`. The startup check is
- * what actually refuses to serve -- this only narrows the default.
+ * `ALTER` below degrades to a warning when the owner may not change the
+ * attributes. The startup check is what actually refuses to serve -- this only
+ * narrows the default.
  */
 export const APP_ROLE_ATTRIBUTES =
   "LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION NOINHERIT";
@@ -93,12 +94,105 @@ export const APP_ROLE_FORBIDDEN_ATTRIBUTE_TOKENS = APP_ROLE_ATTRIBUTES.split(
 ).filter((token) => token.startsWith("NO"));
 
 /**
- * Create the role if absent, else converge its attributes and rotate its
- * password. Idempotent and re-applied on every startup so rotating
- * `DATABASE_APP_PASSWORD` and restarting is sufficient. On managed Postgres
- * (CNPG) where the owner lacks `CREATEROLE`, the CREATE/ALTER raises
- * `insufficient_privilege` (42501); we swallow it with a warning and let the
- * role be provisioned declaratively via the CNPG `Cluster` spec
+ * For each token of `APP_ROLE_ATTRIBUTES`, the `pg_roles` condition that is true
+ * when a role VIOLATES it (a role created with `LOGIN` violates it by having
+ * `NOT rolcanlogin`; one created `NOSUPERUSER` violates it by having `rolsuper`).
+ *
+ * Written once, here, and consumed only through `appRoleConvergeSql`, so the
+ * per-attribute convergence in `APP_ROLE_UPSERT_SQL` is derived from the
+ * attribute string rather than listed beside it. A token with no entry here
+ * makes this module throw at load, and `app-role.spec.ts` asserts the two keep
+ * the same members and that each `NO<x>` entry reads the column
+ * `runtime-role-check.ts` checks.
+ */
+export const APP_ROLE_ATTRIBUTE_VIOLATIONS: Readonly<Record<string, string>> = {
+  LOGIN: "NOT rolcanlogin",
+  NOSUPERUSER: "rolsuper",
+  NOCREATEDB: "rolcreatedb",
+  NOCREATEROLE: "rolcreaterole",
+  NOBYPASSRLS: "rolbypassrls",
+  NOREPLICATION: "rolreplication",
+  NOINHERIT: "rolinherit",
+};
+
+/**
+ * One guarded `ALTER ROLE` per token of `attributes`, as PL/pgSQL statements for
+ * the role-exists branch of `APP_ROLE_UPSERT_SQL`:
+ *
+ *     IF EXISTS (SELECT FROM pg_roles WHERE rolname = role_name AND (<violation>)) THEN
+ *       EXECUTE format('ALTER ROLE %I <TOKEN>', role_name);
+ *     END IF;
+ *
+ * Each statement names exactly one attribute and runs only for a role that
+ * violates that one, so a role that conforms is never sent a statement
+ * PostgreSQL would refuse and a role drifted in an attribute the owner may
+ * change is converged without naming any it may not.
+ *
+ * Throws when a token has no entry in `violations`: a token with no condition
+ * would be an attribute the role may carry without ever being converged.
+ */
+export function appRoleConvergeSql(
+  attributes: string,
+  violations: Readonly<Record<string, string>>,
+): string {
+  const tokens = attributes.split(/\s+/).filter((token) => token !== "");
+  if (tokens.length === 0) {
+    throw new Error("APP_ROLE_ATTRIBUTES names no attributes");
+  }
+  const unmapped = tokens.filter(
+    (token) => !Object.prototype.hasOwnProperty.call(violations, token),
+  );
+  if (unmapped.length > 0) {
+    throw new Error(
+      `APP_ROLE_ATTRIBUTES token(s) ${unmapped.join(", ")} have no entry in ` +
+        "APP_ROLE_ATTRIBUTE_VIOLATIONS, so role drift on them would go undetected",
+    );
+  }
+  return tokens
+    .map(
+      (token) =>
+        `    IF EXISTS (SELECT FROM pg_roles WHERE rolname = role_name AND (${violations[token]})) THEN\n` +
+        `      EXECUTE format('ALTER ROLE %I ${token}', role_name);\n` +
+        "    END IF;",
+    )
+    .join("\n");
+}
+
+/** The per-attribute convergence statements for `APP_ROLE_ATTRIBUTES`. */
+export const APP_ROLE_CONVERGE_SQL = appRoleConvergeSql(
+  APP_ROLE_ATTRIBUTES,
+  APP_ROLE_ATTRIBUTE_VIOLATIONS,
+);
+
+/**
+ * Create the role if absent, else rotate its password and converge each
+ * attribute it has drifted on. Idempotent and re-applied on every startup so
+ * rotating `DATABASE_APP_PASSWORD` and restarting is sufficient.
+ *
+ * The password is altered in a statement of its own, and each attribute in a
+ * statement of its own. PostgreSQL 16 lets an owner holding only `CREATEROLE`
+ * change the password of a role it created, but refuses any `ALTER ROLE` that
+ * names `SUPERUSER`, `REPLICATION` or `BYPASSRLS` ("Only roles with the ...
+ * attribute may change the ... attribute"), even as the NO-form and even when
+ * nothing would change. One combined statement therefore passed on the first
+ * boot (the CREATE) and failed with `insufficient_privilege` on every later one,
+ * so a rotated password was never applied. Each attribute ALTER now runs only
+ * when `APP_ROLE_CONVERGE_SQL`'s guard finds the role violating that attribute,
+ * so a conforming role is sent none, and an attribute the owner may change
+ * (`NOINHERIT`, `LOGIN`) is fixed without naming one it may not.
+ *
+ * `EXCEPTION WHEN insufficient_privilege` wraps the whole block, and an
+ * exception inside a PL/pgSQL block rolls the block back (it is a
+ * subtransaction). So when the role has drifted on an attribute the owner may
+ * not change (`BYPASSRLS`, `REPLICATION`, `SUPERUSER`, `CREATEDB`), the
+ * statements before the refused one are undone with it: the old password stays
+ * and the warning fires. Safety does not depend on that:
+ * `runtime-role-check.ts` still refuses an enforce boot on a role holding a
+ * forbidden attribute.
+ *
+ * On managed Postgres (CNPG) where the owner lacks `CREATEROLE`, the CREATE
+ * raises `insufficient_privilege` (42501); we swallow it with a warning and let
+ * the role be provisioned declaratively via the CNPG `Cluster` spec
  * (`managed.roles`).
  */
 export const APP_ROLE_UPSERT_SQL = `
@@ -110,7 +204,8 @@ BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = role_name) THEN
     EXECUTE format('CREATE ROLE %I ${APP_ROLE_ATTRIBUTES} PASSWORD %L', role_name, role_pw);
   ELSE
-    EXECUTE format('ALTER ROLE %I ${APP_ROLE_ATTRIBUTES} PASSWORD %L', role_name, role_pw);
+    EXECUTE format('ALTER ROLE %I PASSWORD %L', role_name, role_pw);
+${APP_ROLE_CONVERGE_SQL}
   END IF;
 EXCEPTION WHEN insufficient_privilege THEN
   RAISE WARNING 'Insufficient privilege to create/alter role %; provision it declaratively via CNPG managed.roles (spec.managed.roles) with ${APP_ROLE_FORBIDDEN_ATTRIBUTE_TOKENS.join(" ")}.', role_name;

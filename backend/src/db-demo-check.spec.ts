@@ -16,24 +16,55 @@ const mockExit = jest
   .spyOn(process, "exit")
   .mockImplementation((() => {}) as never);
 
+import { Client } from "pg";
 import { checkDemoUser, demoUserExistsOn } from "./db-demo-check";
 import { DB_LIFECYCLE_LOCK_KEY } from "./common/db/advisory-locks";
 
 describe("db-demo-check", () => {
   let logSpy: jest.SpyInstance;
   let warnSpy: jest.SpyInstance;
+  let savedSsl: Record<string, string | undefined>;
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockConnect.mockResolvedValue(undefined);
     mockEnd.mockResolvedValue(undefined);
+    savedSsl = {
+      DATABASE_SSL: process.env.DATABASE_SSL,
+      DATABASE_SSL_REJECT_UNAUTHORIZED:
+        process.env.DATABASE_SSL_REJECT_UNAUTHORIZED,
+      DATABASE_SSL_CA_FILE: process.env.DATABASE_SSL_CA_FILE,
+    };
+    delete process.env.DATABASE_SSL;
+    delete process.env.DATABASE_SSL_REJECT_UNAUTHORIZED;
+    delete process.env.DATABASE_SSL_CA_FILE;
     logSpy = jest.spyOn(Logger.prototype, "log").mockImplementation();
     warnSpy = jest.spyOn(Logger.prototype, "warn").mockImplementation();
   });
 
   afterEach(() => {
+    for (const [key, value] of Object.entries(savedSsl)) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
     logSpy.mockRestore();
     warnSpy.mockRestore();
+  });
+
+  it("connects with the pool's TLS settings, so a server that refuses plain connections accepts it", async () => {
+    // The probe used to build its client with no `ssl`, so DATABASE_SSL=true
+    // was ignored here and a TLS-only server refused it at every demo start.
+    process.env.DATABASE_SSL = "true";
+    mockQuery.mockResolvedValue({ rows: [] });
+
+    await checkDemoUser();
+
+    expect(Client).toHaveBeenCalledWith(
+      expect.objectContaining({ ssl: { rejectUnauthorized: true } }),
+    );
   });
 
   it("exits 0 when the demo user exists, so the entrypoint skips seeding", async () => {

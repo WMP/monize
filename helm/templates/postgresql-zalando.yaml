@@ -1,0 +1,78 @@
+{{- if eq (include "monize.postgresProvider" .) "zalando" }}
+{{- /*
+  The Zalando postgres-operator resource the backend connects to when
+  postgresql.provider is zalando. The operator itself is not installed by this
+  chart (it is cluster-wide and ships CRDs); this is the one resource that asks
+  it for a database.
+
+  Built as a dict and merged with postgresql.zalando.spec, for the reason the
+  CloudNativePG template gives: everything the chart does not model is reachable
+  without a new chart value each time, and a map the operator names keeps the
+  rest of what is rendered here.
+
+  assertPostgresql has already refused every value that would make this
+  resource wrong (a name without the team prefix, a namespace whose Pod
+  Security level would refuse the operator's pods); it runs from
+  configmap-backend.yaml, which every render includes.
+*/}}
+{{- $pg := .Values.postgresql }}
+{{- $zalando := $pg.zalando | default dict }}
+{{- $storage := $pg.storage | default dict }}
+{{- $appRole := $pg.appRole | default dict }}
+
+{{- $volume := dict "size" (toString $storage.size) }}
+{{- if $storage.storageClass }}
+{{- $_ := set $volume "storageClass" $storage.storageClass }}
+{{- end }}
+
+{{- /*
+  The owner's flags. With a runtime-role password the owner may create roles,
+  because Zalando generates the passwords of the roles it manages itself and
+  cannot take ours from a Secret: so instead the backend's db-init creates the
+  runtime role at startup, with Monize's own attribute list (APP_ROLE_UPSERT_SQL
+  in backend/src/common/db/app-role.ts) and the password from
+  DATABASE_APP_PASSWORD, which the Deployment reads from the same Secret. With
+  no runtime role the owner gets no flags at all.
+*/}}
+{{- $ownerFlags := list }}
+{{- if $appRole.passwordSecret }}
+{{- $ownerFlags = list "createrole" }}
+{{- end }}
+
+{{- $spec := dict
+      "teamId" $zalando.teamId
+      "numberOfInstances" (int $pg.instances)
+      "postgresql" (dict "version" (toString $pg.version))
+      "volume" $volume
+      "users" (dict $pg.owner $ownerFlags)
+      "databases" (dict $pg.database $pg.owner) }}
+
+{{- /* Per instance. Omitted when empty so the operator's own default applies. */}}
+{{- if $pg.resources }}
+{{- $_ := set $spec "resources" (deepCopy $pg.resources) }}
+{{- end }}
+
+{{- /*
+  mergeOverwrite writes into its first argument and reads the second; the copy
+  keeps the user's values from being aliased into the rendered spec. Maps merge
+  key by key, lists and scalars replace -- 0, false and "" included, so
+  zalando.spec can override a value assertPostgresql has just checked; values.yaml
+  says so.
+*/}}
+{{- $_ := mergeOverwrite $spec (deepCopy ($zalando.spec | default dict)) }}
+apiVersion: acid.zalan.do/v1
+kind: postgresql
+metadata:
+  name: {{ $pg.clusterName | quote }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "monize.postgresql.labels" . | nindent 4 }}
+  annotations:
+    # `helm uninstall`, or switching postgresql.provider back to external, must
+    # never delete the database: this resource holds every user's financial data,
+    # and deleting it makes the operator tear the cluster down. Delete it
+    # deliberately, with kubectl, when the data is really meant to go.
+    helm.sh/resource-policy: keep
+spec:
+  {{- toYaml $spec | nindent 2 }}
+{{- end }}

@@ -22,10 +22,60 @@ Access via Ingress:
 
 Public URL: {{ include "monize.publicAppUrl" . }}
 
+{{- if include "monize.postgresManaged" . }}
+{{- $provider := include "monize.postgresProvider" . }}
+{{- $pgName := .Values.postgresql.clusterName }}
+{{- $caSecret := include "monize.databaseCaSecret" . }}
+
+PostgreSQL: {{ $provider }} operator, resource "{{ $pgName }}"
+
+  The chart renders the operator's resource and points the backend at it. It
+  does not install the operator, which has to be running in the cluster already.
+
+    {{ if eq $provider "cnpg" }}kubectl get clusters.postgresql.cnpg.io{{ else }}kubectl get postgresqls.acid.zalan.do{{ end }} {{ $pgName }} -n {{ .Values.global.namespace }}
+
+  DATABASE_HOST:  {{ include "monize.databaseHost" . }}  (the operator's primary Service)
+  Database:       {{ include "monize.databaseName" . }}
+  Credentials:    Secret {{ include "monize.databaseCredentialsSecret" . }}
+                  (DATABASE_USER and DATABASE_PASSWORD, read from it by the backend pod)
+
+  The operator creates that Secret while it bootstraps the cluster. Until then
+  the backend pod sits in CreateContainerConfigError, and until the primary
+  accepts connections it may restart a few times; it settles by itself, and
+  nothing needs restarting by hand.
+
+  The resource carries helm.sh/resource-policy: keep, so `helm uninstall` leaves
+  the database running. It is deleted deliberately, with kubectl, and under
+  either operator's default configuration that deletes its volumes too:
+
+    {{ if eq $provider "cnpg" }}kubectl delete clusters.postgresql.cnpg.io{{ else }}kubectl delete postgresqls.acid.zalan.do{{ end }} {{ $pgName }} -n {{ .Values.global.namespace }}
+{{- if $caSecret }}
+
+  TLS: the connection is encrypted and the server certificate is verified
+  against the CA in Secret {{ $caSecret }} (key {{ .Values.postgresql.tls.caKey | default "ca.crt" }}).
+{{- else }}
+
+  NOTE: the connection is encrypted but the server certificate is NOT verified.
+  Spilo's certificate is self-signed, so there is nothing to check it against,
+  and a client on the pod network that can answer for the Service name would not
+  be detected. To verify it, have the operator serve a certificate from a CA you
+  hold and set postgresql.tls.caSecret to the Secret that carries that CA.
+{{- end }}
+
+  NOTE: this chart configures NO backup of the database. The operator has its
+  own; see helm/README.md, section "PostgreSQL".
+{{- end }}
+
 {{- if eq (include "monize.clusterMulti" .) "true" }}
 
 CLUSTER_MODE=multi: two things this chart cannot check for you.
-
+{{ if include "monize.postgresManaged" . }}
+  1. DATABASE_HOST is {{ include "monize.databaseHost" . }}, the operator's primary Service: a direct
+     session, which is what multi needs. Every replica holds one LISTEN open for
+     cross-replica wake-ups, and a transaction-mode pooler would drop it; the
+     chart derives the host, so it never points the backend at one and there is
+     nothing for you to check here.
+{{- else }}
   1. backend.database.DATABASE_HOST must reach a PostgreSQL *session*.
      Every replica holds one LISTEN open for cross-replica wake-ups, and a
      transaction-mode pooler (pgBouncer in its default mode) drops it: the
@@ -33,6 +83,7 @@ CLUSTER_MODE=multi: two things this chart cannot check for you.
      -- CNPG's "-rw", a plain postgres Service, a session-mode pooler -- is
      what this needs. The backend refuses to boot if it cannot hold the LISTEN,
      so a misconfiguration is a log line rather than a slow application.
+{{- end }}
 
   2. The storage assertions must be true, not merely set.
 {{- if .Values.backend.persistence.attachments.enabled }}

@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { applyAppRoleGrants } from "./common/db/app-role";
 import { acquireDbLifecycleLock } from "./common/db/advisory-locks";
+import { resolveDatabaseSsl } from "./common/db/database-ssl";
 import { orderMigrations } from "./common/db/migration-filename";
 import {
   formatMissingDbFunctions,
@@ -277,6 +278,7 @@ export async function runMigrations() {
     user: process.env.DATABASE_USER,
     password: process.env.DATABASE_PASSWORD,
     database: process.env.DATABASE_NAME,
+    ssl: resolveDatabaseSsl((name) => process.env[name]),
   });
 
   // Surface Postgres NOTICE/WARNING messages, exactly as db-init does. The
