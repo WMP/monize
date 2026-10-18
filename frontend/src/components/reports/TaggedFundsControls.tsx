@@ -25,10 +25,17 @@ export function TaggedFundsControls({ filter }: TaggedFundsControlsProps) {
 
   const valueOptions = useMemo(
     () => [
-      { value: '', label: t('tagBreakdown.allValues') },
+      // Where the value only picks whose transfers to show, the empty choice
+      // shows nothing, so it must not read as "all of them" (spec 11.2).
+      {
+        value: '',
+        label: filter.valueRequired
+          ? t('tagBreakdown.selectValue')
+          : t('tagBreakdown.allValues'),
+      },
       ...tagValues.map((value) => ({ value, label: value })),
     ],
-    [tagValues, t],
+    [tagValues, t, filter.valueRequired],
   );
 
   if (tagKeys.length === 0) return null;

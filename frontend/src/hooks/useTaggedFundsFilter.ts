@@ -21,6 +21,18 @@ export interface TaggedFundsFilter {
   setIncludePref: (next: boolean) => void;
   /** The funding view is on: `active` and the switch is on (spec F7). */
   include: boolean;
+  /**
+   * The value only picks whose tagged transfers the funding view shows, so the
+   * report needs one to show anything (spec 11.2): the empty choice reads
+   * "Select a value", not "All values", and a key with a single value selects
+   * it. False where an empty value means "no tag filter" (Spending by Category).
+   */
+  valueRequired: boolean;
+}
+
+export interface TaggedFundsFilterOptions {
+  /** See {@link TaggedFundsFilter.valueRequired}. Default false. */
+  valueRequired?: boolean;
 }
 
 /**
@@ -30,7 +42,10 @@ export interface TaggedFundsFilter {
  * per-report preference, default off. Changing the key clears the value, which
  * belongs to the old key.
  */
-export function useTaggedFundsFilter(includeStorageKey: string): TaggedFundsFilter {
+export function useTaggedFundsFilter(
+  includeStorageKey: string,
+  { valueRequired = false }: TaggedFundsFilterOptions = {},
+): TaggedFundsFilter {
   const names = useTagNames();
   const tagKeys = useMemo(() => collectTagKeys(names), [names]);
   const [tagKey, setTagKeyState] = useState('');
@@ -43,7 +58,9 @@ export function useTaggedFundsFilter(includeStorageKey: string): TaggedFundsFilt
   );
   const setTagKey = (key: string) => {
     setTagKeyState(key);
-    setTagValue('');
+    // A key with one value leaves nothing to choose where a value is required.
+    const values = valueRequired && key ? collectTagValues(names, key) : [];
+    setTagValue(values.length === 1 ? values[0] : '');
   };
 
   const active = tagKey !== '' && tagValue !== '';
@@ -59,5 +76,6 @@ export function useTaggedFundsFilter(includeStorageKey: string): TaggedFundsFilt
     includePref,
     setIncludePref,
     include: active && includePref,
+    valueRequired,
   };
 }

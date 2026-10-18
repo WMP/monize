@@ -629,6 +629,15 @@ them. It is a transfer figure, not income.
 - `TaggedFundsControls`: key select (`TagKeyBreakdownSelect`), a value `Select`
   (aria-label "Tag value"; no untagged choice, F6) and
   `IncludeTaggedTransfersToggle`. Hidden when the user has no `KEY:VALUE` tags.
+- **The empty value (follow-up from the reporter's test).** In Spending by
+  Category an empty value is "no tag filter" and reads "All values". In Income
+  by Source, Monthly Breakdown and Budget vs Actual the value only picks whose
+  tagged transfers the funding view shows, and the view is per value (F7), so
+  an empty value shows nothing: there it reads "Select a value", and choosing a
+  key that has exactly one value selects that value. The reporter read "All
+  values" there as "household included" and saw nothing. A true all-values
+  funding figure is not offered: summing the value buckets would count twice a
+  leg tagged with two values. `useTaggedFundsFilter(key, { valueRequired: true })`.
 - `useTaggedFunding({ enabled, tagKey, tagValue, startDate, endDate, accountIds })`:
   the Income vs Expenses fetch of F3 (`tagKey` always sent, month buckets), and
   nothing at all while `enabled` is false. It returns the response, the bucket

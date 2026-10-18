@@ -155,6 +155,21 @@ describe("SpendingByCategoryReport funding view", () => {
     expect(screen.queryByTestId("tagged-funds-strip")).not.toBeInTheDocument();
   });
 
+  it("keeps 'All values' and never selects a value for the user: an empty value is no tag filter", async () => {
+    mockGetAllTags.mockResolvedValue([{ id: "t1", name: "scope:household" }]);
+    await renderReport();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Break down by tag key"), { target: { value: "scope" } });
+    });
+    const select = screen.getByLabelText("Tag value");
+    expect(select).toHaveValue("");
+    expect(Array.from(select.querySelectorAll("option")).map((o) => o.textContent)).toEqual([
+      "All values",
+      "household",
+    ]);
+    expect(mockGetSpendingByCategory.mock.calls.at(-1)?.[0]).not.toHaveProperty("tagValue");
+  });
+
   it("sends no filter for a key alone", async () => {
     await renderReport();
     await act(async () => {

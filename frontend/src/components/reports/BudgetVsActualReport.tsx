@@ -237,7 +237,9 @@ export function BudgetVsActualReport() {
   // Actual, from the Income vs Expenses answer for the months the trend covers.
   // Only the overview chart carries it, and only with a key, a value and the
   // switch all set; the budget figures themselves are never changed.
-  const fundsFilter = useTaggedFundsFilter(INCLUDE_TRANSFERS_STORAGE_KEY);
+  const fundsFilter = useTaggedFundsFilter(INCLUDE_TRANSFERS_STORAGE_KEY, {
+    valueRequired: true,
+  });
   const fundsWindow = useMemo(() => trendWindow(trendData), [trendData]);
   const showFunds = fundsFilter.include && viewMode === 'overview' && fundsWindow !== null;
   const transferScope = useDefaultTransferScope();

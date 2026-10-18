@@ -340,6 +340,7 @@
     "sharesExceedNote": "A row tagged with more than one value under this key counts toward each of them, so per-value shares can add up to more than 100%.",
     "valueLabel": "Tag value",
     "allValues": "All values",
+    "selectValue": "Select a value",
     "fundsIncome": "Income",
     "fundsTagged": "Tagged transfers: {value}",
     "fundsAvailable": "Available funds",

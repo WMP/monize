@@ -165,7 +165,9 @@ export function IncomeBySourceReport() {
 
   const scope = useReportAccountScope(ACCOUNTS_STORAGE_KEY);
   const { selectedAccountIds, accountIdsKey } = scope;
-  const fundsFilter = useTaggedFundsFilter(INCLUDE_TRANSFERS_STORAGE_KEY);
+  const fundsFilter = useTaggedFundsFilter(INCLUDE_TRANSFERS_STORAGE_KEY, {
+    valueRequired: true,
+  });
 
   const { data: response, isLoading, error, reload } = useReportData(
     () =>

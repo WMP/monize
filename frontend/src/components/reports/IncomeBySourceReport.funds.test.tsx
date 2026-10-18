@@ -160,7 +160,38 @@ describe("IncomeBySourceReport funding view", () => {
     const options = Array.from(
       screen.getByLabelText("Tag value").querySelectorAll("option"),
     ).map((o) => o.textContent);
-    expect(options).toEqual(["All values", "household", "stall"]);
+    // The empty choice shows nothing here, so it never reads "All values".
+    expect(options).toEqual(["Select a value", "household", "stall"]);
+  });
+
+  it("selects the only value of a key, so the switch is offered at once", async () => {
+    mockGetAllTags.mockResolvedValue([
+      { id: "t1", name: "scope:household" },
+      { id: "t2", name: "plain" },
+    ]);
+    await renderReport();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Break down by tag key"), {
+        target: { value: "scope" },
+      });
+    });
+    expect(screen.getByLabelText("Tag value")).toHaveValue("household");
+    expect(
+      screen.getByRole("switch", { name: "Include tagged transfers" }),
+    ).toBeInTheDocument();
+  });
+
+  it("leaves a key with several values unselected", async () => {
+    await renderReport();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Break down by tag key"), {
+        target: { value: "scope" },
+      });
+    });
+    expect(screen.getByLabelText("Tag value")).toHaveValue("");
+    expect(
+      screen.queryByRole("switch", { name: "Include tagged transfers" }),
+    ).not.toBeInTheDocument();
   });
 
   it("changes nothing while the switch is off, even with a key and a value chosen", async () => {

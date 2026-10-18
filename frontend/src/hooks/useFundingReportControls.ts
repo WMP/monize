@@ -26,7 +26,11 @@ export function useFundingReportControls(params: {
   enabled: boolean;
 }): FundingReportControls {
   const scope = useReportAccountScope(`monize-reports-${params.reportKey}-accounts`);
-  const filter = useTaggedFundsFilter(`monize-reports-${params.reportKey}-include-transfers`);
+  // The value here only picks whose transfers the funding view shows.
+  const filter = useTaggedFundsFilter(
+    `monize-reports-${params.reportKey}-include-transfers`,
+    { valueRequired: true },
+  );
   const funding = useTaggedFunding({
     enabled: params.enabled && filter.include,
     tagKey: filter.tagKey,
