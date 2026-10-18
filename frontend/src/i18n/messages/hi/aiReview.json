@@ -59,26 +59,26 @@
     "tradePending": "ईमेल से एक ट्रेड, अभी पढ़ा नहीं गया",
     "tradeEmail": "ट्रेड पुष्टि ईमेल",
     "parserDraftIds": "प्रोफाइल ड्राफ़्ट की आईडी: {ids}",
-    "needsAgent": "Needs an agent",
-    "needsAgentHelp": "The automatic step gave up after {count, plural, one {# attempt} other {# attempts}}. An AI agent (MCP) or the chat can still take this request.",
-    "attemptFailed": "Attempt {count} failed: {error}",
-    "closeReason": "Closed: {reason}",
-    "closeReasonUnknown": "Closed, reason not recorded",
+    "needsAgent": "एजेंट की ज़रूरत है",
+    "needsAgentHelp": "स्वचालित चरण {count, plural, one {# प्रयास} other {# प्रयासों}} के बाद रुक गया। कोई एआई एजेंट (MCP) या चैट अब भी इस अनुरोध को ले सकता है।",
+    "attemptFailed": "प्रयास {count} विफल रहा: {error}",
+    "closeReason": "बंद: {reason}",
+    "closeReasonUnknown": "बंद, कारण दर्ज नहीं है",
     "closeReasons": {
-      "superseded": "the email was read again",
-      "dismissed": "dismissed",
-      "cannot_be_done": "an agent said it cannot be done",
-      "receipt_ignored": "the email was ignored",
-      "receipt_deleted": "the email was deleted",
-      "mailbox_deleted": "the mailbox was deleted",
-      "duplicate": "duplicate email",
-      "parser_draft_superseded": "a newer profile draft replaced it",
-      "parser_deleted": "the parser was deleted"
+      "superseded": "ईमेल दोबारा पढ़ा गया",
+      "dismissed": "ख़ारिज किया गया",
+      "cannot_be_done": "एजेंट ने बताया कि यह नहीं हो सकता",
+      "receipt_ignored": "ईमेल को अनदेखा किया गया",
+      "receipt_deleted": "ईमेल हटा दिया गया",
+      "mailbox_deleted": "मेलबॉक्स हटा दिया गया",
+      "duplicate": "डुप्लिकेट ईमेल",
+      "parser_draft_superseded": "नए प्रोफाइल ड्राफ़्ट ने इसकी जगह ले ली",
+      "parser_deleted": "पार्सर हटा दिया गया"
     }
   },
   "actions": {
     "dismiss": "ख़ारिज करें",
-    "sendAgain": "Send again to AI review"
+    "sendAgain": "एआई समीक्षा के लिए दोबारा भेजें"
   },
   "proposal": {
     "errorTitle": "यह प्रस्ताव अब लागू नहीं किया जा सकता"
@@ -131,31 +131,31 @@
     "dismissFailed": "अनुरोध ख़ारिज नहीं हो सका",
     "approveFailed": "प्रस्ताव लागू नहीं हो सका",
     "changed": "इस बीच यह अनुरोध बदल गया। सूची फिर से लोड की गई।",
-    "reopened": "Request sent again",
-    "reopenFailed": "Could not send the request again"
+    "reopened": "अनुरोध दोबारा भेजा गया",
+    "reopenFailed": "अनुरोध दोबारा नहीं भेजा जा सका"
   },
   "reopen": {
-    "selected": "Send again ({count})",
-    "providerTimeout": "Send again every request the AI provider did not answer",
-    "selectAll": "Select all closed requests shown that can be sent again",
+    "selected": "दोबारा भेजें ({count})",
+    "providerTimeout": "वे सभी अनुरोध दोबारा भेजें जिनका एआई प्रदाता ने उत्तर नहीं दिया",
+    "selectAll": "दिखाए गए सभी बंद अनुरोध चुनें जिन्हें दोबारा भेजा जा सकता है",
     "dialog": {
-      "title": "{count, plural, one {Send # request again?} other {Send # requests again?}}",
-      "message": "Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "{count, plural, one {Send # request again} other {Send # requests again}}"
+      "title": "{count, plural, one {# अनुरोध दोबारा भेजें?} other {# अनुरोध दोबारा भेजें?}}",
+      "message": "हर अनुरोध की अलग से जाँच होती है। जो अनुरोध दोबारा नहीं खोला जा सकता, उसे छोड़ दिया जाता है और बताया जाता है।",
+      "confirm": "{count, plural, one {# अनुरोध दोबारा भेजें} other {# अनुरोध दोबारा भेजें}}"
     },
     "providerDialog": {
-      "title": "Send again every request the AI provider did not answer?",
-      "message": "Every closed request that ended because the AI provider did not answer is sent to AI review again. Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "Send again"
+      "title": "वे सभी अनुरोध दोबारा भेजें जिनका एआई प्रदाता ने उत्तर नहीं दिया?",
+      "message": "जो भी बंद अनुरोध इसलिए समाप्त हुआ कि एआई प्रदाता ने उत्तर नहीं दिया, उसे फिर से एआई समीक्षा के लिए भेजा जाता है। हर अनुरोध की अलग से जाँच होती है। जो अनुरोध दोबारा नहीं खोला जा सकता, उसे छोड़ दिया जाता है और बताया जाता है।",
+      "confirm": "दोबारा भेजें"
     },
-    "summary": "{reopened, plural, one {# request} other {# requests}} sent again, {refused, plural, one {# request} other {# requests}} refused.",
+    "summary": "{reopened, plural, one {# अनुरोध} other {# अनुरोध}} दोबारा भेजे गए, {refused, plural, one {# अनुरोध} other {# अनुरोध}} अस्वीकृत।",
     "outcomes": {
-      "not_found": "Not found: {count}",
-      "not_closed": "Not closed: {count}",
-      "kind_not_reopenable": "This kind cannot be sent again: {count}",
-      "open_exists": "Another open request exists for the same item: {count}",
-      "superseded": "The email no longer points at this request: {count}"
+      "not_found": "नहीं मिले: {count}",
+      "not_closed": "बंद नहीं: {count}",
+      "kind_not_reopenable": "इस प्रकार को दोबारा नहीं भेजा जा सकता: {count}",
+      "open_exists": "उसी आइटम के लिए एक और खुला अनुरोध मौजूद है: {count}",
+      "superseded": "ईमेल अब इस अनुरोध की ओर संकेत नहीं करता: {count}"
     },
-    "failed": "Could not send the requests again"
+    "failed": "अनुरोध दोबारा नहीं भेजे जा सके"
   }
 }

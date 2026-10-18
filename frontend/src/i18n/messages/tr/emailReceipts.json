@@ -574,10 +574,10 @@
       "link_domain_invalid": "geçerli bir gönderen alan adı değil (en çok {max} alan adı)",
       "link_days_invalid": "0 ile {max} arasında bir tam sayı olmalıdır",
       "role_trade_conflict": "yalnızca işlemi okuyan bir borsa işlemi profilinde component veya settlement olamaz",
-      "include_account_ids_invalid": "must be a list of different account ids",
-      "include_account_ids_too_many": "lists too many accounts (at most {max})",
-      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
-      "repeat_step_multiline": "is a repeating step, so it must match one line"
+      "include_account_ids_invalid": "birbirinden farklı hesap kimliklerinin listesi olmalıdır",
+      "include_account_ids_too_many": "çok fazla hesap listeliyor (en fazla {max})",
+      "repeat_step_captures": "yinelenen bir adım, bu yüzden bir değer yakalayamaz",
+      "repeat_step_multiline": "yinelenen bir adım, bu yüzden tek bir satırla eşleşmelidir"
     }
   },
   "test": {
@@ -990,7 +990,7 @@
       "skip_line": "Bu ayrıştırıcının atladığı bir satır bulundu, bu yüzden e-posta yok sayıldı.",
       "wait_line": "Bir satır siparişin henüz kesinleşmediğini söylüyor, bu yüzden e-posta daha sonra yeniden okunacak.",
       "profile_ignore": "Bu e-postanın ayrıştırıcısı eşleşen her e-postayı yok sayar.",
-      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
+      "duplicate": "Bu e-posta, zaten saklanmış bir e-postanın kopyası (aynı Message-ID), bu yüzden yoksayıldı.",
       "no_html": "Bu ayrıştırıcı e-postanın HTML kısmını okur ve bu e-postada HTML yok.",
       "schema_org": "Ayrıştırıcıya gerek kalmadı: sipariş, e-postadaki yapılandırılmış verilerden (schema.org) okundu.",
       "item_amount_missing": "Bir kalemin tutarı yok ve e-postada ona verilecek tek bir toplam yok.",

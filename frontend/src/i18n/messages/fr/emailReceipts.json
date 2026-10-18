@@ -574,10 +574,10 @@
       "link_domain_invalid": "n'est pas un domaine d'expéditeur valide (au plus {max} domaines)",
       "link_days_invalid": "doit être un nombre entier de 0 à {max}",
       "role_trade_conflict": "ne peut pas être component ni settlement dans un profil d'opération de bourse, qui ne lit que l'opération",
-      "include_account_ids_invalid": "must be a list of different account ids",
-      "include_account_ids_too_many": "lists too many accounts (at most {max})",
-      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
-      "repeat_step_multiline": "is a repeating step, so it must match one line"
+      "include_account_ids_invalid": "doit être une liste d'ID de compte différents",
+      "include_account_ids_too_many": "contient trop de comptes (au plus {max})",
+      "repeat_step_captures": "est une étape répétée, elle ne peut donc pas capturer de valeur",
+      "repeat_step_multiline": "est une étape répétée, elle doit donc correspondre à une seule ligne"
     }
   },
   "test": {
@@ -990,7 +990,7 @@
       "skip_line": "Une ligne qui fait ignorer l'e-mail à ce profil a été trouvée, donc l'e-mail a été ignoré.",
       "wait_line": "Une ligne indique que la commande n'est pas encore définitive, l'e-mail sera donc relu plus tard.",
       "profile_ignore": "Le profil de cet e-mail ignore chaque e-mail correspondant.",
-      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
+      "duplicate": "Cet e-mail est une copie d'un e-mail déjà enregistré (même Message-ID), il a donc été ignoré.",
       "no_html": "Ce profil lit la partie HTML de l'e-mail, et cet e-mail n'en a pas.",
       "schema_org": "Aucun profil n'était nécessaire : la commande a été lue à partir des données structurées (schema.org) de l'e-mail.",
       "item_amount_missing": "Un article n'a pas de montant, et l'e-mail n'a pas de total unique à lui attribuer.",

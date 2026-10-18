@@ -574,10 +574,10 @@
       "link_domain_invalid": "non è un dominio mittente valido (al massimo {max} domini)",
       "link_days_invalid": "deve essere un numero intero da 0 a {max}",
       "role_trade_conflict": "non può essere component né settlement in un profilo di operazione di borsa, che legge solo l'operazione",
-      "include_account_ids_invalid": "must be a list of different account ids",
-      "include_account_ids_too_many": "lists too many accounts (at most {max})",
-      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
-      "repeat_step_multiline": "is a repeating step, so it must match one line"
+      "include_account_ids_invalid": "deve essere un elenco di ID di conto diversi",
+      "include_account_ids_too_many": "elenca troppi conti (al massimo {max})",
+      "repeat_step_captures": "è un passaggio ripetuto, quindi non può acquisire un valore",
+      "repeat_step_multiline": "è un passaggio ripetuto, quindi deve corrispondere a una sola riga"
     }
   },
   "test": {
@@ -990,7 +990,7 @@
       "skip_line": "È stata trovata una riga su cui questo profilo salta, quindi l'email è stata ignorata.",
       "wait_line": "Una riga indica che l'ordine non è ancora definitivo, quindi l'email verrà riletta più tardi.",
       "profile_ignore": "Il profilo di questa email ignora ogni email corrispondente.",
-      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
+      "duplicate": "Questa email è una copia di una già memorizzata (stesso Message-ID), quindi è stata ignorata.",
       "no_html": "Questo profilo legge la parte HTML dell'email e questa email non ne ha.",
       "schema_org": "Non serviva alcun profilo: l'ordine è stato letto dai dati strutturati (schema.org) dell'email.",
       "item_amount_missing": "Un articolo non ha un importo, e l'email non ha un totale unico da assegnargli.",

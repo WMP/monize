@@ -574,10 +574,10 @@
       "link_domain_invalid": "não é um domínio de remetente válido (no máximo {max} domínios)",
       "link_days_invalid": "tem de ser um número inteiro de 0 a {max}",
       "role_trade_conflict": "não pode ser component nem settlement num perfil de negociação em bolsa, que lê apenas a negociação",
-      "include_account_ids_invalid": "must be a list of different account ids",
-      "include_account_ids_too_many": "lists too many accounts (at most {max})",
-      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
-      "repeat_step_multiline": "is a repeating step, so it must match one line"
+      "include_account_ids_invalid": "tem de ser uma lista de IDs de conta diferentes",
+      "include_account_ids_too_many": "indica demasiadas contas (no máximo {max})",
+      "repeat_step_captures": "é um passo repetido, por isso não pode capturar um valor",
+      "repeat_step_multiline": "é um passo repetido, por isso tem de corresponder a uma única linha"
     }
   },
   "test": {
@@ -990,7 +990,7 @@
       "skip_line": "Foi encontrada uma linha que leva este analisador a ignorar o e-mail, por isso foi ignorado.",
       "wait_line": "Uma linha indica que a encomenda ainda não é definitiva, por isso o e-mail será lido novamente mais tarde.",
       "profile_ignore": "O analisador deste e-mail ignora cada e-mail correspondente.",
-      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
+      "duplicate": "Este e-mail é uma cópia de um já guardado (mesmo Message-ID), por isso foi ignorado.",
       "no_html": "Este analisador lê a parte HTML do e-mail e este e-mail não tem nenhuma.",
       "schema_org": "Não foi preciso nenhum analisador: a encomenda foi lida a partir dos dados estruturados (schema.org) do e-mail.",
       "item_amount_missing": "Um artigo não tem montante, e o e-mail não tem um total único para lhe atribuir.",

@@ -59,26 +59,26 @@
     "tradePending": "E-postadan bir işlem, henüz okunmadı",
     "tradeEmail": "İşlem onayı e-postası",
     "parserDraftIds": "Profil taslağı kimlikleri: {ids}",
-    "needsAgent": "Needs an agent",
-    "needsAgentHelp": "The automatic step gave up after {count, plural, one {# attempt} other {# attempts}}. An AI agent (MCP) or the chat can still take this request.",
-    "attemptFailed": "Attempt {count} failed: {error}",
-    "closeReason": "Closed: {reason}",
-    "closeReasonUnknown": "Closed, reason not recorded",
+    "needsAgent": "Bir ajan gerekiyor",
+    "needsAgentHelp": "Otomatik adım {count, plural, one {# denemeden} other {# denemeden}} sonra vazgeçti. Bu isteği bir yapay zekâ ajanı (MCP) veya sohbet yine de üstlenebilir.",
+    "attemptFailed": "{count}. deneme başarısız oldu: {error}",
+    "closeReason": "Kapatıldı: {reason}",
+    "closeReasonUnknown": "Kapatıldı, neden kaydedilmedi",
     "closeReasons": {
-      "superseded": "the email was read again",
-      "dismissed": "dismissed",
-      "cannot_be_done": "an agent said it cannot be done",
-      "receipt_ignored": "the email was ignored",
-      "receipt_deleted": "the email was deleted",
-      "mailbox_deleted": "the mailbox was deleted",
-      "duplicate": "duplicate email",
-      "parser_draft_superseded": "a newer profile draft replaced it",
-      "parser_deleted": "the parser was deleted"
+      "superseded": "e-posta yeniden okundu",
+      "dismissed": "yoksayıldı",
+      "cannot_be_done": "bir ajan bunun yapılamayacağını bildirdi",
+      "receipt_ignored": "e-posta yoksayıldı",
+      "receipt_deleted": "e-posta silindi",
+      "mailbox_deleted": "posta kutusu silindi",
+      "duplicate": "yinelenen e-posta",
+      "parser_draft_superseded": "daha yeni bir profil taslağı onun yerini aldı",
+      "parser_deleted": "ayrıştırıcı silindi"
     }
   },
   "actions": {
     "dismiss": "Yoksay",
-    "sendAgain": "Send again to AI review"
+    "sendAgain": "Yapay zekâ incelemesine yeniden gönder"
   },
   "proposal": {
     "errorTitle": "Bu öneri artık uygulanamaz"
@@ -131,31 +131,31 @@
     "dismissFailed": "İstek yoksayılamadı",
     "approveFailed": "Öneri uygulanamadı",
     "changed": "Bu istek bu arada değişti. Liste yeniden yüklendi.",
-    "reopened": "Request sent again",
-    "reopenFailed": "Could not send the request again"
+    "reopened": "İstek yeniden gönderildi",
+    "reopenFailed": "İstek yeniden gönderilemedi"
   },
   "reopen": {
-    "selected": "Send again ({count})",
-    "providerTimeout": "Send again every request the AI provider did not answer",
-    "selectAll": "Select all closed requests shown that can be sent again",
+    "selected": "Yeniden gönder ({count})",
+    "providerTimeout": "Yapay zekâ sağlayıcısının yanıtlamadığı her isteği yeniden gönder",
+    "selectAll": "Gösterilen ve yeniden gönderilebilen tüm kapalı istekleri seç",
     "dialog": {
-      "title": "{count, plural, one {Send # request again?} other {Send # requests again?}}",
-      "message": "Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "{count, plural, one {Send # request again} other {Send # requests again}}"
+      "title": "{count, plural, one {# istek yeniden gönderilsin mi?} other {# istek yeniden gönderilsin mi?}}",
+      "message": "Her istek ayrı ayrı denetlenir. Yeniden açılamayan bir istek atlanır ve bildirilir.",
+      "confirm": "{count, plural, one {# isteği yeniden gönder} other {# isteği yeniden gönder}}"
     },
     "providerDialog": {
-      "title": "Send again every request the AI provider did not answer?",
-      "message": "Every closed request that ended because the AI provider did not answer is sent to AI review again. Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "Send again"
+      "title": "Yapay zekâ sağlayıcısının yanıtlamadığı her istek yeniden gönderilsin mi?",
+      "message": "Yapay zekâ sağlayıcısı yanıtlamadığı için sona eren her kapalı istek yeniden yapay zekâ incelemesine gönderilir. Her istek ayrı ayrı denetlenir. Yeniden açılamayan bir istek atlanır ve bildirilir.",
+      "confirm": "Yeniden gönder"
     },
-    "summary": "{reopened, plural, one {# request} other {# requests}} sent again, {refused, plural, one {# request} other {# requests}} refused.",
+    "summary": "{reopened, plural, one {# istek} other {# istek}} yeniden gönderildi, {refused, plural, one {# istek} other {# istek}} reddedildi.",
     "outcomes": {
-      "not_found": "Not found: {count}",
-      "not_closed": "Not closed: {count}",
-      "kind_not_reopenable": "This kind cannot be sent again: {count}",
-      "open_exists": "Another open request exists for the same item: {count}",
-      "superseded": "The email no longer points at this request: {count}"
+      "not_found": "Bulunamadı: {count}",
+      "not_closed": "Kapalı değil: {count}",
+      "kind_not_reopenable": "Bu tür yeniden gönderilemez: {count}",
+      "open_exists": "Aynı öğe için açık başka bir istek var: {count}",
+      "superseded": "E-posta artık bu isteği göstermiyor: {count}"
     },
-    "failed": "Could not send the requests again"
+    "failed": "İstekler yeniden gönderilemedi"
   }
 }

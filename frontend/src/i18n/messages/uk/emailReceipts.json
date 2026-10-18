@@ -574,10 +574,10 @@
       "link_domain_invalid": "не є дійсним доменом відправника (не більше {max} доменів)",
       "link_days_invalid": "має бути цілим числом від 0 до {max}",
       "role_trade_conflict": "не може бути component або settlement у профілі біржової угоди, який читає лише угоду",
-      "include_account_ids_invalid": "must be a list of different account ids",
-      "include_account_ids_too_many": "lists too many accounts (at most {max})",
-      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
-      "repeat_step_multiline": "is a repeating step, so it must match one line"
+      "include_account_ids_invalid": "має бути списком різних ID рахунків",
+      "include_account_ids_too_many": "містить забагато рахунків (не більше ніж {max})",
+      "repeat_step_captures": "є повторюваним кроком, тому не може захоплювати значення",
+      "repeat_step_multiline": "є повторюваним кроком, тому має відповідати одному рядку"
     }
   },
   "test": {
@@ -990,7 +990,7 @@
       "skip_line": "Знайдено рядок, за яким цей парсер пропускає лист, тому лист проігноровано.",
       "wait_line": "Рядок повідомляє, що замовлення ще не остаточне, тому лист буде прочитано пізніше ще раз.",
       "profile_ignore": "Парсер цього листа ігнорує кожен відповідний лист.",
-      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
+      "duplicate": "Цей лист є копією вже збереженого (той самий Message-ID), тому його проігноровано.",
       "no_html": "Цей парсер читає HTML-частину листа, а в цьому листі її немає.",
       "schema_org": "Парсер не знадобився: замовлення прочитано зі структурованих даних (schema.org) у листі.",
       "item_amount_missing": "У позиції немає суми, а в листі немає єдиного підсумку, який можна було б їй призначити.",

@@ -59,26 +59,26 @@
     "tradePending": "Una operación de un correo, aún sin leer",
     "tradeEmail": "Correo de confirmación de operación",
     "parserDraftIds": "ID de los borradores de perfil: {ids}",
-    "needsAgent": "Needs an agent",
-    "needsAgentHelp": "The automatic step gave up after {count, plural, one {# attempt} other {# attempts}}. An AI agent (MCP) or the chat can still take this request.",
-    "attemptFailed": "Attempt {count} failed: {error}",
-    "closeReason": "Closed: {reason}",
-    "closeReasonUnknown": "Closed, reason not recorded",
+    "needsAgent": "Necesita un agente",
+    "needsAgentHelp": "El paso automático se rindió tras {count, plural, one {# intento} other {# intentos}}. Un agente de IA (MCP) o el chat aún puede atender esta solicitud.",
+    "attemptFailed": "Intento {count} fallido: {error}",
+    "closeReason": "Cerrada: {reason}",
+    "closeReasonUnknown": "Cerrada, motivo no registrado",
     "closeReasons": {
-      "superseded": "the email was read again",
-      "dismissed": "dismissed",
-      "cannot_be_done": "an agent said it cannot be done",
-      "receipt_ignored": "the email was ignored",
-      "receipt_deleted": "the email was deleted",
-      "mailbox_deleted": "the mailbox was deleted",
-      "duplicate": "duplicate email",
-      "parser_draft_superseded": "a newer profile draft replaced it",
-      "parser_deleted": "the parser was deleted"
+      "superseded": "el correo se volvió a leer",
+      "dismissed": "descartada",
+      "cannot_be_done": "un agente indicó que no se puede hacer",
+      "receipt_ignored": "el correo se ignoró",
+      "receipt_deleted": "el correo se eliminó",
+      "mailbox_deleted": "el buzón se eliminó",
+      "duplicate": "correo duplicado",
+      "parser_draft_superseded": "un borrador de perfil más reciente la reemplazó",
+      "parser_deleted": "el analizador se eliminó"
     }
   },
   "actions": {
     "dismiss": "Descartar",
-    "sendAgain": "Send again to AI review"
+    "sendAgain": "Reenviar a la revisión de IA"
   },
   "proposal": {
     "errorTitle": "Esta propuesta ya no se puede aplicar"
@@ -131,31 +131,31 @@
     "dismissFailed": "No se pudo descartar la solicitud",
     "approveFailed": "No se pudo aplicar la propuesta",
     "changed": "Esta solicitud cambió mientras tanto. Se volvió a cargar la lista.",
-    "reopened": "Request sent again",
-    "reopenFailed": "Could not send the request again"
+    "reopened": "Solicitud reenviada",
+    "reopenFailed": "No se pudo reenviar la solicitud"
   },
   "reopen": {
-    "selected": "Send again ({count})",
-    "providerTimeout": "Send again every request the AI provider did not answer",
-    "selectAll": "Select all closed requests shown that can be sent again",
+    "selected": "Reenviar ({count})",
+    "providerTimeout": "Reenviar todas las solicitudes a las que el proveedor de IA no respondió",
+    "selectAll": "Seleccionar todas las solicitudes cerradas mostradas que se pueden reenviar",
     "dialog": {
-      "title": "{count, plural, one {Send # request again?} other {Send # requests again?}}",
-      "message": "Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "{count, plural, one {Send # request again} other {Send # requests again}}"
+      "title": "{count, plural, one {¿Reenviar # solicitud?} other {¿Reenviar # solicitudes?}}",
+      "message": "Cada solicitud se comprueba por separado. Una solicitud que no se puede reabrir se omite y se notifica.",
+      "confirm": "{count, plural, one {Reenviar # solicitud} other {Reenviar # solicitudes}}"
     },
     "providerDialog": {
-      "title": "Send again every request the AI provider did not answer?",
-      "message": "Every closed request that ended because the AI provider did not answer is sent to AI review again. Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "Send again"
+      "title": "¿Reenviar todas las solicitudes a las que el proveedor de IA no respondió?",
+      "message": "Toda solicitud cerrada que terminó porque el proveedor de IA no respondió se envía de nuevo a la revisión de IA. Cada solicitud se comprueba por separado. Una solicitud que no se puede reabrir se omite y se notifica.",
+      "confirm": "Reenviar"
     },
-    "summary": "{reopened, plural, one {# request} other {# requests}} sent again, {refused, plural, one {# request} other {# requests}} refused.",
+    "summary": "{reopened, plural, one {# solicitud reenviada} other {# solicitudes reenviadas}}, {refused, plural, one {# solicitud rechazada} other {# solicitudes rechazadas}}.",
     "outcomes": {
-      "not_found": "Not found: {count}",
-      "not_closed": "Not closed: {count}",
-      "kind_not_reopenable": "This kind cannot be sent again: {count}",
-      "open_exists": "Another open request exists for the same item: {count}",
-      "superseded": "The email no longer points at this request: {count}"
+      "not_found": "No encontradas: {count}",
+      "not_closed": "No cerradas: {count}",
+      "kind_not_reopenable": "Este tipo no se puede reenviar: {count}",
+      "open_exists": "Existe otra solicitud abierta para el mismo elemento: {count}",
+      "superseded": "El correo ya no apunta a esta solicitud: {count}"
     },
-    "failed": "Could not send the requests again"
+    "failed": "No se pudieron reenviar las solicitudes"
   }
 }

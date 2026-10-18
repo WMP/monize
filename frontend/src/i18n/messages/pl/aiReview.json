@@ -59,26 +59,26 @@
     "tradePending": "Transakcja z e-maila, jeszcze nieodczytana",
     "tradeEmail": "Wiadomość z potwierdzeniem transakcji",
     "parserDraftIds": "Identyfikatory szkiców profili: {ids}",
-    "needsAgent": "Needs an agent",
-    "needsAgentHelp": "The automatic step gave up after {count, plural, one {# attempt} other {# attempts}}. An AI agent (MCP) or the chat can still take this request.",
-    "attemptFailed": "Attempt {count} failed: {error}",
-    "closeReason": "Closed: {reason}",
-    "closeReasonUnknown": "Closed, reason not recorded",
+    "needsAgent": "Wymaga agenta",
+    "needsAgentHelp": "Krok automatyczny przerwał próby po {count, plural, one {# próbie} few {# próbach} many {# próbach} other {# próby}}. Agent AI (MCP) lub czat może jeszcze przejąć tę prośbę.",
+    "attemptFailed": "Próba {count} nie powiodła się: {error}",
+    "closeReason": "Zamknięta: {reason}",
+    "closeReasonUnknown": "Zamknięta, powód nie został zapisany",
     "closeReasons": {
-      "superseded": "the email was read again",
-      "dismissed": "dismissed",
-      "cannot_be_done": "an agent said it cannot be done",
-      "receipt_ignored": "the email was ignored",
-      "receipt_deleted": "the email was deleted",
-      "mailbox_deleted": "the mailbox was deleted",
-      "duplicate": "duplicate email",
-      "parser_draft_superseded": "a newer profile draft replaced it",
-      "parser_deleted": "the parser was deleted"
+      "superseded": "wiadomość została odczytana ponownie",
+      "dismissed": "odrzucona",
+      "cannot_be_done": "agent zgłosił, że nie da się tego wykonać",
+      "receipt_ignored": "wiadomość została zignorowana",
+      "receipt_deleted": "wiadomość została usunięta",
+      "mailbox_deleted": "skrzynka pocztowa została usunięta",
+      "duplicate": "zduplikowana wiadomość",
+      "parser_draft_superseded": "zastąpił ją nowszy szkic profilu",
+      "parser_deleted": "profil został usunięty"
     }
   },
   "actions": {
     "dismiss": "Odrzuć",
-    "sendAgain": "Send again to AI review"
+    "sendAgain": "Wyślij ponownie do przeglądu AI"
   },
   "proposal": {
     "errorTitle": "Tej propozycji nie można już zastosować"
@@ -131,31 +131,31 @@
     "dismissFailed": "Nie udało się odrzucić prośby",
     "approveFailed": "Nie udało się zastosować propozycji",
     "changed": "Ta prośba w międzyczasie się zmieniła. Lista została wczytana ponownie.",
-    "reopened": "Request sent again",
-    "reopenFailed": "Could not send the request again"
+    "reopened": "Prośba wysłana ponownie",
+    "reopenFailed": "Nie udało się ponownie wysłać prośby"
   },
   "reopen": {
-    "selected": "Send again ({count})",
-    "providerTimeout": "Send again every request the AI provider did not answer",
-    "selectAll": "Select all closed requests shown that can be sent again",
+    "selected": "Wyślij ponownie ({count})",
+    "providerTimeout": "Wyślij ponownie każdą prośbę, na którą dostawca AI nie odpowiedział",
+    "selectAll": "Zaznacz wszystkie widoczne zamknięte prośby, które można wysłać ponownie",
     "dialog": {
-      "title": "{count, plural, one {Send # request again?} other {Send # requests again?}}",
-      "message": "Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "{count, plural, one {Send # request again} other {Send # requests again}}"
+      "title": "{count, plural, one {Wysłać ponownie # prośbę?} few {Wysłać ponownie # prośby?} many {Wysłać ponownie # próśb?} other {Wysłać ponownie # prośby?}}",
+      "message": "Każda prośba jest sprawdzana osobno. Prośba, której nie można otworzyć ponownie, jest pomijana i zgłaszana.",
+      "confirm": "{count, plural, one {Wyślij ponownie # prośbę} few {Wyślij ponownie # prośby} many {Wyślij ponownie # próśb} other {Wyślij ponownie # prośby}}"
     },
     "providerDialog": {
-      "title": "Send again every request the AI provider did not answer?",
-      "message": "Every closed request that ended because the AI provider did not answer is sent to AI review again. Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "Send again"
+      "title": "Wysłać ponownie każdą prośbę, na którą dostawca AI nie odpowiedział?",
+      "message": "Każda zamknięta prośba, która zakończyła się, bo dostawca AI nie odpowiedział, zostanie ponownie wysłana do przeglądu AI. Każda prośba jest sprawdzana osobno. Prośba, której nie można otworzyć ponownie, jest pomijana i zgłaszana.",
+      "confirm": "Wyślij ponownie"
     },
-    "summary": "{reopened, plural, one {# request} other {# requests}} sent again, {refused, plural, one {# request} other {# requests}} refused.",
+    "summary": "Ponownie wysłano: {reopened, plural, one {# prośbę} few {# prośby} many {# próśb} other {# prośby}}. Pominięto: {refused, plural, one {# prośbę} few {# prośby} many {# próśb} other {# prośby}}.",
     "outcomes": {
-      "not_found": "Not found: {count}",
-      "not_closed": "Not closed: {count}",
-      "kind_not_reopenable": "This kind cannot be sent again: {count}",
-      "open_exists": "Another open request exists for the same item: {count}",
-      "superseded": "The email no longer points at this request: {count}"
+      "not_found": "Nie znaleziono: {count}",
+      "not_closed": "Niezamknięte: {count}",
+      "kind_not_reopenable": "Tego rodzaju nie można wysłać ponownie: {count}",
+      "open_exists": "Dla tego samego elementu istnieje inna otwarta prośba: {count}",
+      "superseded": "Wiadomość nie wskazuje już tej prośby: {count}"
     },
-    "failed": "Could not send the requests again"
+    "failed": "Nie udało się ponownie wysłać próśb"
   }
 }

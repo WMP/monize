@@ -59,26 +59,26 @@
     "tradePending": "Сделка из письма, ещё не прочитана",
     "tradeEmail": "Письмо с подтверждением сделки",
     "parserDraftIds": "ID черновиков профилей: {ids}",
-    "needsAgent": "Needs an agent",
-    "needsAgentHelp": "The automatic step gave up after {count, plural, one {# attempt} other {# attempts}}. An AI agent (MCP) or the chat can still take this request.",
-    "attemptFailed": "Attempt {count} failed: {error}",
-    "closeReason": "Closed: {reason}",
-    "closeReasonUnknown": "Closed, reason not recorded",
+    "needsAgent": "Нужен агент",
+    "needsAgentHelp": "Автоматический шаг сдался после {count, plural, one {# попытки} few {# попыток} many {# попыток} other {# попытки}}. Этот запрос всё ещё может взять ИИ-агент (MCP) или чат.",
+    "attemptFailed": "Попытка {count} не удалась: {error}",
+    "closeReason": "Закрыт: {reason}",
+    "closeReasonUnknown": "Закрыт, причина не записана",
     "closeReasons": {
-      "superseded": "the email was read again",
-      "dismissed": "dismissed",
-      "cannot_be_done": "an agent said it cannot be done",
-      "receipt_ignored": "the email was ignored",
-      "receipt_deleted": "the email was deleted",
-      "mailbox_deleted": "the mailbox was deleted",
-      "duplicate": "duplicate email",
-      "parser_draft_superseded": "a newer profile draft replaced it",
-      "parser_deleted": "the parser was deleted"
+      "superseded": "письмо было прочитано повторно",
+      "dismissed": "отклонён",
+      "cannot_be_done": "агент сообщил, что это невозможно",
+      "receipt_ignored": "письмо было проигнорировано",
+      "receipt_deleted": "письмо было удалено",
+      "mailbox_deleted": "почтовый ящик был удалён",
+      "duplicate": "дубликат письма",
+      "parser_draft_superseded": "его заменил более новый черновик профиля",
+      "parser_deleted": "парсер был удалён"
     }
   },
   "actions": {
     "dismiss": "Отклонить",
-    "sendAgain": "Send again to AI review"
+    "sendAgain": "Отправить повторно на проверку ИИ"
   },
   "proposal": {
     "errorTitle": "Это предложение больше нельзя применить"
@@ -131,31 +131,31 @@
     "dismissFailed": "Не удалось отклонить запрос",
     "approveFailed": "Не удалось применить предложение",
     "changed": "Этот запрос тем временем изменился. Список перезагружен.",
-    "reopened": "Request sent again",
-    "reopenFailed": "Could not send the request again"
+    "reopened": "Запрос отправлен повторно",
+    "reopenFailed": "Не удалось повторно отправить запрос"
   },
   "reopen": {
-    "selected": "Send again ({count})",
-    "providerTimeout": "Send again every request the AI provider did not answer",
-    "selectAll": "Select all closed requests shown that can be sent again",
+    "selected": "Отправить повторно ({count})",
+    "providerTimeout": "Повторно отправить все запросы, на которые поставщик ИИ не ответил",
+    "selectAll": "Выбрать все показанные закрытые запросы, которые можно отправить повторно",
     "dialog": {
-      "title": "{count, plural, one {Send # request again?} other {Send # requests again?}}",
-      "message": "Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "{count, plural, one {Send # request again} other {Send # requests again}}"
+      "title": "{count, plural, one {Отправить повторно # запрос?} few {Отправить повторно # запроса?} many {Отправить повторно # запросов?} other {Отправить повторно # запроса?}}",
+      "message": "Каждый запрос проверяется отдельно. Запрос, который нельзя открыть снова, пропускается, и о нём сообщается.",
+      "confirm": "{count, plural, one {Отправить повторно # запрос} few {Отправить повторно # запроса} many {Отправить повторно # запросов} other {Отправить повторно # запроса}}"
     },
     "providerDialog": {
-      "title": "Send again every request the AI provider did not answer?",
-      "message": "Every closed request that ended because the AI provider did not answer is sent to AI review again. Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "Send again"
+      "title": "Повторно отправить все запросы, на которые поставщик ИИ не ответил?",
+      "message": "Каждый закрытый запрос, который завершился из-за того, что поставщик ИИ не ответил, будет снова отправлен на проверку ИИ. Каждый запрос проверяется отдельно. Запрос, который нельзя открыть снова, пропускается, и о нём сообщается.",
+      "confirm": "Отправить повторно"
     },
-    "summary": "{reopened, plural, one {# request} other {# requests}} sent again, {refused, plural, one {# request} other {# requests}} refused.",
+    "summary": "Повторно отправлено: {reopened, plural, one {# запрос} few {# запроса} many {# запросов} other {# запроса}}. Отклонено: {refused, plural, one {# запрос} few {# запроса} many {# запросов} other {# запроса}}.",
     "outcomes": {
-      "not_found": "Not found: {count}",
-      "not_closed": "Not closed: {count}",
-      "kind_not_reopenable": "This kind cannot be sent again: {count}",
-      "open_exists": "Another open request exists for the same item: {count}",
-      "superseded": "The email no longer points at this request: {count}"
+      "not_found": "Не найдено: {count}",
+      "not_closed": "Не закрыто: {count}",
+      "kind_not_reopenable": "Этот вид нельзя отправить повторно: {count}",
+      "open_exists": "Для того же элемента уже есть другой открытый запрос: {count}",
+      "superseded": "Письмо больше не указывает на этот запрос: {count}"
     },
-    "failed": "Could not send the requests again"
+    "failed": "Не удалось повторно отправить запросы"
   }
 }

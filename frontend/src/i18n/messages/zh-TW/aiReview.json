@@ -59,26 +59,26 @@
     "tradePending": "來自郵件的交易，尚未讀取",
     "tradeEmail": "交易確認郵件",
     "parserDraftIds": "設定檔草稿 ID：{ids}",
-    "needsAgent": "Needs an agent",
-    "needsAgentHelp": "The automatic step gave up after {count, plural, one {# attempt} other {# attempts}}. An AI agent (MCP) or the chat can still take this request.",
-    "attemptFailed": "Attempt {count} failed: {error}",
-    "closeReason": "Closed: {reason}",
-    "closeReasonUnknown": "Closed, reason not recorded",
+    "needsAgent": "需要代理處理",
+    "needsAgentHelp": "自動步驟在 {count, plural, other {#次}}嘗試後放棄。AI 代理 (MCP) 或聊天仍可接手此請求。",
+    "attemptFailed": "第 {count} 次嘗試失敗：{error}",
+    "closeReason": "已關閉：{reason}",
+    "closeReasonUnknown": "已關閉，未記錄原因",
     "closeReasons": {
-      "superseded": "the email was read again",
-      "dismissed": "dismissed",
-      "cannot_be_done": "an agent said it cannot be done",
-      "receipt_ignored": "the email was ignored",
-      "receipt_deleted": "the email was deleted",
-      "mailbox_deleted": "the mailbox was deleted",
-      "duplicate": "duplicate email",
-      "parser_draft_superseded": "a newer profile draft replaced it",
-      "parser_deleted": "the parser was deleted"
+      "superseded": "郵件已被重新讀取",
+      "dismissed": "已忽略",
+      "cannot_be_done": "代理表示無法完成",
+      "receipt_ignored": "郵件已被忽略",
+      "receipt_deleted": "郵件已被刪除",
+      "mailbox_deleted": "信箱已被刪除",
+      "duplicate": "重複郵件",
+      "parser_draft_superseded": "較新的設定檔草稿已將其取代",
+      "parser_deleted": "解析器已被刪除"
     }
   },
   "actions": {
     "dismiss": "忽略",
-    "sendAgain": "Send again to AI review"
+    "sendAgain": "重新傳送到 AI 審核"
   },
   "proposal": {
     "errorTitle": "此提議已無法套用"
@@ -131,31 +131,31 @@
     "dismissFailed": "無法忽略該請求",
     "approveFailed": "無法套用該提議",
     "changed": "此請求在此期間已變更。清單已重新載入。",
-    "reopened": "Request sent again",
-    "reopenFailed": "Could not send the request again"
+    "reopened": "請求已重新傳送",
+    "reopenFailed": "無法重新傳送請求"
   },
   "reopen": {
-    "selected": "Send again ({count})",
-    "providerTimeout": "Send again every request the AI provider did not answer",
-    "selectAll": "Select all closed requests shown that can be sent again",
+    "selected": "重新傳送 ({count})",
+    "providerTimeout": "重新傳送 AI 提供者未回應的所有請求",
+    "selectAll": "選取所有顯示的可重新傳送的已關閉請求",
     "dialog": {
-      "title": "{count, plural, one {Send # request again?} other {Send # requests again?}}",
-      "message": "Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "{count, plural, one {Send # request again} other {Send # requests again}}"
+      "title": "{count, plural, other {重新傳送 # 個請求？}}",
+      "message": "每個請求都會單獨檢查。無法重新開啟的請求將被略過並回報。",
+      "confirm": "{count, plural, other {重新傳送 # 個請求}}"
     },
     "providerDialog": {
-      "title": "Send again every request the AI provider did not answer?",
-      "message": "Every closed request that ended because the AI provider did not answer is sent to AI review again. Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "Send again"
+      "title": "重新傳送 AI 提供者未回應的所有請求？",
+      "message": "因 AI 提供者未回應而結束的所有已關閉請求都將重新傳送到 AI 審核。每個請求都會單獨檢查。無法重新開啟的請求將被略過並回報。",
+      "confirm": "重新傳送"
     },
-    "summary": "{reopened, plural, one {# request} other {# requests}} sent again, {refused, plural, one {# request} other {# requests}} refused.",
+    "summary": "已重新傳送 {reopened, plural, other {# 個請求}}，已拒絕 {refused, plural, other {# 個請求}}。",
     "outcomes": {
-      "not_found": "Not found: {count}",
-      "not_closed": "Not closed: {count}",
-      "kind_not_reopenable": "This kind cannot be sent again: {count}",
-      "open_exists": "Another open request exists for the same item: {count}",
-      "superseded": "The email no longer points at this request: {count}"
+      "not_found": "找不到：{count}",
+      "not_closed": "未關閉：{count}",
+      "kind_not_reopenable": "此類請求無法重新傳送：{count}",
+      "open_exists": "同一項目已有另一個開啟的請求：{count}",
+      "superseded": "郵件已不再指向此請求：{count}"
     },
-    "failed": "Could not send the requests again"
+    "failed": "無法重新傳送這些請求"
   }
 }

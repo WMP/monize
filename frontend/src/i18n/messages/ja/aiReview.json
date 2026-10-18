@@ -59,26 +59,26 @@
     "tradePending": "メールの取引（未読み取り）",
     "tradeEmail": "取引確認メール",
     "parserDraftIds": "プロフィール下書きのID: {ids}",
-    "needsAgent": "Needs an agent",
-    "needsAgentHelp": "The automatic step gave up after {count, plural, one {# attempt} other {# attempts}}. An AI agent (MCP) or the chat can still take this request.",
-    "attemptFailed": "Attempt {count} failed: {error}",
-    "closeReason": "Closed: {reason}",
-    "closeReasonUnknown": "Closed, reason not recorded",
+    "needsAgent": "エージェントが必要です",
+    "needsAgentHelp": "自動処理は {count, plural, other {#回}}試行した後に中断しました。AI エージェント (MCP) またはチャットがこのリクエストを引き受けることはできます。",
+    "attemptFailed": "{count}回目の試行に失敗しました: {error}",
+    "closeReason": "クローズ済み: {reason}",
+    "closeReasonUnknown": "クローズ済み、理由は記録されていません",
     "closeReasons": {
-      "superseded": "the email was read again",
-      "dismissed": "dismissed",
-      "cannot_be_done": "an agent said it cannot be done",
-      "receipt_ignored": "the email was ignored",
-      "receipt_deleted": "the email was deleted",
-      "mailbox_deleted": "the mailbox was deleted",
-      "duplicate": "duplicate email",
-      "parser_draft_superseded": "a newer profile draft replaced it",
-      "parser_deleted": "the parser was deleted"
+      "superseded": "メールが再読み込みされた",
+      "dismissed": "却下された",
+      "cannot_be_done": "エージェントが実行不可能と判断した",
+      "receipt_ignored": "メールが無視された",
+      "receipt_deleted": "メールが削除された",
+      "mailbox_deleted": "メールボックスが削除された",
+      "duplicate": "重複したメール",
+      "parser_draft_superseded": "より新しいプロフィールの下書きに置き換えられた",
+      "parser_deleted": "パーサーが削除された"
     }
   },
   "actions": {
     "dismiss": "却下する",
-    "sendAgain": "Send again to AI review"
+    "sendAgain": "AI レビューに再送信"
   },
   "proposal": {
     "errorTitle": "この提案はもう適用できません"
@@ -131,31 +131,31 @@
     "dismissFailed": "依頼を却下できませんでした",
     "approveFailed": "提案を適用できませんでした",
     "changed": "この依頼はその間に変更されました。一覧を再読み込みしました。",
-    "reopened": "Request sent again",
-    "reopenFailed": "Could not send the request again"
+    "reopened": "リクエストを再送信しました",
+    "reopenFailed": "リクエストを再送信できませんでした"
   },
   "reopen": {
-    "selected": "Send again ({count})",
-    "providerTimeout": "Send again every request the AI provider did not answer",
-    "selectAll": "Select all closed requests shown that can be sent again",
+    "selected": "再送信 ({count})",
+    "providerTimeout": "AI プロバイダーが応答しなかったリクエストをすべて再送信",
+    "selectAll": "表示中のクローズ済みリクエストのうち再送信できるものをすべて選択",
     "dialog": {
-      "title": "{count, plural, one {Send # request again?} other {Send # requests again?}}",
-      "message": "Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "{count, plural, one {Send # request again} other {Send # requests again}}"
+      "title": "{count, plural, other {#件のリクエストを再送信しますか?}}",
+      "message": "各リクエストは個別に確認されます。再度開けないリクエストはスキップされ、報告されます。",
+      "confirm": "{count, plural, other {#件のリクエストを再送信}}"
     },
     "providerDialog": {
-      "title": "Send again every request the AI provider did not answer?",
-      "message": "Every closed request that ended because the AI provider did not answer is sent to AI review again. Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "Send again"
+      "title": "AI プロバイダーが応答しなかったリクエストをすべて再送信しますか?",
+      "message": "AI プロバイダーが応答しなかったために終了したクローズ済みのリクエストは、すべて AI レビューに再送信されます。各リクエストは個別に確認されます。再度開けないリクエストはスキップされ、報告されます。",
+      "confirm": "再送信"
     },
-    "summary": "{reopened, plural, one {# request} other {# requests}} sent again, {refused, plural, one {# request} other {# requests}} refused.",
+    "summary": "{reopened, plural, other {#件のリクエスト}}を再送信し、{refused, plural, other {#件のリクエスト}}を拒否しました。",
     "outcomes": {
-      "not_found": "Not found: {count}",
-      "not_closed": "Not closed: {count}",
-      "kind_not_reopenable": "This kind cannot be sent again: {count}",
-      "open_exists": "Another open request exists for the same item: {count}",
-      "superseded": "The email no longer points at this request: {count}"
+      "not_found": "見つかりません: {count}",
+      "not_closed": "クローズされていません: {count}",
+      "kind_not_reopenable": "この種類は再送信できません: {count}",
+      "open_exists": "同じ項目に別のオープン中のリクエストがあります: {count}",
+      "superseded": "メールはもうこのリクエストを指していません: {count}"
     },
-    "failed": "Could not send the requests again"
+    "failed": "リクエストを再送信できませんでした"
   }
 }

@@ -574,10 +574,10 @@
       "link_domain_invalid": "không phải tên miền người gửi hợp lệ (tối đa {max} tên miền)",
       "link_days_invalid": "phải là số nguyên từ 0 đến {max}",
       "role_trade_conflict": "không thể là component hoặc settlement trong hồ sơ giao dịch chứng khoán, vì hồ sơ này chỉ đọc giao dịch",
-      "include_account_ids_invalid": "must be a list of different account ids",
-      "include_account_ids_too_many": "lists too many accounts (at most {max})",
-      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
-      "repeat_step_multiline": "is a repeating step, so it must match one line"
+      "include_account_ids_invalid": "phải là danh sách các ID tài khoản khác nhau",
+      "include_account_ids_too_many": "liệt kê quá nhiều tài khoản (tối đa {max})",
+      "repeat_step_captures": "là một bước lặp lại nên không thể ghi lại giá trị",
+      "repeat_step_multiline": "là một bước lặp lại nên phải khớp với một dòng"
     }
   },
   "test": {
@@ -990,7 +990,7 @@
       "skip_line": "Đã tìm thấy một dòng mà trình phân tích này dùng để loại email, nên email đã bị bỏ qua.",
       "wait_line": "Một dòng cho biết đơn hàng chưa chốt, nên email sẽ được đọc lại sau.",
       "profile_ignore": "Trình phân tích của email này bỏ qua mọi email khớp.",
-      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
+      "duplicate": "Email này là bản sao của một email đã lưu (cùng Message-ID) nên đã bị bỏ qua.",
       "no_html": "Trình phân tích này đọc phần HTML của email, mà email này không có HTML.",
       "schema_org": "Không cần trình phân tích: đơn hàng được đọc từ dữ liệu có cấu trúc (schema.org) trong email.",
       "item_amount_missing": "Một mục hàng không có số tiền, và email không có tổng duy nhất nào để gán cho nó.",

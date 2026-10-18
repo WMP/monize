@@ -574,10 +574,10 @@
       "link_domain_invalid": "ist keine gültige Absenderdomain (höchstens {max} Domains)",
       "link_days_invalid": "muss eine ganze Zahl von 0 bis {max} sein",
       "role_trade_conflict": "darf in einem Profil für Wertpapierhandel, das nur den Handel liest, nicht component oder settlement sein",
-      "include_account_ids_invalid": "must be a list of different account ids",
-      "include_account_ids_too_many": "lists too many accounts (at most {max})",
-      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
-      "repeat_step_multiline": "is a repeating step, so it must match one line"
+      "include_account_ids_invalid": "muss eine Liste verschiedener Konto-IDs sein",
+      "include_account_ids_too_many": "enthält zu viele Konten (höchstens {max})",
+      "repeat_step_captures": "ist ein sich wiederholender Schritt und kann daher keinen Wert erfassen",
+      "repeat_step_multiline": "ist ein sich wiederholender Schritt und muss daher auf eine Zeile passen"
     }
   },
   "test": {
@@ -990,7 +990,7 @@
       "skip_line": "Es wurde eine Zeile gefunden, bei der dieses Profil überspringt, daher wurde die E-Mail ignoriert.",
       "wait_line": "Eine Zeile besagt, dass die Bestellung noch nicht endgültig ist, daher wird die E-Mail später erneut gelesen.",
       "profile_ignore": "Das Profil dieser E-Mail ignoriert jede passende E-Mail.",
-      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
+      "duplicate": "Diese E-Mail ist eine Kopie einer bereits gespeicherten E-Mail (gleiche Message-ID) und wurde daher ignoriert.",
       "no_html": "Dieses Profil liest den HTML-Teil der E-Mail, und diese E-Mail hat keinen.",
       "schema_org": "Es wurde kein Profil benötigt: Die Bestellung wurde aus den strukturierten Daten (schema.org) der E-Mail gelesen.",
       "item_amount_missing": "Eine Position hat keinen Betrag, und die E-Mail enthält keine einzelne Summe, die ihr zugewiesen werden könnte.",

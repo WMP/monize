@@ -574,10 +574,10 @@
       "link_domain_invalid": "is geen geldig afzenderdomein (maximaal {max} domeinen)",
       "link_days_invalid": "moet een geheel getal van 0 tot {max} zijn",
       "role_trade_conflict": "mag in een profiel voor effectentransacties, dat alleen de transactie leest, niet component of settlement zijn",
-      "include_account_ids_invalid": "must be a list of different account ids",
-      "include_account_ids_too_many": "lists too many accounts (at most {max})",
-      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
-      "repeat_step_multiline": "is a repeating step, so it must match one line"
+      "include_account_ids_invalid": "moet een lijst met verschillende rekening-id's zijn",
+      "include_account_ids_too_many": "bevat te veel rekeningen (maximaal {max})",
+      "repeat_step_captures": "is een herhalende stap, dus hij kan geen waarde vastleggen",
+      "repeat_step_multiline": "is een herhalende stap, dus hij moet met één regel overeenkomen"
     }
   },
   "test": {
@@ -990,7 +990,7 @@
       "skip_line": "Er is een regel gevonden waarop dit profiel overslaat, dus de e-mail is genegeerd.",
       "wait_line": "Een regel zegt dat de bestelling nog niet definitief is, dus de e-mail wordt later opnieuw gelezen.",
       "profile_ignore": "Het profiel van deze e-mail negeert elke overeenkomende e-mail.",
-      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
+      "duplicate": "Deze e-mail is een kopie van een al opgeslagen e-mail (dezelfde Message-ID), dus hij is genegeerd.",
       "no_html": "Dit profiel leest het HTML-deel van de e-mail en deze e-mail heeft er geen.",
       "schema_org": "Er was geen profiel nodig: de bestelling is gelezen uit de gestructureerde gegevens (schema.org) in de e-mail.",
       "item_amount_missing": "Een artikel heeft geen bedrag en de e-mail heeft geen enkel totaal om het te geven.",

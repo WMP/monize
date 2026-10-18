@@ -574,10 +574,10 @@
       "link_domain_invalid": "bukan domain pengirim yang valid (paling banyak {max} domain)",
       "link_days_invalid": "harus berupa bilangan bulat dari 0 sampai {max}",
       "role_trade_conflict": "tidak boleh component atau settlement dalam profil transaksi bursa, yang hanya membaca transaksinya",
-      "include_account_ids_invalid": "must be a list of different account ids",
-      "include_account_ids_too_many": "lists too many accounts (at most {max})",
-      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
-      "repeat_step_multiline": "is a repeating step, so it must match one line"
+      "include_account_ids_invalid": "harus berupa daftar ID akun yang berbeda",
+      "include_account_ids_too_many": "mencantumkan terlalu banyak akun (paling banyak {max})",
+      "repeat_step_captures": "adalah langkah berulang, sehingga tidak dapat menangkap nilai",
+      "repeat_step_multiline": "adalah langkah berulang, sehingga harus cocok dengan satu baris"
     }
   },
   "test": {
@@ -990,7 +990,7 @@
       "skip_line": "Ditemukan baris yang membuat profil ini melewati surel, sehingga surel diabaikan.",
       "wait_line": "Sebuah baris menyatakan pesanan belum final, jadi surel akan dibaca lagi nanti.",
       "profile_ignore": "Profil surel ini mengabaikan setiap surel yang cocok.",
-      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
+      "duplicate": "Surel ini salinan dari surel yang sudah tersimpan (Message-ID sama), sehingga diabaikan.",
       "no_html": "Profil ini membaca bagian HTML surel, dan surel ini tidak memilikinya.",
       "schema_org": "Tidak perlu profil: pesanan dibaca dari data terstruktur (schema.org) di surel.",
       "item_amount_missing": "Sebuah item tidak memiliki jumlah, dan surel tidak memiliki total tunggal untuk diberikan kepadanya.",

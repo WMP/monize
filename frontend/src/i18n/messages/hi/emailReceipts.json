@@ -574,10 +574,10 @@
       "link_domain_invalid": "मान्य प्रेषक डोमेन नहीं है (अधिकतम {max} डोमेन)",
       "link_days_invalid": "0 से {max} तक की पूर्ण संख्या होनी चाहिए",
       "role_trade_conflict": "ब्रोकरेज ट्रेड प्रोफाइल में component या settlement नहीं हो सकता, क्योंकि वह केवल ट्रेड पढ़ता है",
-      "include_account_ids_invalid": "must be a list of different account ids",
-      "include_account_ids_too_many": "lists too many accounts (at most {max})",
-      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
-      "repeat_step_multiline": "is a repeating step, so it must match one line"
+      "include_account_ids_invalid": "अलग-अलग खाता ID की सूची होनी चाहिए",
+      "include_account_ids_too_many": "बहुत अधिक खाते सूचीबद्ध हैं (अधिकतम {max})",
+      "repeat_step_captures": "दोहराया जाने वाला चरण है, इसलिए वह कोई मान कैप्चर नहीं कर सकता",
+      "repeat_step_multiline": "दोहराया जाने वाला चरण है, इसलिए उसे एक ही पंक्ति से मेल खाना चाहिए"
     }
   },
   "test": {
@@ -990,7 +990,7 @@
       "skip_line": "एक ऐसी पंक्ति मिली जिस पर यह प्रोफाइल छोड़ देता है, इसलिए ईमेल को अनदेखा किया गया।",
       "wait_line": "एक पंक्ति बताती है कि ऑर्डर अभी अंतिम नहीं है, इसलिए ईमेल को बाद में फिर पढ़ा जाएगा।",
       "profile_ignore": "इस ईमेल का प्रोफाइल हर मेल खाते ईमेल को अनदेखा करता है।",
-      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
+      "duplicate": "यह ईमेल पहले से सहेजे गए ईमेल की प्रति है (वही Message-ID), इसलिए इसे अनदेखा किया गया।",
       "no_html": "यह प्रोफाइल ईमेल का HTML भाग पढ़ता है, और इस ईमेल में वह नहीं है।",
       "schema_org": "किसी प्रोफाइल की ज़रूरत नहीं थी: ऑर्डर ईमेल के संरचित डेटा (schema.org) से पढ़ा गया।",
       "item_amount_missing": "एक मद की कोई राशि नहीं है, और ईमेल में ऐसा कोई एकल कुल नहीं है जो उसे दिया जा सके।",

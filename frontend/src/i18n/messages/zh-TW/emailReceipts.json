@@ -574,10 +574,10 @@
       "link_domain_invalid": "不是有效的寄件者網域（最多 {max} 個網域）",
       "link_days_invalid": "必須是 0 到 {max} 之間的整數",
       "role_trade_conflict": "在只讀取交易的證券交易設定檔中不能是 component 或 settlement",
-      "include_account_ids_invalid": "must be a list of different account ids",
-      "include_account_ids_too_many": "lists too many accounts (at most {max})",
-      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
-      "repeat_step_multiline": "is a repeating step, so it must match one line"
+      "include_account_ids_invalid": "必須是由不同帳戶 ID 組成的清單",
+      "include_account_ids_too_many": "列出的帳戶過多（最多 {max} 個）",
+      "repeat_step_captures": "是重複步驟，因此無法擷取值",
+      "repeat_step_multiline": "是重複步驟，因此必須只符合一行"
     }
   },
   "test": {
@@ -990,7 +990,7 @@
       "skip_line": "發現了此解析器要略過的行，因此該郵件已被忽略。",
       "wait_line": "有一行表示訂單尚未最終確定，因此稍後會再次讀取該郵件。",
       "profile_ignore": "這封郵件的解析器會忽略每封相符的郵件。",
-      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
+      "duplicate": "此郵件是已儲存郵件的副本（Message-ID 相同），因此已被忽略。",
       "no_html": "此解析器讀取郵件的 HTML 部分，而這封郵件沒有 HTML。",
       "schema_org": "無需解析器：訂單是從郵件中的結構化資料（schema.org）讀取的。",
       "item_amount_missing": "某個明細沒有金額，而郵件中也沒有可分配給它的單一合計。",

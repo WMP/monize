@@ -59,26 +59,26 @@
     "tradePending": "Transaksi dari email, belum dibaca",
     "tradeEmail": "Surel konfirmasi perdagangan",
     "parserDraftIds": "ID draf profil: {ids}",
-    "needsAgent": "Needs an agent",
-    "needsAgentHelp": "The automatic step gave up after {count, plural, one {# attempt} other {# attempts}}. An AI agent (MCP) or the chat can still take this request.",
-    "attemptFailed": "Attempt {count} failed: {error}",
-    "closeReason": "Closed: {reason}",
-    "closeReasonUnknown": "Closed, reason not recorded",
+    "needsAgent": "Perlu agen",
+    "needsAgentHelp": "Langkah otomatis menyerah setelah {count, plural, other {# percobaan}}. Agen AI (MCP) atau obrolan masih dapat mengambil permintaan ini.",
+    "attemptFailed": "Percobaan {count} gagal: {error}",
+    "closeReason": "Ditutup: {reason}",
+    "closeReasonUnknown": "Ditutup, alasan tidak dicatat",
     "closeReasons": {
-      "superseded": "the email was read again",
-      "dismissed": "dismissed",
-      "cannot_be_done": "an agent said it cannot be done",
-      "receipt_ignored": "the email was ignored",
-      "receipt_deleted": "the email was deleted",
-      "mailbox_deleted": "the mailbox was deleted",
-      "duplicate": "duplicate email",
-      "parser_draft_superseded": "a newer profile draft replaced it",
-      "parser_deleted": "the parser was deleted"
+      "superseded": "surel dibaca ulang",
+      "dismissed": "diabaikan",
+      "cannot_be_done": "agen menyatakan hal ini tidak dapat dilakukan",
+      "receipt_ignored": "surel diabaikan",
+      "receipt_deleted": "surel dihapus",
+      "mailbox_deleted": "kotak surel dihapus",
+      "duplicate": "surel duplikat",
+      "parser_draft_superseded": "draf profil yang lebih baru menggantikannya",
+      "parser_deleted": "parser dihapus"
     }
   },
   "actions": {
     "dismiss": "Abaikan",
-    "sendAgain": "Send again to AI review"
+    "sendAgain": "Kirim ulang ke tinjauan AI"
   },
   "proposal": {
     "errorTitle": "Usulan ini tidak dapat diterapkan lagi"
@@ -131,31 +131,31 @@
     "dismissFailed": "Permintaan tidak dapat diabaikan",
     "approveFailed": "Usulan tidak dapat diterapkan",
     "changed": "Permintaan ini berubah sementara itu. Daftar dimuat ulang.",
-    "reopened": "Request sent again",
-    "reopenFailed": "Could not send the request again"
+    "reopened": "Permintaan dikirim ulang",
+    "reopenFailed": "Tidak dapat mengirim ulang permintaan"
   },
   "reopen": {
-    "selected": "Send again ({count})",
-    "providerTimeout": "Send again every request the AI provider did not answer",
-    "selectAll": "Select all closed requests shown that can be sent again",
+    "selected": "Kirim ulang ({count})",
+    "providerTimeout": "Kirim ulang semua permintaan yang tidak dijawab penyedia AI",
+    "selectAll": "Pilih semua permintaan tertutup yang ditampilkan dan dapat dikirim ulang",
     "dialog": {
-      "title": "{count, plural, one {Send # request again?} other {Send # requests again?}}",
-      "message": "Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "{count, plural, one {Send # request again} other {Send # requests again}}"
+      "title": "{count, plural, other {Kirim ulang # permintaan?}}",
+      "message": "Setiap permintaan diperiksa sendiri-sendiri. Permintaan yang tidak dapat dibuka kembali dilewati dan dilaporkan.",
+      "confirm": "{count, plural, other {Kirim ulang # permintaan}}"
     },
     "providerDialog": {
-      "title": "Send again every request the AI provider did not answer?",
-      "message": "Every closed request that ended because the AI provider did not answer is sent to AI review again. Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "Send again"
+      "title": "Kirim ulang semua permintaan yang tidak dijawab penyedia AI?",
+      "message": "Setiap permintaan tertutup yang berakhir karena penyedia AI tidak menjawab akan dikirim ulang ke tinjauan AI. Setiap permintaan diperiksa sendiri-sendiri. Permintaan yang tidak dapat dibuka kembali dilewati dan dilaporkan.",
+      "confirm": "Kirim ulang"
     },
-    "summary": "{reopened, plural, one {# request} other {# requests}} sent again, {refused, plural, one {# request} other {# requests}} refused.",
+    "summary": "{reopened, plural, other {# permintaan}} dikirim ulang, {refused, plural, other {# permintaan}} ditolak.",
     "outcomes": {
-      "not_found": "Not found: {count}",
-      "not_closed": "Not closed: {count}",
-      "kind_not_reopenable": "This kind cannot be sent again: {count}",
-      "open_exists": "Another open request exists for the same item: {count}",
-      "superseded": "The email no longer points at this request: {count}"
+      "not_found": "Tidak ditemukan: {count}",
+      "not_closed": "Tidak tertutup: {count}",
+      "kind_not_reopenable": "Jenis ini tidak dapat dikirim ulang: {count}",
+      "open_exists": "Permintaan terbuka lain sudah ada untuk item yang sama: {count}",
+      "superseded": "Surel tidak lagi mengarah ke permintaan ini: {count}"
     },
-    "failed": "Could not send the requests again"
+    "failed": "Tidak dapat mengirim ulang permintaan"
   }
 }

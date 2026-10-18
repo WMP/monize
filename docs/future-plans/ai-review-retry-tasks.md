@@ -12,4 +12,4 @@
 | R5 | Backend: record step `repeat` (decision 9) | R1 | done |
 | R6 | Database and backend: Message-ID dedupe, migration that resolves existing copies (decisions 7, 8) | R2 | done |
 | R7 | Frontend: `needs_agent` and last error on a request, re-open single and bulk, closed requests view | R3 | done |
-| R8 | i18n: English, pseudo-locale, every other locale | R2-R7 | todo |
+| R8 | i18n: English, pseudo-locale, every other locale | R2-R7 | done |

@@ -59,26 +59,26 @@
     "tradePending": "Een transactie uit een e-mail, nog niet gelezen",
     "tradeEmail": "E-mail met transactiebevestiging",
     "parserDraftIds": "ID's van de profielconcepten: {ids}",
-    "needsAgent": "Needs an agent",
-    "needsAgentHelp": "The automatic step gave up after {count, plural, one {# attempt} other {# attempts}}. An AI agent (MCP) or the chat can still take this request.",
-    "attemptFailed": "Attempt {count} failed: {error}",
-    "closeReason": "Closed: {reason}",
-    "closeReasonUnknown": "Closed, reason not recorded",
+    "needsAgent": "Heeft een agent nodig",
+    "needsAgentHelp": "De automatische stap heeft het opgegeven na {count, plural, one {# poging} other {# pogingen}}. Een AI-agent (MCP) of de chat kan dit verzoek nog oppakken.",
+    "attemptFailed": "Poging {count} mislukt: {error}",
+    "closeReason": "Gesloten: {reason}",
+    "closeReasonUnknown": "Gesloten, reden niet vastgelegd",
     "closeReasons": {
-      "superseded": "the email was read again",
-      "dismissed": "dismissed",
-      "cannot_be_done": "an agent said it cannot be done",
-      "receipt_ignored": "the email was ignored",
-      "receipt_deleted": "the email was deleted",
-      "mailbox_deleted": "the mailbox was deleted",
-      "duplicate": "duplicate email",
-      "parser_draft_superseded": "a newer profile draft replaced it",
-      "parser_deleted": "the parser was deleted"
+      "superseded": "de e-mail is opnieuw gelezen",
+      "dismissed": "genegeerd",
+      "cannot_be_done": "een agent zei dat het niet kan",
+      "receipt_ignored": "de e-mail is genegeerd",
+      "receipt_deleted": "de e-mail is verwijderd",
+      "mailbox_deleted": "de mailbox is verwijderd",
+      "duplicate": "dubbele e-mail",
+      "parser_draft_superseded": "een nieuwer profielconcept heeft het vervangen",
+      "parser_deleted": "de parser is verwijderd"
     }
   },
   "actions": {
     "dismiss": "Negeren",
-    "sendAgain": "Send again to AI review"
+    "sendAgain": "Opnieuw naar AI-beoordeling sturen"
   },
   "proposal": {
     "errorTitle": "Dit voorstel kan niet meer worden toegepast"
@@ -131,31 +131,31 @@
     "dismissFailed": "Het verzoek kon niet worden genegeerd",
     "approveFailed": "Het voorstel kon niet worden toegepast",
     "changed": "Dit verzoek is intussen gewijzigd. De lijst is opnieuw geladen.",
-    "reopened": "Request sent again",
-    "reopenFailed": "Could not send the request again"
+    "reopened": "Verzoek opnieuw verzonden",
+    "reopenFailed": "Kon het verzoek niet opnieuw verzenden"
   },
   "reopen": {
-    "selected": "Send again ({count})",
-    "providerTimeout": "Send again every request the AI provider did not answer",
-    "selectAll": "Select all closed requests shown that can be sent again",
+    "selected": "Opnieuw verzenden ({count})",
+    "providerTimeout": "Elk verzoek opnieuw verzenden waarop de AI-provider niet heeft gereageerd",
+    "selectAll": "Alle getoonde gesloten verzoeken selecteren die opnieuw kunnen worden verzonden",
     "dialog": {
-      "title": "{count, plural, one {Send # request again?} other {Send # requests again?}}",
-      "message": "Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "{count, plural, one {Send # request again} other {Send # requests again}}"
+      "title": "{count, plural, one {# verzoek opnieuw verzenden?} other {# verzoeken opnieuw verzenden?}}",
+      "message": "Elk verzoek wordt apart gecontroleerd. Een verzoek dat niet opnieuw kan worden geopend, wordt overgeslagen en gemeld.",
+      "confirm": "{count, plural, one {# verzoek opnieuw verzenden} other {# verzoeken opnieuw verzenden}}"
     },
     "providerDialog": {
-      "title": "Send again every request the AI provider did not answer?",
-      "message": "Every closed request that ended because the AI provider did not answer is sent to AI review again. Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "Send again"
+      "title": "Elk verzoek opnieuw verzenden waarop de AI-provider niet heeft gereageerd?",
+      "message": "Elk gesloten verzoek dat is geëindigd omdat de AI-provider niet reageerde, wordt opnieuw naar de AI-beoordeling gestuurd. Elk verzoek wordt apart gecontroleerd. Een verzoek dat niet opnieuw kan worden geopend, wordt overgeslagen en gemeld.",
+      "confirm": "Opnieuw verzenden"
     },
-    "summary": "{reopened, plural, one {# request} other {# requests}} sent again, {refused, plural, one {# request} other {# requests}} refused.",
+    "summary": "{reopened, plural, one {# verzoek} other {# verzoeken}} opnieuw verzonden, {refused, plural, one {# verzoek} other {# verzoeken}} geweigerd.",
     "outcomes": {
-      "not_found": "Not found: {count}",
-      "not_closed": "Not closed: {count}",
-      "kind_not_reopenable": "This kind cannot be sent again: {count}",
-      "open_exists": "Another open request exists for the same item: {count}",
-      "superseded": "The email no longer points at this request: {count}"
+      "not_found": "Niet gevonden: {count}",
+      "not_closed": "Niet gesloten: {count}",
+      "kind_not_reopenable": "Dit soort kan niet opnieuw worden verzonden: {count}",
+      "open_exists": "Er is al een ander open verzoek voor hetzelfde item: {count}",
+      "superseded": "De e-mail verwijst niet meer naar dit verzoek: {count}"
     },
-    "failed": "Could not send the requests again"
+    "failed": "Kon de verzoeken niet opnieuw verzenden"
   }
 }

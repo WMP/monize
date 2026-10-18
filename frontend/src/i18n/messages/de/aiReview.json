@@ -59,26 +59,26 @@
     "tradePending": "Ein Trade aus einer E-Mail, noch nicht gelesen",
     "tradeEmail": "E-Mail mit Handelsbestätigung",
     "parserDraftIds": "IDs der Profil-Entwürfe: {ids}",
-    "needsAgent": "Needs an agent",
-    "needsAgentHelp": "The automatic step gave up after {count, plural, one {# attempt} other {# attempts}}. An AI agent (MCP) or the chat can still take this request.",
-    "attemptFailed": "Attempt {count} failed: {error}",
-    "closeReason": "Closed: {reason}",
-    "closeReasonUnknown": "Closed, reason not recorded",
+    "needsAgent": "Braucht einen Agenten",
+    "needsAgentHelp": "Der automatische Schritt hat nach {count, plural, one {# Versuch} other {# Versuchen}} aufgegeben. Ein KI-Agent (MCP) oder der Chat kann diese Anfrage noch übernehmen.",
+    "attemptFailed": "Versuch {count} fehlgeschlagen: {error}",
+    "closeReason": "Geschlossen: {reason}",
+    "closeReasonUnknown": "Geschlossen, Grund nicht erfasst",
     "closeReasons": {
-      "superseded": "the email was read again",
-      "dismissed": "dismissed",
-      "cannot_be_done": "an agent said it cannot be done",
-      "receipt_ignored": "the email was ignored",
-      "receipt_deleted": "the email was deleted",
-      "mailbox_deleted": "the mailbox was deleted",
-      "duplicate": "duplicate email",
-      "parser_draft_superseded": "a newer profile draft replaced it",
-      "parser_deleted": "the parser was deleted"
+      "superseded": "die E-Mail wurde erneut gelesen",
+      "dismissed": "verworfen",
+      "cannot_be_done": "ein Agent hat gemeldet, dass es nicht möglich ist",
+      "receipt_ignored": "die E-Mail wurde ignoriert",
+      "receipt_deleted": "die E-Mail wurde gelöscht",
+      "mailbox_deleted": "das Postfach wurde gelöscht",
+      "duplicate": "doppelte E-Mail",
+      "parser_draft_superseded": "ein neuerer Profilentwurf hat sie ersetzt",
+      "parser_deleted": "der Parser wurde gelöscht"
     }
   },
   "actions": {
     "dismiss": "Verwerfen",
-    "sendAgain": "Send again to AI review"
+    "sendAgain": "Erneut an die KI-Prüfung senden"
   },
   "proposal": {
     "errorTitle": "Dieser Vorschlag kann nicht mehr angewendet werden"
@@ -131,31 +131,31 @@
     "dismissFailed": "Die Anfrage konnte nicht verworfen werden",
     "approveFailed": "Der Vorschlag konnte nicht angewendet werden",
     "changed": "Diese Anfrage hat sich inzwischen geändert. Die Liste wurde neu geladen.",
-    "reopened": "Request sent again",
-    "reopenFailed": "Could not send the request again"
+    "reopened": "Anfrage erneut gesendet",
+    "reopenFailed": "Die Anfrage konnte nicht erneut gesendet werden"
   },
   "reopen": {
-    "selected": "Send again ({count})",
-    "providerTimeout": "Send again every request the AI provider did not answer",
-    "selectAll": "Select all closed requests shown that can be sent again",
+    "selected": "Erneut senden ({count})",
+    "providerTimeout": "Alle Anfragen erneut senden, auf die der KI-Anbieter nicht geantwortet hat",
+    "selectAll": "Alle angezeigten geschlossenen Anfragen auswählen, die erneut gesendet werden können",
     "dialog": {
-      "title": "{count, plural, one {Send # request again?} other {Send # requests again?}}",
-      "message": "Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "{count, plural, one {Send # request again} other {Send # requests again}}"
+      "title": "{count, plural, one {# Anfrage erneut senden?} other {# Anfragen erneut senden?}}",
+      "message": "Jede Anfrage wird einzeln geprüft. Eine Anfrage, die nicht wieder geöffnet werden kann, wird übersprungen und gemeldet.",
+      "confirm": "{count, plural, one {# Anfrage erneut senden} other {# Anfragen erneut senden}}"
     },
     "providerDialog": {
-      "title": "Send again every request the AI provider did not answer?",
-      "message": "Every closed request that ended because the AI provider did not answer is sent to AI review again. Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "Send again"
+      "title": "Alle Anfragen erneut senden, auf die der KI-Anbieter nicht geantwortet hat?",
+      "message": "Jede geschlossene Anfrage, die endete, weil der KI-Anbieter nicht geantwortet hat, wird erneut an die KI-Prüfung gesendet. Jede Anfrage wird einzeln geprüft. Eine Anfrage, die nicht wieder geöffnet werden kann, wird übersprungen und gemeldet.",
+      "confirm": "Erneut senden"
     },
-    "summary": "{reopened, plural, one {# request} other {# requests}} sent again, {refused, plural, one {# request} other {# requests}} refused.",
+    "summary": "{reopened, plural, one {# Anfrage} other {# Anfragen}} erneut gesendet, {refused, plural, one {# Anfrage} other {# Anfragen}} abgelehnt.",
     "outcomes": {
-      "not_found": "Not found: {count}",
-      "not_closed": "Not closed: {count}",
-      "kind_not_reopenable": "This kind cannot be sent again: {count}",
-      "open_exists": "Another open request exists for the same item: {count}",
-      "superseded": "The email no longer points at this request: {count}"
+      "not_found": "Nicht gefunden: {count}",
+      "not_closed": "Nicht geschlossen: {count}",
+      "kind_not_reopenable": "Diese Art kann nicht erneut gesendet werden: {count}",
+      "open_exists": "Für denselben Eintrag ist bereits eine andere Anfrage offen: {count}",
+      "superseded": "Die E-Mail verweist nicht mehr auf diese Anfrage: {count}"
     },
-    "failed": "Could not send the requests again"
+    "failed": "Die Anfragen konnten nicht erneut gesendet werden"
   }
 }

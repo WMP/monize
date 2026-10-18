@@ -59,26 +59,26 @@
     "tradePending": "Угода з листа, ще не прочитана",
     "tradeEmail": "Лист із підтвердженням угоди",
     "parserDraftIds": "ID чернеток профілів: {ids}",
-    "needsAgent": "Needs an agent",
-    "needsAgentHelp": "The automatic step gave up after {count, plural, one {# attempt} other {# attempts}}. An AI agent (MCP) or the chat can still take this request.",
-    "attemptFailed": "Attempt {count} failed: {error}",
-    "closeReason": "Closed: {reason}",
-    "closeReasonUnknown": "Closed, reason not recorded",
+    "needsAgent": "Потрібен агент",
+    "needsAgentHelp": "Автоматичний крок здався після {count, plural, one {# спроби} few {# спроб} many {# спроб} other {# спроби}}. Цей запит усе ще може взяти ШІ-агент (MCP) або чат.",
+    "attemptFailed": "Спроба {count} не вдалася: {error}",
+    "closeReason": "Закрито: {reason}",
+    "closeReasonUnknown": "Закрито, причину не записано",
     "closeReasons": {
-      "superseded": "the email was read again",
-      "dismissed": "dismissed",
-      "cannot_be_done": "an agent said it cannot be done",
-      "receipt_ignored": "the email was ignored",
-      "receipt_deleted": "the email was deleted",
-      "mailbox_deleted": "the mailbox was deleted",
-      "duplicate": "duplicate email",
-      "parser_draft_superseded": "a newer profile draft replaced it",
-      "parser_deleted": "the parser was deleted"
+      "superseded": "лист було прочитано повторно",
+      "dismissed": "відхилено",
+      "cannot_be_done": "агент повідомив, що це неможливо",
+      "receipt_ignored": "лист було проігноровано",
+      "receipt_deleted": "лист було видалено",
+      "mailbox_deleted": "поштову скриньку було видалено",
+      "duplicate": "дублікат листа",
+      "parser_draft_superseded": "його замінила новіша чернетка профілю",
+      "parser_deleted": "парсер було видалено"
     }
   },
   "actions": {
     "dismiss": "Відхилити",
-    "sendAgain": "Send again to AI review"
+    "sendAgain": "Надіслати повторно на перевірку ШІ"
   },
   "proposal": {
     "errorTitle": "Цю пропозицію більше не можна застосувати"
@@ -131,31 +131,31 @@
     "dismissFailed": "Не вдалося відхилити запит",
     "approveFailed": "Не вдалося застосувати пропозицію",
     "changed": "Цей запит тим часом змінився. Список перезавантажено.",
-    "reopened": "Request sent again",
-    "reopenFailed": "Could not send the request again"
+    "reopened": "Запит надіслано повторно",
+    "reopenFailed": "Не вдалося повторно надіслати запит"
   },
   "reopen": {
-    "selected": "Send again ({count})",
-    "providerTimeout": "Send again every request the AI provider did not answer",
-    "selectAll": "Select all closed requests shown that can be sent again",
+    "selected": "Надіслати повторно ({count})",
+    "providerTimeout": "Повторно надіслати всі запити, на які постачальник ШІ не відповів",
+    "selectAll": "Вибрати всі показані закриті запити, які можна надіслати повторно",
     "dialog": {
-      "title": "{count, plural, one {Send # request again?} other {Send # requests again?}}",
-      "message": "Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "{count, plural, one {Send # request again} other {Send # requests again}}"
+      "title": "{count, plural, one {Надіслати повторно # запит?} few {Надіслати повторно # запити?} many {Надіслати повторно # запитів?} other {Надіслати повторно # запиту?}}",
+      "message": "Кожен запит перевіряється окремо. Запит, який не можна відкрити знову, пропускається, і про нього повідомляється.",
+      "confirm": "{count, plural, one {Надіслати повторно # запит} few {Надіслати повторно # запити} many {Надіслати повторно # запитів} other {Надіслати повторно # запиту}}"
     },
     "providerDialog": {
-      "title": "Send again every request the AI provider did not answer?",
-      "message": "Every closed request that ended because the AI provider did not answer is sent to AI review again. Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "Send again"
+      "title": "Повторно надіслати всі запити, на які постачальник ШІ не відповів?",
+      "message": "Кожен закритий запит, що завершився через те, що постачальник ШІ не відповів, буде знову надіслано на перевірку ШІ. Кожен запит перевіряється окремо. Запит, який не можна відкрити знову, пропускається, і про нього повідомляється.",
+      "confirm": "Надіслати повторно"
     },
-    "summary": "{reopened, plural, one {# request} other {# requests}} sent again, {refused, plural, one {# request} other {# requests}} refused.",
+    "summary": "Повторно надіслано: {reopened, plural, one {# запит} few {# запити} many {# запитів} other {# запиту}}. Відхилено: {refused, plural, one {# запит} few {# запити} many {# запитів} other {# запиту}}.",
     "outcomes": {
-      "not_found": "Not found: {count}",
-      "not_closed": "Not closed: {count}",
-      "kind_not_reopenable": "This kind cannot be sent again: {count}",
-      "open_exists": "Another open request exists for the same item: {count}",
-      "superseded": "The email no longer points at this request: {count}"
+      "not_found": "Не знайдено: {count}",
+      "not_closed": "Не закрито: {count}",
+      "kind_not_reopenable": "Цей вид не можна надіслати повторно: {count}",
+      "open_exists": "Для того самого елемента вже є інший відкритий запит: {count}",
+      "superseded": "Лист більше не вказує на цей запит: {count}"
     },
-    "failed": "Could not send the requests again"
+    "failed": "Не вдалося повторно надіслати запити"
   }
 }

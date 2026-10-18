@@ -574,10 +574,10 @@
       "link_domain_invalid": "不是有效的发件人域名（最多 {max} 个域名）",
       "link_days_invalid": "必须是 0 到 {max} 之间的整数",
       "role_trade_conflict": "在只读取交易的证券交易配置文件中不能是 component 或 settlement",
-      "include_account_ids_invalid": "must be a list of different account ids",
-      "include_account_ids_too_many": "lists too many accounts (at most {max})",
-      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
-      "repeat_step_multiline": "is a repeating step, so it must match one line"
+      "include_account_ids_invalid": "必须是由不同账户 ID 组成的列表",
+      "include_account_ids_too_many": "列出的账户过多（最多 {max} 个）",
+      "repeat_step_captures": "是重复步骤，因此无法捕获值",
+      "repeat_step_multiline": "是重复步骤，因此必须只匹配一行"
     }
   },
   "test": {
@@ -990,7 +990,7 @@
       "skip_line": "发现了此解析器要跳过的行，因此该邮件已被忽略。",
       "wait_line": "有一行表明订单尚未最终确定，因此稍后会再次读取该邮件。",
       "profile_ignore": "这封邮件的解析器会忽略每封匹配的邮件。",
-      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
+      "duplicate": "此邮件是已保存邮件的副本（Message-ID 相同），因此已被忽略。",
       "no_html": "此解析器读取邮件的 HTML 部分，而这封邮件没有 HTML。",
       "schema_org": "无需解析器：订单是从邮件中的结构化数据（schema.org）读取的。",
       "item_amount_missing": "某个明细没有金额，而邮件中也没有可分配给它的单一合计。",

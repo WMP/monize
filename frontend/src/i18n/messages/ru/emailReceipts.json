@@ -574,10 +574,10 @@
       "link_domain_invalid": "не является допустимым доменом отправителя (не более {max} доменов)",
       "link_days_invalid": "должно быть целым числом от 0 до {max}",
       "role_trade_conflict": "не может быть component или settlement в профиле биржевой сделки, который читает только сделку",
-      "include_account_ids_invalid": "must be a list of different account ids",
-      "include_account_ids_too_many": "lists too many accounts (at most {max})",
-      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
-      "repeat_step_multiline": "is a repeating step, so it must match one line"
+      "include_account_ids_invalid": "должно быть списком различных ID счетов",
+      "include_account_ids_too_many": "содержит слишком много счетов (не более {max})",
+      "repeat_step_captures": "является повторяющимся шагом, поэтому не может захватывать значение",
+      "repeat_step_multiline": "является повторяющимся шагом, поэтому должен соответствовать одной строке"
     }
   },
   "test": {
@@ -990,7 +990,7 @@
       "skip_line": "Найдена строка, по которой этот парсер пропускает письма, поэтому письмо проигнорировано.",
       "wait_line": "Строка сообщает, что заказ ещё не окончательный, поэтому письмо будет прочитано позже снова.",
       "profile_ignore": "Парсер этого письма игнорирует каждое подходящее письмо.",
-      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
+      "duplicate": "Это письмо является копией уже сохранённого (тот же Message-ID), поэтому оно проигнорировано.",
       "no_html": "Этот парсер читает HTML-часть письма, а в этом письме её нет.",
       "schema_org": "Парсер не понадобился: заказ прочитан из структурированных данных (schema.org) в письме.",
       "item_amount_missing": "У позиции нет суммы, а в письме нет единого итога, который можно ей присвоить.",

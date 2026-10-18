@@ -59,26 +59,26 @@
     "tradePending": "Một giao dịch từ email, chưa được đọc",
     "tradeEmail": "Email xác nhận giao dịch",
     "parserDraftIds": "ID các hồ sơ dự thảo: {ids}",
-    "needsAgent": "Needs an agent",
-    "needsAgentHelp": "The automatic step gave up after {count, plural, one {# attempt} other {# attempts}}. An AI agent (MCP) or the chat can still take this request.",
-    "attemptFailed": "Attempt {count} failed: {error}",
-    "closeReason": "Closed: {reason}",
-    "closeReasonUnknown": "Closed, reason not recorded",
+    "needsAgent": "Cần một tác nhân",
+    "needsAgentHelp": "Bước tự động đã bỏ cuộc sau {count, plural, other {# lần thử}}. Một tác nhân AI (MCP) hoặc cuộc trò chuyện vẫn có thể nhận yêu cầu này.",
+    "attemptFailed": "Lần thử {count} thất bại: {error}",
+    "closeReason": "Đã đóng: {reason}",
+    "closeReasonUnknown": "Đã đóng, lý do không được ghi lại",
     "closeReasons": {
-      "superseded": "the email was read again",
-      "dismissed": "dismissed",
-      "cannot_be_done": "an agent said it cannot be done",
-      "receipt_ignored": "the email was ignored",
-      "receipt_deleted": "the email was deleted",
-      "mailbox_deleted": "the mailbox was deleted",
-      "duplicate": "duplicate email",
-      "parser_draft_superseded": "a newer profile draft replaced it",
-      "parser_deleted": "the parser was deleted"
+      "superseded": "email đã được đọc lại",
+      "dismissed": "đã bỏ qua",
+      "cannot_be_done": "một tác nhân báo rằng không thể thực hiện",
+      "receipt_ignored": "email đã bị bỏ qua",
+      "receipt_deleted": "email đã bị xóa",
+      "mailbox_deleted": "hộp thư đã bị xóa",
+      "duplicate": "email trùng lặp",
+      "parser_draft_superseded": "một bản nháp hồ sơ mới hơn đã thay thế nó",
+      "parser_deleted": "trình phân tích đã bị xóa"
     }
   },
   "actions": {
     "dismiss": "Bỏ qua",
-    "sendAgain": "Send again to AI review"
+    "sendAgain": "Gửi lại cho xem xét AI"
   },
   "proposal": {
     "errorTitle": "Đề xuất này không thể áp dụng nữa"
@@ -131,31 +131,31 @@
     "dismissFailed": "Không thể bỏ qua yêu cầu",
     "approveFailed": "Không thể áp dụng đề xuất",
     "changed": "Yêu cầu này đã thay đổi trong lúc đó. Danh sách đã được tải lại.",
-    "reopened": "Request sent again",
-    "reopenFailed": "Could not send the request again"
+    "reopened": "Đã gửi lại yêu cầu",
+    "reopenFailed": "Không thể gửi lại yêu cầu"
   },
   "reopen": {
-    "selected": "Send again ({count})",
-    "providerTimeout": "Send again every request the AI provider did not answer",
-    "selectAll": "Select all closed requests shown that can be sent again",
+    "selected": "Gửi lại ({count})",
+    "providerTimeout": "Gửi lại mọi yêu cầu mà nhà cung cấp AI không trả lời",
+    "selectAll": "Chọn tất cả yêu cầu đã đóng đang hiển thị có thể gửi lại",
     "dialog": {
-      "title": "{count, plural, one {Send # request again?} other {Send # requests again?}}",
-      "message": "Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "{count, plural, one {Send # request again} other {Send # requests again}}"
+      "title": "{count, plural, other {Gửi lại # yêu cầu?}}",
+      "message": "Mỗi yêu cầu được kiểm tra riêng. Yêu cầu không thể mở lại sẽ bị bỏ qua và được báo cáo.",
+      "confirm": "{count, plural, other {Gửi lại # yêu cầu}}"
     },
     "providerDialog": {
-      "title": "Send again every request the AI provider did not answer?",
-      "message": "Every closed request that ended because the AI provider did not answer is sent to AI review again. Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
-      "confirm": "Send again"
+      "title": "Gửi lại mọi yêu cầu mà nhà cung cấp AI không trả lời?",
+      "message": "Mọi yêu cầu đã đóng vì nhà cung cấp AI không trả lời sẽ được gửi lại cho xem xét AI. Mỗi yêu cầu được kiểm tra riêng. Yêu cầu không thể mở lại sẽ bị bỏ qua và được báo cáo.",
+      "confirm": "Gửi lại"
     },
-    "summary": "{reopened, plural, one {# request} other {# requests}} sent again, {refused, plural, one {# request} other {# requests}} refused.",
+    "summary": "Đã gửi lại {reopened, plural, other {# yêu cầu}}, từ chối {refused, plural, other {# yêu cầu}}.",
     "outcomes": {
-      "not_found": "Not found: {count}",
-      "not_closed": "Not closed: {count}",
-      "kind_not_reopenable": "This kind cannot be sent again: {count}",
-      "open_exists": "Another open request exists for the same item: {count}",
-      "superseded": "The email no longer points at this request: {count}"
+      "not_found": "Không tìm thấy: {count}",
+      "not_closed": "Chưa đóng: {count}",
+      "kind_not_reopenable": "Loại này không thể gửi lại: {count}",
+      "open_exists": "Đã có yêu cầu khác đang mở cho cùng mục: {count}",
+      "superseded": "Email không còn trỏ đến yêu cầu này: {count}"
     },
-    "failed": "Could not send the requests again"
+    "failed": "Không thể gửi lại các yêu cầu"
   }
 }

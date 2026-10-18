@@ -574,10 +574,10 @@
       "link_domain_invalid": "nie jest prawidłową domeną nadawcy (najwyżej {max} domen)",
       "link_days_invalid": "musi być liczbą całkowitą od 0 do {max}",
       "role_trade_conflict": "nie może mieć roli component ani settlement w profilu transakcji giełdowej, który odczytuje tylko transakcję",
-      "include_account_ids_invalid": "must be a list of different account ids",
-      "include_account_ids_too_many": "lists too many accounts (at most {max})",
-      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
-      "repeat_step_multiline": "is a repeating step, so it must match one line"
+      "include_account_ids_invalid": "musi być listą różnych identyfikatorów kont",
+      "include_account_ids_too_many": "wymienia zbyt wiele kont (co najwyżej {max})",
+      "repeat_step_captures": "jest krokiem powtarzanym, więc nie może przechwytywać wartości",
+      "repeat_step_multiline": "jest krokiem powtarzanym, więc musi pasować do jednego wiersza"
     }
   },
   "test": {
@@ -990,7 +990,7 @@
       "skip_line": "Znaleziono wiersz, po którym ten parser pomija wiadomość, więc została zignorowana.",
       "wait_line": "Jeden z wierszy mówi, że zamówienie nie jest jeszcze ostateczne, więc wiadomość zostanie odczytana ponownie później.",
       "profile_ignore": "Parser tej wiadomości ignoruje każdą pasującą wiadomość.",
-      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
+      "duplicate": "Ta wiadomość jest kopią już zapisanej (ten sam Message-ID), więc została zignorowana.",
       "no_html": "Ten parser odczytuje część HTML wiadomości, a ta wiadomość jej nie ma.",
       "schema_org": "Parser nie był potrzebny: zamówienie odczytano z danych ustrukturyzowanych (schema.org) zawartych w wiadomości.",
       "item_amount_missing": "Pozycja nie ma kwoty, a wiadomość nie podaje jednej sumy, którą można by jej przypisać.",
