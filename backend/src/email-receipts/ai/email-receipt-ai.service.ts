@@ -11,6 +11,11 @@ import { DataSource, EntityManager } from "typeorm";
 import { AiService } from "../../ai/ai.service";
 import { AiReviewRequestsService } from "../../ai-review/ai-review-requests.service";
 import { AiReviewWorkService } from "../../ai-review/ai-review-work.service";
+import {
+  AI_PROVIDER_UNAVAILABLE_NOTE,
+  AI_REVIEW_RETRY_BACKOFF_MINUTES,
+  resolveAiReviewAutoMaxAttempts,
+} from "../../ai-review/ai-review-retry";
 import { EMAIL_RECEIPTS_AI_CLAIM_KEY } from "../../ai-review/ai-review-work.types";
 import { loadQualifiedCategoryNames } from "../../categories/category-name.util";
 import { returnedRows } from "../../common/db/query-result";
@@ -147,6 +152,11 @@ interface ReceiptContext {
 @Injectable()
 export class EmailReceiptAiService {
   private readonly logger = new Logger(EmailReceiptAiService.name);
+  /** Failed automatic attempts per request before it waits for an agent (`AI_REVIEW_AUTO_MAX_ATTEMPTS`). */
+  private readonly maxAttempts = resolveAiReviewAutoMaxAttempts(
+    process.env,
+    this.logger,
+  );
 
   constructor(
     private readonly dataSource: DataSource,
@@ -339,7 +349,7 @@ export class EmailReceiptAiService {
       // create, so there is no bank transaction to choose. The request waits
       // pending for the assistant or an agent, which proposes the trade.
       if (options.asTrade) {
-        await closeReceiptRequests(m, userId, receipt.id);
+        await closeReceiptRequests(m, userId, receipt.id, "superseded");
         const trade = await this.requests.enqueueTrade(m, userId, {
           emailReceiptId: receipt.id,
           instruction: RECEIPT_TRADE_CHAT_INSTRUCTION,
@@ -379,7 +389,7 @@ export class EmailReceiptAiService {
         );
       }
       await lockReceiptTransaction(m, target);
-      await closeReceiptRequests(m, userId, receipt.id);
+      await closeReceiptRequests(m, userId, receipt.id, "superseded");
       const created = await this.requests.enqueuePendingForReceipt(m, userId, {
         transactionId: target,
         emailReceiptId: receipt.id,
@@ -419,9 +429,18 @@ export class EmailReceiptAiService {
   /**
    * Answer one receipt request with the AI: claim it under the AI's own key,
    * read the transaction, the email and the category names, ask for JSON, check
-   * its shape, and submit it like an agent. Any failure gives the claim back
-   * (`final: false`, with a short note) so an MCP agent or the assistant may
-   * take it, and is returned as the reason. Nothing here applies anything.
+   * its shape, and submit it like an agent. Nothing here applies anything.
+   *
+   * A failure gives the claim back and is returned as the reason. Two kinds:
+   * - Transient (`ai_unavailable`: the provider did not answer; `request_failed`:
+   *   an unexpected error): `recordFailedAttempt` returns the request to
+   *   `pending` with its attempt counted and NO proposal, so the automatic step
+   *   takes it again after the backoff, until `AI_REVIEW_AUTO_MAX_ATTEMPTS`
+   *   (then `needs_agent`: an agent or the chat can still claim it).
+   * - Permanent (`transaction_unreadable`, `unusable_answer`, `proposal_refused`:
+   *   the same input gives the same refusal, or a model that answered badly
+   *   would be asked again and again): `release` with a note in `proposal`, so
+   *   only an agent or the chat takes it, as before.
    */
   async processAiRequest(
     userId: string,
@@ -476,6 +495,26 @@ export class EmailReceiptAiService {
       return fail(reason);
     };
 
+    const retryLater = async (
+      reason: EmailReceiptAiFailure,
+      note: string,
+    ): Promise<AiRequestOutcome> => {
+      try {
+        await this.requests.recordFailedAttempt(
+          userId,
+          requestId,
+          EMAIL_RECEIPTS_AI_CLAIM_KEY,
+          note.slice(0, MAX_NOTE),
+          this.maxAttempts,
+        );
+      } catch (error) {
+        this.logger.warn(
+          `Could not record the failed attempt of receipt request ${requestId} (${describeFailure(error)})`,
+        );
+      }
+      return fail(reason);
+    };
+
     try {
       const transaction = await this.transactions.findOne(
         userId,
@@ -525,7 +564,7 @@ export class EmailReceiptAiService {
         this.logger.warn(
           `AI review of receipt request ${requestId} failed (${describeFailure(error)})`,
         );
-        return giveBack("ai_unavailable", "The AI provider did not answer.");
+        return retryLater("ai_unavailable", AI_PROVIDER_UNAVAILABLE_NOTE);
       }
 
       const extraction = buildAiParsedReceipt(content, categories);
@@ -607,7 +646,7 @@ export class EmailReceiptAiService {
       this.logger.warn(
         `Receipt request ${requestId} could not be answered (${describeFailure(error)})`,
       );
-      return giveBack("request_failed", "The AI request failed.");
+      return retryLater("request_failed", "The AI request failed.");
     }
   }
 
@@ -647,9 +686,11 @@ export class EmailReceiptAiService {
    * tick: first up to `AUTOMATIC_DRAFTS_PER_TICK` parser drafts (one per sender
    * domain that has no parser at all, draft or approved, and whose last draft
    * did not fail), then up to the rest of `AUTOMATIC_AI_CALLS_PER_TICK` pending
-   * receipt requests nobody has claimed or tried. A request or a draft that
-   * fails is not retried by the poll: a released request carries a note, and a
-   * failed draft marks its email `draft_failed` until it is reprocessed.
+   * receipt requests nobody has claimed or given up on. A request the provider
+   * did not answer is taken again after a backoff (`pendingRequests`); one an
+   * agent released, or one refused for a permanent reason, carries a note and is
+   * left to an agent. A failed draft marks its email `draft_failed` until it is
+   * reprocessed.
    */
   async runAutomaticStep(userId: string): Promise<AutomaticAiStepResult> {
     const result: AutomaticAiStepResult = {
@@ -750,7 +791,12 @@ export class EmailReceiptAiService {
    * Pending receipt requests nobody claimed and no agent has already given up
    * on, that the POLL queued (its own instruction). A request the person made with
    * "Recognize with AI" carries `RECEIPT_CHAT_INSTRUCTION` and belongs to the
-   * chat or an MCP agent: the automatic step never takes it.
+   * chat or an MCP agent: the automatic step never takes it. A request that
+   * failed before is taken again only while `attempts` is under the maximum, it
+   * is not `needs_agent`, and the backoff after its last attempt has passed: the
+   * schedule is a parameter (`AI_REVIEW_RETRY_BACKOFF_MINUTES`; the entry for n
+   * failed attempts is the n-th, the last one repeating), so the minutes are
+   * written once.
    */
   private async pendingRequests(
     userId: string,
@@ -769,9 +815,22 @@ export class EmailReceiptAiService {
               AND proposal IS NULL
               AND expires_at > CURRENT_TIMESTAMP
               AND instruction = $3
+              AND needs_agent = false
+              AND attempts < $4::int
+              AND (attempts = 0
+                   OR last_attempt_at IS NULL
+                   OR last_attempt_at <= CURRENT_TIMESTAMP
+                        - make_interval(
+                            mins => ($5::int[])[LEAST(attempts, cardinality($5::int[]))]))
             ORDER BY created_at, id
             LIMIT $2`,
-          [userId, limit, RECEIPT_AUTOMATIC_AI_INSTRUCTION],
+          [
+            userId,
+            limit,
+            RECEIPT_AUTOMATIC_AI_INSTRUCTION,
+            this.maxAttempts,
+            [...AI_REVIEW_RETRY_BACKOFF_MINUTES],
+          ],
         ),
       ),
     );

@@ -26,6 +26,8 @@ describe("ai_review_requests schema", () => {
       },
     ],
     [{ operation: "reject", requestId: REQ, reason: "no order id" }],
+    [{ operation: "reopen", requestId: REQ }],
+    [{ operation: "reopen", preset: "provider_timeout" }],
     [
       {
         operation: "reject",
@@ -82,6 +84,11 @@ describe("ai_review_requests schema", () => {
     ],
     [{ operation: "reject", reason: "x" }],
     [{ operation: "reject", requestId: REQ }],
+    // reopen takes exactly one of requestId and preset
+    [{ operation: "reopen" }],
+    [{ operation: "reopen", requestId: REQ, preset: "provider_timeout" }],
+    [{ operation: "reopen", preset: "everything" }],
+    [{ operation: "reopen", requestId: "nope" }],
   ])("rejects %j", (input) => {
     expect(aiReviewRequestsSchema.safeParse(input).success).toBe(false);
   });

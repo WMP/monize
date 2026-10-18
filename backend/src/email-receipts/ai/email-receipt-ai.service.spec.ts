@@ -8,6 +8,7 @@ import type { AiService } from "../../ai/ai.service";
 import type { AiCompletionResponse } from "../../ai/providers/ai-provider.interface";
 import { AiReviewRequest } from "../../ai-review/ai-review-request.entity";
 import type { AiReviewRequestsService } from "../../ai-review/ai-review-requests.service";
+import { AI_PROVIDER_UNAVAILABLE_NOTE } from "../../ai-review/ai-review-retry";
 import type { AiReviewWorkService } from "../../ai-review/ai-review-work.service";
 import type { AiReviewSubmitResult } from "../../ai-review/ai-review-work.types";
 import { Category } from "../../categories/entities/category.entity";
@@ -163,6 +164,7 @@ function setup(over: Partial<World> = {}) {
       async () => requestRow({ status: "claimed" }) as AiReviewRequest | null,
     ),
     release: jest.fn(async () => null),
+    recordFailedAttempt: jest.fn(async () => null),
     enqueuePendingForReceipt: jest.fn(
       async () => requestRow({ id: "request-new" }) as AiReviewRequest | null,
     ),
@@ -443,6 +445,11 @@ describe("EmailReceiptAiService.askAi", () => {
       expect(sqls.some((q) => q.includes("SET status = 'rejected'"))).toBe(
         true,
       );
+      expect(
+        h.manager.query.mock.calls.find((c) =>
+          String(c[0]).includes("SET status = 'rejected'"),
+        )?.[1],
+      ).toEqual([USER, RECEIPT, "superseded"]);
       expect(h.receiptRepo.update).toHaveBeenCalledWith(
         { id: RECEIPT, userId: USER },
         expect.objectContaining({
@@ -494,6 +501,12 @@ describe("EmailReceiptAiService.askAi", () => {
     const close = sqls.findIndex((s) => s.includes("SET status = 'rejected'"));
     expect(advisory).toBeGreaterThanOrEqual(0);
     expect(close).toBeGreaterThan(advisory);
+    // Asking again replaces the request; it is not a dismissal.
+    expect(h.manager.query.mock.calls[close][1]).toEqual([
+      USER,
+      RECEIPT,
+      "superseded",
+    ]);
     expect(h.requests.enqueuePendingForReceipt).toHaveBeenCalledWith(
       expect.anything(),
       USER,
@@ -967,6 +980,8 @@ describe("EmailReceiptAiService.processAiRequest", () => {
   });
 
   const gaveBack = (h: ReturnType<typeof setup>, reason: string) => {
+    // A permanent refusal leaves a note for an agent and is never a retry.
+    expect(h.requests.recordFailedAttempt).not.toHaveBeenCalled();
     expect(h.requests.release).toHaveBeenCalledTimes(1);
     const [userArg, id, key, input] = h.requests.release.mock.calls[0];
     expect([userArg, id, key]).toEqual([USER, REQUEST, "email-receipts-ai"]);
@@ -978,7 +993,20 @@ describe("EmailReceiptAiService.processAiRequest", () => {
     return input.note;
   };
 
-  it("gives the claim back (not final) when the provider fails", async () => {
+  // A failure that may pass is a counted attempt, never a note in `proposal`:
+  // the note would keep the automatic step from taking the request again.
+  const failedAttempt = (h: ReturnType<typeof setup>) => {
+    expect(h.requests.release).not.toHaveBeenCalled();
+    expect(h.requests.recordFailedAttempt).toHaveBeenCalledTimes(1);
+    const [userArg, id, key, note, max] =
+      h.requests.recordFailedAttempt.mock.calls[0];
+    expect([userArg, id, key]).toEqual([USER, REQUEST, "email-receipts-ai"]);
+    expect(note).not.toContain(SECRET_TEXT);
+    expect(max).toBe(5);
+    return note;
+  };
+
+  it("records a failed attempt, and writes no note, when the provider fails", async () => {
     const h = setup();
     h.ai.complete.mockRejectedValue(new Error(`boom ${SECRET_TEXT}`));
     const outcome = await h.service.processAiRequest(USER, REQUEST);
@@ -987,8 +1015,23 @@ describe("EmailReceiptAiService.processAiRequest", () => {
       requestId: REQUEST,
       reason: "ai_unavailable",
     });
-    gaveBack(h, "ai_unavailable");
+    expect(failedAttempt(h)).toBe(AI_PROVIDER_UNAVAILABLE_NOTE);
     expect(h.work.submit).not.toHaveBeenCalled();
+  });
+
+  it("passes the operator's maximum of attempts to the failure it records", async () => {
+    const previous = process.env.AI_REVIEW_AUTO_MAX_ATTEMPTS;
+    process.env.AI_REVIEW_AUTO_MAX_ATTEMPTS = "3";
+    try {
+      const h = setup();
+      h.ai.complete.mockRejectedValue(new Error("down"));
+      await h.service.processAiRequest(USER, REQUEST);
+      expect(h.requests.recordFailedAttempt.mock.calls[0][4]).toBe(3);
+    } finally {
+      if (previous === undefined)
+        delete process.env.AI_REVIEW_AUTO_MAX_ATTEMPTS;
+      else process.env.AI_REVIEW_AUTO_MAX_ATTEMPTS = previous;
+    }
   });
 
   it.each([
@@ -1042,13 +1085,13 @@ describe("EmailReceiptAiService.processAiRequest", () => {
     gaveBack(h, "transaction_unreadable");
   });
 
-  it("an unexpected error gives the claim back with a generic note", async () => {
+  it("an unexpected error is a counted attempt with a generic note", async () => {
     const h = setup();
     h.ai.complete.mockResolvedValue(reply(answer(twoBooks)));
     h.work.submit.mockRejectedValue(new Error(`db exploded: ${SECRET_TEXT}`));
     const outcome = await h.service.processAiRequest(USER, REQUEST);
     expect(outcome).toMatchObject({ ok: false, reason: "request_failed" });
-    expect(gaveBack(h, "request_failed")).toBe("The AI request failed.");
+    expect(failedAttempt(h)).toBe("The AI request failed.");
   });
 
   it("a request nobody can claim is reported, and nothing is asked", async () => {
@@ -1092,7 +1135,7 @@ describe("EmailReceiptAiService.processAiRequest", () => {
   it("does not fail when giving the claim back fails", async () => {
     const h = setup();
     h.ai.complete.mockRejectedValue(new Error("down"));
-    h.requests.release.mockRejectedValue(new Error("db down"));
+    h.requests.recordFailedAttempt.mockRejectedValue(new Error("db down"));
     await expect(
       h.service.processAiRequest(USER, REQUEST),
     ).resolves.toMatchObject({
@@ -1172,6 +1215,20 @@ describe("EmailReceiptAiService.runAutomaticStep", () => {
     // Only the requests the poll itself queued: one a person made with
     // "Recognize with AI" belongs to the chat or an MCP agent.
     expect(pending).toContain("instruction = $3");
+    // A request the provider failed on is taken again, not left to an agent.
+    expect(pending).toContain("needs_agent = false");
+    expect(pending).toContain("attempts < $4::int");
+    expect(pending).toContain("last_attempt_at <= CURRENT_TIMESTAMP");
+  });
+
+  it("hands the maximum and the backoff schedule to the selection as parameters", async () => {
+    const h = stepSetup({ drafts: [], requests: [] });
+    await h.service.runAutomaticStep(USER);
+    const call = h.manager.query.mock.calls.find((c) =>
+      String(c[0]).includes("kind = 'email_receipt'"),
+    );
+    expect(call?.[1][3]).toBe(5);
+    expect(call?.[1][4]).toEqual([5, 30, 120, 720]);
   });
 
   it("selects pending requests by the poll's own instruction, never the chat's", async () => {

@@ -1,6 +1,7 @@
 import type { EntityManager } from "typeorm";
 import { acquireAdvisoryLock, LockScope } from "../../common/db/locks";
 import { returnedRows } from "../../common/db/query-result";
+import type { AiReviewCloseReason } from "../../ai-review/ai-review-request.entity";
 
 /**
  * The two statements every writer of a receipt's request shares, so the
@@ -52,43 +53,54 @@ export async function lockReceiptTransaction(
 }
 
 /**
- * Close every open request this receipt raised: `rejected`, the dismissed state.
- * A closed request is never reopened, so a reprocess, an ignore or a delete
- * never leaves a proposal standing behind a receipt that no longer stands
- * behind it.
+ * Close every open request this receipt raised: `rejected`, with the reason and
+ * without the agent's note (it described a past attempt, not the close). A
+ * closed request can be sent again (`AiReviewRequestsService.reopen`), but only
+ * while the email still points at it; a reprocess, an ignore or a delete never
+ * leaves a proposal standing behind a receipt that no longer stands behind it.
+ * `reason` is required: a reprocess, a re-match, a component re-read, "Recognize
+ * with AI" and a trade link are `superseded`, an ignore `receipt_ignored`, a
+ * delete `receipt_deleted`.
  */
 export async function closeReceiptRequests(
   m: EntityManager,
   userId: string,
   receiptId: string,
+  reason: AiReviewCloseReason,
 ): Promise<void> {
   await m.query(
     `UPDATE ai_review_requests
-        SET status = 'rejected'
+        SET status = 'rejected',
+            close_reason = $3,
+            proposal = NULLIF(proposal - 'agentNote', '{}'::jsonb)
       WHERE user_id = $1
         AND email_receipt_id = $2
         AND status IN ('pending', 'claimed', 'proposed')`,
-    [userId, receiptId],
+    [userId, receiptId, reason],
   );
 }
 
 /**
  * `closeReceiptRequests` for many receipts in one statement (a bulk delete or
- * ignore). Keep the status list and the `rejected` target identical to the
- * single-receipt statement above. The caller holds the receipts' row locks.
+ * ignore). Keep the status list, the `rejected` target and the note removal
+ * identical to the single-receipt statement above. The caller holds the
+ * receipts' row locks.
  */
 export async function closeRequestsOfReceipts(
   m: EntityManager,
   userId: string,
   receiptIds: readonly string[],
+  reason: AiReviewCloseReason,
 ): Promise<void> {
   if (receiptIds.length === 0) return;
   await m.query(
     `UPDATE ai_review_requests
-        SET status = 'rejected'
+        SET status = 'rejected',
+            close_reason = $3,
+            proposal = NULLIF(proposal - 'agentNote', '{}'::jsonb)
       WHERE user_id = $1
         AND email_receipt_id = ANY($2::uuid[])
         AND status IN ('pending', 'claimed', 'proposed')`,
-    [userId, [...receiptIds]],
+    [userId, [...receiptIds], reason],
   );
 }

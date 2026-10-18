@@ -612,6 +612,9 @@ describe("EmailReceiptMailboxService.remove", () => {
       /kind IN \('email_receipt', 'email_parser_draft', 'email_trade'\)/,
     );
     expect(params).toEqual([USER]);
+    // The close says why, and removes the note of an earlier attempt.
+    expect(sql).toContain("close_reason = 'mailbox_deleted'");
+    expect(sql).toContain("proposal - 'agentNote'");
   });
 
   it("refuses a missing mailbox before writing anything else", async () => {

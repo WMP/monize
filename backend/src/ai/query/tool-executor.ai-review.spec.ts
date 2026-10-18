@@ -56,6 +56,7 @@ describe("ToolExecutorService ai_review_requests", () => {
       claim: jest.fn(),
       submit: jest.fn(),
       reject: jest.fn(),
+      reopenMany: jest.fn(),
     };
     const unused = [
       AccountsService,
@@ -359,6 +360,40 @@ describe("ToolExecutorService ai_review_requests", () => {
       cannotBeDone: true,
     });
     expect(closed.summary).toMatch(/Closed/);
+  });
+
+  it("sends a closed request again by id, and every provider timeout by preset", async () => {
+    work.reopenMany.mockResolvedValue({
+      results: [{ id: REQ, outcome: "reopened" }],
+      reopened: 1,
+    });
+    const byId = await service.execute(USER, "ai_review_requests", {
+      operation: "reopen",
+      requestId: REQ,
+    });
+    expect(work.reopenMany).toHaveBeenLastCalledWith(USER, {
+      ids: [REQ],
+      preset: undefined,
+    });
+    expect(byId.data).toMatchObject({ reopened: 1 });
+    expect(byId.summary).toMatch(/Sent 1 AI review request again/);
+
+    await service.execute(USER, "ai_review_requests", {
+      operation: "reopen",
+      preset: "provider_timeout",
+    });
+    expect(work.reopenMany).toHaveBeenLastCalledWith(USER, {
+      ids: undefined,
+      preset: "provider_timeout",
+    });
+  });
+
+  it("refuses a reopen that names neither a request nor the preset", async () => {
+    const result = await service.execute(USER, "ai_review_requests", {
+      operation: "reopen",
+    });
+    expect(result.isError).toBe(true);
+    expect(work.reopenMany).not.toHaveBeenCalled();
   });
 
   it("refuses invalid input before touching the queue", async () => {

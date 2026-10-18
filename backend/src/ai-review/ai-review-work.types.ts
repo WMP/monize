@@ -4,6 +4,7 @@ import type { PendingAiAction } from "../ai/actions/ai-action.types";
 import type { LlmTransactionRow } from "../transactions/transactions.service";
 import type { ReceiptInstructionKey } from "../email-receipts/pipeline/receipt-instructions";
 import type {
+  AiReviewCloseReason,
   AiReviewRequestKind,
   AiReviewRequestStatus,
 } from "./ai-review-request.entity";
@@ -14,6 +15,7 @@ export const AI_REVIEW_OPERATIONS = [
   "claim",
   "submit",
   "reject",
+  "reopen",
 ] as const;
 export type AiReviewOperation = (typeof AI_REVIEW_OPERATIONS)[number];
 
@@ -214,6 +216,16 @@ export interface LlmAiReviewRequest {
   expiresAt: string;
   /** Why an earlier agent gave the request up, when one did. */
   agentNote?: { reason: string; at: string };
+  /** Failed automatic attempts (the AI provider did not answer) since it was queued or last answered. */
+  attempts: number;
+  /** The note of the last failed attempt, or why an agent closed it; null when none. */
+  lastError: string | null;
+  /** ISO time of the last failed automatic attempt, else null. */
+  lastAttemptAt: string | null;
+  /** True once the automatic step used up its attempts: only an agent or the chat takes it now. */
+  needsAgent: boolean;
+  /** Why a closed (`rejected`) request was closed; null when open, or closed before the reason was recorded. */
+  closeReason: AiReviewCloseReason | null;
 }
 
 export interface LlmAiReviewList {
@@ -344,6 +356,11 @@ export interface AiReviewInboxItem {
   /** Null when the transaction no longer exists. */
   transaction: AiReviewTransactionSummary | null;
   agentNote?: { reason: string; at: string };
+  attempts: number;
+  lastError: string | null;
+  lastAttemptAt: string | null;
+  needsAgent: boolean;
+  closeReason: AiReviewCloseReason | null;
   /**
    * When `proposed`: the confirmation card, rebuilt from the stored proposal
    * against the transaction as it is now (so a stale proposal cannot overwrite a

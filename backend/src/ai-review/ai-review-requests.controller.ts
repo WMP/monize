@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   HttpCode,
@@ -15,6 +16,7 @@ import { AuthGuard } from "@nestjs/passport";
 import { OwnerOnly } from "../delegation/decorators/delegate-access.decorator";
 import { AiReviewWorkService } from "./ai-review-work.service";
 import { ListAiReviewRequestsDto } from "./dto/list-ai-review-requests.dto";
+import { ReopenAiReviewBatchDto } from "./dto/reopen-ai-review-batch.dto";
 
 /**
  * The review inbox (design 6.5): the user's AI review requests with the
@@ -52,5 +54,34 @@ export class AiReviewRequestsController {
     @Param("id", ParseUUIDPipe) id: string,
   ) {
     return this.work.dismiss(req.user.id, id);
+  }
+
+  @Post("reopen-batch")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Send closed AI review requests again: by id, or every one the AI provider did not answer",
+  })
+  reopenBatch(
+    @Request() req: { user: { id: string } },
+    @Body() dto: ReopenAiReviewBatchDto,
+  ) {
+    return this.work.reopenMany(req.user.id, {
+      ids: dto.ids,
+      preset: dto.preset,
+    });
+  }
+
+  @Post(":id/reopen")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Send one closed AI review request again (404 when it is not mine, 409 with the reason when it cannot be)",
+  })
+  reopen(
+    @Request() req: { user: { id: string } },
+    @Param("id", ParseUUIDPipe) id: string,
+  ) {
+    return this.work.reopenOne(req.user.id, id);
   }
 }

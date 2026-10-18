@@ -462,7 +462,8 @@ const reviewRequest = looseObject({ id: str, status: str });
  * (null when nothing is pending) with its `transaction` rows (or, for a parser
  * draft request, its `emailReceipts`); submit returns
  * the `proposal` card preview and `status: "proposed"`; reject returns the
- * `request` in its new status.
+ * `request` in its new status; reopen returns one outcome per request in
+ * `results` and the number `reopened`.
  */
 export const aiReviewRequestsOutput = toolOutput({
   requests: z.array(reviewRequest).optional(),

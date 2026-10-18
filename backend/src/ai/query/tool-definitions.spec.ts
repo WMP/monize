@@ -50,6 +50,31 @@ describe("FINANCIAL_TOOLS", () => {
     expect(tool!.inputSchema.type).toBe("object");
   });
 
+  describe("ai_review_requests", () => {
+    const tool = () =>
+      FINANCIAL_TOOLS.find((t) => t.name === "ai_review_requests")!;
+
+    it("offers reopen, with the preset, and tells the assistant how a failed request is retried", () => {
+      const props = tool().inputSchema.properties as Record<
+        string,
+        { enum?: string[] }
+      >;
+      expect(props.operation.enum).toContain("reopen");
+      expect(props.preset.enum).toEqual(["provider_timeout"]);
+      for (const word of [
+        "attempts",
+        "lastError",
+        "needsAgent",
+        "closeReason",
+        "5 min, 30 min, 2 h and 12 h",
+        "reopen",
+        "provider_timeout",
+      ]) {
+        expect(tool().description).toContain(word);
+      }
+    });
+  });
+
   describe("list_transactions", () => {
     it("has no required fields (dates default to last 30 days)", () => {
       const tool = FINANCIAL_TOOLS.find((t) => t.name === "list_transactions")!;

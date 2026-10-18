@@ -140,6 +140,7 @@ describe("EmailReceiptTradeService.process", () => {
       String(sql).includes("SET status = 'rejected'"),
     );
     expect(closed).toBeGreaterThanOrEqual(0);
+    expect(h.manager.query.mock.calls[closed][1]).toContain("superseded");
     expect(h.manager.query.mock.invocationCallOrder[closed]).toBeLessThan(
       h.requests.enqueueTrade.mock.invocationCallOrder[0],
     );

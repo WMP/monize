@@ -972,7 +972,7 @@ export class EmailReceiptPipelineService {
     // this IS the receipt's request until an agent answers it.
     if (queueCategorize) {
       await lockReceiptTransaction(m, transaction.id);
-      await closeReceiptRequests(m, userId, receipt.id);
+      await closeReceiptRequests(m, userId, receipt.id, "superseded");
       const request = await this.requests.enqueuePendingForReceipt(m, userId, {
         transactionId: transaction.id,
         emailReceiptId: receipt.id,
@@ -1010,7 +1010,7 @@ export class EmailReceiptPipelineService {
     // The receipt row is locked; now the advisory lock the queue's exclusion
     // rests on, before any request row is written or closed.
     await lockReceiptTransaction(m, transaction.id);
-    await closeReceiptRequests(m, userId, receipt.id);
+    await closeReceiptRequests(m, userId, receipt.id, "superseded");
 
     if (askAi) {
       const request = await this.requests.enqueuePendingForReceipt(m, userId, {
@@ -1264,7 +1264,7 @@ export class EmailReceiptPipelineService {
     // An outcome that holds no request of its own closes the ones the receipt
     // had; one that holds a request has just created it, and must not.
     if (stored.requestId === null) {
-      await closeReceiptRequests(m, userId, receipt.id);
+      await closeReceiptRequests(m, userId, receipt.id, "superseded");
     }
     await m.getRepository(EmailReceipt).update(
       { id: receipt.id, userId },

@@ -885,8 +885,9 @@ export const aiReviewRequestsFields = z.object({
     .uuid()
     .optional()
     .describe(
-      "claim: this one, not the oldest. submit/reject: the claimed one.",
+      "claim: this one, not the oldest. submit/reject: the claimed one. reopen: the closed one.",
     ),
+  preset: z.enum(["provider_timeout"]).optional(),
   splits: z
     .array(reviewSplitLineSchema)
     .min(2)
@@ -928,6 +929,14 @@ export const aiReviewRequestsSchema = aiReviewRequestsFields.superRefine(
     };
     if (value.operation === "submit" || value.operation === "reject") {
       if (!value.requestId) need("requestId", "requestId is required.");
+    }
+    if (value.operation === "reopen") {
+      if ((value.requestId === undefined) === (value.preset === undefined)) {
+        need(
+          "requestId",
+          "Give requestId or preset, not both and not neither.",
+        );
+      }
     }
     if (value.operation === "submit") {
       if (

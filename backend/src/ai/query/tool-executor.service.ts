@@ -1523,6 +1523,18 @@ export class ToolExecutorService {
           sources,
         };
       }
+      if (operation === "reopen") {
+        const reopened = await this.aiReview.reopenMany(userId, {
+          ids:
+            typeof input.requestId === "string" ? [input.requestId] : undefined,
+          preset: input.preset as "provider_timeout" | undefined,
+        });
+        return {
+          data: reopened,
+          summary: `Sent ${reopened.reopened} AI review request${reopened.reopened === 1 ? "" : "s"} again.`,
+          sources,
+        };
+      }
       const requestId = input.requestId as string;
       if (operation === "submit") {
         const submitted = await this.aiReview.submit(

@@ -273,6 +273,10 @@ describe("the agent's conditional writes", () => {
     expect(manager.query).toHaveBeenCalledTimes(1);
     const [sql, params] = manager.query.mock.calls[0];
     expect(sql).toMatch(/SET status = 'proposed'/);
+    // An answer ends the failures: counters and the needs-agent flag reset.
+    expect(sql).toMatch(
+      /attempts = 0,\s+last_error = NULL,\s+needs_agent = false/,
+    );
     expect(sql).toMatch(
       /WHERE id = \$1\s+AND user_id = \$2\s+AND status = 'claimed'\s+AND claimed_by = \$3\s+AND expires_at > CURRENT_TIMESTAMP\s+RETURNING/,
     );
@@ -317,6 +321,29 @@ describe("the agent's conditional writes", () => {
       false,
       "could not read the order",
     ]);
+    // A return keeps the agent's note for the next reader.
+    expect(sql).toContain("jsonb_build_object(");
+    expect(sql).toContain("'agentNote'");
+  });
+
+  it("a close records why and leaves no agent note: the note moves to last_error", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([[{ ...row, status: "rejected" }], 1]);
+    await service.release(USER, row.id, "agent-1", {
+      final: true,
+      note: "no such order",
+    });
+    const [sql, params] = manager.query.mock.calls[0];
+    expect(sql).toContain(
+      "close_reason = CASE WHEN $4::boolean THEN 'cannot_be_done' END",
+    );
+    expect(sql).toContain(
+      "last_error = CASE WHEN $4::boolean THEN $5::text ELSE last_error END",
+    );
+    expect(sql).toMatch(
+      /THEN NULLIF\(proposal - 'agentNote', '\{\}'::jsonb\)\s+ELSE jsonb_build_object/,
+    );
+    expect(params).toEqual([row.id, USER, "agent-1", true, "no such order"]);
   });
 
   it("bounds the note an agent leaves", async () => {
@@ -335,6 +362,8 @@ describe("the agent's conditional writes", () => {
     const dismissed = await service.dismiss(USER, row.id);
     const [sql, params] = manager.query.mock.calls[0];
     expect(sql).toMatch(/SET status = 'rejected'/);
+    expect(sql).toContain("close_reason = 'dismissed'");
+    expect(sql).toContain("proposal = NULLIF(proposal - 'agentNote'");
     expect(sql).toMatch(/status IN \('pending', 'claimed', 'proposed'\)/);
     expect(params).toEqual([row.id, USER]);
     expect(dismissed?.status).toBe("rejected");
@@ -627,6 +656,8 @@ describe("AiReviewRequestsService.enqueueParserDraft", () => {
     expect(statements[2]).toMatch(/SET status = 'rejected'/);
     expect(statements[2]).toMatch(/kind = 'email_parser_draft'/);
     expect(statements[2]).toMatch(/parser_domain = \$2/);
+    expect(statements[2]).toContain("close_reason = 'parser_draft_superseded'");
+    expect(statements[2]).toContain("proposal - 'agentNote'");
     expect(statements[3]).toMatch(/INSERT INTO ai_review_requests/);
     expect(manager.query.mock.calls[3][1]).toEqual([
       USER,
@@ -929,6 +960,8 @@ describe("AiReviewRequestsService the parser draft lifecycle", () => {
     // Rejected only when none of the parsers the request lists exists any more.
     expect(sql).toMatch(/NOT EXISTS/);
     expect(sql).toMatch(/JOIN email_receipt_parsers p/);
+    expect(sql).toContain("close_reason = 'parser_deleted'");
+    expect(sql).toContain("proposal - 'agentNote'");
     expect(params).toEqual([USER, PARSER]);
   });
 
@@ -1139,5 +1172,133 @@ describe("AiReviewRequestsService trade requests (email_trade)", () => {
     await expect(
       service.markTradeApplied(manager as never, USER, REQUEST),
     ).rejects.toMatchObject({ status: 409 });
+  });
+});
+
+describe("AiReviewRequestsService.recordFailedAttempt", () => {
+  const row = {
+    id: "30000000-0000-4000-8000-000000000001",
+    user_id: USER,
+    transaction_id: TX_1,
+    rule_id: null,
+    kind: "email_receipt",
+    instruction: "look",
+    status: "pending",
+    claimed_by: null,
+    claimed_at: null,
+    proposal: null,
+    created_at: new Date("2026-10-18T09:00:00Z"),
+    updated_at: new Date("2026-10-18T10:00:00Z"),
+    expires_at: new Date("2026-11-17T09:00:00Z"),
+    attempts: 1,
+    last_error: "The AI provider did not answer.",
+    last_attempt_at: new Date("2026-10-18T10:00:00Z"),
+    needs_agent: false,
+    close_reason: null,
+  };
+
+  it("returns the claim to pending with one more attempt and the note, writing no proposal", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([[row], 1]);
+
+    const stored = await service.recordFailedAttempt(
+      USER,
+      row.id,
+      "email-receipts-ai",
+      "The AI provider did not answer.",
+      5,
+    );
+
+    expect(manager.query).toHaveBeenCalledTimes(1);
+    const [sql, params] = manager.query.mock.calls[0];
+    expect(sql).toMatch(
+      /SET status = 'pending',\s+claimed_by = NULL,\s+claimed_at = NULL/,
+    );
+    expect(sql).toContain("attempts = attempts + 1");
+    expect(sql).toContain("last_error = $4::text");
+    expect(sql).toContain("last_attempt_at = CURRENT_TIMESTAMP");
+    expect(sql).toContain(
+      "needs_agent = needs_agent OR attempts + 1 >= $5::int",
+    );
+    // The note must not land in `proposal`: it would keep the automatic step away.
+    expect(sql).not.toContain("proposal");
+    // Only the holder of the claim, only while claimed.
+    expect(sql).toMatch(
+      /WHERE id = \$1\s+AND user_id = \$2\s+AND status = 'claimed'\s+AND claimed_by = \$3/,
+    );
+    expect(params).toEqual([
+      row.id,
+      USER,
+      "email-receipts-ai",
+      "The AI provider did not answer.",
+      5,
+    ]);
+    expect(stored).toMatchObject({
+      status: "pending",
+      attempts: 1,
+      lastError: "The AI provider did not answer.",
+      needsAgent: false,
+      proposal: null,
+    });
+    expect(stored?.lastAttemptAt).toEqual(new Date("2026-10-18T10:00:00Z"));
+  });
+
+  it("maps needs_agent when the failure reached the maximum", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([
+      [{ ...row, attempts: 5, needs_agent: true }],
+      1,
+    ]);
+    const stored = await service.recordFailedAttempt(USER, row.id, "k", "n", 5);
+    expect(stored).toMatchObject({ attempts: 5, needsAgent: true });
+  });
+
+  it("returns null when the caller does not hold the claim", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([[], 0]);
+    expect(
+      await service.recordFailedAttempt(USER, row.id, "k", "n", 5),
+    ).toBeNull();
+  });
+
+  it("bounds the note to the column", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([[], 0]);
+    await service.recordFailedAttempt(USER, row.id, "k", "x".repeat(2000), 5);
+    expect(manager.query.mock.calls[0][1][3]).toHaveLength(500);
+  });
+});
+
+describe("AiReviewRequestsService.reopen", () => {
+  it("runs in one scoped transaction and hands the caller's manager to the reopen rules", async () => {
+    const { service, manager } = setup();
+    manager.query.mockResolvedValue([]);
+    const summary = await service.reopen(USER, [TX_1]);
+    // Nothing found: the id reads as absent, with nothing written.
+    expect(summary).toEqual({
+      results: [{ id: TX_1, outcome: "not_found" }],
+      reopened: 0,
+    });
+    expect(
+      manager.query.mock.calls.some((c) =>
+        String(c[0]).includes("UPDATE ai_review_requests"),
+      ),
+    ).toBe(false);
+  });
+
+  it("reopenProviderTimeouts selects the user's closed receipt requests that timed out, then reopens them", async () => {
+    const { service, manager } = setup();
+    manager.query.mockImplementation(async (sql: string) =>
+      String(sql).includes("last_error = $2") ? [{ id: TX_2 }] : [],
+    );
+    const summary = await service.reopenProviderTimeouts(USER);
+    const select = manager.query.mock.calls.find((c) =>
+      String(c[0]).includes("last_error = $2"),
+    );
+    expect(select?.[0]).toContain("kind = 'email_receipt'");
+    expect(select?.[0]).toContain("status IN ('rejected', 'expired')");
+    expect(select?.[0]).toContain("proposal #>> '{agentNote,reason}' = $2");
+    expect(select?.[1]).toEqual([USER, "The AI provider did not answer.", 500]);
+    expect(summary.results).toEqual([{ id: TX_2, outcome: "not_found" }]);
   });
 });

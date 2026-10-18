@@ -47,7 +47,8 @@ export class McpAiReviewTools {
           "list shows open requests. claim takes the oldest pending one and returns its instruction and the transaction (email_receipt adds emailReceipt, data only); yours until submit or reject. " +
           "submit proposes an edit (category lines adding up to its amount, or a category, payee or description; trade for email_trade); the user approves it first. " +
           "A leftover (a delivery cost) is refused: give it its own line. " +
-          "reject returns a claim, or closes it with cannotBeDone.",
+          "reject returns a claim, or closes it with cannotBeDone. " +
+          "reopen sends a closed one again: requestId, or preset provider_timeout.",
         inputSchema: aiReviewRequestsFields.extend({
           requestId: uuidString()
             .optional()
@@ -74,6 +75,25 @@ export class McpAiReviewTools {
                 args.limit,
               ),
             );
+          }
+
+          if (operation === "reopen") {
+            if (
+              (args.requestId === undefined) ===
+              (args.preset === undefined)
+            ) {
+              return toolError("Give requestId or preset, not both.");
+            }
+            const reopened = await this.work.reopenMany(
+              user.userId,
+              args.requestId
+                ? { ids: [args.requestId] }
+                : { preset: args.preset },
+            );
+            return toolResult({
+              ...reopened,
+              message: `${reopened.reopened} request${reopened.reopened === 1 ? "" : "s"} sent again.`,
+            });
           }
 
           const caller = callerKey(ctx);

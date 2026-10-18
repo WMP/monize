@@ -77,7 +77,7 @@ export async function ignoreLockedReceipt(
   if (receipt.transactionId) {
     await lockReceiptTransaction(m, receipt.transactionId);
   }
-  await closeReceiptRequests(m, userId, receipt.id);
+  await closeReceiptRequests(m, userId, receipt.id, "receipt_ignored");
   // An ignored settlement takes nothing from a component (linked receipts spec 5).
   await removeLinkRows(m, userId, [receipt.id]);
   await m.getRepository(EmailReceipt).update(
@@ -100,7 +100,7 @@ export async function deleteLockedReceipt(
   if (receipt.transactionId) {
     await lockReceiptTransaction(m, receipt.transactionId);
   }
-  await closeReceiptRequests(m, userId, receipt.id);
+  await closeReceiptRequests(m, userId, receipt.id, "receipt_deleted");
   // The rows go through the helper first, so a component only this settlement
   // used falls back to awaiting_settlement (the cascade would leave its reason).
   await removeLinkRows(m, userId, [receipt.id]);

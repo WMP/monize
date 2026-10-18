@@ -832,6 +832,10 @@ describe("EmailReceiptPipelineService.process: linked receipts", () => {
         });
         // The applied request is never closed or rewritten.
         expect(queriesOf(h, "SET status = 'rejected'")).toHaveLength(1);
+        // A re-read replaces the request: the close says so.
+        expect(queriesOf(h, "SET status = 'rejected'")[0][1]).toContain(
+          "superseded",
+        );
         expect(String(queriesOf(h, "SET status = 'rejected'")[0][0])).toContain(
           "status IN ('pending', 'claimed', 'proposed')",
         );

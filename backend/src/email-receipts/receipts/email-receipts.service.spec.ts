@@ -1068,6 +1068,11 @@ describe("EmailReceiptsService.ignore", () => {
     const close = sqls.findIndex((s) => s.includes("SET status = 'rejected'"));
     expect(advisory).toBeGreaterThanOrEqual(0);
     expect(close).toBeGreaterThan(advisory);
+    expect(manager.query.mock.calls[close][1]).toEqual([
+      USER,
+      ID,
+      "receipt_ignored",
+    ]);
     expect(receiptRepo.update).toHaveBeenCalledWith(
       { id: ID, userId: USER },
       {
@@ -1144,7 +1149,7 @@ describe("EmailReceiptsService.remove", () => {
     const dismiss = manager.query.mock.calls.find((c) =>
       String(c[0]).includes("SET status = 'rejected'"),
     );
-    expect(dismiss?.[1]).toEqual([USER, ID]);
+    expect(dismiss?.[1]).toEqual([USER, ID, "receipt_deleted"]);
     expect(receiptRepo.delete).toHaveBeenCalledWith({ id: ID, userId: USER });
     expect(
       dismiss && receiptRepo.delete.mock.invocationCallOrder[0],
@@ -1690,7 +1695,7 @@ describe("EmailReceiptsService.bulk", () => {
     expect(del).toBeGreaterThan(close);
     const [closeSql, closeArgs] = h.manager.query.mock.calls[close];
     expect(closeSql).toContain("email_receipt_id = ANY($2::uuid[])");
-    expect(closeArgs).toEqual([USER, [A, B]]);
+    expect(closeArgs).toEqual([USER, [A, B], "receipt_deleted"]);
     expect(h.manager.query.mock.calls[del][1]).toEqual([[A, B], USER]);
   });
 
@@ -1882,7 +1887,7 @@ describe("EmailReceiptsService.bulk", () => {
     const close = h.manager.query.mock.calls.find(([sql]) =>
       String(sql).includes("UPDATE ai_review_requests"),
     );
-    expect(close?.[1]).toEqual([USER, [A]]);
+    expect(close?.[1]).toEqual([USER, [A], "receipt_ignored"]);
     // An ignored settlement keeps no link rows (linked receipts spec 5).
     const links = h.manager.query.mock.calls.find(([sql]) =>
       String(sql).includes("DELETE FROM email_receipt_links"),

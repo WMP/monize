@@ -243,7 +243,7 @@ export class EmailReceiptTradeLinkService {
         );
       }
 
-      await closeReceiptRequests(m, userId, receipt.id);
+      await closeReceiptRequests(m, userId, receipt.id, "superseded");
       // An approval that committed while this ran booked the trade: closing
       // skipped its applied request, and linking now would leave the email's
       // own row beside the linked one. Refused, so this transaction rolls back.

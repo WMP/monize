@@ -33,6 +33,7 @@ describe("McpAiReviewTools", () => {
       claim: jest.fn(),
       submit: jest.fn(),
       reject: jest.fn(),
+      reopenMany: jest.fn(),
     };
     tool = new McpAiReviewTools(work as never);
     const server = {
@@ -332,6 +333,51 @@ describe("McpAiReviewTools", () => {
         (await call({ operation: "reject", requestId: REQ })).isError,
       ).toBe(true);
       expect(work.reject).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("reopen", () => {
+    const summary = {
+      results: [{ id: REQ, outcome: "reopened" }],
+      reopened: 1,
+    };
+
+    it("sends one closed request again by id, with the write scope", async () => {
+      work.reopenMany.mockResolvedValue(summary);
+      const result = await call({ operation: "reopen", requestId: REQ });
+      expect(work.reopenMany).toHaveBeenCalledWith("u1", { ids: [REQ] });
+      expect(result.structuredContent.results).toEqual(summary.results);
+      expect(result.structuredContent.reopened).toBe(1);
+      expect(result.structuredContent.message).toMatch(/1 request sent again/);
+    });
+
+    it("sends every provider timeout again by preset", async () => {
+      work.reopenMany.mockResolvedValue({ results: [], reopened: 0 });
+      await call({ operation: "reopen", preset: "provider_timeout" });
+      expect(work.reopenMany).toHaveBeenCalledWith("u1", {
+        preset: "provider_timeout",
+      });
+    });
+
+    it("needs exactly one of requestId and preset", async () => {
+      expect((await call({ operation: "reopen" })).isError).toBe(true);
+      expect(
+        (
+          await call({
+            operation: "reopen",
+            requestId: REQ,
+            preset: "provider_timeout",
+          })
+        ).isError,
+      ).toBe(true);
+      expect(work.reopenMany).not.toHaveBeenCalled();
+    });
+
+    it("is a write: refused with the read scope only", async () => {
+      expect(
+        (await call({ operation: "reopen", requestId: REQ }, "read")).isError,
+      ).toBe(true);
+      expect(work.reopenMany).not.toHaveBeenCalled();
     });
   });
 });

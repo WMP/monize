@@ -48,6 +48,25 @@ export const OPEN_AI_REVIEW_STATUSES = [
   "proposed",
 ] as const satisfies readonly AiReviewRequestStatus[];
 
+/**
+ * Why a request is `rejected`. The one list: the schema's
+ * `ck_ai_review_requests_close_reason` holds the same values (checked both ways
+ * by `ai-review-retry.spec.ts`). A request closed before the column
+ * existed has none (null = unknown).
+ */
+export const AI_REVIEW_CLOSE_REASONS = [
+  "superseded",
+  "dismissed",
+  "cannot_be_done",
+  "receipt_ignored",
+  "receipt_deleted",
+  "mailbox_deleted",
+  "duplicate",
+  "parser_draft_superseded",
+  "parser_deleted",
+] as const;
+export type AiReviewCloseReason = (typeof AI_REVIEW_CLOSE_REASONS)[number];
+
 /** The instruction's length bound, the same as the schema's CHECK. */
 export const MAX_AI_REVIEW_INSTRUCTION_LENGTH = 1000;
 
@@ -172,4 +191,29 @@ export class AiReviewRequest {
     nullable: true,
   })
   parserDomain: string | null;
+
+  /**
+   * Failed attempts of the automatic AI step since the request was queued or
+   * last answered. A proposal and a re-open reset it to 0.
+   */
+  @Column({ type: "int", default: 0 })
+  attempts: number;
+
+  /** The note of the last failed attempt (the provider did not answer), or why an agent closed the request; null when none. */
+  @Column({ type: "varchar", length: 500, name: "last_error", nullable: true })
+  lastError: string | null;
+
+  @Column({ type: "timestamptz", name: "last_attempt_at", nullable: true })
+  lastAttemptAt: Date | null;
+
+  /**
+   * True once the automatic step used up its attempts: the request stays
+   * `pending` for an MCP agent or the chat, and the automatic step leaves it.
+   */
+  @Column({ type: "boolean", name: "needs_agent", default: false })
+  needsAgent: boolean;
+
+  /** Why the request is `rejected`; null when it is not closed, or was closed before this column existed. */
+  @Column({ type: "varchar", length: 30, name: "close_reason", nullable: true })
+  closeReason: AiReviewCloseReason | null;
 }

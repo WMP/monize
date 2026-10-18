@@ -82,6 +82,11 @@ describe("EmailReceiptTradeLinkService.link", () => {
     await service.link(USER, RECEIPT, IT);
     const sqls = manager.query.mock.calls.map((c) => String(c[0]));
     expect(sqls.some((q) => q.includes("SET status = 'rejected'"))).toBe(true);
+    expect(
+      manager.query.mock.calls.find((c) =>
+        String(c[0]).includes("SET status = 'rejected'"),
+      )?.[1],
+    ).toEqual([USER, RECEIPT, "superseded"]);
     expect(receiptRepo.update).toHaveBeenCalledWith(
       { id: RECEIPT, userId: USER },
       {

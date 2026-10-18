@@ -905,6 +905,13 @@ CREATE INDEX idx_email_receipt_links_component
 -- email_receipt_ids (no foreign key: an array has none) and its main sender domain
 -- in parser_domain, and at most one is open per (user, domain). NULL transaction
 -- ids are distinct in the open-request index above, so it never conflicts there.
+-- The automatic AI step retries a provider failure (docs/future-plans/ai-review-retry.md):
+-- it records the failure in attempts, last_error and last_attempt_at, leaves
+-- proposal NULL and picks the request again after a backoff; the failure that
+-- reaches the maximum sets needs_agent (the request stays pending for an agent or
+-- the chat). A proposal resets all three. close_reason says why a request is
+-- rejected (NULL: not closed, or closed before the column existed); a closed
+-- request can be re-opened (pending, counters cleared).
 -- The defaults on kind, status and expires_at exist for the RLS spec's generic
 -- row seeder.
 CREATE TABLE ai_review_requests (
@@ -924,6 +931,11 @@ CREATE TABLE ai_review_requests (
     email_receipt_id UUID REFERENCES email_receipts(id) ON DELETE SET NULL,
     email_receipt_ids UUID[],
     parser_domain VARCHAR(255),
+    attempts INTEGER NOT NULL DEFAULT 0,
+    last_error VARCHAR(500),
+    last_attempt_at TIMESTAMPTZ,
+    needs_agent BOOLEAN NOT NULL DEFAULT false,
+    close_reason VARCHAR(30),
     CONSTRAINT ck_ai_review_requests_kind
       CHECK (kind IN ('transaction_review', 'email_receipt', 'email_parser_draft', 'email_trade')),
     CONSTRAINT ck_ai_review_requests_email_receipt_ids
@@ -947,7 +959,14 @@ CREATE TABLE ai_review_requests (
     CONSTRAINT ck_ai_review_requests_instruction_length
       CHECK (char_length(instruction) BETWEEN 1 AND 1000),
     CONSTRAINT ck_ai_review_requests_status
-      CHECK (status IN ('pending', 'claimed', 'proposed', 'applied', 'rejected', 'expired'))
+      CHECK (status IN ('pending', 'claimed', 'proposed', 'applied', 'rejected', 'expired')),
+    CONSTRAINT ck_ai_review_requests_attempts
+      CHECK (attempts >= 0),
+    CONSTRAINT ck_ai_review_requests_close_reason
+      CHECK (close_reason IS NULL OR close_reason IN (
+        'superseded', 'dismissed', 'cannot_be_done', 'receipt_ignored',
+        'receipt_deleted', 'mailbox_deleted', 'duplicate',
+        'parser_draft_superseded', 'parser_deleted'))
 );
 
 CREATE INDEX idx_ai_review_requests_claim

@@ -123,7 +123,7 @@ export class EmailReceiptTradeService {
 
     // A reprocess replaces the proposal: the receipt's earlier requests close
     // first, so the one-open-request-per-email index never refuses this one.
-    await closeReceiptRequests(m, userId, receipt.id);
+    await closeReceiptRequests(m, userId, receipt.id, "superseded");
     const request = await this.requests.enqueueTrade(m, userId, {
       emailReceiptId: receipt.id,
       instruction: RECEIPT_TRADE_INSTRUCTION,

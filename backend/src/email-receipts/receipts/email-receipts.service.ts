@@ -191,7 +191,7 @@ const ITEM_COLUMNS = `r.id, r.from_address, r.from_domain, r.subject, r.received
             WHEN rq.kind = 'email_trade' THEN 'ai' END AS trade_source,
        rq.status AS request_status,
        (rq.expires_at <= CURRENT_TIMESTAMP) AS request_expired,
-       rq.proposal #>> '{agentNote,reason}' AS request_note,
+       COALESCE(rq.proposal #>> '{agentNote,reason}', rq.last_error) AS request_note,
        r.transaction_id,
        TO_CHAR(t.transaction_date, 'YYYY-MM-DD') AS tx_date,
        t.amount AS tx_amount, t.currency_code AS tx_currency,

@@ -98,6 +98,15 @@ import { McpServerService } from "./mcp-server.service";
 // language guide explains it). `email_receipt_parsers` 2,730 -> 3,023 bytes
 // measured (+293); cap 2,740 -> 3,030 and total 63,170 -> 63,460 (63,451
 // measured); no other cap moved.
+//
+// Raised, as a reviewed decision (AI review retry, docs/future-plans/ai-review-retry.md
+// decision 4): `ai_review_requests` gained the `reopen` operation (resend a closed
+// request: `requestId`, or the `provider_timeout` preset, which is how a model finds
+// the requests the AI provider did not answer, since `list` shows open ones only).
+// The retry fields (`attempts`, `lastError`, `needsAgent`, `closeReason`) ride in the
+// result and are not described here; the assistant's definition and
+// docs/backend/mcp.md carry that text. 2,968 -> 3,104 bytes measured (+136); cap
+// 3,050 -> 3,110 and total 63,460 -> 63,600 (63,587 measured); no other cap moved.
 const TOOL_BYTE_BUDGET: Record<string, number> = {
   list_accounts: 2500,
   list_transactions: 3550,
@@ -117,7 +126,7 @@ const TOOL_BYTE_BUDGET: Record<string, number> = {
   calculate: 2000,
   get_budget_status: 2550,
   manage_transaction_rules: 4910,
-  ai_review_requests: 3050,
+  ai_review_requests: 3110,
   email_receipt_parsers: 3030,
   fetch_bond_series: 1000,
   enter_bond_series_manually: 1690,
@@ -126,7 +135,7 @@ const TOOL_BYTE_BUDGET: Record<string, number> = {
   report_progress: 1250,
 };
 
-const TOTAL_BYTE_BUDGET = 63_460;
+const TOTAL_BYTE_BUDGET = 63_600;
 const INSTRUCTIONS_BYTE_BUDGET = 2_600;
 
 /**

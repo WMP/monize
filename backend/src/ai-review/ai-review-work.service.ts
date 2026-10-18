@@ -28,6 +28,10 @@ import { EmailReceipt } from "../email-receipts/entities/email-receipt.entity";
 import { receiptInstructionKey } from "../email-receipts/pipeline/receipt-instructions";
 import { AiReviewRequest } from "./ai-review-request.entity";
 import { AiReviewRequestsService } from "./ai-review-requests.service";
+import type {
+  AiReviewReopenOutcome,
+  AiReviewReopenSummary,
+} from "./ai-review-retry";
 import { emailDayOfUser, findTradeInLedger } from "./trade-ledger";
 import {
   AI_REVIEW_EMAIL_TEXT_MAX_CHARS,
@@ -77,6 +81,25 @@ function agentNoteOf(request: AiReviewRequest): AgentNote | undefined {
   return note && typeof note.reason === "string"
     ? { reason: note.reason, at: String(note.at ?? "") }
     : undefined;
+}
+
+/** The retry and close fields every view of a request carries, in one shape. */
+function retryFieldsOf(request: AiReviewRequest): {
+  attempts: number;
+  lastError: string | null;
+  lastAttemptAt: string | null;
+  needsAgent: boolean;
+  closeReason: AiReviewRequest["closeReason"];
+} {
+  return {
+    attempts: request.attempts ?? 0,
+    lastError: request.lastError ?? null,
+    lastAttemptAt: request.lastAttemptAt
+      ? new Date(request.lastAttemptAt).toISOString()
+      : null,
+    needsAgent: request.needsAgent === true,
+    closeReason: request.closeReason ?? null,
+  };
 }
 
 /**
@@ -177,6 +200,7 @@ export class AiReviewWorkService {
       createdAt: request.createdAt.toISOString(),
       expiresAt: request.expiresAt.toISOString(),
       ...(note ? { agentNote: note } : {}),
+      ...retryFieldsOf(request),
     };
   }
 
@@ -958,6 +982,7 @@ export class AiReviewWorkService {
             }
           : null,
         ...(note ? { agentNote: note } : {}),
+        ...retryFieldsOf(request),
         ...(request.status === "proposed" && stored?.input
           ? { proposal: await this.rebuiltCard(userId, request, stored.input) }
           : {}),
@@ -1116,5 +1141,79 @@ export class AiReviewWorkService {
     }
     const [item] = await this.toInboxItems(userId, [dismissed]);
     return item;
+  }
+
+  /**
+   * Send closed requests again: the named `ids`, or the `provider_timeout`
+   * preset (the user's closed receipt requests the AI provider did not answer).
+   * Exactly one of the two. One outcome per request; a refusal is an outcome,
+   * not an error (`AiReviewRequestsService.reopen` lists them).
+   */
+  async reopenMany(
+    userId: string,
+    input: { ids?: readonly string[]; preset?: "provider_timeout" },
+  ): Promise<AiReviewReopenSummary> {
+    if ((input.ids === undefined) === (input.preset === undefined)) {
+      throw new BadRequestException(
+        tr(
+          "errors.aiReview.reopenNeedsOne",
+          "Name the requests to send again (ids), or the preset provider_timeout, not both and not neither.",
+        ),
+      );
+    }
+    return input.preset
+      ? this.requests.reopenProviderTimeouts(userId)
+      : this.requests.reopen(userId, input.ids ?? []);
+  }
+
+  /**
+   * Send one closed request again. A refusal is an error here: 404 when it is
+   * not the user's, 409 (with the reason) for every other outcome.
+   */
+  async reopenOne(
+    userId: string,
+    requestId: string,
+  ): Promise<AiReviewReopenSummary> {
+    const summary = await this.requests.reopen(userId, [requestId]);
+    const outcome = summary.results[0]?.outcome ?? "not_found";
+    if (outcome === "reopened") return summary;
+    if (outcome === "not_found") {
+      throw new NotFoundException(
+        tr(
+          "errors.aiReview.notFound",
+          `AI review request with ID ${requestId} not found`,
+          { id: requestId },
+        ),
+      );
+    }
+    throw new ConflictException(reopenRefusal(outcome));
+  }
+}
+
+/** The reason a request was not sent again, for the single-request routes. */
+function reopenRefusal(
+  outcome: Exclude<AiReviewReopenOutcome, "reopened" | "not_found">,
+): string {
+  switch (outcome) {
+    case "not_closed":
+      return tr(
+        "errors.aiReview.reopenNotClosed",
+        "This AI review request is still open, so it cannot be sent again.",
+      );
+    case "kind_not_reopenable":
+      return tr(
+        "errors.aiReview.reopenKindNotReopenable",
+        "This kind of AI review request cannot be sent again.",
+      );
+    case "open_exists":
+      return tr(
+        "errors.aiReview.reopenOpenExists",
+        "Another review request is already open for this transaction. Finish or dismiss it first.",
+      );
+    case "superseded":
+      return tr(
+        "errors.aiReview.reopenSuperseded",
+        "The email no longer belongs to this request (it was reprocessed, ignored or deleted), so the request cannot be sent again.",
+      );
   }
 }

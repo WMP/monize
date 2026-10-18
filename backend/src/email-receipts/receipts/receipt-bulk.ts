@@ -122,7 +122,12 @@ export async function bulkActOnReceipts(
   }
   if (targets.length === 0) return result;
 
-  await closeRequestsOfReceipts(m, userId, targets);
+  await closeRequestsOfReceipts(
+    m,
+    userId,
+    targets,
+    action === "delete" ? "receipt_deleted" : "receipt_ignored",
+  );
   // An ignored or deleted settlement takes nothing from a component (linked
   // receipts spec 5); the rows go first, so a component only they used falls back
   // to awaiting_settlement.

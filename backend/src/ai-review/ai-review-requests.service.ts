@@ -5,6 +5,7 @@ import { acquireAdvisoryLock, LockScope } from "../common/db/locks";
 import { withScopedDb } from "../common/db/scoped-db";
 import { tr } from "../i18n/translate";
 import {
+  AiReviewCloseReason,
   AiReviewRequest,
   AiReviewRequestStatus,
   MAX_AI_REVIEW_INSTRUCTION_LENGTH,
@@ -12,6 +13,8 @@ import {
   MAX_PARSER_DRAFT_EMAILS,
   MAX_PARSER_DRAFT_EMAILS_PER_DOMAIN,
 } from "./ai-review-request.entity";
+import type { AiReviewReopenSummary } from "./ai-review-retry";
+import { providerTimeoutRequestIds, reopenRequests } from "./ai-review-reopen";
 
 /** One request to queue: which row, which rule asked, and what to do. */
 export interface AiReviewEnqueueInput {
@@ -127,6 +130,11 @@ interface RequestRow {
   email_receipt_id: string | null;
   email_receipt_ids: string[] | null;
   parser_domain: string | null;
+  attempts: number;
+  last_error: string | null;
+  last_attempt_at: Date | null;
+  needs_agent: boolean;
+  close_reason: AiReviewCloseReason | null;
 }
 
 /**
@@ -167,8 +175,21 @@ function toRequest(row: RequestRow): AiReviewRequest {
     emailReceiptId: row.email_receipt_id ?? null,
     emailReceiptIds: row.email_receipt_ids ?? null,
     parserDomain: row.parser_domain ?? null,
+    attempts: row.attempts ?? 0,
+    lastError: row.last_error ?? null,
+    lastAttemptAt: row.last_attempt_at ?? null,
+    needsAgent: row.needs_agent ?? false,
+    closeReason: row.close_reason ?? null,
   });
 }
+
+/**
+ * The statement fragment every close shares: the open request leaves with its
+ * agent's note removed (the note described a past attempt, not the close) and
+ * with the reason. Assign it inside a `SET`; `proposal` becomes NULL when the
+ * note was all it held.
+ */
+const STRIP_AGENT_NOTE_SQL = `proposal = NULLIF(proposal - 'agentNote', '{}'::jsonb)`;
 
 /**
  * The AI review queue (design 6.5): durable requests that an AI look at one
@@ -407,7 +428,9 @@ export class AiReviewRequestsService {
     );
     await m.query(
       `UPDATE ai_review_requests
-          SET status = 'rejected'
+          SET status = 'rejected',
+              close_reason = 'parser_draft_superseded',
+              ${STRIP_AGENT_NOTE_SQL}
         WHERE user_id = $1
           AND kind = 'email_parser_draft'
           AND parser_domain = $2
@@ -537,6 +560,9 @@ export class AiReviewRequestsService {
       await m.query(
         `UPDATE ai_review_requests q
             SET status = 'proposed',
+                attempts = 0,
+                last_error = NULL,
+                needs_agent = false,
                 proposal = jsonb_build_object(
                   'parserId', COALESCE(q.proposal ->> 'parserId', $4::text),
                   'parserIds',
@@ -619,7 +645,9 @@ export class AiReviewRequestsService {
     const rows = returnedRows<{ id: string }>(
       await m.query(
         `UPDATE ai_review_requests q
-            SET status = 'rejected'
+            SET status = 'rejected',
+                close_reason = 'parser_deleted',
+                ${STRIP_AGENT_NOTE_SQL}
           WHERE q.user_id = $1
             AND q.kind = 'email_parser_draft'
             AND q.status IN ('pending', 'claimed', 'proposed')
@@ -765,7 +793,10 @@ export class AiReviewRequestsService {
         await m.query(
           `UPDATE ai_review_requests
               SET status = 'proposed',
-                  proposal = $4::jsonb
+                  proposal = $4::jsonb,
+                  attempts = 0,
+                  last_error = NULL,
+                  needs_agent = false
             WHERE id = $1
               AND user_id = $2
               AND status = 'claimed'
@@ -784,8 +815,12 @@ export class AiReviewRequestsService {
    * the caller that holds the claim can release it. `final` false returns the
    * request to `pending` with the claim cleared, so another agent (or this one
    * later) can take it; `final` true marks it `rejected`, for a request that no
-   * agent can do, so the queue does not hand it out again. The agent's note is
-   * kept in `proposal` (`{ agentNote }`) so the next reader sees why.
+   * agent can do, so the queue does not hand it out again. A return keeps the
+   * agent's note in `proposal` (`{ agentNote }`) so the next reader sees why; a
+   * close records the reason (`close_reason = 'cannot_be_done'`) and puts the
+   * note in `last_error`, leaving no agentNote behind (every close removes it).
+   * The automatic step's own failures do not come here: see
+   * {@link recordFailedAttempt}.
    */
   async release(
     userId: string,
@@ -800,9 +835,14 @@ export class AiReviewRequestsService {
               SET status = CASE WHEN $4::boolean THEN 'rejected' ELSE 'pending' END,
                   claimed_by = NULL,
                   claimed_at = NULL,
-                  proposal = jsonb_build_object(
-                    'agentNote',
-                    jsonb_build_object('reason', $5::text, 'at', CURRENT_TIMESTAMP))
+                  close_reason = CASE WHEN $4::boolean THEN 'cannot_be_done' END,
+                  last_error = CASE WHEN $4::boolean THEN $5::text ELSE last_error END,
+                  proposal = CASE WHEN $4::boolean
+                    THEN NULLIF(proposal - 'agentNote', '{}'::jsonb)
+                    ELSE jsonb_build_object(
+                      'agentNote',
+                      jsonb_build_object('reason', $5::text, 'at', CURRENT_TIMESTAMP))
+                  END
             WHERE id = $1
               AND user_id = $2
               AND status = 'claimed'
@@ -822,6 +862,77 @@ export class AiReviewRequestsService {
   }
 
   /**
+   * The automatic AI step could not answer a claimed request for a reason that
+   * may pass (the provider did not answer): record the failed attempt and give
+   * the claim back. ONE conditional UPDATE on `status = 'claimed'` and the
+   * caller's `claimed_by`, like {@link release}: the request returns to `pending`
+   * with `attempts + 1`, `last_error` and `last_attempt_at`, and `proposal` stays
+   * NULL so the step selects it again once the backoff
+   * (`AI_REVIEW_RETRY_BACKOFF_MINUTES`) has passed. The attempt that reaches
+   * `maxAttempts` sets `needs_agent`: the request stays `pending` and an MCP
+   * agent or the chat can still claim it, the automatic step no longer does.
+   * Null when the caller does not hold the claim.
+   */
+  async recordFailedAttempt(
+    userId: string,
+    id: string,
+    claimedBy: string,
+    note: string,
+    maxAttempts: number,
+  ): Promise<AiReviewRequest | null> {
+    return withScopedDb(this.dataSource, async (m) => {
+      const [row] = returnedRows<RequestRow>(
+        await m.query(
+          `UPDATE ai_review_requests
+              SET status = 'pending',
+                  claimed_by = NULL,
+                  claimed_at = NULL,
+                  attempts = attempts + 1,
+                  last_error = $4::text,
+                  last_attempt_at = CURRENT_TIMESTAMP,
+                  needs_agent = needs_agent OR attempts + 1 >= $5::int
+            WHERE id = $1
+              AND user_id = $2
+              AND status = 'claimed'
+              AND claimed_by = $3
+           RETURNING *`,
+          [
+            id,
+            userId,
+            claimedBy,
+            note.slice(0, MAX_AI_REVIEW_NOTE_LENGTH),
+            maxAttempts,
+          ],
+        ),
+      );
+      return row ? toRequest(row) : null;
+    });
+  }
+
+  /**
+   * Send closed requests again (`rejected` or `expired` back to `pending`), each
+   * with its own outcome, in one `withScopedDb` transaction. The rules, the
+   * outcomes and the lock order are in `ai-review-reopen.ts`.
+   */
+  async reopen(
+    userId: string,
+    ids: readonly string[],
+  ): Promise<AiReviewReopenSummary> {
+    return withScopedDb(this.dataSource, (m) => reopenRequests(m, userId, ids));
+  }
+
+  /**
+   * Reopen every closed receipt request of the user the AI provider did not
+   * answer, newest first, at most `AI_REVIEW_REOPEN_MAX`. Same rules and
+   * outcomes as {@link reopen}, one transaction.
+   */
+  async reopenProviderTimeouts(userId: string): Promise<AiReviewReopenSummary> {
+    return withScopedDb(this.dataSource, async (m) =>
+      reopenRequests(m, userId, await providerTimeoutRequestIds(m, userId)),
+    );
+  }
+
+  /**
    * The person dismisses a request that is still open: `rejected`, whoever
    * holds the claim. Null when it is not the user's or is no longer open.
    */
@@ -830,7 +941,9 @@ export class AiReviewRequestsService {
       const [row] = returnedRows<RequestRow>(
         await m.query(
           `UPDATE ai_review_requests
-              SET status = 'rejected'
+              SET status = 'rejected',
+                  close_reason = 'dismissed',
+                  ${STRIP_AGENT_NOTE_SQL}
             WHERE id = $1
               AND user_id = $2
               AND status IN ('pending', 'claimed', 'proposed')

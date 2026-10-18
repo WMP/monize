@@ -302,7 +302,9 @@ export class EmailReceiptMailboxService {
       if (!deleted.affected) throw mailboxNotFound();
       await m.query(
         `UPDATE ai_review_requests
-            SET status = 'rejected'
+            SET status = 'rejected',
+                close_reason = 'mailbox_deleted',
+                proposal = NULLIF(proposal - 'agentNote', '{}'::jsonb)
           WHERE user_id = $1
             AND kind IN ('email_receipt', 'email_parser_draft', 'email_trade')
             AND status IN ('pending', 'claimed', 'proposed')`,

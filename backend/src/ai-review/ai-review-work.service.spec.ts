@@ -1,4 +1,8 @@
-import { ConflictException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from "@nestjs/common";
 import { RECEIPT_PARSED_INSTRUCTION } from "../email-receipts/pipeline/receipt-instructions";
 import { DataSource } from "typeorm";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
@@ -73,6 +77,8 @@ function setup() {
     submitProposal: jest.fn(),
     release: jest.fn(),
     dismiss: jest.fn(),
+    reopen: jest.fn(),
+    reopenProviderTimeouts: jest.fn(),
   };
   const transactions = {
     findOne: jest
@@ -1782,4 +1788,128 @@ describe("AiReviewWorkService trade requests (email_trade)", () => {
       error: expect.stringMatching(/no proposal to approve/),
     });
   });
+});
+
+describe("the retry and close fields of a request", () => {
+  const timedOut = () =>
+    request({
+      status: "pending",
+      claimedBy: null,
+      attempts: 5,
+      lastError: "The AI provider did not answer.",
+      lastAttemptAt: new Date("2026-10-18T10:00:00Z"),
+      needsAgent: true,
+    });
+
+  it("reaches a model with the attempts, the last error, when it was, and needsAgent", async () => {
+    const { service, requests } = setup();
+    requests.listForUser.mockResolvedValue([timedOut()]);
+    const list = await service.list(USER, "agent-1");
+    expect(list.requests[0]).toMatchObject({
+      attempts: 5,
+      lastError: "The AI provider did not answer.",
+      lastAttemptAt: "2026-10-18T10:00:00.000Z",
+      needsAgent: true,
+      closeReason: null,
+    });
+  });
+
+  it("reaches the inbox, with the reason a closed request was closed", async () => {
+    const { service, requests } = setup();
+    requests.listForUser.mockResolvedValue([
+      timedOut(),
+      request({
+        id: "b",
+        status: "rejected",
+        claimedBy: null,
+        closeReason: "superseded",
+      }),
+    ]);
+    const items = await service.listInbox(USER, { status: "rejected" });
+    expect(items[0]).toMatchObject({
+      attempts: 5,
+      needsAgent: true,
+      lastAttemptAt: "2026-10-18T10:00:00.000Z",
+    });
+    expect(items[1]).toMatchObject({
+      status: "rejected",
+      closeReason: "superseded",
+      attempts: 0,
+      lastError: null,
+      lastAttemptAt: null,
+      needsAgent: false,
+    });
+  });
+});
+
+describe("AiReviewWorkService.reopenMany", () => {
+  const summary = {
+    results: [{ id: REQ, outcome: "reopened" as const }],
+    reopened: 1,
+  };
+
+  it("sends the named ids to the queue's reopen", async () => {
+    const { service, requests } = setup();
+    requests.reopen.mockResolvedValue(summary);
+    await expect(service.reopenMany(USER, { ids: [REQ] })).resolves.toBe(
+      summary,
+    );
+    expect(requests.reopen).toHaveBeenCalledWith(USER, [REQ]);
+    expect(requests.reopenProviderTimeouts).not.toHaveBeenCalled();
+  });
+
+  it("sends the provider_timeout preset to the queue's own selection", async () => {
+    const { service, requests } = setup();
+    requests.reopenProviderTimeouts.mockResolvedValue(summary);
+    await service.reopenMany(USER, { preset: "provider_timeout" });
+    expect(requests.reopenProviderTimeouts).toHaveBeenCalledWith(USER);
+    expect(requests.reopen).not.toHaveBeenCalled();
+  });
+
+  it.each([[{}], [{ ids: [REQ], preset: "provider_timeout" as const }]])(
+    "refuses %j: exactly one of ids and preset",
+    async (input) => {
+      const { service, requests } = setup();
+      await expect(service.reopenMany(USER, input)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(requests.reopen).not.toHaveBeenCalled();
+      expect(requests.reopenProviderTimeouts).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe("AiReviewWorkService.reopenOne", () => {
+  const outcomeOf = (outcome: string) => ({
+    results: [{ id: REQ, outcome }],
+    reopened: outcome === "reopened" ? 1 : 0,
+  });
+
+  it("answers with the summary when the request was reopened", async () => {
+    const { service, requests } = setup();
+    requests.reopen.mockResolvedValue(outcomeOf("reopened"));
+    await expect(service.reopenOne(USER, REQ)).resolves.toEqual(
+      outcomeOf("reopened"),
+    );
+    expect(requests.reopen).toHaveBeenCalledWith(USER, [REQ]);
+  });
+
+  it("is a 404 for a request that is not the user's", async () => {
+    const { service, requests } = setup();
+    requests.reopen.mockResolvedValue(outcomeOf("not_found"));
+    await expect(service.reopenOne(USER, REQ)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
+  it.each(["not_closed", "kind_not_reopenable", "open_exists", "superseded"])(
+    "is a 409 with its own reason for %s",
+    async (outcome) => {
+      const { service, requests } = setup();
+      requests.reopen.mockResolvedValue(outcomeOf(outcome));
+      const error = await service.reopenOne(USER, REQ).catch((e) => e);
+      expect(error).toBeInstanceOf(ConflictException);
+      expect(error.message.length).toBeGreaterThan(10);
+    },
+  );
 });
