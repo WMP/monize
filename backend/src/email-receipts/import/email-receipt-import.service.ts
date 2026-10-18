@@ -128,8 +128,8 @@ function safeName(name: string): string {
  * person's own mailbox through the poll's row builder and insert, under
  * `uid_validity` 0, then the stored-email part of a poll runs under the poll
  * lease. Nothing is written outside PostgreSQL. What stops a message being
- * stored twice is `ON CONFLICT (mailbox_id, uid_validity, uid) DO NOTHING`
- * (INV-RECEIPT-002), one transaction per file.
+ * stored twice is `ON CONFLICT DO NOTHING` over the IMAP key and the user's
+ * Message-ID index (INV-RECEIPT-002), one transaction per file.
  */
 @Injectable()
 export class EmailReceiptImportService {

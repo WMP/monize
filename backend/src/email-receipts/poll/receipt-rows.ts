@@ -122,9 +122,22 @@ export async function buildReceiptRow(
 }
 
 /**
+ * The stored form of a Message-ID: trimmed, raw case kept (the unique index
+ * `uq_email_receipts_user_message_id` compares `lower(btrim(...))`), null when
+ * empty.
+ */
+export function normalizeMessageId(messageId: string | null): string | null {
+  const trimmed = messageId?.trim() ?? "";
+  return trimmed === "" ? null : trimmed;
+}
+
+/**
  * Insert the rows in the caller's transaction. A row whose
- * `(mailbox_id, uid_validity, uid)` exists is not stored (INV-RECEIPT-002) and
- * is counted as a duplicate.
+ * `(mailbox_id, uid_validity, uid)` exists is not stored (INV-RECEIPT-002), and
+ * neither is a row whose Message-ID the user already has stored under another
+ * IMAP identity (`uq_email_receipts_user_message_id`); both are counted as
+ * duplicates. `ON CONFLICT DO NOTHING` has no target so it covers both unique
+ * indexes; the caller still advances its cursor past a duplicate.
  */
 export async function insertReceiptRows(
   m: EntityManager,
@@ -145,14 +158,14 @@ export async function insertReceiptRows(
             forwarded_by, original_sent_at, status, status_reason)
          VALUES ($1, $2, $3::bigint, $4::bigint, $5, $6, $7, $8, $9, $10, $11,
                  $12, $13, $14, $15)
-         ON CONFLICT (mailbox_id, uid_validity, uid) DO NOTHING
+         ON CONFLICT DO NOTHING
          RETURNING id`,
         [
           userId,
           mailboxId,
           uidValidity,
           row.uid,
-          row.messageId,
+          normalizeMessageId(row.messageId),
           row.fromAddress,
           row.fromDomain,
           row.subject,

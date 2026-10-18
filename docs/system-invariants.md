@@ -7395,7 +7395,10 @@ Statement           A message (mailbox, UIDVALIDITY, UID) is one email_receipts
                     never passes a message that was not stored.
 Source of truth     email_receipts, email_receipt_mailboxes.last_uid
 Enforcement         UNIQUE (mailbox_id, uid_validity, uid) with INSERT ... ON
-                    CONFLICT DO NOTHING; the cursor is advanced by a conditional
+                    CONFLICT DO NOTHING, and one row per (user_id,
+                    lower(btrim(message_id))) (uq_email_receipts_user_message_id,
+                    partial; a duplicate under a new IMAP identity is skipped);
+                    the cursor is advanced by a conditional
                     UPDATE (it only rises on one UIDVALIDITY) in the transaction
                     that inserts the rows (email-receipt-poll.service.ts). The
                     archive import stores under (mailbox_id, 0, hash uid) with

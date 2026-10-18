@@ -73,7 +73,38 @@
    `duplicate`, its open requests closed with `close_reason = 'duplicate'`; a
    copy that holds something keeps its row and loses its `message_id`. Nothing
    is deleted. No fuzzy fallback (from, subject, total, time): two identical
-   orders on one evening are real and would be merged.
+   orders on one evening are real and would be merged. The migration is
+   `20261018210000_email_receipt_message_id_unique.sql`; the receipt's reason
+   label `duplicate` is a frontend string (beside `profile_ignore` in
+   `emailReceipts.json`). A backup does not carry `email_receipts`, so a restore
+   cannot meet the index. Dry run before the upgrade (read-only; lists the
+   copies the migration would change, `action` says what it does to each):
+
+   ```sql
+   WITH copies AS (
+     SELECT r.id, r.user_id, r.message_id, r.created_at, r.status,
+            h.holds,
+            ROW_NUMBER() OVER (
+              PARTITION BY r.user_id, lower(btrim(r.message_id))
+              ORDER BY (NOT h.holds), r.created_at, r.id) AS rank
+       FROM email_receipts r
+      CROSS JOIN LATERAL (
+            SELECT (r.transaction_id IS NOT NULL
+                    OR r.investment_transaction_id IS NOT NULL
+                    OR EXISTS (SELECT 1 FROM email_receipt_links l
+                                WHERE l.settlement_receipt_id = r.id
+                                   OR l.component_receipt_id = r.id)
+                    OR EXISTS (SELECT 1 FROM ai_review_requests q
+                                WHERE q.email_receipt_id = r.id
+                                  AND q.status = 'applied')) AS holds) h
+      WHERE r.message_id IS NOT NULL AND btrim(r.message_id) <> '')
+   SELECT id, user_id, message_id, created_at, status, holds,
+          CASE WHEN holds THEN 'clear message_id'
+               ELSE 'ignore as duplicate, clear message_id' END AS action
+     FROM copies
+    WHERE rank > 1
+    ORDER BY user_id, lower(btrim(message_id)), rank;
+   ```
 8. **`received_at` source is unchanged and documented**: the `Date` header when
    it parses and is not more than a day in the future, else IMAP `INTERNALDATE`.
 9. **A record step can repeat.** `repeat: true` on a record step consumes 0..N

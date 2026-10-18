@@ -308,9 +308,11 @@ email_receipt_parsers
 email_receipts
   id, user_id, mailbox_id -> email_receipt_mailboxes ON DELETE CASCADE
   uid_validity bigint, uid bigint, message_id varchar(500) null
+    -- unique per user without case and surrounding spaces (uq_email_receipts_user_message_id); a copy is skipped as a duplicate
   from_address varchar(320), from_domain varchar(255), subject varchar(500)
     -- the ORIGINAL sender and subject when the email was a forward (decision 12)
   received_at timestamptz, body_text text (<= 100,000 chars)
+    -- the Date header when it parses and is not more than a day in the future, else the IMAP INTERNALDATE (pickReceivedAt)
   body_html text null (<= 1,000,000 chars)       -- shown, and read for the html lines source and the schema.org order; never sent to a model
   forwarded_by varchar(320) null                 -- the mailbox From of a forward
   original_sent_at timestamptz null              -- the day the shop sent the order

@@ -56,12 +56,13 @@ Out (follow-ups, each its own agreement):
    (`email_receipt_mailboxes.uid_validity / last_uid`) is not touched.
 2. **Stored once (INV-RECEIPT-002).** `uid` is the first 63 bits of SHA-256 of
    a dedupe key: `mid:<Message-ID, lower-case>` when the message has one, else
-   `raw:<SHA-256 of its bytes>`. `ON CONFLICT (mailbox_id, uid_validity, uid)
-   DO NOTHING` makes a second import of the same message (the same file twice,
+   `raw:<SHA-256 of its bytes>`. `ON CONFLICT DO NOTHING` (the
+   IMAP key and the user's Message-ID index) makes a second import of the same message (the same file twice,
    or a Takeout `.mbox` and an `.eml` of one message) a duplicate, counted and
-   not stored. The same message read by the poll is a separate row (different
-   `uid_validity`); that is the existing behaviour for a message present in two
-   folders and is accepted.
+   not stored. The same message read by the poll has another `uid_validity`
+   but the same Message-ID, so it is a duplicate too
+   (`uq_email_receipts_user_message_id`); a message without a Message-ID is
+   still a separate row.
 3. **One row builder.** A file's messages go through the same code as the
    poll's: `extractMailText`, `resolveForwardedIdentity`, `pickReceivedAt`, the
    same column bounds and the same `skipped` rows (`too_large` above the poll's

@@ -442,9 +442,8 @@ describe("ingestion (INV-RECEIPT-002)", () => {
     const insert = h.manager.query.mock.calls.find((c) =>
       String(c[0]).includes("INSERT INTO email_receipts"),
     ) as [string, unknown[]];
-    expect(insert[0]).toContain(
-      "ON CONFLICT (mailbox_id, uid_validity, uid) DO NOTHING",
-    );
+    // no conflict target: the IMAP key and the Message-ID index both skip
+    expect(insert[0]).toContain("ON CONFLICT DO NOTHING");
     expect(insert[1]).toEqual([
       USER,
       MAILBOX,
@@ -461,6 +460,36 @@ describe("ingestion (INV-RECEIPT-002)", () => {
       null,
       "pending",
       null,
+    ]);
+  });
+
+  it("skips a message whose Message-ID is stored already and still advances the cursor past it", async () => {
+    const h = setup();
+    mockMailText(mail());
+    h.manager.query.mockImplementation(async (sql: string) => {
+      if (String(sql).includes("INSERT INTO email_receipts")) {
+        h.state.events.push("insert");
+        // ON CONFLICT DO NOTHING on uq_email_receipts_user_message_id
+        return [];
+      }
+      return [];
+    });
+    h.imap.fetchSince.mockResolvedValue(
+      fetched({ messages: [message("41")], highestUid: "41" }),
+    );
+
+    const outcome = await poll(h);
+
+    expect(outcome).toMatchObject({ ok: true, fetched: 0, skipped: 0 });
+    expect(h.mailbox.advanceCursor).toHaveBeenCalledWith(USER, MAILBOX, {
+      uidValidity: "77",
+      lastUid: "41",
+    });
+    expect(h.state.events.slice(0, 4)).toEqual([
+      "begin",
+      "insert",
+      "cursor(in tx)",
+      "commit",
     ]);
   });
 

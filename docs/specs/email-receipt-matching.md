@@ -71,6 +71,31 @@ believed and is dropped. The manual transaction picker uses the same date as
 its default range and its From / To fields are editable; linking by hand or
 by request accepts a transaction of any date.
 
+`received_at` is chosen once, at ingestion, by `pickReceivedAt`
+(`poll/receipt-rows.ts`), for the poll and the archive import alike: the `Date`
+header when it parses and is not more than one day after the time of ingestion,
+else the IMAP `INTERNALDATE` (for an imported file, the mbox separator date),
+else the time of ingestion. It is the arrival time that the receipt list sorts
+on and that the match window falls back to; it is not recomputed on reprocess.
+
+**Message-ID is the identity of a stored email.** A user holds one row per
+`Message-ID`, compared as `lower(btrim(message_id))`
+(`uq_email_receipts_user_message_id`, partial on a non-empty value). The insert
+uses `ON CONFLICT DO NOTHING`, so a message already stored under another IMAP
+identity (a folder change, a cursor reset, a UIDVALIDITY change, an archive
+import) is counted as a duplicate; the poll still advances its cursor past it.
+A message without a `Message-ID` is identified by its IMAP key only, and there
+is no fuzzy fallback on sender, subject, total or time: two identical orders on
+one evening are two emails. The value is stored trimmed with its case kept.
+The migration `20261018210000_email_receipt_message_id_unique.sql` resolved the
+copies that existed: it kept the copy that holds something (a transaction, an
+investment transaction, a link row or an applied request), else the oldest; an
+empty copy became `ignored` with `status_reason` `duplicate` and its open
+requests were closed with `close_reason` `duplicate`; a copy that holds
+something lost only its `message_id`. Nothing was deleted. `email_receipts` is
+not part of a backup (`INTENTIONALLY_EXCLUDED_TABLES`), so a restore never
+re-inserts copies.
+
 Signals per candidate:
 
 - **O**: the parsed order id (at least 4 characters) appears, case-insensitive,
