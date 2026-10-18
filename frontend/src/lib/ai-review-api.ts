@@ -1,5 +1,11 @@
 import apiClient from './api';
-import type { AiReviewApproveBatchResult, AiReviewFilter, AiReviewItem } from '@/types/ai-review';
+import type {
+  AiReviewApproveBatchResult,
+  AiReviewFilter,
+  AiReviewItem,
+  AiReviewReopenBatchInput,
+  AiReviewReopenResult,
+} from '@/types/ai-review';
 
 /**
  * The review inbox. Deliberately uncached: the queue changes under the page
@@ -25,6 +31,19 @@ export const aiReviewApi = {
    */
   approveBatch: async (ids: readonly string[]): Promise<AiReviewApproveBatchResult> => {
     const response = await apiClient.post<AiReviewApproveBatchResult>('/ai-review-requests/approve-batch', { ids });
+    return response.data;
+  },
+
+  /** Send one closed request to AI review again. A refusal is a 404 (not found) or 409. */
+  reopen: async (id: string): Promise<AiReviewReopenResult> => {
+    const response = await apiClient.post<AiReviewReopenResult>(`/ai-review-requests/${id}/reopen`);
+    return response.data;
+  },
+
+  /** Send closed requests again: up to 500 ids, or the preset for every request the AI provider did not answer. One outcome per request. */
+  reopenBatch: async (input: AiReviewReopenBatchInput): Promise<AiReviewReopenResult> => {
+    const body = 'preset' in input ? { preset: input.preset } : { ids: input.ids };
+    const response = await apiClient.post<AiReviewReopenResult>('/ai-review-requests/reopen-batch', body);
     return response.data;
   },
 

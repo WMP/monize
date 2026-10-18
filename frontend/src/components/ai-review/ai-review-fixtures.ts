@@ -29,6 +29,11 @@ export function makeReviewItem(overrides: Partial<AiReviewItem> = {}): AiReviewI
       categoryName: null,
       isSplit: false,
     },
+    attempts: 0,
+    lastError: null,
+    lastAttemptAt: null,
+    needsAgent: false,
+    closeReason: null,
     ...overrides,
   };
 }

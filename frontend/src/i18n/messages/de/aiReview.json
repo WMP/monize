@@ -58,10 +58,27 @@
     "parserDraftReady": "Profil-Entwurf bereit. <link>Teste und gib ihn in den Profil-Einstellungen frei</link>.",
     "tradePending": "Ein Trade aus einer E-Mail, noch nicht gelesen",
     "tradeEmail": "E-Mail mit Handelsbestätigung",
-    "parserDraftIds": "IDs der Profil-Entwürfe: {ids}"
+    "parserDraftIds": "IDs der Profil-Entwürfe: {ids}",
+    "needsAgent": "Needs an agent",
+    "needsAgentHelp": "The automatic step gave up after {count, plural, one {# attempt} other {# attempts}}. An AI agent (MCP) or the chat can still take this request.",
+    "attemptFailed": "Attempt {count} failed: {error}",
+    "closeReason": "Closed: {reason}",
+    "closeReasonUnknown": "Closed, reason not recorded",
+    "closeReasons": {
+      "superseded": "the email was read again",
+      "dismissed": "dismissed",
+      "cannot_be_done": "an agent said it cannot be done",
+      "receipt_ignored": "the email was ignored",
+      "receipt_deleted": "the email was deleted",
+      "mailbox_deleted": "the mailbox was deleted",
+      "duplicate": "duplicate email",
+      "parser_draft_superseded": "a newer profile draft replaced it",
+      "parser_deleted": "the parser was deleted"
+    }
   },
   "actions": {
-    "dismiss": "Verwerfen"
+    "dismiss": "Verwerfen",
+    "sendAgain": "Send again to AI review"
   },
   "proposal": {
     "errorTitle": "Dieser Vorschlag kann nicht mehr angewendet werden"
@@ -113,6 +130,32 @@
     "dismissed": "Anfrage verworfen",
     "dismissFailed": "Die Anfrage konnte nicht verworfen werden",
     "approveFailed": "Der Vorschlag konnte nicht angewendet werden",
-    "changed": "Diese Anfrage hat sich inzwischen geändert. Die Liste wurde neu geladen."
+    "changed": "Diese Anfrage hat sich inzwischen geändert. Die Liste wurde neu geladen.",
+    "reopened": "Request sent again",
+    "reopenFailed": "Could not send the request again"
+  },
+  "reopen": {
+    "selected": "Send again ({count})",
+    "providerTimeout": "Send again every request the AI provider did not answer",
+    "selectAll": "Select all closed requests shown that can be sent again",
+    "dialog": {
+      "title": "{count, plural, one {Send # request again?} other {Send # requests again?}}",
+      "message": "Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
+      "confirm": "{count, plural, one {Send # request again} other {Send # requests again}}"
+    },
+    "providerDialog": {
+      "title": "Send again every request the AI provider did not answer?",
+      "message": "Every closed request that ended because the AI provider did not answer is sent to AI review again. Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
+      "confirm": "Send again"
+    },
+    "summary": "{reopened, plural, one {# request} other {# requests}} sent again, {refused, plural, one {# request} other {# requests}} refused.",
+    "outcomes": {
+      "not_found": "Not found: {count}",
+      "not_closed": "Not closed: {count}",
+      "kind_not_reopenable": "This kind cannot be sent again: {count}",
+      "open_exists": "Another open request exists for the same item: {count}",
+      "superseded": "The email no longer points at this request: {count}"
+    },
+    "failed": "Could not send the requests again"
   }
 }

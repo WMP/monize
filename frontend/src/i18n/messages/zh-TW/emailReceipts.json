@@ -990,6 +990,7 @@
       "skip_line": "發現了此解析器要略過的行，因此該郵件已被忽略。",
       "wait_line": "有一行表示訂單尚未最終確定，因此稍後會再次讀取該郵件。",
       "profile_ignore": "這封郵件的解析器會忽略每封相符的郵件。",
+      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
       "no_html": "此解析器讀取郵件的 HTML 部分，而這封郵件沒有 HTML。",
       "schema_org": "無需解析器：訂單是從郵件中的結構化資料（schema.org）讀取的。",
       "item_amount_missing": "某個明細沒有金額，而郵件中也沒有可分配給它的單一合計。",

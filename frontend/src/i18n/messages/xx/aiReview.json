@@ -58,10 +58,27 @@
     "parserDraftReady": "[XX-Draft profile ready. <link>Test and approve it in the profile settings</link>.-XX]",
     "tradePending": "[XX-A trade from an email, not read yet-XX]",
     "tradeEmail": "[XX-Trade confirmation email-XX]",
-    "parserDraftIds": "[XX-Draft profile IDs: {ids}-XX]"
+    "parserDraftIds": "[XX-Draft profile IDs: {ids}-XX]",
+    "needsAgent": "[XX-Needs an agent-XX]",
+    "needsAgentHelp": "[XX-The automatic step gave up after {count, plural, one {# attempt} other {# attempts}}. An AI agent (MCP) or the chat can still take this request.-XX]",
+    "attemptFailed": "[XX-Attempt {count} failed: {error}-XX]",
+    "closeReason": "[XX-Closed: {reason}-XX]",
+    "closeReasonUnknown": "[XX-Closed, reason not recorded-XX]",
+    "closeReasons": {
+      "superseded": "[XX-the email was read again-XX]",
+      "dismissed": "[XX-dismissed-XX]",
+      "cannot_be_done": "[XX-an agent said it cannot be done-XX]",
+      "receipt_ignored": "[XX-the email was ignored-XX]",
+      "receipt_deleted": "[XX-the email was deleted-XX]",
+      "mailbox_deleted": "[XX-the mailbox was deleted-XX]",
+      "duplicate": "[XX-duplicate email-XX]",
+      "parser_draft_superseded": "[XX-a newer profile draft replaced it-XX]",
+      "parser_deleted": "[XX-the parser was deleted-XX]"
+    }
   },
   "actions": {
-    "dismiss": "[XX-Dismiss-XX]"
+    "dismiss": "[XX-Dismiss-XX]",
+    "sendAgain": "[XX-Send again to AI review-XX]"
   },
   "proposal": {
     "errorTitle": "[XX-This proposal can no longer be applied-XX]"
@@ -113,6 +130,32 @@
     "dismissed": "[XX-Request dismissed-XX]",
     "dismissFailed": "[XX-Could not dismiss the request-XX]",
     "approveFailed": "[XX-Could not apply the proposal-XX]",
-    "changed": "[XX-This request changed in the meantime. The list was reloaded.-XX]"
+    "changed": "[XX-This request changed in the meantime. The list was reloaded.-XX]",
+    "reopened": "[XX-Request sent again-XX]",
+    "reopenFailed": "[XX-Could not send the request again-XX]"
+  },
+  "reopen": {
+    "selected": "[XX-Send again ({count})-XX]",
+    "providerTimeout": "[XX-Send again every request the AI provider did not answer-XX]",
+    "selectAll": "[XX-Select all closed requests shown that can be sent again-XX]",
+    "dialog": {
+      "title": "[XX-{count, plural, one {Send # request again?} other {Send # requests again?}}-XX]",
+      "message": "[XX-Each request is checked on its own. A request that cannot be opened again is skipped and reported.-XX]",
+      "confirm": "[XX-{count, plural, one {Send # request again} other {Send # requests again}}-XX]"
+    },
+    "providerDialog": {
+      "title": "[XX-Send again every request the AI provider did not answer?-XX]",
+      "message": "[XX-Every closed request that ended because the AI provider did not answer is sent to AI review again. Each request is checked on its own. A request that cannot be opened again is skipped and reported.-XX]",
+      "confirm": "[XX-Send again-XX]"
+    },
+    "summary": "[XX-{reopened, plural, one {# request} other {# requests}} sent again, {refused, plural, one {# request} other {# requests}} refused.-XX]",
+    "outcomes": {
+      "not_found": "[XX-Not found: {count}-XX]",
+      "not_closed": "[XX-Not closed: {count}-XX]",
+      "kind_not_reopenable": "[XX-This kind cannot be sent again: {count}-XX]",
+      "open_exists": "[XX-Another open request exists for the same item: {count}-XX]",
+      "superseded": "[XX-The email no longer points at this request: {count}-XX]"
+    },
+    "failed": "[XX-Could not send the requests again-XX]"
   }
 }

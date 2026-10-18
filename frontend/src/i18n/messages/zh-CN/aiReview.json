@@ -58,10 +58,27 @@
     "parserDraftReady": "配置文件草稿已准备就绪。<link>在配置文件设置中测试并批准它</link>。",
     "tradePending": "来自邮件的交易，尚未读取",
     "tradeEmail": "交易确认邮件",
-    "parserDraftIds": "配置文件草稿 ID：{ids}"
+    "parserDraftIds": "配置文件草稿 ID：{ids}",
+    "needsAgent": "Needs an agent",
+    "needsAgentHelp": "The automatic step gave up after {count, plural, one {# attempt} other {# attempts}}. An AI agent (MCP) or the chat can still take this request.",
+    "attemptFailed": "Attempt {count} failed: {error}",
+    "closeReason": "Closed: {reason}",
+    "closeReasonUnknown": "Closed, reason not recorded",
+    "closeReasons": {
+      "superseded": "the email was read again",
+      "dismissed": "dismissed",
+      "cannot_be_done": "an agent said it cannot be done",
+      "receipt_ignored": "the email was ignored",
+      "receipt_deleted": "the email was deleted",
+      "mailbox_deleted": "the mailbox was deleted",
+      "duplicate": "duplicate email",
+      "parser_draft_superseded": "a newer profile draft replaced it",
+      "parser_deleted": "the parser was deleted"
+    }
   },
   "actions": {
-    "dismiss": "忽略"
+    "dismiss": "忽略",
+    "sendAgain": "Send again to AI review"
   },
   "proposal": {
     "errorTitle": "此提议已无法应用"
@@ -113,6 +130,32 @@
     "dismissed": "请求已忽略",
     "dismissFailed": "无法忽略该请求",
     "approveFailed": "无法应用该提议",
-    "changed": "此请求在此期间已发生变化。列表已重新加载。"
+    "changed": "此请求在此期间已发生变化。列表已重新加载。",
+    "reopened": "Request sent again",
+    "reopenFailed": "Could not send the request again"
+  },
+  "reopen": {
+    "selected": "Send again ({count})",
+    "providerTimeout": "Send again every request the AI provider did not answer",
+    "selectAll": "Select all closed requests shown that can be sent again",
+    "dialog": {
+      "title": "{count, plural, one {Send # request again?} other {Send # requests again?}}",
+      "message": "Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
+      "confirm": "{count, plural, one {Send # request again} other {Send # requests again}}"
+    },
+    "providerDialog": {
+      "title": "Send again every request the AI provider did not answer?",
+      "message": "Every closed request that ended because the AI provider did not answer is sent to AI review again. Each request is checked on its own. A request that cannot be opened again is skipped and reported.",
+      "confirm": "Send again"
+    },
+    "summary": "{reopened, plural, one {# request} other {# requests}} sent again, {refused, plural, one {# request} other {# requests}} refused.",
+    "outcomes": {
+      "not_found": "Not found: {count}",
+      "not_closed": "Not closed: {count}",
+      "kind_not_reopenable": "This kind cannot be sent again: {count}",
+      "open_exists": "Another open request exists for the same item: {count}",
+      "superseded": "The email no longer points at this request: {count}"
+    },
+    "failed": "Could not send the requests again"
   }
 }

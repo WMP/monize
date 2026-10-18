@@ -990,6 +990,7 @@
       "skip_line": "[XX-A line this profile skips on was found, so the email was ignored.-XX]",
       "wait_line": "[XX-A line says the order is not final yet, so the email will be read again later.-XX]",
       "profile_ignore": "[XX-This email's profile ignores every email it matches.-XX]",
+      "duplicate": "[XX-This email is a copy of one already stored (same Message-ID), so it was ignored.-XX]",
       "no_html": "[XX-This profile reads the HTML part of the email, and this email has none.-XX]",
       "schema_org": "[XX-No profile was needed: the order was read from the structured data (schema.org) in the email.-XX]",
       "item_amount_missing": "[XX-An item has no amount, and the email has no single total to give it.-XX]",

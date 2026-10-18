@@ -28,6 +28,13 @@ import {
 const FILTERS: readonly AiReviewFilter[] = ['open', ...AI_REVIEW_STATUSES];
 
 /**
+ * The views that list closed requests (an expired request shows under "open" too).
+ * The status filter is the way to view them: the list API takes one status, and
+ * Rejected and Expired already are filters, so no combined "Closed" view is added.
+ */
+const PRESET_FILTERS: readonly AiReviewFilter[] = ['open', 'rejected', 'expired'];
+
+/**
  * The review inbox: the requests rules (and, later, the user) have queued for
  * an AI, filtered by status. `items === null` is loading or failed, never an
  * empty list; only a loaded, empty answer shows the explanation.
@@ -47,12 +54,20 @@ export function AiReviewInbox() {
     selected,
     sendable,
     selectedSendable,
+    reopenable,
+    selectedReopenable,
     toggleSelected,
     clearSelection,
     batching,
     summary,
     clearSummary,
     approveBatch,
+    reopening,
+    reopeningIds,
+    reopenSummary,
+    clearReopenSummary,
+    reopen,
+    reopenBatch,
     items,
     loadFailed,
     retry,
@@ -63,6 +78,8 @@ export function AiReviewInbox() {
   } = useAiReviewInbox(parseKindFilter(searchParams.get('kind')));
   const [dismissTarget, setDismissTarget] = useState<AiReviewItem | null>(null);
   const [bulkTarget, setBulkTarget] = useState<readonly AiReviewItem[] | null>(null);
+  const [reopenTarget, setReopenTarget] = useState<readonly AiReviewItem[] | null>(null);
+  const [presetOpen, setPresetOpen] = useState(false);
 
   // The kind filter lives in the URL (?kind=) so a link, a reload and the back button keep it.
   const chooseKind = (next: AiReviewKindFilter) => {
@@ -80,9 +97,20 @@ export function AiReviewInbox() {
     if (target) void approveBatch(target);
   };
 
-  // One column of checkboxes serves both bulk actions: approving proposals and sending pending requests.
-  const checkable = [...approvable, ...sendable];
-  const checked = [...selected, ...selectedSendable];
+  const confirmReopen = () => {
+    const target = reopenTarget;
+    setReopenTarget(null);
+    if (target) void reopenBatch({ ids: target.map((item) => item.id) });
+  };
+
+  const confirmPreset = () => {
+    setPresetOpen(false);
+    void reopenBatch({ preset: 'provider_timeout' });
+  };
+
+  // One column of checkboxes serves every bulk action: approving proposals, sending pending requests, sending closed ones again.
+  const checkable = [...approvable, ...sendable, ...reopenable];
+  const checked = [...selected, ...selectedSendable, ...selectedReopenable];
   const allSelected = checkable.length > 0 && checked.length === checkable.length;
   const toggleAll = () => {
     if (allSelected) clearSelection();
@@ -160,6 +188,8 @@ export function AiReviewInbox() {
                 onToggleSelected={(row) => toggleSelected(row.id)}
                 onApprove={approve}
                 onDismiss={setDismissTarget}
+                onReopen={(row) => void reopen(row)}
+                reopening={reopening || reopeningIds.has(item.id)}
               />
             ))}
           </tbody>
@@ -197,7 +227,12 @@ export function AiReviewInbox() {
             </button>
           ))}
         </div>
-        <div className="sm:ml-auto">
+        <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+          {PRESET_FILTERS.includes(filter) && (
+            <Button variant="outline" size="sm" onClick={() => setPresetOpen(true)} disabled={reopening}>
+              {t('reopen.providerTimeout')}
+            </Button>
+          )}
           <SendPendingToAssistantButton pending={sendable} selected={selectedSendable} />
         </div>
       </div>
@@ -214,6 +249,51 @@ export function AiReviewInbox() {
           <Button variant="outline" size="sm" onClick={() => setBulkTarget(approvable)} disabled={batching}>
             {t('bulk.approveAllShown', { count: approvable.length })}
           </Button>
+        </div>
+      )}
+      {reopenable.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => setReopenTarget(selectedReopenable)}
+            disabled={selectedReopenable.length === 0 || reopening}
+            isLoading={reopening}
+          >
+            {t('reopen.selected', { count: selectedReopenable.length })}
+          </Button>
+        </div>
+      )}
+      {reopenSummary && (
+        <div
+          role="status"
+          className={`rounded-lg border px-3 py-2 ${
+            reopenSummary.refused > 0
+              ? 'border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-900/20'
+              : 'border-green-200 bg-green-50 dark:border-green-900/60 dark:bg-green-900/20'
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {t('reopen.summary', {
+                reopened: reopenSummary.reopened,
+                refused: reopenSummary.refused,
+              })}
+            </p>
+            <Button variant="outline" size="sm" onClick={clearReopenSummary}>
+              {t('bulk.closeSummary')}
+            </Button>
+          </div>
+          {reopenSummary.refusals.length > 0 && (
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-700 dark:text-gray-300">
+              {reopenSummary.refusals.map((refusal) => (
+                <li key={refusal.outcome}>
+                  {t(`reopen.outcomes.${refusal.outcome}`, {
+                    count: refusal.count,
+                  })}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
       {summary && (
@@ -251,6 +331,26 @@ export function AiReviewInbox() {
         variant="warning"
         onConfirm={confirmBulk}
         onCancel={() => setBulkTarget(null)}
+      />
+      <ConfirmDialog
+        isOpen={reopenTarget !== null}
+        title={t('reopen.dialog.title', { count: reopenTarget?.length ?? 0 })}
+        message={t('reopen.dialog.message')}
+        confirmLabel={t('reopen.dialog.confirm', {
+          count: reopenTarget?.length ?? 0,
+        })}
+        variant="warning"
+        onConfirm={confirmReopen}
+        onCancel={() => setReopenTarget(null)}
+      />
+      <ConfirmDialog
+        isOpen={presetOpen}
+        title={t('reopen.providerDialog.title')}
+        message={t('reopen.providerDialog.message')}
+        confirmLabel={t('reopen.providerDialog.confirm')}
+        variant="warning"
+        onConfirm={confirmPreset}
+        onCancel={() => setPresetOpen(false)}
       />
       <ConfirmDialog
         isOpen={dismissTarget !== null}

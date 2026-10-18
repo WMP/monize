@@ -990,6 +990,7 @@
       "skip_line": "发现了此解析器要跳过的行，因此该邮件已被忽略。",
       "wait_line": "有一行表明订单尚未最终确定，因此稍后会再次读取该邮件。",
       "profile_ignore": "这封邮件的解析器会忽略每封匹配的邮件。",
+      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
       "no_html": "此解析器读取邮件的 HTML 部分，而这封邮件没有 HTML。",
       "schema_org": "无需解析器：订单是从邮件中的结构化数据（schema.org）读取的。",
       "item_amount_missing": "某个明细没有金额，而邮件中也没有可分配给它的单一合计。",

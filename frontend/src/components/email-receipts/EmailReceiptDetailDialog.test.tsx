@@ -277,6 +277,14 @@ describe('EmailReceiptDetailDialog', () => {
       await renderDialog();
       expect(screen.getByText('This profile reads the HTML part of the email, and this email has none.')).toBeInTheDocument();
     });
+
+    it('explains an email ignored as a copy of one already stored', async () => {
+      api.get.mockResolvedValue(makeDetail({ status: 'ignored', statusReason: 'duplicate' }));
+      await renderDialog();
+      expect(
+        screen.getByText('This email is a copy of one already stored (same Message-ID), so it was ignored.'),
+      ).toBeInTheDocument();
+    });
   });
 
   describe('a forwarded email', () => {

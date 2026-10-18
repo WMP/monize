@@ -5,12 +5,21 @@ import { useTranslations } from 'next-intl';
 import { TransactionConfirmationCard } from '@/components/ai/TransactionConfirmationCard';
 import { Badge, type BadgeVariant } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { Td } from '@/components/ui/Table';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import type { ProposalCardState } from '@/hooks/useAiReviewInbox';
 import type { PendingAction } from '@/types/ai';
-import { draftParserIds, isApprovable, isSendableToAssistant, reviewItemLabel, type AiReviewItem, type AiReviewStatus } from '@/types/ai-review';
+import {
+  draftParserIds,
+  isApprovable,
+  isReopenable,
+  isSendableToAssistant,
+  reviewItemLabel,
+  type AiReviewItem,
+  type AiReviewStatus,
+} from '@/types/ai-review';
 
 /** Requests still open: the person may dismiss them. */
 const DISMISSIBLE: readonly AiReviewStatus[] = ['pending', 'claimed', 'proposed'];
@@ -37,6 +46,9 @@ export interface AiReviewRowProps {
   onToggleSelected?: (item: AiReviewItem) => void;
   onApprove: (item: AiReviewItem, action: Omit<PendingAction, 'status'>) => void;
   onDismiss: (item: AiReviewItem) => void;
+  /** Send a closed request to AI review again; a row without it offers no such action. */
+  onReopen?: (item: AiReviewItem) => void;
+  reopening?: boolean;
 }
 
 /**
@@ -59,6 +71,8 @@ export function AiReviewRow({
   onToggleSelected,
   onApprove,
   onDismiss,
+  onReopen,
+  reopening = false,
 }: AiReviewRowProps) {
   const t = useTranslations('aiReview');
   const { formatDate } = useDateFormat();
@@ -81,7 +95,7 @@ export function AiReviewRow({
       <tr>
         {selectable && (
           <Td className={`${CELL} w-10`}>
-            {(isApprovable(item) || isSendableToAssistant(item)) && (
+            {(isApprovable(item) || isSendableToAssistant(item) || isReopenable(item)) && (
               <input
                 type="checkbox"
                 checked={selected}
@@ -179,6 +193,24 @@ export function AiReviewRow({
               {t('row.agentNote', { reason: item.agentNote.reason })}
             </p>
           )}
+          {item.status === 'pending' && item.attempts > 0 && item.lastError && (
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {t('row.attemptFailed', {
+                count: item.attempts,
+                error: item.lastError,
+              })}
+            </p>
+          )}
+          {/* An expired request ran out of time; only a rejected one is "closed for a reason", unknown for rows closed before it was kept. */}
+          {(item.status === 'rejected' || (item.status === 'expired' && item.closeReason)) && (
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {item.closeReason
+                ? t('row.closeReason', {
+                    reason: t(`row.closeReasons.${item.closeReason}`),
+                  })
+                : t('row.closeReasonUnknown')}
+            </p>
+          )}
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             {t('row.dates', { created: formatDate(new Date(item.createdAt)), expires: formatDate(new Date(item.expiresAt)) })}
           </p>
@@ -190,6 +222,11 @@ export function AiReviewRow({
               >
                 {t('row.viewTransaction')}
               </Link>
+            )}
+            {isReopenable(item) && onReopen && (
+              <Button variant="outline" size="sm" onClick={() => onReopen(item)} disabled={reopening}>
+                {t('actions.sendAgain')}
+              </Button>
             )}
             {canDismiss && (
               <Button variant="outline" size="sm" onClick={() => onDismiss(item)} disabled={dismissing}>
@@ -208,7 +245,15 @@ export function AiReviewRow({
               : ''}
         </Td>
         <Td className={CELL}>
-          <Badge variant={STATUS_VARIANT[item.status]}>{t(`status.${item.status}`)}</Badge>
+          <div className="flex flex-wrap items-center gap-1">
+            <Badge variant={STATUS_VARIANT[item.status]}>{t(`status.${item.status}`)}</Badge>
+            {item.status === 'pending' && item.needsAgent && (
+              <>
+                <Badge variant="amber">{t('row.needsAgent')}</Badge>
+                <InfoTooltip text={t('row.needsAgentHelp', { count: item.attempts })} align="right" />
+              </>
+            )}
+          </div>
         </Td>
       </tr>
       {(showCard || proposalError !== null) && (

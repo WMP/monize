@@ -990,6 +990,7 @@
       "skip_line": "Foi encontrada uma linha que faz este analisador ignorar o e-mail, então ele foi ignorado.",
       "wait_line": "Uma linha indica que o pedido ainda não é definitivo, então o e-mail será lido de novo mais tarde.",
       "profile_ignore": "O analisador deste e-mail ignora cada e-mail correspondente.",
+      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
       "no_html": "Este analisador lê a parte HTML do e-mail e este e-mail não tem nenhuma.",
       "schema_org": "Nenhum analisador foi necessário: o pedido foi lido a partir dos dados estruturados (schema.org) do e-mail.",
       "item_amount_missing": "Um item não tem valor, e o e-mail não tem um total único para atribuir a ele.",

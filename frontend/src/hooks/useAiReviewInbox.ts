@@ -13,12 +13,17 @@ import { createLogger } from '@/lib/logger';
 import type { PendingAction } from '@/types/ai';
 import {
   AI_REVIEW_APPROVE_BATCH_MAX,
+  AI_REVIEW_REOPEN_BATCH_MAX,
+  AI_REVIEW_REOPEN_OUTCOMES,
   isApprovable,
+  isReopenable,
   isSendableToAssistant,
   type AiReviewApproveBatchItemResult,
   type AiReviewFilter,
   type AiReviewItem,
   type AiReviewKindFilter,
+  type AiReviewReopenBatchInput,
+  type AiReviewReopenOutcome,
 } from '@/types/ai-review';
 
 const logger = createLogger('AiReviewInbox');
@@ -36,6 +41,17 @@ export interface BatchSummary {
   failed: number;
   /** The requests that were not approved, with the reason each gave. */
   failures: AiReviewApproveBatchItemResult[];
+}
+
+/** What sending closed requests again did: how many reopened and how many were refused, by outcome. */
+export interface ReopenSummary {
+  reopened: number;
+  refused: number;
+  /** Refusals grouped by outcome, in the order the server's outcomes list them; never holds `reopened`. */
+  refusals: {
+    outcome: Exclude<AiReviewReopenOutcome, 'reopened'>;
+    count: number;
+  }[];
 }
 
 const isConflict = (error: unknown) => error instanceof AxiosError && error.response?.status === 409;
@@ -60,6 +76,9 @@ export function useAiReviewInbox(initialKind: AiReviewKindFilter = 'all') {
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
   const [batching, setBatching] = useState(false);
   const [summary, setSummary] = useState<BatchSummary | null>(null);
+  const [reopening, setReopening] = useState(false);
+  const [reopenSummary, setReopenSummary] = useState<ReopenSummary | null>(null);
+  const [reopeningIds, setReopeningIds] = useState<ReadonlySet<string>>(new Set());
   const [items, setItems] = useState<AiReviewItem[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [cards, setCards] = useState<Record<string, ProposalCardState>>({});
@@ -94,6 +113,7 @@ export function useAiReviewInbox(initialKind: AiReviewKindFilter = 'all') {
     setLoadFailed(false);
     setCards({});
     setSelectedIds(new Set());
+    setReopenSummary(null);
     setFilterState(next);
   };
 
@@ -112,6 +132,9 @@ export function useAiReviewInbox(initialKind: AiReviewKindFilter = 'all') {
   // Pending rows share the selection: their checkboxes pick what goes to the assistant.
   const sendable = (shownItems ?? []).filter(isSendableToAssistant);
   const selectedSendable = sendable.filter((item) => selectedIds.has(item.id));
+  // Closed rows share the selection too: their checkboxes pick what is sent to AI review again.
+  const reopenable = (shownItems ?? []).filter(isReopenable);
+  const selectedReopenable = reopenable.filter((item) => selectedIds.has(item.id));
 
   const toggleSelected = (id: string) =>
     setSelectedIds((previous) => {
@@ -208,6 +231,74 @@ export function useAiReviewInbox(initialKind: AiReviewKindFilter = 'all') {
     }
   };
 
+  /** Groups the per-request outcomes of a re-open into the counts the summary shows. */
+  const summarizeReopen = (outcomes: readonly AiReviewReopenOutcome[]): ReopenSummary => {
+    const reopened = outcomes.filter((outcome) => outcome === 'reopened').length;
+    const refusals = AI_REVIEW_REOPEN_OUTCOMES.flatMap((outcome) => {
+      if (outcome === 'reopened') return [];
+      const count = outcomes.filter((candidate) => candidate === outcome).length;
+      return count > 0 ? [{ outcome, count }] : [];
+    });
+    return { reopened, refused: outcomes.length - reopened, refusals };
+  };
+
+  /**
+   * Send closed requests to AI review again: the chosen ids (at most 500 a call,
+   * so a longer list goes in chunks, in order) or the preset for every request the
+   * provider did not answer. The server judges each request; the list is read again
+   * whatever happened, because some of it changed.
+   */
+  const reopenBatch = async (input: AiReviewReopenBatchInput) => {
+    if (reopening) return;
+    setReopening(true);
+    setReopenSummary(null);
+    const outcomes: AiReviewReopenOutcome[] = [];
+    try {
+      if ('preset' in input) {
+        const answer = await aiReviewApi.reopenBatch(input);
+        outcomes.push(...answer.results.map((result) => result.outcome));
+      } else {
+        for (let at = 0; at < input.ids.length; at += AI_REVIEW_REOPEN_BATCH_MAX) {
+          const answer = await aiReviewApi.reopenBatch({
+            ids: input.ids.slice(at, at + AI_REVIEW_REOPEN_BATCH_MAX),
+          });
+          outcomes.push(...answer.results.map((result) => result.outcome));
+        }
+      }
+    } catch (error) {
+      logger.error(error);
+      toast.error(getErrorMessage(error, t('reopen.failed')));
+    } finally {
+      if (outcomes.length > 0) setReopenSummary(summarizeReopen(outcomes));
+      setSelectedIds(new Set());
+      await load();
+      setReopening(false);
+    }
+  };
+
+  /** Send one closed request again. A 404 or 409 is the server's refusal, with its own reason. */
+  const reopen = async (item: AiReviewItem) => {
+    setReopeningIds((prev) => new Set(prev).add(item.id));
+    try {
+      await aiReviewApi.reopen(item.id);
+      toast.success(t('toasts.reopened'));
+      await load();
+    } catch (error) {
+      if (isConflict(error) || (error instanceof AxiosError && error.response?.status === 404)) {
+        await reloadAfterConflict(getErrorMessage(error, t('toasts.changed')));
+      } else {
+        toast.error(getErrorMessage(error, t('toasts.reopenFailed')));
+        logger.error(error);
+      }
+    } finally {
+      setReopeningIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
+  };
+
   const dismiss = async (item: AiReviewItem) => {
     setDismissing((prev) => new Set(prev).add(item.id));
     try {
@@ -241,12 +332,20 @@ export function useAiReviewInbox(initialKind: AiReviewKindFilter = 'all') {
     selected,
     sendable,
     selectedSendable,
+    reopenable,
+    selectedReopenable,
     toggleSelected,
     clearSelection,
     batching,
     summary,
     clearSummary: () => setSummary(null),
     approveBatch,
+    reopening,
+    reopeningIds,
+    reopenSummary,
+    clearReopenSummary: () => setReopenSummary(null),
+    reopen,
+    reopenBatch,
     loadFailed,
     retry,
     cards,

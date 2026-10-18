@@ -123,6 +123,61 @@ export interface AiReviewItem {
   transaction: AiReviewTransactionSummary | null;
   agentNote?: { reason: string; at: string };
   proposal?: AiReviewProposal;
+  /** Failed automatic attempts (the AI provider did not answer) since it was queued or last answered. */
+  attempts: number;
+  /** Server text of the last failed attempt; render as text. */
+  lastError: string | null;
+  /** ISO timestamp of the last failed attempt. */
+  lastAttemptAt: string | null;
+  /** True once the automatic step used up its attempts: only an agent or the chat takes it now. */
+  needsAgent: boolean;
+  /** Why a closed request was closed; null while open or when unknown (closed before the reason was kept). */
+  closeReason: AiReviewCloseReason | null;
+}
+
+/** Mirrors `AI_REVIEW_CLOSE_REASONS` in `backend/src/ai-review/ai-review-request.entity.ts`. */
+export const AI_REVIEW_CLOSE_REASONS = [
+  'superseded',
+  'dismissed',
+  'cannot_be_done',
+  'receipt_ignored',
+  'receipt_deleted',
+  'mailbox_deleted',
+  'duplicate',
+  'parser_draft_superseded',
+  'parser_deleted',
+] as const;
+export type AiReviewCloseReason = (typeof AI_REVIEW_CLOSE_REASONS)[number];
+
+/** Mirrors `AI_REVIEW_REOPEN_OUTCOMES` in `backend/src/ai-review/ai-review-retry.ts`. */
+export const AI_REVIEW_REOPEN_OUTCOMES = [
+  'reopened',
+  'not_found',
+  'not_closed',
+  'kind_not_reopenable',
+  'open_exists',
+  'superseded',
+] as const;
+export type AiReviewReopenOutcome = (typeof AI_REVIEW_REOPEN_OUTCOMES)[number];
+
+/** `POST /ai-review-requests/:id/reopen` and `/reopen-batch`. */
+export interface AiReviewReopenResult {
+  results: { id: string; outcome: AiReviewReopenOutcome }[];
+  reopened: number;
+}
+
+/** What a batch re-open names: these ids, or the preset "the AI provider did not answer". */
+export type AiReviewReopenBatchInput = { ids: readonly string[] } | { preset: 'provider_timeout' };
+
+/** Most ids one re-open call takes (the server's bound). */
+export const AI_REVIEW_REOPEN_BATCH_MAX = 500;
+
+/** Kinds of which a closed request can be sent again (`AI_REVIEW_REOPENABLE_KINDS`). */
+const REOPENABLE_KINDS: readonly AiReviewKind[] = ['transaction_review', 'email_receipt'];
+
+/** A closed (rejected or expired) request the person can send to AI review again. */
+export function isReopenable(item: AiReviewItem): boolean {
+  return (item.status === 'rejected' || item.status === 'expired') && REOPENABLE_KINDS.includes(item.kind);
 }
 
 /**

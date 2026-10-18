@@ -357,4 +357,61 @@ describe('AiReviewRow', () => {
       expect(screen.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument();
     });
   });
+
+  describe('retry and close state', () => {
+    it('badges a pending request that needs an agent and shows the last failed attempt as text', () => {
+      renderRow(
+        makeReviewItem({ needsAgent: true, attempts: 5, lastError: 'The AI provider did not answer. <b>x</b>', lastAttemptAt: '2026-10-18T10:00:00.000Z' }),
+      );
+      expect(screen.getByText('Needs an agent')).toBeInTheDocument();
+      expect(screen.getByLabelText(/gave up after 5 attempts/)).toBeInTheDocument();
+      expect(screen.getByText('Attempt 5 failed: The AI provider did not answer. <b>x</b>')).toBeInTheDocument();
+    });
+
+    it('shows no badge and no failure line for a request the automatic step has not failed on', () => {
+      renderRow(makeReviewItem());
+      expect(screen.queryByText('Needs an agent')).not.toBeInTheDocument();
+      expect(screen.queryByText(/Attempt \d+ failed/)).not.toBeInTheDocument();
+    });
+
+    it('says why a rejected request was closed and offers to send it again', () => {
+      const onReopen = vi.fn();
+      const item = makeReviewItem({ status: 'rejected', closeReason: 'superseded' });
+      render(
+        <table>
+          <tbody>
+            <AiReviewRow item={item} dismissing={false} onApprove={vi.fn()} onDismiss={vi.fn()} onReopen={onReopen} />
+          </tbody>
+        </table>,
+      );
+      expect(screen.getByText('Closed: the email was read again')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Send again to AI review' }));
+      expect(onReopen).toHaveBeenCalledWith(item);
+    });
+
+    it('says the reason is not recorded for a rejected request closed before it was kept', () => {
+      renderRow(makeReviewItem({ status: 'rejected', closeReason: null }));
+      expect(screen.getByText('Closed, reason not recorded')).toBeInTheDocument();
+    });
+
+    it('offers the action on an expired request but not on a parser draft or an open one', () => {
+      const onReopen = vi.fn();
+      const row = (item: AiReviewItem) => (
+        <table>
+          <tbody>
+            <AiReviewRow item={item} dismissing={false} onApprove={vi.fn()} onDismiss={vi.fn()} onReopen={onReopen} />
+          </tbody>
+        </table>
+      );
+      const { unmount } = render(row(makeReviewItem({ status: 'expired' })));
+      expect(screen.getByRole('button', { name: 'Send again to AI review' })).toBeInTheDocument();
+      expect(screen.queryByText(/Closed/)).not.toBeInTheDocument();
+      unmount();
+      const { unmount: again } = render(row(makeReviewItem({ status: 'rejected', kind: 'email_parser_draft' })));
+      expect(screen.queryByRole('button', { name: 'Send again to AI review' })).not.toBeInTheDocument();
+      again();
+      render(row(makeReviewItem({ status: 'pending' })));
+      expect(screen.queryByRole('button', { name: 'Send again to AI review' })).not.toBeInTheDocument();
+    });
+  });
 });

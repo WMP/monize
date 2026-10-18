@@ -990,6 +990,7 @@
       "skip_line": "È stata trovata una riga su cui questo profilo salta, quindi l'email è stata ignorata.",
       "wait_line": "Una riga indica che l'ordine non è ancora definitivo, quindi l'email verrà riletta più tardi.",
       "profile_ignore": "Il profilo di questa email ignora ogni email corrispondente.",
+      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
       "no_html": "Questo profilo legge la parte HTML dell'email e questa email non ne ha.",
       "schema_org": "Non serviva alcun profilo: l'ordine è stato letto dai dati strutturati (schema.org) dell'email.",
       "item_amount_missing": "Un articolo non ha un importo, e l'email non ha un totale unico da assegnargli.",

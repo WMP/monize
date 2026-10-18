@@ -6,7 +6,13 @@ import { AiReviewInbox } from './AiReviewInbox';
 import { makeReviewItem, makeTradeItem, PROPOSED_ACTION, TRADE_ACTION } from './ai-review-fixtures';
 import type { AiReviewItem } from '@/types/ai-review';
 
-const api = vi.hoisted(() => ({ list: vi.fn(), dismiss: vi.fn(), approveBatch: vi.fn() }));
+const api = vi.hoisted(() => ({
+  list: vi.fn(),
+  dismiss: vi.fn(),
+  approveBatch: vi.fn(),
+  reopen: vi.fn(),
+  reopenBatch: vi.fn(),
+}));
 const nav = vi.hoisted(() => ({ search: '', replace: vi.fn() }));
 const confirmAction = vi.hoisted(() => vi.fn());
 const clearAllCache = vi.hoisted(() => vi.fn());
@@ -431,6 +437,82 @@ describe('AiReviewInbox', () => {
       await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Apply 1 proposal' }));
       expect(toast.error).toHaveBeenCalled();
       expect(clearAllCache).not.toHaveBeenCalled();
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      expect(api.list).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('sending closed requests again', () => {
+    const closed = (id: string) => makeReviewItem({ id, status: 'rejected', closeReason: 'superseded' });
+
+    it('loads the closed view by status, one status at a time', async () => {
+      await renderInbox();
+      await click(screen.getByRole('button', { name: 'Rejected' }));
+      expect(api.list).toHaveBeenLastCalledWith('rejected');
+      await click(screen.getByRole('button', { name: 'Expired' }));
+      expect(api.list).toHaveBeenLastCalledWith('expired');
+    });
+
+    it('sends one request again and reloads the list', async () => {
+      api.list.mockResolvedValue([closed('c1')]);
+      api.reopen.mockResolvedValue({ results: [{ id: 'c1', outcome: 'reopened' }], reopened: 1 });
+      await renderInbox();
+      await click(screen.getByRole('button', { name: 'Send again to AI review' }));
+      expect(api.reopen).toHaveBeenCalledWith('c1');
+      expect(toast.success).toHaveBeenCalledWith('Request sent again');
+      expect(api.list).toHaveBeenCalledTimes(2);
+    });
+
+    it('shows the server\'s reason on a 409 and reloads', async () => {
+      api.list.mockResolvedValue([closed('c1')]);
+      api.reopen.mockRejectedValue(conflict());
+      await renderInbox();
+      await click(screen.getByRole('button', { name: 'Send again to AI review' }));
+      expect(toast.error).toHaveBeenCalledWith('no longer open');
+      expect(api.list).toHaveBeenCalledTimes(2);
+    });
+
+    it('sends the selected closed requests after one confirmation and groups the refusals', async () => {
+      api.list.mockResolvedValue([closed('c1'), closed('c2'), closed('c3')]);
+      api.reopenBatch.mockResolvedValue({
+        results: [
+          { id: 'c1', outcome: 'reopened' },
+          { id: 'c2', outcome: 'open_exists' },
+          { id: 'c3', outcome: 'open_exists' },
+        ],
+        reopened: 1,
+      });
+      await renderInbox();
+      expect(screen.getByRole('button', { name: 'Send again (0)' })).toBeDisabled();
+      await click(screen.getByRole('checkbox', { name: 'Select all requests shown that can be approved or sent' }));
+      await click(screen.getByRole('button', { name: 'Send again (3)' }));
+      expect(api.reopenBatch).not.toHaveBeenCalled();
+      await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Send 3 requests again' }));
+      expect(api.reopenBatch).toHaveBeenCalledWith({ ids: ['c1', 'c2', 'c3'] });
+      const status = screen.getByRole('status');
+      expect(status).toHaveTextContent('1 request sent again, 2 requests refused.');
+      expect(status).toHaveTextContent('Another open request exists for the same item: 2');
+      expect(api.list).toHaveBeenCalledTimes(2);
+    });
+
+    it('sends every request the provider did not answer through the preset, after a confirmation', async () => {
+      api.list.mockResolvedValue([closed('c1')]);
+      api.reopenBatch.mockResolvedValue({ results: [{ id: 'c1', outcome: 'reopened' }], reopened: 1 });
+      await renderInbox();
+      await click(screen.getByRole('button', { name: 'Send again every request the AI provider did not answer' }));
+      expect(api.reopenBatch).not.toHaveBeenCalled();
+      await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Send again' }));
+      expect(api.reopenBatch).toHaveBeenCalledWith({ preset: 'provider_timeout' });
+      expect(screen.getByRole('status')).toHaveTextContent('1 request sent again, 0 requests refused.');
+    });
+
+    it('names a failed batch call and still reloads the list', async () => {
+      api.list.mockResolvedValue([closed('c1')]);
+      api.reopenBatch.mockRejectedValue(new Error('server down'));
+      await renderInbox();
+      await click(screen.getByRole('button', { name: 'Send again every request the AI provider did not answer' }));
+      await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Send again' }));
+      expect(toast.error).toHaveBeenCalled();
       expect(screen.queryByRole('status')).not.toBeInTheDocument();
       expect(api.list).toHaveBeenCalledTimes(2);
     });

@@ -31,4 +31,19 @@ describe('aiReviewApi', () => {
     expect(await aiReviewApi.dismiss('r-1')).toEqual({ id: 'r-1', status: 'rejected' });
     expect(apiClient.post).toHaveBeenCalledWith('/ai-review-requests/r-1/dismiss');
   });
+
+  it('posts a re-open to the request', async () => {
+    const answer = { results: [{ id: 'r-1', outcome: 'reopened' }], reopened: 1 };
+    vi.mocked(apiClient.post).mockResolvedValue({ data: answer });
+    expect(await aiReviewApi.reopen('r-1')).toEqual(answer);
+    expect(apiClient.post).toHaveBeenCalledWith('/ai-review-requests/r-1/reopen');
+  });
+
+  it('re-opens a batch by ids or by the provider-timeout preset, never both', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { results: [], reopened: 0 } });
+    await aiReviewApi.reopenBatch({ ids: ['r-1', 'r-2'] });
+    expect(apiClient.post).toHaveBeenLastCalledWith('/ai-review-requests/reopen-batch', { ids: ['r-1', 'r-2'] });
+    await aiReviewApi.reopenBatch({ preset: 'provider_timeout' });
+    expect(apiClient.post).toHaveBeenLastCalledWith('/ai-review-requests/reopen-batch', { preset: 'provider_timeout' });
+  });
 });

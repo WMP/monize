@@ -990,6 +990,7 @@
       "skip_line": "Se encontró una línea en la que este perfil omite, así que el correo se ignoró.",
       "wait_line": "Una línea indica que el pedido todavía no es definitivo, así que el correo se leerá de nuevo más adelante.",
       "profile_ignore": "El perfil de este correo ignora cada correo que coincide.",
+      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
       "no_html": "Este perfil lee la parte HTML del correo, y este correo no la tiene.",
       "schema_org": "No hizo falta ningún perfil: el pedido se leyó de los datos estructurados (schema.org) del correo.",
       "item_amount_missing": "Un artículo no tiene importe y el correo no tiene un único total que asignarle.",

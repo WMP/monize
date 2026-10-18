@@ -990,6 +990,7 @@
       "skip_line": "Bu ayrıştırıcının atladığı bir satır bulundu, bu yüzden e-posta yok sayıldı.",
       "wait_line": "Bir satır siparişin henüz kesinleşmediğini söylüyor, bu yüzden e-posta daha sonra yeniden okunacak.",
       "profile_ignore": "Bu e-postanın ayrıştırıcısı eşleşen her e-postayı yok sayar.",
+      "duplicate": "This email is a copy of one already stored (same Message-ID), so it was ignored.",
       "no_html": "Bu ayrıştırıcı e-postanın HTML kısmını okur ve bu e-postada HTML yok.",
       "schema_org": "Ayrıştırıcıya gerek kalmadı: sipariş, e-postadaki yapılandırılmış verilerden (schema.org) okundu.",
       "item_amount_missing": "Bir kalemin tutarı yok ve e-postada ona verilecek tek bir toplam yok.",
