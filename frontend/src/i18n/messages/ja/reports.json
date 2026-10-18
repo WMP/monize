@@ -340,6 +340,7 @@
     "sharesExceedNote": "このキーの下で複数の値がタグ付けされた行は、それぞれの値としてカウントされるため、値ごとの割合の合計が100%を超えることがあります。",
     "valueLabel": "タグの値",
     "allValues": "すべての値",
+    "selectValue": "値を選択",
     "fundsIncome": "収入",
     "fundsTagged": "タグ付き振替：{value}",
     "fundsAvailable": "利用可能な資金",

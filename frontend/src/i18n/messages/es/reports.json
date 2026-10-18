@@ -340,6 +340,7 @@
     "sharesExceedNote": "Una fila etiquetada con más de un valor bajo esta clave cuenta para cada uno de ellos, por lo que los porcentajes por valor pueden sumar más del 100%.",
     "valueLabel": "Valor de etiqueta",
     "allValues": "Todos los valores",
+    "selectValue": "Selecciona un valor",
     "fundsIncome": "Ingresos",
     "fundsTagged": "Transferencias etiquetadas: {value}",
     "fundsAvailable": "Fondos disponibles",

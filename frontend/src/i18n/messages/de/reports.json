@@ -340,6 +340,7 @@
     "sharesExceedNote": "Eine Zeile, die unter diesem Schlüssel mit mehr als einem Wert getaggt ist, zählt für jeden davon, sodass die Anteile pro Wert in Summe mehr als 100 % ergeben können.",
     "valueLabel": "Tag-Wert",
     "allValues": "Alle Werte",
+    "selectValue": "Wert auswählen",
     "fundsIncome": "Einnahmen",
     "fundsTagged": "Getaggte Überweisungen: {value}",
     "fundsAvailable": "Verfügbare Mittel",

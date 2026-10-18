@@ -340,6 +340,7 @@
     "sharesExceedNote": "如果一行在该键下被标记了多个值，则会计入每个值，因此各值的占比之和可能超过 100%。",
     "valueLabel": "标签值",
     "allValues": "所有值",
+    "selectValue": "选择一个值",
     "fundsIncome": "收入",
     "fundsTagged": "带标签的转账：{value}",
     "fundsAvailable": "可用资金",

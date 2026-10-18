@@ -340,6 +340,7 @@
     "sharesExceedNote": "Una riga contrassegnata con più di un valore per questa chiave viene conteggiata per ciascuno di essi, quindi le quote per valore possono sommare più del 100%.",
     "valueLabel": "Valore del tag",
     "allValues": "Tutti i valori",
+    "selectValue": "Seleziona un valore",
     "fundsIncome": "Entrate",
     "fundsTagged": "Trasferimenti con tag: {value}",
     "fundsAvailable": "Fondi disponibili",

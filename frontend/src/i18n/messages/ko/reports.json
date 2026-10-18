@@ -340,6 +340,7 @@
     "sharesExceedNote": "이 키에서 둘 이상의 값으로 태그된 행은 각 값에 대해 집계되므로, 값별 비율의 합이 100%를 초과할 수 있습니다.",
     "valueLabel": "태그 값",
     "allValues": "모든 값",
+    "selectValue": "값 선택",
     "fundsIncome": "수익",
     "fundsTagged": "태그된 이체: {value}",
     "fundsAvailable": "사용 가능한 자금",

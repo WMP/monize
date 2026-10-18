@@ -340,6 +340,7 @@
     "sharesExceedNote": "Baris yang diberi tag dengan lebih dari satu nilai di bawah kunci ini dihitung untuk masing-masing nilai tersebut, sehingga persentase per nilai dapat berjumlah lebih dari 100%.",
     "valueLabel": "Nilai tag",
     "allValues": "Semua nilai",
+    "selectValue": "Pilih nilai",
     "fundsIncome": "Pendapatan",
     "fundsTagged": "Transfer bertag: {value}",
     "fundsAvailable": "Dana tersedia",

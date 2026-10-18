@@ -340,6 +340,7 @@
     "sharesExceedNote": "Một dòng được gắn nhiều hơn một giá trị theo khóa này sẽ được tính vào từng giá trị đó, vì vậy tỷ lệ theo từng giá trị có thể cộng lại vượt quá 100%.",
     "valueLabel": "Giá trị thẻ",
     "allValues": "Tất cả giá trị",
+    "selectValue": "Chọn một giá trị",
     "fundsIncome": "Thu nhập",
     "fundsTagged": "Chuyển khoản có gắn thẻ: {value}",
     "fundsAvailable": "Số tiền khả dụng",

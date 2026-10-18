@@ -340,6 +340,7 @@
     "sharesExceedNote": "Bu anahtar altında birden fazla değerle etiketlenen bir satır, değerlerin her biri için sayılır; bu nedenle değer başına paylar toplamda %100'ü aşabilir.",
     "valueLabel": "Etiket değeri",
     "allValues": "Tüm değerler",
+    "selectValue": "Bir değer seçin",
     "fundsIncome": "Gelir",
     "fundsTagged": "Etiketli transferler: {value}",
     "fundsAvailable": "Kullanılabilir fonlar",

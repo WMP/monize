@@ -340,6 +340,7 @@
     "sharesExceedNote": "Une ligne étiquetée avec plusieurs valeurs pour cette clé compte pour chacune d'elles ; la somme des parts par valeur peut donc dépasser 100 %.",
     "valueLabel": "Valeur d'étiquette",
     "allValues": "Toutes les valeurs",
+    "selectValue": "Sélectionnez une valeur",
     "fundsIncome": "Revenus",
     "fundsTagged": "Virements étiquetés : {value}",
     "fundsAvailable": "Fonds disponibles",

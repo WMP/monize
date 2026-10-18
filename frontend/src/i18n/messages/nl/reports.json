@@ -340,6 +340,7 @@
     "sharesExceedNote": "Een rij die onder deze sleutel met meer dan één waarde is gelabeld, telt voor elk van die waarden mee, waardoor de aandelen per waarde samen meer dan 100% kunnen zijn.",
     "valueLabel": "Labelwaarde",
     "allValues": "Alle waarden",
+    "selectValue": "Selecteer een waarde",
     "fundsIncome": "Inkomsten",
     "fundsTagged": "Getagde overboekingen: {value}",
     "fundsAvailable": "Beschikbare middelen",

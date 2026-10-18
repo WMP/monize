@@ -340,6 +340,7 @@
     "sharesExceedNote": "Wiersz oznaczony więcej niż jedną wartością w ramach tego klucza jest liczony do każdej z nich, więc udziały poszczególnych wartości mogą sumować się do więcej niż 100%.",
     "valueLabel": "Wartość tagu",
     "allValues": "Wszystkie wartości",
+    "selectValue": "Wybierz wartość",
     "fundsIncome": "Przychody",
     "fundsTagged": "Przelewy z tagiem: {value}",
     "fundsAvailable": "Dostępne środki",
