@@ -79,7 +79,9 @@ else the time of ingestion. It is the arrival time that the receipt list sorts
 on and that the match window falls back to; it is not recomputed on reprocess.
 
 **Message-ID is the identity of a stored email.** A user holds one row per
-`Message-ID`, compared as `lower(btrim(message_id))`
+sender and `Message-ID`, compared as `lower(from_address), lower(btrim(message_id))`
+(the sender is part of the key so a message from another sender cannot claim a
+known Message-ID and hide the real email)
 (`uq_email_receipts_user_message_id`, partial on a non-empty value). The insert
 uses `ON CONFLICT DO NOTHING`, so a message already stored under another IMAP
 identity (a folder change, a cursor reset, a UIDVALIDITY change, an archive

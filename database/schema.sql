@@ -843,11 +843,12 @@ CREATE TABLE email_receipts (
 -- newest first. The unique key above already serves the mailbox cascade.
 CREATE INDEX idx_email_receipts_user_status
     ON email_receipts(user_id, status, received_at);
--- One stored row per Message-ID for a user, compared without case and surrounding
--- spaces; the insert skips a conflict as a duplicate. A message without a
+-- One stored row per sender and Message-ID for a user, compared without case and
+-- surrounding spaces (the sender is in the key so another sender cannot claim a
+-- known Message-ID and hide the real email); the insert skips a conflict as a duplicate. A message without a
 -- Message-ID is outside the index and is identified by its IMAP key only.
 CREATE UNIQUE INDEX uq_email_receipts_user_message_id
-    ON email_receipts (user_id, lower(btrim(message_id)))
+    ON email_receipts (user_id, lower(from_address), lower(btrim(message_id)))
     WHERE message_id IS NOT NULL AND btrim(message_id) <> '';
 CREATE INDEX idx_email_receipts_transaction
     ON email_receipts(transaction_id) WHERE transaction_id IS NOT NULL;

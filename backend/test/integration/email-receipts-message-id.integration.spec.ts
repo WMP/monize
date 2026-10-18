@@ -318,6 +318,21 @@ describe("email receipt Message-ID identity", () => {
       expect(count).toBe(1);
     });
 
+    it("stores a known Message-ID from another sender (it cannot hide the real email)", async () => {
+      await runMigration();
+      await insertReceiptRows(db.manager, userId, mailboxId, "5", [
+        row("<s@shop>", "1"),
+      ]);
+      const forged = await insertReceiptRows(
+        db.manager,
+        userId,
+        mailboxId,
+        "5",
+        [{ ...row("<s@shop>", "2"), fromAddress: "x@elsewhere.example" }],
+      );
+      expect(forged).toEqual({ stored: 1, skipped: 0, duplicates: 0 });
+    });
+
     it("still skips the same IMAP key", async () => {
       await runMigration();
       await insertReceiptRows(db.manager, userId, mailboxId, "5", [

@@ -64,8 +64,9 @@
    profile lists them in `match.includeAccountIds` (account ids, at most 20). A
    manual link is not limited. A refund direction is not built: the linked
    receipts plan assumes every receipt amount is an expense.
-7. **Message-ID is the identity of a stored email.** A partial unique index on
-   `(user_id, lower(btrim(message_id))) WHERE message_id IS NOT NULL`; the insert
+7. **Sender and Message-ID are the identity of a stored email** (the sender is in
+   the key, so a message from another sender cannot claim a known Message-ID). A partial unique index on
+   `(user_id, lower(from_address), lower(btrim(message_id))) WHERE message_id IS NOT NULL`; the insert
    skips a conflict and counts it as a duplicate. The migration first resolves
    existing copies: per message it keeps the copy that holds something (a
    transaction, an investment transaction, a link row, an applied request), else
@@ -85,7 +86,7 @@
      SELECT r.id, r.user_id, r.message_id, r.created_at, r.status,
             h.holds,
             ROW_NUMBER() OVER (
-              PARTITION BY r.user_id, lower(btrim(r.message_id))
+              PARTITION BY r.user_id, lower(r.from_address), lower(btrim(r.message_id))
               ORDER BY (NOT h.holds), r.created_at, r.id) AS rank
        FROM email_receipts r
       CROSS JOIN LATERAL (
@@ -103,7 +104,7 @@
                ELSE 'ignore as duplicate, clear message_id' END AS action
      FROM copies
     WHERE rank > 1
-    ORDER BY user_id, lower(btrim(message_id)), rank;
+    ORDER BY user_id, lower(from_address), lower(btrim(message_id)), rank;
    ```
 8. **`received_at` source is unchanged and documented**: the `Date` header when
    it parses and is not more than a day in the future, else IMAP `INTERNALDATE`.

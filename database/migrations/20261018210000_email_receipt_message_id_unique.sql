@@ -4,10 +4,11 @@
 -- The unique key (mailbox_id, uid_validity, uid) is the IMAP identity of a
 -- message; it changes with a folder change, a cursor reset, a UIDVALIDITY change
 -- or an archive import, so one email was stored again under a new key. From now
--- on a user holds one row per Message-ID, compared without case and surrounding
+-- on a user holds one row per sender and Message-ID (the sender is in the key so
+-- another sender cannot claim a known Message-ID and hide the real email), compared without case and surrounding
 -- spaces; the insert skips a conflict and counts it as a duplicate.
 --
--- Step 1 resolves the copies that exist now, per (user_id, lower(btrim(message_id))):
+-- Step 1 resolves the copies that exist now, per (user_id, lower(from_address), lower(btrim(message_id))):
 --   * keeper: a copy that "holds something" (a transaction, an investment
 --     transaction, an email_receipt_links row as settlement or component, or an
 --     `applied` request), the oldest of those; else the oldest copy
@@ -33,7 +34,7 @@
 --             OR EXISTS (SELECT 1 FROM ai_review_requests q
 --                         WHERE q.email_receipt_id = r.id AND q.status = 'applied')) AS holds,
 --            ROW_NUMBER() OVER (
---              PARTITION BY r.user_id, lower(btrim(r.message_id))
+--              PARTITION BY r.user_id, lower(r.from_address), lower(btrim(r.message_id))
 --              ORDER BY (NOT (r.transaction_id IS NOT NULL
 --                             OR r.investment_transaction_id IS NOT NULL
 --                             OR EXISTS (SELECT 1 FROM email_receipt_links l
@@ -47,7 +48,7 @@
 --          CASE WHEN holds THEN 'clear message_id' ELSE 'ignore as duplicate, clear message_id' END AS action
 --     FROM copies
 --    WHERE rank > 1
---    ORDER BY user_id, lower(btrim(message_id)), rank;
+--    ORDER BY user_id, lower(from_address), lower(btrim(message_id)), rank;
 
 -- One statement: the two data-modifying CTEs read the same snapshot, so the
 -- copy list cannot drift between closing the requests and clearing the ids.
@@ -60,7 +61,7 @@ BEGIN
     WITH ranked AS (
         SELECT r.id, r.user_id, h.holds,
                ROW_NUMBER() OVER (
-                 PARTITION BY r.user_id, lower(btrim(r.message_id))
+                 PARTITION BY r.user_id, lower(r.from_address), lower(btrim(r.message_id))
                  ORDER BY (NOT h.holds), r.created_at, r.id) AS rank
           FROM email_receipts r
          CROSS JOIN LATERAL (
@@ -114,5 +115,5 @@ END
 $migration_email_receipt_message_id$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_email_receipts_user_message_id
-    ON email_receipts (user_id, lower(btrim(message_id)))
+    ON email_receipts (user_id, lower(from_address), lower(btrim(message_id)))
     WHERE message_id IS NOT NULL AND btrim(message_id) <> '';

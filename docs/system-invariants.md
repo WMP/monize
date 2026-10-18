@@ -7396,7 +7396,7 @@ Statement           A message (mailbox, UIDVALIDITY, UID) is one email_receipts
 Source of truth     email_receipts, email_receipt_mailboxes.last_uid
 Enforcement         UNIQUE (mailbox_id, uid_validity, uid) with INSERT ... ON
                     CONFLICT DO NOTHING, and one row per (user_id,
-                    lower(btrim(message_id))) (uq_email_receipts_user_message_id,
+                    lower(from_address), lower(btrim(message_id))) (uq_email_receipts_user_message_id,
                     partial; a duplicate under a new IMAP identity is skipped);
                     the cursor is advanced by a conditional
                     UPDATE (it only rises on one UIDVALIDITY) in the transaction

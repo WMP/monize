@@ -123,7 +123,7 @@ export async function buildReceiptRow(
 
 /**
  * The stored form of a Message-ID: trimmed, raw case kept (the unique index
- * `uq_email_receipts_user_message_id` compares `lower(btrim(...))`), null when
+ * `uq_email_receipts_user_message_id` compares the sender and `lower(btrim(...))`), null when
  * empty.
  */
 export function normalizeMessageId(messageId: string | null): string | null {
