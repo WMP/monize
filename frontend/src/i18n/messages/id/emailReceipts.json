@@ -573,7 +573,11 @@
       "link_requires_settlement": "hanya dapat digunakan jika perannya settlement",
       "link_domain_invalid": "bukan domain pengirim yang valid (paling banyak {max} domain)",
       "link_days_invalid": "harus berupa bilangan bulat dari 0 sampai {max}",
-      "role_trade_conflict": "tidak boleh component atau settlement dalam profil transaksi bursa, yang hanya membaca transaksinya"
+      "role_trade_conflict": "tidak boleh component atau settlement dalam profil transaksi bursa, yang hanya membaca transaksinya",
+      "include_account_ids_invalid": "must be a list of different account ids",
+      "include_account_ids_too_many": "lists too many accounts (at most {max})",
+      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
+      "repeat_step_multiline": "is a repeating step, so it must match one line"
     }
   },
   "test": {

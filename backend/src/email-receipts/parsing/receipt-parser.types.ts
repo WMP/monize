@@ -32,6 +32,8 @@ export const DEFAULT_LABEL_WITHIN = 3;
 /** Lines a block item section drops, and steps of one record. */
 export const MAX_SKIP_LINES = 10;
 export const MAX_RECORD_STEPS = 6;
+/** Lines one `repeat` record step may consume. */
+export const MAX_REPEAT_LINES = 30;
 /** Alternative globs one record step may list. */
 export const MAX_STEP_ALTERNATIVES = 5;
 /** Globs one of `requireLine`, `skipIfLine` and `waitIfLine` may list. */
@@ -102,10 +104,19 @@ export type ReceiptFieldEntry = string | ReceiptLabelledPattern;
  * One line of a record. `line` is a glob, or a list of alternative globs tried
  * in order (the first that matches and reads wins). An optional step that does
  * not match consumes nothing.
+ *
+ * `repeat` makes the step consume 0 to N consecutive lines that match its
+ * pattern (N is `MAX_REPEAT_LINES`, 30). It stops before the first line that
+ * the NEXT step of the record matches (when there is a next step), else before
+ * the first line that does not match, so a repeat step is optional by nature:
+ * zero lines is fine and `optional` adds nothing. A repeat step reads lines but
+ * captures nothing (`repeat_step_captures`), is one line per repetition
+ * (`repeat_step_multiline`), and holds a glob list as alternatives like any step.
  */
 export interface ReceiptRecordStep {
   line: string | string[];
   optional?: boolean;
+  repeat?: boolean;
 }
 
 /** One item for the whole email: its name from the first line the glob matches. */
@@ -182,6 +193,14 @@ export interface ReceiptMatchDefinition {
   daysBefore?: number;
   daysAfter?: number;
   amountTolerance?: string;
+  /**
+   * UUIDs of INVESTMENT_CASH accounts (the cash sleeve of an investment pair)
+   * whose transactions may still be candidates. Absent or empty: no such
+   * account is a candidate (an employer contribution to a pension plan is
+   * not a purchase). Up to `MAX_MATCH_ACCOUNT_IDS`, each once. A manual link is
+   * not limited by this list.
+   */
+  includeAccountIds?: string[];
 }
 
 /**

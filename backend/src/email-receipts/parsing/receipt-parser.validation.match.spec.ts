@@ -269,3 +269,35 @@ describe("aiCategories", () => {
     ]);
   });
 });
+
+describe("match.includeAccountIds", () => {
+  const ID_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const ID_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const path = "match.includeAccountIds";
+
+  it("accepts a list of UUIDs and keeps it", () => {
+    const input = def({ match: { includeAccountIds: [ID_A, ID_B] } });
+    expect(validateReceiptParserDefinition(input)).toEqual({
+      ok: true,
+      definition: input,
+    });
+  });
+
+  it("refuses a non-list, a non-UUID and a repeated id", () => {
+    for (const value of ["x", [1], ["not-a-uuid"], [ID_A, ID_A], {}]) {
+      expect(
+        codesAt(def({ match: { includeAccountIds: value } }), path),
+      ).toEqual(["include_account_ids_invalid"]);
+    }
+  });
+
+  it("refuses more than 20 ids", () => {
+    const many = Array.from(
+      { length: 21 },
+      (_, i) => `aaaaaaaa-aaaa-4aaa-8aaa-${String(i).padStart(12, "0")}`,
+    );
+    expect(codesAt(def({ match: { includeAccountIds: many } }), path)).toEqual([
+      "include_account_ids_too_many",
+    ]);
+  });
+});

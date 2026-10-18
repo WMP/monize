@@ -11,6 +11,7 @@ import { patternParts } from "./receipt-glob";
 import {
   MAX_DAYS_AFTER,
   MAX_DAYS_BEFORE,
+  MAX_MATCH_ACCOUNT_IDS,
   MAX_MATCH_STRATEGIES,
   MAX_TOLERANCE_UNITS,
   MIN_MATCH_DAYS,
@@ -102,6 +103,11 @@ export interface ReceiptParserValidationError {
    * refuse, or a list that is empty or over 10), `link_days_invalid`
    * (`link.daysBefore` is not an integer from 0 to 365), `role_trade_conflict`
    * (a `trade` section with a role other than `standalone`).
+   *
+   * Matching and records: `include_account_ids_invalid` (`match.includeAccountIds`
+   * is not a list of UUIDs, or holds one twice), `include_account_ids_too_many`
+   * (over 20), `repeat_step_captures` (a `repeat` record step whose glob
+   * captures), `repeat_step_multiline` (a `repeat` step whose glob spans lines).
    */
   code: string;
 }
@@ -236,10 +242,11 @@ const MATCH_KEYS: readonly string[] = [
   "daysBefore",
   "daysAfter",
   "amountTolerance",
+  "includeAccountIds",
 ];
 const LINK_KEYS: readonly string[] = ["fromDomains", "daysBefore"];
 const LABELLED_KEYS: readonly string[] = ["label", "value", "within"];
-const RECORD_STEP_KEYS: readonly string[] = ["line", "optional"];
+const RECORD_STEP_KEYS: readonly string[] = ["line", "optional", "repeat"];
 const NO_CAPTURES: FieldCaptures = { allowed: [], required: [] };
 const CATEGORY_RULE_KEYS: readonly string[] = ["match", "categoryId", "field"];
 
@@ -588,6 +595,16 @@ function checkRecord(
     if (entry.optional !== undefined && typeof entry.optional !== "boolean") {
       errors.add(`${stepPath}.optional`, "invalid_type");
     }
+    if (entry.repeat !== undefined && typeof entry.repeat !== "boolean") {
+      errors.add(`${stepPath}.repeat`, "invalid_type");
+    }
+    if (line !== null && entry.repeat === true) {
+      if (line.names.size > 0) errors.add(linePath, "repeat_step_captures");
+      const globs = Array.isArray(line.line) ? line.line : [line.line];
+      if (globs.some((glob) => patternParts(glob).length > 1)) {
+        errors.add(linePath, "repeat_step_multiline");
+      }
+    }
     if (line === null) return;
     if ([...line.names].some((name) => seen.has(name))) {
       errors.add(linePath, "duplicate_capture");
@@ -595,6 +612,7 @@ function checkRecord(
     line.names.forEach((name) => seen.add(name));
     const step: ReceiptRecordStep = { line: line.line };
     if (typeof entry.optional === "boolean") step.optional = entry.optional;
+    if (typeof entry.repeat === "boolean") step.repeat = entry.repeat;
     out.push(step);
   });
   if (errors.list.length > before) return null;
@@ -926,6 +944,24 @@ function checkMatch(
         errors.add("match.amountTolerance", "out_of_range");
       } else {
         out.amountTolerance = value.amountTolerance;
+      }
+    }
+  }
+  if (value.includeAccountIds !== undefined) {
+    const path = "match.includeAccountIds";
+    const list = value.includeAccountIds;
+    if (!Array.isArray(list)) {
+      errors.add(path, "include_account_ids_invalid");
+    } else if (list.length > MAX_MATCH_ACCOUNT_IDS) {
+      errors.add(path, "include_account_ids_too_many");
+    } else {
+      const ids = list.filter(
+        (id): id is string => typeof id === "string" && UUID_REGEX.test(id),
+      );
+      if (ids.length !== list.length || new Set(ids).size !== ids.length) {
+        errors.add(path, "include_account_ids_invalid");
+      } else {
+        out.includeAccountIds = ids;
       }
     }
   }

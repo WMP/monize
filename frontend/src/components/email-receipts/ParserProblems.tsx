@@ -164,6 +164,7 @@ function boundFor(code: string, path: string): number {
   if (code === 'too_many_lines') return RECEIPT_PARSER_LIMITS.maxPatternLines;
   if (code === 'link_days_invalid') return RECEIPT_PARSER_LIMITS.maxLinkDaysBefore;
   if (code === 'link_domain_invalid') return RECEIPT_PARSER_LIMITS.maxFromDomains;
+  if (code === 'include_account_ids_too_many') return RECEIPT_PARSER_LIMITS.maxMatchAccountIds;
   if (code === 'out_of_range') {
     if (path === 'match.daysBefore') return RECEIPT_PARSER_LIMITS.maxDaysBefore;
     if (path === 'match.daysAfter') return RECEIPT_PARSER_LIMITS.maxDaysAfter;

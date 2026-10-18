@@ -761,6 +761,10 @@ export const PARSER_VALIDATION_CODES = [
   'link_domain_invalid',
   'link_days_invalid',
   'role_trade_conflict',
+  'include_account_ids_invalid',
+  'include_account_ids_too_many',
+  'repeat_step_captures',
+  'repeat_step_multiline',
 ] as const;
 
 const PROBLEM = new RegExp(

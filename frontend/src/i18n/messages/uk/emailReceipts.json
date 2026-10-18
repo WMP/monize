@@ -573,7 +573,11 @@
       "link_requires_settlement": "можна використовувати лише за ролі settlement",
       "link_domain_invalid": "не є дійсним доменом відправника (не більше {max} доменів)",
       "link_days_invalid": "має бути цілим числом від 0 до {max}",
-      "role_trade_conflict": "не може бути component або settlement у профілі біржової угоди, який читає лише угоду"
+      "role_trade_conflict": "не може бути component або settlement у профілі біржової угоди, який читає лише угоду",
+      "include_account_ids_invalid": "must be a list of different account ids",
+      "include_account_ids_too_many": "lists too many accounts (at most {max})",
+      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
+      "repeat_step_multiline": "is a repeating step, so it must match one line"
     }
   },
   "test": {

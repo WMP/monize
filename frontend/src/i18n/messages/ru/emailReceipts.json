@@ -573,7 +573,11 @@
       "link_requires_settlement": "можно использовать только при роли settlement",
       "link_domain_invalid": "не является допустимым доменом отправителя (не более {max} доменов)",
       "link_days_invalid": "должно быть целым числом от 0 до {max}",
-      "role_trade_conflict": "не может быть component или settlement в профиле биржевой сделки, который читает только сделку"
+      "role_trade_conflict": "не может быть component или settlement в профиле биржевой сделки, который читает только сделку",
+      "include_account_ids_invalid": "must be a list of different account ids",
+      "include_account_ids_too_many": "lists too many accounts (at most {max})",
+      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
+      "repeat_step_multiline": "is a repeating step, so it must match one line"
     }
   },
   "test": {

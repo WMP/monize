@@ -10,6 +10,7 @@ import { itemSectionRange, traceLines } from "./receipt-lines";
 import {
   MAX_ITEMS,
   MAX_JOINED_LINES,
+  MAX_REPEAT_LINES,
   ReceiptBlockItemsDefinition,
   ReceiptItemsDefinition,
   ReceiptParserDefinition,
@@ -193,7 +194,8 @@ const stepGlobs = (step: ReceiptRecordStep): readonly string[] =>
  * one of its globs matches and the values read (the alternatives in order, the
  * first that reads wins); an optional step that does not match consumes
  * nothing, a required one fails the record. The captures of all the steps are
- * one item (a capture name belongs to one step).
+ * one item (a capture name belongs to one step). A `repeat` step reads 0 to
+ * MAX_REPEAT_LINES lines and captures nothing (see `ReceiptRecordStep`).
  */
 function readRecord(
   record: readonly ReceiptRecordStep[],
@@ -206,16 +208,33 @@ function readRecord(
   const used: number[] = [];
   const patterns: string[] = [];
   let at = start;
-  for (const step of record) {
-    let taken: { glob: string; captures: GlobCaptures; span: number } | null =
-      null;
+  const readStep = (
+    step: ReceiptRecordStep,
+    from: number,
+  ): { glob: string; captures: GlobCaptures; span: number } | null => {
     for (const glob of stepGlobs(step)) {
-      const found = matchReceiptLines(glob, sectionLines, at, acceptStep);
-      if (found !== null) {
-        taken = { glob, ...found };
-        break;
-      }
+      const found = matchReceiptLines(glob, sectionLines, from, acceptStep);
+      if (found !== null) return { glob, ...found };
     }
+    return null;
+  };
+  for (const [stepIndex, step] of record.entries()) {
+    if (step.repeat === true) {
+      // 0 to MAX_REPEAT_LINES lines; stops before a line the next step reads.
+      const next = record[stepIndex + 1];
+      for (let n = 0; n < MAX_REPEAT_LINES && at < sectionLines.length; n++) {
+        if (next !== undefined && readStep(next, at) !== null) break;
+        const again = readStep(step, at);
+        if (again === null) break;
+        for (let k = 0; k < again.span; k++) {
+          patterns.push(again.glob);
+          used.push(section[at + k]);
+        }
+        at += again.span;
+      }
+      continue;
+    }
+    const taken = readStep(step, at);
     if (taken === null) {
       if (step.optional === true) continue;
       return null;

@@ -1,6 +1,7 @@
 import {
   DEFAULT_MATCH_BY,
   DEFAULT_MATCH_CONFIG,
+  effectiveMatchDefinition,
   MAX_TOLERANCE_UNITS,
   parseToleranceUnits,
   resolveMatchConfig,
@@ -58,6 +59,7 @@ describe("resolveMatchConfig", () => {
       daysBefore: 3,
       daysAfter: 14,
       toleranceUnits: 0,
+      includeAccountIds: [],
     });
     expect(resolveMatchConfig(undefined)).toEqual(DEFAULT_MATCH_CONFIG);
     expect(resolveMatchConfig(null)).toEqual(DEFAULT_MATCH_CONFIG);
@@ -77,6 +79,7 @@ describe("resolveMatchConfig", () => {
         daysBefore: 0,
         daysAfter: 7,
         amountTolerance: "0.75",
+        includeAccountIds: ["x"],
       }),
     ).toEqual({
       by: ["reference", "amount_date"],
@@ -84,6 +87,7 @@ describe("resolveMatchConfig", () => {
       daysBefore: 0,
       daysAfter: 7,
       toleranceUnits: 7500,
+      includeAccountIds: ["x"],
     });
     expect(resolveMatchConfig({ daysAfter: 30 }).daysBefore).toBe(3);
   });
@@ -95,5 +99,35 @@ describe("resolveMatchConfig", () => {
     expect(resolveMatchConfig({ amountTolerance: "abc" }).toleranceUnits).toBe(
       0,
     );
+  });
+});
+
+describe("includeAccountIds", () => {
+  it("is empty by default and copies the profile's list, each id once", () => {
+    expect(DEFAULT_MATCH_CONFIG.includeAccountIds).toEqual([]);
+    expect(
+      resolveMatchConfig({ includeAccountIds: ["a", "b", "a"] })
+        .includeAccountIds,
+    ).toEqual(["a", "b"]);
+  });
+});
+
+describe("effectiveMatchDefinition and includeAccountIds", () => {
+  // The profile form opens a definition with a key it has no field for as
+  // JSON, so the default (no list) must not show the key at all.
+  it("leaves the key out while the profile lists no account", () => {
+    expect(effectiveMatchDefinition({})).not.toHaveProperty(
+      "includeAccountIds",
+    );
+    expect(
+      effectiveMatchDefinition({ match: { includeAccountIds: [] } }),
+    ).not.toHaveProperty("includeAccountIds");
+  });
+
+  it("shows the profile's own list", () => {
+    expect(
+      effectiveMatchDefinition({ match: { includeAccountIds: ["a"] } })
+        .includeAccountIds,
+    ).toEqual(["a"]);
   });
 });

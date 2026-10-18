@@ -18,6 +18,15 @@ const INVESTMENT_EXCLUSION = investmentExclusionSql({
   transactionAlias: "t",
 });
 
+/**
+ * An account of sub-type INVESTMENT_CASH (the cash sleeve of an investment
+ * pair) is no automatic candidate: what lands there is a contribution or a
+ * dividend, not a purchase. A profile lists the accounts it still wants in
+ * `match.includeAccountIds` ($6). A manual link is not limited by this.
+ */
+const INVESTMENT_CASH_EXCLUSION = `(a.account_sub_type IS DISTINCT FROM 'INVESTMENT_CASH'
+              OR a.id = ANY($6::uuid[]))`;
+
 interface CandidateRow {
   id: string;
   transaction_date: string;
@@ -57,7 +66,8 @@ const JOIN_ENRICHED = `LEFT JOIN LATERAL (
  * The transactions an email whose purchase date is `purchaseDate` (`YYYY-MM-DD`,
  * UTC: the day the shop sent the order, or the day the email arrived) can
  * have paid for, in ONE query (spec section 3): the user's own, not a transfer,
- * not VOID, not investment-linked, dated inside `receiptCandidateWindow`, at
+ * not VOID, not investment-linked, not on an INVESTMENT_CASH account the
+ * profile does not list, dated inside `receiptCandidateWindow`, at
  * most 200, newest first.
  *
  * Left out: a transaction that already has an applied email-receipt request (it
@@ -77,10 +87,10 @@ export async function loadReceiptCandidates(
   userId: string,
   purchaseDate: string,
   ownReceiptId: string | null,
-  config: Pick<
-    ResolvedMatchConfig,
-    "daysBefore" | "daysAfter"
-  > = DEFAULT_MATCH_CONFIG,
+  config: Pick<ResolvedMatchConfig, "daysBefore" | "daysAfter"> &
+    Partial<
+      Pick<ResolvedMatchConfig, "includeAccountIds">
+    > = DEFAULT_MATCH_CONFIG,
   includeEnriched = false,
 ): Promise<ReceiptMatchCandidate[]> {
   const window = receiptCandidateWindow(purchaseDate, config);
@@ -106,6 +116,7 @@ export async function loadReceiptCandidates(
         AND t.transaction_date >= $2::date
         AND t.transaction_date <= $3::date
         AND ${INVESTMENT_EXCLUSION}
+        AND ${INVESTMENT_CASH_EXCLUSION}
         ${includeEnriched ? "" : EXCLUDE_ENRICHED}
         AND NOT EXISTS (
               SELECT 1
@@ -118,7 +129,14 @@ export async function loadReceiptCandidates(
                  AND open_request.email_receipt_id IS DISTINCT FROM $4::uuid)
       ORDER BY t.transaction_date DESC, t.id DESC
       LIMIT $5`,
-    [userId, window.from, window.to, ownReceiptId, RECEIPT_CANDIDATE_LIMIT],
+    [
+      userId,
+      window.from,
+      window.to,
+      ownReceiptId,
+      RECEIPT_CANDIDATE_LIMIT,
+      [...(config.includeAccountIds ?? [])],
+    ],
   );
   return rows.map((row) => ({
     id: row.id,

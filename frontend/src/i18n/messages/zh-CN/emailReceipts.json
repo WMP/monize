@@ -573,7 +573,11 @@
       "link_requires_settlement": "仅当角色为 settlement 时才能使用",
       "link_domain_invalid": "不是有效的发件人域名（最多 {max} 个域名）",
       "link_days_invalid": "必须是 0 到 {max} 之间的整数",
-      "role_trade_conflict": "在只读取交易的证券交易配置文件中不能是 component 或 settlement"
+      "role_trade_conflict": "在只读取交易的证券交易配置文件中不能是 component 或 settlement",
+      "include_account_ids_invalid": "must be a list of different account ids",
+      "include_account_ids_too_many": "lists too many accounts (at most {max})",
+      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
+      "repeat_step_multiline": "is a repeating step, so it must match one line"
     }
   },
   "test": {

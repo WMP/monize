@@ -31,6 +31,8 @@ export const MIN_MATCH_DAYS = 0;
 export const MAX_MATCH_STRATEGIES = 4;
 /** 1/10000 units: `5.00`, the largest tolerance a profile may set. */
 export const MAX_TOLERANCE_UNITS = 50_000;
+/** At most this many `includeAccountIds`. */
+export const MAX_MATCH_ACCOUNT_IDS = 20;
 const MONEY_UNITS = 10_000;
 const MAX_TOLERANCE_FRACTION_DIGITS = 4;
 
@@ -41,6 +43,8 @@ export interface ResolvedMatchConfig {
   daysAfter: number;
   /** 1/10000 units; 0 is an exact amount. */
   toleranceUnits: number;
+  /** INVESTMENT_CASH accounts that stay candidates; none by default. */
+  includeAccountIds: readonly string[];
 }
 
 /**
@@ -84,6 +88,10 @@ export function resolveMatchConfig(
     daysBefore: match?.daysBefore ?? DEFAULT_DAYS_BEFORE,
     daysAfter: match?.daysAfter ?? DEFAULT_DAYS_AFTER,
     toleranceUnits: Math.min(Math.max(tolerance, 0), MAX_TOLERANCE_UNITS),
+    includeAccountIds: [...new Set(match?.includeAccountIds ?? [])].slice(
+      0,
+      MAX_MATCH_ACCOUNT_IDS,
+    ),
   };
 }
 
@@ -98,7 +106,8 @@ export const DEFAULT_MATCH_CONFIG: ResolvedMatchConfig = resolveMatchConfig();
 export function effectiveMatchDefinition(definition: {
   reference?: unknown[];
   match?: ReceiptMatchDefinition | null;
-}): Required<ReceiptMatchDefinition> {
+}): Required<Omit<ReceiptMatchDefinition, "includeAccountIds">> &
+  Pick<ReceiptMatchDefinition, "includeAccountIds"> {
   const match = definition.match;
   const hasReference =
     Array.isArray(definition.reference) && definition.reference.length > 0;
@@ -114,5 +123,10 @@ export function effectiveMatchDefinition(definition: {
     daysBefore: match?.daysBefore ?? DEFAULT_DAYS_BEFORE,
     daysAfter: match?.daysAfter ?? DEFAULT_DAYS_AFTER,
     amountTolerance: match?.amountTolerance ?? "0.00",
+    // Only when listed: an empty list is the default, and a key the profile
+    // form has no field for makes the editor open the profile as JSON.
+    ...(match?.includeAccountIds && match.includeAccountIds.length > 0
+      ? { includeAccountIds: [...match.includeAccountIds] }
+      : {}),
   };
 }

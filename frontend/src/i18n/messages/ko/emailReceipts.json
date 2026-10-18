@@ -573,7 +573,11 @@
       "link_requires_settlement": "역할이 settlement일 때만 사용할 수 있습니다",
       "link_domain_invalid": "유효한 발신자 도메인이 아닙니다(최대 {max}개 도메인)",
       "link_days_invalid": "0에서 {max} 사이의 정수여야 합니다",
-      "role_trade_conflict": "거래만 읽는 증권 거래 프로필에서는 component 또는 settlement일 수 없습니다"
+      "role_trade_conflict": "거래만 읽는 증권 거래 프로필에서는 component 또는 settlement일 수 없습니다",
+      "include_account_ids_invalid": "must be a list of different account ids",
+      "include_account_ids_too_many": "lists too many accounts (at most {max})",
+      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
+      "repeat_step_multiline": "is a repeating step, so it must match one line"
     }
   },
   "test": {

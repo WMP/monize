@@ -727,6 +727,8 @@ export const RECEIPT_PARSER_LIMITS = {
   maxSubjectWordLength: 100,
   maxTagLength: 50,
   maxMatchStrategies: 4,
+  /** `match.includeAccountIds`. */
+  maxMatchAccountIds: 20,
   maxDaysBefore: 60,
   maxDaysAfter: 90,
   /** The largest amount tolerance, in whole currency units (`"5.00"`). */
@@ -763,6 +765,8 @@ export interface ReceiptRecordStep {
   /** A glob, or up to five alternative globs tried in order. */
   line: string | string[];
   optional?: boolean;
+  /** Reads 0 to 30 consecutive lines that match, stopping before the next step's line; captures nothing, one line per repetition. */
+  repeat?: boolean;
 }
 
 /** Items that span several lines: lines to drop, then a record read from a cursor. */
@@ -805,6 +809,8 @@ export interface ReceiptMatchDefinition {
   daysBefore?: number;
   daysAfter?: number;
   amountTolerance?: string;
+  /** INVESTMENT_CASH account ids (UUIDs, up to 20) whose transactions may still be candidates; none by default. */
+  includeAccountIds?: string[];
 }
 
 /** Which lines a parser reads: the email's text (the default) or the lines of its HTML part. */

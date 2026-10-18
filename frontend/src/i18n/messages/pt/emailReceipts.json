@@ -573,7 +573,11 @@
       "link_requires_settlement": "só pode ser usado quando a função é settlement",
       "link_domain_invalid": "não é um domínio de remetente válido (no máximo {max} domínios)",
       "link_days_invalid": "tem de ser um número inteiro de 0 a {max}",
-      "role_trade_conflict": "não pode ser component nem settlement num perfil de negociação em bolsa, que lê apenas a negociação"
+      "role_trade_conflict": "não pode ser component nem settlement num perfil de negociação em bolsa, que lê apenas a negociação",
+      "include_account_ids_invalid": "must be a list of different account ids",
+      "include_account_ids_too_many": "lists too many accounts (at most {max})",
+      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
+      "repeat_step_multiline": "is a repeating step, so it must match one line"
     }
   },
   "test": {

@@ -573,7 +573,11 @@
       "link_requires_settlement": "kan alleen worden gebruikt als de rol settlement is",
       "link_domain_invalid": "is geen geldig afzenderdomein (maximaal {max} domeinen)",
       "link_days_invalid": "moet een geheel getal van 0 tot {max} zijn",
-      "role_trade_conflict": "mag in een profiel voor effectentransacties, dat alleen de transactie leest, niet component of settlement zijn"
+      "role_trade_conflict": "mag in een profiel voor effectentransacties, dat alleen de transactie leest, niet component of settlement zijn",
+      "include_account_ids_invalid": "must be a list of different account ids",
+      "include_account_ids_too_many": "lists too many accounts (at most {max})",
+      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
+      "repeat_step_multiline": "is a repeating step, so it must match one line"
     }
   },
   "test": {

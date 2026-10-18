@@ -573,7 +573,11 @@
       "link_requires_settlement": "केवल तभी उपयोग किया जा सकता है जब भूमिका settlement हो",
       "link_domain_invalid": "मान्य प्रेषक डोमेन नहीं है (अधिकतम {max} डोमेन)",
       "link_days_invalid": "0 से {max} तक की पूर्ण संख्या होनी चाहिए",
-      "role_trade_conflict": "ब्रोकरेज ट्रेड प्रोफाइल में component या settlement नहीं हो सकता, क्योंकि वह केवल ट्रेड पढ़ता है"
+      "role_trade_conflict": "ब्रोकरेज ट्रेड प्रोफाइल में component या settlement नहीं हो सकता, क्योंकि वह केवल ट्रेड पढ़ता है",
+      "include_account_ids_invalid": "must be a list of different account ids",
+      "include_account_ids_too_many": "lists too many accounts (at most {max})",
+      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
+      "repeat_step_multiline": "is a repeating step, so it must match one line"
     }
   },
   "test": {

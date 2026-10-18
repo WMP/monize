@@ -105,7 +105,11 @@ for, the candidate window and the amount tolerance. Resolved once (`resolveMatch
 `by` default `orderId, amount_payee, amount_date`; `referenceIn` default `description,
 payee, referenceNumber`; `daysBefore` 3 (0 to 60); `daysAfter` 14 (0 to 90); `amountTolerance`
 `"0"` (`"0.00"` to `"5.00"`, digits with an optional point and at most four decimals, no
-sign or exponent), held as integer units of 1/10000.
+sign or exponent), held as integer units of 1/10000. `includeAccountIds` (up to 20 distinct
+UUIDs, default none): a transaction on an account of sub-type `INVESTMENT_CASH` (the cash
+sleeve of an investment pair, such as a pension plan) is no automatic candidate unless its
+account is listed; `loadReceiptCandidates` takes the list as one SQL parameter, so a preview
+and the commit read the same candidates. A manual link is not limited by it.
 
 Signals per candidate, in addition to section 3:
 
@@ -392,7 +396,12 @@ completeness table of section 4. What version 2 adds is HOW a value is found.
   (each a glob, or up to 5 alternatives tried in order) is read from a cursor,
   one item per match (name, amount or price, optional qty from separate lines).
   The line total is `amount`, else `price * qty`; a failed record moves the
-  cursor one line. `joinWrapped` (patterns) puts up to three unread lines in
+  cursor one line. A step with `repeat: true` reads 0 to 30 consecutive lines that match
+  its glob (alternatives allowed), stopping before the first line the next step of the
+  record matches, or the first line that does not match; it captures nothing
+  (`repeat_step_captures`) and is one line per repetition (`repeat_step_multiline`), so a
+  block of unknown length (several sellers in one repayment part) does not break the record.
+  `joinWrapped` (patterns) puts up to three unread lines in
   front of the next. `single` is one item for the whole email: its name from the
   first line the glob reads, quantity 1, amount `total ?? paid`.
 - **An item with no amount** takes `total ?? paid` when it is the only item;

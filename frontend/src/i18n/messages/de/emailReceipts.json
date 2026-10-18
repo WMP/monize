@@ -573,7 +573,11 @@
       "link_requires_settlement": "kann nur verwendet werden, wenn die Rolle settlement ist",
       "link_domain_invalid": "ist keine gültige Absenderdomain (höchstens {max} Domains)",
       "link_days_invalid": "muss eine ganze Zahl von 0 bis {max} sein",
-      "role_trade_conflict": "darf in einem Profil für Wertpapierhandel, das nur den Handel liest, nicht component oder settlement sein"
+      "role_trade_conflict": "darf in einem Profil für Wertpapierhandel, das nur den Handel liest, nicht component oder settlement sein",
+      "include_account_ids_invalid": "must be a list of different account ids",
+      "include_account_ids_too_many": "lists too many accounts (at most {max})",
+      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
+      "repeat_step_multiline": "is a repeating step, so it must match one line"
     }
   },
   "test": {

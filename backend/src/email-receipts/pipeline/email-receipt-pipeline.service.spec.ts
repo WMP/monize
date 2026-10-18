@@ -1430,7 +1430,14 @@ describe("EmailReceiptPipelineService.process", () => {
       expect(sql).toContain("investment_transactions");
       expect(sql).toContain("applied.status = 'applied'");
       expect(sql).toContain("open_request.rule_id IS NULL");
-      expect(params).toEqual([USER, "2026-09-07", "2026-09-24", RECEIPT, 200]);
+      expect(params).toEqual([
+        USER,
+        "2026-09-07",
+        "2026-09-24",
+        RECEIPT,
+        200,
+        [],
+      ]);
       expect(h.lastUpdate()?.[1]).toMatchObject({
         status: "unmatched",
         transactionId: null,
@@ -1547,7 +1554,14 @@ describe("EmailReceiptPipelineService.process", () => {
         String(c[0]).includes("JOIN accounts a"),
       ) as [string, unknown[]];
       // Aug 10 minus 3 days, plus 14 days: not Sep 7 to Sep 24.
-      expect(params).toEqual([USER, "2026-08-07", "2026-08-24", RECEIPT, 200]);
+      expect(params).toEqual([
+        USER,
+        "2026-08-07",
+        "2026-08-24",
+        RECEIPT,
+        200,
+        [],
+      ]);
     });
 
     it("a row already healed is not rewritten", async () => {

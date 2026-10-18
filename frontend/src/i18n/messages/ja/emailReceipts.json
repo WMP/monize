@@ -573,7 +573,11 @@
       "link_requires_settlement": "役割が settlement の場合にのみ使用できます",
       "link_domain_invalid": "有効な送信元ドメインではありません(最大 {max} ドメイン)",
       "link_days_invalid": "0 から {max} までの整数である必要があります",
-      "role_trade_conflict": "取引のみを読み取る証券取引プロフィールでは、component や settlement にできません"
+      "role_trade_conflict": "取引のみを読み取る証券取引プロフィールでは、component や settlement にできません",
+      "include_account_ids_invalid": "must be a list of different account ids",
+      "include_account_ids_too_many": "lists too many accounts (at most {max})",
+      "repeat_step_captures": "is a repeating step, so it cannot capture a value",
+      "repeat_step_multiline": "is a repeating step, so it must match one line"
     }
   },
   "test": {
