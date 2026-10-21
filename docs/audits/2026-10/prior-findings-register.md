@@ -75,7 +75,7 @@ session report, `NN-<slice>.md#...`).
 | MON-M28 | Mixed-sign split children are accepted when their signed total equals the parent | S07 (client half S19) | REJECTED (server half: mixed-sign splits are a documented shape; client half S19) | `07-cash-ledger.md#5-prior-finding-dispositions` |
 | MON-M29 | Explicit zero or negative investment FX rates produce inconsistent cash postings | S12 | FIXED_VERIFIED (create and preview) | `12-securities-holdings.md#5-prior-finding-dispositions` |
 | MON-M30 | BUY commission is omitted from cost basis although cash and UI wording include fees | S12 | FIXED_VERIFIED (backend; tooltip wording S20) | `12-securities-holdings.md#5-prior-finding-dispositions` |
-| MON-M31 | Transfer split amounts are omitted from budget spending | S16 | open | |
+| MON-M31 | Transfer split amounts are omitted from budget spending | S16 | FIXED_VERIFIED | `16-budgets-reports.md#5-prior-finding-dispositions` |
 | MON-M32 | Final scheduled loan payment recalculates splits without shrinking the parent payment | S15 | FIXED_VERIFIED | `15-loans-strategies.md#5-prior-finding-dispositions` |
 | MON-M33 | Monte Carlo current-value failure is converted to a real zero | S13 | FIXED_VERIFIED | `13-valuation-fx-networth.md#5-prior-finding-dispositions` |
 | MON-M34 | Bulk deletion can leave linked-account monthly/net-worth snapshots stale | S13 | FIXED_VERIFIED (counterpart snapshot; related A26-S13-03 on the bulk path) | `13-valuation-fx-networth.md#5-prior-finding-dispositions` |
@@ -99,7 +99,7 @@ session report, `NN-<slice>.md#...`).
 | --- | --- | --- | --- | --- |
 | MON-L01 | A stale PAT comment mentions a reports scope issuance does not support | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-L02 | Database initialization and migration runners are not serialized across replicas | S05 | FIXED_VERIFIED | `05-migrations-schema.md#5-prior-finding-dispositions` |
-| MON-L03 | Budget-alert deduplication is a check-then-insert race | S16 | open | |
+| MON-L03 | Budget-alert deduplication is a check-then-insert race | S16 | FIXED_VERIFIED (with residuals, A26-S16-08) | `16-budgets-reports.md#5-prior-finding-dispositions` |
 | MON-L04 | Staged-file expiry can delete bytes a pending or running import still needs | S09 | STILL_OPEN (narrowed, A26-S09-04) | `09-import-mny.md#5-prior-finding-dispositions` |
 | MON-L05 | Concurrent attachment uploads can exceed the per-transaction cap | S06 | FIXED_VERIFIED | `06-backup-restore.md#5-prior-finding-dispositions` |
 | MON-L06 | Bill and mortgage reminder crons send duplicate email from every replica | S08 | FIXED_VERIFIED | `08-scheduler-cron.md#5-prior-finding-dispositions` |
