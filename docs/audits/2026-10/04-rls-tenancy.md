@@ -13,7 +13,8 @@
 | Hint line | `prioritize the runtime role and enforce mode, every exempt table with its reason, system-context call sites that read cross-user data and then write under one user, joint-account grants and revocation, the per-ledger status of a cross-owner transfer, the single sanctioned direct-DataSource exception, and whether the integration suites run under the unprivileged role` |
 | Protocol | `.claude/commands/audit.md`, read in full with the Read tool (1637 lines) and applied as `/audit backend/src/common/db/ -- <hint line>`; not re-loaded through the Skill tool to avoid a second copy of the same text in the context |
 | Toolchain | Node 24.22.1 (`nvm use 24`); `backend/` `npm ci` OK; `dockerd` started by hand (not running in the container); PostgreSQL 16 `mirror.gcr.io/library/postgres:16-alpine` as `monize-pg` |
-| Status | in-progress, remaining: mutation results, sections 6-14 final text |
+| Status | done |
+| Findings (B/H/M/L) | 0 / 0 / 4 / 0 |
 
 Runtime executed (results quoted, full list in section 12):
 
@@ -62,12 +63,12 @@ The invariants the session block names as INV-SHARE-001..005 are not about joint
 | Financial / loan | ran only as needed for A26-S04-01's numeric example; no calculation is in the slice |
 | Authorization, authentication, RLS | ran: every hint item (sections 2, 4, 5, 12) |
 | Tests are evidence | ran: which suites run as `monize_app` (23 of 101 integration files use `createEnforcedIntegrationModule`; none of `joint-accounts`, `cross-owner-transfers` or any delegation-management test does) |
-| Mutation | in progress (section 6) |
+| Mutation | ran (section 6), 8 rows, 5 undetected (2 executed mutations, 3 baseline defects) |
 | Counterexamples | ran (section 7) |
 | Interaction | ran (section 7) |
 | Rules 1, 2, 3, 7, 8 | ran (each finding; section 8) |
 | Suggested diff + Rule 10 | ran (each finding) |
-| Adversarial approval challenge | pending (section 13) |
+| Adversarial approval challenge | ran (section 13) |
 | Final merge gate | not applicable as a PR gate (no PR); hosted CI not consulted |
 
 ## 4. Confirmed findings
@@ -299,13 +300,13 @@ Causality: `PRE_EXISTING_UNREPORTED` (the WITH CHECK is migration 114's); amplif
 
 1. **Severity:** MEDIUM (missing test on a security mechanism; A26-S04-01 to -03 are all invisible to the current suites for this reason).
 2. **Confidence:** high (executed mutation, section 6).
-3. **Location:** `backend/test/integration/joint-accounts.integration.spec.ts:138`, `cross-owner-transfers.integration.spec.ts:122` (both `createIntegrationModule`, the owner role, RLS not applied to the module's connection); no integration spec calls `createDelegate`, `delegateEmailExists`, `resetDelegatePassword`, `setCapabilities` or `setSectionGrants` (the only callers are `revokeDelegate` in the two owner-role suites); `rls-enforcement.integration.spec.ts` checks the catalog and sampled reads, not the delegate arms.
+3. **Location:** `backend/test/integration/joint-accounts.integration.spec.ts:138`, `cross-owner-transfers.integration.spec.ts:122` (both `createIntegrationModule`, the owner role, RLS not applied to the module's connection); no integration spec calls `createDelegate`, `delegateEmailExists`, `resetDelegatePassword`, `setCapabilities` or `setSectionGrants` (the only callers are `revokeDelegate` in the two owner-role suites); `rls-enforcement.integration.spec.ts` has positive cases for the delegate arms (`:420-730`) and per-user exact-set reads, but none that a third user cannot see an account carrying a grant to somebody else (mutation MA stays green).
 4. **Violated invariant:** `docs/verification-contract.md`: a mock proves the call, not the property; the RLS contract's guarantee needs a test on the role it is about.
-5. **Realistic reproduction scenario:** mutation MA (section 6): drop `AND d.delegate_user_id = (SELECT app_real_user_id())` from the `accounts` read arm in `134_joint_native_read_rls.sql:47`, so every account carrying any active grant is readable by every user; result `Tests: 175 passed, 175 total` over `rls-*`, `security-cross-user-isolation`, `joint-accounts`, `cross-owner-transfers`, `calendar-day-notes`, `calendar-read-models`.
+5. **Realistic reproduction scenario:** mutation MA (section 6): drop `AND d.delegate_user_id = (SELECT app_real_user_id())` from the `accounts` read arm in `134_joint_native_read_rls.sql:47`, so every account carrying any active grant is readable by every user; result `Tests: 175 passed, 175 total` over `rls-*`, `security-cross-user-isolation`, `joint-accounts`, `cross-owner-transfers`, `calendar-day-notes`, `calendar-read-models`, and `35 passed` on `rls-enforcement` alone. Mutation MD (the real-user GUC collapsed onto the current one in `scoped-db.ts:208`) is also green on every integration suite of that set and is caught only by mocked unit specs.
 6. **Observed:** green.
 7. **Expected:** at least one failure.
 8. **Impact:** a regression of the tenant boundary on the shared-account surface ships green.
-9. **Root cause:** the two feature suites predate or bypass `createEnforcedIntegrationModule`; `rls-enforcement` is catalog-driven and has no case for the joint arms.
+9. **Root cause:** the two feature suites predate or bypass `createEnforcedIntegrationModule`; `rls-enforcement` tests that the delegate sees the granted rows, not that nobody else does.
 10. **Recommended correction:** run `joint-accounts` and `cross-owner-transfers` (or a second describe block of each) on `createEnforcedIntegrationModule`, add a delegation-management suite on it, and add cross-tenant negative reads for the joint arms to `rls-enforcement`.
 11. **Suggested remediation diff (illustrative, not applied):**
 
@@ -345,7 +346,16 @@ Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the joint and cross-owner suites are new)
 
 All mutations run in the scratch worktree `<scratchpad>/mut` at `AUDIT_BASELINE_SHA`, each reverted with `git checkout` before the next; the audit branch was never modified. Policy mutations edit the migrations because the integration harness applies the RLS migrations by content (`test/helpers/rls-setup.ts:116-167`), not `schema.sql`. Suite set S = `rls-*` (4 files), `security-cross-user-isolation`, `joint-accounts`, `cross-owner-transfers`, `calendar-day-notes`, `calendar-read-models` (9 suites, 175 tests).
 
-MUTATION_ROWS_PLACEHOLDER
+| Invariant | Mutation (file:line, what) | Test that fails | Verdict |
+| --- | --- | --- | --- |
+| joint read arm scoped to the delegate | MA: `database/migrations/134_joint_native_read_rls.sql:47` drop `AND d.delegate_user_id = (SELECT app_real_user_id())` from `accounts_isolation` (every account with any active grant readable by every user) | none: set S `Tests: 175 passed, 175 total`; rechecked alone, `rls-enforcement` `Tests: 35 passed, 35 total` | **undetected** |
+| direct-table isolation | MB: `112_rls_policies_direct.sql:94` USING -> `(true)` for the 26 tables of the loop | `rls-enforcement.integration.spec.ts` (`Tests: 35 failed, 140 passed, 175 total`) | covered |
+| `users_self` | MC: `114_rls_policies_special.sql:34` USING `true OR ...` | `rls-enforcement.integration.spec.ts` (`4 failed, 171 passed`) | covered |
+| delegate identity reaches the database | MD: `backend/src/common/db/scoped-db.ts:208` emit `app.real_user_id = ctx.userId` (delegation collapsed) | integration set S: none (`175 passed`); unit: `scoped-db.spec.ts`, `rls-context-smoke.spec.ts` (`2 failed, 40 passed`) | covered by unit only (mocked repositories); **undetected** on a real database |
+| INV-RLS-001 / MON-M14 | ME: `runtime-role-check.ts:54-58` delete the `rolbypassrls` entry | unit `app-role.spec.ts`, `runtime-role-check.spec.ts` (`4 failed, 78 passed`); integration `runtime-role` green (`27 passed`) | covered (unit parity guard) |
+| revocation is final (A26-S04-02) | the baseline itself: stale `save` after revoke | none in the repository; session probe only | **undetected** |
+| authorization inside the write (A26-S04-01) | the baseline itself: no re-check under the bypass | none; session probe only | **undetected** |
+| owner-issued delegations (A26-S04-03) | the baseline itself: delegate arm in WITH CHECK | none; session probe only | **undetected** |
 
 ## 7. Counterexamples and the interaction scenario
 
@@ -402,4 +412,45 @@ Interaction scenario (revoke + stale save + bypass write): Alice shares a joint 
 - `docs/system-invariants.md` has no entry for joint-account or delegation tenancy; the session plan (`sessions.md` S04, `plan.md` section 5) names INV-SHARE-001..005 for joint accounts, but those IDs are the PWA share target (`system-invariants.md:139-143`).
 - `docs/row-level-security-contract.md` section 1 ("RLS is what contains the query that forgets to") overstates what the delegation policies contain (A26-S04-03).
 
-SECTIONS_12_TO_14_PLACEHOLDER
+## 12. Review ledger
+
+- `PR_REVIEW_SHA` = `AUDIT_BASELINE_SHA` = `72c59ec4bc6e9f2cb3a5d25977c94dd2c09e5a86`; audit branch head at start `4adfd72f`; `main` not consulted (S22).
+- Directories inspected: `backend/src/common/db/` (all 16 non-spec files listed; 7 read in full), `backend/src/delegation/` (service and cross-owner access), `backend/src/transactions/` (transfer service authorization and write, joint register), `backend/src/mcp/` (context seeding only), `database/schema.sql` RLS section, `database/migrations/112-114, 132, 134`, `backend/test/helpers/` (`integration-setup.ts`, `rls-setup.ts`), `backend/test/integration/` (`rls-enforcement`, `rls-harness`, `runtime-role`, `joint-accounts`, `cross-owner-transfers`, `calendar-day-notes` set-up).
+- Files read in full: `scoped-db.ts`, `with-context.ts`, `rls-config.ts`, `rls-exempt-tables.ts`, `runtime-role-check.ts`, `app-role.ts`, `docs/row-level-security-contract.md`, `docs/backend/database-access-and-tenancy.md`.
+- Files sampled with ranges: `delegation.service.ts:160-295, 385-460, 940-1010, 1035-1544`; `cross-owner-access.service.ts:66-110` (and the call list `:113-319`); `transaction-transfer.service.ts:516-1000, 2142-2390` (VOID lines only); `joint-register.service.ts:20-154`; `main.ts:130-300`; `app.module.ts:83-130`; `mcp-http.controller.ts:270-460`; `schema.sql:1970-2002, 3555-4200`; `rls-enforcement.integration.spec.ts:36-285` and the test list; `rls-setup.ts:116-225, 325-420`; `integration-setup.ts:400-490`; `auth-email.service.ts:95-125`.
+- Repository-wide searches: every importer of `with-context` against `WITH_CONTEXT_ALLOWLIST` (scripted: 94 files mention a helper, 81 import it, 81 entries, 0 missing, 0 stale; `withSystemContext` 153 calls in 69 files, `withUserContext` 96 in 35, `withDelegateContext` 4 in 3, `withPreserveTimestamps` 5 in 1); every write to `account_delegates` / `account_delegate_grants` in `src/` (`delegation.service.ts:969, 1005, 1255-1261, 1340, 1447-1460`, `users.service.ts:992`; all owner-scoped or system); every `assertRuntimeRoleSafe` / `resolveRlsDatabaseAuth` / `RLS_MODE` reader; every `CREATE POLICY` for `accounts`, `budgets`, `users`, `account_delegates`; which integration files use `createEnforcedIntegrationModule` (23 of 101); a read-only subagent sweep for read-then-`save` across transactions (32 sites; table below).
+- Exempt tables reviewed (all 24 in `RLS_EXEMPT_TABLES` against contract section 2): reasons consistent with an absent owner for 23; `push_chart_artifacts` holds per-person content and lacks a contract row (D-S04-02, section 11).
+- Suites run, with results:
+  - `npm run test:integration -- 'rls-|runtime-role|joint-accounts|cross-owner-transfers|security-cross-user-isolation|schema-entity-parity'`: `Test Suites: 9 passed, 9 total; Tests: 180 passed, 180 total`.
+  - Probe `zz-audit-s04-probe.integration.spec.ts` (scratch worktree, enforced harness): 4 cases, 1 passed (MON-M06 holds), 3 failed on the baseline as designed (A26-S04-02 x2, A26-S04-03); outputs quoted in the findings.
+  - Probe `zz-audit-s04-transfer-probe.integration.spec.ts`: 1 case, failed on the baseline as designed (A26-S04-01).
+  - Mutation runs (scratch worktree, set S unless stated): MA 175/175 green and `rls-enforcement` 35/35 green; MB 35 failed; MC 4 failed; MD 175/175 green, unit 2 failed; ME unit 4 failed, `runtime-role` 27/27 green.
+- Areas reviewed without a finding: `withScopedDb` identity join refusal and isolation refusal, GUC emission per mode, fail-closed helpers (`NULLIF(...)::uuid`, `COALESCE`), runtime role check and provisioning (MON-M14), `schema_migrations` write revoke, `WITH_CONTEXT_ALLOWLIST` completeness, the `oauth_payloads` and `PgListener` exceptions, MCP bearer context seeding, MON-M06 flows under enforcement.
+- Not covered this session (sampled or skipped, never reported clean): cross-owner transfer update and delete paths beyond their VOID and authorization placement (S07); `joint-categories.service.ts` beyond its shape; `account-delegate.guard.ts` body-account checks (S03 sampled); `docs/specs/row-level-security.md` and `docs/rls-runbook.md` (operational, read for consistency only where the contract cites them); the 23 enforced-harness suites were not run (they belong to their domain sessions).
+- Read-then-`save` sweep (D-S03-01), handed on, not verified here except the delegation rows: 26 cross-transaction sites; the material ones are `auth/auth.service.ts:387 -> 511/538` (login, already S03's A26-S03-02), `auth/auth-email.service.ts:105 -> 119` (forgot-password: separate transactions, so a reset or an account deletion between them is reverted or re-inserted), `auth/two-factor.service.ts:286 -> 367` (can revert a concurrent 2FA disable), `users/users.service.ts:101 -> 173` and `:431 -> 481`, `admin/admin.service.ts:575 -> 604` (can revert a concurrent deactivation), `emergency-access/emergency-access.service.ts:199 -> 249` (same transaction, no lock: can revert the monitor's committed `granted_at`), `accounts/accounts.service.ts:1142 -> 1200` (same transaction, no lock: can write back a stale `current_balance` of the linked cash account).
+- Open hypotheses handed on:
+  - to S03 (re-open via the orchestrator) or S21: the auth, users, admin and emergency-access rows of the read-then-`save` sweep above; demonstrate `auth-email.service.ts:105 -> 119` against an account deletion and `emergency-access.service.ts:199 -> 249` against the monitor's grant.
+  - to S07: `accounts.service.ts:1142 -> 1200` and `:1937 -> 1942` (stale `current_balance` written back by a whole-entity `save` of the linked half; MON-H07's family); the cross-owner update and delete paths under A26-S04-01's re-check rule; INV-TRANSFER-001's cross-owner VOID matrix on `monize_app`.
+  - to S18: INV-SHARE-001..005 are the PWA share-target invariants, not joint accounts (section 11); they were assigned to S04 by the session plan and were not audited here.
+  - to S21: A26-S04-04 joins MON-M46 (missing real-role tests); `rls-context-smoke.spec.ts` encodes the two-transaction shape (section 10).
+- Ledger text for the orchestrator (S04 row): status `done`; findings B/H/M/L = 0/0/4/0; prior findings disposed 2 of 2 (MON-M06 `FIXED_VERIFIED`, MON-M14 `FIXED_VERIFIED`); D-S03-01 `CONFIRMED` for the delegation paths (A26-S04-02), the rest handed on; suites run: see above; undetected mutation rows: `joint read arm | 134_joint_native_read_rls.sql:47 drop the delegate predicate | a third-user negative read on a granted account under monize_app | S04`; `delegate identity | scoped-db.ts:208 real_user_id = userId | a real-role acting-delegate read of a Group B table | S04`; `revocation final | delegation.service.ts:969/1005 stale save after revoke | enforced revoke-vs-setter race | S04`; `authorization in the write | transaction-transfer.service.ts:911-920 no re-check | enforced revoke-vs-transfer race | S04`; `owner-issued delegations | schema.sql:4111-4118 delegate arm in WITH CHECK | delegate-session INSERT negative | S04`; deviations: `dockerd` started by hand; protocol read with the Read tool rather than re-loaded through the Skill tool; the session-plan invariant list INV-SHARE-001..005 does not match the slice (handed to S18); the scratch worktree shares `node_modules` with the main checkout by symlink.
+
+## 13. Adversarial approval challenge
+
+Started from the slice's own abstractions, not from the findings: "an identity GUC set once per transaction", "a system bypass opened after an authorization read", "a policy arm keyed on the real user", "a whole-entity save", "an exemption", "a startup check".
+
+- Identity per transaction: searched for any path that runs a policied statement outside `withScopedDb` (the lint bans, `direct-connection.guard.spec.ts`, the `oauth_payloads` and `PgListener` exceptions) and for a nested identity change (refused at `scoped-db.ts:165-180`); also for `runOutsideActiveScopedManager` callers, which open a second transaction under the same ambient identity (import job progress), not a different one. Nothing new.
+- Bypass after authorization: enumerated the `withSystemContext` write sites in `delegation/`, `transactions/` and `categories/`; every one authorizes in an earlier transaction. That is A26-S04-01 and A26-S04-02; the challenge added the joint-register `update` variant (owner moves the row to an unshared account between `loadRowById` and the bypass update).
+- Real-user arms: the arms widen reads to the delegate's own session; the challenge found that the WITH CHECK side of the two delegation tables accepts the delegate too (A26-S04-03) and that the arms ignore which owner the session acts for (D-S04-01).
+- Whole-entity save: the sweep confirmed the pattern across `users`; the delegation rows were executed; the rest is handed on.
+- Exemptions: the one exempt table with per-person content (`push_chart_artifacts`) is a design risk, not a leak (no read path).
+- Startup check: the check is on the serving connection and both credentials and GUCs read one mode; point-in-time only (D-S04-04).
+- Legacy data: a delegation row written before migration 132/134 needs nothing new (the arms read existing columns); a `refresh_tokens` row with `acting_as_user_id` and no `delegation_id` is S03's.
+- Stale client: not applicable to policies; the capability toggles are idempotent booleans, so a resent value cannot widen access except through A26-S04-02's re-insert.
+
+The challenge did not overturn any finding; it widened A26-S04-01's surface list.
+
+## 14. Verdict
+
+`REQUEST CHANGES` for the slice: four MEDIUM findings survived the adversarial challenge (A26-S04-01 write after revoke under the system bypass, A26-S04-02 stale whole-entity saves in delegation management, A26-S04-03 delegate-side WITH CHECK on the delegation tables, A26-S04-04 no real-role tests for delegation, joint and cross-owner paths); no BLOCKER or HIGH. Both owned prior findings are `FIXED_VERIFIED` (MON-M06 executed under `monize_app`; MON-M14 by the runtime-role integration suite). Hosted CI was not consulted; every result above is a local run on `AUDIT_BASELINE_SHA`.
+
