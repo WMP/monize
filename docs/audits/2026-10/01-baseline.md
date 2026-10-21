@@ -11,7 +11,7 @@
 | Primary path | `AGENTS.md` (the instruction hierarchy), then `.github/workflows/ci.yml` |
 | Hint line used | `prioritize the instruction hierarchy and its contradictions, the architecture delta since d5cea9bf (plan section 5), which suites run green at the baseline, and the 19 partial and 1 unenforced invariants as standing hypotheses` |
 | Runtime executed | See section 12.1 (baseline suite table). Node 24.22.1 via `/opt/nvm`; PostgreSQL 16 (`mirror.gcr.io/library/postgres:16-alpine`) in Docker; mutations in a scratch worktree at `AUDIT_BASELINE_SHA`. |
-| Status | in-progress (suite results being filled) |
+| Status | in-progress (E2E running) |
 
 ## 2. Invariant map
 
@@ -294,6 +294,7 @@ No BLOCKER, HIGH or MEDIUM survived. Four LOW findings, all in the gate and inst
 - Missing: a lint-config test that every spelling of a `with-context` import and a direct `requestContextStorage.run` is flagged outside the allowlist (A26-S01-02).
 - Missing: a code-level check that each `@Cron` handler calls the mechanism its doc row names (DR-S01-2, M5).
 - Missing (INV-CRON-001, recorded `partial`): two-instance tests per job; only the MNY job has one.
+- Unstable test (observed): `test/integration/ofx-import-fitid.integration.spec.ts` failed in the full integration run with `deadlock detected` inside `cleanTables` (`test/helpers/integration-setup.ts:272`) and passed 10/10 alone. `cleanTables` already settles pending price writes and pending history writes before its `TRUNCATE ... CASCADE` (`:255-271`), so a third kind of un-awaited post-request write from an earlier suite (candidates: post-commit recompute dispatch, notification or provider-health writes) still runs into the next suite's truncate. Not root-caused here; handed to S21. If the same writer exists in production, it is a write that outlives its request, which `docs/external-side-effects.md` and INV-CACHE-001 govern (S07).
 - Known-wrong: none found in the slice. `docs/verification-contract.md` s5 is S02's.
 
 ## 11. Documentation inconsistencies
@@ -314,13 +315,36 @@ No BLOCKER, HIGH or MEDIUM survived. Four LOW findings, all in the gate and inst
 | D12 | `docs/system-invariants.md` INV-LOAN-HISTORY-001 | The second gap ("no reader branches on `interest_booking_mode`") is stale: `loan-installments/plan-loan-settlement.ts:231` and `transaction-rules/rule-loan-settlement.ts:165` branch on it; the history producer still does not. |
 | D13 | `docs/system-invariants.md` INV-RULE-002 | The call-site list omits `bank-sync/bank-sync-writer.service.ts:323`, which the guard's `APPLYING_SITES` includes. |
 | D14 | `docs/verification-contract.md:347`, `AGENTS.md` | Present `npm run lint` as the backend lint check; it is a fixer (A26-S01-01). |
+| D16 | `AGENTS.md` (Commands: "91/90/87/85 thresholds"), `frontend/CLAUDE.md:17` ("85% branches") | `frontend/vitest.config.ts:31` sets `branches: 84`. Either the threshold was lowered without the documents, or the documents were never right; `AGENTS.md` lists coverage thresholds under "Do not change these casually". Measured branch coverage at the baseline is 87.74, so neither value is binding today. |
 | D15 | root `CLAUDE.md` | Describes `.claude/settings.json` as "read-only git"; it allows `git add*` and `git checkout -b*` (A26-S01-04). |
 
 ## 12. Review ledger
 
 ### 12.1 Baseline suite results
 
-SUITE_TABLE_PLACEHOLDER
+Environment: session container, 4 CPUs, Node 24.22.1 (`/opt/nvm`), Docker 29.9.1 (daemon started by hand), PostgreSQL `mirror.gcr.io/library/postgres:16-alpine` on `127.0.0.1:5432` (user `monize_user`), `TZ=UTC`, process runs as root.
+
+| Check | Command | Result | Discovered / passed | Notes |
+| --- | --- | --- | --- | --- |
+| Node | `nvm install 24 && nvm use 24` | OK | -- | Node 22.22.0 default fails `npm ci` (S00); README.md:418,491 states Node 24; no `engines`, no `.nvmrc` (DR-S01-3) |
+| `npm ci` backend, frontend, e2e | Node 24 | OK | -- | |
+| Backend lint (check form) | `npx eslint "{src,apps,libs,test}/**/*.ts" --max-warnings=0` | **FAIL** | 3 errors, 0 warnings | `prettier/prettier` in 3 files; CI's `npm run lint` (`--fix`) exits 0 on the same tree (A26-S01-01). No `no-restricted-*` violation |
+| Backend `tsc --noEmit` | | pass | -- | |
+| Backend `npm run typecheck` (src + test) | | pass | -- | |
+| Backend unit | `TZ=UTC npm run test:unit -- --coverage` | pass | 1 048 suites; 27 481 tests: 27 479 passed, 2 skipped, 0 failed | Jest 398 s. Coverage: statements 96.58, branches 87.65, functions 96.87, lines 97.41 (thresholds 94/85/95/95): met. The 2 skips are `auto-backup.service.spec.ts:935,1346`, skipped when run as root |
+| Backend build | `npm run build` | pass | -- | |
+| Backend integration | `npm run test:integration` (whole suite, `--runInBand`, `maxWorkers: 1`) | **1 failure** | 118 suites (117 passed, 1 failed); 1 479 tests: 1 470 passed, 8 skipped, 1 failed | 1 688 s. Failure: `test/integration/ofx-import-fitid.integration.spec.ts` "imports a new transfer identical to two already imported ones, which a later download skips by key": `QueryFailedError: deadlock detected` in `cleanTables` (`test/helpers/integration-setup.ts:272`, the `TRUNCATE ... CASCADE` in `beforeEach`). Re-run of that suite alone: 10/10 passed. Classified as a cross-suite isolation defect of the harness (section 10), not a product failure; the one re-run is spent |
+| Frontend lint | `npm run lint` (`eslint .`) | pass | -- | |
+| Frontend type-check | `npm run type-check` | pass | -- | |
+| Frontend i18n | `npm run i18n:check` | pass | -- | |
+| Frontend unit | `npm run test:cov` | pass | 1 139 files; 22 249 tests passed, 0 failed, 0 skipped | 1 409 s. Coverage: statements 92.47, branches 87.74, functions 90.56, lines 93.79 (thresholds in `frontend/vitest.config.ts:30-35`: statements 90, branches 84, functions 87, lines 91): met |
+| E2E | see below | E2E_RESULT | | |
+| `node scripts/check-env-docs.mjs` | | pass | -- | |
+| `node scripts/check-docs-manifests.mjs` | | pass | 33 documents | Failed once on this report's own first draft (a suggested diff named a not-yet-existing npm script); the wording was changed. The check scans `docs/audits/2026-10/`, so every session report is subject to it |
+| `node scripts/check-migration-prefixes.mjs` | | pass (partial) | 233 migrations | No base ref in the shallow clone: the "added migrations are timestamp-prefixed" half did not run (S05) |
+| `npm run migration:lint` | | pass | 233 | one registered one-shot repair, `166_heal_loan_schedule_end_dates.sql` |
+| `scripts/verify-schema.sh` | | not run | -- | left to S05, to keep Docker free for the E2E stack |
+| Hosted CI | | not available | -- | no CI run exists for the audit branch; nothing here is a CI result |
 
 ### 12.2 `withSystemContext` / `withUserContext` / `withDelegateContext` / `withPreserveTimestamps` call sites against `WITH_CONTEXT_ALLOWLIST`
 
