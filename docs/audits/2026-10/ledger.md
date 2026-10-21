@@ -37,7 +37,7 @@ before auditing.
 | S12 | in-progress | 2026-10-21 | | | | `12-securities-holdings.md` (child session_01E4gKh1kzVaxArb2UHN9km7, claude-opus-5-5) |
 | S13 | open | | | | | `13-valuation-fx-networth.md` |
 | S14 | open | | | | | `14-bonds.md` |
-| S15 | in-progress | 2026-10-21 | | | | `15-loans-strategies.md` (child: see next ledger update) |
+| S15 | in-progress | 2026-10-21 | | | | `15-loans-strategies.md` (child session_01JEBFJpQ1qzqkCGWz62GC7v, claude-opus-5-5) |
 | S16 | open | | | | | `16-budgets-reports.md` |
 | S17 | open | | | | | `17-ai-mcp-notifications.md` |
 | S18 | open | | | | | `18-frontend-core.md` |
