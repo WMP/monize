@@ -24,22 +24,22 @@ session report, `NN-<slice>.md#...`).
 
 | ID | Title (abridged) | Owner | S02 triage | Disposition | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| MON-H01 | Automatic backups of different owners and instances share one filename and retention namespace | S06 | open | open | |
-| MON-H02 | Restore remaps local/S3 attachment metadata without copying or verifying the bytes | S06 | open | open | |
-| MON-H03 | Concurrent MNY import starts create separate active jobs for one user | S09 | open | open | |
-| MON-H04 | Import worker crash after the data commit lets retry replay the committed source | S09 | open | open | |
-| MON-H05 | Transaction, transfer, reconciliation and bulk mutations derive balance deltas from stale snapshots | S07 | open | open | |
-| MON-H06 | Scheduled posting has no durable occurrence identity and commits money before advancing the schedule | S08 | open | open | |
-| MON-H07 | Absolute balance recomputation can overwrite a concurrent committed atomic delta | S07 | open | open | |
-| MON-H08 | Holding updates and full rebuilds can lose concurrent investment transactions | S12 | open | open | |
-| MON-H09 | One emergency-access claim token can be consumed by two concurrent requests | S03 | open | open | |
-| MON-H10 | Transfer VOID transitions can leave the two legs and both balances inconsistent | S07 | open | open | |
-| MON-H11 | Transfer currencies, FX rate and destination value are not server-authoritative | S07 (client half S19) | open | open | |
-| MON-H12 | Unavailable FX is converted as a valid-looking 1:1 value | S13 | open | open | |
-| MON-H13 | Historical net-worth replay adds a stock-split ratio instead of multiplying shares | S13 | open | open | |
-| MON-H14 | Investment preview and commit can use different exchange rates without disclosure | S12 | open | open | |
-| MON-H15 | Opening an existing scheduled investment override replaces its stored price with the latest quote | S19 | open | open | |
-| MON-H16 | Partial or unavailable portfolio valuations are rendered as complete totals | S20 | open | open | |
+| MON-H01 | Automatic backups of different owners and instances share one filename and retention namespace | S06 | STILL_OPEN (residual) (S02) | open | |
+| MON-H02 | Restore remaps local/S3 attachment metadata without copying or verifying the bytes | S06 | FIXED_VERIFIED (S02) | open | |
+| MON-H03 | Concurrent MNY import starts create separate active jobs for one user | S09 | FIXED_VERIFIED (S02) | open | |
+| MON-H04 | Import worker crash after the data commit lets retry replay the committed source | S09 | STILL_OPEN (residual) (S02) | open | |
+| MON-H05 | Transaction, transfer, reconciliation and bulk mutations derive balance deltas from stale snapshots | S07 | STILL_OPEN (S02) | open | |
+| MON-H06 | Scheduled posting has no durable occurrence identity and commits money before advancing the schedule | S08 | STILL_OPEN (residual) (S02) | open | |
+| MON-H07 | Absolute balance recomputation can overwrite a concurrent committed atomic delta | S07 | FIXED_VERIFIED (S02) | open | |
+| MON-H08 | Holding updates and full rebuilds can lose concurrent investment transactions | S12 | FIXED_VERIFIED (S02) | open | |
+| MON-H09 | One emergency-access claim token can be consumed by two concurrent requests | S03 | FIXED_VERIFIED (S02) | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
+| MON-H10 | Transfer VOID transitions can leave the two legs and both balances inconsistent | S07 | STILL_OPEN (residual) (S02) | open | |
+| MON-H11 | Transfer currencies, FX rate and destination value are not server-authoritative | S07 (client half S19) | STILL_OPEN (residual) (S02) | open | |
+| MON-H12 | Unavailable FX is converted as a valid-looking 1:1 value | S13 | STILL_OPEN (S02) | open | |
+| MON-H13 | Historical net-worth replay adds a stock-split ratio instead of multiplying shares | S13 | FIXED_VERIFIED (S02) | open | |
+| MON-H14 | Investment preview and commit can use different exchange rates without disclosure | S12 | FIXED_VERIFIED (S02) | open | |
+| MON-H15 | Opening an existing scheduled investment override replaces its stored price with the latest quote | S19 | FIXED_VERIFIED (S02) | open | |
+| MON-H16 | Partial or unavailable portfolio valuations are rendered as complete totals | S20 | STILL_OPEN (residual) (S02) | open | |
 
 ## MEDIUM
 
@@ -47,11 +47,11 @@ session report, `NN-<slice>.md#...`).
 | --- | --- | --- | --- | --- |
 | MON-M01 | Deployment documentation and defaults do not match Compose and Helm manifests | S21 | open | |
 | MON-M02 | Contributor guidance recommends transaction APIs the scoped rule prohibits | S01 | open | |
-| MON-M03 | Delegated `/users/me` responses expose fields outside the delegated profile | S03 | open | |
+| MON-M03 | Delegated `/users/me` responses expose fields outside the delegated profile | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M04 | MCP sessions keep the scopes from session creation after the bearer is revalidated | S17 | open | |
-| MON-M05 | OIDC destructive-action confirmation accepts an arbitrary non-empty value | S03 | open | |
+| MON-M05 | OIDC destructive-action confirmation accepts an arbitrary non-empty value | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M06 | Delegation create, link and revoke conflict with enforced RLS ownership | S04 | open | |
-| MON-M07 | Delegated activity is attributed to the effective owner, not the real actor | S03 | open | |
+| MON-M07 | Delegated activity is attributed to the effective owner, not the real actor | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M08 | Restore ordering can fail linked asset/loan account relationships | S06 | open | |
 | MON-M09 | Automatic-backup artifacts are published through non-crash-atomic final-file operations | S06 | open | |
 | MON-M10 | Authenticated users can browse and select arbitrary server filesystem backup paths | S06 | open | |
@@ -67,10 +67,10 @@ session report, `NN-<slice>.md#...`).
 | MON-M20 | Account closure can race a mutation and commit a closed non-zero account | S07 | open | |
 | MON-M21 | Concurrent incremental split additions can exceed the parent amount | S07 | open | |
 | MON-M22 | Local and S3 attachment bytes are not transactionally coupled to metadata | S06 | open | |
-| MON-M23 | Logout can miss a refresh token created by a concurrent rotation in the same family | S03 | open | |
-| MON-M24 | Parallel failed logins lose counter increments and delay lockout | S03 | open | |
+| MON-M23 | Logout can miss a refresh token created by a concurrent rotation in the same family | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
+| MON-M24 | Parallel failed logins lose counter increments and delay lockout | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M25 | AI insight generation uses a process-local guard and duplicates work across replicas | S08 (claim), S17 (provider) | open | |
-| MON-M26 | Emergency-access grant issuance can send links another replica immediately invalidates | S03 | open | |
+| MON-M26 | Emergency-access grant issuance can send links another replica immediately invalidates | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M27 | Ordinary transaction currency can disagree with the owning account currency | S07 (cross-check S10) | open | |
 | MON-M28 | Mixed-sign split children are accepted when their signed total equals the parent | S07 (client half S19) | open | |
 | MON-M29 | Explicit zero or negative investment FX rates produce inconsistent cash postings | S12 | open | |
@@ -83,13 +83,13 @@ session report, `NN-<slice>.md#...`).
 | MON-M36 | A failed backend logout is presented as a successful local logout | S18 | open | |
 | MON-M37 | Two-decimal split editing and one-cent tolerance conflict with four-decimal persistence | S19 | open | |
 | MON-M38 | Successful transaction mutations leave cached budget progress stale | S18 | open | |
-| MON-M39 | Tests validate missing FX as a successful 1:1 conversion (verification defect) | S13 | open | |
-| MON-M40 | The scheduled-override test expects an existing price to be overwritten (verification defect) | S19 | open | |
-| MON-M41 | The historical stock-split fixture encodes additive shares (verification defect) | S13 | open | |
-| MON-M42 | The AppHeader test expects logout failure to look successful (verification defect) | S18 | open | |
-| MON-M43 | Automatic-backup tests expect generic cross-owner keys (verification defect) | S06 | open | |
-| MON-M44 | The backend integration CI command can succeed after discovering zero tests | S21 | open | |
-| MON-M45 | The release workflow pushes a `[skip ci]` bump after testing a different SHA | S21 | open | |
+| MON-M39 | Tests validate missing FX as a successful 1:1 conversion (verification defect) | S13 | open | S02 triage: STILL_OPEN (relocated), see `02-prior-high-triage.md#5-prior-finding-dispositions` |
+| MON-M40 | The scheduled-override test expects an existing price to be overwritten (verification defect) | S19 | open | S02 triage: FIXED_VERIFIED, see `02-prior-high-triage.md#5-prior-finding-dispositions` |
+| MON-M41 | The historical stock-split fixture encodes additive shares (verification defect) | S13 | open | S02 triage: FIXED_VERIFIED, see `02-prior-high-triage.md#5-prior-finding-dispositions` |
+| MON-M42 | The AppHeader test expects logout failure to look successful (verification defect) | S18 | open | S02 triage: FIXED_VERIFIED, see `02-prior-high-triage.md#5-prior-finding-dispositions` |
+| MON-M43 | Automatic-backup tests expect generic cross-owner keys (verification defect) | S06 | open | S02 triage: STILL_OPEN (narrowed), see `02-prior-high-triage.md#5-prior-finding-dispositions` |
+| MON-M44 | The backend integration CI command can succeed after discovering zero tests | S21 | open | S02 triage: FIXED_VERIFIED, see `02-prior-high-triage.md#5-prior-finding-dispositions` |
+| MON-M45 | The release workflow pushes a `[skip ci]` bump after testing a different SHA | S21 | open | S02 triage: STILL_OPEN, see `02-prior-high-triage.md#5-prior-finding-dispositions` |
 | MON-M46 | Canonical concurrency defects lack deterministic tests at the production boundary (missing test) | S21 | open | |
 | MON-M47 | No local/S3 attachment backup-restore round trip verifies bytes and remapping (missing test) | S06 | open | |
 
@@ -97,7 +97,7 @@ session report, `NN-<slice>.md#...`).
 
 | ID | Title (abridged) | Owner | Disposition | Evidence |
 | --- | --- | --- | --- | --- |
-| MON-L01 | A stale PAT comment mentions a reports scope issuance does not support | S03 | open | |
+| MON-L01 | A stale PAT comment mentions a reports scope issuance does not support | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-L02 | Database initialization and migration runners are not serialized across replicas | S05 | open | |
 | MON-L03 | Budget-alert deduplication is a check-then-insert race | S16 | open | |
 | MON-L04 | Staged-file expiry can delete bytes a pending or running import still needs | S09 | open | |
