@@ -23,9 +23,9 @@ before auditing.
 | Session | Status | Started | Finished | Commit | Findings (B/H/M/L) | Report |
 | --- | --- | --- | --- | --- | --- | --- |
 | S00 planning | done | 2026-10-21 | 2026-10-21 | this commit | -- | `plan.md`, `sessions.md`, `prior-findings-register.md` |
-| S01 | open | | | | | `01-baseline.md` |
-| S02 | open | | | | | `02-prior-high-triage.md` |
-| S03 | open | | | | | `03-security-auth.md` |
+| S01 | in-progress | 2026-10-21 | | | | `01-baseline.md` (child session_01K2tpEV1qrxan3G3mhQa4Jn, claude-opus-5-5) |
+| S02 | in-progress | 2026-10-21 | | | | `02-prior-high-triage.md` (child session_01366anc7J8MgFS2vwq5szy2, claude-opus-5-5) |
+| S03 | in-progress | 2026-10-21 | | | | `03-security-auth.md` (child session_019xGDCFeEXnmBq2PfLKgW9t, claude-opus-5-5) |
 | S04 | open | | | | | `04-rls-tenancy.md` |
 | S05 | open | | | | | `05-migrations-schema.md` |
 | S06 | open | | | | | `06-backup-restore.md` |
@@ -93,6 +93,11 @@ should fail | session`.
 - (none yet)
 
 ## Known deviations from the plan
+
+- Wave 1 (2026-10-21): S01, S02 and S03 run concurrently as three remote child sessions on
+  `claude-opus-5-5`, orchestrated by session_018Nx7aian3f7dpRX5msjFBg. The S02 and S03 dependency
+  on S01 is waived; each child brings up its own toolchain. Children write only their report
+  file; the orchestrator merges dispositions and ledger text after each check-in.
 
 Record any time a session could not follow `plan.md` section 4 (a suite that cannot run in
 the container, a slice split in two, a lens not run) with the reason.
