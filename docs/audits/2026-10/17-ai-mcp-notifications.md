@@ -10,7 +10,7 @@
 | Date | 2026-10-21 |
 | Primary path | `backend/src/mcp/` |
 | Hint line | `prioritize every AI tool implemented once on a domain service and adapted by both the executor and the MCP layer (a tool in one layer only is a finding), the compact LLM shape carrying every completeness flag, MCP scopes bound to the current token not the session, every write tool reaching the same refusals as the HTTP path (VOID, currency, ownership), prompt content as untrusted input, insight generation across replicas, push subscription lifecycle and the chart artifact TTL, and dispatch at-most-once` |
-| Status | in-progress, remaining: integration suite results, sections 12-14 final text |
+| Status | done |
 
 Runtime executed: Node 24.22.1 (`/opt/nvm`), backend `npm ci` OK, PostgreSQL 16 (`mirror.gcr.io/library/postgres:16-alpine`) in Docker (`dockerd` started by hand). Results:
 
@@ -189,7 +189,7 @@ Suggested remediation diff: incomplete. Missing: the rate date per row (row date
 14. **Verification method:** the new integration suite; `tool-executor.service.spec.ts` summary-line cases; `tool-output-schemas.spec.ts` round trip with the new fields; `tools-list-budget.spec.ts` (a schema change costs `tools/list` bytes).
 15. **Residual risks / patch limitations:** the transactions page summary shares `getSummary`; changing its scalar semantics there needs the frontend consumer audit (S20). The patch does not decide whether a transfer between two currencies belongs in either total (it is excluded today by `isTransfer = false`).
 
-Causality: `PRE_EXISTING_UNREPORTED` (the analytics LLM reads predate the 2026-08 audit; not in its register). Rule 7 surfaces: AI and MCP `list_transactions`, `compare_periods`, `list_investment_transactions`. Not merged with A26-S13-01: that finding is a missing-rate fallback inside a conversion; here no conversion is attempted.
+Causality: `PRE_EXISTING_UNREPORTED` (the analytics LLM reads predate the 2026-08 audit; not in its register). Rule 7 surfaces: AI and MCP `list_transactions`, `compare_periods`, `list_investment_transactions`; the MCP resource `monize://financial-summary` (`mcp/resources/financial-summary.resource.ts:61-72`, `currentMonth` is `getSummary`); the AI insights prompt (`ai/insights/insights-aggregator.service.ts:149, 203`, `SUM(ABS(t.amount))` over every account, labelled with the user's currency at `:120`), found in the approval challenge. Not merged with A26-S13-01: that finding is a missing-rate fallback inside a conversion; here no conversion is attempted.
 
 ### A26-S17-02 - A failure after the write commits releases the AI action's single-use claim, so the card's "Retry" writes the same transaction a second time
 
@@ -469,6 +469,40 @@ Causality: `PRIOR_REPORTED` (MON-M04, test half; the defect itself is `FIXED_VER
 
 Causality: `NEW_SINCE_UPSTREAM_AUDIT` (portfolio-movement alerts are new). Handed from S08 (`08-scheduler-cron.md` section 12).
 
+### A26-S17-07 - The insights aggregator computes the month start as a local-midnight date read back in UTC, so a server east of UTC treats the previous month as the current one
+
+1. **Severity:** LOW
+2. **Confidence:** high (executed: `TZ=Europe/Warsaw` gives `2026-09-30` for the start of October 2026, `TZ=UTC` gives `2026-10-01`)
+3. **Location:** `backend/src/ai/insights/insights-aggregator.service.ts:54-61` (`new Date(y, m, 1).toISOString().substring(0, 10)` for `currentMonthStart` and `sixMonthsAgo`), `:79-81` (`monthlySpending.find(m => m.month === currentMonthStart.substring(0, 7))`).
+4. **Violated invariant:** `backend/CLAUDE.md` "A calendar date stepped over a range: `enumerateDaysYMD` / `addDaysYMD`, never a local-midnight `Date` read back with `toISOString()`".
+5. **Realistic reproduction scenario:** an operator sets `TZ=Europe/Warsaw` on the backend container; the 6 AM insight cron runs on 21 October.
+6. **Observed implementation behavior:** `currentMonthStart = "2026-09-30"`, so the aggregates' "current month" is September and the six-month window starts on 31 March.
+7. **Expected behavior:** `2026-10-01` and `2026-04-01` whatever the server zone (the user's financial today, `financialTodayYmd` on the server side).
+8. **Impact:** insights compare the wrong month ("you spent more this month") for every user of such a deployment; no stored financial data changes. Default containers run in UTC, which hides it.
+9. **Root cause:** local-time constructor plus UTC serialisation.
+10. **Recommended correction:** build the dates from a `YYYY-MM-DD` string of the user's financial today and step them with `addDaysYMD`/month arithmetic on strings.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+-    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+-      .toISOString()
+-      .substring(0, 10);
+-    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1)
+-      .toISOString()
+-      .substring(0, 10);
+-    const today = now.toISOString().substring(0, 10);
++    const today = formatDateYMD(now); // or the user's financial today
++    const currentMonthStart = `${today.substring(0, 7)}-01`;
++    const sixMonthsAgo = addMonthsYMD(currentMonthStart, -6); // string arithmetic, no Date
+```
+
+(`addMonthsYMD` is illustrative: the repository's month-stepping helper must be located first, Rule 2.)
+12. **Recommended regression test / 13. diff (illustrative, not applied):** a spec run under a fixed non-UTC zone (`process.env.TZ` set before the module loads, or the jest config's per-file environment) asserting `currentMonthStart` is the first of the month.
+14. **Verification method:** the spec under `TZ=Europe/Warsaw` and `TZ=America/Los_Angeles`.
+15. **Residual risks / patch limitations:** `forecast-aggregator.service.ts:126` and other `toISOString().substring(0, 10)` reads of "today" have the UTC-day variant of the same question (not a month shift); not swept.
+
+Causality: `PRE_EXISTING_UNREPORTED`. Found in the approval challenge.
+
 ## 5. Prior-finding dispositions
 
 | ID | Disposition | Evidence |
@@ -540,3 +574,43 @@ All in the scratch worktree; each reverted with `git checkout` before the next.
 - `docs/system-invariants.md` INV-MCP-001 "Required tests" lists no test of the per-request scope on an existing 2025-era session, while its statement promises "that credential's current scopes" (A26-S17-05).
 - `docs/backend/ai-and-payees.md` "Shared AI tools" does not list `render_chart` as an assistant-only presentation tool beside `enter_bond_series_manually`'s documented MCP-only status.
 - The `spending_anomalies` tool descriptions (`tool-definitions.ts:1051-1056`, `reports.tool.ts:65-67`) promise a months window the implementation does not have (A26-S17-03).
+
+## 12. Review ledger
+
+- **Revision:** `PR_REVIEW_SHA` = `AUDIT_BASELINE_SHA` `72c59ec4`; audit branch HEAD at start `4e796dd7`; code identical to the baseline (pin check empty). No PR, no CI consulted.
+- **Directories inspected:** `backend/src/mcp/` (transport, context, tools, resources), `backend/src/ai/` (actions, query executor, relay, insights), `backend/src/ai-review/`, `backend/src/notifications/`, `backend/src/notification-center/`, `backend/src/push/`, `backend/src/system-alerts/`; `frontend/src/store/aiChatStore.ts`, `frontend/src/components/ai/ConfirmationCardShell.tsx`, `frontend/public/sw.js` (image handling).
+- **Files in full:** `mcp/mcp-http.controller.ts`, `mcp/mcp-context.ts`, `mcp/CLAUDE.md`, `docs/backend/mcp.md`, `notifications/notification-dispatch.service.ts` (`:60-483`), `push/push-chart-artifact.service.ts`, `push/push-chart.controller.ts`, `ai/actions/ai-write-limiter.ts`, `mcp/mcp-write-limiter.ts`.
+- **Files sampled (ranges):** `ai/actions/ai-actions.service.ts:143-392, 467-1260`; `ai/query/tool-executor.service.ts:240-345, 2858-3066` plus every summary line (grep); `ai/insights/ai-insights.service.ts:40-339`; `ai/relay/ai-relay.service.ts:214-543`; `push/push-subscription.service.ts:204-503`; `mcp/tools/transactions.tool.ts:1020-1180`; `mcp/tools/investments.tool.ts:1245-1287`; `mcp/tools/reports.tool.ts:60-100`; `mcp/resources/financial-summary.resource.ts:40-95`; `transactions/transaction-analytics.service.ts:365-495, 1200-1240, 1425-1580`; `securities/investment-transactions.service.ts:5109-5240`; `ai-review/ai-review-work.service.ts:215-245, 335-362`; `attachments/attachment-tool-prep.service.ts:38-100`; `attachments/attachments.service.ts:140-330`; `ai/query/attachment-validation.ts`; `system-alerts/system-alert.service.ts:143-300`; `notification-center/balance-threshold-alert.service.ts:30-110`; `notification-center/portfolio-movement-alert.service.ts:205-275`; `budgets/budgets.service.ts:700-830`; `oauth/oauth-provider.service.ts:357-417`; `auth/pat.service.ts:116-165`; `updates/updates.service.ts:20-35, 290-315`; `ai/insights/insights-aggregator.service.ts:50-81, 140-210`; SDK `@modelcontextprotocol/node` `index.cjs:230-245`, `@modelcontextprotocol/server` `index.cjs:1050-1100`.
+- **Not read (named so nobody reads this as clean):** `ai/query/tool-executor.service.ts` outside the ranges above (about 2,400 lines of adapters, compared by the parity grep only), `ai/relay/ai-relay.service.ts:543-1106`, `mcp/mcp-confirm.ts` and `mcp-request-state.ts` (held by green suites and the index entries only), `provider-health/` (the integration suite ran green; code not read), `notification-center/` beyond the two alert services, the frontend `components/notifications/` and `lib/push.ts`, `docs/specs/notification-preferences.md` (1,336 lines, not read).
+- **Searches:** AI vs MCP tool names (`tool-definitions.ts` names, executor `case`s, `registerTool(`); per-file `this.<service>.<method>(` calls in both layers; every `.notify(` caller; `EMAIL_RECEIPTS_CLAIM_KEY`; `forwarded_by|forwardedBy` (no consumer in `ai-review/`, MCP or the frontend: the A26-S11-04 residual is confirmed on the inbox card AND on the agent's claim payload, which carries `fromAddress` only, `ai-review-work.service.ts:355-359`; consolidated under A26-S11-04); `getSpendingAnomalies`; `SUM(ABS(`; `render_chart`; `NETWORK_WRITING_TOOL_NAMES`; `toISOString().substring(0, 10)` in `ai/`.
+- **Suites run:** unit `TZ=UTC npm run test:unit -- src/mcp src/ai src/ai-review src/notifications src/notification-center src/push src/system-alerts src/provider-health`: 157 suites, 4200 tests, pass. Integration `npm run test:integration -- "ai-action-replay|ai-relay|ai-review|push-|system-alert|provider-health|daily-write-limit|notifications|transactions.integration"`, one worker, alone: 14 suites, 145 tests, pass (`ai-relay-claim`, `ai-relay-tables`, `ai-review-requests`, `ai-review-mcp`, `ai-action-replay`, `daily-write-limit`, `bank-sync-notifications`, `bond-notifications`, `push-hold`, `push-chart-token`, `provider-health`, `system-alert-dedupe`, `transactions`, `investment-transactions`). There is no `mcp*` integration suite in the repository. Probes P1, P2 (unit harness, scratch worktree) and P3 (integration harness, real PostgreSQL, run alone).
+- **Areas reviewed without a finding:** MCP identity per request, credential binding and the 403/401 paths; the relay caller-scoped liveness and card routing; the dispatch seam's lock, dedupe and fan-out order; system-alert insert winner and email claim; push subscribe refusals, endpoint ownership, hold and purge; the chart route's credential (256-bit nonce plus HMAC, one-use `DELETE ... RETURNING`); the AI review claim keys; the MCP bearer verifiers against `JWT_SECRET` tokens.
+
+### Text for the ledger (the orchestrator merges it)
+
+- **Session row:** S17 done; findings 0/0/3/4 (B/H/M/L): MEDIUM A26-S17-01, -02, -03; LOW A26-S17-04, -05, -06, -07; verdict REQUEST CHANGES.
+- **Prior findings:** MON-M04 `FIXED_VERIFIED` (test gap A26-S17-05); MON-M25 provider half `FIXED_VERIFIED`, residual A26-S08-04 (S08's). Evidence `17-ai-mcp-notifications.md#5-prior-finding-dispositions`.
+- **Hand-offs disposed:** A26-S03-03 MCP/PAT half REJECTED (opaque token lookup, `pat_` hash lookup); S11 claim key REJECTED (P1); S11 `forwarded_by` residual confirmed on the inbox and the agent claim, consolidated under A26-S11-04; S12 A26-S12-03 card has no rate line on either surface (consolidated there); S12 A26-S12-04 AI/MCP `list_capital_gains` consolidated there; S13 A26-S13-04 AI/MCP `list_accounts` confirmed (consolidated there); S13 `months`-as-threshold -> A26-S17-03; S07 AI batch-update transfer path refused at prep, commits through the same `update()` as HTTP; S08 notify-inside-transaction REJECTED, portfolio-movement baseline order -> A26-S17-06, `updates.service` window -> documentation inconsistency only, A26-S08-02 AI caller re-checked (no outer transaction, replay refused by the signed due date).
+- **Open hypotheses handed on:**
+  - to S23 (S07 is done): `TransactionsService.update()` itself does not refuse a transfer leg (the refusal is in the AI/MCP previews only, `transactions.service.ts:954-960`); a rule's `convert_to_transfer` between a card and its confirm, or a plain `PATCH /transactions/:id` on a leg, reaches it. Check whether `update()` keeps the counterpart leg in step.
+  - to S20: the transactions page summary and any widget reading `getSummary` totals (`transaction-analytics.service.ts:437-495`) show a mixed-currency scalar (A26-S17-01's shared producer).
+  - to S21: missing two-connection test for INV-DISPATCH-003; A26-S17-05's missing MON-M04 test; P2's post-commit case for `ai-action-replay.integration.spec.ts`.
+  - to S23: A26-S17-02 has the same shape as any domain write that can throw after its own commit (a post-commit recompute); consolidate with A26-S08-02 under Rule 7 if S08's root cause is "post-commit failure reported as failure".
+- **Program mutation table (undetected rows):** `INV-MCP-001 | mcp-http.controller.ts:319-322 serve the session's stored scopes | an existing-session narrowed-scope case | S17`; `INV-MCP-004 | ai-actions.service.ts:267-271 release after a committed write (baseline) | a post-commit failure case | S17`; `LLM shape | transaction-analytics.service.ts:437-495, 1536-1550 (baseline) | a two-currency case | S17`.
+- **Deviations:** none from plan section 4 beyond the wave overrides; `dockerd` started by hand; the local branch was left detached by `git pull --rebase` after the first commit and was fast-forwarded to HEAD before pushing (same as S06).
+
+## 13. Adversarial approval challenge
+
+Started from the slice's own abstractions, not from the findings: "the compact LLM shape", "the caller key", "the single-use confirmation", "the dispatch seam", "the chart artifact".
+
+- **The compact LLM shape:** every `getLlm*` producer and every executor summary line was listed (grep); the ones that sum money were opened. `get_portfolio_summary` and `list_upcoming_bills` carry their flags into the summary line; `list_accounts` does not (A26-S13-04); the analytics reads never convert (A26-S17-01). Searching for the same SQL shape outside the tools found two more LLM consumers of mixed sums: the MCP resource `monize://financial-summary` and the insights prompt (added to A26-S17-01's surfaces), and, in the insights aggregator, a local-midnight month boundary (A26-S17-07).
+- **The caller key:** tried to forge it on the modern path (P1) and through a client-chosen session id (server-generated); tried to collide it with the assistant's and the profile's literal keys. Held.
+- **The single-use confirmation:** followed a confirm through every executor for a step that runs after the domain write commits: attachments (A26-S17-02), `recordTradeBooking` (inside the write's transaction, held), `post()` of a schedule (refused on replay by the signed due date, held), the write counter (`record` never rejects, held).
+- **The dispatch seam:** every producer, every read-path producer's dedupe key, the order of suppression state versus the notification (A26-S17-06).
+- **The chart artifact:** its TTL against the push that carries it (A26-S17-04), its credential, its one-use gate, its global cap (a deployment-wide 1,000 live rows: one user's large watchlist across many devices can exhaust it for five minutes and send everyone's price pushes without charts; bounded and graceful, not reported).
+- **Stale clients:** a client still sending `months` to `generate_report` after A26-S17-03's fix would be refused by a strict schema (noted in its residual risks).
+- **What the challenge did not reach:** `mcp-confirm.ts` internals beyond the green suites; `provider-health/` code; the notification preferences spec; the frontend notifications components and `lib/push.ts`; the AI forecast service.
+
+## 14. Verdict
+
+`REQUEST CHANGES` for the slice. No BLOCKER or HIGH survived. Three MEDIUM findings stand, each executed or pinned by the repository's own tests: the AI and MCP spending analytics add currencies together with no conversion and no flag (A26-S17-01, P3), the AI confirm writes a second transaction when the card's Retry follows a post-commit attachment failure (A26-S17-02, P2), and `spending_anomalies` reads the months argument as its threshold on both surfaces (A26-S17-03). Four LOW: the chart token TTL (A26-S17-04), the untested MON-M04 fix (A26-S17-05), the portfolio-movement baseline order (A26-S17-06) and the insights month boundary (A26-S17-07). MON-M04 and the provider half of MON-M25 are `FIXED_VERIFIED`. Tool parity between the executor and the MCP layer holds for every data tool. The adversarial close-out pass was completed; hosted CI was not consulted, and every result above is a local run on `AUDIT_BASELINE_SHA`.
