@@ -34,7 +34,7 @@ session report, `NN-<slice>.md#...`).
 | MON-H08 | Holding updates and full rebuilds can lose concurrent investment transactions | S12 | FIXED_VERIFIED (S02) | open | |
 | MON-H09 | One emergency-access claim token can be consumed by two concurrent requests | S03 | FIXED_VERIFIED (S02) | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-H10 | Transfer VOID transitions can leave the two legs and both balances inconsistent | S07 | STILL_OPEN (residual) (S02) | STILL_OPEN (residual, A26-S07-03) | `07-cash-ledger.md#5-prior-finding-dispositions` |
-| MON-H11 | Transfer currencies, FX rate and destination value are not server-authoritative | S07 (client half S19) | STILL_OPEN (residual) (S02) | STILL_OPEN (server half residual; QIF half S10, client half S19) | `07-cash-ledger.md#5-prior-finding-dispositions` |
+| MON-H11 | Transfer currencies, FX rate and destination value are not server-authoritative | S07 (client half S19) | STILL_OPEN (residual) (S02) | STILL_OPEN (server half residual, `07-cash-ledger.md#5`; QIF half STILL_OPEN, A26-S10-02, `10-rules-banksync-csv.md#5`; client half S19) | `07-cash-ledger.md#5-prior-finding-dispositions` |
 | MON-H12 | Unavailable FX is converted as a valid-looking 1:1 value | S13 | STILL_OPEN (S02) | open | |
 | MON-H13 | Historical net-worth replay adds a stock-split ratio instead of multiplying shares | S13 | FIXED_VERIFIED (S02) | open | |
 | MON-H14 | Investment preview and commit can use different exchange rates without disclosure | S12 | FIXED_VERIFIED (S02) | open | |

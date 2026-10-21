@@ -32,12 +32,12 @@ before auditing.
 | S07 | done | 2026-10-21 | 2026-10-21 | 03fdd62 | 0/2/5/2 | `07-cash-ledger.md` (child session_01XfUxS4dgiSNkonPgLiFnwC); verdict REQUEST CHANGES |
 | S08 | done | 2026-10-21 | 2026-10-21 | bc3a4b5 | 0/1/2/2 | `08-scheduler-cron.md` (child session_014ydW7reUCeSgTdjvYkk8qB); verdict REQUEST CHANGES |
 | S09 | done | 2026-10-21 | 2026-10-21 | d8ce637 | 0/1/3/2 | `09-import-mny.md` (child session_01KxbrJgNzbFhpqTXYbkj5SV); verdict REQUEST CHANGES |
-| S10 | in-progress | 2026-10-21 | | | | `10-rules-banksync-csv.md` (child session_01BAgjpKaPyGwg41HxkiQbW3, claude-opus-5-5) |
+| S10 | done | 2026-10-21 | 2026-10-21 | 35d5915 | 0/1/2/2 | `10-rules-banksync-csv.md` (child session_01BAgjpKaPyGwg41HxkiQbW3); verdict REQUEST CHANGES |
 | S11 | in-progress | 2026-10-21 | | | | `11-email-receipts.md` (child session_01NGWhzqqpfZRRd58ooquSgs, claude-opus-5-5) |
 | S12 | in-progress | 2026-10-21 | | | | `12-securities-holdings.md` (child session_01E4gKh1kzVaxArb2UHN9km7, claude-opus-5-5) |
 | S13 | open | | | | | `13-valuation-fx-networth.md` |
 | S14 | open | | | | | `14-bonds.md` |
-| S15 | open | | | | | `15-loans-strategies.md` |
+| S15 | in-progress | 2026-10-21 | | | | `15-loans-strategies.md` (child: see next ledger update) |
 | S16 | open | | | | | `16-budgets-reports.md` |
 | S17 | open | | | | | `17-ai-mcp-notifications.md` |
 | S18 | open | | | | | `18-frontend-core.md` |
@@ -72,9 +72,9 @@ Filled by S01. Later sessions read it instead of re-discovering it.
 | Severity | Confirmed `A26-*` findings so far |
 | --- | --- |
 | BLOCKER | 0 |
-| HIGH | 7 (S02: 2, S03: 1, S07: 2, S08: 1, S09: 1; S07-01, S08-01 and S09-01 supersede S02-01, -04 and -05) |
-| MEDIUM | 28 (S02: 8, S03: 3, S04: 4, S05: 1, S06: 2, S07: 5, S08: 2, S09: 3; S07-03 and -05 supersede S02-07 and -08) |
-| LOW | 21 (S01: 4, S02: 2, S03: 3, S05: 2, S06: 4, S07: 2, S08: 2, S09: 2) |
+| HIGH | 8 (S02: 2, S03: 1, S07: 2, S08: 1, S09: 1, S10: 1; S07-01, S08-01 and S09-01 supersede S02-01, -04 and -05) |
+| MEDIUM | 30 (S02: 8, S03: 3, S04: 4, S05: 1, S06: 2, S07: 5, S08: 2, S09: 3, S10: 2; S10-02 supersedes S02-09; S07-03 and -05 supersede S02-07 and -08) |
+| LOW | 23 (S01: 4, S02: 2, S03: 3, S05: 2, S06: 4, S07: 2, S08: 2, S09: 2, S10: 2) |
 
 Prior findings disposed (final, by the owning session): 42 of 70. FIXED_VERIFIED: S01 (M02), S03 (H09, M03, M05, M07, M23, M24, M26, L01), S04 (M06, M14), S05 (M15, L02), S06 (H02, M08, M09, M10, M11 backup half, M12, M13, M16, M17, M18, L05), S07 (H07, M21, M27), S08 (M25 claim half, L06), S09 (H03). STILL_OPEN: S08 (H06 residual), S09 (H04 -> A26-S09-01, L04 narrowed), S06 (H01, M22, M43, M47), S07 (H05, H10 residual, H11 server half residual, M20 residual). REJECTED: S07 (M28 server half; the client half stays with S19). S02 triaged 23 rows (12 FIXED_VERIFIED, 11 STILL_OPEN in whole or part); final call stays with the owning sessions, see the register.
 
@@ -92,6 +92,7 @@ the line when it disposes of the hypothesis in its report.
 - from S02 to S13: MON-H12 built-in reports still 1:1 (A26-S02-02), guard blind spot (A26-S02-11), MON-M39 relocated to `report-currency.service.spec.ts:213`.
 - from S02 to S20: MON-H16 residual, FX-incomplete account and dashboard widget (A26-S02-03).
 - from S02 to S21: MON-M45 release job pushes an untested bump (A26-S02-10); A26-S02-12 integration race exercises a copy of the consume SQL.
+- from S10 to S11, S13, S15, S19/S20, S21: see `10-rules-banksync-csv.md` section 12; INV-BANKSYNC-001's index entry names only the hash-to-ref path (A26-S10-01); `AccountsService.delete` counts and removes in separate unlocked transactions (A26-S10-03).
 - from S01 to S07, S08, S09, S10, S12, S13/S14, S21, S03/S04: see `01-baseline.md` section 12.7 (undo never recomputes net worth; Monte Carlo bond valuation; the integration flake, E2E retries and e2e not linted go to S21). S01 counts 49 crons in 46 services (the plan said 40) and an index/body status mismatch for INV-BONDNOTIFY-003.
 - from S03 to S04: D-S03-01 -- CONFIRMED by S04 for the delegation paths (A26-S04-02); S04's sweep found 26 cross-transaction read-then-save sites, listed in `04-rls-tenancy.md` section 12.
 - from S04 to S07: cross-owner update/delete authorized in an earlier transaction and written under `withSystemContext` without a re-check (A26-S04-01, executed); stale whole-entity saves in `accounts/`.
@@ -120,6 +121,7 @@ should fail | session`.
 - `INV-AUTH-001/004 | token.service.ts:149 drop lockTokenFamily in refreshTokens | same | S03`
 - `INV-AUTH-001 | token.service.ts:164-177 reuse revocation rolled back (baseline defect) | a real-database reuse test | S03`
 - `INV-CLAIM-001 | emergency-access-claim.controller.ts:222+226 drop both guards | a two-connection claim test | S03`
+- S10: four undetected rows in `10-rules-banksync-csv.md` section 6.
 - S08: M5-M7 (lease predicates) caught only by SQL-text unit assertions; `08-scheduler-cron.md` section 6.
 - S09: `fail()` `retryable=$4` undetected by every suite (A26-S09-02); `09-import-mny.md` section 6.
 - S06: M4 (Phase-3 `user_id` predicate untested) of `06-backup-restore.md` section 6.
