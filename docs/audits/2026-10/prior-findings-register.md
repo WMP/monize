@@ -34,11 +34,11 @@ session report, `NN-<slice>.md#...`).
 | MON-H08 | Holding updates and full rebuilds can lose concurrent investment transactions | S12 | FIXED_VERIFIED (S02) | FIXED_VERIFIED | `12-securities-holdings.md#5-prior-finding-dispositions` |
 | MON-H09 | One emergency-access claim token can be consumed by two concurrent requests | S03 | FIXED_VERIFIED (S02) | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-H10 | Transfer VOID transitions can leave the two legs and both balances inconsistent | S07 | STILL_OPEN (residual) (S02) | STILL_OPEN (residual, A26-S07-03) | `07-cash-ledger.md#5-prior-finding-dispositions` |
-| MON-H11 | Transfer currencies, FX rate and destination value are not server-authoritative | S07 (client half S19) | STILL_OPEN (residual) (S02) | STILL_OPEN (server half residual, `07-cash-ledger.md#5`; QIF half STILL_OPEN, A26-S10-02, `10-rules-banksync-csv.md#5`; client half S19) | `07-cash-ledger.md#5-prior-finding-dispositions` |
+| MON-H11 | Transfer currencies, FX rate and destination value are not server-authoritative | S07 (client half S19) | STILL_OPEN (residual) (S02) | STILL_OPEN (server half residual, `07-cash-ledger.md#5`; QIF half A26-S10-02, `10-rules-banksync-csv.md#5`; client half A26-S19-01, `19-frontend-forms.md#5`) | `07-cash-ledger.md#5-prior-finding-dispositions` |
 | MON-H12 | Unavailable FX is converted as a valid-looking 1:1 value | S13 | STILL_OPEN (S02) | STILL_OPEN (A26-S13-01, A26-S13-02) | `13-valuation-fx-networth.md#5-prior-finding-dispositions` |
 | MON-H13 | Historical net-worth replay adds a stock-split ratio instead of multiplying shares | S13 | FIXED_VERIFIED (S02) | FIXED_VERIFIED | `13-valuation-fx-networth.md#5-prior-finding-dispositions` |
-| MON-H14 | Investment preview and commit can use different exchange rates without disclosure | S12 | FIXED_VERIFIED (S02) | STILL_OPEN (server half residual, A26-S12-02; client half S19) | `12-securities-holdings.md#5-prior-finding-dispositions` |
-| MON-H15 | Opening an existing scheduled investment override replaces its stored price with the latest quote | S19 | FIXED_VERIFIED (S02) | open | |
+| MON-H14 | Investment preview and commit can use different exchange rates without disclosure | S12 | FIXED_VERIFIED (S02) | STILL_OPEN (server half A26-S12-02, `12-securities-holdings.md#5`; client half A26-S19-04, `19-frontend-forms.md#5`) | `12-securities-holdings.md#5-prior-finding-dispositions` |
+| MON-H15 | Opening an existing scheduled investment override replaces its stored price with the latest quote | S19 | FIXED_VERIFIED (S02) | FIXED_VERIFIED | `19-frontend-forms.md#5-prior-finding-dispositions` |
 | MON-H16 | Partial or unavailable portfolio valuations are rendered as complete totals | S20 | STILL_OPEN (residual) (S02) | STILL_OPEN (A26-S20-01, HIGH) | `20-frontend-figures.md#5-prior-finding-dispositions` |
 
 ## MEDIUM
@@ -72,7 +72,7 @@ session report, `NN-<slice>.md#...`).
 | MON-M25 | AI insight generation uses a process-local guard and duplicates work across replicas | S08 (claim), S17 (provider) | FIXED_VERIFIED (claim half `08-scheduler-cron.md#5`, residual A26-S08-04; provider half `17-ai-mcp-notifications.md#5`) | `08-scheduler-cron.md#5-prior-finding-dispositions` |
 | MON-M26 | Emergency-access grant issuance can send links another replica immediately invalidates | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M27 | Ordinary transaction currency can disagree with the owning account currency | S07 (cross-check S10) | FIXED_VERIFIED | `07-cash-ledger.md#5-prior-finding-dispositions` |
-| MON-M28 | Mixed-sign split children are accepted when their signed total equals the parent | S07 (client half S19) | REJECTED (server half: mixed-sign splits are a documented shape; client half S19) | `07-cash-ledger.md#5-prior-finding-dispositions` |
+| MON-M28 | Mixed-sign split children are accepted when their signed total equals the parent | S07 (client half S19) | REJECTED (server half `07-cash-ledger.md#5` and client half `19-frontend-forms.md#5`: mixed-sign splits are a documented shape) | `07-cash-ledger.md#5-prior-finding-dispositions` |
 | MON-M29 | Explicit zero or negative investment FX rates produce inconsistent cash postings | S12 | FIXED_VERIFIED (create and preview) | `12-securities-holdings.md#5-prior-finding-dispositions` |
 | MON-M30 | BUY commission is omitted from cost basis although cash and UI wording include fees | S12 | FIXED_VERIFIED (backend `12-securities-holdings.md#5`; UI wording `20-frontend-figures.md#5`) | `12-securities-holdings.md#5-prior-finding-dispositions` |
 | MON-M31 | Transfer split amounts are omitted from budget spending | S16 | FIXED_VERIFIED | `16-budgets-reports.md#5-prior-finding-dispositions` |
@@ -81,10 +81,10 @@ session report, `NN-<slice>.md#...`).
 | MON-M34 | Bulk deletion can leave linked-account monthly/net-worth snapshots stale | S13 | FIXED_VERIFIED (counterpart snapshot; related A26-S13-03 on the bulk path) | `13-valuation-fx-networth.md#5-prior-finding-dispositions` |
 | MON-M35 | Foreign-security transfer resets destination cost basis to an implied 1:1 value | S12 | STILL_OPEN (A26-S12-04) | `12-securities-holdings.md#5-prior-finding-dispositions` |
 | MON-M36 | A failed backend logout is presented as a successful local logout | S18 | FIXED_VERIFIED | `18-frontend-core.md#5-prior-finding-dispositions` |
-| MON-M37 | Two-decimal split editing and one-cent tolerance conflict with four-decimal persistence | S19 | open | |
+| MON-M37 | Two-decimal split editing and one-cent tolerance conflict with four-decimal persistence | S19 | STILL_OPEN (A26-S19-03, different root cause) | `19-frontend-forms.md#5-prior-finding-dispositions` |
 | MON-M38 | Successful transaction mutations leave cached budget progress stale | S18 | STILL_OPEN (narrowed, A26-S18-01) | `18-frontend-core.md#5-prior-finding-dispositions` |
 | MON-M39 | Tests validate missing FX as a successful 1:1 conversion (verification defect) | S13 | STILL_OPEN (relocated, A26-S13-01) | `13-valuation-fx-networth.md#5-prior-finding-dispositions` |
-| MON-M40 | The scheduled-override test expects an existing price to be overwritten (verification defect) | S19 | open | S02 triage: FIXED_VERIFIED, see `02-prior-high-triage.md#5-prior-finding-dispositions` |
+| MON-M40 | The scheduled-override test expects an existing price to be overwritten (verification defect) | S19 | FIXED_VERIFIED | `19-frontend-forms.md#5-prior-finding-dispositions` |
 | MON-M41 | The historical stock-split fixture encodes additive shares (verification defect) | S13 | FIXED_VERIFIED | `13-valuation-fx-networth.md#5-prior-finding-dispositions` |
 | MON-M42 | The AppHeader test expects logout failure to look successful (verification defect) | S18 | FIXED_VERIFIED | `18-frontend-core.md#5-prior-finding-dispositions` |
 | MON-M43 | Automatic-backup tests expect generic cross-owner keys (verification defect) | S06 | STILL_OPEN | `06-backup-restore.md#5-prior-finding-dispositions` (A26-S06-01; S02 triage STILL_OPEN narrowed) |
