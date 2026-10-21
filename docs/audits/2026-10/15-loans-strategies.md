@@ -10,7 +10,7 @@
 | Date | 2026-10-21 |
 | Primary path | `backend/src/loan-installments/` |
 | Hint line used | `run the protocol's loan matrix in full: normal payment, principal-only extra payment, payment below accrued interest, payoff, one cent above and below payoff, rate change, same-day multiple payments, voided payment, duplicate posting; prioritize the final payment's parent amount versus its splits, ledger-backed interest history, schedule regeneration after a rate change, preview equals commit, and for GEM the signal computed from converted prices at one session with a refusal when a component is missing` |
-| Status | in-progress (see section 12 for what remains) |
+| Status | done |
 | Runtime executed | Node 24.22.1; `npm ci` OK in `backend/` and `frontend/`; PostgreSQL 16 (`mirror.gcr.io/library/postgres:16-alpine`, `dockerd` started by hand). Baseline integration, one invocation: `npm run test:integration -- 'dated-loan-payment\|gem-price\|imported-settlement-flow\|loan-interest-relink\|loan-settlement-claim\|loan-settlement-debt\|mortgage-method-checks\|mortgage-type-backfill\|scheduled-loan-dated-balance\|scheduled-loan-pricing-concurrency\|transaction-rules-loan-fold'`: **11 suites, 71 tests, all passed**. Unit: `TZ=UTC npm run test:unit -- src/strategies` 14 suites, 375 passed. Frontend: `npx vitest run src/lib/loan-history src/lib/loan-schedule src/components/reports/LoanAmortizationReport` 6 files, 351 passed. Probes in a scratch worktree at the baseline (`<scratchpad>/mut`, never committed): `zz-s15-probe.integration.spec.ts` (the loan matrix through the REAL `ScheduledTransactionsService.post()`, constructed by hand over the real `TransactionsService` and `ScheduledTransactionLoanService`, 6 cases), `zz-s15-undo.integration.spec.ts` and `zz-s15-undo2.integration.spec.ts` (real `AccountsService.update` + real `ActionHistoryService.undo`), `src/zz/zz-gem.spec.ts` (real `momentumSnapshot` / `evaluate`); two read-only sweep agents (GEM; frontend loan history) whose claims were re-verified as stated per finding. |
 
 ## 2. Invariant map
@@ -47,7 +47,7 @@ Material flows:
 | Change surface / producer-consumer | ran: posting (two branches), template rewrite, settlement claim, slot selection, undo of account edits, frontend history producer and its report consumer, GEM momentum and alert. |
 | Representation boundary | ran: debt `0.01` vs `< 0.01` (A26-S15-06), `null` rate vs 0 % (posting keeps `?? 0`, settlement refuses: documented), interest sign in history (A26-S15-05), VOID / future-dated rows in history (A26-S15-03). |
 | Browser/UI round trip | ran for the Post dialog echo path by reading (`post()` `:3546-3636`: an unchanged echo re-prices, a typed figure posts as given); the dialog itself is S19's. |
-| Server-authoritative metadata | ran: the loan, its debt, rate and payment are read server-side; `userId` from JWT on both loan controllers (`@UseGuards(AuthGuard("jwt"))`, `ParseUUIDPipe` on every `:id` / `:accountId`). No finding. |
+| Server-authoritative metadata | ran: the loan, its debt, rate and payment are read server-side; `userId` from JWT on both loan controllers (`@UseGuards(AuthGuard("jwt"))`, `ParseUUIDPipe` on every `:id` / `:accountId`). The loan schedule's currency is taken from the setup request's loan without checking the source account (A26-S15-10). |
 | Identity versus value | ran: posted lines are addressed by `sourceSplitId`; claims by `(schedule, original_due_date)`; R10 duplicate. No new finding. |
 | State machine | ran: schedule `active -> posted/advanced -> retired (paid-off, isActive=false) / LOC stays active`; claim `none -> post|rule -> released on delete / kept on void`; account edit `-> undo` (A26-S15-01). |
 | Concurrency / idempotency | ran: `scheduled-loan-pricing-concurrency` and `loan-settlement-claim` (two connections) passed; R10. No new race found. |
@@ -58,9 +58,9 @@ Material flows:
 | Financial / loan matrix | ran in full, section 7.1, every row with a worked example. |
 | Authorization / RLS | ran: loan-scenarios and loan-rate-changes controllers and services scope by `userId` through `withScopedDb`; GEM controller guarded, ownership checked inside the save transaction (sweep, spot-checked). |
 | Tests as evidence | ran: the matrix probes show which rows no suite exercises against the real `post()` (section 10). |
-| Mutation | in progress (section 6). |
+| Mutation | ran: M1-M7 executed, M8-M9 baseline defects (section 6). |
 | Counterexample / interaction | ran (section 7). |
-| Adversarial approval challenge | pending (section 13). |
+| Adversarial approval challenge | ran (section 13). |
 
 ## 4. Confirmed findings
 
@@ -368,3 +368,211 @@ Material flows:
 15. **Residual risks:** none beyond the prop names.
 
 - Causality: `PRE_EXISTING_UNREPORTED`.
+
+### A26-S15-09 - The Post dialog previews the stored template's principal/interest split, while the post re-prices the same bill from the ledger and books a different split
+
+1. **Severity:** LOW
+2. **Confidence:** high (backend half executed, R2; frontend half by reading)
+3. **Location:** `frontend/src/components/scheduled-transactions/PostTransactionDialog.tsx:456-474` (split rows pre-filled from `scheduledTransaction.splits`, the stored template), rendered at `:1182`; backend `scheduled-transactions.service.ts:3546-3636` (an unchanged echo re-prices through `resolvePostingAllocation`). The projection that prices the occurrence from the ledger exists (`GET /scheduled-transactions/:id/loan-occurrences`) and is read only by `OccurrenceDatePicker` and the override editor.
+4. **Violated invariant:** "a preview computes what the commit will do, through the same code" (AGENTS.md); INV-LOAN-009's F2 reads the projection for a loan bill on the picker and the editor but not on the dialog that commits.
+5. **Reproduction:** the R2 ledger: LOAN 200,000 at 6 %, the August installment posted (template rewritten for September to 997.50 interest / 502.50 principal), then a 10,000 principal-only payment on 2026-08-15. Open Post for 2026-09-01 and press Post without editing.
+6. **Observed:** the dialog shows interest 997.50, principal 502.50; the ledger receives interest **947.50**, principal **552.50** (executed through the real `post()`, R2). The total (1,500.00) is the same.
+7. **Expected:** the dialog shows 947.50 / 552.50 (the projection's first occurrence), or labels the lines as re-priced at posting.
+8. **Impact:** the split the user confirms is not the split written (50.00 moved between interest and principal here); a user who types the shown figures back (a non-echo) posts the stale split deliberately.
+9. **Root cause:** the dialog pre-fills from the template snapshot; the server's echo detection then replaces what was shown.
+10. **Recommended correction:** pre-fill a loan bill's lines from `loan-occurrences` (count 1) as the picker does; keep the server's echo re-pricing as the backstop.
+11. **Suggested remediation diff (illustrative, not applied):** in `PostTransactionDialog.tsx`, when `scheduledTransaction` pays a loan (the client already knows from `loanOccurrences` status `priced`), map the first occurrence's `lines` onto the split rows by `sourceSplitId` before `bookSplitRowsAtMinorUnit`; names to be checked against `types/scheduled-transaction.ts`.
+12-14. **Test:** a dialog test with a template 997.50/502.50 and a projection 947.50/552.50 asserting the rows show the projection; `npm run test -- PostTransactionDialog`.
+15. **Residual risks:** the projection is a read without the posting's lock; a payment committed between the dialog's read and the post still re-prices (server backstop).
+
+- Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the projection and the echo re-pricing are new). Overlap: S08 handed S19 the same dialog's amount pre-fill (`:433`); this finding is the loan-split half, for S19 to merge.
+
+### A26-S15-10 - Loan payment setup accepts a source account in another currency and writes a bill in the loan's currency on it; every posting of that bill is refused
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high for the posting refusal (executed); medium that the setup path reaches it (by reading: no currency check found)
+3. **Location:** `backend/src/accounts/loan-payment-setup.service.ts:227-237` (source account checked for ownership only), `:488-505` (schedule created on `dto.sourceAccountId` with `currencyCode: account.currencyCode`, the loan's); `scheduled-transactions.service.ts:960-975` (`create` stores the DTO's `currencyCode`; `resolveScheduleFx` only reads `originalCurrencyCode`); the refusal at posting `common/fx-entry.util.ts:205` through `transactionsService.create`; the create paths in `loan-mortgage-account.service.ts:290, 533` pass the same currency (not traced to their source-account check). Frontend: no currency filter on the setup dialog's source account (`LoanPaymentSetupDialog.tsx`, searched).
+4. **Violated invariant:** "a currency code is derived from the account, never accepted from the request" (`assertTransactionCurrencyMatchesAccount`); a schedule that can never post is the state INV-LOAN-006's fail-safe text calls the worst outcome ("a bill that never posts again").
+5. **Reproduction:** a EUR mortgage (or a CHF one, common for Polish borrowers) paid from a PLN current account: set up payments with the PLN account as source.
+6. **Observed (executed, `zz-s15-fx`, the setup's shape: schedule currency EUR on a PLN account, transfer split to the EUR loan):** `post()` answers **400 "Transaction currency EUR must match the account currency PLN. Use originalAmount and originalCurrencyCode for a foreign-currency entry."**; nothing written, no claim, cursor unchanged; every auto-post tick fails the same way (the cron raises an alert for a non-conflict error).
+7. **Expected:** the setup refuses a source account in another currency with a message naming both currencies, or builds a cross-currency transfer bill the posting can convert (a decision: the settlement path already refuses `transfer_currency_mismatch`, spec section 11 row 8, so refusing is consistent).
+8. **Impact:** the loan's payments are never booked by the app; the user learns it only from the posting error or the alert, after the setup reported success.
+9. **Root cause:** the setup validates ownership but not currency, and the schedule create trusts the DTO's currency.
+10. **Recommended correction:** refuse in `setupLoanPayments` (and the account-create paths) when `sourceAccount.currencyCode !== account.currencyCode`, before any write; independently, make `ScheduledTransactionsService.create` derive or verify `currencyCode` against the schedule's account.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/accounts/loan-payment-setup.service.ts
++++ b/backend/src/accounts/loan-payment-setup.service.ts
+@@
+     if (!sourceAccount) {
+       throw new BadRequestException(
+         tr("errors.accounts.sourceNotFound", "Source account not found"),
+       );
+     }
++    // The bill is booked on the source account in the loan's currency; a
++    // posting refuses a currency the account does not hold.
++    if (sourceAccount.currencyCode !== account.currencyCode) {
++      throw new BadRequestException(
++        tr(
++          "errors.accounts.loanSourceCurrencyMismatch",
++          `The payment account is in ${sourceAccount.currencyCode} and the loan in ${account.currencyCode}. Choose an account in ${account.currencyCode}.`,
++          { source: sourceAccount.currencyCode, loan: account.currencyCode },
++        ),
++      );
++    }
+```
+
+   Needs: the i18n key; the same check on the create paths; a decision whether cross-currency loan payment is a feature to build (then an FX transfer template, which INV-LOAN-006's pricing would have to price in two currencies).
+12-14. **Test:** a `loan-payment-setup.service.spec.ts` case with a PLN source and a EUR loan asserting the refusal and no schedule written; the `zz-s15-fx` probe as an integration case for the posting side. `npm run test:unit -- loan-payment-setup`.
+15. **Residual risks:** existing schedules already in this state stay unpostable until edited (a data question for the maintainer).
+
+- Causality: `PRE_EXISTING_UNREPORTED` (setup predates the new modules; not provable in the shallow clone).
+
+## 5. Prior-finding dispositions
+
+| ID | Disposition | Evidence |
+| --- | --- | --- |
+| MON-M32 | **FIXED_VERIFIED** | Mechanism: the posting re-resolves the occurrence (`resolvePostingAllocation`, `scheduled-transaction-loan.service.ts:189-257`) and `post()` re-sums the parent from the resolved lines (`scheduled-transactions.service.ts:3509-3514` base splits, `:3631-3633` dialog echo); `allocateLoanPayment` clamps principal to the dated debt; the template rewrite writes the parent as `allocation.total` (`reprice-template.ts:256-266`). Executed: the upstream example (regular 100.00, debt 40.00, 0 %) through the real `post()` posts parent **-40.00** with lines -40.00 / 0.00, ledger 0.00, schedule deactivated (R11); 6 % payoff 1,000.00 posts 1,005.00 = 1,000.00 + 5.00 (R4). Tests: `scheduled-transaction-loan.service.spec.ts:407-460` ("final installment (P5-008)"), `loan-payment-waterfall.util.spec.ts:73` and `:217-263`. Mutation M1 (drop the parent re-sum) is caught by the unit suite (2 failures) and by the probe (2 failures). Residual outside the original finding: a declined (escrow) template still posts its stored principal past the debt (section 9, D5), and an exactly-0.01 debt is not paid (A26-S15-06). |
+
+## 6. Mutation table
+
+All in the scratch worktree at the baseline, each reverted with `git checkout` before the next.
+
+| # | Invariant | Mutation (file:line, what) | Test that fails | Verdict |
+| --- | --- | --- | --- | --- |
+| M1 | INV-LOAN-004 / MON-M32 | `scheduled-transactions.service.ts:3512-3514` drop the parent re-sum after a re-resolved allocation | `scheduled-transactions.service.spec.ts` (2 of 597 in `src/scheduled-transactions`); probe R4/R11 (2 of 6) | covered (unit) |
+| M2 | INV-LOAN-006 | `price-installment.ts:755` price the debt through `9999-12-31` instead of the installment's date | `src/loan-installments` + `scheduled-transaction-loan` (2 of 395); `scheduled-loan-dated-balance`/`dated-loan-payment` (4 of 15) | covered |
+| M3 | INV-LOAN-008 cursor | `claim-loan-occurrence.ts:178` advance past the claimed slot only (`new Set([before.nextDueDate])`) | `claim-loan-occurrence.spec.ts` (1 of 7); `loan-settlement-claim` + `imported-settlement-flow` integration: 17 of 17 **pass** | covered (unit only; no real-database case of a consecutive claim) |
+| M4 | INV-LOAN-010 | `accounts.service.ts:1170` drop `applyLoanInterestRelink` | `accounts.service.spec.ts` (1 of 274); `loan-interest-relink` (2 of 4) | covered |
+| M5 | INV-LOAN-004 waterfall | `loan-payment-waterfall.util.ts:67` drop the interest cap | 2 of 181 (`loan-payment-waterfall`, `price-installment`, `scheduled-transaction-loan`) | covered |
+| M6 | GEM settled boundary | `gem-momentum.util.ts:228` drop the "no close at or after the boundary yet" deferral | `src/strategies` (2 of 375); `gem-price` integration 14 of 14 pass | covered (unit) |
+| M7 | INV-LOAN-004 one-cent boundary | `price-installment.ts:769` `debt <= 0.01` -> `debt < 0.01` (the direction A26-S15-06's fix takes) | none: `src/loan-installments`, `scheduled-transaction-loan`, waterfall (411 of 411) and `scheduled-loan-dated-balance`/`loan-settlement-debt` (12 of 12) all pass | undetected: no case pins the 0.01 boundary in either direction (finding A26-S15-06) |
+| M8 | INV-LOAN-007/010 on undo | (baseline defect, A26-S15-01) `action-history.service.ts:1741-1764` | none: every suite green at the baseline, the probes show the defect | undetected (finding) |
+| M9 | INV-LOAN-006 below-interest | (baseline behaviour, A26-S15-04) `loan-payment-waterfall.util.ts:66-69` | no test asserts the unpaid interest | undetected (finding) |
+
+## 7. Counterexamples and the interaction scenario
+
+### 7.1 The loan matrix
+
+LOAN 200,000.00 at 6.00 % nominal, monthly (periodic 0.005), payment 1,500.00, template 500.00 principal + 1,000.00 interest, unless the row says otherwise. "Executed" means the real `ScheduledTransactionsService.post()` against PostgreSQL (`zz-s15-probe`, section 1); every figure below is the probe's output.
+
+| # | Row | Worked example | Result | Status |
+| --- | --- | --- | --- | --- |
+| R1 | Normal payment | debt 200,000.00 x 0.005 = 1,000.00 interest; 1,500.00 - 1,000.00 = 500.00 principal | posted -1,500.00 = -1,000.00 / -500.00; loan 199,500.00; template for 09-01: 997.50 / 502.50 | executed; also `scheduled-transaction-loan.service.spec.ts`, spec 9.2 A1/A6 |
+| R2 | Principal-only extra payment | +10,000.00 on 08-15; 09-01 debt 189,500.00 x 0.005 = 947.50; principal 552.50 | posted 947.50 / 552.50; loan 188,947.50 | executed; covered by `scheduled-loan-dated-balance` (dated debt) |
+| R3 | Payment below accrued interest | LOAN 400,000.00: interest 2,000.00 > payment 1,500.00 | posted 1,500.00 interest / 0.00 principal twice; loan stays 400,000.00; 500.00 per period recorded nowhere | executed; **A26-S15-04** |
+| R4 | Payoff | debt 1,000.00: interest 5.00, principal min(1,495.00, 1,000.00) = 1,000.00 | posted -1,005.00 = -1,000.00 / -5.00; loan 0.00; schedule inactive | executed; covered (spec E4, waterfall spec) |
+| R5 | One cent above payoff | debt 1,000.01: interest roundMoney(5.00005) = 5.0001 -> booked 5.00; principal 1,000.01 | posted -1,005.01; loan 0.00; schedule inactive | executed |
+| R6 | One cent below payoff | a payment leaving 0.01: debt 0.01 | no transaction, claim with `transaction_id` NULL, schedule inactive, loan **-0.01** forever | executed; **A26-S15-06**; 0.02 posts 0.02 (R6b) |
+| R7 | Rate change | `loan_rate_changes` 7.20 % from 07-15; 08-01: 200,000.00 x 0.006 = 1,200.00, principal 300.00; 09-01: 199,700.00 x 0.006 = 1,198.20 | posted 1,200.00 / 300.00 then 1,198.20 / 301.80; template for 10-01 1,196.3892 / 303.6108; `accounts.interest_rate` untouched | executed; covered by `dated-loan-payment` |
+| R8 | Same-day multiple payments | +10,000.00 dated 10-01, then the 10-01 installment: debt 178,947.50 x 0.005 = 894.74 | posted 894.74 / 605.26; excluding the same-day row it would be 944.74 / 555.26 (50.00 apart) | executed; inside the spec's definition (inclusive bound), **D1** |
+| R9 | Voided payment | void the 08-01 posting, then post 09-01 | loan back to 200,000.00; 09-01 priced on it: 1,000.00 / 500.00; the 08-01 claim stays (void keeps it), so August is never re-billed | executed; claim retention per spec 12.5 (**D3**) |
+| R10 | Duplicate posting | a second `post()` of 09-01 with the same pin | 409 "This occurrence has already been posted."; ledger unchanged | executed; the unpinned duplicate is A26-S08-01 (S08) |
+| R11 | Final payment parent vs splits (MON-M32) | 0 %, payment 100.00, debt 40.00 | parent -40.00, lines -40.00 / 0.00 | executed |
+
+Settlement rows (spec 9.1-9.3) are covered by `plan-loan-settlement.spec.ts` (1,780 lines, the spec's fixtures row by row, computed independently of the implementation per the spec) and were read, not re-executed: one cent above a payoff (paid 1,005.01 on debt 1,000.00) lands as `tolerance` on interest (5.01); 1,005.06 is `installment_amount_excess` (1,000.00 + 0.06 > 1,000.00); a row below the interest under `interest_first` books interest = paid and principal 0 (the A26-S15-04 surface on the settlement path).
+
+### 7.2 Further counterexamples (not copied from the suites)
+
+| Invariant | Counterexample | Outcome |
+| --- | --- | --- |
+| INV-LOAN-007 | ANNUITY -> LINEAR -> Undo | 1,333.33 billed on a 1,108.86 annuity (A26-S15-01) |
+| INV-LOAN-010 | category A -> B -> Undo | template unmanaged (A26-S15-01) |
+| GEM one session | an 8-trading-day feed gap before month end, feed resumed after | wrong target stored (A26-S15-02) |
+| INV-TRANSFER-001 in history | a bounced (VOID) installment | counted as paid (A26-S15-03) |
+| net within a category | an interest refund | added, not netted (A26-S15-05) |
+| preview = commit | extra principal between two installments, Post dialog unedited | shown 997.50/502.50, written 947.50/552.50 (A26-S15-09) |
+
+### 7.3 Interaction scenario
+
+A26-S15-01(a) x payment matching (INV-LOAN-008) x A26-S08-03. A mortgage with a `settle_loan_installment` rule has `auto_post = false` (spec 12.7), so its bank rows, not the bill, drive the ledger: after the ANNUITY -> LINEAR -> Undo sequence the settlement prices each bank row at the slot's dated payment (purpose `settlement`, 1,108.86 from `accounts.payment_amount`), books it `exact`, and the ledger stays right while the bills page shows 1,333.33 due. A bill-driven mortgage (no rule) posts 1,333.33 each month. So A26-S15-01's money impact falls on bill-driven loans, its display impact on both; and if the user, seeing 1,333.33 "due", posts the bill by hand on a rule-driven loan whose bank row for that month already settled the slot, the post is refused 409 (claim taken) -- unless the rule settled the NEXT slot early (A26-S08-03's shape), in which case the hand post pays the cursor slot at 1,333.33 and the cursor lands on the claimed slot and sticks. Each mechanism is correct alone; the stale template is what turns the claim protocol's refusals into a confusing "already posted" on a bill the page shows as due. Executed halves: A26-S15-01 (probes), the claim refusal (R10); the combination is reasoned.
+
+## 8. Rejected hypotheses
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| MON-M32 still open | upstream P5-008 example | executed through the real `post()`: parent -40.00 = lines (R11) | REJECTED (FIXED_VERIFIED) |
+| S08 hand-off: slot selection should prefer the cursor's unpaid slot | `selectOccurrenceSlot` (`occurrence-slots.ts:256-288`), spec 6.2 step 3 and truth table rows 10-12 | nearest-then-earlier is the spec's deliberate rule (Rule 2); with the default window 3/7 (`rule-action.types.ts:150`) a monthly cursor slot and the next slot are never both candidates; with a wide window (up to 31/31, `transaction-rules.limits.ts:35`) a late payment can be matched to the next slot, which only becomes harmful through A26-S08-03's cursor defect. The fix belongs in `post()` (A26-S08-03's diff), not in the selection | DESIGN_RISK (D2), feeds A26-S08-03 |
+| S09 hand-off: a doubled MNY import re-settles an occurrence through a structural rule (INV-LOAN-008) | planner rows 14-15 (`plan-loan-settlement.ts:280-302`): claims read under the schedule lock, `occurrence_already_posted` | the duplicate row's window (3/7) contains only the slot the original already claimed, so the duplicate is refused `occurrence_already_posted` and stays a plain debit (A26-S09-01's double cash only). Only a window wide enough to reach the next slot (about 28+ days for monthly) settles it as the next installment | REJECTED at the default window; DESIGN_RISK for wide windows (D2) |
+| S10 hand-off: what deleting a duplicate settled row undoes | spec 12.5; `transaction_id ... ON DELETE CASCADE`; `loan-settlement-claim` "delete releasing the claim" | delete releases the claim in the same statement; the cursor is deliberately not rewound; for a rule-driven loan the next real bank row settles the freed history slot (nearest unclaimed in window), so nothing is lost; for a bill-driven loan the advanced cursor skips the freed slot with no signal | PRE_EXISTING (documented decision), D4 |
+| A26-S07-02 for loan accounts mis-prices installments | `datedLoanDebt` reads `ACCOUNT_BALANCE_AS_OF_SQL` (opening balance + ledger), never `current_balance` | a restored stale `current_balance` cannot reach pricing; the loan-specific damage of the same undo function is A26-S15-01 | REJECTED for pricing; superseded by A26-S15-01 for the loan columns |
+| GEM converts prices before computing momentum | `docs/gem-strategy.md:311-312`, `gem-report.types.ts:262-268` | native-currency momentum is the documented design; the hint's "converted prices" is not the contract | DESIGN_RISK (D6) |
+| GEM position valuation uses rate 1 for a missing rate | `gem-position.service.ts:356-385` (sweep, read) | 1 only for the same currency; a missing rate is null; `getLatestRate(..., 14)` is a listed exception in `fx-rate.one-door.spec.ts` (INV-FX-001 partial, S13's) | REJECTED (S13 owns the FX door) |
+| GEM incomplete signal fires an alert | sweep Q3 | RISK_OFF without EM is documented and tested; the real alert defect is the period binding (A26-S15-07) | REJECTED |
+| Rate-change sync applies something other than its preview | `applyScheduledPaymentSync` re-plans in its own transaction (`loan-rate-changes.service.ts:319-330`) | the plan is one function for both; a ledger move between preview and confirm changes the applied figure, and the response returns what was applied; no expectation is passed down | DESIGN_RISK (D7) |
+| Two loans sharing one interest category merge on the SPLIT path | sweep probe F | real, but it is the index's own known gap widened, not a new mechanism | documentation (section 11, D-2) |
+| Lump sum on a non-amortizing loan yields no projection (frontend probe I) | `loan-schedule.ts:451-455` refuses before lump sums apply | the refusal is INV-LOAN-004's "-1 when the installment never amortizes"; a plan that would rescue it is an edge of the projection, not a wrong figure | DESIGN_RISK (D8) |
+| Same-day multiple payments double count interest in history | sweep probe D: each date's interest used once | no double count; attribution depends on API order (same-date rows) | DESIGN_RISK (D9) |
+
+## 9. Design risks
+
+- **D1 Same-day prepayment priced into that day's installment.** `datedLoanDebt` is inclusive of the installment's date (INV-LOAN-006 by definition), so a principal payment dated on the due date reduces that installment's interest: R8, 894.74 instead of 944.74 (50.00) for a 10,000.00 prepayment at 0.5 % a period. A lender accruing to the due date charges the period on the balance before the prepayment. The spec should say which convention it means and why; a row dated the same day as the occurrence is the boundary.
+- **D2 Nearest-slot selection with a wide window** can attribute a late payment to the next slot (and a duplicate bank row, A26-S09-01 / A26-S10-01, to the next installment), which A26-S08-03 turns into a stuck cursor.
+- **D3 VOID keeps a `post()` claim.** A bounced installment (R9) is never re-offered; the spec states this for rule claims (12.5) and the index lists it in INV-LOAN-008's tests; for a bill-driven loan the user must post the missed installment by hand with no prompt.
+- **D4 Delete releases a claim but not the cursor** (spec 12.5): a bill-driven loan silently skips the freed slot.
+- **D5 A declined template (escrow, tax, insurance line) posts its stored lines on the final installment**, so its principal line overpays the debt and pushes the loan into credit; documented as the deliberate fail-safe of INV-LOAN-006 "Scope", but no surface warns at the final installment.
+- **D6 GEM momentum in listing currency.** A US fund in USD +10 % and an ex-US fund in EUR +8 % with EUR +5 % against USD: in USD the ex-US fund is +13.4 % and should win. Documented in the types and `docs/gem-strategy.md:311-312`, not in the Rules section; the settings form warns about cost, not comparability.
+- **D7 Rate-change sync applies a re-plan**, not the confirmed preview (no revision passed down).
+- **D8** a lump sum that would make a non-amortizing loan amortize is refused before it applies (frontend projection).
+- **D9** same-date history attribution depends on the API's order (sweep probe D: `observedInstallment` 1,000 complete vs 800 incomplete for the same data).
+- **D10 A retired schedule is not reactivated** when the final payment is later voided or deleted (the deactivation in `reprice-template.ts:175-178` has no inverse); the loan owes again with no bill.
+
+## 10. Missing tests and known-wrong tests
+
+- No integration test runs the real `post()` for any loan matrix row (the harness stubs the scheduled module; `scheduled-loan-pricing-concurrency.integration.spec.ts:36-46` says so); the `zz-s15-probe` construction is the recipe (joins A26-S08-05 / MON-M46).
+- No real-database case of a settlement claim stepping past a consecutive claimed slot (M3 survives every integration suite).
+- No test of an account-edit undo on a loan (A26-S15-01), of the below-interest shortfall (A26-S15-04), of a 0.01 debt (A26-S15-06).
+- GEM: no case with a role's feed gap before the boundary (A26-S15-02); the alert's `run`/`evaluateUser`/`evaluateStrategy` and spec test-matrix items 5-8 are untested (A26-S15-07); `latestPrices` with a stored close of 0 (the sweep: valued at 0 rather than unknown, LOW, not raised as a finding here because every valuer in the app shares it; S12/S13).
+- Frontend loan history: VOID payment and VOID interest, refund rows paired and orphan, future-dated payment against the projection, a shared category across two loans in one parent, an exact split plus a paired standalone expense on one date (the expense is silently dropped, sweep probe E: 200 shown, 215 booked), export while `historyError` is set, Original Amount with an unset opening balance.
+- No test of a loan payment setup with a source account in another currency (A26-S15-10).
+- Known-wrong: `loan-history.test.ts:2058` pins the overpayment-takes-the-interest variant of a same-day pair (D9), which is order-dependent.
+
+## 11. Documentation inconsistencies
+
+- **D-1** `sessions.md` (S15) and the plan name INV-LOAN-001..011; the index has INV-LOAN-001..010 plus INV-LOAN-HISTORY-001; there is no INV-LOAN-011.
+- **D-2** INV-LOAN-HISTORY-001 (`docs/system-invariants.md:3171-3180`): "the provenance of a SPLIT-recorded interest line is enforced" is false when one parent pays two loans whose interest lines share a category (`readRecordedInterest`, `loan-history.ts:1256-1263`; sweep probe F: 300 shown, 200 correct); "no reader branches on `interest_booking_mode`" is false on the backend (`loan-payment-detector.service.ts:280,286`, `plan-loan-settlement.ts:231`, `rule-loan-settlement.ts:165`), and the layers disagree for a SPLIT loan (the backend detector refuses to pair standalone expenses, the frontend history pairs them). Same stale sentence in `docs/frontend/financial-figures.md:198`.
+- **D-3** INV-LOAN-HISTORY-001 does not mention VOID, refund or future-dated rows (A26-S15-03, -05).
+- **D-4** `docs/specs/gem-signal-change-notifications.md:3` says "proposed, awaiting maintainer approval" while the cron is implemented and registered (`docs/cron-jobs.md:44`); its INV-GEM-NOTIFY-001..005 are not in `docs/system-invariants.md`; its producer pseudo-code (section 4) reads "two latest" rows, the same shape as A26-S15-07(a).
+- **D-5** `docs/gem-strategy.md:24-25` says the benchmark is "US equity leg or the safe asset"; the code uses `benchmarkRoleFor` (risk-free when assigned), as the same document says at lines 197-198. `docs/gem-strategy.md:552-562` presents the settled-boundary rule as complete; it does not cover a gap just before the boundary (A26-S15-02). `frontend/src/types/gem-strategy.ts:82` says "Trailing 12-month" for a configurable lookback.
+- **D-6** `docs/frontend/financial-figures.md:171` places `resolveEffectiveLoanTerms` in `lib/loan-schedule.ts`; it is defined in `lib/loan-comparison.ts:129`.
+- **D-7** `bookLoanAllocation`'s comment (`loan-payment-waterfall.util.ts:113-119`) says a residue "of less than one unit" reads as paid off; the threshold it names (`debt <= 0.01`) includes one whole unit (A26-S15-06); `docs/specs/loan-installment-settlement.md` 7.2 and E15 state `<= 0.01`.
+- **D-8** INV-LOAN-006's statement "the interest ... is roundMoney(debt x periodic rate)" does not mention the cap at the installment (A26-S15-04).
+
+## 12. Review ledger
+
+- **Revision:** pinned at `AUDIT_BASELINE_SHA` (empty diff outside the audit directories); HEAD at start `1c0cbcfa`; report commits on `ccr-1f689e5c-onia07`.
+- **Directories inspected:** `backend/src/loan-installments/`, `loan-rate-changes/` (sampled), `loan-scenarios/` (controller and service ownership sampled), `strategies/` (through the sweep, verified for the findings), `scheduled-transactions/` (the loan service in full; `post()` `:2862-3768` in full), `accounts/` (waterfall, dated debt, update relink and reprice), `action-history/` (undo dispatch and `undoSimpleEntity`), `notification-center/` (purge); frontend `lib/loan-history.ts`, `lib/loan-schedule.ts`, `components/reports/LoanAmortizationReport.tsx`, `hooks/useLoanProjection.ts`, `components/scheduled-transactions/PostTransactionDialog.tsx` (pre-fill only).
+- **Files read in full:** `scheduled-transaction-loan.service.ts`, `price-installment.ts`, `reprice-template.ts`, `claim-loan-occurrence.ts`, `occurrence-slots.ts`, `loan-payment-waterfall.util.ts`, `dated-loan-debt.util.ts`. **Sampled:** `plan-loan-settlement.ts:120-420`, `scheduled-transactions.service.ts:2862-3768` (post), `action-history.service.ts:160-212, 560-610, 1727-1770`, `accounts.service.ts:1020-1050, 1120-1230`, `loan-rate-changes.service.ts:319-370`, `gem-momentum.util.ts:180-240`, `price-boundary.util.ts:30-100`, `gem-signal-change-alert.service.ts:150-220`, `notification.service.ts:320-370`, `notification-bounds.ts:20-40`, `loan-history.ts:1240-1316, 1530-1560`, `LoanAmortizationReport.tsx:290-297`, `loan-schedule.ts:405-410`; specs as in section 3; the frontend sweep read `loan-history.ts`, `loan-schedule.ts`, `LoanAmortizationReport.tsx`, `useLoanProjection.ts` in full; the GEM sweep read the strategies module's services in full (its file list is in its report, summarized in section 3).
+- **Searches:** `resolvePostingAllocation|recalculateLoanPaymentSplits|bookTemplateAtMinorUnit|retired` in the scheduler; `daysBefore|daysAfter|MAX_LOAN_SETTLEMENT_WINDOW_DAYS`; `ALLOWED_COLUMNS` accounts; `applyLoanInterestRelink|repriceLoanTemplate|planLoanInterestRelink`; `VOID|status` in `loan-history.ts`; `statuses` in `transactions.service.ts`; `STATE_KEYED_DEDUPE_PREFIXES`; `loanOccurrences` consumers in the frontend; `@UseGuards|ParseUUIDPipe|req.user.id` in the two loan controllers; `currency` in the loan setup and pricing.
+- **Suites run:** baseline integration 11 suites / 71 passed (section 1); `src/strategies` unit 375 passed; frontend loan vitest 351 passed; probes R1-R11, the two undo probes, the cross-currency probe, the GEM spec; mutations M1-M7 (section 6).
+- **Finding counts:** BLOCKER 0, HIGH 1 (A26-S15-01), MEDIUM 4 (A26-S15-02, -03, -04, -10), LOW 5 (A26-S15-05, -06, -07, -08, -09).
+- **Areas reviewed without a finding:** the posting boundary's lock order and re-resolution on both branches; the claim INSERT and its backstop; the rate timeline (dated, 0 % distinct from unknown on the settlement path); the waterfall's clamp order; the minor-unit booking never retiring more than the debt; LOC exemption from deactivation; loan controllers' auth; the settlement amount policy (read against spec section 8).
+- **Text for the ledger (orchestrator merges):**
+  - Session status: S15 done; findings B/H/M/L 0/1/4/5; verdict REQUEST CHANGES.
+  - Prior findings disposed (final): MON-M32 FIXED_VERIFIED (R11 through the real `post()`, M1 covered).
+  - Suites: baseline integration 11 suites 71 passed (loan*, mortgage*, gem-price, settlement, fold); `src/strategies` unit 375 passed; frontend loan vitest 351 passed; probes `zz-s15-probe` (R1-R11), `zz-s15-undo`, `zz-s15-undo2`, `zz-gem` in a scratch worktree; mutations M1-M7; `zz-s15-fx` (cross-currency bill).
+  - Undetected mutations: `INV-LOAN-008 | claim-loan-occurrence.ts:178 advance past the claimed slot only | a real-database consecutive-claim case | S15` (unit-only); `INV-LOAN-007/010 | action-history.service.ts:1741-1764 undo writes coupled loan columns (baseline defect A26-S15-01) | an account-undo integration case | S15`; `INV-LOAN-006 | loan-payment-waterfall.util.ts:66-69 unpaid interest dropped (A26-S15-04) | an unpaidInterest assert | S15`; `INV-LOAN-004 | price-installment.ts:769 <= 0.01 -> < 0.01 | a 0.01-debt case | S15`.
+  - Open hypotheses handed on: to S19, A26-S15-09 (Post dialog loan split) merges with S08's `PostTransactionDialog.tsx:433` item, plus `AccountForm.tsx:427` (`account.interestRate || undefined` loads a stored 0 % as empty; the sweep, not executed) and `LoanPaymentSetupDialog.tsx:624` (`detected?.estimatedInterestRate && ...` renders a literal 0); to S20, A26-S15-03/-05/-08 surfaces in the report UI and the `loan-past-impact.ts:203-212` "interest already saved" for a loan whose interest is booked outside the app (measured 0 subtracted, not executed); to S12/S13, `GemPriceService.latestPrices` accepts a 0 close (valued 0, not unknown) and GEM valuation's undated `getLatestRate(..., 14)` (INV-FX-001 partial); to S21, the real-`post()` harness (A26-S08-05) and M3; to S17, none; to S23, A26-S15-01 and A26-S07-02 share `undoSimpleEntity` (consolidate the remediation, keep the two invariants).
+  - Deviations: two read-only sweep agents (GEM, frontend history) were used for breadth; every finding they proposed that is reported here was re-verified by reading and, where marked, re-executed (GEM momentum) or executed by the agent's probe over the real function (frontend, marked per finding). Report written by S15 only; ledger, sessions and register left to the orchestrator.
+
+## 13. Adversarial approval challenge
+
+Assumption: "the loan slice can be approved once the posting boundary is proven". Started from the slice's own abstractions rather than the findings:
+
+- **`LoanPostingDecision` (three answers).** Producers: `resolvePostingAllocation` only. Consumers: both `post()` branches (`:3501`, `:3619`). `retired` writes a claim with `transaction_id` NULL that no deletion can release, and the post-commit rewrite then deactivates the schedule; nothing reactivates it when the final payment is later voided (D10). The one-cent edge of `paid-off` is A26-S15-06.
+- **`InstallmentPurpose` (five purposes).** Searched every caller of `resolveInstallmentCore` / `priceInstallment` (`reprice-template.ts:86`, `scheduled-transaction-loan.service.ts:570`, `plan-loan-settlement.ts:347`, the projection). Each purpose's payment rule matches spec 7.2; the `posting` purpose keeps the template amount, which is what makes a stale template (A26-S15-01(a)) post the wrong total -- the challenge found the undo path as the producer of a stale template no reprice follows.
+- **Server-authoritative currency.** The pricing never reads a currency; the posting trusts the schedule's. Searching who writes a loan schedule's `currencyCode` found the setup path's unchecked source account (A26-S15-10, executed).
+- **Identity of a claim.** `(schedule, original_due_date)` plus `transaction_id`; void keeps, delete releases; checked against R9 and spec 12.5 (D3, D4).
+- **Legacy / mixed data.** A loan with no `scheduled_transaction_id` falls back to "any active schedule paying the loan" (`scheduled-transaction-loan.service.ts:350-373`); a standalone extra-principal schedule can then anchor the report only when the pointer is null (documented in the code); not raised.
+- **Performance.** `projectLoanOccurrencesMany` loops schedules inside one transaction with one debt statement per schedule; bounded by the count DTO; no amplification found.
+- **Stale client.** The Post dialog's echo detection compares exact amounts; a dialog opened before a template rewrite sends the old template, which is no longer an exact echo of the locked template and so posts as the user's own figures (the stale split); the dialog half is A26-S15-09, the stale-echo half joins S08's hand-off to S19.
+- **GEM.** From `spanCloses` and the materializer: A26-S15-02; from the alert's dedupe and the purge: A26-S15-07.
+
+What the challenge did not reach: the rule-run undo (`rule-run-undo.ts`) beyond its tests (the `loan-settlement-claim` integration suite passed); the loan-scenarios write path beyond ownership; the MCP/AI tools reading loan figures (S17); the E2E loan flows.
+
+Result: the challenge added A26-S15-10 and D10 and confirmed that A26-S15-01 is reachable from an ordinary UI action. APPROVE is not reachable for the slice.
+
+## 14. Verdict
+
+**REQUEST CHANGES** for the slice: one HIGH (A26-S15-01) survives, executed; four MEDIUM (A26-S15-02 GEM session, -03 VOID/future rows in loan history, -04 unpaid interest, -10 cross-currency loan bill) and five LOW. MON-M32 is fixed and verified. The posting boundary, the claim and the pricing core hold on every matrix row except the two boundaries reported (below-interest shortfall, the one-cent debt).
