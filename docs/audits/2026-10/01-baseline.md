@@ -267,3 +267,216 @@ No BLOCKER, HIGH or MEDIUM survived. Four LOW findings, all in the gate and inst
 - **S01-I3, same module, different specifier:** `with-context` and `with-context.js` resolve to one module under `nodenext`; the fence keys on the string. A26-S01-02.
 - **S01-I1, more specific file wins:** the protocol's scope rule (more specific instructions apply to their subtree) makes the stale `backend/CLAUDE.md` gate the binding one for backend work. A26-S01-03.
 - **Interaction:** A26-S01-01 x A26-S01-02. Both fences are lint. The RLS fence survives `--fix` only because `no-restricted-imports` has no fixer; an editor auto-import that writes `.js` produces a file that passes lint, type-check and the 1048 unit suites, and the only reviewer signal left is the diff. The two gaps do not compound into a present-day bypass (no such import exists), but they show the gate's strength rests on rule properties no document states.
+
+## 8. Rejected hypotheses
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| A file outside `WITH_CONTEXT_ALLOWLIST` seeds a context today | 81 importers of `with-context` vs 81 allowlist entries, parsed with the TypeScript parser; 214 call sites; no alias, namespace, re-export, `require`, dynamic import; `requestContextStorage.run` only in `with-context.ts` and the allowlisted interceptor | Sets match exactly in both directions; no stale entry | `REJECTED` (the latent bypass is A26-S01-02) |
+| Identity GUCs set outside `scoped-db.ts` | `set_config` sweep: `app-role.ts:218,243,250` (role), `advisory-locks.ts:85` (`lock_timeout`), `backup-export.service.ts:431`, `job-claim.service.ts:245` (`app.job_claim_lease_token`) | None sets `app.current_user_id`, `app.real_user_id`, `app.bypass_rls` or `app.preserve_timestamps` | `REJECTED` |
+| A bare `dataSource.query` on tenant data outside the door | `src/database/fix-linked-transactions.ts`, `add-skip-price-updates-column.ts` (one-off maintenance scripts with their own `DataSource`), `health.controller.ts:146` (`SELECT 1`), `main.ts:198` (`pg_notify`) | None reads or writes tenant rows through the request path; the scripts are operator tools | `REJECTED`; the two maintenance scripts are handed to S04 to confirm they are not reachable from the API |
+| A cron without any cross-replica mechanism | 49 handlers in 46 files; every one names a claim, lease, conditional write, dedupe index or an idempotent predicate `DELETE` (section 12.3) | The 16 handlers without a claim either delete by predicate, recompute absolutely under a row lock, or dedupe their notification; none sends email, push or a provider call without a claim, lease or dedupe key | `REJECTED` at inventory level; per-job proof is S08 |
+| `npm ci` on Node 22 is a repository defect | S00 record; README.md:418,491 says Node 24; every CI job pins `node-version: 24`; Dockerfiles use `node:24-*` | No `engines` field and no `.nvmrc`, but the requirement is documented and enforced where it matters | `REJECTED` (environment fact); the absent `engines`/`.nvmrc` is in section 9 |
+| The 2 skipped backend unit tests hide a defect | `backup/auto-backup.service.spec.ts:935,1346` skip when `process.getuid() === 0` (permission tests); the session container runs as root, CI does not | Environment-dependent by design | `REJECTED` |
+| Guard specs silently skip and pass | 14 guard specs use `REPO_ROOT || process.env.CI ? describe : describe.skip` | In a clone `REPO_ROOT` resolves; in CI `CI` is set; they ran here (no extra skips counted) | `REJECTED` |
+| An AI tool wired into only one adapter | Not searched in this session | Out of slice | handed to S17 |
+
+## 9. Design risks
+
+- **DR-S01-1 The lint gate's strength rests on undocumented rule properties.** The RLS bans hold under `--fix` only because no fixer exists for them; adding an auto-fixable custom rule later would silently stop gating (A26-S01-01 widens this).
+- **DR-S01-2 `cron-doc.spec.ts` checks prose, not code.** It proves each `docs/cron-jobs.md` row names a mechanism from `REPLICA_MECHANISM_VOCABULARY`; nothing checks that the handler calls it (M5). A handler refactor can drop its claim with the doc unchanged.
+- **DR-S01-3 No `engines` field and no `.nvmrc`.** `npm ci` fails on Node 22 with an engine message about a transitive package, not about the project; README.md:491 is the only statement.
+- **DR-S01-4 CI's UTC is implicit.** `backend-unit-tests` runs `npm run test:unit -- --coverage` without `TZ`; it is UTC because GitHub's `ubuntu-latest` image is. `AGENTS.md` says "`TZ=UTC npm run test:unit -- --coverage` # what CI runs". A self-hosted runner in another zone would make `insights-aggregator.service.spec.ts` and `net-worth.service.spec.ts` flap (verification-contract s7).
+- **DR-S01-5 E2E CI retries.** `e2e/playwright.config.ts:12` sets `retries: 2` under `CI`; a test that fails twice and passes once is green. Handed to S21.
+- **DR-S01-6 Workflow concurrency group shared with releases.** `ci.yml:41-43` groups by workflow and ref with `cancel-in-progress: true`; a push to `main` can cancel an in-flight `workflow_dispatch` release on `main` (not tested). Handed to S21 (INV-RELEASE-001).
+
+## 10. Missing tests and known-wrong tests
+
+- Missing: a guard that CI lint steps do not auto-fix (A26-S01-01).
+- Missing: a lint-config test that every spelling of a `with-context` import and a direct `requestContextStorage.run` is flagged outside the allowlist (A26-S01-02).
+- Missing: a code-level check that each `@Cron` handler calls the mechanism its doc row names (DR-S01-2, M5).
+- Missing (INV-CRON-001, recorded `partial`): two-instance tests per job; only the MNY job has one.
+- Known-wrong: none found in the slice. `docs/verification-contract.md` s5 is S02's.
+
+## 11. Documentation inconsistencies
+
+| # | Where | Inconsistency |
+| --- | --- | --- |
+| D1 | `docs/audits/2026-10/plan.md` s1 | "Invariant index at baseline: 145 entries: 126 enforced, 19 partial, 1 unenforced" sums to 146. The index table says 126/18/1; the entry bodies say 125/19/1. The difference is INV-BONDNOTIFY-003 (D2). |
+| D2 | `docs/system-invariants.md` | INV-BONDNOTIFY-003: index row `enforced`, entry body `Status partial` ("no guard scanning the rules for a recomputed figure"). The plan's list of 19 non-enforced IDs omits it. |
+| D3 | `docs/audits/2026-10/plan.md` s1 | "40 cron jobs": the code and `docs/cron-jobs.md` have 49 `@Cron` handlers in 46 services. |
+| D4 | `docs/audits/2026-10/plan.md` s5 | `backend/src/import-preview/` is "2k"; measured 222 non-test lines (`.ts`). MNY import "73k": `backend/src/import/` is 22.8k non-test `.ts` lines, 83k including non-`.ts` files. Bonds "18k": 13.9k `.ts`, 21.6k all files. |
+| D5 | `docs/backend/testing.md:95` | Recommends injecting repository mocks via `getRepositoryToken()`; production services inject only `DataSource` and the working pattern is `createScopedDbMocks` (`src/built-in-reports/tax-recurring-reports.service.spec.ts:143-163` carries both, the token providers dead). Not scanned by `lint-bans.spec.ts`. MON-M02 residual. |
+| D6 | `backend/src/mcp/CLAUDE.md` | "Three of them hold on every change here" followed by four bullets. |
+| D7 | `CONTRIBUTING.md:39-43` | "Two of them are worth restating" followed by three bullets. |
+| D8 | `docs/system-invariants.md` INV-CRON-001 (from line 5745) | Says the budget rollover is guarded by "ON CONFLICT ... with the loser re-reading the winner"; the code (`budget-period-cron.service.ts:121,203`) and `docs/cron-jobs.md` use `claimOnce` plus `releasePermanentClaim`. |
+| D9 | `docs/cron-jobs.md:27` | The `processAutoPostTransactions` row omits the `scheduled_transaction_postings ON CONFLICT (scheduled_transaction_id, original_due_date)` claim (`scheduled-transactions.service.ts:3651`) that `concurrency-and-idempotency.md` names. |
+| D10 | `docs/cron-jobs.md:36` | The `closeExpiredPeriods` row does not mention the monthly summary email (`budget-period-cron.service.ts:228,401`), guarded only by the per-owner `claimOnce`, with no delivery record. |
+| D11 | `docs/system-invariants.md` INV-HA-001 | Prose says "The E2E above does not exist yet"; Required tests says the positive half exists (`e2e/tests/cluster.spec.ts:117-118` asserts the 200 case). |
+| D12 | `docs/system-invariants.md` INV-LOAN-HISTORY-001 | The second gap ("no reader branches on `interest_booking_mode`") is stale: `loan-installments/plan-loan-settlement.ts:231` and `transaction-rules/rule-loan-settlement.ts:165` branch on it; the history producer still does not. |
+| D13 | `docs/system-invariants.md` INV-RULE-002 | The call-site list omits `bank-sync/bank-sync-writer.service.ts:323`, which the guard's `APPLYING_SITES` includes. |
+| D14 | `docs/verification-contract.md:347`, `AGENTS.md` | Present `npm run lint` as the backend lint check; it is a fixer (A26-S01-01). |
+| D15 | root `CLAUDE.md` | Describes `.claude/settings.json` as "read-only git"; it allows `git add*` and `git checkout -b*` (A26-S01-04). |
+
+## 12. Review ledger
+
+### 12.1 Baseline suite results
+
+SUITE_TABLE_PLACEHOLDER
+
+### 12.2 `withSystemContext` / `withUserContext` / `withDelegateContext` / `withPreserveTimestamps` call sites against `WITH_CONTEXT_ALLOWLIST`
+
+`WITH_CONTEXT_ALLOWLIST` (`backend/eslint.config.mjs:17-268`) has 81 entries, no duplicates. Exactly 81 non-spec files under `backend/src` import `common/db/with-context`, all with plain named imports; the two sets are equal. 214 call sites (comment hits excluded). S = system, U = user, D = delegate, P = preserve-timestamps; counts per file.
+
+| File (under `backend/src/`) | Calls | File | Calls |
+| --- | --- | --- | --- |
+| accounts/accounts.service | S1 | delegation/cross-owner-access.service | S5 |
+| accounts/mortgage-reminder.service | S1 U1 | delegation/delegation.service | S5 D2 |
+| action-history/action-history.service | S1 | delegation/guards/account-delegate.guard | D1 |
+| admin/admin.service | S8 | delegation/joint-accounts.service | S1 |
+| ai/ai-usage.service | S1 | email-receipts/poll/email-receipt-poll.service | S1 U1 |
+| ai/insights/ai-insights.service | S2 U1 | emergency-access/emergency-access-claim.controller | S2 |
+| ai/relay/relay-sweeper.service | S1 | emergency-access/emergency-access-monitor.service | S2 |
+| ai-review/ai-review-notification.service | S2 U2 | import/mny/mny-import-job.service | S1 U1 |
+| ai-review/ai-review-requests-expiry.service | S1 | import/mny/mny-import.service | U2 |
+| attachments/attachment-orphan-sweeper.service | S1 | import/mny/mny-staging.service | S1 |
+| attachments/storage/attachment-storage-migrator.service | S3 U1 | mcp/mcp-http.controller | U5 |
+| auth/auth-state-sweeper.service | S1 | mcp/tools/transactions.tool | U2 |
+| auth/auth.controller | S4 | net-worth/net-worth.service | S1 U2 |
+| auth/auth.service | S13 | notification-center/balance-threshold-alert.service | U1 |
+| auth/pat.service | S1 | notification-center/notification.service | S1 |
+| auth/strategies/jwt.strategy | U1 D1 | notification-center/portfolio-movement-alert.service | S1 U1 |
+| auth/token.service | S1 | notification-center/security-price-alert.service | S1 U1 |
+| backup/auto-backup.service | S11 U9 | notifications/bill-reminder.service | S1 U1 |
+| backup/backup-restore.service | P1 | notifications/notification-reminder-cron.service | S2 U1 |
+| backup/offsite/backup-offsite-dispatch.service | U1 | notifications/provider-outage-alert.service | S1 |
+| backup/offsite/backup-offsite-retry.service | S2 U1 | oauth/oauth-interaction.controller | U1 |
+| bank-sync/bank-sync-consent-reminder.service | S1 U1 | oauth/oauth-provider.service | U2 |
+| bank-sync/bank-sync-cron.service | S1 U1 | oauth/oauth-signing-keys.service | S1 |
+| bonds/benchmark-refresh.service | S3 | payees/lookup/google-places/payee-lookup-quota.service | S3 |
+| bonds/bond-catalog.service | S1 | payees/lookup/payee-contact-enrichment.service | U1 |
+| bonds/bond-notification.service | S1 U1 | provider-health/provider-health.service | S1 |
+| bonds/bond-price.service | S2 U2 | push/push-chart-artifact.service | S3 |
+| bonds/bond-series.service | S1 | push/push-config.service | S4 |
+| budgets/budget-alert.service | S2 U2 | push/push-subscription.service | S1 |
+| budgets/budget-period-cron.service | S1 U5 | scheduled-transactions/scheduled-transactions.service | S2 U3 |
+| categories/joint-categories.service | S1 | securities/holdings.service | S1 U1 |
+| common/cluster/replica-census.service | S1 | securities/holdings-drift-report.service | S1 U1 |
+| common/interceptors/request-context.interceptor | U3 + direct `requestContextStorage.run` :136 | securities/market-index.service | S3 |
+| common/jobs/job-claim.service | S1 | securities/security-price.service | S3 |
+| common/throttler/postgres-throttler-storage | S1 | securities/securities.controller | S1 |
+| currencies/currencies.service | S1 | strategies/gem-signal-change-alert.service | S1 U1 |
+| currencies/exchange-rate.service | S3 U1 | system-alerts/system-alert.service | S1 U1 |
+| database/demo-reset.service | S2 | transaction-rules/transaction-rule-applications-retention.service | S1 |
+| database/demo-seed.service | S2 | transactions/joint-register.service | S5 |
+| database/seed.service | S1 | transactions/transaction-transfer.service | S5 |
+| | | updates/updates.service | S3 |
+
+Not in the allowlist but calling: none. Stale allowlist entries: none. Wrappers passing a caller's callback into system context: only file-private ones (`delegation.service.ts:178` `systemScoped`, callers in-file at 809, 1053, 1484, 1523, 1532; `transaction-transfer.service.ts:914` `inWriteIdentity`; local closures `payee-lookup-quota.service.ts:104,197`, `transaction-transfer.service.ts:1081`). The per-site justification of each system-context use (does it need to bypass RLS) is S03/S04's.
+
+### 12.3 Cron matrix
+
+49 `@Cron` handlers in 46 services (plan said 40, D3). `ScheduleModule.forRoot()` at `backend/src/app.module.ts:164`: every replica fires every handler. `docs/cron-jobs.md` has 49 rows, one per handler; `cron-doc.spec.ts` holds the row-per-handler, the expression and the mechanism vocabulary (prose only, DR-S01-2). Ctx: Sys = `withSystemContext` only; Sys/User = system scan then `withUserContext` per user. Paths under `backend/src/`.
+
+| # | Handler (file:line) | Schedule | Cross-replica mechanism | Ctx | Side effect idempotency |
+| --- | --- | --- | --- | --- | --- |
+| 1 | database/demo-reset.service:29 resetDemoData | `0 4 * * *` | `claimOnce(DemoReset, reset:<UTC day>)` :68 | Sys | permanent claim |
+| 2 | database/demo-reset.service:226 generateIntradayTransactions | `0 */3 * * *` | `claimOnce(DemoIntraday, <day>-<hour>)` :254 | Sys | permanent claim |
+| 3 | ai/ai-usage.service:69 purgeOldUsageLogs | `0 4 * * *` | none; predicate DELETE | Sys | n/a |
+| 4 | ai/insights/ai-insights.service:355 handleDailyInsightGeneration | 06:00 | `claimLease(AiInsightGeneration)` :184 + cooldown re-read | Sys/User | LLM call may repeat after an empty save (documented) |
+| 5 | auth/token.service:363 purgeExpiredRefreshTokens | 03:00 | none; predicate DELETE | Sys | n/a |
+| 6 | scheduled-transactions/scheduled-transactions.service:527 processAutoPostTransactions | `5 * * * *` | `expectedDueDate` pin :624, `pessimistic_write` :2509, `scheduled_transaction_postings ON CONFLICT` :3651 | Sys/User | unique posting key; failure alert dedupeKey :723 |
+| 7 | scheduled-transactions/scheduled-transactions.service:760 refreshForeignCurrencyEstimates | `25 17 * * 1-5` NY | none; absolute overwrite | Sys | n/a |
+| 8 | currencies/exchange-rate.service:1396 scheduledRateRefresh | `5 17 * * 1-5` NY | `withLease("exchange-rates")` :194 | Sys | upsert :337; startup backfill unleased (documented) |
+| 9 | accounts/accounts.service:2168 applyDueTransactionBalances | `0 * * * *` | none; `lockAccountsForBalanceWrite` + absolute recompute | Sys | absolute (CONC-003 register) |
+| 10 | net-worth/net-worth.service:511 sweepStaleSnapshots | every 30 min | none; absolute recompute; CAS alert latch | Sys/User | CAS latch |
+| 11 | accounts/mortgage-reminder.service:86 checkMortgageRenewals | 08:00 | `claimLease(MortgageReminder)` :176 | Sys/User | wasDelivered/markDelivered (at-least-once) |
+| 12 | notifications/bill-reminder.service:82 sendBillReminders | 08:00 | `claimLease(BillReminder)` :226 | Sys/User | wasDelivered :237 / markDelivered :396 |
+| 13 | notifications/provider-outage-alert.service:155 sweepProviderHealth | `*/10 * * * *` | conditional `UPDATE provider_health ... RETURNING` :233,:335 | Sys | CAS per episode + dedupeKey :279 |
+| 14 | system-alerts/system-alert-monitor.service:117 sweepSystemHealth | `*/15 * * * *` | `idx_notifications_dedupe` (dedupeKey :173,:234) | Sys | dedupe index; SMTP probe per replica by design |
+| 15 | budgets/budget-period-cron.service:72 closeExpiredPeriods | `0 0 1 * *` | `claimOnce(BudgetPeriodRollover)` :121, `releasePermanentClaim` :203, ON CONFLICT :113 | Sys/User | monthly email has only the owner claim, no delivery record (D10) |
+| 16 | budgets/budget-alert.service:136 checkBudgetAlerts | `0 7 * * *` | notify `ON CONFLICT DO NOTHING RETURNING` :410 | Sys/User | insert winner sends |
+| 17 | budgets/budget-alert.service:191 sendWeeklyDigest | `0 7 * * 1` | `claimLease` :947 | Sys/User | wasDelivered :958 / markDelivered :978 |
+| 18 | securities/security-price.service:1779 scheduledPriceRefresh | `0 17 * * 1-5` NY | `withLease("security-prices")` :1792 | Sys | upsert :1052 |
+| 19 | securities/market-index.service:399 scheduledRefresh | `10 17 * * 1-5` NY | `withLease("market-indexes")` :380 | Sys | upsert :798 |
+| 20 | bonds/benchmark-refresh.service:101 scheduledRefresh | `25 6 * * 1-5` Warsaw | `withLease("bond-benchmarks")` :81 | Sys | ON CONFLICT :378 |
+| 21 | bonds/bond-price.service:103 scheduledRecompute | `45 6 * * *` Warsaw | `withLease("bond-prices")` :107, advisory lock 7 | Sys/User | upsert :482 |
+| 22 | bonds/bond-series.service:427 scheduledCurrentOffer | `15 7 * * *` Warsaw | `withLease("bond-series")` :431, advisory lock 8 | Sys | immutable store |
+| 23 | strategies/gem-signal-change-alert.service:63 run | `30 17 * * 1-5` NY | dedupeKey :176 | Sys/User | dedupe index |
+| 24 | bonds/bond-notification.service:71 run | `40 7 * * *` Warsaw | dedupeKey :158 | Sys/User | dedupe index |
+| 25 | notification-center/portfolio-movement-alert.service:94 run | `40 17 * * 1-5` NY | dedupeKey :507 | Sys/User | dedupe index |
+| 26 | notification-center/security-price-alert.service:63 run | `*/15 * * * *` | dedupeKey :153 (+ in-process `running` :55) | Sys/User | dedupe index |
+| 27 | push/push-chart-artifact.service:27 cleanup | `*/5 * * * *` | none; predicate DELETE | Sys | n/a |
+| 28 | ai/relay/relay-sweeper.service:53 sweepRelayState | `*/5 * * * *` | none; predicate | Sys | n/a |
+| 29 | import/mny/mny-staging.service:160 sweepExpiredFiles | hourly | none; predicate | Sys | staged files (MON-L04, S09) |
+| 30 | import/mny/mny-import-job.service:737 reapStaleJobs | hourly | conditional `UPDATE import_jobs ... RETURNING` | Sys | CAS |
+| 31 | backup/auto-backup.service:1654 handleAutoBackupCron | `0 * * * *` | `UPDATE ... next_backup_at <= $3 RETURNING user_id` :1614 | Sys/User | claimOnce on email dedupe key |
+| 32 | backup/offsite/backup-offsite-retry.service:131 handleRetrySweep | `30 * * * *` | `status -> 'uploading' ... RETURNING` (dispatch :374) | Sys/User | CAS claim |
+| 33 | action-history/action-history.service:2043 cleanupExpiredHistory | `0 3 * * *` | none; predicate | Sys | n/a |
+| 34 | notification-center/notification.service:321 purgeOld | `0 3 * * *` | none; predicate | Sys | n/a |
+| 35 | notifications/notification-reminder-cron.service:90 fireDue | `* * * * *` | `UPDATE ... RETURNING` over `FOR UPDATE SKIP LOCKED` :128 | Sys/User | row claimed once |
+| 36 | push/push-subscription.service:396 purgeRetiredDevices | `30 3 * * *` | none; predicate | Sys | n/a |
+| 37 | common/jobs/job-claim.service:325 sweepOldClaims | 04:00 | none; predicate | Sys | n/a |
+| 38 | auth/auth-state-sweeper.service:41 sweepExpiredAuthState | `0 4 * * *` | none; predicate | Sys | n/a |
+| 39 | transaction-rules/transaction-rule-applications-retention.service:49 purgeExpiredApplications | `45 3 * * *` | `FOR UPDATE SKIP LOCKED` :33 | Sys | n/a |
+| 40 | ai-review/ai-review-requests-expiry.service:54 sweepQueue | `20 * * * *` | `SKIP LOCKED` :40; dedupe key | Sys | dedupe index |
+| 41 | ai-review/ai-review-notification.service:137 notifyExpiring | `41 7 * * *` UTC | dedupeKey :40 / ON CONFLICT :85 | Sys/User | dedupe index |
+| 42 | email-receipts/poll/email-receipt-poll.service:127 pollAll | `*/15 * * * *` | `claimLease(EmailReceiptPoll)` :96 | Sys/User | ON CONFLICT :99 on uid |
+| 43 | securities/holdings.service:941 applyMaturedInvestmentHoldings | `30 * * * *` | none; `lockHoldingScope` + rebuild | Sys/User | absolute rebuild |
+| 44 | emergency-access/emergency-access-monitor.service:182 runDailyCheck | 09:00 | CAS `granted_at IS NULL` :102; `claimLease` :765, :488 | Sys | lease + delivery record |
+| 45 | updates/updates.service:130 scheduledRefresh | every 12 h | conditional upsert `... DO UPDATE ... WHERE ... RETURNING` :304 | Sys | claim window |
+| 46 | attachments/attachment-orphan-sweeper.service:358 sweepOrphanedObjects | hourly | `UPDATE attachment_blob_tombstones ... RETURNING` :278-286 | Sys | provider delete idempotent |
+| 47 | attachments/storage/attachment-storage-migrator.service:206 relocateOnSchedule | `0 50 * * * *` | `withLease("attachment-relocation")` :272, row `FOR UPDATE` :539 | Sys/User | ON CONFLICT :598 |
+| 48 | bank-sync/bank-sync-cron.service:62 handleDailySync | `17 5 * * *` UTC | `claimOnce(BankSyncDaily)` :121 + `claimLease(BankSyncAccount)` | Sys/User | ON CONFLICT ledger + dedupe |
+| 49 | bank-sync/bank-sync-consent-reminder.service:88 handleDailyReminders | `23 6 * * *` UTC | dedupeKey :65 / ON CONFLICT :67 | Sys/User | dedupe index |
+
+Per-process timers outside `@Cron` (not in `docs/cron-jobs.md`, which covers only `@Cron`): heartbeats `ai/query/ai-query.controller.ts:94`, `ai/relay/ai-relay.controller.ts:81`, `import/mny/mny-import-job.service.ts:655`; MCP session cleanup `mcp/mcp-http.controller.ts:128`; a harness `backup/restore-peak-rss.harness.ts:307`. No `@Interval`, `@Timeout`, `SchedulerRegistry` or `CronJob`. Process-local guards beside a cron are held by `derived-state-writers.guard.spec.ts:215` (5 allowlisted files) and `process-local-state.guard.spec.ts`.
+
+### 12.4 The non-enforced invariants as standing hypotheses
+
+Index table: 145 rows, 126 `enforced`, 18 `partial`, 1 `unenforced`. Entry bodies: 125/19/1; INV-BONDNOTIFY-003 is the difference (D2). "Still the gap" = the recorded gap reproduces in code; "other path" = a path with the same gap the entry does not list. [V] = verified in code, [D] = read in the doc only.
+
+| ID | Recorded gap still the gap? | Other path not listed in the entry | Hand to |
+| --- | --- | --- | --- |
+| INV-IMPORT-003 (unenforced) | yes [V]: `import/import.service.ts:664-680` check-then-insert, no ON CONFLICT; `schema.sql:268` `UNIQUE(user_id, name, parent_id)` never trips for NULL `parent_id` | **yes [V]**: MNY writer `import/mny/writers/write-reference.ts:168-201` (`writeCategories`) reads then plain `repo.insert`; for top-level names a concurrent create yields a duplicate category, not an abort | S09 |
+| INV-BANKSYNC-001 | yes [V]: `keyFor` `bank-transaction-planner.ts:541-556`; BS10 unchecked `docs/future-plans/bank-sync-tasks.md:30` | **yes [V, read only]**: `resolveEntryReferences` (`:381-413`) adds `#<hash>` only when the current fetch holds a duplicate reference, so `ref:X` then `ref:X#...` re-keys the same row | S10 |
+| INV-API-001 | yes, part (1) [V]: `snapshotTransaction` (`transactions.service.ts:3773-3800`) omits `externalId`; (2),(3) [D] | no | S07 |
+| INV-FX-001 | yes [V]: `report-currency.service.ts:99-121` returns `amount` unconverted; `data-quality-reports.service.ts:123,220` label it `defaultCurrency` | no; caller families match the doc. Note: comment at `report-currency.service.ts:105` says these reports use a flat latest-rate lookup | S13 |
+| INV-FX-003 | yes [V]: no CHECK on `exchange_rates` (`schema.sql:88-96`) | no; raw inserts only `exchange-rate.service.ts:335,415`, `write-prices.ts:226`, all through `canonicalRateRow` | S13 |
+| INV-PRICE-001 | yes [V]: `security_prices` has no currency column | possible [V, unassessed]: writers outside `refuseForeignCurrency`: `import/mny/writers/write-prices.ts:112`, `bonds/bond-price.service.ts:479`, `security-price.service.ts:2364,2432`, `database/demo-seed.service.ts:902` (entry scopes itself to provider prices) | S12 |
+| INV-LOAN-HISTORY-001 | yes, main gap [V]: `frontend/src/lib/loan-history.ts:1607-1613` filters by interest category and source account only | no; second gap wording stale (D12) | S15 |
+| INV-BOND-010 | yes [V]: `net-worth/` has no bond-specific valuation | **yes [V]**: `monte-carlo/monte-carlo.service.ts:511-539,708-727` values each holding as `quantity x getLatestPrices()` without a `bondProgramId` check | S13 / S14 |
+| INV-BACKUP-004 | yes, by nature (bucket policy outside the repo) [V]: uploader builds no Delete/Get/Head; `IfNoneMatch: "*"` :118,:298 | no | S06 |
+| INV-BACKUP-005 | yes [V]: `backup-offsite-email.sender.ts:99-135` reports "uploaded" when `sendMail` resolves | no | S06 |
+| INV-BACKUP-008 | yes [V]: `backup_password_enc` still in `schema.sql:51`; `backup-password.util.ts:29-33` decrypts it | no | S06 |
+| INV-CRON-001 | yes [D]: only the MNY job has a two-instance test; text stale (D8) | not assessed per job; M5 | S08 |
+| INV-RELEASE-001 | yes [V]: bump commit and push `ci.yml:~1149-1151`; `gh release create` without `--target` `ci.yml:1191-1197` | possible: workflow concurrency group shared with push-to-main (DR-S01-6) | S21 |
+| INV-HA-001 | yes [V]: `e2e/tests/cluster.spec.ts:117-118` asserts only the 200 case | no; prose self-contradiction (D11) | S21 |
+| INV-RULE-001 | yes [V]: `rule-run-undo.ts:125` collects `affectedAccountIds`, `action-history.service.ts:615-620` drops them | **wider [V]**: no file in `action-history/` references `NetWorthService`; no undo or redo path triggers a net-worth recompute (only `invalidatePortfolioSummary` :517,:551), while INV-CACHE-001 is `enforced`; whether the 30-minute stale-snapshot sweep (#10) covers it is open | S07 / S10 |
+| INV-RULE-002 | yes [V]: guard comment `rule-application-sites.guard.spec.ts:56-58` | no; list stale (D13) | S10 |
+| INV-RULE-003 | yes [V]: fingerprint has no account state | open: `rule-row-explain.ts` is a second evaluation used for explanations; agreement with the planner unchecked | S10 |
+| INV-RULE-004 | yes, by design [V] | no; AI/MCP passes the window (`rule-tool-prep.service.ts:940-947`) | S10 |
+| INV-SEARCH-001 | yes [V]: `HAND_PATTERN` scope `transactions/` only | `reports/reports.service.ts:573,724` build `%...%` unescaped; declared out of scope by the guard (`:138-140`), not a violation as written | S16 |
+| INV-BONDNOTIFY-003 (body `partial`, index `enforced`) | body gap: copy held by unit tests only, no guard for a recomputed figure | not assessed | S14 |
+
+Enforced entries: a scripted check of every file path named in the 125 body-`enforced` entries (622 tokens) resolved all of them against `git ls-files`; two unresolved tokens were prose. Existence does not prove the mechanism.
+
+### 12.5 Module inventory and architecture delta
+
+Backend `src/` non-test `.ts`: 345 341 lines in 1 395 files (49 top-level directories plus root files `main.ts`, `app.module.ts`, `db-*.ts`); 1 041 `*.spec.ts` under `src/`; 118 integration specs under `backend/test/integration/`. Frontend `src/` non-test `.ts/.tsx`: 277 492 lines in 1 262 files (components 188k, lib 43k, app 19.6k, hooks 12k, types 10k, store 2.4k). Migrations: 233 files, 56 timestamped. E2E: 40 specs in `e2e/tests/`, 1 in `e2e/push/`, 5 screenshot specs in `e2e/readme/` (run only by `playwright.readme.config.ts`, not CI). The plan's "411k in 1 429 files" for the backend counts more than `src/**/*.ts`; the method was not recorded (D4).
+
+Backend modules, non-test `.ts` lines (files / specs); `*` marks a module plan s5 lists as new since `d5cea9bf`:
+
+securities 34 717 (80/63); email-receipts* 27 271 (121/95); ai 23 147 (75/63); import 22 835 (68/54; 83k with non-`.ts` files); backup 22 157 (75/53); transactions 19 575 (43/29); accounts 15 697 (44/39); common 14 094 (112/126); bonds* 13 931 (69/50); transaction-rules* 11 568 (48/56); bank-sync* 10 084 (48/30); scheduled-transactions 9 574; mcp 9 531; payees 9 105; budgets 7 966; auth 7 621; net-worth 7 596; built-in-reports 7 492; strategies* 7 115; currencies 5 576; notifications 4 196; notification-center* 4 000; database 3 909; delegation 3 795; ai-review* 3 607; loan-installments 3 348; attachments 3 303; users 3 083; push* 2 896; investment-reports 2 769; categories 2 759; action-history 2 674; emergency-access 2 345; monte-carlo 2 127; oauth* 1 924; reports 1 896; loan-rate-changes* 1 366; updates* 1 204; provider-health* 1 070; admin 1 007; test-helpers 994; tags 965; institutions 775; system-alerts* 747; loan-scenarios* 604; calendar* 535; i18n 359; import-preview* 222; health 210.
+
+The upstream baseline `d5cea9bf` is not reachable in the shallow clone (256 commits back to 2026-10-11), so the delta list is plan s5's, re-measured for size, not re-derived by diff.
+
+### 12.6 Ledger
+
+- Directories inspected: repository root, `.claude/`, `.github/workflows/` (`ci.yml` jobs `backend-lint`, `backend-unit-tests`, `backend-integration-tests`, `frontend-*`, `e2e-tests`, env/concurrency header), `backend/` config, `backend/src/common/db/`, `e2e/` config.
+- Files read in full: `AGENTS.md`, `CLAUDE.md`, `backend/CLAUDE.md`, `e2e/CLAUDE.md`, `backend/src/mcp/CLAUDE.md`, `CONTRIBUTING.md`, `.claude/settings.json`, `.lintstagedrc.cjs`, `docs/audits/2026-10/{plan,ledger,prior-findings-register}.md`, S01 block of `sessions.md`.
+- Sampled: `frontend/CLAUDE.md` and `database/CLAUDE.md` (command and gate lines), `backend/eslint.config.mjs:17-30,270-300,395-475`, `docs/verification-contract.md:483-560`, `docs/backend/testing.md:85-110`, `docs/system-invariants.md` (INV-RELEASE-001 and the 20 non-enforced entries via a delegated sweep), `docs/cron-jobs.md:1-20`, `backend/src/common/db/prohibited-primitive-guidance.ts:1-40`, `lint-bans.spec.ts` (doc list), `ci.yml:23-155,1452-1600`.
+- Delegated read-only sweeps (results re-checked by spot reads): `WITH_CONTEXT_ALLOWLIST` reconciliation (12.2), cron matrix (12.3), non-enforced invariants (12.4).
+- Searches: banned DB primitives across all `*.md` and `src/`; `getRepositoryToken` (22 spec files); `set_config` identity GUCs; `describe.skip`/`it.skip`; `@Cron`/`@Interval`/`setInterval`; `passWithNoTests`.
+- Areas reviewed without a finding: the DB-primitive bans and their documented list (MON-M02); allowlist vs call sites; cron doc vs code (one row per handler, expressions); CI image registries (Dockerfiles `FROM mirror.gcr.io`); guard specs' skip conditions.
+- Open hypotheses handed on: see 12.4 "Hand to" column, plus: to S04, the two `src/database/*.ts` maintenance scripts with their own `DataSource` are not reachable from the API; to S08, M5 and D10 (monthly budget summary email has no delivery record; a crash after the claim and before the send loses the email, a crash after the send and before completion does not repeat it); to S21, DR-S01-5 (E2E `retries: 2`), DR-S01-6 (concurrency group), the matrix `include` that turns shard 4 into the cluster shard (the single-backend shard 4 subset never runs on one backend), and whether `lighthouse.yml`/`zap.yml` call `npm run lint`; to S03/S04, the per-site justification of each of the 214 context call sites.
