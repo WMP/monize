@@ -28,7 +28,7 @@ before auditing.
 | S03 | done | 2026-10-21 | 2026-10-21 | 4adfd72 | 0/1/3/3 | `03-security-auth.md` (child session_019xGDCFeEXnmBq2PfLKgW9t); verdict REQUEST CHANGES |
 | S04 | in-progress | 2026-10-21 | | | | `04-rls-tenancy.md` (child session_01XG1M2wjANyUMMeHkkGGyN1, claude-opus-5-5) |
 | S05 | done | 2026-10-21 | 2026-10-21 | 3268ccec | 0/0/1/2 | `05-migrations-schema.md` (child session_01XM8Gxs6p79kg8d2mviohsA); verdict APPROVE |
-| S06 | in-progress | 2026-10-21 | | | | `06-backup-restore.md` (child: see next ledger update) |
+| S06 | in-progress | 2026-10-21 | | | | `06-backup-restore.md` (child session_01H4ePk3D2tytbTfCDnY7hrp, claude-opus-5-5) |
 | S07 | open | | | | | `07-cash-ledger.md` |
 | S08 | open | | | | | `08-scheduler-cron.md` |
 | S09 | open | | | | | `09-import-mny.md` |
