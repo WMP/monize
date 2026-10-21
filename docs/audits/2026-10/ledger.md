@@ -39,7 +39,7 @@ before auditing.
 | S14 | in-progress | 2026-10-21 | | | | `14-bonds.md` (child session_0123vTCmSakgyRaknyvJmWAm, claude-opus-5-5) |
 | S15 | done | 2026-10-21 | 2026-10-21 | b947bf1 | 0/1/4/5 | `15-loans-strategies.md` (child session_01JEBFJpQ1qzqkCGWz62GC7v); verdict REQUEST CHANGES |
 | S16 | in-progress | 2026-10-21 | | | | `16-budgets-reports.md` (child session_01EZWKuDHxiBSTAvGP32QcFb, claude-opus-5-5) |
-| S17 | in-progress | 2026-10-21 | | | | `17-ai-mcp-notifications.md` (child: see next ledger update) |
+| S17 | in-progress | 2026-10-21 | | | | `17-ai-mcp-notifications.md` (child session_01111K7XW3AyLWdho7J2V8cV, claude-opus-5-5) |
 | S18 | open | | | | | `18-frontend-core.md` |
 | S19 | open | | | | | `19-frontend-forms.md` |
 | S20 | open | | | | | `20-frontend-figures.md` |
