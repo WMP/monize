@@ -76,7 +76,7 @@ session report, `NN-<slice>.md#...`).
 | MON-M29 | Explicit zero or negative investment FX rates produce inconsistent cash postings | S12 | FIXED_VERIFIED (create and preview) | `12-securities-holdings.md#5-prior-finding-dispositions` |
 | MON-M30 | BUY commission is omitted from cost basis although cash and UI wording include fees | S12 | FIXED_VERIFIED (backend; tooltip wording S20) | `12-securities-holdings.md#5-prior-finding-dispositions` |
 | MON-M31 | Transfer split amounts are omitted from budget spending | S16 | open | |
-| MON-M32 | Final scheduled loan payment recalculates splits without shrinking the parent payment | S15 | open | |
+| MON-M32 | Final scheduled loan payment recalculates splits without shrinking the parent payment | S15 | FIXED_VERIFIED | `15-loans-strategies.md#5-prior-finding-dispositions` |
 | MON-M33 | Monte Carlo current-value failure is converted to a real zero | S13 | open | |
 | MON-M34 | Bulk deletion can leave linked-account monthly/net-worth snapshots stale | S13 | open | |
 | MON-M35 | Foreign-security transfer resets destination cost basis to an implied 1:1 value | S12 | STILL_OPEN (A26-S12-04) | `12-securities-holdings.md#5-prior-finding-dispositions` |
