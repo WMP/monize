@@ -30,8 +30,8 @@ before auditing.
 | S05 | done | 2026-10-21 | 2026-10-21 | 3268ccec | 0/0/1/2 | `05-migrations-schema.md` (child session_01XM8Gxs6p79kg8d2mviohsA); verdict APPROVE |
 | S06 | done | 2026-10-21 | 2026-10-21 | fdf434c | 0/0/2/4 | `06-backup-restore.md` (child session_01H4ePk3D2tytbTfCDnY7hrp); verdict APPROVE |
 | S07 | done | 2026-10-21 | 2026-10-21 | 03fdd62 | 0/2/5/2 | `07-cash-ledger.md` (child session_01XfUxS4dgiSNkonPgLiFnwC); verdict REQUEST CHANGES |
-| S08 | in-progress | 2026-10-21 | | | | `08-scheduler-cron.md` (child: see next ledger update) |
-| S09 | in-progress | 2026-10-21 | | | | `09-import-mny.md` (child: see next ledger update) |
+| S08 | in-progress | 2026-10-21 | | | | `08-scheduler-cron.md` (child session_014ydW7reUCeSgTdjvYkk8qB, claude-opus-5-5) |
+| S09 | in-progress | 2026-10-21 | | | | `09-import-mny.md` (child session_01KxbrJgNzbFhpqTXYbkj5SV, claude-opus-5-5) |
 | S10 | open | | | | | `10-rules-banksync-csv.md` |
 | S11 | open | | | | | `11-email-receipts.md` |
 | S12 | open | | | | | `12-securities-holdings.md` |
