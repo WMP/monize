@@ -415,3 +415,128 @@ Causality: `NEW_SINCE_UPSTREAM_AUDIT` (push chart artifacts are new). This is th
 15. **Residual risks / patch limitations:** the assertion is on `req.auth`; the end-to-end property also depends on the SDK forwarding `req.auth` per request (`@modelcontextprotocol/node` `index.cjs:238`), which an SDK upgrade could change; `mcp-eras.spec.ts` is the place for a real-SDK variant.
 
 Causality: `PRIOR_REPORTED` (MON-M04, test half; the defect itself is `FIXED_VERIFIED`, section 5).
+
+### A26-S17-06 - The portfolio-movement alert commits its new baseline before it writes the notification, so a failed write loses the alert for good
+
+1. **Severity:** LOW
+2. **Confidence:** medium (read; the failure window is not executed)
+3. **Location:** `backend/src/notification-center/portfolio-movement-alert.service.ts:232-247` (`storeBaseline` in its own transaction), `:251-257` (`dispatch.notify` after it); the notification already carries a per-day dedupe key (`:507`, `portmove:<currency>:<today>`).
+4. **Violated invariant:** `docs/external-side-effects.md` ordering ("do the thing, then write down what happened") applied to an alert: the state that suppresses a repeat must not commit before the thing it suppresses.
+5. **Realistic reproduction scenario:** the movement cron decides to fire and to re-baseline; `storeBaseline` commits; the `notify` transaction fails (a connection reset, a statement timeout) or the process is killed before it runs.
+6. **Observed implementation behavior:** the baseline has moved to today's value, so the next run measures no movement; no notification row exists.
+7. **Expected behavior:** the alert is written first (the dedupe key makes a retry harmless), then the baseline moves.
+8. **Impact:** an opted-in user misses one portfolio-movement alert; no financial state changes.
+9. **Root cause:** the suppression state is written before the event it suppresses, although the event is idempotent by its key.
+10. **Recommended correction:** call `notify` first and `storeBaseline` after it returns (a `null` from `notify` means another replica already wrote today's alert, and the baseline still moves).
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/notification-center/portfolio-movement-alert.service.ts
++++ b/backend/src/notification-center/portfolio-movement-alert.service.ts
+@@
+-    if (decision.rebaselineTo != null) {
+-      ...
+-      await this.storeBaseline(userId, decision.rebaselineTo, currency, today, snapshot);
+-    }
+-    if (decision.fire == null || baselineDate === null) return false;
+-    ...
+-    const written = await this.dispatch.notify(...);
++    let written: Notification | null = null;
++    if (decision.fire != null && baselineDate !== null) {
++      // First: the per-day dedupe key makes a retry of this write harmless,
++      // while a baseline moved first would hide the move from the retry.
++      written = await this.dispatch.notify(...);
++    }
++    if (decision.rebaselineTo != null) {
++      ...
++      await this.storeBaseline(userId, decision.rebaselineTo, currency, today, snapshot);
++    }
++    if (decision.fire == null || baselineDate === null) return false;
+```
+
+12. **Recommended regression test / 13. diff (illustrative, not applied):**
+
+```diff
++it("keeps the baseline when the alert could not be written", async () => {
++  dispatch.notify.mockRejectedValueOnce(new Error("connection reset"));
++  await expect(service.evaluateUser(USER)).rejects.toThrow();
++  expect(storeBaselineSpy).not.toHaveBeenCalled();
++});
+```
+
+14. **Verification method:** the unit case; `portfolio-movement-flow.integration.spec.ts` re-run.
+15. **Residual risks / patch limitations:** the fan-out still runs before the baseline commits; a crash between them repeats nothing because the second run's `notify` returns `null` on the dedupe key.
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT` (portfolio-movement alerts are new). Handed from S08 (`08-scheduler-cron.md` section 12).
+
+## 5. Prior-finding dispositions
+
+| ID | Disposition | Evidence |
+| --- | --- | --- |
+| MON-M04 | `FIXED_VERIFIED` (with a test gap, A26-S17-05) | Tools never read a session map: `resolveUserContext` reads the request's own `AuthInfo` (`mcp-context.ts:71-87`), which `authorize` builds per request from the presented bearer (`mcp-http.controller.ts:235-257`) and the node transport forwards per request (`@modelcontextprotocol/node` `index.cjs:238`). A 2025-era session is additionally refused with 403 unless the presented `credentialId` equals the creating one (`:194-212`), so a read-only PAT cannot ride a write PAT's session, and a revoked token 401s at once (`validatePat`, `PatService.validateToken` checks `isRevoked`, expiry and the user state). Mechanism tests: `mcp-http.controller.spec.ts` (M1 caught: 2 failures). The per-request scope read itself is pinned by no test (M2 undetected, A26-S17-05). |
+| MON-M25 (provider half) | `FIXED_VERIFIED`, residual A26-S08-04 (owned by S08) | One provider call per generation across replicas is held by `claimLease(AiInsightGeneration, user, "generation", 15 min)` and the cooldown re-read under the lease (`ai-insights.service.ts:184-217`), with release by token (`:311-327`); the manual trigger is throttled 3/min (`ai-insights.controller.ts:65-77`). A failed provider call saves nothing and releases the lease, so the next trigger retries it: bounded by the throttle and the daily cron, not by a negative cache (acceptable, Rule 6: at most 3 calls a minute per user from the button, one per cron tick per user). The only duplicate path is the lease overrun on a slow provider (Ollama 20-minute abort vs the 15-minute lease), which is A26-S08-04 (executed by S08, R2); not re-reported. `isGenerating` in the list response still reads the process-local `Set` (cosmetic, section 9). Suites: `ai-insights.service.spec.ts` (green); `job-claim-lease-rollout.integration.spec.ts` is S08's. |
+
+## 6. Mutation table
+
+All in the scratch worktree; each reverted with `git checkout` before the next.
+
+| Invariant | Mutation (file:line, what) | Test that fails | Verdict |
+| --- | --- | --- | --- |
+| INV-MCP-001 (M1) | `mcp-http.controller.ts:204` drop `sessionUser.credentialId !== authResult.credentialId` | `mcp-http.controller.spec.ts` (2 failures) | covered |
+| INV-MCP-001 / MON-M04 (M2) | `mcp-http.controller.ts:319-322` after `authorizeExistingSession`, set `req.auth = toAuthInfo(<session's stored context>)` (tools see the creation-time scopes) | none: 802/802 MCP unit tests pass | **undetected** (A26-S17-05) |
+| INV-DISPATCH-003 (M3) | `notification-dispatch.service.ts:203` never take the advisory lock | `notification-dispatch.service.spec.ts` (3 failures, mock-order) | covered (unit only; no two-connection test) |
+| A26-S17-03 (M4) | `tool-executor.service.ts:2910-2913` pass threshold `2` instead of `months` (the fix) | `tool-executor.service.spec.ts` (1 failure: the known-wrong assertion) | the test pins the defect |
+| INV-MCP-004 / A26-S17-02 (P2) | baseline code, `attachments.create` rejecting once | none in the repository; P2 shows `transactionsService.create` called twice | **undetected** (no test of a post-commit failure) |
+| (LLM shape) A26-S17-01 (P3) | baseline code, two currencies | none in the repository | **undetected** |
+
+## 7. Counterexamples and the interaction scenario
+
+- **P1 (INV-MCP-001, caller key):** a 2026-07-28 client that adds `Mcp-Session-Id: email-receipts` to every request (probe `zz-probe-callerkey.spec.ts` against the real SDK handler): the tool saw `sessionId: null`, `callerKey: "pat:t1"`. The modern handler ignores the header, a 2025-era session id is server-generated (`randomUUID`), the assistant claims under `assistant`, and every credential key is prefixed (`pat:`, `oauth:`): no caller can claim under `EMAIL_RECEIPTS_CLAIM_KEY` (`"email-receipts"`, `ai-review-work.types.ts:63`), and `email_trade` requests are born claimed under it. The S11 hand-off is answered: not reachable.
+- **P2 (A26-S17-02):** `ai-actions.service.spec.ts` copy with a create card carrying one attachment and `attachments.create` rejecting once: first confirm rejects with "S3 unavailable", second confirm with the same dto resolves `{"type":"create_transaction","id":"tx-new"}`, `transactions.create` called twice.
+- **P3 (A26-S17-01, real PostgreSQL):** PLN account 4,000.00 and USD account 1,000.00 in September, 400.00 PLN in August, one category: `getLlmListTransactions` `{"totalExpenses":5000,"byCurrency":{"PLN":{...4000},"USD":{...1000}}}`; `getLlmPeriodComparison` `{"period1":{"total":400},"period2":{"total":5000},"totalChange":4600,"totalChangePercent":1150}`.
+- **Bearer types (A26-S03-03 hand-off):** a `step_up` or `oidc_reauth` JWT presented to `/mcp` does not start with `pat_`, so it goes to `OAuthProviderService.validateAccessToken`, which looks it up with `provider.AccessToken.find(rawToken)` in the provider's store; access tokens are `accessTokenFormat: "opaque"` (`oauth-provider.service.ts:179`), so a JWT string is never a stored id and the answer is `null` -> 401. `PatService.validateToken` refuses anything without the `pat_` prefix and hashes the rest. Neither MCP verifier accepts a `JWT_SECRET`-signed token of any type. Static (the controller spec's nine malformed shapes run with a mocked provider), recorded as REJECTED for the MCP half in section 8.
+- **Refusal parity (S07 hand-off):** an AI batch update of a row that is a transfer is refused at prep (`transaction-tool-prep.service.ts:654-660`, "Transfers can't be edited in a bulk update"); at commit the executor calls `TransactionsService.update`, the same method `PATCH /transactions/:id` calls (`transactions.controller.ts:1545-1568`), so the AI path is never weaker than HTTP. Whether `update()` on a transfer leg keeps both legs in step is a property of that shared method (handed on, section 12).
+- **Interaction scenario (A26-S17-01 x A26-S17-02 x the relay):** a user with PLN and USD accounts asks the web-chat relay agent "what did I spend in September, and record the 1,000 USD card payment with this receipt". The agent's `list_transactions` reports "Expenses: 5000.00" (A26-S17-01); it emits a create card through `emitRelayCard`; the person confirms in the browser via `/ai/actions/confirm`; the attachment store fails after the row commits; the card offers "Retry" and a second 1,000 USD row is written (A26-S17-02); the agent's next `list_transactions` then reports "Expenses: 6000.00", a figure that is wrong twice over (no conversion, a duplicate row) and that the user has no currency to check it against. Each mechanism alone (the relay card, the single-use claim, the analytics sum) is correct in its own file. Not executed as one run; its parts were (P2, P3).
+
+## 8. Rejected hypotheses
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| An MCP agent or the assistant claims a request under `EMAIL_RECEIPTS_CLAIM_KEY` (S11 hand-off) | P1; `callerKey` (`mcp-context.ts:101-105`); claim SQL `status = 'pending'` (`ai-review-requests.service.ts:690-742`) | no caller key can equal the literal; `email_trade` requests are never pending | REJECTED |
+| MCP/PAT bearer verifiers accept `step_up` / `oidc_reauth` JWTs (A26-S03-03) | `validatePat`, `validateAccessToken`, opaque token format | the MCP verifiers are store lookups, not JWT verifies | REJECTED (the cookie/Authorization path stays A26-S03-03's) |
+| MCP sessions keep creation-time scopes (MON-M04) | section 5 | fixed by mechanism; only the test is missing | FIXED_VERIFIED + A26-S17-05 |
+| A tool wired into one layer only | parity matrix (section 2) | `render_chart` (presentation, no data), `enter_bond_series_manually` (documented admin fallback), relay tools, `list_transaction_rules` folded into `manage_transaction_rules` (documented) | REJECTED |
+| A notify caller runs inside an outer transaction, so the push fans out for a row that can roll back (S08 hand-off) | all 16 `.notify(` callers; `balance-threshold-alert.service.ts:69-96` commits the latch first by design | no caller nests `notify` in a `withScopedDb` | REJECTED |
+| A read-path producer (bill reminders on `GET /notifications`) duplicates rows and pushes under two concurrent reads | `budgets.service.ts:714-826`: dedupe key `BILL_DUE:<bill>:<originalDate>`, `ON CONFLICT DO NOTHING`, `null` fans out nothing | the database arbitrates | REJECTED |
+| An AI/MCP write skips the HTTP refusals (VOID, currency, ownership, reconciled lock) | refusals live in `TransactionsService` and the transfer/investment services; controllers add only joint-register routing | the adapters call the same service methods; the AI executors also re-run class-validator (`toValidatedDto`) | REJECTED (the MCP direct commits skip `toValidatedDto`, but their DTOs are built from server previews, not from model input; noted in section 9) |
+| AI/MCP `get_capital_gains` (S12 hand-off A26-S12-04) | `getLlmCapitalGains` is the shared door; nulls carried | same root cause as A26-S12-04 | consolidated under A26-S12-04 (Rule 7) |
+| AI/MCP edit card shows no rate (S12 hand-off A26-S12-03) | `investments.tool.ts:1245-1287` card lines (no rate line); frontend `TransactionConfirmationCard.tsx` (no `exchangeRate`) | confirmed surface of the same root cause | consolidated under A26-S12-03 (Rule 7) |
+| AI/MCP account summary drops completeness flags (S13 hand-off A26-S13-04) | `tool-executor.service.ts:2433` summary line; `getLlmAccounts` totals | confirmed surface | consolidated under A26-S13-04 (Rule 7) |
+| `updates.service` window equal to its 12-hour period (S08 hand-off) | `updates.service.ts:28, 130, 298-312` | real (a tick can find the window not yet elapsed by milliseconds, so the effective cadence is up to 24 h) but the impact is an update notice up to 12 hours late: fails the Rule 1 materiality gate | REJECTED as a finding; documentation inconsistency in section 11 |
+| A post-commit failure of `ScheduledTransactionsService.post` lets an AI trade card post twice (S08 hand-off on A26-S08-02) | `ai-actions.service.ts:1142-1185`: the signed `scheduledDueDate` is checked inside `post()`; `confirm` runs no outer transaction (`:211-223`) | a replay is refused by the moved due date | REJECTED |
+| The relay routes a direct client's write into an unwatched web chat | `emitRelayCard`, `findSessionTurn` scoped to the caller's own claim, `reportToolActivity` scoped to the caller's session (`ai-relay.service.ts:419-495`) | caller-scoped since the documented fix; `mcp-relay-confirm.spec.ts` green | REJECTED |
+| The MCP daily write cap can be exceeded by concurrent calls | `McpWriteLimiter.reserve` is a read, `record` after the write | real overshoot by the number of concurrent calls; the cap is a soft abuse bound and every write is still human-confirmed | DESIGN_RISK (D2) |
+
+## 9. Design risks
+
+- **D1 - untrusted email text in a run that offers a tool with no card.** An ordinary assistant run that claims an `email_receipt` or `email_trade` request receives the email body (`ai-review-work.service.ts:233-245, 335-359`, up to `AI_REVIEW_EMAIL_TEXT_MAX_CHARS`), and that run still offers `fetch_bond_series`, which writes reference data with no confirmation card; only the parser generator run withdraws it (`NETWORK_WRITING_TOOL_NAMES`, `tool-definitions.ts:1337`; `email-receipt-parser-generate.service.ts:62-64`). An instruction in a shop's email could make the run fetch and store a bond series the person never asked for (INV-BOND-008: nothing fetches a series until a person acts). Bounded: the target is the issuer's official source, the allowance is 10 a minute, and nothing reaches the ledger. Depends on model compliance, so not a present-day failure (Rule 1). Remediation: pass `excludeTools: NETWORK_WRITING_TOOL_NAMES` for the rest of any run once a tool result carries `emailReceipt(s)`.
+- **D2 - the MCP and AI daily write caps are check-then-act** (`mcp-write-limiter.ts` `reserve`, `ai-actions.service.ts:200-209`): concurrent calls can overshoot by their number. Every write is still confirmed by a person.
+- **D3 - `isGenerating` is process-local** (`ai-insights.service.ts:69, 130`): a second replica answers `false` while the first generates; cosmetic since the lease is the exclusion.
+- **D4 - MCP direct commits build DTOs without class-validator** (`transactions.tool.ts:1130-1143` and siblings), unlike the AI executors' `toValidatedDto`. Today every field comes from a server-side preview, so nothing unvalidated reaches the service; a future field copied from tool input would skip the DTO bounds. A shared commit through `AiActionsService.commitApproved` (as `manage_transaction_rules` already does) would remove the second commit path altogether.
+- **D5 - 2025-era confirmations across replicas** without sticky routing read a lost answer as `"unsupported"` and proceed under the client's own approval (documented in `docs/backend/mcp.md`; deployment rule, not a code defect).
+
+## 10. Missing tests and known-wrong tests
+
+- Known-wrong: `ai/query/tool-executor.service.spec.ts:1345-1351` and `mcp/tools/reports.tool.spec.ts:220-246` assert `getSpendingAnomalies(userId, months)` (A26-S17-03).
+- Missing: an existing 2025-era session served a narrowed same-credential token's scopes (A26-S17-05, M2).
+- Missing: a post-commit failure in `AiActionsService.confirm` keeps the claim (A26-S17-02, P2).
+- Missing: any multi-currency case for `getSummary`, `getLlmPeriodComparison`, `getLlmInvestmentTransactions` (A26-S17-01, P3).
+- Missing: a relation test between `CHART_TOKEN_TTL_MS` and `PUSH_TTL_SECONDS` (A26-S17-04).
+- Missing: a two-connection test of the dispatch advisory lock (INV-DISPATCH-003 is held only by mock-order unit assertions, M3).
+
+## 11. Documentation inconsistencies
+
+- `docs/cron-jobs.md` states `updates.service` runs "every 12 hours"; with `UPDATE_CHECK_WINDOW_MS` equal to the period and a strict `<` in `claimCheck` (`updates.service.ts:298-312`), the effective cadence is between 12 and 24 hours.
+- `docs/system-invariants.md` INV-MCP-001 "Required tests" lists no test of the per-request scope on an existing 2025-era session, while its statement promises "that credential's current scopes" (A26-S17-05).
+- `docs/backend/ai-and-payees.md` "Shared AI tools" does not list `render_chart` as an assistant-only presentation tool beside `enter_bond_series_manually`'s documented MCP-only status.
+- The `spending_anomalies` tool descriptions (`tool-definitions.ts:1051-1056`, `reports.tool.ts:65-67`) promise a months window the implementation does not have (A26-S17-03).
