@@ -525,6 +525,15 @@ a time, with a back-off, never compose's parallel pull.
   coverage threshold, because a threshold over a subset means nothing. The full
   `test:cov` gate stays CI's, which runs it before merge. The rule is held by
   `backend/src/common/test-changed.guard.spec.ts`.
+- A delegated agent (a Claude Code subagent, or any agent handed one slice of
+  a change) runs only the checks of the files it changed: the focused spec
+  files, and ESLint on the changed sources. The layer gate above (`npm run
+  build`, a whole-layer `lint` and `type-check`, `test:changed`, the integration
+  suites) runs once, in the session that pushes, after the slices are merged
+  and before the push. Run after every small edit, the gate costs minutes each
+  time (a production build, a lint of the whole layer, every guard) and proves
+  nothing the final run does not, and one slice's gate cannot see the next
+  slice's change anyway.
 - `--workers=1` for the whole E2E suite. `playwright.config.ts` sets one worker
   only when `CI` is set, and `e2e/tests/zz-danger-zone.spec.ts` deletes the
   shared account -- the `zz-` prefix orders it last, which only means anything
