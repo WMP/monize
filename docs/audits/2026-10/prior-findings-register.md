@@ -26,10 +26,10 @@ session report, `NN-<slice>.md#...`).
 | --- | --- | --- | --- | --- | --- |
 | MON-H01 | Automatic backups of different owners and instances share one filename and retention namespace | S06 | STILL_OPEN (residual) (S02) | STILL_OPEN | `06-backup-restore.md#5-prior-finding-dispositions` |
 | MON-H02 | Restore remaps local/S3 attachment metadata without copying or verifying the bytes | S06 | FIXED_VERIFIED (S02) | FIXED_VERIFIED | `06-backup-restore.md#5-prior-finding-dispositions` |
-| MON-H03 | Concurrent MNY import starts create separate active jobs for one user | S09 | FIXED_VERIFIED (S02) | open | |
-| MON-H04 | Import worker crash after the data commit lets retry replay the committed source | S09 | STILL_OPEN (residual) (S02) | open | |
+| MON-H03 | Concurrent MNY import starts create separate active jobs for one user | S09 | FIXED_VERIFIED (S02) | FIXED_VERIFIED | `09-import-mny.md#5-prior-finding-dispositions` |
+| MON-H04 | Import worker crash after the data commit lets retry replay the committed source | S09 | STILL_OPEN (residual) (S02) | STILL_OPEN (A26-S09-01) | `09-import-mny.md#5-prior-finding-dispositions` |
 | MON-H05 | Transaction, transfer, reconciliation and bulk mutations derive balance deltas from stale snapshots | S07 | STILL_OPEN (S02) | STILL_OPEN (A26-S07-01) | `07-cash-ledger.md#5-prior-finding-dispositions` |
-| MON-H06 | Scheduled posting has no durable occurrence identity and commits money before advancing the schedule | S08 | STILL_OPEN (residual) (S02) | open | |
+| MON-H06 | Scheduled posting has no durable occurrence identity and commits money before advancing the schedule | S08 | STILL_OPEN (residual) (S02) | STILL_OPEN (residual, A26-S08-01) | `08-scheduler-cron.md#5-prior-finding-dispositions` |
 | MON-H07 | Absolute balance recomputation can overwrite a concurrent committed atomic delta | S07 | FIXED_VERIFIED (S02) | FIXED_VERIFIED | `07-cash-ledger.md#5-prior-finding-dispositions` |
 | MON-H08 | Holding updates and full rebuilds can lose concurrent investment transactions | S12 | FIXED_VERIFIED (S02) | open | |
 | MON-H09 | One emergency-access claim token can be consumed by two concurrent requests | S03 | FIXED_VERIFIED (S02) | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
@@ -69,7 +69,7 @@ session report, `NN-<slice>.md#...`).
 | MON-M22 | Local and S3 attachment bytes are not transactionally coupled to metadata | S06 | STILL_OPEN | `06-backup-restore.md#5-prior-finding-dispositions` |
 | MON-M23 | Logout can miss a refresh token created by a concurrent rotation in the same family | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M24 | Parallel failed logins lose counter increments and delay lockout | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
-| MON-M25 | AI insight generation uses a process-local guard and duplicates work across replicas | S08 (claim), S17 (provider) | open | |
+| MON-M25 | AI insight generation uses a process-local guard and duplicates work across replicas | S08 (claim), S17 (provider) | FIXED_VERIFIED (claim half; residual A26-S08-04; provider half S17) | `08-scheduler-cron.md#5-prior-finding-dispositions` |
 | MON-M26 | Emergency-access grant issuance can send links another replica immediately invalidates | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M27 | Ordinary transaction currency can disagree with the owning account currency | S07 (cross-check S10) | FIXED_VERIFIED | `07-cash-ledger.md#5-prior-finding-dispositions` |
 | MON-M28 | Mixed-sign split children are accepted when their signed total equals the parent | S07 (client half S19) | REJECTED (server half: mixed-sign splits are a documented shape; client half S19) | `07-cash-ledger.md#5-prior-finding-dispositions` |
@@ -100,9 +100,9 @@ session report, `NN-<slice>.md#...`).
 | MON-L01 | A stale PAT comment mentions a reports scope issuance does not support | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-L02 | Database initialization and migration runners are not serialized across replicas | S05 | FIXED_VERIFIED | `05-migrations-schema.md#5-prior-finding-dispositions` |
 | MON-L03 | Budget-alert deduplication is a check-then-insert race | S16 | open | |
-| MON-L04 | Staged-file expiry can delete bytes a pending or running import still needs | S09 | open | |
+| MON-L04 | Staged-file expiry can delete bytes a pending or running import still needs | S09 | STILL_OPEN (narrowed, A26-S09-04) | `09-import-mny.md#5-prior-finding-dispositions` |
 | MON-L05 | Concurrent attachment uploads can exceed the per-transaction cap | S06 | FIXED_VERIFIED | `06-backup-restore.md#5-prior-finding-dispositions` |
-| MON-L06 | Bill and mortgage reminder crons send duplicate email from every replica | S08 | open | |
+| MON-L06 | Bill and mortgage reminder crons send duplicate email from every replica | S08 | FIXED_VERIFIED | `08-scheduler-cron.md#5-prior-finding-dispositions` |
 | MON-L07 | Test and CI documentation overstates enforcement | S21 | open | |
 
 ## Hints from the repository itself

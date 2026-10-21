@@ -30,10 +30,10 @@ before auditing.
 | S05 | done | 2026-10-21 | 2026-10-21 | 3268ccec | 0/0/1/2 | `05-migrations-schema.md` (child session_01XM8Gxs6p79kg8d2mviohsA); verdict APPROVE |
 | S06 | done | 2026-10-21 | 2026-10-21 | fdf434c | 0/0/2/4 | `06-backup-restore.md` (child session_01H4ePk3D2tytbTfCDnY7hrp); verdict APPROVE |
 | S07 | done | 2026-10-21 | 2026-10-21 | 03fdd62 | 0/2/5/2 | `07-cash-ledger.md` (child session_01XfUxS4dgiSNkonPgLiFnwC); verdict REQUEST CHANGES |
-| S08 | in-progress | 2026-10-21 | | | | `08-scheduler-cron.md` (child session_014ydW7reUCeSgTdjvYkk8qB, claude-opus-5-5) |
-| S09 | in-progress | 2026-10-21 | | | | `09-import-mny.md` (child session_01KxbrJgNzbFhpqTXYbkj5SV, claude-opus-5-5) |
-| S10 | open | | | | | `10-rules-banksync-csv.md` |
-| S11 | open | | | | | `11-email-receipts.md` |
+| S08 | done | 2026-10-21 | 2026-10-21 | bc3a4b5 | 0/1/2/2 | `08-scheduler-cron.md` (child session_014ydW7reUCeSgTdjvYkk8qB); verdict REQUEST CHANGES |
+| S09 | done | 2026-10-21 | 2026-10-21 | d8ce637 | 0/1/3/2 | `09-import-mny.md` (child session_01KxbrJgNzbFhpqTXYbkj5SV); verdict REQUEST CHANGES |
+| S10 | in-progress | 2026-10-21 | | | | `10-rules-banksync-csv.md` (child: see next ledger update) |
+| S11 | in-progress | 2026-10-21 | | | | `11-email-receipts.md` (child: see next ledger update) |
 | S12 | open | | | | | `12-securities-holdings.md` |
 | S13 | open | | | | | `13-valuation-fx-networth.md` |
 | S14 | open | | | | | `14-bonds.md` |
@@ -72,11 +72,11 @@ Filled by S01. Later sessions read it instead of re-discovering it.
 | Severity | Confirmed `A26-*` findings so far |
 | --- | --- |
 | BLOCKER | 0 |
-| HIGH | 5 (S02: 2, S03: 1, S07: 2; A26-S07-01 supersedes A26-S02-01) |
-| MEDIUM | 23 (S02: 8, S03: 3, S04: 4, S05: 1, S06: 2, S07: 5; S07-03 and -05 supersede S02-07 and -08) |
-| LOW | 13 (S02: 2, S03: 3, S05: 2, S06: 4, S07: 2) |
+| HIGH | 7 (S02: 2, S03: 1, S07: 2, S08: 1, S09: 1; S07-01, S08-01 and S09-01 supersede S02-01, -04 and -05) |
+| MEDIUM | 28 (S02: 8, S03: 3, S04: 4, S05: 1, S06: 2, S07: 5, S08: 2, S09: 3; S07-03 and -05 supersede S02-07 and -08) |
+| LOW | 17 (S02: 2, S03: 3, S05: 2, S06: 4, S07: 2, S08: 2, S09: 2) |
 
-Prior findings disposed (final, by the owning session): 35 of 70. FIXED_VERIFIED: S03 (H09, M03, M05, M07, M23, M24, M26, L01), S04 (M06, M14), S05 (M15, L02), S06 (H02, M08, M09, M10, M11 backup half, M12, M13, M16, M17, M18, L05), S07 (H07, M21, M27). STILL_OPEN: S06 (H01, M22, M43, M47), S07 (H05, H10 residual, H11 server half residual, M20 residual). REJECTED: S07 (M28 server half; the client half stays with S19). S02 triaged 23 rows (12 FIXED_VERIFIED, 11 STILL_OPEN in whole or part); final call stays with the owning sessions, see the register.
+Prior findings disposed (final, by the owning session): 41 of 70. FIXED_VERIFIED: S03 (H09, M03, M05, M07, M23, M24, M26, L01), S04 (M06, M14), S05 (M15, L02), S06 (H02, M08, M09, M10, M11 backup half, M12, M13, M16, M17, M18, L05), S07 (H07, M21, M27), S08 (M25 claim half, L06), S09 (H03). STILL_OPEN: S08 (H06 residual), S09 (H04 -> A26-S09-01, L04 narrowed), S06 (H01, M22, M43, M47), S07 (H05, H10 residual, H11 server half residual, M20 residual). REJECTED: S07 (M28 server half; the client half stays with S19). S02 triaged 23 rows (12 FIXED_VERIFIED, 11 STILL_OPEN in whole or part); final call stays with the owning sessions, see the register.
 
 ## Open hypotheses handed between sessions
 
@@ -99,6 +99,8 @@ the line when it disposes of the hypothesis in its report.
 - from S04 to S21: A26-S04-04 (no real-role tests for delegation, joint or cross-owner paths) joins MON-M46.
 - from S06 to S21: INV-BACKUP-006's S3 integration suite never runs in CI (A26-S06-02, no MinIO); the unpadded-date test defect; see `06-backup-restore.md` section 12.
 - from S06 to S08, S19: see `06-backup-restore.md` section 12 (the S04 item there is forwarded to S21, since S04 is done).
+- from S08 to S11, S15, S17, S19, S21: see `08-scheduler-cron.md` section 12 (49-row cron matrix there; lease predicates held only by SQL-text unit assertions).
+- from S09 to S10, S12/S13, S13, S15, S18/S19, S21: see `09-import-mny.md` section 12; A26-S09-06 (an unvalidated currency code creates a global ACTIVE system currency; same shape in `UpdatePreferencesDto.defaultCurrency`) is S13's; INV-IMPORT-003 still unenforced on the MNY and QIF writers.
 - from S07 to S08, S10, S16, S17, S19, S21: see `07-cash-ledger.md` section 12; A26-S07-02 (undo of an account edit restores `current_balance` absolutely) touches every consumer of the undo log.
 - from S03 to S17: confirm the MCP/PAT bearer verifiers reject `step_up` / `oidc_reauth` JWT types (A26-S03-03).
 - from S03 to S18: frontend handling of the 401 "Refresh token reuse detected".
@@ -117,6 +119,8 @@ should fail | session`.
 - `INV-AUTH-001/004 | token.service.ts:149 drop lockTokenFamily in refreshTokens | same | S03`
 - `INV-AUTH-001 | token.service.ts:164-177 reuse revocation rolled back (baseline defect) | a real-database reuse test | S03`
 - `INV-CLAIM-001 | emergency-access-claim.controller.ts:222+226 drop both guards | a two-connection claim test | S03`
+- S08: M5-M7 (lease predicates) caught only by SQL-text unit assertions; `08-scheduler-cron.md` section 6.
+- S09: `fail()` `retryable=$4` undetected by every suite (A26-S09-02); `09-import-mny.md` section 6.
 - S06: M4 (Phase-3 `user_id` predicate untested) of `06-backup-restore.md` section 6.
 - S07: M1 (`addSplit` parent lock removed, undetected by all suites, A26-S07-09) and two unit-only rows of `07-cash-ledger.md` section 6.
 - S04: MA (`134:47` delegate predicate dropped, 175/175 green) and MD (scoped-db `real_user` collapsed, integration green) of `04-rls-tenancy.md` section 6, plus its three baseline defects.
