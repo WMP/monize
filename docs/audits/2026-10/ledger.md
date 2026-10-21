@@ -23,7 +23,7 @@ before auditing.
 | Session | Status | Started | Finished | Commit | Findings (B/H/M/L) | Report |
 | --- | --- | --- | --- | --- | --- | --- |
 | S00 planning | done | 2026-10-21 | 2026-10-21 | this commit | -- | `plan.md`, `sessions.md`, `prior-findings-register.md` |
-| S01 | in-progress | 2026-10-21 | | | | `01-baseline.md` (child session_01K2tpEV1qrxan3G3mhQa4Jn, claude-opus-5-5) |
+| S01 | done | 2026-10-21 | 2026-10-21 | 3a3be8a | 0/0/0/4 | `01-baseline.md` (child session_01K2tpEV1qrxan3G3mhQa4Jn); verdict APPROVE |
 | S02 | done | 2026-10-21 | 2026-10-21 | bd06ebd | 0/2/8/2 | `02-prior-high-triage.md` (child session_01366anc7J8MgFS2vwq5szy2) |
 | S03 | done | 2026-10-21 | 2026-10-21 | 4adfd72 | 0/1/3/3 | `03-security-auth.md` (child session_019xGDCFeEXnmBq2PfLKgW9t); verdict REQUEST CHANGES |
 | S04 | done | 2026-10-21 | 2026-10-21 | b7c894b | 0/0/4/0 | `04-rls-tenancy.md` (child session_01XG1M2wjANyUMMeHkkGGyN1); verdict REQUEST CHANGES |
@@ -34,7 +34,7 @@ before auditing.
 | S09 | done | 2026-10-21 | 2026-10-21 | d8ce637 | 0/1/3/2 | `09-import-mny.md` (child session_01KxbrJgNzbFhpqTXYbkj5SV); verdict REQUEST CHANGES |
 | S10 | in-progress | 2026-10-21 | | | | `10-rules-banksync-csv.md` (child session_01BAgjpKaPyGwg41HxkiQbW3, claude-opus-5-5) |
 | S11 | in-progress | 2026-10-21 | | | | `11-email-receipts.md` (child session_01NGWhzqqpfZRRd58ooquSgs, claude-opus-5-5) |
-| S12 | open | | | | | `12-securities-holdings.md` |
+| S12 | in-progress | 2026-10-21 | | | | `12-securities-holdings.md` (child: see next ledger update) |
 | S13 | open | | | | | `13-valuation-fx-networth.md` |
 | S14 | open | | | | | `14-bonds.md` |
 | S15 | open | | | | | `15-loans-strategies.md` |
@@ -58,12 +58,12 @@ Filled by S01. Later sessions read it instead of re-discovering it.
 | --- | --- | --- |
 | Node version | Node 24.22.1 via `/opt/nvm` (`nvm install 24 && nvm use 24`) | The container default, Node 22.22.0, fails `npm ci` in both layers; CI pins Node 24. S00 verified both. |
 | `backend/`: `npm ci` | OK on Node 24 (S00) | `src/common/doc-paths.spec.ts` and `instruction-files.spec.ts` ran: 26 passed |
-| `backend/`: `npm run lint && npx tsc --noEmit && npm run typecheck` | not run | |
-| `backend/`: `TZ=UTC npm run test:unit` | not run | discovered test count: |
-| `backend/`: `npm run test:integration` (PostgreSQL via `docker compose -f docker-compose.dev.yml up -d postgres`) | not run | discovered test count: |
-| `frontend/`: `npm ci`, `npm run lint && npm run type-check && npm run i18n:check` | not run | |
-| `frontend/`: `npm run test` | not run | discovered test count: |
-| `e2e/`: stack start (`docker-compose.e2e.yml`) | not run | |
+| `backend/`: `npm run lint && npx tsc --noEmit && npm run typecheck` | lint passes only because CI's `npm run lint` runs `--fix`; the check form fails with 3 prettier errors (A26-S01-01); tsc and typecheck pass (S01) | |
+| `backend/`: `TZ=UTC npm run test:unit` | pass (S01) | 1048 suites, 27481 tests: 27479 pass, 2 root-only skips; coverage thresholds met |
+| `backend/`: `npm run test:integration` | 1 FAIL (S01): `ofx-import-fitid` deadlocks in `cleanTables` TRUNCATE in the full run, passes 10/10 alone (handed to S21 as a flake root cause) | 118 suites, 1479 tests: 1470 pass, 8 skip, 1 fail |
+| `frontend/`: `npm ci`, `npm run lint && npm run type-check && npm run i18n:check` | pass on Node 24 (S01) | |
+| `frontend/`: `npm run test:cov` | pass (S01) | 1139 files, 22249 tests; coverage thresholds met |
+| `e2e/`: stack start (`docker-compose.e2e.yml`) | ran (S01), Chromium only, images built with the proxy CA injected in a scratch worktree | 191 tests: 178 pass, 6 flaky (pass on retry), 7 skip, 0 fail |
 | `scripts/verify-schema.sh` | OK (S05, 2 passes) | `migration:lint` OK, 233 files |
 | `node scripts/check-migration-prefixes.mjs` | OK (S05, after `git fetch --unshallow`) | |
 
@@ -74,9 +74,9 @@ Filled by S01. Later sessions read it instead of re-discovering it.
 | BLOCKER | 0 |
 | HIGH | 7 (S02: 2, S03: 1, S07: 2, S08: 1, S09: 1; S07-01, S08-01 and S09-01 supersede S02-01, -04 and -05) |
 | MEDIUM | 28 (S02: 8, S03: 3, S04: 4, S05: 1, S06: 2, S07: 5, S08: 2, S09: 3; S07-03 and -05 supersede S02-07 and -08) |
-| LOW | 17 (S02: 2, S03: 3, S05: 2, S06: 4, S07: 2, S08: 2, S09: 2) |
+| LOW | 21 (S01: 4, S02: 2, S03: 3, S05: 2, S06: 4, S07: 2, S08: 2, S09: 2) |
 
-Prior findings disposed (final, by the owning session): 41 of 70. FIXED_VERIFIED: S03 (H09, M03, M05, M07, M23, M24, M26, L01), S04 (M06, M14), S05 (M15, L02), S06 (H02, M08, M09, M10, M11 backup half, M12, M13, M16, M17, M18, L05), S07 (H07, M21, M27), S08 (M25 claim half, L06), S09 (H03). STILL_OPEN: S08 (H06 residual), S09 (H04 -> A26-S09-01, L04 narrowed), S06 (H01, M22, M43, M47), S07 (H05, H10 residual, H11 server half residual, M20 residual). REJECTED: S07 (M28 server half; the client half stays with S19). S02 triaged 23 rows (12 FIXED_VERIFIED, 11 STILL_OPEN in whole or part); final call stays with the owning sessions, see the register.
+Prior findings disposed (final, by the owning session): 42 of 70. FIXED_VERIFIED: S01 (M02), S03 (H09, M03, M05, M07, M23, M24, M26, L01), S04 (M06, M14), S05 (M15, L02), S06 (H02, M08, M09, M10, M11 backup half, M12, M13, M16, M17, M18, L05), S07 (H07, M21, M27), S08 (M25 claim half, L06), S09 (H03). STILL_OPEN: S08 (H06 residual), S09 (H04 -> A26-S09-01, L04 narrowed), S06 (H01, M22, M43, M47), S07 (H05, H10 residual, H11 server half residual, M20 residual). REJECTED: S07 (M28 server half; the client half stays with S19). S02 triaged 23 rows (12 FIXED_VERIFIED, 11 STILL_OPEN in whole or part); final call stays with the owning sessions, see the register.
 
 ## Open hypotheses handed between sessions
 
@@ -92,6 +92,7 @@ the line when it disposes of the hypothesis in its report.
 - from S02 to S13: MON-H12 built-in reports still 1:1 (A26-S02-02), guard blind spot (A26-S02-11), MON-M39 relocated to `report-currency.service.spec.ts:213`.
 - from S02 to S20: MON-H16 residual, FX-incomplete account and dashboard widget (A26-S02-03).
 - from S02 to S21: MON-M45 release job pushes an untested bump (A26-S02-10); A26-S02-12 integration race exercises a copy of the consume SQL.
+- from S01 to S07, S08, S09, S10, S12, S13/S14, S21, S03/S04: see `01-baseline.md` section 12.7 (undo never recomputes net worth; Monte Carlo bond valuation; the integration flake, E2E retries and e2e not linted go to S21). S01 counts 49 crons in 46 services (the plan said 40) and an index/body status mismatch for INV-BONDNOTIFY-003.
 - from S03 to S04: D-S03-01 -- CONFIRMED by S04 for the delegation paths (A26-S04-02); S04's sweep found 26 cross-transaction read-then-save sites, listed in `04-rls-tenancy.md` section 12.
 - from S04 to S07: cross-owner update/delete authorized in an earlier transaction and written under `withSystemContext` without a re-check (A26-S04-01, executed); stale whole-entity saves in `accounts/`.
 - from S04 to S03/S21: the auth/users/admin/emergency read-then-save sites from the 26-site sweep (S03 is done; S21 carries them into the program mutation table).
@@ -139,6 +140,7 @@ should fail | session`.
 Record any time a session could not follow `plan.md` section 4 (a suite that cannot run in
 the container, a slice split in two, a lens not run) with the reason.
 
+- S01: `scripts/check-docs-manifests.mjs` scans the audit reports too; a report naming a non-existent npm script fails it, so the orchestrator runs it before each ledger commit.
 - S00: `npm ci` fails on the container's default Node 22.22.0 in both layers because entries
   in the lock files (`chokidar@5.0.0` under `@nestjs/cli`, `msw@2.15.0`) declare engines the
   default Node does not satisfy; this is a session-environment fact, not a repository defect,

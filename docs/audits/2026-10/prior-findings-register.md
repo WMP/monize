@@ -46,7 +46,7 @@ session report, `NN-<slice>.md#...`).
 | ID | Title (abridged) | Owner | Disposition | Evidence |
 | --- | --- | --- | --- | --- |
 | MON-M01 | Deployment documentation and defaults do not match Compose and Helm manifests | S21 | open | |
-| MON-M02 | Contributor guidance recommends transaction APIs the scoped rule prohibits | S01 | open | |
+| MON-M02 | Contributor guidance recommends transaction APIs the scoped rule prohibits | S01 | FIXED_VERIFIED | `01-baseline.md#5-prior-finding-dispositions` |
 | MON-M03 | Delegated `/users/me` responses expose fields outside the delegated profile | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M04 | MCP sessions keep the scopes from session creation after the bearer is revalidated | S17 | open | |
 | MON-M05 | OIDC destructive-action confirmation accepts an arbitrary non-empty value | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
