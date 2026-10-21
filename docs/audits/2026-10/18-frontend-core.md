@@ -693,7 +693,7 @@ A user with a CHF brokerage changes the default currency to CAD and then posts a
   - Prior findings disposed (final): MON-M36 `FIXED_VERIFIED`; MON-M38 `STILL_OPEN` narrowed -> A26-S18-01; MON-M42 `FIXED_VERIFIED`.
   - Suites: frontend lib/hooks/store/types 349 files, 5 825 tests passed; lint, type-check, i18n:check exit 0; 3 component suites 65 passed; 9 probe cases reproduce; 3 mutations killed.
   - Undetected mutation rows: `INV-CACHE-001 | categories.ts:69-78, payees.ts:187-204 baseline (no invalidation) | none | S18`; `INV-CACHE-001 | investments.ts:120-129 and 15 more hand-rolled getCached/setCache read sites (no generation) | none | S18`; `INV-CACHE-001 | investments.ts:1160-1177, user-settings.ts:40-43 (valuation inputs) | none | S18`; `INV-FX-001 client | useExchangeRates.ts:66-73 (no age bound) | none | S18`.
-  - Deviations: report-only commits (ledger, sessions and register left to the orchestrator); the contract matrix built by three read-only subagent sweeps with every finding row re-verified; `lib/` sampled by invariant per the XL rule (ranges above).
+  - Deviations: report-only commits (ledger, sessions and register left to the orchestrator); the contract matrix built by three read-only subagent sweeps with every finding row re-verified; `lib/` sampled by invariant per the XL rule (ranges above); the checkout's HEAD was found detached after a rebase, the partial commit was pushed as `HEAD:ccr-1f689e5c-onia07` (fast-forward, remote tip an ancestor) and the branch reattached, no remote history rewritten.
 
 ## 13. Adversarial approval challenge
 
