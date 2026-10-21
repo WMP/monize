@@ -10,8 +10,8 @@
 | Date | 2026-10-21 |
 | Primary path | `backend/src/currencies/` |
 | Hint line used | `prioritize rate 1 versus no rate on every surface (dashboard, reports, exports, AI, MCP, notifications, frontend), rate age bounds and never a rate struck after the date, pair orientation in storage and on read, FxAggregate with null total and knownSubtotal, fxComplete and pricesComplete carried to every consumer including the LLM shape, the multiplicative split in historical net-worth replay, Monte Carlo failure never a real zero, bulk deletion versus linked-account snapshots, custom-currency global cleanup from tenant-filtered evidence, a period change is not a return, cash is not an investment` |
-| Status | Status: in-progress, remaining: mutation table execution, unit suite batch, sections 6-14 final text |
-| Runtime executed | Node 24.22.1 (`nvm use 24`); `npm ci` OK in `backend/`. PostgreSQL 16 in Docker (`mirror.gcr.io/library/postgres:16-alpine`, `dockerd` started by hand). Baseline integration: `rls-enforcement`, `fx-rate-coverage`, `portfolio-movement-flow`, `portfolio-tag-keys`, `report-investment-cash`, `invested-capital-flow`, `scheduled-investment-split-fx`, `fx-fee-summary`, `bond-holding-value`: 9 suites, 110 tests, all pass. One scratch probe spec (P1-P5, six cases) in a worktree at the baseline: every case reproduces a defect (section 7). `database/schema.sql` loaded into a scratch database for the foreign-key replay of P1. No `net-worth*`, `currenc*` or `exchange*` integration suite exists (section 10). |
+| Status | complete |
+| Runtime executed | Node 24.22.1 (`nvm use 24`); `npm ci` OK in `backend/`. PostgreSQL 16 in Docker (`mirror.gcr.io/library/postgres:16-alpine`, `dockerd` started by hand). Baseline integration: `rls-enforcement`, `fx-rate-coverage`, `portfolio-movement-flow`, `portfolio-tag-keys`, `report-investment-cash`, `invested-capital-flow`, `scheduled-investment-split-fx`, `fx-fee-summary`, `bond-holding-value`: 9 suites, 110 tests, all pass. Baseline unit batch (16 patterns, section 12): 20 suites, 984 tests, all pass. One scratch probe spec (P1-P5, six cases) in a worktree at the baseline: every case reproduces a defect (section 7). Ten mutations in the same worktree (section 6): nine detected (four of them only by mock-based unit tests), one undetected. `database/schema.sql` loaded into a scratch database for the foreign-key replay of P1. No `net-worth*`, `currenc*` or `exchange*` integration suite exists (section 10). |
 
 ## 2. Invariant map
 
@@ -164,7 +164,7 @@ Severity order. Causality classes are plan section 3.
 6. **Observed (executed, P3):** `getLatestRate("USD","CAD")` = 1.399999999972 (the resolver picks today's inverse row); `getLatestRates()` returns `[CAD->USD 2026-10-21, USD->CAD 2026-08-01]`; Spending by Payee answers `totalSpending: 1300`. The frontend `convert(1000, "USD", "CAD")` over the same endpoint returns 1,300.00 by the same direct-first rule (`useExchangeRates.ts:85-86`). P3b: with only a `CAD->USD 0.8` row dated 2025-12-01 (324 days old), the report answers 1,250.00 as a current figure.
 7. **Expected:** one answer per pair, the one `resolveFxRate` gives (1,400.00 CAD); a pair whose newest observation is older than 45 days is unknown (P3b: `null` and the pair named).
 8. **Impact:** every client-side conversion (accounts page and account-group totals, investments holdings and portfolio card rate lines, currency exposure, currency list, security summary) and every built-in report converts at the upgrade-day rate for about half the pairs, forever, until the contract migration of INV-FX-003 ships (which the spec says cannot ship until the expand release is everywhere). In the example -100.00 CAD (7.1 percent) on 1,000 USD; on a 100,000 USD portfolio a 3 percent move since the upgrade is 3,000 CAD, and the server-side portfolio summary on the same screen (resolver) shows the other figure. The embedded investment split prefills `exchangeRate` from `getRate` (`frontend/src/components/transactions/InvestmentSplitFields.tsx:118-140`), so the frozen rate can be sent as the trade's own settlement rate (persisted path handed to S19 for confirmation). P3b's stale branch also applies to a pair whose refresh silently stopped (a provider dropped the pair).
-9. **Root cause:** the expand release made writers canonical and assumed every reader was inverse-aware (spec section 8: "already fall back to the inverse key, so receiving one orientation per pair needs no change"); the readers are inverse-aware only when the direct key is absent, and `getLatestRates` hands them both orientations with different dates and no age bound.
+9. **Root cause:** the expand release made writers canonical and assumed every reader was inverse-aware (spec section 8: "already fall back to the inverse key, so receiving one orientation per pair needs no change"); the readers are inverse-aware only when the direct key is absent, and `getLatestRates` hands them both orientations with different dates and no age bound. The one-door guard exempts the method by design ("the plural admin listing is a list, not a value-for-a-date", `common/time-series/fx-rate.one-door.spec.ts:16-19, 242-245`), while it is the rate source of every built-in report and every client-side conversion.
 10. **Recommended correction:** make `getLatestRates` answer one row per directionless pair through `resolveFxRate` in `live` mode (newest admissible direction, 45-day bound, canonical orientation in the payload), so the client and the report map receive one orientation and no stale row; give the frontend `convert` the same rule (prefer the newer of the two keys) as a defence while old clients are served.
 11. **Suggested remediation diff (illustrative, not applied):**
 
@@ -474,3 +474,185 @@ Severity order. Causality classes are plan section 3.
 ### A26-S02-11 (owned here) - `fx-fallback.guard.spec.ts` cannot see a camelCase rate fallback
 
 Disposition: CONFIRMED by this session (section 6, mutation M4); severity LOW unchanged; the finding text in `02-prior-high-triage.md` stands. Additional unseen sites found by the sweep: `transaction-transfer.service.ts:455, 484`, `scheduled-transactions.service.ts:1100-1102` (multi-line ternary). None is a lookup failure today (stored-rate reads of a `NOT NULL DEFAULT 1` column, or the no-foreign-currency branch).
+
+## 5. Prior-finding dispositions
+
+Final dispositions for the register (plan step 8). The S02 triage column of the register is
+superseded by this column.
+
+| ID | Disposition | Mechanism and evidence run in this session |
+| --- | --- | --- |
+| MON-H12 | STILL_OPEN -> A26-S13-01 (reports 1:1, unconverted amount under the target label) and A26-S13-02 (frozen orientation and unbounded age on the reports and the client) | FIXED on the portfolio, net-worth, frontend-hook and Monte Carlo paths: `resolveFxRate` returns `unknown`, `FxAggregate` withholds `total`, the hook returns `null` (mutations M1, M2, M7 detected; unit batch green). Executed P2, P3, P3b on the report path. |
+| MON-H13 | FIXED_VERIFIED | Every historical replay folds through `applyActionToQuantity` (`investment-replay.util.ts:104`), held by `investment-replay.guard.spec.ts`; mutation M9 (`*` -> `+`) fails 9 tests in `investment-replay.util.spec.ts` and `net-worth.service.spec.ts` ("multiplies by the split ratio rather than adding it (P5-011)"). Residual: no reverse-split case in `net-worth.service.spec.ts` (section 10). |
+| MON-M19 | FIXED_VERIFIED | `currency_code_in_use_globally` is SECURITY DEFINER and runs in the caller's transaction (`schema.sql:4294-4318`); the creator gate `currency.createdByUserId === userId` (`currencies.service.ts:446`); parent `FOR UPDATE` (`:402`). `rls-enforcement.integration.spec.ts` "currency liveness is global, not tenant-scoped" (5 cases, including the two-connection activation race) passed. Mutations M3 and M3b detected, by mock-based unit tests only; no integration test drives `CurrenciesService.remove` against another user's account or transaction (section 10). |
+| MON-M33 | FIXED_VERIFIED | `computeCurrentValue` returns `null` on `!valuationComplete`, a non-finite total or a throw, and `requireCurrentValue` refuses with `errors.monteCarlo.currentValueUnavailable` (`monte-carlo.service.ts:881-936`); `getHistoricalStats.currentBalance` is `number | null`; the frontend test "surfaces a null currentBalance instead of writing 0 into the form" (`MonteCarloReport.test.tsx:653`). Mutation M5 fails 2 tests. Residual (INV-BOND-010 path of S01): the return weights and `getHoldingStats` value a bond holding at `getLatestPrices` (section 9, S14). |
+| MON-M34 | FIXED_VERIFIED for the counterpart account's snapshot; related open defect A26-S13-03 | `bulkDelete` adds every locked linked row's account to the post-commit recalc set (`transaction-bulk-update.service.ts:595-597`); mutation M6 fails "recalculates net worth for a linked account reached only through a transfer leg (P5-012)" (mock-based). The selected split-transfer leg path leaves rows, not only a snapshot: A26-S13-03 (executed). Undo/redo dispatches no recalc; the 30-minute `sweepStaleSnapshots` repairs it (section 9). |
+| MON-M39 | STILL_OPEN (relocated) -> A26-S13-01 | `report-currency.service.spec.ts:213` ("returns original amount when no rate is available") and the inverse-zero case assert the defect and pass in the unit batch. The two tests the upstream audit named now assert `null` (S02). |
+| MON-M41 | FIXED_VERIFIED | The net-worth fixtures use ratio 2 (`net-worth.service.spec.ts:797-822`, `:4001-4002`) and fail under M9. No reverse-split case (section 10). |
+
+Hand-offs received and disposed:
+
+| From | Hypothesis | Disposition |
+| --- | --- | --- |
+| S02 | A26-S02-02 (reports 1:1) | CONFIRMED, superseded by A26-S13-01 |
+| S02 | A26-S02-11 (guard blind spot) | CONFIRMED (M4 undetected again); LOW, stays A26-S02-11 |
+| S02 | `currency-conversion.util.ts:20` empty source code is same-currency | CONFIRMED, folded into A26-S13-01 (root cause and diff) |
+| S12 | A26-S12-04 consumers | CONFIRMED surfaces: `getRealizedGains` (REST, `investment-transactions.service.ts:3476`, and the security detail page `security-detail.service.ts:338`), `getCapitalGainsByMonth` / `ByDay` (charts, `:3507`), AI `get_capital_gains` (`tool-executor.service.ts:2638-2680`) and MCP (`mcp/tools/investments.tool.ts:299`) through `getLlmCapitalGains` -> `calculateCapitalGains`. No built-in report and no tax figure reads these folds (`tax-recurring-reports.service.ts` reads cash transactions). No new finding (Rule 7); the surface list belongs to A26-S12-04. |
+| S12 | A26-S12-09 valuation via txFallback | CONFIRMED by reading: `loadTxPriceSeries` (`net-worth.service.ts:3071-3146`) averages `investment_transactions.price` with no currency or `exchange_rate` test, and `positionCloseAsOf` merges it with the store, so a Money-imported CAD price is read as a USD close and converted again in the snapshot writer (`:2925-2945`). Not executed (no two-currency Money fixture). Surface added to A26-S12-09. |
+| S12 | A26-S12-02 other `getLatestRate` callers | Surfaces: `scheduled-transactions.service.ts:792` (daily estimate cron for future-dated schedules, unbounded), `common/fx-entry.util.ts:186` with `transaction-split.service.ts:89` (a split posting with no date), `gem-position.service.ts:376` (bounded, held). Same root cause as A26-S12-02; added there (section 12). |
+| S09 | A26-S09-06 preferences surface | REJECTED as a creation path (the FK refuses before `ensureSystemCurrency`); found A26-S13-05 instead. Jobs iterating active currencies: none iterates all active ones; the refresh takes codes referenced by accounts, securities and defaults, so an imported junk code is sent to Yahoo on every refresh (section 9). |
+| S09 | MON-M19 | FIXED_VERIFIED (above) |
+| S10 | CSV/QIF `AccountMappingDto.currencyCode` naming another user's custom currency | DESIGN_RISK (section 8): currencies are shared by design; the FK accepts it, and the reference then blocks the creator's deletion. |
+| S01 | Monte Carlo bond valuation (INV-BOND-010) | Current value: held (summary path is bond-aware). Weights and holding stats: DESIGN_RISK handed to S14 (section 9). |
+| S01/S07 | Undo never recomputes net worth | CONFIRMED as a gap with a backstop: no undo/redo path dispatches a recalc; `sweepStaleSnapshots` (30 minutes, keyed on `accounts.updated_at`, which the undo's raw `UPDATE accounts` bumps) repairs it within about 40 minutes. DESIGN_RISK (section 9); A26-S07-02 is the balance half. |
+
+## 6. Mutation table
+
+All in the scratch worktree `<scratchpad>/mut` at `AUDIT_BASELINE_SHA`, reverted after each run
+(`git status` clean apart from the scratch spec).
+
+| ID | Invariant | Mutation (file:line, what) | Test that fails | Verdict |
+| --- | --- | --- | --- | --- |
+| M1 | INV-FX-001 age bound | `common/time-series/fx-rate-resolver.ts:230` drop `if (dates[at] < oldest) return null;` | 9 tests in `fx-rate-resolver.spec.ts`, `rate-index.util.spec.ts`, `exchange-rate.service.spec.ts`, `portfolio-calculation.service.spec.ts` | covered |
+| M7 | INV-FX-001 look-ahead | `fx-rate-resolver.ts:216` historical `newest = onDate` -> `shiftYMD(onDate, maxAgeDays, "max")` | 7 tests (`getRateForDate` "refuses a fetched window whose every bar is dated after the target", `convertAtDate` "converts at the rate that stood on the day") | covered |
+| M2 | Financial contract section 1 | `common/fx-aggregate.ts:78` `total` returns the subtotal always | 17 tests in `fx-aggregate.spec.ts`, `daily-balance-totals.service.spec.ts`, `investment-transaction-summary.service.spec.ts` | covered (the net-worth and portfolio suites stay green because those surfaces read `knownSubtotal` by design, stage 1) |
+| M3 | INV-CURRENCY-001 creator gate | `currencies/currencies.service.ts:446` `=== userId` -> `!== null` | "does not delete another user's custom currency, even when globally unreferenced" (mock) | covered (unit only) |
+| M3b | INV-CURRENCY-001 global check | `currencies.service.ts:607` `isInUseGlobally` always false | 2 tests (mock of the SQL answer) | covered (unit only; the integration cases call the SQL function, not the service) |
+| M4 | INV-FX-001 guard | `securities/portfolio.service.ts:2147` `?? null` -> `?? 1` | none (`fx-fallback.guard`, `portfolio.service` 187 passed) | **undetected** (A26-S02-11, re-run) |
+| M5 | MON-M33 | `monte-carlo/monte-carlo.service.ts:895` skip the `valuationComplete` check | 2 tests ("refuses to run from an incomplete portfolio total (FR-005)", "... no price (RR3-004)") | covered |
+| M6 | MON-M34 / INV-CACHE-001 | `transactions/transaction-bulk-update.service.ts:596` drop the locked-row account collection | "recalculates net worth for a linked account reached only through a transfer leg (P5-012)" (mock) | covered (unit only) |
+| M9 | INV-HOLDING-002 | `securities/investment-replay.util.ts:104` `*` -> `+` | 9 tests | covered |
+| R1 | A26-S13-03 | none (baseline code); P4 | scratch spec fails (total 1,040.00) | defect demonstrated |
+
+Conceptual, not executed: making `getLatestNetWorth` drop `fxComplete` (already the baseline,
+A26-S13-04) has no test to fail; reordering `ensureSystemCurrency` before the write in
+`users.service.ts` would be invisible to `users.service.spec.ts` (mocked) and to the entity
+harness (no FK), so the A26-S13-05 regression test must run on a schema-faithful database.
+
+## 7. Counterexamples and the interaction scenario
+
+| Invariant | Counterexample (not copied from the tests) | Result |
+| --- | --- | --- |
+| INV-FX-001 (1:1) | A JPY row in Spending by Payee with an empty rate table (P2) | 100,000 summed into a USD total; data-quality labels it USD |
+| INV-FX-003 / INV-FX-001 age | Pre-upgrade mirror row plus today's canonical row (P3); one 324-day-old row (P3b) | 1,300.00 instead of 1,400.00; 1,250.00 reported as current |
+| Balance conservation on delete | Bulk-delete one leg of a two-leg split transfer (P4) | +40.00 created in C, orphan leg |
+| Completeness on every surface | A custom-currency account with no rate beside a USD account (P5) | `netWorth: 1000`, no flag on `/accounts/summary` |
+| On-demand currency | Onboarding with a currency not yet in the table (P1) | FK violation, nothing saved |
+| INV-CURRENCY-001 | Creator deletes while another user's activation commits concurrently | refused cleanly (integration, two connections) |
+| MON-M33 | One unpriced holding in a `useCurrentBalance` run | 400 refusal (unit; M5) |
+| INV-HOLDING-002 | Two sequential 2:1 splits | multiplies (M9 detected) |
+
+Interaction scenario. A26-S13-02 meets INV-FX-002 and A26-S12-04: a CAD-reporting user on an
+instance upgraded from 1.16 enters a cash withdrawal with an embedded USD investment buy. The
+split form prefills the trade's `exchangeRate` from the client map, which answers the frozen
+upgrade-day `USD->CAD` row (A26-S13-02); if the server keeps the supplied rate (S19 to confirm),
+INV-FX-002 then makes that rate authoritative for the row's cost basis on every surface, and a
+later transfer of the lot to a second CAD brokerage resets the basis at rate 1 in the realized
+gain (A26-S12-04). Each mechanism alone is documented as correct (the row's own rate wins; the
+client map is "inverse-aware"; the lots surface carries basis); together the realized gain is
+wrong by the rate drift since the upgrade plus the transfer's currency reset, and the lots surface
+on the same screen gives a third figure.
+
+## 8. Rejected hypotheses
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| Preferences `defaultCurrency` creates a global active currency (S09 hand-off) | `users.service.ts:373-409`, FK `schema.sql:1561`, P1 | The FK refuses an absent code before the ensure runs | REJECTED (A26-S13-05 is the real defect) |
+| MON-M19 cleanup decided from tenant-filtered evidence | definer function, creator gate, integration race | Fixed by the definer function in the caller's transaction | REJECTED for the current code (FIXED_VERIFIED) |
+| CSV/QIF mapping names another user's custom currency (S10 hand-off) | `import.dto.ts:145-151`, FK, `findAll` | Currencies are shared reference data by design (any user may activate any code); the effect is that the creator can no longer delete it | DESIGN_RISK |
+| `backfillHistoricalRates` reads accounts and securities without `user_id` (agent sweep) | `exchange-rate.service.ts:601-628`, admin-only route | The backfill is deliberately global (the pair set is the deployment's), like the refresh | REJECTED |
+| Monte Carlo current value becomes 0 on failure (MON-M33) | `monte-carlo.service.ts:881-936`, frontend test | `null` and a refusal | REJECTED for the current code (FIXED_VERIFIED) |
+| Historical net-worth snapshot values a position at a years-old close | `position-price.util.ts`, `docs/time-series-contract.md` section 2.1 | Deliberate and documented (issue #1242): a position's worth is its latest accepted close, unbounded; returns and boundaries stay bounded | REJECTED (documented contract) |
+| Period result over a deposit counts the deposit (INV-PORTRESULT-001) | `portfolio-period-result.util.ts:286-330` | `investmentResult = valueChange - netExternalFlows`, percentage only over the result, `zeroStart` refusal | REJECTED |
+| `resolveFxRate` default `today` is UTC while callers pass the request day | `fx-rate-resolver.ts:345`, callers pass `todayYMD()` | Every caller read passes `today` explicitly | REJECTED |
+| Provider call amplification in `getRateForDate` (no negative cache) | `exchange-rate.service.ts:1129-1227` | Report reads pass `fetchMissing: false`; the posting path is one call per write; no N-row read model built (Rule 6) | optimization hypothesis, handed to S10 for the QIF/CSV per-row FX resolution |
+| Portfolio `total*` numeric when incomplete | `portfolio-calculation.service.ts:2184-2185` | Stage 1 of the completeness spec, flags carried; consumers that read them are held | DESIGN_RISK (S02 section 9) |
+
+## 9. Design risks
+
+- Built-in reports convert every historical bucket at today's rate ("flat latest-rate lookup", `report-currency.service.ts:105`), which is the look-ahead clause of INV-FX-001 for a past period; a currency's move inflates or deflates last year's spending. The maintainer should state this as policy or route reports through `buildRateIndex` / `convertAtDate` as the Sankey report does.
+- `monthly_account_balances` has no completeness column (`net-worth.service.ts:2948-2959`, spec section 5): a security-to-account FX gap and an unpriced position are lost at write time, so the read-time `fxComplete` can say `true` over a stored subtotal.
+- Undo/redo dispatches no net-worth recalc; the 30-minute sweep is the only repair, and INV-CACHE-001 reads `enforced` without naming it. A sweep skipped (an account with no snapshot rows is never swept) leaves the history stale.
+- Unbounded `getLatestRate` fallbacks outside the investment trade path: the scheduled foreign-currency estimate cron (`scheduled-transactions.service.ts:792`) and a dateless split posting (`fx-entry.util.ts:186`). Exposure is low while the daily refresh succeeds; a pair dropped by the provider keeps a stale estimate indefinitely.
+- An imported junk currency code (S09-06) referenced by an account is sent to Yahoo on every refresh (`yahoo-fx.provider.ts:155-157` carries every code; the refresh has no negative cache).
+- Monte Carlo return weights and `getHoldingStats.marketValue` read `getLatestPrices` for a bond-linked holding (`monte-carlo.service.ts:511-539, 708-727`) instead of `valueBondHoldings`; the current value itself is bond-aware. Handed to S14.
+- `POST /currencies/exchange-rates/refresh` lets any authenticated user start a deployment-wide provider refresh (default throttle only); availability, not integrity. Handed to S03/S21.
+- `getAccountMarketValues` accumulates in floats (`portfolio.service.ts:1545-1548`), not through `FxAggregate`; drift is sub-cent at realistic sizes.
+
+## 10. Missing tests and known-wrong tests
+
+Known-wrong (assert a defect and pass):
+- `backend/src/built-in-reports/report-currency.service.spec.ts:213` and the inverse-zero case (MON-M39, A26-S13-01).
+- `backend/src/users/users.service.spec.ts:148` mocks `ensureSystemCurrency`, so the write-before-ensure order of A26-S13-05 passes.
+- `backend/src/transactions/transaction-bulk-update.service.spec.ts:2592-2643` (split-transfer bulk delete) asserts only that `updateBalance` was called; it cannot see A26-S13-03.
+
+Missing:
+- No `net-worth*`, `currenc*` or `exchange*` integration suite exists, though the session plan names them; net worth, `CurrenciesService.remove` end to end, the rate table's two orientations and `getLatestRates` are covered only by mocks (M3, M3b, M6 detected by mocks alone).
+- The entity-built integration harness lacks the schema's `ON DELETE` actions on the `transactions` and `transaction_splits` FKs and lacks `user_preferences.default_currency -> currencies(code)`: a bulk-delete case fails in the harness for a reason production does not have, and A26-S13-05 cannot be seen at all (joins A26-S05-01's harness-parity gap; S21).
+- No test of a selected split-transfer leg, a cross-owner leg or a split parent with embedded investment lines in `bulkDelete`.
+- No test of `getLatestRates` / the client `convert` with both orientations present (A26-S13-02); no frontend test of a stale rate.
+- No portfolio test for a currency with neither a time series nor a spot rate (M4, A26-S02-11).
+- No reverse-split case in `net-worth.service.spec.ts` (MON-M41 residual).
+- No completeness assertion on `/accounts/summary`, `getLlmAccounts`, `month_comparison` or `getAccountMarketValues` (A26-S13-04).
+
+## 11. Documentation inconsistencies
+
+- `docs/specs/exchange-rate-canonical-orientation.md` section 8 says the client rate map and the report map "already fall back to the inverse key, so receiving one orientation per pair needs no change"; during the expand window they receive both orientations and prefer the frozen one (A26-S13-02).
+- `common/time-series/fx-rate.one-door.spec.ts:16-19` calls `getLatestRates()` "the plural admin listing", but it feeds every built-in report and the frontend; INV-FX-001's enforcement text does not mention it.
+- INV-FX-003's status text records the pre-release mirror rows as harmless duplicates; it does not record that direct-first readers prefer them.
+- INV-CACHE-001 reads `enforced`; undo/redo and `removeAll` of investment transactions dispatch nothing and rely on the sweep, which the entry does not name.
+- `sessions.md` S13 names INV-PORTMOVE-001..002; the index holds only INV-PORTMOVE-007 and -008.
+- `currencies.service.ts:232-238` says `ensureSystemCurrency` is "safe to call on every default-currency change"; the caller runs it after the FK-checked write (A26-S13-05).
+- The session plan's runtime line names `net-worth*`, `currenc*`, `exchange*`, `portfolio*` integration suites; only `portfolio-movement-flow` and `portfolio-tag-keys` match.
+
+## 12. Review ledger
+
+- Pinned: `AUDIT_BASELINE_SHA` 72c59ec4; code diff against it empty at start (HEAD `d8fd873`).
+- Directories inspected: `backend/src/currencies/`, `backend/src/common/` (FX files), `backend/src/common/time-series/` (resolver, rate index), `backend/src/net-worth/`, `backend/src/monte-carlo/`, `backend/src/built-in-reports/` (rate service and call sites), `backend/src/accounts/accounts.service.ts` (summary, LLM accounts), `backend/src/transactions/transaction-bulk-update.service.ts`, `backend/src/users/users.service.ts` (preferences), `frontend/src/hooks/useExchangeRates.ts`, `frontend/src/lib/forecast.ts`.
+- Files read in full: `fx-rate-resolver.ts`, `fx-aggregate.ts`, `fx-entry.util.ts`, `currency-conversion.util.ts`, `currencies.service.ts`, `currencies.controller.ts` (60-422), `position-price.util.ts`, `useExchangeRates.ts`, `report-currency.service.ts` (1-121).
+- Sampled with ranges: `exchange-rate.service.ts` 900-1339; `net-worth.service.ts` 780-1080, 2925-2960, 3071-3146; `portfolio-calculation.service.ts` 380-510; `portfolio.service.ts` 662-692, 1491-1566, 2145-2149; `monte-carlo.service.ts` 290-740, 860-937; `transaction-bulk-update.service.ts` 501-690; `accounts.service.ts` 1575-1825; `users.service.ts` 225-425; `portfolio-period-result.util.ts` 286-330; `forecast.ts` 215-285, 356-525; `InvestmentSplitFields.tsx` 105-180; `database/schema.sql` 66-110, 370-410, 1555-1565, 4250-4430; the `sector-weighting.service.ts` and `investment-report-data.service.ts` flag producers through the sweep only.
+- Not reviewed: `exchange-rate-history.service.ts` and `rate-gap-plan.ts` (gap fill; INV-FX-005 sampled through the sweep), provider adapters beyond `carries`, `portfolio-period-result.service.ts` and the batch service beyond the util, `invested-capital-flow.util.ts`, the intraday series, `sector-weighting.service.ts` arithmetic, `number-locale.util.ts`, the frontend report components (S20).
+- Searches (four read-only sub-agent sweeps, re-checked at the cited lines): every `convertAmount` / `tryConvertAmount` / `convertWithRateLookup` call site and their AI/MCP consumers; every `getLatestRate(s)` / `getLatestPrices` caller; rate-1 fallbacks the guard regex misses; every completeness-flag producer and consumer across backend, AI, MCP, frontend types and components; net-worth invalidation on bulk delete, single delete, VOID, undo, imports, AI and MCP deletes; every currency-creating path and the delete gate.
+- Suites run: baseline unit batch `fx-rate-resolver|fx-aggregate|fx-fallback.guard|fx-rate.one-door|currencies.service|currency-references|exchange-rate.service|report-currency|investment-replay|net-worth.service|monte-carlo|portfolio.service|portfolio-calculation|transaction-bulk-update|canonical-rate|exchange-rate-orientation` (`TZ=UTC npm run test:unit -- <pattern>`): 20 suites, 984 tests, pass. Baseline integration (`npm run test:integration -- <pattern>`, serial): `rls-enforcement|fx-rate-coverage|portfolio-movement-flow|portfolio-tag-keys|report-investment-cash|invested-capital-flow|scheduled-investment-split-fx|fx-fee-summary|bond-holding-value`: 9 suites, 110 tests, pass. Scratch probes P1-P5 (6 cases, all reproduce a defect). Mutations M1-M9 (section 6).
+- Areas reviewed without a finding: the resolver's look-ahead, age bound and direction rule; `FxAggregate`; `getRateForDate` / `getLiveRate` / `resolveStoredRate`; the portfolio summary's `convertToDefault` and `primeLiveRates`; the monthly net-worth fold's flags; Monte Carlo refusals; the currency delete gate and its race; `normalizeFxEntry` / `assertTransactionCurrencyMatchesAccount`; the period-result arithmetic; the forecast's unknown occurrence handling; portfolio movement notifications (read `valuationComplete === true`).
+
+### Text for the orchestrator to merge (ledger, sessions, register)
+
+- Session row: S13 `done`, 2026-10-21, findings B/H/M/L 0/3/2/1 (HIGH A26-S13-01, -02, -03; MEDIUM A26-S13-04, -05; LOW A26-S13-06); A26-S13-01 supersedes A26-S02-02; A26-S02-11 confirmed (stays S02's count); verdict REQUEST CHANGES.
+- Suites: unit 20 suites / 984 tests pass; integration 9 suites / 110 tests pass; probes P1-P5 (6 cases) reproduce defects; mutations 10 rows (1 undetected).
+- Prior findings (final): MON-H12 `STILL_OPEN` (A26-S13-01, A26-S13-02); MON-H13 `FIXED_VERIFIED`; MON-M19 `FIXED_VERIFIED`; MON-M33 `FIXED_VERIFIED`; MON-M34 `FIXED_VERIFIED` (counterpart snapshot; related A26-S13-03); MON-M39 `STILL_OPEN` (relocated, A26-S13-01); MON-M41 `FIXED_VERIFIED`.
+- Program mutation table, undetected rows: `INV-FX-001 | portfolio.service.ts:2147 ?? null -> ?? 1 | a portfolio case with no series and no spot rate | S13 (re-run of S02 M1)`; unit-only rows: `INV-CURRENCY-001 | currencies.service.ts:446, :607 | an integration case driving CurrenciesService.remove | S13`, `INV-CACHE-001 | transaction-bulk-update.service.ts:596 | an integration bulk-delete snapshot case | S13`; R1 baseline defect (A26-S13-03).
+- Hypotheses handed on: to S19, whether the server keeps the client-sent `exchangeRate` of an embedded investment split prefilled from `getRate` (A26-S13-02 persisted path) and the onboarding round trip (A26-S13-05); to S20, the frontend `MonthlyNetWorth` / `AccountSummary` types without flags, the net-worth report and its PDF/CSV, `NetWorthChart`, `AssetsVsLiabilities`, `PortfolioValueWidget` (with A26-S02-03), and the client `convert` direction rule; to S16/S17, AI and MCP pass `months` where `getSpendingAnomalies` expects the z-score threshold (`tool-executor.service.ts:2910-2913`, `reports.tool.ts:86-89`), and the report DTO completeness fields for A26-S13-01; to S17, the AI/MCP `list_accounts` and `month_comparison` shapes (A26-S13-04) and the `net_worth_history` summary line that never mentions an incomplete month (`tool-executor.service.ts:2897`); to S07/S12, `bulkDelete` of a split parent with embedded investment lines (no `deleteSplitSideEffects`, no holdings rebuild) and of a cross-owner leg (counterpart never removed), and `removeAll` of investment transactions dispatching no recalc; to S12 (A26-S12-02 surface list), `scheduled-transactions.service.ts:792` and `fx-entry.util.ts:186`; to S14, Monte Carlo bond weights; to S10, per-row FX provider resolution in CSV/QIF import (Rule 6 model owed); to S21, the integration harness parity gaps (section 10), the missing `net-worth*` / `currenc*` / `exchange*` suites, and the unit-only rows above; to S03/S21, the refresh endpoint open to every user.
+- Deviations: run as a parallel child session; `ledger.md`, `sessions.md` and `prior-findings-register.md` not edited (this section carries their text); `dockerd` started by hand and PostgreSQL started with `docker run`; the sweeps were delegated to four read-only sub-agents and their citations spot-checked; P4 restores the schema's `ON DELETE` actions in the entity harness before running, and P1 adds the schema's FK (both inside the scratch spec only); the frontend direct-first behaviour of A26-S13-02 is shown by the backend payload of `GET /currencies/exchange-rates` and the hook's code, not by a frontend test run (frontend `npm ci` not run in this session).
+
+## 13. Adversarial approval challenge
+
+Started from the slice's own abstractions, not from the findings: "the one door" (`resolveFxRate`),
+"an accumulator that cannot absorb a missing rate" (`FxAggregate`), "rate 1 only for equal codes",
+"one orientation per pair" (`canonicalRateRow`), "a definer function for a global answer",
+"currencies created on demand", "null, not zero" (Monte Carlo).
+
+- Does any rate reach a figure without passing the door? Yes: `getLatestRates` (exempted from the guard as a "listing") feeds the reports and the client, with no age bound and both orientations (A26-S13-02); the built-in reports' own pass-through (A26-S13-01).
+- Can the accumulator be bypassed? The scalar consumers read `knownSubtotal`-derived numbers and drop the flags (A26-S13-04); `getAccountMarketValues` uses `+` and `continue`.
+- Can rate 1 appear for unequal codes? An empty source code in `convertWithRateLookup` (A26-S13-01); camelCase stored-rate fallbacks the guard cannot see (A26-S02-11, not lookup failures today).
+- Is "one orientation" true on read? Not for direct-first readers during the expand window (A26-S13-02).
+- Is "created on demand" true on every path that needs a currency? Not on the preferences path (A26-S13-05); and on-demand creation from a user's own action becomes everyone's list on account deletion (A26-S13-06).
+- Does "deleting a row reverses only what it contributed" hold on the bulk path? Not for a split-transfer leg (A26-S13-03).
+- Unchanged callers: the AI and MCP report tools inherit A26-S13-01; the MCP resource and both `list_accounts` inherit A26-S13-04; portfolio movement notifications and Monte Carlo read `valuationComplete` correctly (held).
+
+Result: the challenge found A26-S13-05 and A26-S13-06 and the guard exemption behind A26-S13-02,
+and no reason to withdraw an earlier finding.
+
+## 14. Verdict
+
+**REQUEST CHANGES** for `backend/src/currencies/` and its secondary paths at `72c59ec4`.
+
+Confirmed: BLOCKER 0, HIGH 3 (A26-S13-01, -02, -03, each executed), MEDIUM 2 (A26-S13-04, -05,
+executed), LOW 1 (A26-S13-06, by reading). Independently verified: the resolver's age bound and
+no-look-ahead rule (M1, M7), `FxAggregate` (M2), the split replay (M9, MON-H13 fixed), the
+currency delete gate (MON-M19 fixed, integration race passed), the Monte Carlo refusal (MON-M33
+fixed), the counterpart snapshot on bulk delete (MON-M34 fixed for that case). Limitations: the
+frontend consumers were read, not run (S18/S20); the gap-fill service, provider adapters,
+sector weighting and the period-result service were sampled; no `net-worth*` / `currenc*` /
+`exchange*` integration suite exists to run. The adversarial close-out pass was completed
+(section 13).
