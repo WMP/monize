@@ -77,18 +77,15 @@ No BLOCKER, HIGH or MEDIUM survived. Four LOW findings, all in the gate and inst
 10. **Recommended correction:** Add a check-only script and call it from CI.
 11. **Suggested remediation diff (illustrative, not applied):**
     ```diff
-    --- a/backend/package.json
-    +++ b/backend/package.json
-    @@
-         "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    +    "lint:check": "eslint \"{src,apps,libs,test}/**/*.ts\" --max-warnings=0",
     --- a/.github/workflows/ci.yml
     +++ b/.github/workflows/ci.yml
     @@ backend-lint
            - run: npm ci
     -      - run: npm run lint
-    +      - run: npm run lint:check
+    +      # `npm run lint` is the developer's formatter (--fix); CI checks only.
+    +      - run: npx eslint "{src,apps,libs,test}/**/*.ts" --max-warnings=0
     ```
+    A check-only script in `backend/package.json` called from CI is the alternative; it was not written out here because `scripts/check-docs-manifests.mjs` fails a document naming an npm script that does not exist yet.
     The same commit must format the three files, or the job turns red. `.github/` is an "Ask first" area (`AGENTS.md`), so the CI half needs the maintainer's agreement. `--max-warnings=0` is a decision: CI currently tolerates warnings; leave it out to change only the `--fix` half.
 12. **Recommended regression test:** A source-scanning guard over `ci.yml` that fails when a lint step in any job resolves to a script carrying `--fix`.
 13. **Suggested regression-test diff (illustrative, not applied):**
@@ -108,6 +105,7 @@ No BLOCKER, HIGH or MEDIUM survived. Four LOW findings, all in the gate and inst
     +    const job = ci.slice(ci.indexOf("  backend-lint:"), ci.indexOf("  backend-unit-tests:"));
     +    const scripts = [...job.matchAll(/npm run ([\w:-]+)/g)].map((m) => m[1]);
     +    for (const s of scripts) expect(pkg.scripts[s] ?? "").not.toMatch(/--fix\b/);
+    +    expect(job).not.toMatch(/eslint[^\n]*--fix\b/);
     +  });
     +});
     ```
