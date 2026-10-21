@@ -12,7 +12,7 @@
 | Primary path | `backend/src/bonds/` |
 | Hint line used | `prioritize a bond-linked holding valued from its own lots and never quantity times a blended price, accrued interest and day-count at redemption boundaries, engine price recompute after the benchmark refresh (ordering across replicas), early redemption fees and rounding residuals, series fetch idempotency and provider failure, and every total that can be partial` |
 | Toolchain | Node 24.22.1 (`/opt/nvm`), `npm ci` in `backend/`, `dockerd` started by hand, PostgreSQL 16 (`mirror.gcr.io/library/postgres:16-alpine`) |
-| Runtime executed | `TZ=UTC npm run test:unit -- src/bonds src/securities/portfolio-calculation src/securities/accrued-interest`: 53 suites, 1 401 tests, all pass. `TZ=UTC npm run test:integration -- "bond\|no-automatic-bonds\|redemption\|accrued"`: 12 suites (the 12 `bond-*` and `no-automatic-bonds` integration specs), 174 tests, all pass. 12 unit-level mutations in a scratch worktree at the baseline (section 6). One redemption example worked by hand against `docs/specs/bond-redemption-interest.md` section 3.1 (section 7). |
+| Runtime executed | `TZ=UTC npm run test:unit -- src/bonds src/securities/portfolio-calculation src/securities/accrued-interest`: 53 suites, 1 401 tests, all pass. `TZ=UTC npm run test:integration -- "bond\|no-automatic-bonds\|redemption\|accrued"`: 12 suites (the 12 `bond-*` and `no-automatic-bonds` integration specs), 174 tests, all pass. 12 unit-level mutations in a scratch worktree at the baseline, all killed; the three lock and SQL-text rows re-run at integration level, all killed (section 6). One redemption example worked by hand against `docs/specs/bond-redemption-interest.md` section 3.1 (section 7). |
 
 ## 2. Invariant map
 
@@ -277,7 +277,15 @@ Executed in a scratch worktree at the baseline (`git worktree add <scratchpad>/m
 | M11 | INV-BOND-005 concurrency | `bond-price.service.ts:195` drop the `BondPriceRecompute` advisory lock | `bond-price.service.spec.ts` (2 tests, call order on a mock) | covered (unit, mock order only) |
 | M12 | INV-BOND-006 concurrency | `bond-series.service.ts:880` drop the `BondSeriesFetch` advisory lock | `bond-series.service.spec.ts` (4 tests, call order on a mock) | covered (unit, mock order only) |
 
-INTEGRATION_PLACEHOLDER
+The three rows whose unit kill rests on SQL text or mock call order were re-run against PostgreSQL with `TZ=UTC npm run test:integration -- "bond-prices|bond-series-fetch"` (baseline in the main tree: 2 suites, 71 tests, pass):
+
+| ID | Integration result | Verdict |
+| --- | --- | --- |
+| M7 | `bond-prices.integration.spec.ts` 4 tests fail (the manual price is overwritten) | covered at integration level |
+| M11 | `bond-prices.integration.spec.ts` 2 tests fail | covered at integration level |
+| M12 | `bond-series-fetch.integration.spec.ts` 1 test fails | covered at integration level |
+
+No mutation survived, so this session adds no row to the program-wide undetected list. The conceptual mutations for the three findings are undetected by construction (section 10): for A26-S14-01, making `positionClosePointAsOf` prefer a trade price on a linked security changes no bond or net-worth test result, because no suite values a linked security in net worth on a day without an engine row; for A26-S14-02, no suite checks a per-account bond value on the three surfaces; for A26-S14-03, no suite asserts a recompute after a benchmark store.
 
 ## 7. Counterexamples and the interaction scenario
 
@@ -318,7 +326,7 @@ INTEGRATION_PLACEHOLDER
 - No test values a bond-linked security in net worth on a day the engine left without a row (A26-S14-01); `bond-holding-value.integration.spec.ts` covers the routed surfaces only.
 - No test of the per-account value of a linked security on Monte Carlo holding stats, the investment report or net worth by account (A26-S14-02).
 - No test that a benchmark store is followed by a recompute (A26-S14-03).
-- The undetected rows of section 6.
+- Coverage-forward-only (M6) is held by an SQL-text unit assertion only; no integration test stores an archive-behind NBP fetch after a newer one.
 - No known-wrong test found in the slice.
 
 ## 11. Documentation inconsistencies
@@ -349,9 +357,9 @@ INTEGRATION_PLACEHOLDER
   - from S14 to S13: the S01 Monte Carlo item is disposed of: the weighting path is exact for bonds, the per-account holding stats are A26-S14-02; the `currencyCode ?? "USD"` default at `monte-carlo.service.ts:721` is S13's FX lens.
   - from S14 to S20: the intraday path values a linked security at the ledger close (`portfolio.service.ts:2049, 2577-2586`) and drops bond holdings in the no-ledger branch (`:2589-2595`); not traced to a figure here.
   - from S14 to S19: the redemption form's fill (`InvestmentTransactionForm.tsx:560-570`) was read only for the price rounding; its keep-the-person's-edit behaviour is untested here.
-  - from S14 to S21: the undetected mutation rows of section 6.
+  - from S14 to S21: no undetected mutation row (15 executed, 15 killed); M6 is held by SQL-text unit assertions only (no integration test of forward-only `covered_through`).
   - from S14 to S08: the `bond-series` lease-overrun hypothesis is rejected (R2).
-- Program mutation table (undetected rows): see section 6.
+- Program mutation table (undetected rows): none from S14.
 - Deviations: run in parallel with S13 and S15; the ledger, `sessions.md` and the register were not edited (this section carries their text); the Docker daemon was started by hand and again after a worker restart; the consumer sweep was delegated to a read-only search agent and its finding rows spot-checked.
 
 ## 13. Adversarial approval challenge
