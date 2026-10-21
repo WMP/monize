@@ -34,7 +34,7 @@ before auditing.
 | S09 | done | 2026-10-21 | 2026-10-21 | d8ce637 | 0/1/3/2 | `09-import-mny.md` (child session_01KxbrJgNzbFhpqTXYbkj5SV); verdict REQUEST CHANGES |
 | S10 | in-progress | 2026-10-21 | | | | `10-rules-banksync-csv.md` (child session_01BAgjpKaPyGwg41HxkiQbW3, claude-opus-5-5) |
 | S11 | in-progress | 2026-10-21 | | | | `11-email-receipts.md` (child session_01NGWhzqqpfZRRd58ooquSgs, claude-opus-5-5) |
-| S12 | in-progress | 2026-10-21 | | | | `12-securities-holdings.md` (child: see next ledger update) |
+| S12 | in-progress | 2026-10-21 | | | | `12-securities-holdings.md` (child session_01E4gKh1kzVaxArb2UHN9km7, claude-opus-5-5) |
 | S13 | open | | | | | `13-valuation-fx-networth.md` |
 | S14 | open | | | | | `14-bonds.md` |
 | S15 | open | | | | | `15-loans-strategies.md` |
