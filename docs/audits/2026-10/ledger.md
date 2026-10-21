@@ -44,7 +44,7 @@ before auditing.
 | S19 | in-progress | 2026-10-21 | | | | `19-frontend-forms.md` (child session_01LuCrA2Ko2LmWJpCCVZtqu1, claude-opus-5-5) |
 | S20 | done | 2026-10-21 | 2026-10-22 | c7a3707 | 0/1/3/4 | `20-frontend-figures.md` (child session_01VSrfzDF4F63zWMJY2giCfB); verdict REQUEST CHANGES; budgets, strategies, bonds, receipts, tours UI sampled by grep only |
 | S21 | in-progress | 2026-10-21 | | | | `21-tests-ci-release.md` (child session_01Xmf7H997Adk6ipvAx74awQ, claude-opus-5-5) |
-| S22 | in-progress | 2026-10-22 | | | | `22-delta-review.md` (child: see next ledger update) |
+| S22 | in-progress | 2026-10-22 | | | | `22-delta-review.md` (child session_014uWBGZjh8U2E8eYrTBBQUi, claude-opus-5-5) |
 | S23 | open | | | | | `23-final-report.md`, `remediation-tasks.md` |
 
 Status values: `open`, `in-progress` (resume it first), `done`, `split` (see `sessions.md` for
