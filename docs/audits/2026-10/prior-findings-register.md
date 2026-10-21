@@ -59,7 +59,7 @@ session report, `NN-<slice>.md#...`).
 | MON-M12 | Backup export reads tables through separate transactions, not one snapshot | S06 | open | |
 | MON-M13 | Backup export buffers the whole database and archive in memory | S06 | open | |
 | MON-M14 | RLS enforce mode can accept an unsafe runtime database role | S04 | open | |
-| MON-M15 | The runtime application role can write migration history | S05 | open | |
+| MON-M15 | The runtime application role can write migration history | S05 | FIXED_VERIFIED | `05-migrations-schema.md#5-prior-finding-dispositions` |
 | MON-M16 | Restore decompression has no effective size or ratio bound | S06 | open | |
 | MON-M17 | Backups containing custom currencies are not portable across instances | S06 | open | |
 | MON-M18 | Support backups retain identifying custom-currency names while UI copy says masked | S06 | open | |
@@ -98,7 +98,7 @@ session report, `NN-<slice>.md#...`).
 | ID | Title (abridged) | Owner | Disposition | Evidence |
 | --- | --- | --- | --- | --- |
 | MON-L01 | A stale PAT comment mentions a reports scope issuance does not support | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
-| MON-L02 | Database initialization and migration runners are not serialized across replicas | S05 | open | |
+| MON-L02 | Database initialization and migration runners are not serialized across replicas | S05 | FIXED_VERIFIED | `05-migrations-schema.md#5-prior-finding-dispositions` |
 | MON-L03 | Budget-alert deduplication is a check-then-insert race | S16 | open | |
 | MON-L04 | Staged-file expiry can delete bytes a pending or running import still needs | S09 | open | |
 | MON-L05 | Concurrent attachment uploads can exceed the per-transaction cap | S06 | open | |

@@ -27,8 +27,8 @@ before auditing.
 | S02 | done | 2026-10-21 | 2026-10-21 | bd06ebd | 0/2/8/2 | `02-prior-high-triage.md` (child session_01366anc7J8MgFS2vwq5szy2) |
 | S03 | done | 2026-10-21 | 2026-10-21 | 4adfd72 | 0/1/3/3 | `03-security-auth.md` (child session_019xGDCFeEXnmBq2PfLKgW9t); verdict REQUEST CHANGES |
 | S04 | in-progress | 2026-10-21 | | | | `04-rls-tenancy.md` (child session_01XG1M2wjANyUMMeHkkGGyN1, claude-opus-5-5) |
-| S05 | in-progress | 2026-10-21 | | | | `05-migrations-schema.md` (child session_01XM8Gxs6p79kg8d2mviohsA, claude-opus-5-5) |
-| S06 | open | | | | | `06-backup-restore.md` |
+| S05 | done | 2026-10-21 | 2026-10-21 | 3268ccec | 0/0/1/2 | `05-migrations-schema.md` (child session_01XM8Gxs6p79kg8d2mviohsA); verdict APPROVE |
+| S06 | in-progress | 2026-10-21 | | | | `06-backup-restore.md` (child: see next ledger update) |
 | S07 | open | | | | | `07-cash-ledger.md` |
 | S08 | open | | | | | `08-scheduler-cron.md` |
 | S09 | open | | | | | `09-import-mny.md` |
@@ -64,8 +64,8 @@ Filled by S01. Later sessions read it instead of re-discovering it.
 | `frontend/`: `npm ci`, `npm run lint && npm run type-check && npm run i18n:check` | not run | |
 | `frontend/`: `npm run test` | not run | discovered test count: |
 | `e2e/`: stack start (`docker-compose.e2e.yml`) | not run | |
-| `scripts/verify-schema.sh` | not run | |
-| `node scripts/check-migration-prefixes.mjs` | not run | needs `git fetch --unshallow origin` |
+| `scripts/verify-schema.sh` | OK (S05, 2 passes) | `migration:lint` OK, 233 files |
+| `node scripts/check-migration-prefixes.mjs` | OK (S05, after `git fetch --unshallow`) | |
 
 ## Running counts
 
@@ -73,10 +73,10 @@ Filled by S01. Later sessions read it instead of re-discovering it.
 | --- | --- |
 | BLOCKER | 0 |
 | HIGH | 3 (S02: 2, S03: 1) |
-| MEDIUM | 11 (S02: 8, S03: 3) |
-| LOW | 5 (S02: 2, S03: 3) |
+| MEDIUM | 12 (S02: 8, S03: 3, S05: 1) |
+| LOW | 7 (S02: 2, S03: 3, S05: 2) |
 
-Prior findings disposed (final, by the owning session): 8 of 70 (S03: MON-H09, M03, M05, M07, M23, M24, M26, L01, all `FIXED_VERIFIED`). S02 triaged 23 rows (12 FIXED_VERIFIED, 11 STILL_OPEN in whole or part); final call stays with the owning sessions, see the register.
+Prior findings disposed (final, by the owning session): 10 of 70 (S03: MON-H09, M03, M05, M07, M23, M24, M26, L01; S05: MON-M15, L02; all `FIXED_VERIFIED`). S02 triaged 23 rows (12 FIXED_VERIFIED, 11 STILL_OPEN in whole or part); final call stays with the owning sessions, see the register.
 
 ## Open hypotheses handed between sessions
 
@@ -96,6 +96,10 @@ the line when it disposes of the hypothesis in its report.
 - from S03 to S17: confirm the MCP/PAT bearer verifiers reject `step_up` / `oidc_reauth` JWT types (A26-S03-03).
 - from S03 to S18: frontend handling of the 401 "Refresh token reuse detected".
 - from S03 to S21: A26-S03-04's three missing two-connection tests join MON-M46.
+- from S05 to S06: semantic backfills (e.g. `skip_price_updates`, 20261012131846) are not applied to rows restored from pre-1.19 backups (A26-S05-03).
+- from S05 to S21: liveness probe versus a long migration; a real-runner two-replica race test is still owed.
+- from S05 to S04: delegation unique keys missing in the entity-built integration harness (A26-S05-01).
+- from S05 to S10/S11: rule deletion nulls `rule_id` on open reviews.
 
 ## Program-wide mutation table (undetected rows only)
 
@@ -106,6 +110,7 @@ should fail | session`.
 - `INV-AUTH-001/004 | token.service.ts:149 drop lockTokenFamily in refreshTokens | same | S03`
 - `INV-AUTH-001 | token.service.ts:164-177 reuse revocation rolled back (baseline defect) | a real-database reuse test | S03`
 - `INV-CLAIM-001 | emergency-access-claim.controller.ts:222+226 drop both guards | a two-connection claim test | S03`
+- S05: M3, M4, M5 of `05-migrations-schema.md` section 6 (entity-harness parity gaps; runner lock caught only by mock-order unit specs).
 - S02's table: see `02-prior-high-triage.md` section 6 (M3 undetected at integration level, A26-S02-12).
 
 ## Known deviations from the plan
