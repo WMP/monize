@@ -67,6 +67,88 @@ Material flows (`producer -> transformations -> storage -> consumers -> side eff
 
 ## 4. Confirmed findings
 
+Ordered by severity: A26-S11-04 (HIGH), then A26-S11-01, -02, -03 (LOW). IDs are in the order found.
+
+### A26-S11-04 - Any sender can make its email read as the broker's by pasting a "Forwarded message" header block, and with auto-apply on the trade it states is booked with no person
+
+1. **Severity:** HIGH
+2. **Confidence:** high (executed, P3, real PostgreSQL under RLS, the real poll, pipeline, card, auto-apply and `confirm`)
+3. **Location:** `backend/src/email-receipts/imap/forwarded-receipt.ts:33-71` (`resolveForwardedIdentity`: any text with a forwarded header block replaces `from_address` / `from_domain` / `subject`; the outer sender is not compared with anything); `poll/receipt-rows.ts:85-104` (applied at ingestion, comment "A forward from the user's own address", not enforced); `pipeline/email-receipt-pipeline.service.ts:475, :1187-1216` (re-applied on every pass); `pipeline/choose-receipt-parser.ts` (the parser is chosen by `from_domain`); `pipeline/email-receipt-trade.service.ts:145-150` (the trade auto-apply gate: mailbox switch, approved profile, consistent reading, no ledger match; nothing about the sender); `pipeline/auto-apply-gate.ts:39-58` (the purchase gate, same gap); `pipeline/email-receipt-pipeline.service.ts:312-315, :1318-1335` (`confirm` with the built card).
+4. **Violated invariant:** INV-RECEIPT-008 and INV-RECEIPT-003 as the design argues them: decision 12 of `docs/future-plans/email-receipts.md` says the forwarded block "can only choose which approved parser reads the email and which days to look at: it never reaches the ledger except through the same card and approval". Under auto-apply the approval is the gate, and the gate trusts the claimed sender. The server-authoritative rule of the protocol: the identity that decides which of the user's approved profiles may write the ledger is taken from attacker-controlled text.
+5. **Realistic reproduction scenario:** the owner connects their inbox, has an approved trade profile for their broker (`fromDomains: ["wealthsimple.com"]`, account rule `RRSP`) and turned the mailbox's auto-apply on. Anyone who knows the address sends, from a domain of their own (so SPF, DKIM and DMARC all pass and the provider files it in INBOX), an email whose text starts with a Gmail-style `---------- Forwarded message ---------` block naming `notifications@wealthsimple.com`, followed by the broker's public template: `Account: RRSP`, `Type: Buy`, `Symbol: <a ticker the owner holds>`, `Shares: 10`, `Average price: $200.00`, `Total cost: $2,000.00`. The next poll reads it.
+6. **Observed implementation behavior (executed, P3):** `email_receipts` row `from_address = notifications@wealthsimple.com`, `from_domain = wealthsimple.com`, `forwarded_by = someone@evil.example`, status `review`; `ai_review_requests` one `email_trade`, status `applied`; `investment_transactions` one `BUY`, quantity 10, `total_amount` 2000.0000; the linked cash account's `current_balance` 10 000.0000 -> 8 000.0000. Control (P3b, the same body without the block): `from_domain = evil.example`, status `no_parser`, no trade, balance unchanged. Without auto-apply the same email produces a signed card labelled with the broker's identity that waits for approval.
+7. **Expected behavior:** a forwarded header block is honoured only for a forward the mailbox owner made (the outer sender is one of the owner's own addresses), and a reading whose sender identity is a claim of the text (a forward) or unauthenticated never auto-applies; a person approves it, seeing who actually sent it.
+8. **Impact:** an outside party writes an investment transaction into the ledger: cash leaves the account, a holding and its cost basis change, and every consumer of holdings, balances, net worth and reports reads the forged trade. Amount, ticker (any security the owner holds), account (any the profile's rules name) and date are the sender's choice, bounded only by the preview's oversell refusal. The purchase path is the same gap with a smaller effect (auto-apply re-categorizes, re-describes and tags an existing transaction; it needs an amount and a payee or order id that match one). Preconditions that bound realism: auto-apply is opt-in and off by default; the sender must know the receipts address, the broker, the account label the profile maps and a ticker the owner holds. The broker's own DMARC policy does not help: the attacker never spoofs the broker's domain.
+9. **Root cause:** the forwarded-identity heal was designed for the owner's own forwards (decision 12) but is applied to every message, and the auto-apply gates were designed on the assumption that the parser chosen for the sender implies a trusted sender.
+10. **Recommended correction:** (a) honour a forwarded header block only when the outer `From` is the mailbox's own login (`email_receipt_mailboxes.username`), the user's account email, or an address the owner lists as their own; (b) refuse auto-apply for any reading whose identity came from a forward (`forwarded_by IS NOT NULL`), in both gates; (c) maintainer decision: whether a directly received email may auto-apply without an `Authentication-Results: ... dmarc=pass header.from=<domain>` added by the mailbox's own provider.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/email-receipts/imap/forwarded-receipt.ts
++++ b/backend/src/email-receipts/imap/forwarded-receipt.ts
+ export function resolveForwardedIdentity(
+   current: ReceiptIdentity,
+   bodyText: string,
+   receivedAt: Date,
++  /** The owner's own addresses, lower-case: only their forwards are re-identified. */
++  ownAddresses: ReadonlySet<string>,
+ ): ReceiptIdentity | null {
++  // A forward is the owner's when the message came from the owner (or was
++  // healed already, which records the owner as `forwardedBy`). Anyone else's
++  // pasted header block is text, not an identity (A26-S11-04).
++  const sender = (current.forwardedBy ?? current.fromAddress).toLowerCase();
++  if (!ownAddresses.has(sender)) return null;
+   const original = detectForwardedOriginal(bodyText);
+--- a/backend/src/email-receipts/pipeline/email-receipt-trade.service.ts
++++ b/backend/src/email-receipts/pipeline/email-receipt-trade.service.ts
+       const gate =
+         context.mailboxAutoApply &&
+         context.parser.status === "approved" &&
+         tradeMayAutoApply(trade) &&
+-        !ledger.anyMatch;
++        !ledger.anyMatch &&
++        // The sender of a forward is a claim of the email's text: a person looks.
++        receipt.forwardedBy === null;
+--- a/backend/src/email-receipts/pipeline/auto-apply-gate.ts
++++ b/backend/src/email-receipts/pipeline/auto-apply-gate.ts
+ export interface AutoApplyFacts {
++  /** The email's sender identity came from a forwarded header block. */
++  forwarded: boolean;
+@@
+     facts.cardBuilt &&
+-    !facts.linked
++    !facts.linked &&
++    !facts.forwarded
+   );
+```
+
+   (The callers pass `ownAddresses` = `{ mailbox.username, user.email }` plus any configured forwarder addresses, read from the server's rows: `buildReceiptRow` gains the parameter from the poll and the import, `healForwardedIdentity` from the mailbox it already loads; a row healed before the fix keeps its stored identity until reprocessed, so the heal must also be able to UN-heal a row whose `forwarded_by` is not an own address. The pipeline passes `forwarded: receipt.forwardedBy !== null` into `AutoApplyFacts`.) Needs: unit tests of both gates and of the heal, P3 as an integration case, a migration-free check that existing forwarded rows still match, and the maintainer's decision (c).
+12. **Recommended regression test:** P3 as `test/integration/email-receipts-forwarded-sender.integration.spec.ts`: the outside sender's email is stored as `evil.example`, no trade is created, the cash balance stays 10 000; and the owner's own forward (outer `From` = the mailbox login) is still re-identified and proposed, never auto-applied.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
+--- /dev/null
++++ b/backend/test/integration/email-receipts-forwarded-sender.integration.spec.ts
++  it("an outside sender's pasted forward block chooses no profile and books nothing", async () => {
++    const r = await pollWith(crafted("Someone <someone@evil.example>", true));
++    expect(r.receipt).toMatchObject({ from_domain: "evil.example", forwarded_by: null });
++    expect(r.trades).toHaveLength(0);
++    expect(Number(r.cash.current_balance)).toBe(10000);
++  });
++  it("the owner's own forward is read as the broker's and waits for a person", async () => {
++    const r = await pollWith(crafted("Alice <receipts@example.com>", true));
++    expect(r.receipt.from_domain).toBe("wealthsimple.com");
++    expect(r.requests).toEqual([{ kind: "email_trade", status: "proposed" }]);
++    expect(r.trades).toHaveLength(0);
++  });
+```
+
+   (`pollWith` and `crafted` as in the P3 probe, section 12; the harness's `ScheduledTransactionsService` stub needs `findInvestmentOccurrenceForTrade` set, which is also why no trade integration test exists today.)
+14. **Verification method:** `npm run test:unit -- forwarded-receipt auto-apply-gate email-receipt-trade email-receipt-pipeline`; the regression spec above; `npm run test:integration -- email-receipts`.
+15. **Residual risks / patch limitations:** a spoofed outer `From` equal to the owner's address still passes (a) where the owner's domain publishes no enforcing DMARC policy (`p=none`), which is why (b) refuses auto-apply for every forward rather than trusting (a) alone; a directly received email that spoofs a broker without enforcing DMARC is not covered until decision (c). Manual approval of a forged card remains possible and is a social-engineering risk the card's display of the true sender would reduce (frontend: the AI review card does not show `forwarded_by`; the email detail dialog does, `EmailReceiptDetailDialog.tsx:199-203`).
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT`. Execution evidence: P3 (plan step 7), section 12. Mutation evidence: no existing test sends a forward from a non-owner address, so restoring the defect after a fix would be caught only by the new regression test.
+
 ### A26-S11-01 - The receipt poll's 10-minute lease is outrun by the provider calls it starts, and the parser-draft step has no claim of its own: two polls draft the same sender twice
 
 1. **Severity:** LOW
