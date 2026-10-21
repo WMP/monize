@@ -80,13 +80,13 @@ session report, `NN-<slice>.md#...`).
 | MON-M33 | Monte Carlo current-value failure is converted to a real zero | S13 | FIXED_VERIFIED | `13-valuation-fx-networth.md#5-prior-finding-dispositions` |
 | MON-M34 | Bulk deletion can leave linked-account monthly/net-worth snapshots stale | S13 | FIXED_VERIFIED (counterpart snapshot; related A26-S13-03 on the bulk path) | `13-valuation-fx-networth.md#5-prior-finding-dispositions` |
 | MON-M35 | Foreign-security transfer resets destination cost basis to an implied 1:1 value | S12 | STILL_OPEN (A26-S12-04) | `12-securities-holdings.md#5-prior-finding-dispositions` |
-| MON-M36 | A failed backend logout is presented as a successful local logout | S18 | open | |
+| MON-M36 | A failed backend logout is presented as a successful local logout | S18 | FIXED_VERIFIED | `18-frontend-core.md#5-prior-finding-dispositions` |
 | MON-M37 | Two-decimal split editing and one-cent tolerance conflict with four-decimal persistence | S19 | open | |
-| MON-M38 | Successful transaction mutations leave cached budget progress stale | S18 | open | |
+| MON-M38 | Successful transaction mutations leave cached budget progress stale | S18 | STILL_OPEN (narrowed, A26-S18-01) | `18-frontend-core.md#5-prior-finding-dispositions` |
 | MON-M39 | Tests validate missing FX as a successful 1:1 conversion (verification defect) | S13 | STILL_OPEN (relocated, A26-S13-01) | `13-valuation-fx-networth.md#5-prior-finding-dispositions` |
 | MON-M40 | The scheduled-override test expects an existing price to be overwritten (verification defect) | S19 | open | S02 triage: FIXED_VERIFIED, see `02-prior-high-triage.md#5-prior-finding-dispositions` |
 | MON-M41 | The historical stock-split fixture encodes additive shares (verification defect) | S13 | FIXED_VERIFIED | `13-valuation-fx-networth.md#5-prior-finding-dispositions` |
-| MON-M42 | The AppHeader test expects logout failure to look successful (verification defect) | S18 | open | S02 triage: FIXED_VERIFIED, see `02-prior-high-triage.md#5-prior-finding-dispositions` |
+| MON-M42 | The AppHeader test expects logout failure to look successful (verification defect) | S18 | FIXED_VERIFIED | `18-frontend-core.md#5-prior-finding-dispositions` |
 | MON-M43 | Automatic-backup tests expect generic cross-owner keys (verification defect) | S06 | STILL_OPEN | `06-backup-restore.md#5-prior-finding-dispositions` (A26-S06-01; S02 triage STILL_OPEN narrowed) |
 | MON-M44 | The backend integration CI command can succeed after discovering zero tests | S21 | open | S02 triage: FIXED_VERIFIED, see `02-prior-high-triage.md#5-prior-finding-dispositions` |
 | MON-M45 | The release workflow pushes a `[skip ci]` bump after testing a different SHA | S21 | open | S02 triage: STILL_OPEN, see `02-prior-high-triage.md#5-prior-finding-dispositions` |
