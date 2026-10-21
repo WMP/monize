@@ -39,7 +39,7 @@ session report, `NN-<slice>.md#...`).
 | MON-H13 | Historical net-worth replay adds a stock-split ratio instead of multiplying shares | S13 | FIXED_VERIFIED (S02) | FIXED_VERIFIED | `13-valuation-fx-networth.md#5-prior-finding-dispositions` |
 | MON-H14 | Investment preview and commit can use different exchange rates without disclosure | S12 | FIXED_VERIFIED (S02) | STILL_OPEN (server half residual, A26-S12-02; client half S19) | `12-securities-holdings.md#5-prior-finding-dispositions` |
 | MON-H15 | Opening an existing scheduled investment override replaces its stored price with the latest quote | S19 | FIXED_VERIFIED (S02) | open | |
-| MON-H16 | Partial or unavailable portfolio valuations are rendered as complete totals | S20 | STILL_OPEN (residual) (S02) | open | |
+| MON-H16 | Partial or unavailable portfolio valuations are rendered as complete totals | S20 | STILL_OPEN (residual) (S02) | STILL_OPEN (A26-S20-01, HIGH) | `20-frontend-figures.md#5-prior-finding-dispositions` |
 
 ## MEDIUM
 
@@ -74,7 +74,7 @@ session report, `NN-<slice>.md#...`).
 | MON-M27 | Ordinary transaction currency can disagree with the owning account currency | S07 (cross-check S10) | FIXED_VERIFIED | `07-cash-ledger.md#5-prior-finding-dispositions` |
 | MON-M28 | Mixed-sign split children are accepted when their signed total equals the parent | S07 (client half S19) | REJECTED (server half: mixed-sign splits are a documented shape; client half S19) | `07-cash-ledger.md#5-prior-finding-dispositions` |
 | MON-M29 | Explicit zero or negative investment FX rates produce inconsistent cash postings | S12 | FIXED_VERIFIED (create and preview) | `12-securities-holdings.md#5-prior-finding-dispositions` |
-| MON-M30 | BUY commission is omitted from cost basis although cash and UI wording include fees | S12 | FIXED_VERIFIED (backend; tooltip wording S20) | `12-securities-holdings.md#5-prior-finding-dispositions` |
+| MON-M30 | BUY commission is omitted from cost basis although cash and UI wording include fees | S12 | FIXED_VERIFIED (backend `12-securities-holdings.md#5`; UI wording `20-frontend-figures.md#5`) | `12-securities-holdings.md#5-prior-finding-dispositions` |
 | MON-M31 | Transfer split amounts are omitted from budget spending | S16 | FIXED_VERIFIED | `16-budgets-reports.md#5-prior-finding-dispositions` |
 | MON-M32 | Final scheduled loan payment recalculates splits without shrinking the parent payment | S15 | FIXED_VERIFIED | `15-loans-strategies.md#5-prior-finding-dispositions` |
 | MON-M33 | Monte Carlo current-value failure is converted to a real zero | S13 | FIXED_VERIFIED | `13-valuation-fx-networth.md#5-prior-finding-dispositions` |
