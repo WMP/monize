@@ -32,8 +32,8 @@ before auditing.
 | S07 | done | 2026-10-21 | 2026-10-21 | 03fdd62 | 0/2/5/2 | `07-cash-ledger.md` (child session_01XfUxS4dgiSNkonPgLiFnwC); verdict REQUEST CHANGES |
 | S08 | done | 2026-10-21 | 2026-10-21 | bc3a4b5 | 0/1/2/2 | `08-scheduler-cron.md` (child session_014ydW7reUCeSgTdjvYkk8qB); verdict REQUEST CHANGES |
 | S09 | done | 2026-10-21 | 2026-10-21 | d8ce637 | 0/1/3/2 | `09-import-mny.md` (child session_01KxbrJgNzbFhpqTXYbkj5SV); verdict REQUEST CHANGES |
-| S10 | in-progress | 2026-10-21 | | | | `10-rules-banksync-csv.md` (child: see next ledger update) |
-| S11 | in-progress | 2026-10-21 | | | | `11-email-receipts.md` (child: see next ledger update) |
+| S10 | in-progress | 2026-10-21 | | | | `10-rules-banksync-csv.md` (child session_01BAgjpKaPyGwg41HxkiQbW3, claude-opus-5-5) |
+| S11 | in-progress | 2026-10-21 | | | | `11-email-receipts.md` (child session_01NGWhzqqpfZRRd58ooquSgs, claude-opus-5-5) |
 | S12 | open | | | | | `12-securities-holdings.md` |
 | S13 | open | | | | | `13-valuation-fx-networth.md` |
 | S14 | open | | | | | `14-bonds.md` |
