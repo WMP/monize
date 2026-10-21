@@ -112,7 +112,7 @@ No BLOCKER, HIGH or MEDIUM survived. Four LOW findings, all in the gate and inst
     +});
     ```
 14. **Verification method:** Re-run the M1 mutation of section 6 (introduce a `prettier/prettier` violation); the job must fail. Run the guard against the unfixed `ci.yml`; it must fail.
-15. **Residual risks:** Does not cover other workflows that may call `npm run lint` (`lighthouse.yml`, `zap.yml` were not read). The guard parses YAML textually.
+15. **Residual risks:** `ci.yml:66` is the only workflow step that calls the backend `lint` script (searched all of `.github/workflows/`). The guard parses YAML textually. `e2e/` has no lint and no type-check step in CI at all (handed to S21).
 
 ### A26-S01-02 -- The `WITH_CONTEXT_ALLOWLIST` lint fence does not match an import specifier with a file extension, a `./` segment, a dynamic `import()`, or a direct `requestContextStorage.run`
 
@@ -479,4 +479,18 @@ The upstream baseline `d5cea9bf` is not reachable in the shallow clone (256 comm
 - Delegated read-only sweeps (results re-checked by spot reads): `WITH_CONTEXT_ALLOWLIST` reconciliation (12.2), cron matrix (12.3), non-enforced invariants (12.4).
 - Searches: banned DB primitives across all `*.md` and `src/`; `getRepositoryToken` (22 spec files); `set_config` identity GUCs; `describe.skip`/`it.skip`; `@Cron`/`@Interval`/`setInterval`; `passWithNoTests`.
 - Areas reviewed without a finding: the DB-primitive bans and their documented list (MON-M02); allowlist vs call sites; cron doc vs code (one row per handler, expressions); CI image registries (Dockerfiles `FROM mirror.gcr.io`); guard specs' skip conditions.
-- Open hypotheses handed on: see 12.4 "Hand to" column, plus: to S04, the two `src/database/*.ts` maintenance scripts with their own `DataSource` are not reachable from the API; to S08, M5 and D10 (monthly budget summary email has no delivery record; a crash after the claim and before the send loses the email, a crash after the send and before completion does not repeat it); to S21, DR-S01-5 (E2E `retries: 2`), DR-S01-6 (concurrency group), the matrix `include` that turns shard 4 into the cluster shard (the single-backend shard 4 subset never runs on one backend), and whether `lighthouse.yml`/`zap.yml` call `npm run lint`; to S03/S04, the per-site justification of each of the 214 context call sites.
+- Open hypotheses handed on: see 12.4 "Hand to" column, plus: to S04, the two `src/database/*.ts` maintenance scripts with their own `DataSource` are not reachable from the API; to S08, M5 and D10 (monthly budget summary email has no delivery record; a crash after the claim and before the send loses the email, a crash after the send and before completion does not repeat it); to S21, DR-S01-5 (E2E `retries: 2`), DR-S01-6 (concurrency group), the matrix `include` that turns shard 4 into the cluster shard (the single-backend shard 4 subset never runs on one backend), and that `e2e/` code is neither linted nor type-checked in CI (only executed by Playwright's transpiler); to S03/S04, the per-site justification of each of the 214 context call sites.
+
+## 13. Adversarial approval challenge
+
+Assumption: "the gates hold the instruction rules" is wrong. Started from the slice's own abstractions (the instruction files, the lint fences, the CI jobs, the guard specs), not from the findings.
+
+- **Does every rule `AGENTS.md` calls machine-held actually fail CI?** Traced each named guard to a job: lint bans -> `backend-lint` (survive `--fix`, M2); `lint-bans.spec.ts`, `instruction-files.spec.ts`, `doc-paths.spec.ts`, `cron-doc.spec.ts`, `ci-images.guard.spec.ts`, `jest-config.guard.spec.ts`, `test-changed.guard.spec.ts` -> `backend-unit-tests` (all green in the baseline run, none skipped: the 2 skips are the root-only backup permission tests). Found: the lint step is a fixer (A26-S01-01).
+- **Can a fence be passed by a spelling it did not anticipate?** Tried every import spelling against `BAN_WITH_CONTEXT`; found the `.js`/`.ts`/`./`/dynamic misses (A26-S01-02).
+- **Does a more specific instruction contradict the canonical one?** Compared every "Before you finish" and "Commands" block with `AGENTS.md`: coverage contradiction (A26-S01-03); permission allow-list vs "Ask first" (A26-S01-04); counting slips (D6, D7).
+- **Does CI swallow a failure?** Searched `continue-on-error`, `|| true`, `if: always()`: the dev-dependency audit (`ci.yml:235`) and `zizmor ... || true` (`ci.yml:615`) are documented informational steps, the `always()` uses are artifact uploads. No hidden swallow found. `retries: 2` in E2E is a softer gate (DR-S01-5).
+- **Is any layer outside every gate?** `e2e/` TypeScript is neither linted nor type-checked in CI (handed to S21).
+- **Are the plan's own figures, which later sessions rely on, true?** No: cron count, invariant counts and three module sizes are wrong (D1, D3, D4); later sessions should use section 12.
+- **Do the non-enforced invariants list every path?** No: four entries have an unlisted path (INV-IMPORT-003, INV-BANKSYNC-001, INV-BOND-010, INV-RULE-001), and one `enforced` index row is `partial` in its body (INV-BONDNOTIFY-003). Each is handed to its owning session rather than promoted here, because S01 did not construct their reproductions.
+
+Result: no BLOCKER or HIGH candidate arose in the slice; the four findings stand as LOW.
