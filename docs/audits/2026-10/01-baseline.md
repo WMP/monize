@@ -10,8 +10,8 @@
 | Date | 2026-10-21 |
 | Primary path | `AGENTS.md` (the instruction hierarchy), then `.github/workflows/ci.yml` |
 | Hint line used | `prioritize the instruction hierarchy and its contradictions, the architecture delta since d5cea9bf (plan section 5), which suites run green at the baseline, and the 19 partial and 1 unenforced invariants as standing hypotheses` |
-| Runtime executed | See section 12.1 (baseline suite table). Node 24.22.1 via `/opt/nvm`; PostgreSQL 16 (`mirror.gcr.io/library/postgres:16-alpine`) in Docker; mutations in a scratch worktree at `AUDIT_BASELINE_SHA`. |
-| Status | in-progress (E2E running) |
+| Runtime executed | Backend lint (3 errors), tsc, typecheck, unit (green), integration (1 failure, passes alone), frontend lint/type-check/i18n/unit (green), E2E Chromium (green with 6 flaky), four repo check scripts; see section 12.1. Node 24.22.1 via `/opt/nvm`; PostgreSQL 16 (`mirror.gcr.io/library/postgres:16-alpine`) in Docker; mutations in a scratch worktree at `AUDIT_BASELINE_SHA`. |
+| Status | done |
 
 ## 2. Invariant map
 
@@ -338,7 +338,7 @@ Environment: session container, 4 CPUs, Node 24.22.1 (`/opt/nvm`), Docker 29.9.1
 | Frontend type-check | `npm run type-check` | pass | -- | |
 | Frontend i18n | `npm run i18n:check` | pass | -- | |
 | Frontend unit | `npm run test:cov` | pass | 1 139 files; 22 249 tests passed, 0 failed, 0 skipped | 1 409 s. Coverage: statements 92.47, branches 87.74, functions 90.56, lines 93.79 (thresholds in `frontend/vitest.config.ts:30-35`: statements 90, branches 84, functions 87, lines 91): met |
-| E2E | see below | E2E_RESULT | | |
+| E2E | stack: `docker-compose.e2e.yml` (single backend) built from a scratch worktree at the baseline with the session proxy CA injected into both `development` stages (build plumbing only; the repository Dockerfiles cannot `npm ci` behind the session's TLS proxy); run: `CI=true npx playwright test` with a scratch config extending `playwright.config.ts` (Chromium only, `executablePath` of the pre-installed Chromium 1194, video off: no ffmpeg) | pass, with flakes | 191 tests discovered (40 spec files): 178 passed first time, 6 flaky (failed, then passed on a CI retry), 7 skipped, 0 failed | 34.9 min, one worker. Flaky first-attempt errors: `action-history.spec.ts:10` (`toBeVisible`), `attachments.spec.ts:187` (60 s timeout), `auth.spec.ts:14` (60 s timeout), `backup.spec.ts:93` (`toBeDisabled`), `cash-flow-sankey.spec.ts:15` (`toBeVisible`), `tours.spec.ts:9` (60 s timeout). Skipped: the 6 `cluster.spec.ts` tests (need the two-replica stack) and `backup.spec.ts:153` (conditional `test.skip`). Not run: the Firefox project (no Firefox in the container), the cluster shard, `npm run test:push`. Under `retries: 0` the run would have had 6 failures (DR-S01-5) |
 | `node scripts/check-env-docs.mjs` | | pass | -- | |
 | `node scripts/check-docs-manifests.mjs` | | pass | 33 documents | Failed once on this report's own first draft (a suggested diff named a not-yet-existing npm script); the wording was changed. The check scans `docs/audits/2026-10/`, so every session report is subject to it |
 | `node scripts/check-migration-prefixes.mjs` | | pass (partial) | 233 migrations | No base ref in the shallow clone: the "added migrations are timestamp-prefixed" half did not run (S05) |
@@ -503,6 +503,46 @@ The upstream baseline `d5cea9bf` is not reachable in the shallow clone (256 comm
 - Areas reviewed without a finding: the DB-primitive bans and their documented list (MON-M02); allowlist vs call sites; cron doc vs code (one row per handler, expressions); CI image registries (Dockerfiles `FROM mirror.gcr.io`); guard specs' skip conditions.
 - Open hypotheses handed on: see 12.4 "Hand to" column, plus: to S04, the two `src/database/*.ts` maintenance scripts with their own `DataSource` are not reachable from the API; to S08, M5 and D10 (monthly budget summary email has no delivery record; a crash after the claim and before the send loses the email, a crash after the send and before completion does not repeat it); to S21, DR-S01-5 (E2E `retries: 2`), DR-S01-6 (concurrency group), the matrix `include` that turns shard 4 into the cluster shard (the single-backend shard 4 subset never runs on one backend), and that `e2e/` code is neither linted nor type-checked in CI (only executed by Playwright's transpiler); to S03/S04, the per-site justification of each of the 214 context call sites.
 
+### 12.7 Text for the program ledger (for the orchestrator to merge)
+
+Toolchain table rows:
+
+| Check | Result | Notes |
+| --- | --- | --- |
+| `backend/`: lint, tsc, typecheck | lint FAIL (3 `prettier/prettier` errors, check form); tsc pass; typecheck pass | CI's `npm run lint` is `--fix` and passes the same tree (A26-S01-01) |
+| `backend/`: `TZ=UTC npm run test:unit -- --coverage` | pass, coverage thresholds met | 1 048 suites; 27 481 tests discovered, 27 479 passed, 2 skipped (root-only skips) |
+| `backend/`: `npm run test:integration` | 1 failure in the full run; that suite passes alone | 118 suites, 1 479 tests discovered: 1 470 passed, 8 skipped, 1 failed (`ofx-import-fitid` deadlock in `cleanTables`) |
+| `frontend/`: `npm ci`, lint, type-check, i18n:check | pass | |
+| `frontend/`: `npm run test:cov` | pass, thresholds met | 1 139 files, 22 249 tests discovered and passed |
+| `e2e/`: stack + suite | pass with 6 flaky | 191 tests discovered: 178 passed, 6 flaky, 7 skipped, 0 failed; Chromium only; images built with the proxy CA injected in a scratch worktree |
+| `scripts/verify-schema.sh` | not run | left to S05 |
+| `node scripts/check-migration-prefixes.mjs` | pass (partial) | base-ref half skipped in the shallow clone |
+| `node scripts/check-env-docs.mjs`, `check-docs-manifests.mjs`, `migration:lint` | pass | `check-docs-manifests.mjs` scans the audit reports too |
+
+Finding counts S01: BLOCKER 0, HIGH 0, MEDIUM 0, LOW 4 (A26-S01-01..04).
+
+Prior findings disposed: MON-M02 `FIXED_VERIFIED` (`01-baseline.md#5-prior-finding-dispositions`).
+
+Open hypotheses handed on:
+
+- from S01 to S09: INV-IMPORT-003 has a second unlisted path, `import/mny/writers/write-reference.ts:168-201` (`writeCategories`, read then plain insert; concurrent top-level duplicates).
+- from S01 to S10: INV-BANKSYNC-001 second key instability in `resolveEntryReferences` (`bank-transaction-planner.ts:381-413`); INV-RULE-003 `rule-row-explain.ts` second evaluation.
+- from S01 to S07 and S10: INV-RULE-001 is wider than recorded: no undo or redo path in `action-history/` triggers a net-worth recompute (INV-CACHE-001 marked enforced).
+- from S01 to S13 and S14: INV-BOND-010 unlisted current-value path `monte-carlo/monte-carlo.service.ts:511-539,708-727`; INV-BONDNOTIFY-003 index/body status mismatch.
+- from S01 to S12: INV-PRICE-001 writers outside `refuseForeignCurrency` (`write-prices.ts:112`, `bond-price.service.ts:479`, `security-price.service.ts:2364,2432`, `demo-seed.service.ts:902`).
+- from S01 to S08: `cron-doc.spec.ts` checks doc prose, not handler code (M5); monthly budget summary email has only a per-owner claim and no delivery record (D10).
+- from S01 to S21: integration `cleanTables` deadlock from an un-awaited cross-suite write; E2E `retries: 2` hid 6 first-attempt failures; workflow concurrency group shared by releases and pushes; matrix `include` makes shard 4 the cluster shard; `e2e/` not linted or type-checked in CI; frontend branch threshold 84 vs documented 85 (D16).
+- from S01 to S03 and S04: per-site justification of the 214 context call sites (section 12.2); the two `src/database/*.ts` maintenance scripts with their own `DataSource`.
+
+Deviations:
+
+- S01: run in parallel with S02 and S03 under orchestration; the ledger, `sessions.md` and `prior-findings-register.md` were not edited (this section carries their text).
+- S01: the Docker daemon was not running in the container and was started by hand (`dockerd`).
+- S01: the E2E images could not be built from the repository Dockerfiles behind the session's TLS proxy (`SELF_SIGNED_CERT_IN_CHAIN` in `npm ci`); they were built from a scratch worktree at the baseline with the proxy CA copied into each `development` stage and `--network host`. Product code identical to the baseline.
+- S01: E2E ran Chromium only with the pre-installed Chromium 1194 under Playwright 1.64 and video off (no ffmpeg, no Firefox); the Firefox project, the cluster shard and the push suite were not run.
+- S01: `scripts/verify-schema.sh` not run (S05).
+- S01: the plan's figures for cron count, invariant counts and some module sizes are wrong (section 11, D1-D4); use section 12 instead.
+
 ## 13. Adversarial approval challenge
 
 Assumption: "the gates hold the instruction rules" is wrong. Started from the slice's own abstractions (the instruction files, the lint fences, the CI jobs, the guard specs), not from the findings.
@@ -516,3 +556,7 @@ Assumption: "the gates hold the instruction rules" is wrong. Started from the sl
 - **Do the non-enforced invariants list every path?** No: four entries have an unlisted path (INV-IMPORT-003, INV-BANKSYNC-001, INV-BOND-010, INV-RULE-001), and one `enforced` index row is `partial` in its body (INV-BONDNOTIFY-003). Each is handed to its owning session rather than promoted here, because S01 did not construct their reproductions.
 
 Result: no BLOCKER or HIGH candidate arose in the slice; the four findings stand as LOW.
+
+## 14. Verdict
+
+**APPROVE** for the S01 slice at `AUDIT_BASELINE_SHA`: no BLOCKER or HIGH survived the adversarial approval challenge. Four LOW findings (A26-S01-01..04), all in the gate and instruction layer, and 16 documentation inconsistencies. The baseline is green on backend unit, frontend unit and E2E (with 6 retried flakes); the backend integration suite has one cross-suite isolation failure that passes alone; the backend lint check form is red on formatting that CI's fixing lint step hides.
