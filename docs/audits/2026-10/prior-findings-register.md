@@ -50,7 +50,7 @@ session report, `NN-<slice>.md#...`).
 | MON-M03 | Delegated `/users/me` responses expose fields outside the delegated profile | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M04 | MCP sessions keep the scopes from session creation after the bearer is revalidated | S17 | open | |
 | MON-M05 | OIDC destructive-action confirmation accepts an arbitrary non-empty value | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
-| MON-M06 | Delegation create, link and revoke conflict with enforced RLS ownership | S04 | open | |
+| MON-M06 | Delegation create, link and revoke conflict with enforced RLS ownership | S04 | FIXED_VERIFIED | `04-rls-tenancy.md#5-prior-finding-dispositions` |
 | MON-M07 | Delegated activity is attributed to the effective owner, not the real actor | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M08 | Restore ordering can fail linked asset/loan account relationships | S06 | open | |
 | MON-M09 | Automatic-backup artifacts are published through non-crash-atomic final-file operations | S06 | open | |
@@ -58,7 +58,7 @@ session report, `NN-<slice>.md#...`).
 | MON-M11 | Default Helm deployment exposes automatic backup without a writable persistent mount | S06 (Helm half S21) | open | |
 | MON-M12 | Backup export reads tables through separate transactions, not one snapshot | S06 | open | |
 | MON-M13 | Backup export buffers the whole database and archive in memory | S06 | open | |
-| MON-M14 | RLS enforce mode can accept an unsafe runtime database role | S04 | open | |
+| MON-M14 | RLS enforce mode can accept an unsafe runtime database role | S04 | FIXED_VERIFIED | `04-rls-tenancy.md#5-prior-finding-dispositions` |
 | MON-M15 | The runtime application role can write migration history | S05 | FIXED_VERIFIED | `05-migrations-schema.md#5-prior-finding-dispositions` |
 | MON-M16 | Restore decompression has no effective size or ratio bound | S06 | open | |
 | MON-M17 | Backups containing custom currencies are not portable across instances | S06 | open | |

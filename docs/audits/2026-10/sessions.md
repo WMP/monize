@@ -118,7 +118,7 @@ S21, S23.
   and `withDelegateContext` call site from S01's list, `backend/test/integration/rls-*.spec.ts`;
   `docs/row-level-security-contract.md`, `docs/backend/database-access-and-tenancy.md`,
   `docs/specs/joint-accounts.md`, `docs/specs/cross-owner-transfers.md`.
-- **Invariants:** INV-RLS-001, INV-SHARE-001..005, INV-TRANSFER-001.
+- **Invariants:** INV-RLS-001, INV-TRANSFER-001, the joint-account and cross-owner invariants of `docs/specs/joint-accounts.md` and `cross-owner-transfers.md` (INV-SHARE-001..005 are the PWA share target and belong to S18/S20; corrected after S04).
 - **Hint line:** `prioritize the runtime role and enforce mode, every exempt table with its
   reason, system-context call sites that read cross-user data and then write under one user,
   joint-account grants and revocation, the per-ledger status of a cross-owner transfer, the
@@ -483,7 +483,7 @@ S21, S23.
   `docs/frontend/financial-figures.md`, `docs/frontend/tables-and-registers.md`,
   `docs/frontend/theming.md`, `docs/frontend/pwa-push-share.md`.
 - **Invariants:** INV-DISPLAY-001, INV-PORTRESULT-001..002, INV-PORTCHART-001, INV-SANKEY,
-  INV-REPORT, INV-SHARE (client half).
+  INV-REPORT, INV-SHARE-001..005 (the PWA share target, `docs/frontend/pwa-push-share.md`).
 - **Hint line:** `prioritize every total rendered from a server field that can be null or
   partial (caption relabelled, never a subtotal under a total's caption), valuationComplete read
   where the number is shown, a percentage only over the result, period change versus return,

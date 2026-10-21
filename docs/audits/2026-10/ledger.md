@@ -26,10 +26,10 @@ before auditing.
 | S01 | in-progress | 2026-10-21 | | | | `01-baseline.md` (child session_01K2tpEV1qrxan3G3mhQa4Jn, claude-opus-5-5) |
 | S02 | done | 2026-10-21 | 2026-10-21 | bd06ebd | 0/2/8/2 | `02-prior-high-triage.md` (child session_01366anc7J8MgFS2vwq5szy2) |
 | S03 | done | 2026-10-21 | 2026-10-21 | 4adfd72 | 0/1/3/3 | `03-security-auth.md` (child session_019xGDCFeEXnmBq2PfLKgW9t); verdict REQUEST CHANGES |
-| S04 | in-progress | 2026-10-21 | | | | `04-rls-tenancy.md` (child session_01XG1M2wjANyUMMeHkkGGyN1, claude-opus-5-5) |
+| S04 | done | 2026-10-21 | 2026-10-21 | b7c894b | 0/0/4/0 | `04-rls-tenancy.md` (child session_01XG1M2wjANyUMMeHkkGGyN1); verdict REQUEST CHANGES |
 | S05 | done | 2026-10-21 | 2026-10-21 | 3268ccec | 0/0/1/2 | `05-migrations-schema.md` (child session_01XM8Gxs6p79kg8d2mviohsA); verdict APPROVE |
 | S06 | in-progress | 2026-10-21 | | | | `06-backup-restore.md` (child session_01H4ePk3D2tytbTfCDnY7hrp, claude-opus-5-5) |
-| S07 | open | | | | | `07-cash-ledger.md` |
+| S07 | in-progress | 2026-10-21 | | | | `07-cash-ledger.md` (child: see next ledger update) |
 | S08 | open | | | | | `08-scheduler-cron.md` |
 | S09 | open | | | | | `09-import-mny.md` |
 | S10 | open | | | | | `10-rules-banksync-csv.md` |
@@ -73,10 +73,10 @@ Filled by S01. Later sessions read it instead of re-discovering it.
 | --- | --- |
 | BLOCKER | 0 |
 | HIGH | 3 (S02: 2, S03: 1) |
-| MEDIUM | 12 (S02: 8, S03: 3, S05: 1) |
+| MEDIUM | 16 (S02: 8, S03: 3, S04: 4, S05: 1) |
 | LOW | 7 (S02: 2, S03: 3, S05: 2) |
 
-Prior findings disposed (final, by the owning session): 10 of 70 (S03: MON-H09, M03, M05, M07, M23, M24, M26, L01; S05: MON-M15, L02; all `FIXED_VERIFIED`). S02 triaged 23 rows (12 FIXED_VERIFIED, 11 STILL_OPEN in whole or part); final call stays with the owning sessions, see the register.
+Prior findings disposed (final, by the owning session): 12 of 70 (S03: MON-H09, M03, M05, M07, M23, M24, M26, L01; S04: MON-M06, M14; S05: MON-M15, L02; all `FIXED_VERIFIED`). S02 triaged 23 rows (12 FIXED_VERIFIED, 11 STILL_OPEN in whole or part); final call stays with the owning sessions, see the register.
 
 ## Open hypotheses handed between sessions
 
@@ -92,7 +92,11 @@ the line when it disposes of the hypothesis in its report.
 - from S02 to S13: MON-H12 built-in reports still 1:1 (A26-S02-02), guard blind spot (A26-S02-11), MON-M39 relocated to `report-currency.service.spec.ts:213`.
 - from S02 to S20: MON-H16 residual, FX-incomplete account and dashboard widget (A26-S02-03).
 - from S02 to S21: MON-M45 release job pushes an untested bump (A26-S02-10); A26-S02-12 integration race exercises a copy of the consume SQL.
-- from S03 to S04: D-S03-01, whole-entity `repo.save(user)` after an intervening SQL write can revert a concurrent change; demonstrate one concurrent instance (given to S04 in its prompt).
+- from S03 to S04: D-S03-01 -- CONFIRMED by S04 for the delegation paths (A26-S04-02); S04's sweep found 26 cross-transaction read-then-save sites, listed in `04-rls-tenancy.md` section 12.
+- from S04 to S07: cross-owner update/delete authorized in an earlier transaction and written under `withSystemContext` without a re-check (A26-S04-01, executed); stale whole-entity saves in `accounts/`.
+- from S04 to S03/S21: the auth/users/admin/emergency read-then-save sites from the 26-site sweep (S03 is done; S21 carries them into the program mutation table).
+- from S04 to S18: INV-SHARE-001..005 are the PWA share target, not joint accounts; `sessions.md` S04 and S20 mislabel them (corrected in sessions.md by the orchestrator).
+- from S04 to S21: A26-S04-04 (no real-role tests for delegation, joint or cross-owner paths) joins MON-M46.
 - from S03 to S17: confirm the MCP/PAT bearer verifiers reject `step_up` / `oidc_reauth` JWT types (A26-S03-03).
 - from S03 to S18: frontend handling of the 401 "Refresh token reuse detected".
 - from S03 to S21: A26-S03-04's three missing two-connection tests join MON-M46.
@@ -110,6 +114,7 @@ should fail | session`.
 - `INV-AUTH-001/004 | token.service.ts:149 drop lockTokenFamily in refreshTokens | same | S03`
 - `INV-AUTH-001 | token.service.ts:164-177 reuse revocation rolled back (baseline defect) | a real-database reuse test | S03`
 - `INV-CLAIM-001 | emergency-access-claim.controller.ts:222+226 drop both guards | a two-connection claim test | S03`
+- S04: MA (`134:47` delegate predicate dropped, 175/175 green) and MD (scoped-db `real_user` collapsed, integration green) of `04-rls-tenancy.md` section 6, plus its three baseline defects.
 - S05: M3, M4, M5 of `05-migrations-schema.md` section 6 (entity-harness parity gaps; runner lock caught only by mock-order unit specs).
 - S02's table: see `02-prior-high-triage.md` section 6 (M3 undetected at integration level, A26-S02-12).
 
