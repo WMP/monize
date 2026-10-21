@@ -31,13 +31,13 @@ session report, `NN-<slice>.md#...`).
 | MON-H05 | Transaction, transfer, reconciliation and bulk mutations derive balance deltas from stale snapshots | S07 | STILL_OPEN (S02) | STILL_OPEN (A26-S07-01) | `07-cash-ledger.md#5-prior-finding-dispositions` |
 | MON-H06 | Scheduled posting has no durable occurrence identity and commits money before advancing the schedule | S08 | STILL_OPEN (residual) (S02) | STILL_OPEN (residual, A26-S08-01) | `08-scheduler-cron.md#5-prior-finding-dispositions` |
 | MON-H07 | Absolute balance recomputation can overwrite a concurrent committed atomic delta | S07 | FIXED_VERIFIED (S02) | FIXED_VERIFIED | `07-cash-ledger.md#5-prior-finding-dispositions` |
-| MON-H08 | Holding updates and full rebuilds can lose concurrent investment transactions | S12 | FIXED_VERIFIED (S02) | open | |
+| MON-H08 | Holding updates and full rebuilds can lose concurrent investment transactions | S12 | FIXED_VERIFIED (S02) | FIXED_VERIFIED | `12-securities-holdings.md#5-prior-finding-dispositions` |
 | MON-H09 | One emergency-access claim token can be consumed by two concurrent requests | S03 | FIXED_VERIFIED (S02) | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-H10 | Transfer VOID transitions can leave the two legs and both balances inconsistent | S07 | STILL_OPEN (residual) (S02) | STILL_OPEN (residual, A26-S07-03) | `07-cash-ledger.md#5-prior-finding-dispositions` |
 | MON-H11 | Transfer currencies, FX rate and destination value are not server-authoritative | S07 (client half S19) | STILL_OPEN (residual) (S02) | STILL_OPEN (server half residual, `07-cash-ledger.md#5`; QIF half STILL_OPEN, A26-S10-02, `10-rules-banksync-csv.md#5`; client half S19) | `07-cash-ledger.md#5-prior-finding-dispositions` |
 | MON-H12 | Unavailable FX is converted as a valid-looking 1:1 value | S13 | STILL_OPEN (S02) | open | |
 | MON-H13 | Historical net-worth replay adds a stock-split ratio instead of multiplying shares | S13 | FIXED_VERIFIED (S02) | open | |
-| MON-H14 | Investment preview and commit can use different exchange rates without disclosure | S12 | FIXED_VERIFIED (S02) | open | |
+| MON-H14 | Investment preview and commit can use different exchange rates without disclosure | S12 | FIXED_VERIFIED (S02) | STILL_OPEN (server half residual, A26-S12-02; client half S19) | `12-securities-holdings.md#5-prior-finding-dispositions` |
 | MON-H15 | Opening an existing scheduled investment override replaces its stored price with the latest quote | S19 | FIXED_VERIFIED (S02) | open | |
 | MON-H16 | Partial or unavailable portfolio valuations are rendered as complete totals | S20 | STILL_OPEN (residual) (S02) | open | |
 
@@ -73,13 +73,13 @@ session report, `NN-<slice>.md#...`).
 | MON-M26 | Emergency-access grant issuance can send links another replica immediately invalidates | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M27 | Ordinary transaction currency can disagree with the owning account currency | S07 (cross-check S10) | FIXED_VERIFIED | `07-cash-ledger.md#5-prior-finding-dispositions` |
 | MON-M28 | Mixed-sign split children are accepted when their signed total equals the parent | S07 (client half S19) | REJECTED (server half: mixed-sign splits are a documented shape; client half S19) | `07-cash-ledger.md#5-prior-finding-dispositions` |
-| MON-M29 | Explicit zero or negative investment FX rates produce inconsistent cash postings | S12 | open | |
-| MON-M30 | BUY commission is omitted from cost basis although cash and UI wording include fees | S12 | open | |
+| MON-M29 | Explicit zero or negative investment FX rates produce inconsistent cash postings | S12 | FIXED_VERIFIED (create and preview) | `12-securities-holdings.md#5-prior-finding-dispositions` |
+| MON-M30 | BUY commission is omitted from cost basis although cash and UI wording include fees | S12 | FIXED_VERIFIED (backend; tooltip wording S20) | `12-securities-holdings.md#5-prior-finding-dispositions` |
 | MON-M31 | Transfer split amounts are omitted from budget spending | S16 | open | |
 | MON-M32 | Final scheduled loan payment recalculates splits without shrinking the parent payment | S15 | open | |
 | MON-M33 | Monte Carlo current-value failure is converted to a real zero | S13 | open | |
 | MON-M34 | Bulk deletion can leave linked-account monthly/net-worth snapshots stale | S13 | open | |
-| MON-M35 | Foreign-security transfer resets destination cost basis to an implied 1:1 value | S12 | open | |
+| MON-M35 | Foreign-security transfer resets destination cost basis to an implied 1:1 value | S12 | STILL_OPEN (A26-S12-04) | `12-securities-holdings.md#5-prior-finding-dispositions` |
 | MON-M36 | A failed backend logout is presented as a successful local logout | S18 | open | |
 | MON-M37 | Two-decimal split editing and one-cent tolerance conflict with four-decimal persistence | S19 | open | |
 | MON-M38 | Successful transaction mutations leave cached budget progress stale | S18 | open | |
