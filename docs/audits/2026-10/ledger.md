@@ -35,11 +35,11 @@ before auditing.
 | S10 | done | 2026-10-21 | 2026-10-21 | 35d5915 | 0/1/2/2 | `10-rules-banksync-csv.md` (child session_01BAgjpKaPyGwg41HxkiQbW3); verdict REQUEST CHANGES |
 | S11 | done | 2026-10-21 | 2026-10-21 | 669ff34 | 0/1/0/3 | `11-email-receipts.md` (child session_01NGWhzqqpfZRRd58ooquSgs); verdict REQUEST CHANGES |
 | S12 | done | 2026-10-21 | 2026-10-21 | 7a1b2f7 | 0/1/6/3 | `12-securities-holdings.md` (child session_01E4gKh1kzVaxArb2UHN9km7); verdict REQUEST CHANGES |
-| S13 | in-progress | 2026-10-21 | | | | `13-valuation-fx-networth.md` (child session_01GUef7zhtKRQiqbpDiYB7ZD, claude-opus-5-5) |
+| S13 | done | 2026-10-21 | 2026-10-21 | 9a84c7f | 0/3/2/1 | `13-valuation-fx-networth.md` (child session_01GUef7zhtKRQiqbpDiYB7ZD, resumed after the usage-limit reset); verdict REQUEST CHANGES |
 | S14 | in-progress | 2026-10-21 | | | | `14-bonds.md` (child session_0123vTCmSakgyRaknyvJmWAm, claude-opus-5-5) |
 | S15 | done | 2026-10-21 | 2026-10-21 | b947bf1 | 0/1/4/5 | `15-loans-strategies.md` (child session_01JEBFJpQ1qzqkCGWz62GC7v); verdict REQUEST CHANGES |
 | S16 | in-progress | 2026-10-21 | | | | `16-budgets-reports.md` (child session_01EZWKuDHxiBSTAvGP32QcFb, claude-opus-5-5) |
-| S17 | open | | | | | `17-ai-mcp-notifications.md` |
+| S17 | in-progress | 2026-10-21 | | | | `17-ai-mcp-notifications.md` (child: see next ledger update) |
 | S18 | open | | | | | `18-frontend-core.md` |
 | S19 | open | | | | | `19-frontend-forms.md` |
 | S20 | open | | | | | `20-frontend-figures.md` |
@@ -72,11 +72,11 @@ Filled by S01. Later sessions read it instead of re-discovering it.
 | Severity | Confirmed `A26-*` findings so far |
 | --- | --- |
 | BLOCKER | 0 |
-| HIGH | 11 (S02: 2, S03: 1, S07: 2, S08: 1, S09: 1, S10: 1, S11: 1, S12: 1, S15: 1; S15-01 and S07-02 share `undoSimpleEntity`; S07-01, S08-01 and S09-01 supersede S02-01, -04 and -05) |
-| MEDIUM | 40 (S02: 8, S03: 3, S04: 4, S05: 1, S06: 2, S07: 5, S08: 2, S09: 3, S10: 2, S12: 6, S15: 4; S10-02 supersedes S02-09; S07-03 and -05 supersede S02-07 and -08) |
-| LOW | 34 (S01: 4, S02: 2, S03: 3, S05: 2, S06: 4, S07: 2, S08: 2, S09: 2, S10: 2, S11: 3, S12: 3, S15: 5) |
+| HIGH | 14 (S02: 2, S03: 1, S07: 2, S08: 1, S09: 1, S10: 1, S11: 1, S12: 1, S13: 3, S15: 1; S13-01 supersedes S02-02; S15-01 and S07-02 share `undoSimpleEntity`; S07-01, S08-01 and S09-01 supersede S02-01, -04 and -05) |
+| MEDIUM | 42 (S02: 8, S03: 3, S04: 4, S05: 1, S06: 2, S07: 5, S08: 2, S09: 3, S10: 2, S12: 6, S13: 2, S15: 4; S10-02 supersedes S02-09; S07-03 and -05 supersede S02-07 and -08) |
+| LOW | 35 (S01: 4, S02: 2, S03: 3, S05: 2, S06: 4, S07: 2, S08: 2, S09: 2, S10: 2, S11: 3, S12: 3, S13: 1, S15: 5) |
 
-Prior findings disposed (final, by the owning session): 48 of 70. FIXED_VERIFIED: S01 (M02), S03 (H09, M03, M05, M07, M23, M24, M26, L01), S04 (M06, M14), S05 (M15, L02), S06 (H02, M08, M09, M10, M11 backup half, M12, M13, M16, M17, M18, L05), S07 (H07, M21, M27), S08 (M25 claim half, L06), S09 (H03), S12 (H08, M29, M30), S15 (M32). STILL_OPEN: S12 (H14 server half residual, M35), S08 (H06 residual), S09 (H04 -> A26-S09-01, L04 narrowed), S06 (H01, M22, M43, M47), S07 (H05, H10 residual, H11 server half residual, M20 residual). REJECTED: S07 (M28 server half; the client half stays with S19). S02 triaged 23 rows (12 FIXED_VERIFIED, 11 STILL_OPEN in whole or part); final call stays with the owning sessions, see the register.
+Prior findings disposed (final, by the owning session): 55 of 70. FIXED_VERIFIED: S01 (M02), S03 (H09, M03, M05, M07, M23, M24, M26, L01), S04 (M06, M14), S05 (M15, L02), S06 (H02, M08, M09, M10, M11 backup half, M12, M13, M16, M17, M18, L05), S07 (H07, M21, M27), S08 (M25 claim half, L06), S09 (H03), S12 (H08, M29, M30), S15 (M32), S13 (H13, M19, M33, M34, M41). STILL_OPEN: S13 (H12 -> A26-S13-01/-02, M39 relocated -> A26-S13-01), S12 (H14 server half residual, M35), S08 (H06 residual), S09 (H04 -> A26-S09-01, L04 narrowed), S06 (H01, M22, M43, M47), S07 (H05, H10 residual, H11 server half residual, M20 residual). REJECTED: S07 (M28 server half; the client half stays with S19). S02 triaged 23 rows (12 FIXED_VERIFIED, 11 STILL_OPEN in whole or part); final call stays with the owning sessions, see the register.
 
 ## Open hypotheses handed between sessions
 
@@ -92,6 +92,7 @@ the line when it disposes of the hypothesis in its report.
 - from S02 to S13: MON-H12 built-in reports still 1:1 (A26-S02-02), guard blind spot (A26-S02-11), MON-M39 relocated to `report-currency.service.spec.ts:213`.
 - from S02 to S20: MON-H16 residual, FX-incomplete account and dashboard widget (A26-S02-03).
 - from S02 to S21: MON-M45 release job pushes an untested bump (A26-S02-10); A26-S02-12 integration race exercises a copy of the consume SQL.
+- from S13 to S19: does the server keep a client-sent `exchangeRate` of an embedded investment split prefilled from `getRate` (A26-S13-02); the onboarding round trip (A26-S13-05). To S20: frontend `MonthlyNetWorth` / `AccountSummary` types without completeness flags (A26-S13-04), the net-worth report. To S17: the AI/MCP account summary drops the flags (A26-S13-04). See `13-valuation-fx-networth.md` section 12.
 - from S15 to S19/S20, S12/S13, S21, S23: see `15-loans-strategies.md` section 12; A26-S15-01 and A26-S07-02 share `undoSimpleEntity` (consolidate in S23); S08's slot-selection question answered as spec design (D2), the fix stays in `post()`.
 - from S11 to S13: `resolveCashExchangeRateOrNull` falls back to `getLatestRate` from the trade card; `getRateForDate` writes fetched rates in the caller's transaction (A26-S11-03). To S17: can an MCP agent or the assistant claim a request under `EMAIL_RECEIPTS_CLAIM_KEY`; the AI review inbox card does not show `forwarded_by` (A26-S11-04 residual). To S21: the integration harness stubs `ScheduledTransactionsService` with `{}`, so no integration test can run a trade card. To S23: A26-S11-01 and A26-S08-04 share one root cause (lease TTL independent of the provider budget), consolidate under Rule 7.
 - from S12 to S13: realized-gain and capital-gains consumers of A26-S12-04 (built-in reports, AI/MCP `get_capital_gains`, tax figures) and the valuation of Money-imported cross-currency holdings (A26-S12-09, `net-worth/position-price.util.ts` txFallback); to S09/S10: see `12-securities-holdings.md` section 12.
@@ -124,6 +125,7 @@ should fail | session`.
 - `INV-AUTH-001/004 | token.service.ts:149 drop lockTokenFamily in refreshTokens | same | S03`
 - `INV-AUTH-001 | token.service.ts:164-177 reuse revocation rolled back (baseline defect) | a real-database reuse test | S03`
 - `INV-CLAIM-001 | emergency-access-claim.controller.ts:222+226 drop both guards | a two-connection claim test | S03`
+- S13: `INV-FX-001 | portfolio.service.ts:2147 ?? null -> ?? 1 | a portfolio case with no series and no spot rate | S13`; unit-only rows for INV-CURRENCY-001 and INV-CACHE; `13-valuation-fx-networth.md` section 6.
 - S15: M7 (a debt of exactly 0.01 treated as paid off) undetected; M3 unit-only; `15-loans-strategies.md` section 6.
 - S11: `INV-RECEIPT-006 | baseline (P2) | a lease-overrun integration test | S11`; `INV-TRADE-001 | parse-trade.ts:559-571 | a price-only >4-decimal case | S11`; `INV-RECEIPT-008 | forwarded-receipt.ts:33-71 | a non-owner forward test | S11`.
 - S12: `INV-HOLDING-001 | investment-transactions.service.ts:4477 drop update()'s lockHoldingScope | integration none (unit mock-order only) | S12`; transfer basis client `costPerShare` (`:2371`) unit only; `12-securities-holdings.md` section 12.
@@ -138,6 +140,8 @@ should fail | session`.
 
 ## Known deviations from the plan
 
+- 2026-10-21 21:00 UTC: the five-hour usage window was exhausted with S13, S14 and S16 running; all three failed their turn and were resumed at 23:12 UTC after the reset (S13 from its pushed partial, S14 and S16 from their session context).
+- S13: sweeps delegated to four read-only subagents, citations spot-checked.
 - S15: two read-only sweep subagents (GEM, frontend history); every reported claim re-verified or executed by the session.
 - S06: one final commit instead of incremental commits; the branch HEAD was detached after a rebase and reattached by fast-forward.
 - S03: the Docker daemon was not running in the child container; `dockerd` was started by hand (S04 and S05 prompts carry the workaround).
