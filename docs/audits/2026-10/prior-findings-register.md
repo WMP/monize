@@ -48,7 +48,7 @@ session report, `NN-<slice>.md#...`).
 | MON-M01 | Deployment documentation and defaults do not match Compose and Helm manifests | S21 | open | |
 | MON-M02 | Contributor guidance recommends transaction APIs the scoped rule prohibits | S01 | FIXED_VERIFIED | `01-baseline.md#5-prior-finding-dispositions` |
 | MON-M03 | Delegated `/users/me` responses expose fields outside the delegated profile | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
-| MON-M04 | MCP sessions keep the scopes from session creation after the bearer is revalidated | S17 | open | |
+| MON-M04 | MCP sessions keep the scopes from session creation after the bearer is revalidated | S17 | FIXED_VERIFIED (test gap, A26-S17-05) | `17-ai-mcp-notifications.md#5-prior-finding-dispositions` |
 | MON-M05 | OIDC destructive-action confirmation accepts an arbitrary non-empty value | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M06 | Delegation create, link and revoke conflict with enforced RLS ownership | S04 | FIXED_VERIFIED | `04-rls-tenancy.md#5-prior-finding-dispositions` |
 | MON-M07 | Delegated activity is attributed to the effective owner, not the real actor | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
@@ -69,7 +69,7 @@ session report, `NN-<slice>.md#...`).
 | MON-M22 | Local and S3 attachment bytes are not transactionally coupled to metadata | S06 | STILL_OPEN | `06-backup-restore.md#5-prior-finding-dispositions` |
 | MON-M23 | Logout can miss a refresh token created by a concurrent rotation in the same family | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M24 | Parallel failed logins lose counter increments and delay lockout | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
-| MON-M25 | AI insight generation uses a process-local guard and duplicates work across replicas | S08 (claim), S17 (provider) | FIXED_VERIFIED (claim half; residual A26-S08-04; provider half S17) | `08-scheduler-cron.md#5-prior-finding-dispositions` |
+| MON-M25 | AI insight generation uses a process-local guard and duplicates work across replicas | S08 (claim), S17 (provider) | FIXED_VERIFIED (claim half `08-scheduler-cron.md#5`, residual A26-S08-04; provider half `17-ai-mcp-notifications.md#5`) | `08-scheduler-cron.md#5-prior-finding-dispositions` |
 | MON-M26 | Emergency-access grant issuance can send links another replica immediately invalidates | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M27 | Ordinary transaction currency can disagree with the owning account currency | S07 (cross-check S10) | FIXED_VERIFIED | `07-cash-ledger.md#5-prior-finding-dispositions` |
 | MON-M28 | Mixed-sign split children are accepted when their signed total equals the parent | S07 (client half S19) | REJECTED (server half: mixed-sign splits are a documented shape; client half S19) | `07-cash-ledger.md#5-prior-finding-dispositions` |

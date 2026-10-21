@@ -39,10 +39,10 @@ before auditing.
 | S14 | done | 2026-10-21 | 2026-10-21 | 8a0beff | 0/0/1/2 | `14-bonds.md` (child session_0123vTCmSakgyRaknyvJmWAm, resumed after the usage-limit reset); verdict APPROVE |
 | S15 | done | 2026-10-21 | 2026-10-21 | b947bf1 | 0/1/4/5 | `15-loans-strategies.md` (child session_01JEBFJpQ1qzqkCGWz62GC7v); verdict REQUEST CHANGES |
 | S16 | done | 2026-10-21 | 2026-10-21 | b6cde01 | 0/1/5/3 | `16-budgets-reports.md` (child session_01EZWKuDHxiBSTAvGP32QcFb, resumed after the usage-limit reset); verdict REQUEST CHANGES; categories, payees, tags, calendar sampled only |
-| S17 | in-progress | 2026-10-21 | | | | `17-ai-mcp-notifications.md` (child session_01111K7XW3AyLWdho7J2V8cV, claude-opus-5-5) |
+| S17 | done | 2026-10-21 | 2026-10-21 | 7387a3f | 0/0/3/4 | `17-ai-mcp-notifications.md` (child session_01111K7XW3AyLWdho7J2V8cV); verdict REQUEST CHANGES |
 | S18 | in-progress | 2026-10-21 | | | | `18-frontend-core.md` (child session_018vbbzt6wxobMRRSa69Nm2B, claude-opus-5-5) |
 | S19 | in-progress | 2026-10-21 | | | | `19-frontend-forms.md` (child session_01LuCrA2Ko2LmWJpCCVZtqu1, claude-opus-5-5) |
-| S20 | open | | | | | `20-frontend-figures.md` |
+| S20 | in-progress | 2026-10-21 | | | | `20-frontend-figures.md` (child: see next ledger update) |
 | S21 | open | | | | | `21-tests-ci-release.md` |
 | S22 | open | | | | | `22-delta-review.md` |
 | S23 | open | | | | | `23-final-report.md`, `remediation-tasks.md` |
@@ -73,10 +73,10 @@ Filled by S01. Later sessions read it instead of re-discovering it.
 | --- | --- |
 | BLOCKER | 0 |
 | HIGH | 15 (S02: 2, S03: 1, S07: 2, S08: 1, S09: 1, S10: 1, S11: 1, S12: 1, S13: 3, S15: 1, S16: 1; S13-01 supersedes S02-02; S15-01 and S07-02 share `undoSimpleEntity`; S07-01, S08-01 and S09-01 supersede S02-01, -04 and -05) |
-| MEDIUM | 48 (S02: 8, S03: 3, S04: 4, S05: 1, S06: 2, S07: 5, S08: 2, S09: 3, S10: 2, S12: 6, S13: 2, S14: 1, S15: 4, S16: 5; S10-02 supersedes S02-09; S07-03 and -05 supersede S02-07 and -08) |
-| LOW | 40 (S01: 4, S02: 2, S03: 3, S05: 2, S06: 4, S07: 2, S08: 2, S09: 2, S10: 2, S11: 3, S12: 3, S13: 1, S14: 2, S15: 5, S16: 3) |
+| MEDIUM | 51 (S02: 8, S03: 3, S04: 4, S05: 1, S06: 2, S07: 5, S08: 2, S09: 3, S10: 2, S12: 6, S13: 2, S14: 1, S15: 4, S16: 5, S17: 3; S10-02 supersedes S02-09; S07-03 and -05 supersede S02-07 and -08) |
+| LOW | 44 (S01: 4, S02: 2, S03: 3, S05: 2, S06: 4, S07: 2, S08: 2, S09: 2, S10: 2, S11: 3, S12: 3, S13: 1, S14: 2, S15: 5, S16: 3, S17: 4) |
 
-Prior findings disposed (final, by the owning session): 57 of 70. FIXED_VERIFIED: S01 (M02), S03 (H09, M03, M05, M07, M23, M24, M26, L01), S04 (M06, M14), S05 (M15, L02), S06 (H02, M08, M09, M10, M11 backup half, M12, M13, M16, M17, M18, L05), S07 (H07, M21, M27), S08 (M25 claim half, L06), S09 (H03), S12 (H08, M29, M30), S15 (M32), S13 (H13, M19, M33, M34, M41), S16 (M31, L03 with residuals). STILL_OPEN: S13 (H12 -> A26-S13-01/-02, M39 relocated -> A26-S13-01), S12 (H14 server half residual, M35), S08 (H06 residual), S09 (H04 -> A26-S09-01, L04 narrowed), S06 (H01, M22, M43, M47), S07 (H05, H10 residual, H11 server half residual, M20 residual). REJECTED: S07 (M28 server half; the client half stays with S19). S02 triaged 23 rows (12 FIXED_VERIFIED, 11 STILL_OPEN in whole or part); final call stays with the owning sessions, see the register.
+Prior findings disposed (final, by the owning session): 59 of 70. FIXED_VERIFIED: S01 (M02), S03 (H09, M03, M05, M07, M23, M24, M26, L01), S04 (M06, M14), S05 (M15, L02), S06 (H02, M08, M09, M10, M11 backup half, M12, M13, M16, M17, M18, L05), S07 (H07, M21, M27), S08 (M25 claim half, L06), S09 (H03), S12 (H08, M29, M30), S15 (M32), S13 (H13, M19, M33, M34, M41), S16 (M31, L03 with residuals), S17 (M04 with a test gap, M25 provider half). STILL_OPEN: S13 (H12 -> A26-S13-01/-02, M39 relocated -> A26-S13-01), S12 (H14 server half residual, M35), S08 (H06 residual), S09 (H04 -> A26-S09-01, L04 narrowed), S06 (H01, M22, M43, M47), S07 (H05, H10 residual, H11 server half residual, M20 residual). REJECTED: S07 (M28 server half; the client half stays with S19). S02 triaged 23 rows (12 FIXED_VERIFIED, 11 STILL_OPEN in whole or part); final call stays with the owning sessions, see the register.
 
 ## Open hypotheses handed between sessions
 
@@ -92,6 +92,7 @@ the line when it disposes of the hypothesis in its report.
 - from S02 to S13: MON-H12 built-in reports still 1:1 (A26-S02-02), guard blind spot (A26-S02-11), MON-M39 relocated to `report-currency.service.spec.ts:213`.
 - from S02 to S20: MON-H16 residual, FX-incomplete account and dashboard widget (A26-S02-03).
 - from S02 to S21: MON-M45 release job pushes an untested bump (A26-S02-10); A26-S02-12 integration race exercises a copy of the consume SQL.
+- from S17 to S23: `TransactionsService.update()` itself does not refuse a transfer leg (the refusal is in the AI/MCP previews only); A26-S17-02 (post-commit failure releases the single-use claim, Retry writes twice) shares a root with A26-S08-02, consolidate under Rule 7. To S20: the transactions page summary and any widget reading `getSummary` totals show a mixed-currency scalar (A26-S17-01). To S21: missing two-connection test for INV-DISPATCH-003; A26-S17-05 (MON-M04 fix undetected by every suite); the post-commit case for `ai-action-replay.integration.spec.ts`.
 - from S14 to S13/S23: A26-S14-01 is a net-worth valuation-series root (consolidate with S13's position-price findings); the S01 Monte Carlo item is disposed of; `currencyCode ?? "USD"` at `monte-carlo.service.ts:721` is an FX-lens item. To S20: the intraday path values a linked security at the ledger close and drops bond holdings in the no-ledger branch. To S19: the redemption form's keep-the-edit behaviour untested. To S21: M6 held by SQL-text unit assertions only.
 - from S16 to S20: request-by-request export gating in multi-request reports; `exportToPdf` partial caption across every report using `PartialTotal`. To S13/S23: A26-S02-02's eleven-endpoint surface list (section 9); A26-S16-01 and -06 join the "convert before summing" remediation task. To S17: `getLlmBudgetStatus` carries the unconverted `spent` into AI and MCP answers. To S23: categories, payees, tags and calendar were sampled through their integration suites only (INV-PAYEE-001/002, INV-DAYNOTE-001 mechanisms not re-read).
 - from S13 to S19: does the server keep a client-sent `exchangeRate` of an embedded investment split prefilled from `getRate` (A26-S13-02); the onboarding round trip (A26-S13-05). To S20: frontend `MonthlyNetWorth` / `AccountSummary` types without completeness flags (A26-S13-04), the net-worth report. To S17: the AI/MCP account summary drops the flags (A26-S13-04). See `13-valuation-fx-networth.md` section 12.
@@ -127,6 +128,7 @@ should fail | session`.
 - `INV-AUTH-001/004 | token.service.ts:149 drop lockTokenFamily in refreshTokens | same | S03`
 - `INV-AUTH-001 | token.service.ts:164-177 reuse revocation rolled back (baseline defect) | a real-database reuse test | S03`
 - `INV-CLAIM-001 | emergency-access-claim.controller.ts:222+226 drop both guards | a two-connection claim test | S03`
+- S17: `INV-MCP-001 | mcp-http.controller.ts:319-322 serve the session's stored scopes | an existing-session narrowed-scope case | S17`; `INV-MCP-004 | ai-actions.service.ts:267-271 release after a committed write (baseline) | a post-commit failure case | S17`.
 - S14: none (15 mutations executed, 15 killed); M6 unit SQL-text only.
 - S16: VOID in budget actuals; rollover relation; fingerprint index removal; next-period dates; budget currency conversion; `16-budgets-reports.md` section 6.
 - S13: `INV-FX-001 | portfolio.service.ts:2147 ?? null -> ?? 1 | a portfolio case with no series and no spot rate | S13`; unit-only rows for INV-CURRENCY-001 and INV-CACHE; `13-valuation-fx-networth.md` section 6.
