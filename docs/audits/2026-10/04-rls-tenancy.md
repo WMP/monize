@@ -339,3 +339,67 @@ Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the joint and cross-owner suites are new)
 | --- | --- | --- |
 | MON-M06 | `FIXED_VERIFIED` | Mechanism: the cross-user halves of owner-managed delegation run under `systemScoped` / `withSystemContext` after authorization under the owner's own scope -- `delegateEmailExists` (`delegation.service.ts:1041-1060`), `createDelegate` whole (`:1077-1307`, lookup and insert in one system transaction so the unique index on `users.email` arbitrates), `revokeDelegate` (`:1309-1373`, owner-scoped lookup then one system transaction), `resetDelegatePassword` (`:1465-1544`); `users_self` is unchanged (`schema.sql` owner-column block), so arbitrary user rows stay invisible to an owner. Executed under `monize_app` with `RLS_MODE=enforce`: `{"exists":true,"linkedBob":true,"carolCreated":true,"resetOk":true,"aliceSeesBob":false,"carolDeletedOnRevoke":true,"bobKept":true,"bobPasswordUnchanged":true}`. No repository test runs these paths under the unprivileged role (section 10); the new concurrency defects in the same code are A26-S04-02. |
 | MON-M14 | `FIXED_VERIFIED` | Mechanism: `runtime-role-check.ts` interrogates the serving connection (`current_user`) for `rolsuper`, `rolbypassrls`, `rolreplication`, `rolcreaterole`, `rolcreatedb`, database ownership, owned policied tables, SET-reachable exempt contexts, inherited owner roles and ten forbidden predefined roles (transitive `pg_has_role`), and `main.ts:276-287` exits on any violation before `app.listen`; `db-init.ts:147-150` runs the same template by name. Credentials and GUC emission read the same `RLS_MODE` (`app.module.ts:100`, `rls-config.ts:46`). Executed: `test/integration/runtime-role.integration.spec.ts` green in this session's run (part of the 9 suites / 180 tests), including "refuses the owner connection", the two-hop SET ROLE chain, inherited owner, REPLICATION, server-program and the catalog classification of every predefined role. Residual by design, documented in the code: the check runs at startup only, so an attribute granted to the role after boot is not seen until the next restart. |
+| D-S03-01 (hand-off from S03) | `CONFIRMED` for the delegation and RLS paths | Concurrent instances executed under `monize_app`: a revoked delegation re-inserted by `setCapabilities`' stale `save`, and `resetDelegatePassword` writing after a second owner's link (A26-S04-02). The general mechanism (TypeORM `save` reloads by id, writes every differing column, inserts when the row is gone) is therefore demonstrated on PostgreSQL. The read-only sweep (section 12) found 32 read-then-`save` sites, 26 across transactions, most on `users` in `auth/`, `users/`, `admin/` and `emergency-access/`; those outside this slice are handed on, not disposed. |
+
+## 6. Mutation table
+
+All mutations run in the scratch worktree `<scratchpad>/mut` at `AUDIT_BASELINE_SHA`, each reverted with `git checkout` before the next; the audit branch was never modified. Policy mutations edit the migrations because the integration harness applies the RLS migrations by content (`test/helpers/rls-setup.ts:116-167`), not `schema.sql`. Suite set S = `rls-*` (4 files), `security-cross-user-isolation`, `joint-accounts`, `cross-owner-transfers`, `calendar-day-notes`, `calendar-read-models` (9 suites, 175 tests).
+
+MUTATION_ROWS_PLACEHOLDER
+
+## 7. Counterexamples and the interaction scenario
+
+Counterexamples, each not copied from an existing test:
+
+- Revocation finality: toggle a capability and revoke at once -> the delegation is back with the same id (A26-S04-02, executed).
+- Owner-only credential rotation: reset a pure delegate while a second owner links it -> the reset lands (A26-S04-02, executed).
+- Authorization inside the write: revoke while a grantee's cross-owner transfer is past authorization -> 700.00 lands in the owner's account and the grantee receives a 404 (A26-S04-01, executed).
+- Owner-issued delegations: a delegate-side session inserts a delegation naming a victim -> accepted, then the victim's account is visible (A26-S04-03, executed).
+- MON-M06 under enforcement: link an existing full account, create a new delegate, reset, revoke both -> correct (executed; holds).
+- Identity join: a `withSystemContext` call nested inside a user transaction -> `withScopedDb` refuses with `IDENTITY_MISMATCH_MESSAGE` (`scoped-db.ts:165-180`; unit-covered by `scoped-db.spec.ts`; holds, and is the reason A26-S04-01's code authorizes outside the write).
+- GUC lifetime: the identity dies with the transaction (`set_config(..., true)`); covered by `rls-enforcement` "GUC scope" (ran green; holds).
+
+Interaction scenario (revoke + stale save + bypass write): Alice shares a joint account with Bob and, in the delegate settings page, switches off "may create categories" and then clicks Revoke because Bob's behaviour worries her. The two requests overlap: the capability save re-inserts the delegation after the revoke (A26-S04-02) -- with no account grants, because the cascade removed them -- so Bob can still switch into Alice's context and read and create her categories, payees and tags (policy arm `schema.sql:3696-3724`). Meanwhile a cross-owner transfer Bob started a moment before the revoke is written into Alice's account under the bypass (A26-S04-01), and Bob's client shows an error. Alice's list of delegates shows Bob again on the next load. Each mechanism is correct alone (the revoke is one transaction, the transfer write is atomic, the capability save is a single statement); together they leave the revoke undone on two axes. The fix for A26-S04-02 (conditional update) removes the resurrection; A26-S04-01's in-transaction re-check removes the write.
+
+## 8. Rejected hypotheses
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| A file uses an identity-context helper without being in `WITH_CONTEXT_ALLOWLIST` | 94 files mention a helper name; 81 import `with-context`; the allowlist has 81 entries | Every importer is listed and no entry is stale; the 13 other files mention the names in comments only (or are `scoped-db.ts` / `with-context.ts` themselves) | `REJECTED` |
+| `RLS_MODE` read from two sources could put the owner's credentials behind enforced GUCs | `app.module.ts:100` reads `ConfigService`, `withScopedDb` and `main.ts` read `process.env`; `ConfigModule.forRoot` loads `../.env` into `process.env` before the pool is built | Both resolve to the same value once the config module has loaded, which precedes the first `withScopedDb` and the startup check; a mismatch (owner role with GUCs) would also be the safe direction for tenancy | `REJECTED` |
+| `PgListener` (second direct connection) reaches tables | `docs/row-level-security-contract.md` section 4; `direct-connection.guard.spec.ts` | Runs only `LISTEN` / `pg_notify` on the runtime role; guard-enforced; payload rule stated | `REJECTED` |
+| The `oauth_payloads` exception is wider than documented | contract section 3; `OAUTH_PAYLOAD_ALLOWLIST`; `oauth-payload-access.spec.ts` | Two access paths, both in `oauth/`, both guard-enforced; `revokeAllForUser` keyed on a server-derived id | `REJECTED` |
+| `withUserContext` used where `withDelegateContext` is needed | 4 `withDelegateContext` calls in 3 files (`jwt.strategy`, `account-delegate.guard`, `delegation.service`); MCP seeds `withUserContext(bearer userId)` and does not support acting | MCP and PAT routes cannot act as a delegate (no `@AllowDelegate`), so one id is the correct identity | `REJECTED` |
+| A delegate acting for owner A can read owner B's granted accounts at the database level | The joint read arms match any active delegation whose `delegate_user_id = app_real_user_id()`, whichever owner the session is acting for | App-level filters (`userId = owner`, `delegateReadableAccountScope`) still apply, and the arm widens nothing the delegate cannot read in its own session; no present-day leak | `DESIGN_RISK` (D-S04-01) |
+| `revokeDelegate` races `createDelegate` of another owner and deletes the login the other owner just linked | `delegation.service.ts:1348-1369` counts other delegations then deletes the user, without a lock | Under READ COMMITTED the other owner's insert either commits before the count (no delete) or fails on the FK after the delete (the link errors visibly); the bad interleaving (insert commits between count and delete) cascades the new delegation away, so the other owner sees an error or a missing delegate, not a leak | downgraded, `DESIGN_RISK` (D-S04-03) |
+| Cross-owner VOID / reconcile semantics are wrong under enforcement | `cross-owner-transfers` green on the owner role; locked per-leg VOID decision in `updateCrossOwnerTransfer` | Not executed on `monize_app` (A26-S04-04); depth belongs to S07 | handed to S07 |
+| `push_chart_artifacts` exemption leaks one user's chart to another | exempt table, no owner column, `png BYTEA` of a person's figures, id is a 64-hex token | No application read path other than the token-keyed `DELETE ... RETURNING`; rows are short-lived; any session could `SELECT` them only through a second defect | `DESIGN_RISK` (D-S04-02) |
+
+## 9. Design risks
+
+- D-S04-01: the joint read arms (`schema.sql:3651-3724` and the indirect splits/tags arms) key on `app_real_user_id()` and any active delegation, so while Bob acts for Alice his session can also read, at the database level, what Carol granted him. Application code narrows it; RLS does not. A predicate pairing the delegation's owner with `app_current_user_id()` when the two GUCs differ would make RLS agree with the app.
+- D-S04-02: `push_chart_artifacts` holds rendered images of a person's figures in an exempt table readable by every session; the safety argument is the token-keyed consume and the short expiry, not a policy. The contract's section 2 table has no row for it (section 11).
+- D-S04-03: `revokeDelegate` decides "delete the login" from counts without locking the `users` row against a concurrent link (section 8).
+- D-S04-04: the startup role check is a point-in-time check; an attribute granted after boot is not seen until restart (documented in `app-role.ts:57-62`). A periodic re-check, or the readiness probe asking the same question, would close it.
+- D-S04-05: `docs/backend/database-access-and-tenancy.md:31, 35` and `src/delegation/rls-context-smoke.spec.ts` prescribe "authorization read under the caller's identity before any bypass opens", which is the two-transaction shape behind A26-S04-01 and A26-S04-02; the same document's section "Rejection happens before the write" requires the opposite. A rule that names the in-transaction re-check would resolve it.
+
+## 10. Missing tests and known-wrong tests
+
+- No service-level test under the unprivileged role for delegation management (create, link, reset, capability and section setters, revoke), joint-account writes, or cross-owner transfers (A26-S04-04). 23 of 101 integration files use `createEnforcedIntegrationModule`; none of these.
+- No concurrency test for revoke versus any in-flight delegation or grantee write (A26-S04-01, -02).
+- No negative test that a delegate session cannot insert into `account_delegates` / `account_delegate_grants` (A26-S04-03); `rls-enforcement` asserts "keeps WITH CHECK owner-only" only for the widened data tables.
+- `rls-context-smoke.spec.ts` asserts the order "authorization under the caller, then bypass" as correct; it is a test of the shape that lets a revoke slip between the two (known-wrong in the sense of `docs/verification-contract.md`: it would fail on the fix for A26-S04-01 unless updated).
+- MON-M06's enforcement behaviour is protected only by `rls-context-smoke.spec.ts` (a unit test recording identities around mocked repositories), not by a real-role run.
+
+## 11. Documentation inconsistencies
+
+- `docs/row-level-security-contract.md` section 2: `push_chart_artifacts` is in `RLS_EXEMPT_TABLES` but has no row in the exemption table; its rationale is an unheaded paragraph after section 6, so step 3 of the contract's own section 5 checklist is not met.
+- `docs/backend/database-access-and-tenancy.md:71` says there is "exactly one sanctioned direct-`DataSource` exception"; the canonical contract (section 4) documents a second one (the `PgListener` connection).
+- `docs/backend/database-access-and-tenancy.md:55-58`: the `withScopedDb` code sample has lost its opening fence and first lines (a stray `// ...mutate + repo.save(row)` and a closing fence render as body text).
+- `docs/backend/database-access-and-tenancy.md:31, 35` versus `:9` (D-S04-05).
+- `backend/src/transactions/transaction-transfer.service.ts:641-643` ("account ownership and delegation grants are not written by the posting that follows") is true of the posting and false of the system: a concurrent revoke writes them (A26-S04-01).
+- `backend/src/transactions/joint-register.service.ts:38` ("Every check that can refuse runs before the system-context window opens") states as a safety property the shape that A26-S04-01 shows unsafe.
+- `docs/system-invariants.md` has no entry for joint-account or delegation tenancy; the session plan (`sessions.md` S04, `plan.md` section 5) names INV-SHARE-001..005 for joint accounts, but those IDs are the PWA share target (`system-invariants.md:139-143`).
+- `docs/row-level-security-contract.md` section 1 ("RLS is what contains the query that forgets to") overstates what the delegation policies contain (A26-S04-03).
+
+SECTIONS_12_TO_14_PLACEHOLDER
