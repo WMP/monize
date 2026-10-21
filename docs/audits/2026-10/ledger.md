@@ -14,8 +14,9 @@
 | Upstream audit baseline | `d5cea9bfa995885ba5198f9843359362927c0fd4` (2026-08-01) |
 | `main` at last delta check | not yet checked (S22) |
 
-A session whose `git rev-parse HEAD` on the audit branch differs from `AUDIT_BASELINE_SHA` in
-anything but `docs/audits/2026-10/` stops and reports before auditing.
+A session whose code differs from `AUDIT_BASELINE_SHA` in anything but `docs/audits/2026-10/`
+and `docs/audits/2026-08-upstream/` (the check in plan section 4, step 2) stops and reports
+before auditing.
 
 ## Session status
 

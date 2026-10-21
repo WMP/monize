@@ -87,8 +87,10 @@ and stops; the next session resumes from the ledger before taking new work.
 1. **Open the ledger.** Read `ledger.md`. If a session is marked `in-progress`, resume it: read
    its partial report, its open hypotheses, and continue from the first lens it has not closed.
    Otherwise take the first session in `sessions.md` marked `open` whose dependencies are `done`.
-2. **Pin.** `git rev-parse HEAD` on the audit branch must equal `AUDIT_BASELINE_SHA`. If it does
-   not, stop and report; do not audit a moved head.
+2. **Pin.** The audit branch gains one docs commit per session, so its head is not
+   `AUDIT_BASELINE_SHA`; the code must be. Run
+   `git diff --stat 72c59ec4bc6e9f2cb3a5d25977c94dd2c09e5a86 HEAD -- . ':!docs/audits/2026-10' ':!docs/audits/2026-08-upstream'`
+   and require empty output. If anything else differs, stop and report; do not audit a moved head.
 3. **Read instructions first.** `AGENTS.md`, root `CLAUDE.md`, the layer `CLAUDE.md` the session
    touches, the `docs/` rows that layer's table names for the subject, the `docs/specs/*.md` the
    session names, and the `docs/system-invariants.md` entries the session names. Read
