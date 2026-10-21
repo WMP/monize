@@ -8,6 +8,7 @@
 | `AUDIT_BASELINE_SHA` | `72c59ec4bc6e9f2cb3a5d25977c94dd2c09e5a86` |
 | `git rev-parse HEAD` | at start `308e087b944f4253b6c2fdcf8d369d3b9c72eb0e`; at the final commit, the commit carrying this file. Pin check (`git diff --stat <baseline> HEAD -- . ':!docs/audits/2026-10' ':!docs/audits/2026-08-upstream'`) returned empty. |
 | Date | 2026-10-21 |
+| Status | done (all lenses run; open hypotheses handed on in section 12) |
 | Primary path | `backend/src/scheduled-transactions/` |
 | Secondary paths | every `@Cron` handler (49 handlers in 46 files, not 40), `backend/src/common/jobs/` (`JobClaimService`, `FetchSyncService`), `notifications/bill-reminder.service.ts`, `accounts/mortgage-reminder.service.ts`, `loan-installments/claim-loan-occurrence.ts`, `occurrence-slots.ts`, `budgets/budget-period-cron.service.ts`, `ai/insights/ai-insights.service.ts`, `notifications/notification-dispatch.service.ts`, `frontend/src/components/scheduled-transactions/` (post and skip call sites, dialog pre-fill) |
 | Hint line | `prioritize one logical effect per tick across replicas for all 40 jobs, durable occurrence identity before money moves, the occurrence-first rule on every surface (nextOccurrenceEffectiveAmount, never amount), override lifecycle, lease and claim expiry versus a still-running worker, duplicate email from every replica, and retry after a partial commit` |
