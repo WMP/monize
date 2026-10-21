@@ -680,6 +680,6 @@ layer, and the races marked static (A26-S02-07).
 
 **REQUEST CHANGES** for the slice. Two HIGH findings survived the challenge: A26-S02-01 (executed,
 10/10) and A26-S02-02 (asserted by a passing test). Of the 16 upstream HIGHs, 8 are fixed and proven
-by a passing test (H02 by unit and database-provider integration only; the other seven also by a
-mutation the test catches), and 8 remain open in whole or in part. Every disposition is triage evidence for the owning session
+by a passing test (H02 by unit and database-provider integration only; H03 by its integration race
+tests; H07, H08, H09, H13, H14 and H15 also by a mutation the test catches), and 8 remain open in whole or in part. Every disposition is triage evidence for the owning session
 and needs a specialist's review before it reaches a maintainer decision.
