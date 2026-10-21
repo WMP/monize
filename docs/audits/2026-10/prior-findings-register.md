@@ -24,17 +24,17 @@ session report, `NN-<slice>.md#...`).
 
 | ID | Title (abridged) | Owner | S02 triage | Disposition | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| MON-H01 | Automatic backups of different owners and instances share one filename and retention namespace | S06 | STILL_OPEN (residual) (S02) | open | |
-| MON-H02 | Restore remaps local/S3 attachment metadata without copying or verifying the bytes | S06 | FIXED_VERIFIED (S02) | open | |
+| MON-H01 | Automatic backups of different owners and instances share one filename and retention namespace | S06 | STILL_OPEN (residual) (S02) | STILL_OPEN | `06-backup-restore.md#5-prior-finding-dispositions` |
+| MON-H02 | Restore remaps local/S3 attachment metadata without copying or verifying the bytes | S06 | FIXED_VERIFIED (S02) | FIXED_VERIFIED | `06-backup-restore.md#5-prior-finding-dispositions` |
 | MON-H03 | Concurrent MNY import starts create separate active jobs for one user | S09 | FIXED_VERIFIED (S02) | open | |
 | MON-H04 | Import worker crash after the data commit lets retry replay the committed source | S09 | STILL_OPEN (residual) (S02) | open | |
-| MON-H05 | Transaction, transfer, reconciliation and bulk mutations derive balance deltas from stale snapshots | S07 | STILL_OPEN (S02) | open | |
+| MON-H05 | Transaction, transfer, reconciliation and bulk mutations derive balance deltas from stale snapshots | S07 | STILL_OPEN (S02) | STILL_OPEN (A26-S07-01) | `07-cash-ledger.md#5-prior-finding-dispositions` |
 | MON-H06 | Scheduled posting has no durable occurrence identity and commits money before advancing the schedule | S08 | STILL_OPEN (residual) (S02) | open | |
-| MON-H07 | Absolute balance recomputation can overwrite a concurrent committed atomic delta | S07 | FIXED_VERIFIED (S02) | open | |
+| MON-H07 | Absolute balance recomputation can overwrite a concurrent committed atomic delta | S07 | FIXED_VERIFIED (S02) | FIXED_VERIFIED | `07-cash-ledger.md#5-prior-finding-dispositions` |
 | MON-H08 | Holding updates and full rebuilds can lose concurrent investment transactions | S12 | FIXED_VERIFIED (S02) | open | |
 | MON-H09 | One emergency-access claim token can be consumed by two concurrent requests | S03 | FIXED_VERIFIED (S02) | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
-| MON-H10 | Transfer VOID transitions can leave the two legs and both balances inconsistent | S07 | STILL_OPEN (residual) (S02) | open | |
-| MON-H11 | Transfer currencies, FX rate and destination value are not server-authoritative | S07 (client half S19) | STILL_OPEN (residual) (S02) | open | |
+| MON-H10 | Transfer VOID transitions can leave the two legs and both balances inconsistent | S07 | STILL_OPEN (residual) (S02) | STILL_OPEN (residual, A26-S07-03) | `07-cash-ledger.md#5-prior-finding-dispositions` |
+| MON-H11 | Transfer currencies, FX rate and destination value are not server-authoritative | S07 (client half S19) | STILL_OPEN (residual) (S02) | STILL_OPEN (server half residual; QIF half S10, client half S19) | `07-cash-ledger.md#5-prior-finding-dispositions` |
 | MON-H12 | Unavailable FX is converted as a valid-looking 1:1 value | S13 | STILL_OPEN (S02) | open | |
 | MON-H13 | Historical net-worth replay adds a stock-split ratio instead of multiplying shares | S13 | FIXED_VERIFIED (S02) | open | |
 | MON-H14 | Investment preview and commit can use different exchange rates without disclosure | S12 | FIXED_VERIFIED (S02) | open | |
@@ -52,27 +52,27 @@ session report, `NN-<slice>.md#...`).
 | MON-M05 | OIDC destructive-action confirmation accepts an arbitrary non-empty value | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M06 | Delegation create, link and revoke conflict with enforced RLS ownership | S04 | FIXED_VERIFIED | `04-rls-tenancy.md#5-prior-finding-dispositions` |
 | MON-M07 | Delegated activity is attributed to the effective owner, not the real actor | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
-| MON-M08 | Restore ordering can fail linked asset/loan account relationships | S06 | open | |
-| MON-M09 | Automatic-backup artifacts are published through non-crash-atomic final-file operations | S06 | open | |
-| MON-M10 | Authenticated users can browse and select arbitrary server filesystem backup paths | S06 | open | |
-| MON-M11 | Default Helm deployment exposes automatic backup without a writable persistent mount | S06 (Helm half S21) | open | |
-| MON-M12 | Backup export reads tables through separate transactions, not one snapshot | S06 | open | |
-| MON-M13 | Backup export buffers the whole database and archive in memory | S06 | open | |
+| MON-M08 | Restore ordering can fail linked asset/loan account relationships | S06 | FIXED_VERIFIED | `06-backup-restore.md#5-prior-finding-dispositions` |
+| MON-M09 | Automatic-backup artifacts are published through non-crash-atomic final-file operations | S06 | FIXED_VERIFIED | `06-backup-restore.md#5-prior-finding-dispositions` |
+| MON-M10 | Authenticated users can browse and select arbitrary server filesystem backup paths | S06 | FIXED_VERIFIED | `06-backup-restore.md#5-prior-finding-dispositions` |
+| MON-M11 | Default Helm deployment exposes automatic backup without a writable persistent mount | S06 (Helm half S21) | FIXED_VERIFIED (backup half; Helm half open, S21) | `06-backup-restore.md#5-prior-finding-dispositions` |
+| MON-M12 | Backup export reads tables through separate transactions, not one snapshot | S06 | FIXED_VERIFIED | `06-backup-restore.md#5-prior-finding-dispositions` |
+| MON-M13 | Backup export buffers the whole database and archive in memory | S06 | FIXED_VERIFIED | `06-backup-restore.md#5-prior-finding-dispositions` |
 | MON-M14 | RLS enforce mode can accept an unsafe runtime database role | S04 | FIXED_VERIFIED | `04-rls-tenancy.md#5-prior-finding-dispositions` |
 | MON-M15 | The runtime application role can write migration history | S05 | FIXED_VERIFIED | `05-migrations-schema.md#5-prior-finding-dispositions` |
-| MON-M16 | Restore decompression has no effective size or ratio bound | S06 | open | |
-| MON-M17 | Backups containing custom currencies are not portable across instances | S06 | open | |
-| MON-M18 | Support backups retain identifying custom-currency names while UI copy says masked | S06 | open | |
+| MON-M16 | Restore decompression has no effective size or ratio bound | S06 | FIXED_VERIFIED | `06-backup-restore.md#5-prior-finding-dispositions` |
+| MON-M17 | Backups containing custom currencies are not portable across instances | S06 | FIXED_VERIFIED (design residual) | `06-backup-restore.md#5-prior-finding-dispositions` |
+| MON-M18 | Support backups retain identifying custom-currency names while UI copy says masked | S06 | FIXED_VERIFIED | `06-backup-restore.md#5-prior-finding-dispositions` |
 | MON-M19 | Global custom-currency cleanup decides deletion from tenant-filtered evidence | S13 | open | |
-| MON-M20 | Account closure can race a mutation and commit a closed non-zero account | S07 | open | |
-| MON-M21 | Concurrent incremental split additions can exceed the parent amount | S07 | open | |
-| MON-M22 | Local and S3 attachment bytes are not transactionally coupled to metadata | S06 | open | |
+| MON-M20 | Account closure can race a mutation and commit a closed non-zero account | S07 | STILL_OPEN (residual, A26-S07-06) | `07-cash-ledger.md#5-prior-finding-dispositions` |
+| MON-M21 | Concurrent incremental split additions can exceed the parent amount | S07 | FIXED_VERIFIED (test gap, A26-S07-09) | `07-cash-ledger.md#5-prior-finding-dispositions` |
+| MON-M22 | Local and S3 attachment bytes are not transactionally coupled to metadata | S06 | STILL_OPEN | `06-backup-restore.md#5-prior-finding-dispositions` |
 | MON-M23 | Logout can miss a refresh token created by a concurrent rotation in the same family | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M24 | Parallel failed logins lose counter increments and delay lockout | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M25 | AI insight generation uses a process-local guard and duplicates work across replicas | S08 (claim), S17 (provider) | open | |
 | MON-M26 | Emergency-access grant issuance can send links another replica immediately invalidates | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
-| MON-M27 | Ordinary transaction currency can disagree with the owning account currency | S07 (cross-check S10) | open | |
-| MON-M28 | Mixed-sign split children are accepted when their signed total equals the parent | S07 (client half S19) | open | |
+| MON-M27 | Ordinary transaction currency can disagree with the owning account currency | S07 (cross-check S10) | FIXED_VERIFIED | `07-cash-ledger.md#5-prior-finding-dispositions` |
+| MON-M28 | Mixed-sign split children are accepted when their signed total equals the parent | S07 (client half S19) | REJECTED (server half: mixed-sign splits are a documented shape; client half S19) | `07-cash-ledger.md#5-prior-finding-dispositions` |
 | MON-M29 | Explicit zero or negative investment FX rates produce inconsistent cash postings | S12 | open | |
 | MON-M30 | BUY commission is omitted from cost basis although cash and UI wording include fees | S12 | open | |
 | MON-M31 | Transfer split amounts are omitted from budget spending | S16 | open | |
@@ -87,11 +87,11 @@ session report, `NN-<slice>.md#...`).
 | MON-M40 | The scheduled-override test expects an existing price to be overwritten (verification defect) | S19 | open | S02 triage: FIXED_VERIFIED, see `02-prior-high-triage.md#5-prior-finding-dispositions` |
 | MON-M41 | The historical stock-split fixture encodes additive shares (verification defect) | S13 | open | S02 triage: FIXED_VERIFIED, see `02-prior-high-triage.md#5-prior-finding-dispositions` |
 | MON-M42 | The AppHeader test expects logout failure to look successful (verification defect) | S18 | open | S02 triage: FIXED_VERIFIED, see `02-prior-high-triage.md#5-prior-finding-dispositions` |
-| MON-M43 | Automatic-backup tests expect generic cross-owner keys (verification defect) | S06 | open | S02 triage: STILL_OPEN (narrowed), see `02-prior-high-triage.md#5-prior-finding-dispositions` |
+| MON-M43 | Automatic-backup tests expect generic cross-owner keys (verification defect) | S06 | STILL_OPEN | `06-backup-restore.md#5-prior-finding-dispositions` (A26-S06-01; S02 triage STILL_OPEN narrowed) |
 | MON-M44 | The backend integration CI command can succeed after discovering zero tests | S21 | open | S02 triage: FIXED_VERIFIED, see `02-prior-high-triage.md#5-prior-finding-dispositions` |
 | MON-M45 | The release workflow pushes a `[skip ci]` bump after testing a different SHA | S21 | open | S02 triage: STILL_OPEN, see `02-prior-high-triage.md#5-prior-finding-dispositions` |
 | MON-M46 | Canonical concurrency defects lack deterministic tests at the production boundary (missing test) | S21 | open | |
-| MON-M47 | No local/S3 attachment backup-restore round trip verifies bytes and remapping (missing test) | S06 | open | |
+| MON-M47 | No local/S3 attachment backup-restore round trip verifies bytes and remapping (missing test) | S06 | STILL_OPEN | `06-backup-restore.md#5-prior-finding-dispositions` |
 
 ## LOW
 
@@ -101,7 +101,7 @@ session report, `NN-<slice>.md#...`).
 | MON-L02 | Database initialization and migration runners are not serialized across replicas | S05 | FIXED_VERIFIED | `05-migrations-schema.md#5-prior-finding-dispositions` |
 | MON-L03 | Budget-alert deduplication is a check-then-insert race | S16 | open | |
 | MON-L04 | Staged-file expiry can delete bytes a pending or running import still needs | S09 | open | |
-| MON-L05 | Concurrent attachment uploads can exceed the per-transaction cap | S06 | open | |
+| MON-L05 | Concurrent attachment uploads can exceed the per-transaction cap | S06 | FIXED_VERIFIED | `06-backup-restore.md#5-prior-finding-dispositions` |
 | MON-L06 | Bill and mortgage reminder crons send duplicate email from every replica | S08 | open | |
 | MON-L07 | Test and CI documentation overstates enforcement | S21 | open | |
 

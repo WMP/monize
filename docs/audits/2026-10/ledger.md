@@ -28,10 +28,10 @@ before auditing.
 | S03 | done | 2026-10-21 | 2026-10-21 | 4adfd72 | 0/1/3/3 | `03-security-auth.md` (child session_019xGDCFeEXnmBq2PfLKgW9t); verdict REQUEST CHANGES |
 | S04 | done | 2026-10-21 | 2026-10-21 | b7c894b | 0/0/4/0 | `04-rls-tenancy.md` (child session_01XG1M2wjANyUMMeHkkGGyN1); verdict REQUEST CHANGES |
 | S05 | done | 2026-10-21 | 2026-10-21 | 3268ccec | 0/0/1/2 | `05-migrations-schema.md` (child session_01XM8Gxs6p79kg8d2mviohsA); verdict APPROVE |
-| S06 | in-progress | 2026-10-21 | | | | `06-backup-restore.md` (child session_01H4ePk3D2tytbTfCDnY7hrp, claude-opus-5-5) |
-| S07 | in-progress | 2026-10-21 | | | | `07-cash-ledger.md` (child session_01XfUxS4dgiSNkonPgLiFnwC, claude-opus-5-5) |
-| S08 | open | | | | | `08-scheduler-cron.md` |
-| S09 | open | | | | | `09-import-mny.md` |
+| S06 | done | 2026-10-21 | 2026-10-21 | fdf434c | 0/0/2/4 | `06-backup-restore.md` (child session_01H4ePk3D2tytbTfCDnY7hrp); verdict APPROVE |
+| S07 | done | 2026-10-21 | 2026-10-21 | 03fdd62 | 0/2/5/2 | `07-cash-ledger.md` (child session_01XfUxS4dgiSNkonPgLiFnwC); verdict REQUEST CHANGES |
+| S08 | in-progress | 2026-10-21 | | | | `08-scheduler-cron.md` (child: see next ledger update) |
+| S09 | in-progress | 2026-10-21 | | | | `09-import-mny.md` (child: see next ledger update) |
 | S10 | open | | | | | `10-rules-banksync-csv.md` |
 | S11 | open | | | | | `11-email-receipts.md` |
 | S12 | open | | | | | `12-securities-holdings.md` |
@@ -72,11 +72,11 @@ Filled by S01. Later sessions read it instead of re-discovering it.
 | Severity | Confirmed `A26-*` findings so far |
 | --- | --- |
 | BLOCKER | 0 |
-| HIGH | 3 (S02: 2, S03: 1) |
-| MEDIUM | 16 (S02: 8, S03: 3, S04: 4, S05: 1) |
-| LOW | 7 (S02: 2, S03: 3, S05: 2) |
+| HIGH | 5 (S02: 2, S03: 1, S07: 2; A26-S07-01 supersedes A26-S02-01) |
+| MEDIUM | 23 (S02: 8, S03: 3, S04: 4, S05: 1, S06: 2, S07: 5; S07-03 and -05 supersede S02-07 and -08) |
+| LOW | 13 (S02: 2, S03: 3, S05: 2, S06: 4, S07: 2) |
 
-Prior findings disposed (final, by the owning session): 12 of 70 (S03: MON-H09, M03, M05, M07, M23, M24, M26, L01; S04: MON-M06, M14; S05: MON-M15, L02; all `FIXED_VERIFIED`). S02 triaged 23 rows (12 FIXED_VERIFIED, 11 STILL_OPEN in whole or part); final call stays with the owning sessions, see the register.
+Prior findings disposed (final, by the owning session): 35 of 70. FIXED_VERIFIED: S03 (H09, M03, M05, M07, M23, M24, M26, L01), S04 (M06, M14), S05 (M15, L02), S06 (H02, M08, M09, M10, M11 backup half, M12, M13, M16, M17, M18, L05), S07 (H07, M21, M27). STILL_OPEN: S06 (H01, M22, M43, M47), S07 (H05, H10 residual, H11 server half residual, M20 residual). REJECTED: S07 (M28 server half; the client half stays with S19). S02 triaged 23 rows (12 FIXED_VERIFIED, 11 STILL_OPEN in whole or part); final call stays with the owning sessions, see the register.
 
 ## Open hypotheses handed between sessions
 
@@ -97,6 +97,9 @@ the line when it disposes of the hypothesis in its report.
 - from S04 to S03/S21: the auth/users/admin/emergency read-then-save sites from the 26-site sweep (S03 is done; S21 carries them into the program mutation table).
 - from S04 to S18: INV-SHARE-001..005 are the PWA share target, not joint accounts; `sessions.md` S04 and S20 mislabel them (corrected in sessions.md by the orchestrator).
 - from S04 to S21: A26-S04-04 (no real-role tests for delegation, joint or cross-owner paths) joins MON-M46.
+- from S06 to S21: INV-BACKUP-006's S3 integration suite never runs in CI (A26-S06-02, no MinIO); the unpadded-date test defect; see `06-backup-restore.md` section 12.
+- from S06 to S08, S19: see `06-backup-restore.md` section 12 (the S04 item there is forwarded to S21, since S04 is done).
+- from S07 to S08, S10, S16, S17, S19, S21: see `07-cash-ledger.md` section 12; A26-S07-02 (undo of an account edit restores `current_balance` absolutely) touches every consumer of the undo log.
 - from S03 to S17: confirm the MCP/PAT bearer verifiers reject `step_up` / `oidc_reauth` JWT types (A26-S03-03).
 - from S03 to S18: frontend handling of the 401 "Refresh token reuse detected".
 - from S03 to S21: A26-S03-04's three missing two-connection tests join MON-M46.
@@ -114,12 +117,15 @@ should fail | session`.
 - `INV-AUTH-001/004 | token.service.ts:149 drop lockTokenFamily in refreshTokens | same | S03`
 - `INV-AUTH-001 | token.service.ts:164-177 reuse revocation rolled back (baseline defect) | a real-database reuse test | S03`
 - `INV-CLAIM-001 | emergency-access-claim.controller.ts:222+226 drop both guards | a two-connection claim test | S03`
+- S06: M4 (Phase-3 `user_id` predicate untested) of `06-backup-restore.md` section 6.
+- S07: M1 (`addSplit` parent lock removed, undetected by all suites, A26-S07-09) and two unit-only rows of `07-cash-ledger.md` section 6.
 - S04: MA (`134:47` delegate predicate dropped, 175/175 green) and MD (scoped-db `real_user` collapsed, integration green) of `04-rls-tenancy.md` section 6, plus its three baseline defects.
 - S05: M3, M4, M5 of `05-migrations-schema.md` section 6 (entity-harness parity gaps; runner lock caught only by mock-order unit specs).
 - S02's table: see `02-prior-high-triage.md` section 6 (M3 undetected at integration level, A26-S02-12).
 
 ## Known deviations from the plan
 
+- S06: one final commit instead of incremental commits; the branch HEAD was detached after a rebase and reattached by fast-forward.
 - S03: the Docker daemon was not running in the child container; `dockerd` was started by hand (S04 and S05 prompts carry the workaround).
 - Wave 1 (2026-10-21): S01, S02 and S03 run concurrently as three remote child sessions on
   `claude-opus-5-5`, orchestrated by session_018Nx7aian3f7dpRX5msjFBg. The S02 and S03 dependency
