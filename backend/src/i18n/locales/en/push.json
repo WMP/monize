@@ -47,6 +47,10 @@
     "ai_review": {
       "title": "AI review proposals",
       "body": "Some AI review proposals wait for your decision. Open Monize for the details."
+    },
+    "warranties": {
+      "title": "Warranty reminder",
+      "body": "One of your warranties expires soon. Open Monize for the details."
     }
   },
   "actions": {

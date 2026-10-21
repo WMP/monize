@@ -386,7 +386,8 @@
         "BANK_SYNC_ACTIVITY": "[XX-Bank sync results-XX]",
         "EMAIL_RECEIPTS": "[XX-Email receipts-XX]",
         "BONDS": "[XX-Bonds-XX]",
-        "AI_REVIEW": "[XX-AI review proposals-XX]"
+        "AI_REVIEW": "[XX-AI review proposals-XX]",
+        "WARRANTIES": "[XX-Warranty reminders-XX]"
       },
       "channelNotApplicable": "[XX-Not applicable for this notification type-XX]",
       "emailToggleLabel": "[XX-Report email for {category}-XX]",
