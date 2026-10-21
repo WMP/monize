@@ -43,7 +43,7 @@ before auditing.
 | S18 | done | 2026-10-21 | 2026-10-21 | 76bb9c5 | 0/0/6/5 | `18-frontend-core.md` (child session_018vbbzt6wxobMRRSa69Nm2B); verdict APPROVE |
 | S19 | in-progress | 2026-10-21 | | | | `19-frontend-forms.md` (child session_01LuCrA2Ko2LmWJpCCVZtqu1, claude-opus-5-5) |
 | S20 | in-progress | 2026-10-21 | | | | `20-frontend-figures.md` (child session_01VSrfzDF4F63zWMJY2giCfB, claude-opus-5-5) |
-| S21 | in-progress | 2026-10-21 | | | | `21-tests-ci-release.md` (child: see next ledger update) |
+| S21 | in-progress | 2026-10-21 | | | | `21-tests-ci-release.md` (child session_01Xmf7H997Adk6ipvAx74awQ, claude-opus-5-5) |
 | S22 | open | | | | | `22-delta-review.md` |
 | S23 | open | | | | | `23-final-report.md`, `remediation-tasks.md` |
 
