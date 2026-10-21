@@ -1,0 +1,28 @@
+# The Zalando postgres-operator render the `Helm Chart Lint & Render` job checks.
+#
+# Not a recommended configuration to copy: it is the combination that exercises
+# every template and branch postgresql.provider=zalando turns on -- the postgresql
+# resource, the host and credentials derived from it, the owner's CREATEROLE flag
+# and DATABASE_APP_PASSWORD for the row-level-security runtime user, the
+# unverified-TLS path (no CA Secret), and the zalando.spec merge. A real
+# deployment picks among these; this file is here so none of them can silently
+# stop rendering. The operator itself is not installed by the chart, so the
+# render is checked here and not applied.
+namespace:
+  # The default, restricted, is refused with this provider: Spilo's pods do not
+  # meet it under the operator's default configuration. See postgresql below.
+  podSecurityEnforce: baseline
+
+postgresql:
+  provider: zalando
+  # Must begin with "<zalando.teamId>-"; the operator rejects a name that does not.
+  clusterName: monize-db
+  appRole:
+    passwordSecret: monize-app-role
+  zalando:
+    # Merged over the spec the chart renders. A map keeps the chart's own keys
+    # beside it: postgresql.version must still be rendered next to parameters.
+    spec:
+      postgresql:
+        parameters:
+          max_connections: "200"

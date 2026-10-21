@@ -70,3 +70,4 @@ below are all retrospective.
 | [0003](0003-filesystem-objects-use-id-sharding.md) | Filesystem objects use the shared ID-sharding scheme | accepted |
 | [0004](0004-mcp-two-eras-request-identity-and-mrtr-confirmation.md) | The MCP server serves two protocol revisions, with identity per request and confirmations that travel | accepted |
 | [0005](0005-cluster-mode-on-postgresql-alone.md) | Horizontal scaling runs on PostgreSQL alone, behind an explicit `CLUSTER_MODE` | accepted |
+| [0006](0006-postgresql-operator-is-opt-in.md) | The chart can request PostgreSQL from an operator, opt-in and never by default | accepted |
