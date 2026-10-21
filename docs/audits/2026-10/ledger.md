@@ -42,7 +42,7 @@ before auditing.
 | S17 | done | 2026-10-21 | 2026-10-21 | 7387a3f | 0/0/3/4 | `17-ai-mcp-notifications.md` (child session_01111K7XW3AyLWdho7J2V8cV); verdict REQUEST CHANGES |
 | S18 | in-progress | 2026-10-21 | | | | `18-frontend-core.md` (child session_018vbbzt6wxobMRRSa69Nm2B, claude-opus-5-5) |
 | S19 | in-progress | 2026-10-21 | | | | `19-frontend-forms.md` (child session_01LuCrA2Ko2LmWJpCCVZtqu1, claude-opus-5-5) |
-| S20 | in-progress | 2026-10-21 | | | | `20-frontend-figures.md` (child: see next ledger update) |
+| S20 | in-progress | 2026-10-21 | | | | `20-frontend-figures.md` (child session_01VSrfzDF4F63zWMJY2giCfB, claude-opus-5-5) |
 | S21 | open | | | | | `21-tests-ci-release.md` |
 | S22 | open | | | | | `22-delta-review.md` |
 | S23 | open | | | | | `23-final-report.md`, `remediation-tasks.md` |
