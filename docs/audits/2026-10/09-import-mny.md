@@ -5,14 +5,14 @@
 | Field | Value |
 | --- | --- |
 | Session | S09 (child session_01KxbrJgNzbFhpqTXYbkj5SV, orchestrator session_018Nx7aian3f7dpRX5msjFBg) |
-| Status | in-progress, remaining: mapper sampling of splits, loans and bills; e2e spec read; final adversarial challenge |
+| Status | done |
 | `AUDIT_BASELINE_SHA` | `72c59ec4bc6e9f2cb3a5d25977c94dd2c09e5a86` |
 | `git rev-parse HEAD` | at start `62ce999ee53b438d917eb3b3c226cfb7c748a55c`; at the final commit, the commit carrying this file. Pin check (`git diff --stat <baseline> HEAD -- . ':!docs/audits/2026-10' ':!docs/audits/2026-08-upstream'`) empty. |
 | Date | 2026-10-21 |
 | Primary path | `backend/src/import/mny/` (XL, sampled by the job state machine, section 12) |
 | Secondary paths | `backend/src/import/import-post-processing.service.ts`, `import-entity-creator.service.ts`, `import.service.ts` (INV-IMPORT-003 only), `database/schema.sql:2687-2721`, migrations 117, 135, 140, 144, 145, `frontend/src/hooks/useMnyImport.ts`, `frontend/src/lib/import-mny.ts`, `frontend/src/components/import/MnyImportProgress.tsx`, `frontend/src/i18n/messages/en/import.json` |
 | Hint line | `prioritize the job state machine (every state, transition, retry, crash, heartbeat, reap, stale request), the one-active-job index and its three-place declaration, retry after the data commit, wipe-before-claim ordering, staged-file expiry versus a running job, a retired job whose worker still commits, category collisions, and the monetary mapping of transfers, splits, investments and currencies from the MNY model` |
-| Runtime executed | Node 24.22.1 (`nvm use 24`), `npm ci` OK in `backend/`. PostgreSQL 16 in Docker (`mirror.gcr.io/library/postgres:16-alpine`; `dockerd` started by hand). Baseline integration `npm run test:integration -- "mny\|import"`: **8 suites, 137 tests, all passed** (`bond-import`, `import-balance-delta`, `imported-settlement-flow`, `mny-import-job`, `mny-import`, `mny-staging`, `ofx-import-fitid`, `transaction-rules-import`). Scratch worktree at the baseline (`<scratchpad>/mut`): a post-commit failpoint spec over three fixtures and a re-upload variant (section 4), a mapper probe (A26-S09-03), seven mutations at integration and unit level (section 6), and a two-connection SQL race (A26-S09-04). Every integration run was serial (`--runInBand`), never in parallel with another. |
+| Runtime executed | Node 24.22.1 (`nvm use 24`), `npm ci` OK in `backend/`. PostgreSQL 16 in Docker (`mirror.gcr.io/library/postgres:16-alpine`; `dockerd` started by hand). Baseline integration `npm run test:integration -- "mny\|import"`: **8 suites, 137 tests, all passed** (`bond-import`, `import-balance-delta`, `imported-settlement-flow`, `mny-import-job`, `mny-import`, `mny-staging`, `ofx-import-fitid`, `transaction-rules-import`). Scratch worktree at the baseline (`<scratchpad>/mut`): a post-commit failpoint spec over three fixtures and a re-upload variant (section 4), a mapper probe (A26-S09-03), a currency-override probe (A26-S09-06), seven mutations at integration and unit level (section 6), and a two-connection SQL race (A26-S09-04). Every integration run was serial (`--runInBand`), never in parallel with another. |
 
 ## 2. Invariant map
 
@@ -25,6 +25,7 @@
 | (wipe after the slot) | A destructive wipe runs only after this request holds the import slot | `start` orders `create` (job row) before `usersService.deleteData(..., "import-wipe", "mny-import")` (`mny-import.service.ts:163-207`); `discard` on a refused wipe | Yes (integration "wipes at most once"). Design risk if the wipe outlives `JOB_STALE_AFTER_MS` (section 9). |
 | (reaper vs a live worker) | A reaped worker cannot commit, complete, heartbeat or fail over the reaper's decision | `attempt_token = NULL` in the reap; every worker write names the token (`:480-631`); `status='running'` predicates | Yes. Job rows never return to `pending`, so `status` alone already fences; the token is defence in depth (section 8). |
 | (monetary mapping: transfers into an investment sleeve) | A bank-to-brokerage transfer moves the same money on both sides, each in its own currency | `buildCashCounterparts` mirrors the bank row (`map/map-transactions.ts:445-461`); expected balances computed from the same mapped rows (`mny-parser.service.ts:194-250`) | **No** across currencies (A26-S09-03, mapper probe executed); same-currency correct. |
+| (global reference data) | A per-user request does not write a currency offered to other users | none: `ensureSystemCurrency` inserts active system currencies from the import (`mny-import.service.ts:281-283`) with a code the user controls | **No** (A26-S09-06, executed) |
 | INV-CACHE-001 | Derived state is invalidated after a balance-moving commit | `ImportPostProcessingService.run` after `writeAll` (`mny-import.service.ts:294-299`) | Yes on the success path; never re-run after a post-commit failure (part of A26-S09-01). |
 
 Material flows:
@@ -239,6 +240,62 @@ Needs verification on a real multi-currency Money file that the far row's `amt` 
 
 Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the synthesized counterpart, issues #1175/#1211/#1212 era).
 
+### A26-S09-06 - Any user's MNY import creates a global, active currency with an arbitrary code, offered to every user
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed)
+3. **Location:** `backend/src/import/mny/dto/mny-import.dto.ts` `MnyAccountOptionDto.currencyOverride` (`@IsString() @Length(3, 3)` only); `map/map-reference.ts:154-161` (`override.toUpperCase()`, unchecked); file codes `map/map-reference.ts:61-65` (`/^[A-Za-z]{3}$/`, not ISO 4217); `mny-import.service.ts:281-283` (`ensureSystemCurrency` per code); `backend/src/currencies/currencies.service.ts:239-275` (INSERT with `is_active = true`, `created_by_user_id = NULL`), `:176-195` (`findAll` lists every active system currency to every user). Same shape outside this slice: `users/dto/update-preferences.dto.ts:50-53` (`defaultCurrency`, `@MaxLength(3)` only) into `users.service.ts:405`.
+4. **Violated invariant:** server-authoritative metadata; a tenant's request must not write global reference data offered to other tenants (the bond catalog path deliberately creates its currencies inactive for this reason, `currencies.service.ts:243-252`). The repository's validator for a currency code is `IsCurrencyCode` (`common/validators/is-currency-code.validator.ts`, `^[A-Z]{3}$`).
+5. **Reproduction:** authenticated user stages any readable Money file and posts `/import/mny/start` with `options.accounts = [{ handle, include: true, currencyOverride: "q#!" }]`. Executed (scratch spec on `money2008`): job `completed`; `currencies` row `{"code":"Q#!","is_active":true,"created_by_user_id":null}`; both imported accounts denominated `Q#!`.
+6. **Observed:** `Q#!` is a system currency, active, and appears in every user's currency list (`findAll`'s `created_by_user_id IS NULL` arm). A crafted file does the same with any three letters (`ZZZ`), and an ordinary legacy Money file activates real but retired codes (for example `DEM`, `FRF`) for every user.
+7. **Expected:** an override validated as an ISO 4217 code (`IsCurrencyCode` after upper-casing); currencies the import needs created inactive and activated only for the importing user (`user_currency_preferences`), as the bond catalog does for its own.
+8. **Impact:** cross-tenant pollution of a global list (every user's currency pickers); the code becomes a primary key other rows reference, so removing it later is not a simple delete; any job that iterates active currencies may query providers for a non-currency (not bounded here; handed to S13).
+9. **Root cause:** `ensureSystemCurrency` is a global, active insert used from per-user request paths with codes the user controls.
+10. **Recommended correction:** validate the override with `IsCurrencyCode` (and the file's codes with the same regular expression after upper-casing); in the import, ensure the currency inactive and activate it for the importing user only.
+11. **Suggested remediation diff (illustrative, not applied)**
+
+```diff
+--- a/backend/src/import/mny/dto/mny-import.dto.ts
++++ b/backend/src/import/mny/dto/mny-import.dto.ts
+@@ -45,6 +45,8 @@ export class MnyAccountOptionDto {
+   @IsOptional()
+-  @IsString()
+-  @Length(3, 3)
++  @ValidateIf((_o, v) => v !== null && v !== "")
++  @Transform(({ value }) => (typeof value === "string" ? value.toUpperCase() : value))
++  @IsCurrencyCode()
+   currencyOverride?: string | null;
+--- a/backend/src/import/mny/mny-import.service.ts
++++ b/backend/src/import/mny/mny-import.service.ts
+@@ -281,3 +281,6 @@ export class MnyImportService {
+     for (const code of parsed.currencyCodes) {
+-      await this.currencies.ensureSystemCurrency(code);
++      // Reference data other users see: created inactive, offered only to
++      // the user whose accounts need it.
++      await this.currencies.ensureCatalogCurrency(code);
++      await this.currencies.activateForUser(userId, code);
+     }
+```
+
+`activateForUser` does not exist: `Suggested remediation diff: incomplete` for that half. The missing piece is an upsert into `user_currency_preferences (user_id, currency_code, is_active)`; the maintainer decides whether an import may activate a currency for its user at all or should only reference an inactive one.
+
+12. **Recommended regression test:** DTO test refusing `"q#!"`; integration test asserting that an import with a foreign-currency account leaves `currencies.is_active = false` for a code not previously present and that a second user's `findAll` does not list it.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++    it("does not offer a currency an import created to other users", async () => {
++      // stage + start with currencyOverride "ZZZ" for an included account
++      const other = await createUser();
++      const list = await withUserContext(other, () => currencies.findAll(other));
++      expect(list.map((c) => c.code)).not.toContain("ZZZ");
++    });
+```
+
+14. **Verification:** `npm run test:unit -- mny-import.dto`; `npm run test:integration -- mny-import`; the same check for `UpdatePreferencesDto.defaultCurrency`.
+15. **Residual risks:** existing junk or legacy rows already in `currencies` are untouched by the fix.
+
+Causality: `PRE_EXISTING_UNREPORTED`. Rule 7 surfaces: MNY `currencyOverride`, MNY file currency table, preferences `defaultCurrency` (the last outside S09; handed to S13 for confirmation).
+
 ### A26-S09-04 - A staged file can still be deleted under a job that was just created (MON-L04 residual)
 
 1. **Severity:** LOW
@@ -355,6 +412,7 @@ All mutations in the scratch worktree at the baseline; integration runs use `mny
 | M5 | MON-L04 | `:212` superseded-drop exclusion `AND false` | "keeps a file a pending job still needs", "marks what it reaped retryable, with the stalled key and its bytes" | covered |
 | M6 | INV-IMPORT-002 | failpoint (not a mutation): `postProcessing.run` rejects once after commit | the new A26-S09-01 assertions (scratch) fail at the baseline | baseline defect |
 | M7 | A26-S09-03 | probe (not a mutation): cross-currency sleeve | no existing test covers two currencies on this path | missing case |
+| M8 | A26-S09-06 | probe (not a mutation): `currencyOverride: "q#!"` | no test refuses it; the import completes and creates `Q#!` active | missing case |
 
 ## 7. Counterexamples and the interaction scenario
 
@@ -380,6 +438,9 @@ Interaction scenario: **wipe + post-commit failure.** A user selects "start fres
 | `deleteData` (wipe) deletes the pending job or its staged file | `import_jobs`/`import_staged_files` are referenced only by maintenance, backup and the MNY module | not reachable | REJECTED |
 | `exchangeRate: 1` on every MNY row misstates a cross-currency transfer | rows carry their own account's currency and no `originalCurrencyCode`; the rate is relative to the original currency (`financial-semantics.md` section 3) | rate 1 means "same currency" here, consistently | REJECTED |
 | Old-binary worker during a 1.18 -> 1.19 rolling deploy bypasses the fence | both releases carry the token fence; the pre-140 binaries no longer exist on a supported upgrade path | historical only | REJECTED |
+| A pre-140 failed job that had committed (P4-002 era) is offered Retry after the upgrade | migration 140 adds `data_committed DEFAULT false`, so such a row stays `retryable`; its staged bytes expire 24 h after upload and the wizard only polls the job it started | window closed within a day of the upgrade; not reachable from the UI later | REJECTED |
+| `accounts` and `bills` arrays in `MnyImportOptionsDto` lack `@ArrayMaxSize` (`backend/CLAUDE.md` rule) | elements are bounded `@IsInt`/`@IsBoolean`; the JSON body limit bounds the array; the mapper looks entries up by handle | convention deviation, no demonstrated impact | DESIGN_RISK (noted for S21's guard work) |
+| Security currency differs from the account's: trades in account currency at rate 1, prices in the security's currency | writer denominates the row in `transaction.currencyCode` with `exchangeRate: 1` (`write-investments.ts:274-292`); INV-FX-002 reads the rate as amount -> settlement currency, so 1 is right; valuation of such holdings is S12/S13's | not an import defect on the evidence read | handed to S12/S13 |
 | Verification compares against Money's own balances | it compares the database against `computeExpectedBalances`, which sums the mapped rows | mapping defects are invisible to it | DESIGN_RISK (section 9) |
 
 ## 9. Design risks
@@ -398,6 +459,8 @@ Interaction scenario: **wipe + post-commit failure.** A user selects "start fres
 - No cross-currency case for the synthesized sleeve counterpart (A26-S09-03).
 - `mny-import.integration.spec.ts` "imports the file's rows once, not twice" runs on `money2008`, which writes 0 rows to `transactions` (3 investment rows): its `transactions` count assertion is `0 === 0` and cannot see a duplicate; the balance loop checks two zero-balance accounts. The race is in fact held by the job-count test beside it; this one is weaker than its name.
 - No test for a category or payee collision on the MNY writers (A26-S09-05).
+- No DTO test refusing a non-ISO `currencyOverride`, and no test that an import leaves other users' currency lists unchanged (A26-S09-06).
+- `e2e/tests/import-mny.spec.ts` covers the happy path, the password prompt and a non-Money file; nothing drives the failed-job screen or its copy.
 
 ## 11. Documentation inconsistencies
 
@@ -411,19 +474,41 @@ Interaction scenario: **wipe + post-commit failure.** A user selects "start fres
 
 - Directories inspected: `backend/src/import/mny/` (root files, `entities/`, `writers/`, `map/` sampled), `backend/src/import/` (post-processing, entity creator, QIF category path), `backend/test/integration/mny-*`, `frontend/src/hooks/useMnyImport.ts`, `frontend/src/lib/import-mny.ts`, `frontend/src/components/import/MnyImportProgress.tsx`, `frontend/src/app/import/page.tsx`, `database/schema.sql`, `database/migrations/135, 140, 144, 145`.
 - Files in full: `mny-import-job.service.ts`, `mny-import.service.ts`, `mny-staging.service.ts`, `mny-import.controller.ts`, both entities.
-- Files sampled: `map/map-transactions.ts:360-470, 630-725`; `map/map-transfers.ts` (all 84 lines); `map/map-investments.ts:195-320`; `writers/write-reference.ts:159-246`; `writers/write-transactions.ts` (currency columns); `mny-parser.service.ts:194-250`; `import-post-processing.service.ts:44-200`; `import-entity-creator.service.ts:165-210`; `import.service.ts:650-680`; `map-transactions.spec.ts:457-566`; `mny-import.integration.spec.ts:1347-1630`; `mny-import-job.integration.spec.ts` (test list, `:85`, `:517-765`).
+- Files sampled: `map/map-transactions.ts:360-470, 630-725`; `map/map-transfers.ts` (all 84 lines); `map/map-investments.ts:195-320`; `writers/write-reference.ts:159-246`; `writers/write-transactions.ts` (currency columns); `writers/write-investments.ts:180-292`; `map/map-loans.ts` (amount usage); `map/map-reference.ts:150-215`; `dto/mny-import.dto.ts`; `currencies/currencies.service.ts:176-275`; `migrations/140_concurrency_integrity_guards.sql` (`data_committed` backfill); `e2e/tests/import-mny.spec.ts` (test list); `mny-parser.service.ts:194-250`; `import-post-processing.service.ts:44-200`; `import-entity-creator.service.ts:165-210`; `import.service.ts:650-680`; `map-transactions.spec.ts:457-566`; `mny-import.integration.spec.ts:1347-1630`; `mny-import-job.integration.spec.ts` (test list, `:85`, `:517-765`).
 - Searches: writers of `import_jobs`/`import_staged_files`; `discardStagedFile`; error-key consumers; `assertStillHoldsSlot`; `exchange_rate` semantics; category/payee unique constraints.
-- Suites run: integration `mny|import` 8 suites 137/137 green (baseline); scratch failpoint 3 fixtures (3 fail = defect reproduced) and re-upload variant (1 fail = defect reproduced); mutation runs as in section 6; unit `src/import` 1848/1848 under M2.
+- Suites run: integration `mny|import` 8 suites 137/137 green (baseline); scratch failpoint 3 fixtures (3 fail = defect reproduced) and re-upload variant (1 fail = defect reproduced); currency-override probe (1 pass, `Q#!` created); mapper probe `map-transactions.spec.ts` (1 pass, output recorded); mutation runs as in section 6; unit `src/import` 1848/1848 under M2.
 - Areas reviewed without a finding: one-active-job index and its 409 mapping; claim CAS; token-scoped progress, heartbeat, complete and fail; reaper grouping (`reapStatement` parenthesis); wipe-after-slot ordering; maintenance-lease interlock in `create`; `userId` from the JWT on all routes.
-- Counts for the ledger: findings 0 BLOCKER / 1 HIGH / 2 MEDIUM / 2 LOW (A26-S09-01 supersedes A26-S02-05).
+- Counts for the ledger: findings 0 BLOCKER / 1 HIGH / 3 MEDIUM / 2 LOW (A26-S09-01 supersedes A26-S02-05).
 - Undetected mutation rows for the program table: `INV-IMPORT-002 | mny-import-job.service.ts:618 retryable = $4 | a body-throws-after-commit test | S09`; `INV-IMPORT-002 | :159 reaper retryable = true | integration (unit SQL-text only) | S09`; `MON-L04 | mny-staging.service.ts:174 sweep exclusion removed | integration (unit SQL-text only) | S09`.
-- Open hypotheses handed on: to S10, INV-IMPORT-003 QIF half (`import.service.ts:664-680`) and the top-level category unique gap; to S18/S19, the job DTO lacks `dataCommitted` and the wizard has no committed-failure state; to S21, A26-S09-02 and the weak "imports the file's rows once" test join the program mutation table.
+- Open hypotheses handed on: to S15, whether a doubled import (A26-S09-01) re-settles a scheduled occurrence through structural rule actions (INV-LOAN-008); to S13, A26-S09-06's preferences surface (`UpdatePreferencesDto.defaultCurrency` into `ensureSystemCurrency`) and whether any job iterating active currencies queries providers for junk codes; to S12/S13, valuation of a holding whose security currency differs from its account's after an MNY import; to S10, INV-IMPORT-003 QIF half (`import.service.ts:664-680`) and the top-level category unique gap; to S18/S19, the job DTO lacks `dataCommitted` and the wizard has no committed-failure state; to S21, A26-S09-02 and the weak "imports the file's rows once" test join the program mutation table.
 - Deviations: none from the overrides; the toolchain was brought up in-session (Node 24, `dockerd` by hand).
 
 ## 13. Adversarial approval challenge
 
-Pending (session in progress).
+Started from the slice's own abstractions, not from the findings: "assume the state machine is right; find the state a consumer reads wrongly".
+
+| Abstraction | Producers found | Consumers found | Every state handled? |
+| --- | --- | --- | --- |
+| `import_jobs.data_committed` | `markDataCommitted` (CAS), trigger 145 (refusal), migration 140 (backfill `false`) | `fail()` (`retryable` only), `reapStatement` (`retryable`, `error_key`, `error_detail`), migration 140 preflight | **No**: `fail()`'s `error_key`, `toJobDto`, `create`/`start`, and the staged-byte removal ignore it (A26-S09-01) |
+| `import_jobs.retryable` | `claim` (false), `fail`, reap, `create` (false) | `toJobDto` -> `MnyImportProgress.tsx:60` | yes, but held by no real-database test for the committed case (A26-S09-02) |
+| `import_jobs.error_key` | `fail` (caller's key), reap (branches on `data_committed`) | `MnyImportProgress.tsx:51-53` -> `mnyErrors.*` copy | **No**: `mnyImportFailed` copy is false after a commit (A26-S09-01) |
+| `import_jobs.attempt_token` | `claim`; cleared by reap, `fail`, `complete` | progress, heartbeat, checkpoint, `complete`, `fail` | yes (M3) |
+| `import_jobs.staged_file_id` (FK `SET NULL`) | `create` | `start` (closure copy of the id, not the column), sweep and superseded-drop sub-selects | the closure copy means a nulled FK is noticed only as missing bytes (A26-S09-04) |
+| `import_staged_files` row | `stage` | `findInfo`, `loadBytes`, `remove` (job and controller), sweep, superseded-drop | **No** for the controller's `remove` and for the snapshot race (A26-S09-04) |
+| `currencies` row from the import | `ensureSystemCurrency` | every user's `findAll`, rate jobs | **No** (A26-S09-06) |
+| synthesized sleeve counterpart | `buildCashCounterparts` | `writeTransactions`, `computeExpectedBalances`, verification | **No** across currencies, and verification shares the defect (A26-S09-03) |
+
+Searched and found nothing new: stale clients (the job DTO carries no field a client could misread as permission to retry other than `retryable`, which the server derives); concurrent polls from two tabs (both reap the same stale row; the UPDATE is idempotent); a restore or delete-my-data during an import (refused by the maintenance-lease check under `LockScope.UserImport` while the job is active; allowed after it ends, which is correct); RLS on the system-context sweep and reap (rows filtered only by status and staleness; no user data read).
+
+Not completed: the doubled-import scenario's interaction with structural rule actions that settle a scheduled occurrence (`applyImportRules` -> `settledScheduleIds`); whether the second import's claim on an already-settled occurrence aborts it or is skipped was not traced. Handed to S15 with INV-LOAN-008.
+
+Result: the challenge confirmed A26-S09-01 from the consumer side (three consumers of `data_committed` missing) and produced A26-S09-06; it did not invalidate the fence or the one-active-job mechanism.
 
 ## 14. Verdict
 
-Pending; on the findings so far: REQUEST CHANGES (A26-S09-01, HIGH).
+**REQUEST CHANGES** for `backend/src/import/mny/` at `72c59ec4bc6e9f2cb3a5d25977c94dd2c09e5a86`.
+
+- BLOCKER 0; HIGH 1 (A26-S09-01, executed); MEDIUM 3 (A26-S09-02 mutation-executed, A26-S09-03 probe-executed, A26-S09-06 executed); LOW 2 (A26-S09-04 race executed, A26-S09-05 static).
+- Independently verified: the one-active-job index and its race tests; the attempt fence (M3); the reaper's committed branch (unit-level only); the post-commit failure path end to end on three fixtures; the staged-file race at the database level.
+- Limitations: the mappers were sampled, not read (section 12 ranges); the cross-currency sleeve finding rests on the far-row amount convention the repository's own banking-pair test assumes, with no multi-currency fixture; hosted CI not consulted (read-only audit of a pinned baseline).
+- The adversarial approval challenge was completed (section 13), with one sub-scenario handed to S15.
