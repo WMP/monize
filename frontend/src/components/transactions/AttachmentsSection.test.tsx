@@ -597,6 +597,26 @@ describe('AttachmentsSection', () => {
       ).toBeInTheDocument();
     });
 
+    // On a phone the type picker left the name a sliver of the row: there the
+    // name takes its own line and the picker and Delete wrap beneath it.
+    it("gives a document's name its own line on a phone, beside the picker from sm up", async () => {
+      mockList.mockResolvedValue([warrantyDoc()]);
+      await renderWarranty();
+      const name = screen.getByRole('button', { name: 'Preview manual.pdf' });
+      expect(name).toHaveClass('basis-full', 'sm:basis-auto');
+      expect(name.closest('li')).toHaveClass('flex-wrap', 'sm:flex-nowrap');
+    });
+
+    it('keeps a read-only document on one line, its kind a badge', async () => {
+      mockList.mockResolvedValue([warrantyDoc()]);
+      await act(async () => {
+        render(<AttachmentsSection warrantyId="w-1" readOnly />);
+      });
+      const name = screen.getByRole('button', { name: 'Preview manual.pdf' });
+      expect(name).not.toHaveClass('basis-full');
+      expect(name.closest('li')).not.toHaveClass('flex-wrap');
+    });
+
     it('says there are no documents yet when the list is empty', async () => {
       mockList.mockResolvedValue([]);
       await renderWarranty();
