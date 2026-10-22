@@ -48,7 +48,7 @@
   },
   "overrides": {
     "undici": "^8.10.2",
-    "dompurify": "^3.4.13",
+    "dompurify": "^3.4.17",
     "brace-expansion@<2": "1.1.21",
     "brace-expansion@>=3": "5.0.12",
     "picomatch": "4.0.4",
