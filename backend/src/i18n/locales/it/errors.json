@@ -44,6 +44,7 @@
     "changeCurrencyWithTransactions": "Impossibile cambiare la valuta di un conto che ha transazioni.",
     "alreadyClosed": "Il conto è già chiuso",
     "closeNonZeroBalance": "Impossibile chiudere un conto con saldo non zero. Saldo attuale: {{ currentBalance }}",
+    "closeWithFutureTransactions": "Impossibile chiudere un conto con transazioni con data futura. Ha {{ count }} transazione/i con data successiva a oggi; eliminale o annullale prima.",
     "closeWithHoldings": "Impossibile chiudere un conto di investimento che detiene ancora titoli. Ha {{ holdingCount }} posizione/i con quantità diversa da zero; vendile o trasferiscile prima.",
     "notClosed": "Il conto non è chiuso",
     "modifyBalanceClosed": "Impossibile modificare il saldo di un conto chiuso",
@@ -85,6 +86,7 @@
     "paymentMatchingFailed": "Il prestito è stato salvato, ma non è stato possibile creare la sua regola di abbinamento dei pagamenti. Creala dai dettagli del prestito."
   },
   "actionHistory": {
+    "loanEditNotUndoable": "Questa modifica al prestito non può essere annullata automaticamente. Modifica il prestito per ripristinarla.",
     "nothingToUndo": "Niente da annullare",
     "nothingToRedo": "Niente da ripristinare",
     "undoNotSupportedForEntityType": "Annullamento non supportato per il tipo di entità: {{ entityType }}",
@@ -762,6 +764,7 @@
     "investmentCashLegStatusLocked": "Questa transazione è il lato liquidità di una transazione di investimento. Annullala o ripristinala modificando lo stato della transazione di investimento, in modo che entrambi i lati cambino insieme.",
     "notFoundById": "Transazione con ID {{ id }} non trovata",
     "bulkUpdateNoFields": "Deve essere fornito almeno un campo di aggiornamento",
+    "bulkUpdateConcurrentChange": "Queste transazioni sono cambiate durante l'aggiornamento. Ricarica e riprova.",
     "bulkSplitNoMatchingLinesOne": "1 transazione suddivisa è stata saltata perché nessuna delle sue suddivisioni corrispondeva all'aggiornamento della categoria",
     "bulkSplitNoMatchingLinesMany": "{{ count }} transazioni suddivise sono state saltate perché nessuna delle loro suddivisioni corrispondeva all'aggiornamento della categoria",
     "bulkSplitTransferLegSkippedOne": "1 trasferimento suddiviso è stato ignorato (annullalo o ripristinalo dalla transazione suddivisa a cui appartiene, così entrambi i lati cambiano insieme)",

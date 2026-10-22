@@ -44,6 +44,7 @@
     "changeCurrencyWithTransactions": "无法更改有交易记录的账户货币。",
     "alreadyClosed": "账户已关闭",
     "closeNonZeroBalance": "无法关闭余额非零的账户。当前余额：{{ currentBalance }}",
+    "closeWithFutureTransactions": "无法关闭包含未来日期交易的账户。该账户有 {{ count }} 笔日期晚于今天的交易；请先删除或作废这些交易。",
     "closeWithHoldings": "无法关闭仍持有证券的投资账户。该账户有 {{ holdingCount }} 项数量不为零的持仓；请先卖出或转出。",
     "notClosed": "账户未关闭",
     "modifyBalanceClosed": "无法修改已关闭账户的余额",
@@ -85,6 +86,7 @@
     "paymentMatchingFailed": "贷款已保存，但无法创建其付款匹配规则。请在贷款详情中创建。"
   },
   "actionHistory": {
+    "loanEditNotUndoable": "此贷款更改无法自动撤销。请编辑贷款以改回。",
     "nothingToUndo": "没有可撤销的操作",
     "nothingToRedo": "没有可重做的操作",
     "undoNotSupportedForEntityType": "不支持对实体类型撤销：{{ entityType }}",
@@ -762,6 +764,7 @@
     "investmentCashLegStatusLocked": "此交易是某笔投资交易的现金侧。请通过更改该投资交易的状态来作废或恢复它，使两侧一并变更。",
     "notFoundById": "未找到 ID 为 {{ id }} 的交易",
     "bulkUpdateNoFields": "至少需要提供一个更新字段",
+    "bulkUpdateConcurrentChange": "更新运行期间这些交易已更改。请重新加载后重试。",
     "bulkSplitNoMatchingLinesOne": "已跳过 1 笔拆分交易，因为它没有任何拆分项与分类更新匹配",
     "bulkSplitNoMatchingLinesMany": "已跳过 {{ count }} 笔拆分交易，因为它们没有任何拆分项与分类更新匹配",
     "bulkSplitTransferLegSkippedOne": "已跳过 1 笔拆分转账（请从其所属的拆分交易中作废或恢复，使两侧一起变更）",

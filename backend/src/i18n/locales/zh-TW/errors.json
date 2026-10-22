@@ -44,6 +44,7 @@
     "changeCurrencyWithTransactions": "無法更改有交易記錄的科目貨幣。",
     "alreadyClosed": "科目已關閉",
     "closeNonZeroBalance": "無法關閉結餘不為零的科目。目前結餘：{{ currentBalance }}",
+    "closeWithFutureTransactions": "無法關閉含有未來日期交易的帳戶。此帳戶有 {{ count }} 筆日期晚於今天的交易；請先刪除或作廢這些交易。",
     "closeWithHoldings": "無法關閉仍持有證券的投資帳戶。該帳戶有 {{ holdingCount }} 項數量不為零的持股；請先賣出或轉出。",
     "notClosed": "科目尚未關閉",
     "modifyBalanceClosed": "無法修改已關閉科目的結餘",
@@ -85,6 +86,7 @@
     "paymentMatchingFailed": "貸款已儲存，但無法建立其付款比對規則。請在貸款詳細資料中建立。"
   },
   "actionHistory": {
+    "loanEditNotUndoable": "此貸款變更無法自動復原。請編輯貸款以改回。",
     "nothingToUndo": "沒有可復原的操作",
     "nothingToRedo": "沒有可重做的操作",
     "undoNotSupportedForEntityType": "不支援復原實體類型：{{ entityType }}",
@@ -762,6 +764,7 @@
     "investmentCashLegStatusLocked": "此交易是某筆投資交易的現金側。請透過變更該投資交易的狀態來作廢或還原它，使兩側一併變更。",
     "notFoundById": "找不到 ID 為 {{ id }} 的交易",
     "bulkUpdateNoFields": "至少需要提供一個更新欄位",
+    "bulkUpdateConcurrentChange": "更新執行期間這些交易已變更。請重新載入後再試一次。",
     "bulkSplitNoMatchingLinesOne": "已略過 1 筆分割交易，因為它沒有任何分割與類別更新相符",
     "bulkSplitNoMatchingLinesMany": "已略過 {{ count }} 筆分割交易，因為它們沒有任何分割與類別更新相符",
     "bulkSplitTransferLegSkippedOne": "已略過 1 筆拆分轉帳（請從其所屬的拆分交易中作廢或還原，使兩側一起變更）",
