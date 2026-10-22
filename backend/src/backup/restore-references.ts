@@ -108,6 +108,7 @@ export const RESTORE_REFERENCE_COLUMNS: Readonly<
   warranty_claims: { warranty_id: "warranties" },
   transaction_attachments: {
     transaction_id: "transactions",
+    warranty_id: "warranties",
     original_of_attachment_id: "transaction_attachments",
   },
   attachment_blobs: { attachment_id: "transaction_attachments" },

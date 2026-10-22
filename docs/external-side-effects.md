@@ -61,6 +61,17 @@ the other two.
 Three providers behind one interface (`save`/`load`/`delete`), selected by
 deployment.
 
+**An attachment's parent is a transaction or a warranty, never both and never
+neither** (WTY-003): `transaction_attachments` carries `transaction_id` and
+`warranty_id` under `chk_attachment_one_parent`, and `AttachmentsService.create`
+and `findAllFor` take an `AttachmentParent` (`backend/src/attachments/attachment-parent.ts`)
+rather than an id. Ownership is the row's own `user_id` whichever parent it has,
+so everything below -- the upload intent, the tombstone trigger, the orphan
+sweep, the provider relocation -- is keyed by attachment id and knows nothing
+about the parent. The per-parent cap is counted under the parent's row lock
+(`lockTransactionRow` or `lockWarrantyRow`, one doctrine), and both halves of a
+scan pair carry the same parent and `document_kind`.
+
 **One upload can write two objects.** A scanned document is stored as a pair --
 the enhanced image the user sees and the original photo it came from
 (`docs/specs/document-scanner.md`) -- written by one `create` call in one

@@ -421,13 +421,26 @@ CREATE INDEX idx_transaction_splits_category ON transaction_splits(category_id);
 CREATE INDEX idx_transaction_splits_transfer_account ON transaction_splits(transfer_account_id);
 CREATE INDEX idx_transaction_splits_linked ON transaction_splits(linked_transaction_id);
 
--- Transaction Attachments: receipts/invoices/documents stored in Postgres by
--- default. Metadata lives here; the bytes live in attachment_blobs (database
--- provider) or an external store keyed by storage_key. See migration 109.
+-- Attachments: receipts/invoices/documents stored in Postgres by default.
+-- Metadata lives here; the bytes live in attachment_blobs (database provider)
+-- or an external store keyed by storage_key. See migration 109.
+--
+-- An attachment has exactly one parent (chk_attachment_one_parent, WTY-003):
+-- the transaction whose receipt it is, or the warranty whose receipt, manual
+-- or photo it is (docs/future-plans/warranty-tracker.md decision 7). The
+-- table keeps its historical name. Ownership is user_id on this row whichever
+-- parent it has, so the attachment_blobs policy, the tombstone trigger, the
+-- orphan sweeper and the storage migrator never look at the parent.
 CREATE TABLE transaction_attachments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    transaction_id UUID NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+    transaction_id UUID REFERENCES transactions(id) ON DELETE CASCADE,
+    -- The other parent. Its foreign key to warranties is added after that
+    -- table, further down (fk added with ALTER TABLE, like accounts').
+    warranty_id UUID,
+    -- What a warranty's document is; a transaction's attachments are always
+    -- 'other' (the register offers no picker).
+    document_kind VARCHAR(20) NOT NULL DEFAULT 'other', -- 'receipt' | 'manual' | 'photo' | 'other'
     filename VARCHAR(255) NOT NULL,
     content_type VARCHAR(100) NOT NULL, -- server-sniffed MIME, not the client's claim
     byte_size BIGINT NOT NULL,
@@ -441,10 +454,16 @@ CREATE TABLE transaction_attachments (
     original_of_attachment_id UUID NULL REFERENCES transaction_attachments(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_attachment_not_own_original
-        CHECK (original_of_attachment_id IS NULL OR original_of_attachment_id <> id)
+        CHECK (original_of_attachment_id IS NULL OR original_of_attachment_id <> id),
+    CONSTRAINT chk_attachment_document_kind
+        CHECK (document_kind IN ('receipt', 'manual', 'photo', 'other')),
+    -- Exactly one parent: never none, never both.
+    CONSTRAINT chk_attachment_one_parent
+        CHECK (((transaction_id IS NOT NULL)::int + (warranty_id IS NOT NULL)::int) = 1)
 );
 
 CREATE INDEX idx_transaction_attachments_transaction ON transaction_attachments(transaction_id);
+CREATE INDEX idx_transaction_attachments_warranty ON transaction_attachments(warranty_id);
 CREATE INDEX idx_transaction_attachments_user ON transaction_attachments(user_id);
 -- At most one original per attachment: a scan pair is exactly two rows.
 CREATE UNIQUE INDEX uq_transaction_attachments_original_of
@@ -3527,6 +3546,13 @@ CREATE TABLE warranty_claims (
 );
 
 CREATE INDEX idx_warranty_claims_warranty ON warranty_claims(warranty_id);
+
+-- A warranty's documents live in transaction_attachments (its second parent;
+-- see that table). The column is declared there; the foreign key is added
+-- here because warranties is defined after it. The name is the one PostgreSQL
+-- gives an inline REFERENCES, which is how the migration adds it.
+ALTER TABLE transaction_attachments ADD CONSTRAINT transaction_attachments_warranty_id_fkey
+    FOREIGN KEY (warranty_id) REFERENCES warranties(id) ON DELETE CASCADE;
 
 CREATE TRIGGER update_warranty_claims_updated_at
   BEFORE UPDATE ON warranty_claims

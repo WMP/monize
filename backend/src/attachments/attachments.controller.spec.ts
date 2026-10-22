@@ -11,7 +11,7 @@ describe("AttachmentsController", () => {
   let service: jest.Mocked<
     Pick<
       AttachmentsService,
-      "create" | "findAllForTransaction" | "getForDownload" | "remove"
+      "create" | "findAllFor" | "getForDownload" | "remove"
     >
   >;
   const req = { user: { id: "user-1" } };
@@ -19,7 +19,7 @@ describe("AttachmentsController", () => {
   beforeEach(() => {
     service = {
       create: jest.fn(),
-      findAllForTransaction: jest.fn(),
+      findAllFor: jest.fn(),
       getForDownload: jest.fn(),
       remove: jest.fn(),
     };
@@ -38,7 +38,7 @@ describe("AttachmentsController", () => {
     expect(result).toBe(created);
     expect(service.create).toHaveBeenCalledWith(
       "user-1",
-      "txn-1",
+      { kind: "transaction", id: "txn-1" },
       file,
       undefined,
     );
@@ -60,7 +60,7 @@ describe("AttachmentsController", () => {
 
     expect(service.create).toHaveBeenCalledWith(
       "user-1",
-      "txn-1",
+      { kind: "transaction", id: "txn-1" },
       file,
       original,
     );
@@ -76,7 +76,7 @@ describe("AttachmentsController", () => {
 
     expect(service.create).toHaveBeenCalledWith(
       "user-1",
-      "txn-1",
+      { kind: "transaction", id: "txn-1" },
       undefined,
       undefined,
     );
@@ -86,13 +86,76 @@ describe("AttachmentsController", () => {
     const rows = [
       { id: "a1", originalAttachmentId: null },
     ] as AttachmentListItem[];
-    service.findAllForTransaction.mockResolvedValue(rows);
+    service.findAllFor.mockResolvedValue(rows);
     const result = await controller.findAll(req, "txn-1");
     expect(result).toBe(rows);
-    expect(service.findAllForTransaction).toHaveBeenCalledWith(
-      "user-1",
-      "txn-1",
-    );
+    expect(service.findAllFor).toHaveBeenCalledWith("user-1", {
+      kind: "transaction",
+      id: "txn-1",
+    });
+  });
+
+  // One route per parent (WTY-003): the warranty routes name their parent by
+  // kind, so the service can never be handed two ids, and the document kind
+  // travels only on the warranty route.
+  describe("the warranty routes", () => {
+    it("uploads under the warranty with the document kind from the body", async () => {
+      const file = { originalname: "manual.pdf" } as Express.Multer.File;
+      const created = { id: "a2" } as TransactionAttachment;
+      service.create.mockResolvedValue(created);
+
+      const result = await controller.uploadForWarranty(
+        req,
+        "wty-1",
+        { file: [file] },
+        { documentKind: "manual" },
+      );
+
+      expect(result).toBe(created);
+      expect(service.create).toHaveBeenCalledWith(
+        "user-1",
+        { kind: "warranty", id: "wty-1" },
+        file,
+        undefined,
+        "manual",
+      );
+    });
+
+    it("passes a scanned pair and an absent kind through unchanged", async () => {
+      const file = { originalname: "r-scan.jpg" } as Express.Multer.File;
+      const original = { originalname: "r.jpg" } as Express.Multer.File;
+      service.create.mockResolvedValue({ id: "a2" } as TransactionAttachment);
+
+      await controller.uploadForWarranty(
+        req,
+        "wty-1",
+        { file: [file], original: [original] },
+        {},
+      );
+
+      expect(service.create).toHaveBeenCalledWith(
+        "user-1",
+        { kind: "warranty", id: "wty-1" },
+        file,
+        original,
+        undefined,
+      );
+    });
+
+    it("lists under the warranty", async () => {
+      const rows = [
+        { id: "a2", originalAttachmentId: null },
+      ] as AttachmentListItem[];
+      service.findAllFor.mockResolvedValue(rows);
+
+      const result = await controller.findAllForWarranty(req, "wty-1");
+
+      expect(result).toBe(rows);
+      expect(service.findAllFor).toHaveBeenCalledWith("user-1", {
+        kind: "warranty",
+        id: "wty-1",
+      });
+    });
   });
 
   it("streams a download with hardened headers", async () => {

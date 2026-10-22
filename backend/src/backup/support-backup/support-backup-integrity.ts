@@ -67,6 +67,14 @@ const REFS: Record<string, RefRule[]> = {
       refTable: "transactions",
       onMissing: "dropRow",
     },
+    // The other parent (WTY-003: exactly one of the two is set, so a null here
+    // is a transaction's attachment, not a dangling link). A warranty's
+    // document cannot outlive its warranty (ON DELETE CASCADE), hence dropRow.
+    {
+      column: "warranty_id",
+      refTable: "warranties",
+      onMissing: "dropRow",
+    },
     // A scan pair's original points at the visible attachment it was scanned
     // from (INV-ATTACHMENT-002). `null` rather than `dropRow`, and the reason
     // is structural: a self-referential `dropRow` is a cycle to the pass-bound

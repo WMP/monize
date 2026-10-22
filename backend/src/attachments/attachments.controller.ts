@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   Post,
@@ -29,7 +30,37 @@ import {
   MAX_ATTACHMENT_BYTES,
 } from "./attachments.service";
 import { TransactionAttachment } from "./entities/transaction-attachment.entity";
+import { WarrantyAttachmentUploadDto } from "./dto/warranty-attachment-upload.dto";
 
+/** The two named parts of one request, the same on every upload route. */
+interface UploadParts {
+  file?: Express.Multer.File[];
+  original?: Express.Multer.File[];
+}
+
+/**
+ * Two parts, not one: `file` is the attachment the user sees, and the optional
+ * `original` is the unprocessed photo a scan came from. The size limit is per
+ * file, and `files: 2` caps the request at the pair. One interceptor for both
+ * parents, so a warranty's upload can never admit what a transaction's refuses.
+ */
+const uploadPairInterceptor = FileFieldsInterceptor(
+  [
+    { name: "file", maxCount: 1 },
+    { name: "original", maxCount: 1 },
+  ],
+  {
+    storage: memoryStorage(),
+    limits: { fileSize: MAX_ATTACHMENT_BYTES, files: 2 },
+  },
+);
+
+/**
+ * One route per parent (WTY-003): the parent's kind is the route, its id the
+ * path parameter, and the service receives the pair as an `AttachmentParent`.
+ * The warranty routes are owner-only here; the delegate section is a later
+ * task's.
+ */
 @ApiTags("Attachments")
 @ApiBearerAuth()
 @UseGuards(AuthGuard("jwt"))
@@ -41,33 +72,15 @@ export class AttachmentsController {
   @ApiOperation({ summary: "Upload a file attachment to a transaction" })
   @ApiConsumes("multipart/form-data")
   @ApiResponse({ status: 201, description: "Attachment metadata" })
-  @UseInterceptors(
-    // Two parts, not one: `file` is the attachment the user sees, and the
-    // optional `original` is the unprocessed photo a scan came from. The size
-    // limit is per file, and `files: 2` caps the request at the pair.
-    FileFieldsInterceptor(
-      [
-        { name: "file", maxCount: 1 },
-        { name: "original", maxCount: 1 },
-      ],
-      {
-        storage: memoryStorage(),
-        limits: { fileSize: MAX_ATTACHMENT_BYTES, files: 2 },
-      },
-    ),
-  )
+  @UseInterceptors(uploadPairInterceptor)
   upload(
     @Request() req,
     @Param("transactionId", ParseUUIDPipe) transactionId: string,
-    @UploadedFiles()
-    files: {
-      file?: Express.Multer.File[];
-      original?: Express.Multer.File[];
-    },
+    @UploadedFiles() files: UploadParts,
   ): Promise<TransactionAttachment> {
     return this.attachmentsService.create(
       req.user.id,
-      transactionId,
+      { kind: "transaction", id: transactionId },
       files?.file?.[0],
       files?.original?.[0],
     );
@@ -80,10 +93,47 @@ export class AttachmentsController {
     @Request() req,
     @Param("transactionId", ParseUUIDPipe) transactionId: string,
   ): Promise<AttachmentListItem[]> {
-    return this.attachmentsService.findAllForTransaction(
+    return this.attachmentsService.findAllFor(req.user.id, {
+      kind: "transaction",
+      id: transactionId,
+    });
+  }
+
+  @Post("warranties/:warrantyId/attachments")
+  @ApiOperation({
+    summary:
+      "Upload a document (receipt, manual, photo or other) to a warranty",
+  })
+  @ApiConsumes("multipart/form-data")
+  @ApiResponse({ status: 201, description: "Attachment metadata" })
+  @ApiResponse({ status: 404, description: "Warranty not found" })
+  @UseInterceptors(uploadPairInterceptor)
+  uploadForWarranty(
+    @Request() req,
+    @Param("warrantyId", ParseUUIDPipe) warrantyId: string,
+    @UploadedFiles() files: UploadParts,
+    @Body() body: WarrantyAttachmentUploadDto,
+  ): Promise<TransactionAttachment> {
+    return this.attachmentsService.create(
       req.user.id,
-      transactionId,
+      { kind: "warranty", id: warrantyId },
+      files?.file?.[0],
+      files?.original?.[0],
+      body.documentKind,
     );
+  }
+
+  @Get("warranties/:warrantyId/attachments")
+  @ApiOperation({ summary: "List a warranty's documents" })
+  @ApiResponse({ status: 200, description: "Attachment metadata list" })
+  findAllForWarranty(
+    @Request() req,
+    @Param("warrantyId", ParseUUIDPipe) warrantyId: string,
+  ): Promise<AttachmentListItem[]> {
+    return this.attachmentsService.findAllFor(req.user.id, {
+      kind: "warranty",
+      id: warrantyId,
+    });
   }
 
   @Get("attachments/:id/download")
