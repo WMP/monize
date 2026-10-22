@@ -48,6 +48,7 @@
       "tradeChat": "Vous avez demandé de reconnaître la confirmation d'opération jointe : proposez la transaction d'investissement qu'elle indique, un achat, une vente, un dividende en espèces ou un dividende réinvesti."
     },
     "emailReceipt": "Reçu par e-mail : {subject} de {sender}",
+    "emailReceiptForwarded": "Reçu par e-mail : {subject} de {sender}, transféré par {forwarder}",
     "emailReceiptMissing": "Reçu par e-mail (l'e-mail a été supprimé)",
     "parserDraft": "Brouillon d'profil à partir de {count, plural, one {# e-mail} other {# e-mails}} ({domain})",
     "viewEmailReceipts": "Voir les reçus par e-mail",

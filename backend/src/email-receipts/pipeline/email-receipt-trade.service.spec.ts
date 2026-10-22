@@ -99,14 +99,20 @@ const run = (
     autoApply?: boolean;
     status?: "approved" | "draft";
     definition?: ReceiptTradeDefinition;
+    forwardedBy?: string | null;
   } = {},
 ) =>
-  h.service.process(h.manager as never, USER, receipt(), {
-    parser: parser(context.status),
-    definition: context.definition ?? definition,
-    lines: normalizeReceiptLines(body),
-    mailboxAutoApply: context.autoApply ?? false,
-  });
+  h.service.process(
+    h.manager as never,
+    USER,
+    receipt({ forwardedBy: context.forwardedBy ?? null }),
+    {
+      parser: parser(context.status),
+      definition: context.definition ?? definition,
+      lines: normalizeReceiptLines(body),
+      mailboxAutoApply: context.autoApply ?? false,
+    },
+  );
 
 describe("EmailReceiptTradeService.process", () => {
   it("proposes the trade the email reports, as the executed total, and writes no ledger row", async () => {
@@ -323,6 +329,12 @@ describe("EmailReceiptTradeService.process", () => {
         "the price disagrees with the total",
         { autoApply: true },
         WEALTHSIMPLE_BUY_BODY.replace("$26.32", "$31.00"),
+      ],
+      [
+        // The broker of a forward is what its text claims (A26-H02).
+        "the email is the owner's forward",
+        { autoApply: true, forwardedBy: "receipts@example.com" },
+        WEALTHSIMPLE_BUY_BODY,
       ],
     ])("holds the card for a person when %s", async (_why, context, body) => {
       const h = setup();

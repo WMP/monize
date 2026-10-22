@@ -129,6 +129,38 @@ describe("JwtStrategy", () => {
       );
     });
 
+    // One JWT_SECRET signs every token type; only an access token may act as
+    // one. A step-up token or an OIDC re-auth artifact is script-readable, and
+    // as a Bearer access token it would outlive the purpose it was minted for
+    // (A26-L06).
+    it.each(["step_up", "oidc_reauth", "oidc_reauth_pending", "anything-else"])(
+      "refuses a %s token as an access token",
+      async (type) => {
+        authService.getUserStateById.mockResolvedValue(mockUser);
+
+        await expect(strategy.validate({ sub: USER_ID, type })).rejects.toThrow(
+          UnauthorizedException,
+        );
+        expect(authService.getUserStateById).not.toHaveBeenCalled();
+      },
+    );
+
+    it("accepts a token typed as an access token", async () => {
+      authService.getUserStateById.mockResolvedValue(mockUser);
+
+      await expect(
+        strategy.validate({ sub: USER_ID, type: "access" }),
+      ).resolves.toMatchObject({ realUserId: USER_ID, isActing: false });
+    });
+
+    it("accepts a type-less access token minted before the type existed (one-release grace)", async () => {
+      authService.getUserStateById.mockResolvedValue(mockUser);
+
+      await expect(strategy.validate({ sub: USER_ID })).resolves.toMatchObject({
+        realUserId: USER_ID,
+      });
+    });
+
     it("rejects inactive users", async () => {
       const payload = { sub: USER_ID };
       authService.getUserStateById.mockResolvedValue({

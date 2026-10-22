@@ -301,6 +301,7 @@ describe('AiReviewInbox', () => {
           id: `er-${id}`,
           subject: `Order ${id}`,
           fromAddress: 'shop@example.com',
+          forwardedBy: null,
           receivedAt: '2026-09-01T10:00:00.000Z',
         },
         ...over,
