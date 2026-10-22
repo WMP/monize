@@ -163,7 +163,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Reinvest long-term cap gain",
       "CAPITAL_GAIN_SHORT": "Short-term capital gain",
       "CAPITAL_GAIN_LONG": "Long-term capital gain",
-      "REDEEM": "Redeem CD/Bond"
+      "REDEEM": "Redeem CD/Bond",
+      "RETURN_OF_CAPITAL": "Return of capital"
     },
     "createTransferTitle": "Create this transfer?",
     "updateTransferTitle": "Apply this transfer edit?",

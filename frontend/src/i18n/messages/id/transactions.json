@@ -436,6 +436,7 @@
       "destinationRequired": "Silakan pilih akun tujuan",
       "sameAccount": "Akun sumber dan tujuan harus berbeda",
       "negativeTransfer": "Jumlah transfer tidak boleh negatif",
+      "convertToTransferUnsupported": "Transaksi yang sudah ada tidak dapat diubah menjadi transfer di sini. Hapus transaksi tersebut dan buat transfer sebagai gantinya.",
       "payeeCreated": "Penerima \"{name}\" dibuat",
       "payeeCreateFailed": "Gagal membuat penerima",
       "payeeReactivated": "Penerima \"{name}\" diaktifkan kembali",

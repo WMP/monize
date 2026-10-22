@@ -127,6 +127,7 @@ export function InvestmentTransactionHistoryReport() {
     CAPITAL_GAIN_SHORT: t('investmentTransactions.actionCapitalGainShort'),
     CAPITAL_GAIN_LONG: t('investmentTransactions.actionCapitalGainLong'),
     REDEEM: t('investmentTransactions.actionRedeem'),
+    RETURN_OF_CAPITAL: t('investmentTransactions.actionReturnOfCapital'),
   }), [t]);
 
   const actionOptions = useMemo(

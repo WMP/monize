@@ -198,6 +198,7 @@
     "actionCapitalGainShort": "단기 자본이득",
     "actionCapitalGainLong": "장기 자본이득",
     "actionRedeem": "CD/채권 상환",
+    "actionReturnOfCapital": "자본 환급",
     "allActions": "모든 작업"
   },
   "transactionForm": {
@@ -218,6 +219,7 @@
     "actionCapitalGainShort": "단기 자본이득",
     "actionCapitalGainLong": "장기 자본이득",
     "actionRedeem": "CD/채권 상환",
+    "actionReturnOfCapital": "자본 환급",
     "actionTransfer": "이체",
     "brokerageAccount": "증권사 계정",
     "fromAccount": "출금 계정",
@@ -262,6 +264,7 @@
     "sharesAt": "주 @",
     "avgCostSuffix": "평균 취득원가.",
     "transferCostNote": "주당 비용은 이체일에 원본 계좌에서 해당 주식의 취득 비용입니다. 저장할 때 계산되어 대상 계좌로 이월되므로 손익 보고서가 정확하게 유지됩니다. 주식만 이동하며 현금은 오가지 않습니다.",
+    "returnOfCapitalNote": "자본 환급은 수익이 아닙니다. 주식 매입 비용의 일부를 돌려주는 것이므로 보유 종목의 취득원가를 이 금액만큼 줄입니다. 남은 취득원가를 초과하는 금액은 실현 자본이득으로 보고됩니다.",
     "totalAmount": "총 금액 ({currency})",
     "sharesAtPrice": "{shares}주 @ {symbol}{price}",
     "commissionSuffix": "수수료",

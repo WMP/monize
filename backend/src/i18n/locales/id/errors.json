@@ -44,6 +44,7 @@
     "changeCurrencyWithTransactions": "Tidak dapat mengubah mata uang akun yang memiliki transaksi.",
     "alreadyClosed": "Akun sudah ditutup",
     "closeNonZeroBalance": "Tidak dapat menutup akun dengan saldo bukan nol. Saldo saat ini: {{ currentBalance }}",
+    "closeWithFutureTransactions": "Akun dengan transaksi bertanggal masa depan tidak dapat ditutup. Akun ini memiliki {{ count }} transaksi bertanggal setelah hari ini; hapus atau batalkan transaksi tersebut terlebih dahulu.",
     "closeWithHoldings": "Tidak dapat menutup akun investasi yang masih memiliki efek. Akun ini memiliki {{ holdingCount }} kepemilikan dengan jumlah bukan nol; jual atau pindahkan terlebih dahulu.",
     "notClosed": "Akun belum ditutup",
     "modifyBalanceClosed": "Tidak dapat mengubah saldo akun yang sudah ditutup",
@@ -85,6 +86,7 @@
     "paymentMatchingFailed": "Pinjaman telah disimpan, tetapi aturan pencocokan pembayarannya tidak dapat dibuat. Buat dari detail pinjaman."
   },
   "actionHistory": {
+    "loanEditNotUndoable": "Perubahan pinjaman ini tidak dapat dibatalkan secara otomatis. Edit pinjaman untuk mengembalikannya.",
     "nothingToUndo": "Tidak ada yang dapat dibatalkan",
     "nothingToRedo": "Tidak ada yang dapat diulang",
     "undoNotSupportedForEntityType": "Pembatalan tidak didukung untuk jenis entitas: {{ entityType }}",
@@ -763,6 +765,7 @@
     "investmentCashLegStatusLocked": "Transaksi ini adalah sisi kas dari sebuah transaksi investasi. Batalkan atau pulihkan dengan mengubah status transaksi investasi tersebut, agar kedua sisi berubah bersama-sama.",
     "notFoundById": "Transaksi dengan ID {{ id }} tidak ditemukan",
     "bulkUpdateNoFields": "Minimal satu kolom pembaruan harus diberikan",
+    "bulkUpdateConcurrentChange": "Transaksi ini berubah saat pembaruan sedang berjalan. Muat ulang dan coba lagi.",
     "bulkSplitNoMatchingLinesOne": "1 transaksi terbagi dilewati karena tidak ada baris pembagiannya yang cocok dengan pembaruan kategori",
     "bulkSplitNoMatchingLinesMany": "{{ count }} transaksi terbagi dilewati karena tidak ada baris pembagiannya yang cocok dengan pembaruan kategori",
     "bulkSplitTransferLegSkippedOne": "1 transfer terpisah dilewati (batalkan atau pulihkan dari transaksi terpisah tempatnya berada, agar kedua sisi berubah bersama)",

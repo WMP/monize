@@ -304,7 +304,8 @@ export type InvestmentAction =
   | 'TRANSFER_OUT'
   | 'REINVEST'
   | 'ADD_SHARES'
-  | 'REMOVE_SHARES';
+  | 'REMOVE_SHARES'
+  | 'RETURN_OF_CAPITAL';
 
 export interface CreatedInvestmentTransaction {
   id: string;

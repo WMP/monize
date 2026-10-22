@@ -146,7 +146,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "장기 자본이득 재투자",
       "CAPITAL_GAIN_SHORT": "단기 자본이득",
       "CAPITAL_GAIN_LONG": "장기 자본이득",
-      "REDEEM": "CD/채권 상환"
+      "REDEEM": "CD/채권 상환",
+      "RETURN_OF_CAPITAL": "자본 환급"
     },
     "createSecurityTitle": "이 증권을 생성하시겠습니까?",
     "createdSecurity": "증권이 생성되었습니다",

@@ -959,6 +959,44 @@ describe('TransactionRow', () => {
     expect(screen.getByText(/Buy: AAPL:/)).toBeInTheDocument();
   });
 
+  it('names a return of capital split line rather than printing the raw action (#1800)', () => {
+    renderRow(
+      { density: 'normal' },
+      {
+        isSplit: true,
+        splits: [
+          {
+            id: 's1',
+            amount: 2500,
+            kind: 'category',
+            category: { id: 'cat-salary', name: 'Salary' },
+            transferAccount: null,
+            investmentTransaction: null,
+          } as any,
+          {
+            id: 's2',
+            amount: 40,
+            kind: 'investment',
+            category: null,
+            transferAccount: null,
+            investmentTransaction: {
+              id: 'inv1',
+              action: 'RETURN_OF_CAPITAL',
+              securityId: 'sec1',
+              security: { id: 'sec1', symbol: 'XYZ', name: 'XYZ Fund' },
+              quantity: null,
+              price: 40,
+              commission: 0,
+              exchangeRate: 1,
+            },
+          } as any,
+        ],
+      },
+    );
+    expect(screen.getByText(/Return of Capital: XYZ:/)).toBeInTheDocument();
+    expect(screen.queryByText(/RETURN_OF_CAPITAL/)).not.toBeInTheDocument();
+  });
+
   it('falls back to raw action when investment split lacks a security', () => {
     renderRow(
       { density: 'normal' },

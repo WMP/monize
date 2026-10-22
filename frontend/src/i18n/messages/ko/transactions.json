@@ -436,6 +436,7 @@
       "destinationRequired": "목적 계정을 선택해 주세요",
       "sameAccount": "출금 계정과 입금 계정은 달라야 합니다",
       "negativeTransfer": "이체 금액은 음수일 수 없습니다",
+      "convertToTransferUnsupported": "기존 거래는 여기에서 이체로 바꿀 수 없습니다. 거래를 삭제한 후 이체를 새로 만드세요.",
       "payeeCreated": "수취인 \"{name}\"이(가) 생성되었습니다",
       "payeeCreateFailed": "수취인 생성에 실패했습니다",
       "payeeReactivated": "수취인 \"{name}\"이(가) 다시 활성화되었습니다",

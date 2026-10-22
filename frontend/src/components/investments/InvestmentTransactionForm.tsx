@@ -81,7 +81,7 @@ export const buildInvestmentTransactionSchema = (t: (key: string) => string) => 
     'BUY', 'SELL', 'DIVIDEND', 'INTEREST', 'CAPITAL_GAIN', 'SPLIT',
     'TRANSFER_IN', 'TRANSFER_OUT', 'REINVEST', 'ADD_SHARES', 'REMOVE_SHARES',
     'REINVEST_INTEREST', 'REINVEST_CAPITAL_GAIN_SHORT', 'REINVEST_CAPITAL_GAIN_LONG',
-    'CAPITAL_GAIN_SHORT', 'CAPITAL_GAIN_LONG', 'REDEEM',
+    'CAPITAL_GAIN_SHORT', 'CAPITAL_GAIN_LONG', 'REDEEM', 'RETURN_OF_CAPITAL',
     'TRANSFER',
   ]),
   transactionDate: z.string().min(1, t('validation.dateRequired')),
@@ -168,7 +168,7 @@ interface InvestmentTransactionFormFieldsProps
 const actionIn = (action: InvestmentAction, list: InvestmentAction[]): boolean =>
   list.includes(baseInvestmentAction(action));
 
-const securityRequiredActions: InvestmentAction[] = ['BUY', 'SELL', 'DIVIDEND', 'CAPITAL_GAIN', 'SPLIT', 'REINVEST', 'ADD_SHARES', 'REMOVE_SHARES'];
+const securityRequiredActions: InvestmentAction[] = ['BUY', 'SELL', 'DIVIDEND', 'CAPITAL_GAIN', 'RETURN_OF_CAPITAL', 'SPLIT', 'REINVEST', 'ADD_SHARES', 'REMOVE_SHARES'];
 
 // Actions that require quantity and price
 const quantityPriceActions: InvestmentAction[] = ['BUY', 'SELL', 'REINVEST'];
@@ -177,7 +177,7 @@ const quantityPriceActions: InvestmentAction[] = ['BUY', 'SELL', 'REINVEST'];
 const quantityOnlyActions: InvestmentAction[] = ['ADD_SHARES', 'REMOVE_SHARES'];
 
 // Actions that only need an amount (no quantity/price)
-const amountOnlyActions: InvestmentAction[] = ['DIVIDEND', 'INTEREST', 'CAPITAL_GAIN'];
+const amountOnlyActions: InvestmentAction[] = ['DIVIDEND', 'INTEREST', 'CAPITAL_GAIN', 'RETURN_OF_CAPITAL'];
 
 // Actions that can have an external funding account (where funds come from/go to)
 const fundingAccountActions: InvestmentAction[] = ['BUY', 'SELL'];
@@ -185,7 +185,7 @@ const fundingAccountActions: InvestmentAction[] = ['BUY', 'SELL'];
 // Actions that deposit cash into an account and can target a destination cash
 // account other than the brokerage's linked cash account (e.g. a dividend paid
 // directly into a chequing account).
-const cashDestinationActions: InvestmentAction[] = ['DIVIDEND', 'INTEREST', 'CAPITAL_GAIN'];
+const cashDestinationActions: InvestmentAction[] = ['DIVIDEND', 'INTEREST', 'CAPITAL_GAIN', 'RETURN_OF_CAPITAL'];
 
 // Actions that post a cash transaction against the cash/funding account.
 // Only these need exchange rate handling when security and cash currencies differ.
@@ -195,6 +195,7 @@ const cashPostingActions: InvestmentAction[] = [
   'DIVIDEND',
   'INTEREST',
   'CAPITAL_GAIN',
+  'RETURN_OF_CAPITAL',
 ];
 
 /**
@@ -260,6 +261,7 @@ function InvestmentTransactionFormFields({
     CAPITAL_GAIN_SHORT: t('transactionForm.actionCapitalGainShort'),
     CAPITAL_GAIN_LONG: t('transactionForm.actionCapitalGainLong'),
     REDEEM: t('transactionForm.actionRedeem'),
+    RETURN_OF_CAPITAL: t('transactionForm.actionReturnOfCapital'),
   };
   const { defaultCurrency, formatCurrency, formatShareQuantity, formatPrice } = useNumberFormat();
   const { formatDate } = useDateFormat();
@@ -1585,7 +1587,7 @@ function InvestmentTransactionFormFields({
         </div>
       )}
 
-      {/* Amount - for dividend/interest/capital gain/transfers */}
+      {/* Amount - for dividend/interest/capital gain/return of capital */}
       {isAmountOnly && (
         <CurrencyInput
           label={t('transactionForm.amount', { currency: transactionCurrency })}
@@ -1595,6 +1597,13 @@ function InvestmentTransactionFormFields({
           error={errors.price?.message}
           allowNegative={false}
         />
+      )}
+
+      {/* A return of capital is not income; say what it does instead. */}
+      {watchedAction === 'RETURN_OF_CAPITAL' && (
+        <div className="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200">
+          {t('transactionForm.returnOfCapitalNote')}
+        </div>
       )}
 
       {/* Quantity and cost basis - for a transfer between accounts */}

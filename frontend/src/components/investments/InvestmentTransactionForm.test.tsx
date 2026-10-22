@@ -263,7 +263,9 @@ describe('InvestmentTransactionForm', () => {
       expect(optionValues).toContain('CAPITAL_GAIN_SHORT');
       expect(optionValues).toContain('CAPITAL_GAIN_LONG');
       expect(optionValues).toContain('REDEEM');
-      expect(optionValues.length).toBe(16);
+      // Money's Return of Capital activity (issue #1800).
+      expect(optionValues).toContain('RETURN_OF_CAPITAL');
+      expect(optionValues.length).toBe(17);
     });
   });
 
@@ -580,6 +582,99 @@ describe('InvestmentTransactionForm', () => {
     const payload = vi.mocked(investmentsApi.createTransaction).mock.calls[0][0] as any;
     expect(payload.action).toBe('DIVIDEND');
     expect(payload.fundingAccountId).toBe('a2');
+  });
+
+  describe('RETURN_OF_CAPITAL (issue #1800)', () => {
+    it('asks for a security, an amount and where the cash goes, and says it lowers the cost basis', async () => {
+      render(<InvestmentTransactionForm accounts={accounts} />);
+      await waitFor(() => {
+        expect(screen.getByText('Brokerage Account')).toBeInTheDocument();
+      });
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Transaction Type'), {
+          target: { value: 'RETURN_OF_CAPITAL' },
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Security')).toBeInTheDocument();
+      });
+      expect(screen.getByLabelText('Deposit To (optional)')).toBeInTheDocument();
+      expect(screen.getByLabelText(/Amount/)).toBeInTheDocument();
+      expect(screen.getByText(/lowers the cost basis of your holding/)).toBeInTheDocument();
+      // Not a trade: no shares, no per-share price, no commission.
+      expect(screen.queryByLabelText(/Quantity/)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/Commission/)).not.toBeInTheDocument();
+      expect(screen.queryByText('Funds From (optional)')).not.toBeInTheDocument();
+    });
+
+    it('does not show the cost-basis note for a dividend', async () => {
+      render(<InvestmentTransactionForm accounts={accounts} />);
+      await waitFor(() => {
+        expect(screen.getByText('Brokerage Account')).toBeInTheDocument();
+      });
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Transaction Type'), {
+          target: { value: 'DIVIDEND' },
+        });
+      });
+      await waitFor(() => {
+        expect(screen.getByLabelText('Security')).toBeInTheDocument();
+      });
+      expect(screen.queryByText(/lowers the cost basis of your holding/)).not.toBeInTheDocument();
+    });
+
+    it('sends the security, the amount as the cash total and the destination account', async () => {
+      // sec-1 is USD and a1 is CAD: a cross-currency cash leg needs a rate.
+      getMarketRateMock.mockReturnValue(1.35);
+      render(<InvestmentTransactionForm accounts={accounts} />);
+      await waitFor(() => {
+        expect(screen.getByText('Brokerage Account')).toBeInTheDocument();
+      });
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Brokerage Account'), {
+          target: { value: 'a1' },
+        });
+      });
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Transaction Type'), {
+          target: { value: 'RETURN_OF_CAPITAL' },
+        });
+      });
+      await waitFor(() => {
+        expect(screen.getByLabelText('Security')).toBeInTheDocument();
+      });
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Security'), {
+          target: { value: 'sec-1' },
+        });
+      });
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Deposit To (optional)'), {
+          target: { value: 'a2' },
+        });
+      });
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText(/Amount/), {
+          target: { value: '80' },
+        });
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Create Transaction'));
+      });
+
+      await waitFor(() => {
+        expect(investmentsApi.createTransaction).toHaveBeenCalled();
+      });
+      const payload = vi.mocked(investmentsApi.createTransaction).mock.calls[0][0] as any;
+      expect(payload.action).toBe('RETURN_OF_CAPITAL');
+      expect(payload.securityId).toBe('sec-1');
+      expect(payload.fundingAccountId).toBe('a2');
+      expect(payload.price).toBe(80);
+      expect(payload.quantity).toBeUndefined();
+      expect(payload.exchangeRate).toBe(1.35);
+    });
   });
 
   describe('Remembering the last entered date', () => {
