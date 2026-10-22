@@ -196,7 +196,7 @@
       "receipt": "[XX-Receipt-XX]",
       "manual": "[XX-Manual-XX]",
       "photo": "[XX-Photo-XX]",
-      "warranty": "[XX-Warranty certificate-XX]",
+      "warranty": "[XX-Warranty-XX]",
       "other": "[XX-Other-XX]"
     }
   },

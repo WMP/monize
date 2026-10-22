@@ -667,7 +667,7 @@ describe('AttachmentsSection', () => {
         expect(toast.error).not.toHaveBeenCalled();
       });
 
-      it('offers the five kinds, the warranty certificate among them', async () => {
+      it('offers the five kinds, the warranty among them', async () => {
         mockList.mockResolvedValue([warrantyDoc()]);
         mockUpdateKind.mockResolvedValue(warrantyDoc({ documentKind: 'warranty' }));
         await renderWarranty();
@@ -681,7 +681,7 @@ describe('AttachmentsSection', () => {
           ['receipt', 'Receipt'],
           ['manual', 'Manual'],
           ['photo', 'Photo'],
-          ['warranty', 'Warranty certificate'],
+          ['warranty', 'Warranty'],
           ['other', 'Other'],
         ]);
         await act(async () => {
