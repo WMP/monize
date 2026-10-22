@@ -1971,8 +1971,11 @@ describe("ActionHistoryService", () => {
           call[0].includes("INSERT INTO holdings"),
       );
       // Params: [accountId, securityId, quantity, avgCost].
-      const bySecurity = new Map(
-        inserts.map((call: any[]) => [call[1][1], call[1]]),
+      const bySecurity = new Map<string, unknown[]>(
+        inserts.map((call: any[]): [string, unknown[]] => [
+          call[1][1],
+          call[1],
+        ]),
       );
       expect(bySecurity.get("sec-1")?.slice(2)).toEqual([10, 75]);
       expect(bySecurity.get("sec-2")?.slice(2)).toEqual([5, 0]);
