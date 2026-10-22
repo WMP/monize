@@ -1,4 +1,5 @@
 import { primaryAttachmentSql } from "../attachments/primary-attachment.util";
+import { attachmentReachableFromTransactionSql } from "../attachments/attachment-parent";
 import {
   investmentLinkedSplitExclusion,
   investmentLinkedTransactionExclusion,
@@ -289,9 +290,20 @@ export function uncategorizedSql(
   );
 }
 
-/** A transaction with at least one primary attachment. */
+/**
+ * A transaction with at least one primary attachment: its own, or a document
+ * of a warranty linked to it (`attachmentReachableFromTransactionSql`).
+ */
 export function hasAttachmentSql(transactionAlias: string): string {
-  return `EXISTS (SELECT 1 FROM transaction_attachments search_ta WHERE search_ta.transaction_id = ${transactionAlias}.id AND ${primaryAttachmentSql("search_ta")})`;
+  return `EXISTS (SELECT 1 FROM transaction_attachments search_ta WHERE ${attachmentReachableFromTransactionSql("search_ta", `${transactionAlias}.id`)} AND ${primaryAttachmentSql("search_ta")})`;
+}
+
+/**
+ * A transaction with at least one unarchived warranty linked to it; the
+ * register's `warrantyCount` counts the same rows.
+ */
+export function hasWarrantySql(transactionAlias: string): string {
+  return `EXISTS (SELECT 1 FROM warranties search_w WHERE search_w.transaction_id = ${transactionAlias}.id AND search_w.archived_at IS NULL)`;
 }
 
 function enumCondition(ctx: ClauseContext, term: SearchTerm): string {
@@ -307,6 +319,8 @@ function enumCondition(ctx: ClauseContext, term: SearchTerm): string {
   switch (term.value) {
     case "attachment":
       return hasAttachmentSql(t);
+    case "warranty":
+      return hasWarrantySql(t);
     case "ref":
       return `NULLIF(btrim(${t}.referenceNumber), '') IS NOT NULL`;
     case "memo":

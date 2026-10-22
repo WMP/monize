@@ -28,6 +28,7 @@ import { PersonalAccessToken } from "../auth/entities/personal-access-token.enti
 import {
   revokeOAuthGrantsAfterCommit,
   revokeStandingCredentials,
+  revokeRefreshSessionsAfterCommit,
 } from "../auth/credential-revocation";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { UpdatePreferencesDto } from "./dto/update-preferences.dto";
@@ -484,6 +485,14 @@ export class UsersService {
         .update({ userId, isRevoked: false }, { isRevoked: true });
       await revokeStandingCredentials(manager, userId);
     });
+    // The blanket UPDATE above is a first pass: blocked on a row a concurrent
+    // rotation holds, it resumes with its old snapshot and misses the successor
+    // that rotation inserted. Converge after the commit, under the family locks.
+    await revokeRefreshSessionsAfterCommit(
+      this.dataSource,
+      userId,
+      this.logger,
+    );
 
     // Re-wrap the backup key under the new login password so automatic
     // backups written from now on open with it (earlier ones keep opening with
@@ -846,6 +855,22 @@ export class UsersService {
       [userId],
     );
     deleted.transactionSplits = result[1] ?? 0;
+
+    // Warranties and their claims. The transaction link is ON DELETE SET NULL
+    // and the account survives this flow, so neither the transactions delete
+    // below nor a users(id) CASCADE reaches them: left here, every warranty the
+    // user recorded would outlive "delete my data". Claims first, for order's
+    // sake (they would cascade from the warranty anyway).
+    result = await manager.query(
+      "DELETE FROM warranty_claims WHERE user_id = $1",
+      [userId],
+    );
+    deleted.warrantyClaims = result[1] ?? 0;
+
+    result = await manager.query("DELETE FROM warranties WHERE user_id = $1", [
+      userId,
+    ]);
+    deleted.warranties = result[1] ?? 0;
 
     // Transactions
     result = await manager.query(

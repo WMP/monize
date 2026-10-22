@@ -383,6 +383,12 @@
       "readyMessage": "等待您决定的提案：{{ count }} 项。自上次通知以来新增：{{ added }} 项。打开以审核。",
       "expiringTitle": "AI 审核提案即将过期",
       "expiringMessage": "3 天内过期的提案：{{ count }} 项。最早的一项于 {{ date }} 过期。打开以审核。"
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}：保修即将到期",
+      "expiringMessage": "{{ name }} 的保修将于 {{ date }} 到期。打开即可查看其文档或记录保修申请。",
+      "todayTitle": "{{ name }}：保修今天到期",
+      "todayMessage": "{{ name }} 的保修于今天（{{ date }}）到期。打开即可查看其文档或记录保修申请。"
     }
   },
   "backupOffsite": {

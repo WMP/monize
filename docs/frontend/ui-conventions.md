@@ -36,6 +36,8 @@ Both are resolved server-side in one walk up the ancestry: read `category.effect
 
 `components/ui/Badge.tsx` is the small status pill (previously hand-rolled ~50 times). Pass `variant` and `size`; pass `as="button"` where the pill is also a control, rather than nesting a button in a span. It deliberately does not absorb pills whose colour *means* something -- `CategoryPill`, `AccountTypePill` and `SCHEDULED_KIND_CHIP_CLASSES` are each already one source of truth, exempted by name.
 
+A warranty's status pill is `WarrantyStatusBadge` (`components/warranties/WarrantyStatusBadge.tsx`), fed by the server's `status` and `daysLeft`; no component compares a warranty's dates itself (WTY-002).
+
 `components/ui/Table.tsx` is constants (`TABLE_CLASS`, `TH_CLASS`, `TD_CLASS`) plus thin `Th`/`Td` cells, not a `<Table>` wrapper -- these tables are hand-laid with colspans and sticky cells. `SortableHeader` deliberately stays off `TH_CLASS` (about twenty-five report tables draw a lighter header, and folding it in would restyle every report).
 
 ## The card shadow is `--shadow-card`; the bare `shadow` reads no token
@@ -170,6 +172,7 @@ server will refuse is worse than an absent one.
 ## An attachment is opened in `AttachmentPreviewDialog`, never downloaded from a row
 
 Clicking an attachment previews it; Download is a footer action of the preview.
+A warranty's documents are `AttachmentsSection` with a warranty parent (`{ warrantyId }`, wrapped by `WarrantyDocumentsSection`), never a second uploader; a new warranty's are its staged mode with `stagedFor="warranty"`, which `WarrantyForm` uploads once the warranty exists.
 Four rules the viewer holds, each with a test:
 
 - **Bytes come through `attachmentsApi.fetchBytes`**, never a bare `<img src>`

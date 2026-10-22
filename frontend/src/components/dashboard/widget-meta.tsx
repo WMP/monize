@@ -24,6 +24,7 @@ import {
   PresentationChartLineIcon,
   RectangleGroupIcon,
   ScaleIcon,
+  ShieldCheckIcon,
   StarIcon,
   UsersIcon,
 } from '@heroicons/react/24/outline';
@@ -66,6 +67,7 @@ export const WIDGET_ICONS: Record<DashboardWidgetId, WidgetIconComponent> = {
   'recurring-expenses': ArrowPathIcon,
   'weekend-weekday': CalendarIcon,
   'cash-flow-sankey': ArrowsRightLeftIcon,
+  'warranties-expiring': ShieldCheckIcon,
 };
 
 /**

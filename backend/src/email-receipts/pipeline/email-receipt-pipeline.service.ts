@@ -32,10 +32,13 @@ import {
 } from "../entities/email-receipt.entity";
 import {
   effectiveReceiptDate,
+  isForwardedReceipt,
+  mayBeForwarded,
   resolveForwardedIdentity,
   sameIdentity,
   type ReceiptIdentity,
 } from "../imap/forwarded-receipt";
+import { loadOwnAddresses } from "../poll/own-addresses";
 import {
   EmailReceiptCategoryAiService,
   type CategoryQuestionItem,
@@ -1080,6 +1083,7 @@ export class EmailReceiptPipelineService {
       usedFallback: submitted.usedFallback,
       cardBuilt: true,
       linked: hasJoinedPart(parsed),
+      forwarded: isForwardedReceipt(receipt),
     };
     const committed = await this.finish(m, userId, receipt, {
       status: "review",
@@ -1180,6 +1184,9 @@ export class EmailReceiptPipelineService {
    * (stored before forwards were understood, or by a detector that has since
    * improved) is read again from its stored text, under the receipt's row lock,
    * and the identity columns are brought up to date before the parser is chosen.
+   * Only the owner's own forward is re-identified; a row another sender's
+   * pasted block re-identified is put back under that sender
+   * (`resolveForwardedIdentity`, A26-H02).
    * Idempotent: an email already healed, or one that is no forward, is left as
    * it is and nothing is written. `receipt` is updated in place so the rest of
    * the transaction sees the healed row.
@@ -1196,10 +1203,12 @@ export class EmailReceiptPipelineService {
       forwardedBy: receipt.forwardedBy ?? null,
       originalSentAt: receipt.originalSentAt ?? null,
     };
+    if (!mayBeForwarded(current, receipt.bodyText)) return;
     const healed = resolveForwardedIdentity(
       current,
       receipt.bodyText,
       receipt.receivedAt,
+      await loadOwnAddresses(m, userId),
     );
     if (healed === null || sameIdentity(current, healed)) return;
     await m.getRepository(EmailReceipt).update(

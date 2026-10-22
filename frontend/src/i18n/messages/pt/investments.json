@@ -198,6 +198,7 @@
     "actionCapitalGainShort": "Rendimento de capital de curto prazo",
     "actionCapitalGainLong": "Rendimento de capital de longo prazo",
     "actionRedeem": "Resgate de CD/obrigação",
+    "actionReturnOfCapital": "Devolução de capital",
     "allActions": "Todas as Ações"
   },
   "transactionForm": {
@@ -218,6 +219,7 @@
     "actionCapitalGainShort": "Rendimento de capital de curto prazo",
     "actionCapitalGainLong": "Rendimento de capital de longo prazo",
     "actionRedeem": "Resgate de CD/obrigação",
+    "actionReturnOfCapital": "Devolução de capital",
     "actionTransfer": "Transferência",
     "brokerageAccount": "Conta de Corretagem",
     "fromAccount": "Conta de Origem",
@@ -262,6 +264,7 @@
     "sharesAt": "ações @",
     "avgCostSuffix": "custo médio.",
     "transferCostNote": "O custo por ação (pré-preenchido a partir da conta de origem) é transferido para o destino para que os seus relatórios de ganhos e lucros se mantenham corretos. Esta operação move apenas ações — não há movimentação de numerário.",
+    "returnOfCapitalNote": "Uma devolução de capital não é rendimento. Restitui parte do que as ações custaram, pelo que reduz o custo de aquisição da sua posição neste montante. O que exceder o custo de aquisição restante é registado como mais-valia realizada.",
     "totalAmount": "Montante Total ({currency})",
     "sharesAtPrice": "{shares} ações @ {symbol}{price}",
     "commissionSuffix": "comissão",

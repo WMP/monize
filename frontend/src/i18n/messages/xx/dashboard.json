@@ -93,6 +93,11 @@
     "viewAll": "[XX-View all insights-XX]",
     "activeCount": "[XX-{count} active-XX]"
   },
+  "warrantiesExpiring": {
+    "title": "[XX-Warranties expiring soon-XX]",
+    "empty": "[XX-Nothing expires in the next 30 days-XX]",
+    "loadFailed": "[XX-Couldn't load your expiring warranties. Reload the dashboard to try again.-XX]"
+  },
   "topMovers": {
     "title": "[XX-Top Movers-XX]",
     "empty": {

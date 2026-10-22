@@ -23,6 +23,57 @@ export function createTag(
   });
 }
 
+export type WarrantyKind = 'manufacturer' | 'extended' | 'store' | 'other';
+
+export interface CreatedWarranty {
+  id: string;
+  name: string;
+  purchaseDate: string;
+  expiresOn: string | null;
+  isLifetime: boolean;
+  status: string;
+  transactionId?: string;
+  archivedAt: string | null;
+}
+
+// A warranty takes exactly one of expiresOn, term or isLifetime; with none of
+// them given it defaults to a two-year term from the purchase date, which the
+// server reads as Active.
+export function createWarranty(
+  api: ApiClient,
+  data: {
+    name?: string;
+    purchaseDate?: string;
+    expiresOn?: string;
+    term?: { years?: number; months?: number; days?: number };
+    isLifetime?: boolean;
+    vendorName?: string;
+    transactionId?: string;
+    purchasePrice?: number;
+    currencyCode?: string;
+    serialNumbers?: string[];
+    warrantyKind?: WarrantyKind;
+  } = {},
+): Promise<CreatedWarranty> {
+  const hasExpiry =
+    data.expiresOn !== undefined || data.term !== undefined || data.isLifetime !== undefined;
+  return api.post<CreatedWarranty>('/warranties', {
+    name: data.name ?? `E2E Warranty ${uniqueId()}`,
+    purchaseDate: data.purchaseDate ?? new Date().toISOString().slice(0, 10),
+    ...(hasExpiry ? {} : { term: { years: 2 } }),
+    ...(data.expiresOn !== undefined ? { expiresOn: data.expiresOn } : {}),
+    ...(data.term !== undefined ? { term: data.term } : {}),
+    ...(data.isLifetime !== undefined ? { isLifetime: data.isLifetime } : {}),
+    ...(data.vendorName !== undefined ? { vendorName: data.vendorName } : {}),
+    ...(data.transactionId !== undefined ? { transactionId: data.transactionId } : {}),
+    ...(data.purchasePrice !== undefined
+      ? { purchasePrice: data.purchasePrice, currencyCode: data.currencyCode ?? 'USD' }
+      : {}),
+    ...(data.serialNumbers !== undefined ? { serialNumbers: data.serialNumbers } : {}),
+    ...(data.warrantyKind !== undefined ? { warrantyKind: data.warrantyKind } : {}),
+  });
+}
+
 export interface CreatedCategory {
   id: string;
   name: string;
@@ -253,7 +304,8 @@ export type InvestmentAction =
   | 'TRANSFER_OUT'
   | 'REINVEST'
   | 'ADD_SHARES'
-  | 'REMOVE_SHARES';
+  | 'REMOVE_SHARES'
+  | 'RETURN_OF_CAPITAL';
 
 export interface CreatedInvestmentTransaction {
   id: string;

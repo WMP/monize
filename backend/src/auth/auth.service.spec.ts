@@ -768,6 +768,34 @@ describe("AuthService", () => {
       );
     });
 
+    it("stamps last_login alone, never saving the pre-bcrypt snapshot over the counter reset", async () => {
+      // A whole-entity save wrote failed_login_attempts = 4 back over the SQL
+      // reset to 0 (A26-M01); test/integration/credential-writes-atomic holds
+      // the stored state.
+      const hashedPassword = await bcrypt.hash("ValidPass123!", 10);
+      const user = {
+        ...mockUser,
+        passwordHash: hashedPassword,
+        failedLoginAttempts: 4,
+        lockedUntil: new Date(Date.now() - 60_000),
+      };
+      usersRepository.findOne.mockResolvedValue(user);
+      preferencesRepository.findOne.mockResolvedValue(null);
+
+      await service.login({
+        email: "test@example.com",
+        password: "ValidPass123!",
+      });
+
+      expect(usersRepository.save).not.toHaveBeenCalled();
+      expect(usersRepository.update).toHaveBeenCalledWith(
+        { id: user.id },
+        { lastLogin: expect.any(Date) },
+      );
+      expect(user.failedLoginAttempts).toBe(0);
+      expect(user.lockedUntil).toBeNull();
+    });
+
     it("re-wraps the backup key so automatic backups can be encrypted", async () => {
       const hashedPassword = await bcrypt.hash("ValidPass123!", 10);
       const user = { ...mockUser, passwordHash: hashedPassword };

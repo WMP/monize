@@ -1,8 +1,12 @@
 import { FINANCIAL_TOOLS } from "./tool-definitions";
+import {
+  LIST_WARRANTIES_DESCRIPTION,
+  listWarrantiesSchema,
+} from "./tool-input-schemas";
 
 describe("FINANCIAL_TOOLS", () => {
-  it("defines exactly 23 tools", () => {
-    expect(FINANCIAL_TOOLS).toHaveLength(23);
+  it("defines exactly 24 tools", () => {
+    expect(FINANCIAL_TOOLS).toHaveLength(24);
   });
 
   it("has unique tool names", () => {
@@ -34,6 +38,7 @@ describe("FINANCIAL_TOOLS", () => {
     "ai_review_requests",
     "email_receipt_parsers",
     "fetch_bond_series",
+    "list_warranties",
   ];
 
   it("matches the expected tool set exactly", () => {
@@ -89,6 +94,24 @@ describe("FINANCIAL_TOOLS", () => {
       >;
       expect(props.includeTransactions.type).toBe("boolean");
       expect(props.transfersOnly.type).toBe("boolean");
+    });
+  });
+
+  describe("list_warranties", () => {
+    it("states the MCP tool's description and input, read-only and all optional", () => {
+      const tool = FINANCIAL_TOOLS.find((t) => t.name === "list_warranties")!;
+      expect(tool.description).toBe(LIST_WARRANTIES_DESCRIPTION);
+      expect(tool.inputSchema.required).toBeUndefined();
+      const props = tool.inputSchema.properties as Record<
+        string,
+        Record<string, unknown>
+      >;
+      expect(Object.keys(props).sort()).toEqual(
+        Object.keys(listWarrantiesSchema.shape).sort(),
+      );
+      expect(props.status.enum).toEqual(
+        listWarrantiesSchema.shape.status.unwrap().options,
+      );
     });
   });
 
@@ -265,6 +288,7 @@ describe("FINANCIAL_TOOLS", () => {
         "CAPITAL_GAIN_SHORT",
         "CAPITAL_GAIN_LONG",
         "REDEEM",
+        "RETURN_OF_CAPITAL",
       ]);
     });
 

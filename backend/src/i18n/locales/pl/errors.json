@@ -29,7 +29,10 @@
     "unsupportedType": "Nieobsługiwany typ pliku. Dozwolone typy: {{ types }}",
     "tooMany": "Ta transakcja ma już maksymalną liczbę {{ max }} załączników",
     "swept": "Przesyłanie trwało zbyt długo i jego miejsce w magazynie zostało zwolnione. Spróbuj ponownie.",
-    "pairRequiresImages": "Zeskanowany dokument i jego oryginał muszą być obrazami"
+    "pairRequiresImages": "Zeskanowany dokument i jego oryginał muszą być obrazami",
+    "warrantyNotFound": "Nie znaleziono gwarancji",
+    "tooManyForWarranty": "Ta gwarancja ma już maksymalną liczbę {{ max }} załączników",
+    "documentKindNotForTransaction": "Rodzaj dokumentu dotyczy wyłącznie dokumentów gwarancji"
   },
   "accounts": {
     "accountWithIdNotFound": "Nie znaleziono konta o ID {{ id }}",
@@ -873,5 +876,47 @@
     "selectionNotNew": "Wybrana transakcja nie jest nowym wierszem w danych banku. Nic nie zaimportowano; wygeneruj podgląd ponownie.",
     "selectionOverlap": "Transakcja nie może być jednocześnie zaimportowana i dodana do wyjątków.",
     "nothingToUpdate": "Wyślij autoSync, notifySuccess lub tagOperationType, aby zmienić połączenie bankowe."
+  },
+  "warranties": {
+    "notFound": "Nie znaleziono gwarancji o ID {{ id }}",
+    "transactionNotFound": "Nie znaleziono transakcji o ID {{ id }}",
+    "transactionIsSplitLine": "Gwarancja jest powiązana z całym zakupem, a nie z jedną z jego pozycji podziału",
+    "payeeNotFound": "Nie znaleziono odbiorcy o ID {{ id }}",
+    "invalidTerm": "Okres gwarancji musi być dłuższy niż zero",
+    "expiryRequired": "Gwarancja, która nie jest dożywotnia, wymaga daty wygaśnięcia lub okresu",
+    "expiresBeforePurchase": "Gwarancja nie może wygasnąć przed datą zakupu",
+    "priceNeedsCurrency": "Cenę zakupu i jej walutę podaje się razem albo wcale",
+    "claimNotFound": "Nie znaleziono zgłoszenia o ID {{ id }}",
+    "claimResolvedOnNeedsOutcome": "Data zamknięcia zgłoszenia wymaga statusu załatwione lub odrzucone",
+    "claimResolvedBeforeClaimDate": "Zgłoszenia nie można zamknąć przed datą jego złożenia",
+    "import": {
+      "noFile": "Wybierz plik CSV do zaimportowania",
+      "notCsv": "Plik musi być plikiem CSV",
+      "fileTooLarge": "Plik importu może mieć najwyżej 1 MiB",
+      "emptyFile": "Plik musi zawierać wiersz nagłówka i co najmniej jeden wiersz danych",
+      "tooManyRows": "Plik importu ma {{ count }} wierszy; dozwolonych jest najwyżej {{ max }}",
+      "missingColumns": "W wierszu nagłówka pliku brakuje kolumny {{ columns }}",
+      "invalidRows": "Liczba nieprawidłowych wierszy: {{ count }}, więc nic nie zaimportowano; popraw je lub pomiń",
+      "nameRequired": "ProductName jest wymagane",
+      "purchaseDateRequired": "PurchaseDate jest wymagane",
+      "tooLong": "{{ column }} może mieć najwyżej {{ max }} znaków",
+      "invalidDate": "{{ column }} musi być datą w formacie YYYY-MM-DD",
+      "invalidDuration": "{{ column }} musi być liczbą całkowitą od 0 do {{ max }}",
+      "invalidLifetime": "IsLifetime musi mieć wartość true, false, yes, no, 1 lub 0",
+      "noExpirySource": "Wypełnij ExpirationDate, kolumnę WarrantyDuration lub IsLifetime",
+      "lifetimeWithExpiry": "IsLifetime ma wartość true, ale wiersz podaje też ExpirationDate lub WarrantyDuration; wypełnij tylko jedno",
+      "durationIgnored": "Użyto ExpirationDate; sąsiednie kolumny WarrantyDuration zostały pominięte",
+      "durationDisagrees": "Użyto ExpirationDate {{ expiresOn }}; kolumny WarrantyDuration dają {{ derived }}, co się nie zgadza",
+      "negativePrice": "PurchasePrice nie może być ujemne",
+      "invalidPrice": "PurchasePrice musi być liczbą od 0 do {{ max }} z najwyżej 4 miejscami po przecinku",
+      "currencyWithoutPrice": "Podano Currency, ale PurchasePrice jest puste",
+      "unknownCurrency": "Waluta \"{{ value }}\" jest nieznana; użyto {{ currency }}",
+      "unknownWarrantyType": "WarrantyType \"{{ value }}\" nie jest żadną z wartości manufacturer, extended, store ani other; zaimportowano jako other",
+      "invalidSerialJson": "SerialNumber zaczyna się od [, ale nie jest tablicą JSON z tekstem",
+      "tooManySerials": "SerialNumber zawiera {{ count }} wartości; dozwolonych jest najwyżej {{ max }}",
+      "serialTooLong": "Każdy numer seryjny może mieć najwyżej {{ max }} znaków",
+      "invalidUrl": "ProductURL musi być adresem http lub https",
+      "invalidField": "{{ field }} jest nieprawidłowe"
+    }
   }
 }

@@ -192,15 +192,15 @@ export class McpInvestmentsTools {
             .array(z.string().max(100))
             .max(50)
             .optional()
-            .describe("Investment account names."),
+            .describe("Account names."),
           symbols: z
             .array(z.string().min(1).max(20))
             .max(50)
             .optional()
-            .describe("Ticker symbols, case-insensitive."),
+            .describe("Tickers, case-insensitive."),
           actions: z
             .array(z.nativeEnum(InvestmentAction))
-            .max(17)
+            .max(18)
             .optional()
             .describe("Narrow to these actions."),
           groupBy: z
@@ -530,8 +530,8 @@ export class McpInvestmentsTools {
         annotations: WRITE,
         description:
           "Create, update or delete brokerage transactions. Account, funding " +
-          "account and security resolve by name. A buy debits, and a sale, " +
-          "dividend, interest or capital gain credits, the brokerage's linked " +
+          "account and security resolve by name. A buy debits, and a sale or " +
+          "a distribution credits, the brokerage's linked " +
           "cash account automatically -- never record that cash movement " +
           "yourself; fundingAccountName overrides which account settles. " +
           "An update changes only the fields you send and recomputes the " +

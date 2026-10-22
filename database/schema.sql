@@ -421,13 +421,26 @@ CREATE INDEX idx_transaction_splits_category ON transaction_splits(category_id);
 CREATE INDEX idx_transaction_splits_transfer_account ON transaction_splits(transfer_account_id);
 CREATE INDEX idx_transaction_splits_linked ON transaction_splits(linked_transaction_id);
 
--- Transaction Attachments: receipts/invoices/documents stored in Postgres by
--- default. Metadata lives here; the bytes live in attachment_blobs (database
--- provider) or an external store keyed by storage_key. See migration 109.
+-- Attachments: receipts/invoices/documents stored in Postgres by default.
+-- Metadata lives here; the bytes live in attachment_blobs (database provider)
+-- or an external store keyed by storage_key. See migration 109.
+--
+-- An attachment has exactly one parent (chk_attachment_one_parent, WTY-003):
+-- the transaction whose receipt it is, or the warranty whose receipt, manual
+-- or photo it is (docs/future-plans/warranty-tracker.md decision 7). The
+-- table keeps its historical name. Ownership is user_id on this row whichever
+-- parent it has, so the attachment_blobs policy, the tombstone trigger, the
+-- orphan sweeper and the storage migrator never look at the parent.
 CREATE TABLE transaction_attachments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    transaction_id UUID NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+    transaction_id UUID REFERENCES transactions(id) ON DELETE CASCADE,
+    -- The other parent. Its foreign key to warranties is added after that
+    -- table, further down (fk added with ALTER TABLE, like accounts').
+    warranty_id UUID,
+    -- What a warranty's document is; a transaction's attachments are always
+    -- 'other' (the register offers no picker).
+    document_kind VARCHAR(20) NOT NULL DEFAULT 'other', -- 'receipt' | 'manual' | 'photo' | 'warranty' | 'other'
     filename VARCHAR(255) NOT NULL,
     content_type VARCHAR(100) NOT NULL, -- server-sniffed MIME, not the client's claim
     byte_size BIGINT NOT NULL,
@@ -441,10 +454,16 @@ CREATE TABLE transaction_attachments (
     original_of_attachment_id UUID NULL REFERENCES transaction_attachments(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_attachment_not_own_original
-        CHECK (original_of_attachment_id IS NULL OR original_of_attachment_id <> id)
+        CHECK (original_of_attachment_id IS NULL OR original_of_attachment_id <> id),
+    CONSTRAINT chk_attachment_document_kind
+        CHECK (document_kind IN ('receipt', 'manual', 'photo', 'warranty', 'other')),
+    -- Exactly one parent: never none, never both.
+    CONSTRAINT chk_attachment_one_parent
+        CHECK (((transaction_id IS NOT NULL)::int + (warranty_id IS NOT NULL)::int) = 1)
 );
 
 CREATE INDEX idx_transaction_attachments_transaction ON transaction_attachments(transaction_id);
+CREATE INDEX idx_transaction_attachments_warranty ON transaction_attachments(warranty_id);
 CREATE INDEX idx_transaction_attachments_user ON transaction_attachments(user_id);
 -- At most one original per attachment: a scan pair is exactly two rows.
 CREATE UNIQUE INDEX uq_transaction_attachments_original_of
@@ -1512,7 +1531,10 @@ CREATE TYPE investment_action AS ENUM (
     'REINVEST_CAPITAL_GAIN_LONG',
     'CAPITAL_GAIN_SHORT',
     'CAPITAL_GAIN_LONG',
-    'REDEEM'
+    'REDEEM',
+    -- Return of capital (issue #1800): cash in like a dividend, no shares, and
+    -- the amount reduces the position's cost basis instead of counting as income.
+    'RETURN_OF_CAPITAL'
 );
 
 CREATE TABLE investment_transactions (
@@ -1725,6 +1747,7 @@ CREATE TABLE account_delegates (
     budgets_can_read      BOOLEAN NOT NULL DEFAULT false,
     reports_can_read      BOOLEAN NOT NULL DEFAULT false,
     ai_can_read           BOOLEAN NOT NULL DEFAULT false,
+    warranties_can_read   BOOLEAN NOT NULL DEFAULT false,
     CONSTRAINT account_delegates_owner_delegate_unique UNIQUE (owner_user_id, delegate_user_id),
     CONSTRAINT account_delegates_no_self CHECK (owner_user_id <> delegate_user_id)
 );
@@ -3468,6 +3491,89 @@ CREATE TABLE calendar_day_notes (
 );
 
 -- ---------------------------------------------------------------------------
+-- Warranties (docs/future-plans/warranty-tracker.md sections 6.1 and 6.2)
+--
+-- One purchased item: its expiry, vendor, serial and model numbers and an
+-- informational purchase price, optionally linked to the transaction that
+-- bought it. A warranty never moves money: nothing sums `purchase_price`, and
+-- the transaction link is ON DELETE SET NULL, so deleting the purchase keeps
+-- the warranty. Status (lifetime, active, expiring, expired) is derived from
+-- `expires_on` and `is_lifetime` by the application and never stored.
+--
+-- `expires_on` is the stored fact; a lifetime warranty may leave it NULL and
+-- every other one must carry it (chk_warranty_expiry). The price carries its
+-- own currency, both set or both NULL (chk_warranty_price_currency).
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE warranties (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(200) NOT NULL,
+    vendor_name VARCHAR(200),
+    payee_id UUID REFERENCES payees(id) ON DELETE SET NULL,
+    transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
+    model_number VARCHAR(100),
+    serial_numbers TEXT[] NOT NULL DEFAULT '{}',
+    warranty_kind VARCHAR(20) NOT NULL DEFAULT 'manufacturer'
+        CHECK (warranty_kind IN ('manufacturer', 'extended', 'store', 'other')),
+    purchase_date DATE NOT NULL,
+    expires_on DATE,
+    is_lifetime BOOLEAN NOT NULL DEFAULT false,
+    purchase_price NUMERIC(20,4) CHECK (purchase_price IS NULL OR purchase_price >= 0),
+    currency_code VARCHAR(3) REFERENCES currencies(code),
+    product_url VARCHAR(500),
+    notes VARCHAR(2000),
+    archived_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_warranty_expiry CHECK (is_lifetime OR expires_on IS NOT NULL),
+    CONSTRAINT chk_warranty_expiry_after_purchase
+        CHECK (expires_on IS NULL OR expires_on >= purchase_date),
+    CONSTRAINT chk_warranty_price_currency
+        CHECK ((purchase_price IS NULL) = (currency_code IS NULL))
+);
+
+-- The list, the widget and the reminder cron all read a user's unarchived rows
+-- by expiry.
+CREATE INDEX idx_warranties_user_status
+    ON warranties(user_id, archived_at, expires_on);
+CREATE INDEX idx_warranties_transaction ON warranties(transaction_id);
+CREATE INDEX idx_warranties_payee ON warranties(payee_id);
+
+CREATE TRIGGER update_warranties_updated_at
+  BEFORE UPDATE ON warranties
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- The claims made against one warranty. A claim never changes the warranty's
+-- status; it is a log the owner keeps.
+CREATE TABLE warranty_claims (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    warranty_id UUID NOT NULL REFERENCES warranties(id) ON DELETE CASCADE,
+    claim_date DATE NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'open'
+        CHECK (status IN ('open', 'approved', 'denied', 'resolved')),
+    description VARCHAR(2000),
+    resolution VARCHAR(2000),
+    resolved_on DATE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_warranty_claims_warranty ON warranty_claims(warranty_id);
+
+-- A warranty's documents live in transaction_attachments (its second parent;
+-- see that table). The column is declared there; the foreign key is added
+-- here because warranties is defined after it. The name is the one PostgreSQL
+-- gives an inline REFERENCES, which is how the migration adds it.
+ALTER TABLE transaction_attachments ADD CONSTRAINT transaction_attachments_warranty_id_fkey
+    FOREIGN KEY (warranty_id) REFERENCES warranties(id) ON DELETE CASCADE;
+
+CREATE TRIGGER update_warranty_claims_updated_at
+  BEFORE UPDATE ON warranty_claims
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ---------------------------------------------------------------------------
 -- Off-machine backup destinations (docs/specs/backup-off-machine.md section 9).
 --
 -- One row per user: which destinations a completed automatic backup is copied
@@ -3636,7 +3742,9 @@ DECLARE
         'transaction_attachments',
         'transaction_rule_applications',
         'transaction_rules',
-        'user_currency_preferences'
+        'user_currency_preferences',
+        'warranties',
+        'warranty_claims'
     ];
 BEGIN
     FOREACH t IN ARRAY direct_tables LOOP
@@ -4324,6 +4432,7 @@ AS $$
     UNION ALL SELECT 1 FROM scheduled_transactions
       WHERE currency_code = p_code OR original_currency_code = p_code
     UNION ALL SELECT 1 FROM budgets WHERE currency_code = p_code
+    UNION ALL SELECT 1 FROM warranties WHERE currency_code = p_code
     UNION ALL SELECT 1 FROM user_preferences WHERE default_currency = p_code
   )
 $$;
@@ -4406,6 +4515,7 @@ AS $$
     UNION SELECT currency_code FROM scheduled_transactions WHERE user_id = p_user_id
     UNION SELECT original_currency_code FROM scheduled_transactions WHERE user_id = p_user_id
     UNION SELECT currency_code FROM budgets WHERE user_id = p_user_id
+    UNION SELECT currency_code FROM warranties WHERE user_id = p_user_id
   ) referenced
   WHERE code IS NOT NULL
 $$;

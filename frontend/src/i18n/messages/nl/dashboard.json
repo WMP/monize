@@ -93,6 +93,11 @@
     "viewAll": "Alle inzichten bekijken",
     "activeCount": "{count} actief"
   },
+  "warrantiesExpiring": {
+    "title": "Garanties die binnenkort verlopen",
+    "empty": "Er verloopt niets in de komende 30 dagen",
+    "loadFailed": "Je aflopende garanties konden niet worden geladen. Laad het dashboard opnieuw om het nog eens te proberen."
+  },
   "topMovers": {
     "title": "Grootste verschuivingen",
     "empty": {

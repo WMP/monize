@@ -79,6 +79,21 @@ describe('incomeKind', () => {
     expect(incomeBaseKind('SELL')).toBeNull();
   });
 
+  it('records no income for a return of capital: it pays back cost (issue #1800)', () => {
+    expect(baseInvestmentAction('RETURN_OF_CAPITAL')).toBe('RETURN_OF_CAPITAL');
+    expect(incomeKind('RETURN_OF_CAPITAL')).toBeNull();
+    expect(INCOME_ACTIONS).not.toContain('RETURN_OF_CAPITAL');
+    expect(
+      investmentIncomeAmount({
+        action: 'RETURN_OF_CAPITAL',
+        quantity: null,
+        price: null,
+        commission: null,
+        totalAmount: 40,
+      }),
+    ).toBe(0);
+  });
+
   it('lists the reinvestments as income but not as cash income', () => {
     for (const action of REINVESTED_INCOME_ACTIONS) {
       expect(CASH_INCOME_ACTIONS).not.toContain(action);

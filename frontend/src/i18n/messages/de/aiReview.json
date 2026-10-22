@@ -48,6 +48,7 @@
       "tradeChat": "Du hast darum gebeten, die angehängte Handelsbestätigung zu erkennen: schlage die Wertpapiertransaktion vor, die sie meldet, einen Kauf, einen Verkauf, eine Bardividende oder eine reinvestierte Dividende."
     },
     "emailReceipt": "E-Mail-Beleg: {subject} von {sender}",
+    "emailReceiptForwarded": "E-Mail-Beleg: {subject} von {sender}, weitergeleitet von {forwarder}",
     "emailReceiptMissing": "E-Mail-Beleg (die E-Mail wurde gelöscht)",
     "parserDraft": "Profil-Entwurf aus {count, plural, one {# E-Mail} other {# E-Mails}} ({domain})",
     "viewEmailReceipts": "E-Mail-Belege anzeigen",

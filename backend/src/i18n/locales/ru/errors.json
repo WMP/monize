@@ -29,7 +29,10 @@
     "unsupportedType": "Неподдерживаемый тип файла. Разрешённые типы: {{ types }}",
     "tooMany": "У этой проводки уже максимальное число вложений — {{ max }}",
     "swept": "Загрузка заняла слишком много времени, и её хранилище было освобождено. Попробуйте ещё раз.",
-    "pairRequiresImages": "Отсканированный документ и его оригинал должны быть изображениями"
+    "pairRequiresImages": "Отсканированный документ и его оригинал должны быть изображениями",
+    "warrantyNotFound": "Гарантия не найдена",
+    "tooManyForWarranty": "У этой гарантии уже максимальное число вложений — {{ max }}",
+    "documentKindNotForTransaction": "Тип документа применяется только к документам гарантии"
   },
   "accounts": {
     "accountWithIdNotFound": "Счёт с ID {{ id }} не найден",
@@ -873,5 +876,47 @@
     "selectionNotNew": "Выбранная операция не является новой строкой в данных банка. Ничего не импортировано; повторите предварительный просмотр.",
     "selectionOverlap": "Операцию нельзя одновременно импортировать и добавить в исключения.",
     "nothingToUpdate": "Отправьте autoSync, notifySuccess или tagOperationType, чтобы изменить банковское подключение."
+  },
+  "warranties": {
+    "notFound": "Гарантия с ID {{ id }} не найдена",
+    "transactionNotFound": "Проводка с ID {{ id }} не найдена",
+    "transactionIsSplitLine": "Гарантия связывается со всей покупкой, а не с одной из строк её разделения",
+    "payeeNotFound": "Получатель с ID {{ id }} не найден",
+    "invalidTerm": "Срок гарантии должен быть больше нуля",
+    "expiryRequired": "Для непожизненной гарантии нужна дата окончания или срок",
+    "expiresBeforePurchase": "Гарантия не может истечь раньше даты покупки",
+    "priceNeedsCurrency": "Цена покупки и её валюта указываются вместе или не указываются вовсе",
+    "claimNotFound": "Обращение с ID {{ id }} не найдено",
+    "claimResolvedOnNeedsOutcome": "Дата закрытия обращения возможна только при статусе «решено» или «отклонено»",
+    "claimResolvedBeforeClaimDate": "Обращение не может быть закрыто раньше даты его подачи",
+    "import": {
+      "noFile": "Выберите CSV-файл для импорта",
+      "notCsv": "Файл должен быть в формате CSV",
+      "fileTooLarge": "Файл импорта должен быть не больше 1 МиБ",
+      "emptyFile": "В файле должна быть строка заголовков и хотя бы одна строка данных",
+      "tooManyRows": "В файле импорта строк: {{ count }}; допускается не более {{ max }}",
+      "missingColumns": "В строке заголовков файла нет столбца {{ columns }}",
+      "invalidRows": "Недействительных строк: {{ count }}, поэтому ничего не импортировано; исправьте или пропустите их",
+      "nameRequired": "Требуется ProductName",
+      "purchaseDateRequired": "Требуется PurchaseDate",
+      "tooLong": "{{ column }} должен содержать не более {{ max }} символов",
+      "invalidDate": "{{ column }} должен быть датой в формате YYYY-MM-DD",
+      "invalidDuration": "{{ column }} должен быть целым числом от 0 до {{ max }}",
+      "invalidLifetime": "IsLifetime должен быть true, false, yes, no, 1 или 0",
+      "noExpirySource": "Заполните ExpirationDate, столбец WarrantyDuration или IsLifetime",
+      "lifetimeWithExpiry": "IsLifetime равен true, но в строке также указаны ExpirationDate или WarrantyDuration; заполните только одно",
+      "durationIgnored": "Использован ExpirationDate; соседние столбцы WarrantyDuration проигнорированы",
+      "durationDisagrees": "Использован ExpirationDate {{ expiresOn }}; столбцы WarrantyDuration дают {{ derived }}, что не совпадает",
+      "negativePrice": "PurchasePrice не может быть отрицательным",
+      "invalidPrice": "PurchasePrice должен быть числом от 0 до {{ max }} и содержать не более 4 знаков после запятой",
+      "currencyWithoutPrice": "Указан Currency, но PurchasePrice пуст",
+      "unknownCurrency": "Валюта «{{ value }}» неизвестна; использована {{ currency }}",
+      "unknownWarrantyType": "WarrantyType «{{ value }}» не является manufacturer, extended, store или other; импортировано как other",
+      "invalidSerialJson": "SerialNumber начинается с [, но не является JSON-массивом строк",
+      "tooManySerials": "В SerialNumber значений: {{ count }}; допускается не более {{ max }}",
+      "serialTooLong": "Каждый серийный номер должен содержать не более {{ max }} символов",
+      "invalidUrl": "ProductURL должен быть адресом http или https",
+      "invalidField": "Недопустимое значение {{ field }}"
+    }
   }
 }

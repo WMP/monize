@@ -60,7 +60,8 @@ export type DensityView =
   | 'accountRegister'
   | 'accountFxFees'
   | 'fxFeesReport'
-  | 'ruleMatch';
+  | 'ruleMatch'
+  | 'warranties';
 
 export const DENSITY_VIEWS: readonly DensityView[] = [
   'transactions',
@@ -80,6 +81,7 @@ export const DENSITY_VIEWS: readonly DensityView[] = [
   'accountFxFees',
   'fxFeesReport',
   'ruleMatch',
+  'warranties',
 ];
 
 /**
