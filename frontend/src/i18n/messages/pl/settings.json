@@ -1787,6 +1787,42 @@
           "tag": "Tag z typu operacji z banku: {tag}"
         }
       }
+    },
+    "simplefin": {
+      "provider": "Dostawca danych",
+      "description": "Połącz banki w SimpleFIN Bridge, a następnie wklej tutaj jednorazowy token konfiguracji. Dostęp jest tylko do odczytu.",
+      "openBridge": "Otwórz SimpleFIN Bridge",
+      "setupToken": "Token konfiguracji",
+      "connect": "Połącz SimpleFIN",
+      "connected": "SimpleFIN jest połączony.",
+      "savedDiscoveryFailed": "Połączono, ale wykrywanie kont wymaga uwagi. Ponów je bez nowego tokenu.",
+      "refresh": "Odśwież konta",
+      "failed": "Nie udało się wykonać żądania. Sprawdź stan połączenia przed użyciem nowego tokenu.",
+      "loadFailed": "Nie udało się wczytać stanu SimpleFIN.",
+      "encryptionRequired": "Poproś administratora o skonfigurowanie szyfrowania przed połączeniem SimpleFIN.",
+      "remove": "Usuń SimpleFIN z Monize",
+      "removeTitle": "Usunąć dostęp do wszystkich instytucji?",
+      "removeBody": "Wyłącza to całą synchronizację SimpleFIN w Monize i zachowuje historię. Unieważnij token aplikacji w Bridge, aby zakończyć dostęp zdalny.",
+      "replaceTitle": "Zastąpić dostęp SimpleFIN?",
+      "replaceBody": "Zastępuje to dostęp do wszystkich instytucji. Dotychczasowe powiązania kont pozostają; zmienione identyfikatory wymagają sprawdzenia.",
+      "quota": "Pozostało żądań: {remaining}",
+      "nextEligible": "Następna dostępność: {date}",
+      "stopTitle": "Zatrzymać synchronizację {bank}?",
+      "stopBody": "Dotychczasowe powiązania i transakcje pozostaną. Odśwież konta, aby ponownie połączyć tę instytucję.",
+      "stop": "Zatrzymaj synchronizację",
+      "stopped": "Synchronizacja zatrzymana",
+      "title": "SimpleFIN",
+      "enableBanking": "Enable Banking",
+      "errors": {
+        "unauthorized": "Połącz ponownie, używając nowego tokenu konfiguracji.",
+        "payment_required": "Sprawdź subskrypcję SimpleFIN Bridge.",
+        "rate_limited": "Osiągnięto limit żądań. Poczekaj przed odświeżeniem.",
+        "no_accounts": "Nie udostępniono kont. Sprawdź dostęp w Bridge.",
+        "partial_data": "Część danych kont jest niepełna. Sprawdź Bridge i odśwież.",
+        "identity_review": "Identyfikatory kont zmieniły się. Sprawdź powiązania przed włączeniem synchronizacji.",
+        "invalid_response": "Bridge zwrócił nieobsługiwane dane. Odśwież później.",
+        "unavailable": "SimpleFIN nie odpowiedział. Spróbuj później."
+      }
     }
   }
 }

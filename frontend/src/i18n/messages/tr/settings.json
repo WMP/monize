@@ -1787,6 +1787,42 @@
           "tag": "Bankanın işlem türünden etiket: {tag}"
         }
       }
+    },
+    "simplefin": {
+      "provider": "Veri sağlayıcısı",
+      "description": "Bankaları SimpleFIN Bridge üzerinden bağlayın, ardından tek kullanımlık kurulum belirtecini buraya yapıştırın. Erişim salt okunurdur.",
+      "openBridge": "SimpleFIN Bridge'i aç",
+      "setupToken": "Kurulum belirteci",
+      "connect": "SimpleFIN'i bağla",
+      "connected": "SimpleFIN bağlı.",
+      "savedDiscoveryFailed": "Bağlandı, ancak hesap keşfi ilgi gerektiriyor. Yeni bir belirteç olmadan yeniden deneyin.",
+      "refresh": "Hesapları yenile",
+      "failed": "İstek tamamlanamadı. Yeni bir belirteç kullanmadan önce bağlantı durumunu kontrol edin.",
+      "loadFailed": "SimpleFIN durumu yüklenemedi.",
+      "encryptionRequired": "SimpleFIN'i bağlamadan önce yöneticiden şifrelemeyi yapılandırmasını isteyin.",
+      "remove": "SimpleFIN'i Monize'dan kaldır",
+      "removeTitle": "Tüm kurumların erişimi kaldırılsın mı?",
+      "removeBody": "Bu işlem Monize'daki tüm SimpleFIN eşitlemesini devre dışı bırakır ve geçmişi korur. Uzaktan erişimi sonlandırmak için Bridge'deki uygulama belirtecini iptal edin.",
+      "replaceTitle": "SimpleFIN erişimi değiştirilsin mi?",
+      "replaceBody": "Bu işlem tüm kurumların erişimini değiştirir. Mevcut hesap eşleştirmeleri korunur; değişen kimlikler incelenmelidir.",
+      "quota": "{remaining} istek kaldı",
+      "nextEligible": "Sonraki kullanılabilirlik: {date}",
+      "stopTitle": "{bank} eşitlemesi durdurulsun mu?",
+      "stopBody": "Mevcut eşleştirmeler ve işlemler korunur. Bu kurumu yeniden bağlamak için hesapları yenileyin.",
+      "stop": "Eşitlemeyi durdur",
+      "stopped": "Eşitleme durduruldu",
+      "title": "SimpleFIN",
+      "enableBanking": "Enable Banking",
+      "errors": {
+        "unauthorized": "Yeni bir kurulum belirteciyle yeniden bağlanın.",
+        "payment_required": "SimpleFIN Bridge aboneliğinizi kontrol edin.",
+        "rate_limited": "İstek sınırına ulaşıldı. Yenilemeden önce bekleyin.",
+        "no_accounts": "Hiçbir hesap paylaşılmadı. Bridge'de hesap erişimini kontrol edin.",
+        "partial_data": "Bazı hesap verileri eksik. Bridge'i kontrol edip yenileyin.",
+        "identity_review": "Hesap kimlikleri değişti. Eşitlemeyi etkinleştirmeden önce eşleştirmeleri inceleyin.",
+        "invalid_response": "Bridge desteklenmeyen veriler döndürdü. Daha sonra yenileyin.",
+        "unavailable": "SimpleFIN yanıt vermedi. Daha sonra deneyin."
+      }
     }
   }
 }

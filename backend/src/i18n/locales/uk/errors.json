@@ -881,7 +881,21 @@
     "needsPreview": "Відкрийте попередній перегляд цього банківського рахунку та підтвердьте перший імпорт, перш ніж він синхронізуватиметься автоматично.",
     "selectionNotNew": "Вибрана операція не є новим рядком у даних банку. Нічого не імпортовано; повторіть попередній перегляд.",
     "selectionOverlap": "Операцію не можна одночасно імпортувати й додати до винятків.",
-    "nothingToUpdate": "Надішліть autoSync, notifySuccess або tagOperationType, щоб змінити банківське підключення."
+    "nothingToUpdate": "Надішліть autoSync, notifySuccess або tagOperationType, щоб змінити банківське підключення.",
+    "simplefinCredentialsMissing": "Підключіть SimpleFIN перед синхронізацією рахунків.",
+    "simplefinAccessInvalid": "SimpleFIN повернув недійсну URL-адресу доступу. Створіть новий токен налаштування в SimpleFIN Bridge.",
+    "simplefinEncryptionRequired": "Цей сервер не може зберігати облікові дані SimpleFIN. Попросіть адміністратора налаштувати ENCRYPTION_KEY.",
+    "simplefinOwnerMissing": "Обліковий запис користувача для цього підключення SimpleFIN більше не існує.",
+    "simplefinReplaceRequired": "Перш ніж підключитися знову, підтвердьте заміну наявного підключення SimpleFIN.",
+    "simplefinCredentialsUnreadable": "Не вдалося прочитати збережені облікові дані SimpleFIN. Підключіться знову з новим токеном налаштування із SimpleFIN Bridge.",
+    "simplefinDisconnected": "SimpleFIN відключено в Monize. Підключіться знову, щоб відновити синхронізацію; відкличте токен застосунку в SimpleFIN Bridge, щоб видалити віддалений доступ.",
+    "simplefinSetupInvalid": "Вставте дійсний токен налаштування, створений у SimpleFIN Bridge.",
+    "simplefinSetupRunning": "Налаштування SimpleFIN уже виконується. Дочекайтеся завершення перед повторною спробою.",
+    "simplefinSetupAttempted": "Цей токен уже намагалися використати. Якщо підключення є, повторіть виявлення рахунків; інакше створіть новий токен у SimpleFIN Bridge.",
+    "simplefinClaimUncertain": "Налаштування SimpleFIN не завершено. Токен міг бути використаний. Перевірте Bridge, відкличте невикористані токени застосунку та створіть новий токен налаштування.",
+    "simplefinClaimStorageFailed": "SimpleFIN використав токен, але Monize не зміг підтвердити збереження облікових даних. Спочатку перевірте стан підключення. Якщо його немає, відкличте токен застосунку в Bridge та створіть новий токен налаштування.",
+    "simplefinIdentityReview": "Ідентифікатори рахунків SimpleFIN змінилися або відсутні. Перевірте рахунки перед увімкненням синхронізації; наявні зв’язки збережено.",
+    "simplefinSubscriptionRequired": "Для SimpleFIN Bridge потрібна активна підписка. Перевірте оплату в SimpleFIN Bridge."
   },
   "warranties": {
     "notFound": "Гарантію з ідентифікатором {{ id }} не знайдено",

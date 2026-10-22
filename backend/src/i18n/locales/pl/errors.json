@@ -881,7 +881,21 @@
     "needsPreview": "Otwórz podgląd tego konta bankowego i potwierdź pierwszy import, zanim zostanie zsynchronizowane automatycznie.",
     "selectionNotNew": "Wybrana transakcja nie jest nowym wierszem w danych banku. Nic nie zaimportowano; wygeneruj podgląd ponownie.",
     "selectionOverlap": "Transakcja nie może być jednocześnie zaimportowana i dodana do wyjątków.",
-    "nothingToUpdate": "Wyślij autoSync, notifySuccess lub tagOperationType, aby zmienić połączenie bankowe."
+    "nothingToUpdate": "Wyślij autoSync, notifySuccess lub tagOperationType, aby zmienić połączenie bankowe.",
+    "simplefinCredentialsMissing": "Połącz SimpleFIN przed synchronizacją kont.",
+    "simplefinAccessInvalid": "SimpleFIN zwrócił nieprawidłowy adres dostępu. Wygeneruj nowy token konfiguracji w SimpleFIN Bridge.",
+    "simplefinEncryptionRequired": "Ten serwer nie może przechowywać danych uwierzytelniających SimpleFIN. Poproś administratora o skonfigurowanie ENCRYPTION_KEY.",
+    "simplefinOwnerMissing": "Konto użytkownika dla tego połączenia SimpleFIN już nie istnieje.",
+    "simplefinReplaceRequired": "Przed ponownym połączeniem potwierdź zastąpienie istniejącego połączenia SimpleFIN.",
+    "simplefinCredentialsUnreadable": "Nie można odczytać zapisanych danych uwierzytelniających SimpleFIN. Połącz się ponownie, używając nowego tokenu konfiguracji z SimpleFIN Bridge.",
+    "simplefinDisconnected": "SimpleFIN został odłączony w Monize. Połącz się ponownie, aby wznowić synchronizację; unieważnij token aplikacji w SimpleFIN Bridge, aby usunąć zdalny dostęp.",
+    "simplefinSetupInvalid": "Wklej prawidłowy token konfiguracji wygenerowany przez SimpleFIN Bridge.",
+    "simplefinSetupRunning": "Konfiguracja SimpleFIN już trwa. Poczekaj na jej zakończenie, zanim spróbujesz ponownie.",
+    "simplefinSetupAttempted": "Podjęto już próbę użycia tego tokenu. Jeśli połączenie istnieje, ponów wykrywanie kont; w przeciwnym razie wygeneruj nowy token w SimpleFIN Bridge.",
+    "simplefinClaimUncertain": "Konfiguracja SimpleFIN nie została ukończona. Token mógł zostać zużyty. Sprawdź Bridge, unieważnij nieużywane tokeny aplikacji i wygeneruj nowy token konfiguracji.",
+    "simplefinClaimStorageFailed": "SimpleFIN zużył token, ale Monize nie mógł potwierdzić zapisania danych uwierzytelniających. Najpierw sprawdź stan połączenia. Jeśli go nie ma, unieważnij token aplikacji w Bridge i wygeneruj nowy token konfiguracji.",
+    "simplefinIdentityReview": "Identyfikatory kont SimpleFIN zmieniły się lub są niedostępne. Sprawdź konta przed włączeniem synchronizacji; istniejące powiązania zostały zachowane.",
+    "simplefinSubscriptionRequired": "SimpleFIN Bridge wymaga aktywnej subskrypcji. Sprawdź rozliczenia w SimpleFIN Bridge."
   },
   "warranties": {
     "notFound": "Nie znaleziono gwarancji o ID {{ id }}",

@@ -881,7 +881,21 @@
     "needsPreview": "Hãy mở bản xem trước của tài khoản ngân hàng này và xác nhận lần nhập đầu tiên trước khi nó được đồng bộ tự động.",
     "selectionNotNew": "Một giao dịch đã chọn không phải là dòng mới trong dữ liệu của ngân hàng. Chưa có gì được nhập; hãy xem trước lại.",
     "selectionOverlap": "Một giao dịch không thể vừa được nhập vừa được thêm vào danh sách ngoại lệ.",
-    "nothingToUpdate": "Hãy gửi autoSync, notifySuccess hoặc tagOperationType để thay đổi một kết nối ngân hàng."
+    "nothingToUpdate": "Hãy gửi autoSync, notifySuccess hoặc tagOperationType để thay đổi một kết nối ngân hàng.",
+    "simplefinCredentialsMissing": "Kết nối SimpleFIN trước khi đồng bộ tài khoản.",
+    "simplefinAccessInvalid": "SimpleFIN trả về URL truy cập không hợp lệ. Hãy tạo mã thiết lập mới trong SimpleFIN Bridge.",
+    "simplefinEncryptionRequired": "Máy chủ này không thể lưu thông tin xác thực SimpleFIN. Hãy yêu cầu quản trị viên cấu hình ENCRYPTION_KEY.",
+    "simplefinOwnerMissing": "Tài khoản người dùng cho kết nối SimpleFIN này không còn tồn tại.",
+    "simplefinReplaceRequired": "Xác nhận thay thế kết nối SimpleFIN hiện có trước khi kết nối lại.",
+    "simplefinCredentialsUnreadable": "Không thể đọc thông tin xác thực SimpleFIN đã lưu. Hãy kết nối lại bằng mã thiết lập mới từ SimpleFIN Bridge.",
+    "simplefinDisconnected": "SimpleFIN đã được ngắt kết nối trong Monize. Kết nối lại để tiếp tục đồng bộ; thu hồi mã ứng dụng trong SimpleFIN Bridge để xóa quyền truy cập từ xa.",
+    "simplefinSetupInvalid": "Dán mã thiết lập hợp lệ được tạo bởi SimpleFIN Bridge.",
+    "simplefinSetupRunning": "Đang có một quá trình thiết lập SimpleFIN. Hãy đợi hoàn tất trước khi thử lại.",
+    "simplefinSetupAttempted": "Mã thiết lập này đã được thử. Nếu đã kết nối, hãy chạy lại việc tìm tài khoản; nếu chưa, hãy tạo mã mới trong SimpleFIN Bridge.",
+    "simplefinClaimUncertain": "Thiết lập SimpleFIN chưa hoàn tất. Mã có thể đã được sử dụng. Kiểm tra Bridge, thu hồi mã ứng dụng không dùng và tạo mã thiết lập mới.",
+    "simplefinClaimStorageFailed": "SimpleFIN đã sử dụng mã, nhưng Monize không thể xác nhận việc lưu thông tin xác thực. Trước tiên hãy kiểm tra trạng thái kết nối. Nếu chưa kết nối, hãy thu hồi mã ứng dụng trong Bridge và tạo mã thiết lập mới.",
+    "simplefinIdentityReview": "Định danh tài khoản SimpleFIN đã thay đổi hoặc bị thiếu. Hãy kiểm tra tài khoản trước khi bật đồng bộ; các liên kết hiện có đã được giữ lại.",
+    "simplefinSubscriptionRequired": "SimpleFIN Bridge yêu cầu gói đăng ký đang hoạt động. Hãy kiểm tra thanh toán trong SimpleFIN Bridge."
   },
   "warranties": {
     "notFound": "Không tìm thấy bảo hành với ID {{ id }}",

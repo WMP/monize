@@ -1787,6 +1787,42 @@
           "tag": "Tag uit het bewerkingstype van de bank: {tag}"
         }
       }
+    },
+    "simplefin": {
+      "provider": "Gegevensprovider",
+      "description": "Verbind banken in SimpleFIN Bridge en plak hier een eenmalig insteltoken. De toegang is alleen-lezen.",
+      "openBridge": "SimpleFIN Bridge openen",
+      "setupToken": "Insteltoken",
+      "connect": "SimpleFIN verbinden",
+      "connected": "SimpleFIN is verbonden.",
+      "savedDiscoveryFailed": "Verbonden, maar het vinden van rekeningen vereist aandacht. Probeer opnieuw zonder nieuw token.",
+      "refresh": "Rekeningen vernieuwen",
+      "failed": "De aanvraag kon niet worden voltooid. Controleer de verbindingsstatus voordat u een nieuw token gebruikt.",
+      "loadFailed": "De SimpleFIN-status kon niet worden geladen.",
+      "encryptionRequired": "Vraag een beheerder om versleuteling in te stellen voordat u SimpleFIN verbindt.",
+      "remove": "SimpleFIN uit Monize verwijderen",
+      "removeTitle": "Toegang voor alle instellingen verwijderen?",
+      "removeBody": "Dit schakelt alle SimpleFIN-synchronisatie in Monize uit en bewaart uw geschiedenis. Trek het apptoken in Bridge in om externe toegang te beëindigen.",
+      "replaceTitle": "SimpleFIN-toegang vervangen?",
+      "replaceBody": "Dit vervangt toegang voor alle instellingen. Bestaande rekeningkoppelingen blijven; gewijzigde identiteiten moeten worden gecontroleerd.",
+      "quota": "{remaining} aanvragen over",
+      "nextEligible": "Volgende beschikbaarheid: {date}",
+      "stopTitle": "Synchronisatie van {bank} stoppen?",
+      "stopBody": "Bestaande koppelingen en transacties blijven behouden. Vernieuw de rekeningen om deze instelling opnieuw te verbinden.",
+      "stop": "Synchronisatie stoppen",
+      "stopped": "Synchronisatie gestopt",
+      "title": "SimpleFIN",
+      "enableBanking": "Enable Banking",
+      "errors": {
+        "unauthorized": "Verbind opnieuw met een nieuw insteltoken.",
+        "payment_required": "Controleer uw SimpleFIN Bridge-abonnement.",
+        "rate_limited": "Aanvraaglimiet bereikt. Wacht voordat u vernieuwt.",
+        "no_accounts": "Er zijn geen rekeningen gedeeld. Controleer de toegang in Bridge.",
+        "partial_data": "Sommige rekeninggegevens zijn onvolledig. Controleer Bridge en vernieuw daarna.",
+        "identity_review": "Rekeningidentiteiten zijn gewijzigd. Controleer de koppelingen voordat u synchronisatie inschakelt.",
+        "invalid_response": "Bridge gaf niet-ondersteunde gegevens terug. Vernieuw later.",
+        "unavailable": "SimpleFIN antwoordde niet. Probeer het later opnieuw."
+      }
     }
   }
 }

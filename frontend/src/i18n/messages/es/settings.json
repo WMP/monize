@@ -1787,6 +1787,42 @@
           "tag": "Etiqueta del tipo de operación del banco: {tag}"
         }
       }
+    },
+    "simplefin": {
+      "provider": "Proveedor de datos",
+      "description": "Conecte sus bancos en SimpleFIN Bridge y pegue aquí un token de configuración de un solo uso. El acceso es de solo lectura.",
+      "openBridge": "Abrir SimpleFIN Bridge",
+      "setupToken": "Token de configuración",
+      "connect": "Conectar SimpleFIN",
+      "connected": "SimpleFIN está conectado.",
+      "savedDiscoveryFailed": "Conectado, pero la detección de cuentas requiere atención. Repítala sin un token nuevo.",
+      "refresh": "Actualizar cuentas",
+      "failed": "No se pudo completar la solicitud. Compruebe el estado de la conexión antes de usar un token nuevo.",
+      "loadFailed": "No se pudo cargar el estado de SimpleFIN.",
+      "encryptionRequired": "Pida a un administrador que configure el cifrado antes de conectar SimpleFIN.",
+      "remove": "Eliminar SimpleFIN de Monize",
+      "removeTitle": "¿Eliminar el acceso a todas las instituciones?",
+      "removeBody": "Esto desactiva toda la sincronización de SimpleFIN en Monize y conserva su historial. Revoque el token de aplicación en Bridge para finalizar el acceso remoto.",
+      "replaceTitle": "¿Reemplazar el acceso de SimpleFIN?",
+      "replaceBody": "Esto reemplaza el acceso a todas las instituciones. Se conservan las vinculaciones existentes; los identificadores cambiados requieren revisión.",
+      "quota": "{remaining} solicitudes restantes",
+      "nextEligible": "Próxima disponibilidad: {date}",
+      "stopTitle": "¿Detener la sincronización de {bank}?",
+      "stopBody": "Se conservan las vinculaciones y transacciones existentes. Use Actualizar cuentas para reconectar esta institución.",
+      "stop": "Detener sincronización",
+      "stopped": "Sincronización detenida",
+      "title": "SimpleFIN",
+      "enableBanking": "Enable Banking",
+      "errors": {
+        "unauthorized": "Reconecte usando un token de configuración nuevo.",
+        "payment_required": "Compruebe su suscripción de SimpleFIN Bridge.",
+        "rate_limited": "Se alcanzó el límite de solicitudes. Espere antes de actualizar.",
+        "no_accounts": "No se compartieron cuentas. Compruebe el acceso en Bridge.",
+        "partial_data": "Algunos datos de cuenta están incompletos. Revise Bridge y luego actualice.",
+        "identity_review": "Los identificadores cambiaron. Revise las vinculaciones antes de activar la sincronización.",
+        "invalid_response": "Bridge devolvió datos no compatibles. Actualice más tarde.",
+        "unavailable": "SimpleFIN no respondió. Inténtelo más tarde."
+      }
     }
   }
 }

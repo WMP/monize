@@ -1787,6 +1787,42 @@
           "tag": "Thẻ từ loại thao tác của ngân hàng: {tag}"
         }
       }
+    },
+    "simplefin": {
+      "provider": "Nhà cung cấp dữ liệu",
+      "description": "Kết nối ngân hàng trong SimpleFIN Bridge rồi dán mã thiết lập dùng một lần tại đây. Quyền truy cập chỉ để đọc.",
+      "openBridge": "Mở SimpleFIN Bridge",
+      "setupToken": "Mã thiết lập",
+      "connect": "Kết nối SimpleFIN",
+      "connected": "SimpleFIN đã được kết nối.",
+      "savedDiscoveryFailed": "Đã kết nối nhưng việc tìm tài khoản cần được xử lý. Thử lại mà không dùng mã mới.",
+      "refresh": "Làm mới tài khoản",
+      "failed": "Không thể hoàn tất yêu cầu. Kiểm tra trạng thái kết nối trước khi dùng mã mới.",
+      "loadFailed": "Không thể tải trạng thái SimpleFIN.",
+      "encryptionRequired": "Nhờ quản trị viên cấu hình mã hóa trước khi kết nối SimpleFIN.",
+      "remove": "Xóa SimpleFIN khỏi Monize",
+      "removeTitle": "Xóa quyền truy cập của mọi tổ chức?",
+      "removeBody": "Thao tác này tắt toàn bộ đồng bộ SimpleFIN trong Monize và giữ lịch sử. Thu hồi mã ứng dụng trong Bridge để chấm dứt truy cập từ xa.",
+      "replaceTitle": "Thay quyền truy cập SimpleFIN?",
+      "replaceBody": "Thao tác này thay quyền truy cập của mọi tổ chức. Liên kết tài khoản hiện có được giữ; các định danh thay đổi cần được kiểm tra.",
+      "quota": "Còn {remaining} yêu cầu",
+      "nextEligible": "Lần khả dụng tiếp theo: {date}",
+      "stopTitle": "Dừng đồng bộ {bank}?",
+      "stopBody": "Liên kết và giao dịch hiện có được giữ lại. Làm mới tài khoản để kết nối lại tổ chức này.",
+      "stop": "Dừng đồng bộ",
+      "stopped": "Đã dừng đồng bộ",
+      "title": "SimpleFIN",
+      "enableBanking": "Enable Banking",
+      "errors": {
+        "unauthorized": "Kết nối lại bằng mã thiết lập mới.",
+        "payment_required": "Kiểm tra gói đăng ký SimpleFIN Bridge.",
+        "rate_limited": "Đã đạt giới hạn yêu cầu. Đợi trước khi làm mới.",
+        "no_accounts": "Chưa có tài khoản được chia sẻ. Kiểm tra quyền truy cập trong Bridge.",
+        "partial_data": "Một số dữ liệu chưa đầy đủ. Kiểm tra Bridge rồi làm mới.",
+        "identity_review": "Định danh tài khoản đã thay đổi. Kiểm tra liên kết trước khi bật đồng bộ.",
+        "invalid_response": "Bridge trả về dữ liệu chưa được hỗ trợ. Hãy làm mới sau.",
+        "unavailable": "SimpleFIN không phản hồi. Hãy thử lại sau."
+      }
     }
   }
 }

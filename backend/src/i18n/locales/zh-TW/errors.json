@@ -881,7 +881,21 @@
     "needsPreview": "請開啟此銀行帳戶的預覽，並在其被自動同步之前確認首次匯入。",
     "selectionNotNew": "所選的某筆交易不是銀行資料中的新紀錄。未匯入任何內容；請重新預覽。",
     "selectionOverlap": "一筆交易不能同時被匯入並加入例外清單。",
-    "nothingToUpdate": "請傳送 autoSync, notifySuccess 或 tagOperationType 以變更銀行連線。"
+    "nothingToUpdate": "請傳送 autoSync, notifySuccess 或 tagOperationType 以變更銀行連線。",
+    "simplefinCredentialsMissing": "請先連接 SimpleFIN，再同步帳戶。",
+    "simplefinAccessInvalid": "SimpleFIN 傳回無效的存取 URL。請在 SimpleFIN Bridge 中產生新的設定權杖。",
+    "simplefinEncryptionRequired": "此伺服器無法儲存 SimpleFIN 憑證。請管理員設定 ENCRYPTION_KEY。",
+    "simplefinOwnerMissing": "此 SimpleFIN 連線對應的使用者帳戶已不存在。",
+    "simplefinReplaceRequired": "重新連線前，請確認取代現有的 SimpleFIN 連線。",
+    "simplefinCredentialsUnreadable": "無法讀取已儲存的 SimpleFIN 憑證。請使用 SimpleFIN Bridge 中新的設定權杖重新連線。",
+    "simplefinDisconnected": "已在 Monize 中斷開 SimpleFIN。請重新連線以恢復同步；如要移除遠端存取權限，請在 SimpleFIN Bridge 中撤銷應用程式權杖。",
+    "simplefinSetupInvalid": "請貼上由 SimpleFIN Bridge 產生的有效設定權杖。",
+    "simplefinSetupRunning": "SimpleFIN 設定正在進行中。請等待完成後再重試。",
+    "simplefinSetupAttempted": "此設定權杖已嘗試使用。如果已連線，請重新探索帳戶；否則請在 SimpleFIN Bridge 中產生新權杖。",
+    "simplefinClaimUncertain": "SimpleFIN 設定未完成。權杖可能已被耗用。請檢查 Bridge，撤銷未使用的應用程式權杖，再產生新的設定權杖。",
+    "simplefinClaimStorageFailed": "SimpleFIN 已耗用設定權杖，但 Monize 無法確認憑證是否已儲存。請先檢查連線狀態。如果尚未連線，請在 Bridge 中撤銷應用程式權杖並產生新的設定權杖。",
+    "simplefinIdentityReview": "SimpleFIN 帳戶識別資訊已變更或遺失。啟用同步前請檢查帳戶；現有對應已保留。",
+    "simplefinSubscriptionRequired": "SimpleFIN Bridge 需要有效訂閱。請在 SimpleFIN Bridge 中檢查帳單。"
   },
   "warranties": {
     "notFound": "找不到 ID 為 {{ id }} 的保固",

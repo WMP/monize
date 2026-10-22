@@ -881,7 +881,21 @@
     "needsPreview": "Ouvrez l'aperçu de ce compte bancaire et confirmez le premier import avant sa synchronisation automatique.",
     "selectionNotNew": "Une transaction sélectionnée n'est pas une nouvelle ligne des données de la banque. Rien n'a été importé ; relancez l'aperçu.",
     "selectionOverlap": "Une transaction ne peut pas être à la fois importée et ajoutée aux exceptions.",
-    "nothingToUpdate": "Envoyez autoSync, notifySuccess ou tagOperationType pour modifier une connexion bancaire."
+    "nothingToUpdate": "Envoyez autoSync, notifySuccess ou tagOperationType pour modifier une connexion bancaire.",
+    "simplefinCredentialsMissing": "Connectez SimpleFIN avant de synchroniser les comptes.",
+    "simplefinAccessInvalid": "SimpleFIN a renvoyé une URL d’accès non valide. Générez un nouveau jeton de configuration dans SimpleFIN Bridge.",
+    "simplefinEncryptionRequired": "Ce serveur ne peut pas enregistrer les identifiants SimpleFIN. Demandez à un administrateur de configurer ENCRYPTION_KEY.",
+    "simplefinOwnerMissing": "Le compte utilisateur associé à cette connexion SimpleFIN n’existe plus.",
+    "simplefinReplaceRequired": "Confirmez le remplacement de la connexion SimpleFIN existante avant de vous reconnecter.",
+    "simplefinCredentialsUnreadable": "Les identifiants SimpleFIN enregistrés sont illisibles. Reconnectez-vous avec un nouveau jeton de configuration de SimpleFIN Bridge.",
+    "simplefinDisconnected": "SimpleFIN a été déconnecté dans Monize. Reconnectez-vous pour reprendre la synchronisation ; révoquez le jeton de l’application dans SimpleFIN Bridge pour supprimer l’accès distant.",
+    "simplefinSetupInvalid": "Collez un jeton de configuration valide généré par SimpleFIN Bridge.",
+    "simplefinSetupRunning": "Une configuration SimpleFIN est déjà en cours. Attendez sa fin avant de réessayer.",
+    "simplefinSetupAttempted": "Ce jeton a déjà fait l’objet d’une tentative. Si la connexion existe, relancez la découverte des comptes ; sinon, générez un nouveau jeton dans SimpleFIN Bridge.",
+    "simplefinClaimUncertain": "La configuration SimpleFIN n’a pas abouti. Le jeton a peut-être été consommé. Vérifiez Bridge, révoquez les jetons d’application inutilisés et générez un nouveau jeton de configuration.",
+    "simplefinClaimStorageFailed": "SimpleFIN a consommé le jeton, mais Monize n’a pas pu confirmer l’enregistrement des identifiants. Vérifiez d’abord l’état de la connexion. Si elle n’existe pas, révoquez le jeton d’application dans Bridge et générez un nouveau jeton de configuration.",
+    "simplefinIdentityReview": "Les identifiants des comptes SimpleFIN ont changé ou sont absents. Vérifiez les comptes avant d’activer la synchronisation ; les associations existantes ont été conservées.",
+    "simplefinSubscriptionRequired": "SimpleFIN Bridge nécessite un abonnement actif. Vérifiez la facturation dans SimpleFIN Bridge."
   },
   "warranties": {
     "notFound": "Garantie avec l'ID {{ id }} introuvable",

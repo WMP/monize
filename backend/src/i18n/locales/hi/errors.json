@@ -881,7 +881,21 @@
     "needsPreview": "इस बैंक खाते का पूर्वावलोकन खोलें और उसके अपने-आप सिंक होने से पहले पहले आयात की पुष्टि करें।",
     "selectionNotNew": "चुना गया एक लेनदेन बैंक के डेटा की नई पंक्ति नहीं है। कुछ भी आयात नहीं हुआ; पूर्वावलोकन फिर से करें।",
     "selectionOverlap": "कोई लेनदेन एक साथ आयात और अपवादों में शामिल नहीं किया जा सकता।",
-    "nothingToUpdate": "बैंक कनेक्शन बदलने के लिए autoSync, notifySuccess या tagOperationType भेजें।"
+    "nothingToUpdate": "बैंक कनेक्शन बदलने के लिए autoSync, notifySuccess या tagOperationType भेजें।",
+    "simplefinCredentialsMissing": "खातों को सिंक करने से पहले SimpleFIN कनेक्ट करें।",
+    "simplefinAccessInvalid": "SimpleFIN ने अमान्य एक्सेस URL लौटाया। SimpleFIN Bridge में नया सेटअप टोकन बनाएँ।",
+    "simplefinEncryptionRequired": "यह सर्वर SimpleFIN क्रेडेंशियल सहेज नहीं सकता। किसी व्यवस्थापक से ENCRYPTION_KEY कॉन्फ़िगर करने को कहें।",
+    "simplefinOwnerMissing": "इस SimpleFIN कनेक्शन का उपयोगकर्ता खाता अब मौजूद नहीं है।",
+    "simplefinReplaceRequired": "दोबारा कनेक्ट करने से पहले मौजूदा SimpleFIN कनेक्शन को बदलने की पुष्टि करें।",
+    "simplefinCredentialsUnreadable": "सहेजे गए SimpleFIN क्रेडेंशियल पढ़े नहीं जा सके। SimpleFIN Bridge के नए सेटअप टोकन से दोबारा कनेक्ट करें।",
+    "simplefinDisconnected": "Monize में SimpleFIN डिस्कनेक्ट कर दिया गया है। सिंक फिर शुरू करने के लिए दोबारा कनेक्ट करें; रिमोट एक्सेस हटाने के लिए SimpleFIN Bridge में ऐप टोकन रद्द करें।",
+    "simplefinSetupInvalid": "SimpleFIN Bridge द्वारा बनाया गया मान्य सेटअप टोकन चिपकाएँ।",
+    "simplefinSetupRunning": "SimpleFIN सेटअप पहले से चल रहा है। फिर से प्रयास करने से पहले उसके पूरा होने की प्रतीक्षा करें।",
+    "simplefinSetupAttempted": "इस सेटअप टोकन का पहले ही प्रयास किया जा चुका है। कनेक्शन मौजूद हो तो खातों की खोज दोबारा करें, अन्यथा SimpleFIN Bridge में नया टोकन बनाएँ।",
+    "simplefinClaimUncertain": "SimpleFIN सेटअप पूरा नहीं हुआ। संभव है कि टोकन इस्तेमाल हो चुका हो। Bridge जाँचें, अनुपयोगी ऐप टोकन रद्द करें और नया सेटअप टोकन बनाएँ।",
+    "simplefinClaimStorageFailed": "SimpleFIN ने सेटअप टोकन इस्तेमाल कर लिया, लेकिन Monize क्रेडेंशियल सहेजे जाने की पुष्टि नहीं कर सका। पहले कनेक्शन की स्थिति जाँचें। कनेक्शन न हो तो Bridge में ऐप टोकन रद्द करके नया सेटअप टोकन बनाएँ।",
+    "simplefinIdentityReview": "SimpleFIN खातों की पहचान बदल गई है या उपलब्ध नहीं है। सिंक चालू करने से पहले खातों की समीक्षा करें; मौजूदा मैपिंग सुरक्षित रखी गई हैं।",
+    "simplefinSubscriptionRequired": "SimpleFIN Bridge के लिए सक्रिय सदस्यता आवश्यक है। SimpleFIN Bridge में बिलिंग जाँचें।"
   },
   "warranties": {
     "notFound": "ID {{ id }} वाली वारंटी नहीं मिली",

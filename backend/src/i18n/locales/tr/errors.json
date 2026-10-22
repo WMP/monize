@@ -881,7 +881,21 @@
     "needsPreview": "Bu banka hesabının önizlemesini açın ve otomatik olarak senkronize edilmeden önce ilk içe aktarmayı onaylayın.",
     "selectionNotNew": "Seçilen bir işlem bankanın verilerinde yeni bir satır değil. Hiçbir şey içe aktarılmadı; önizlemeyi yeniden yapın.",
     "selectionOverlap": "Bir işlem aynı anda hem içe aktarılıp hem de istisnalara eklenemez.",
-    "nothingToUpdate": "Bir banka bağlantısını değiştirmek için autoSync, notifySuccess veya tagOperationType gönderin."
+    "nothingToUpdate": "Bir banka bağlantısını değiştirmek için autoSync, notifySuccess veya tagOperationType gönderin.",
+    "simplefinCredentialsMissing": "Hesapları eşitlemeden önce SimpleFIN'i bağlayın.",
+    "simplefinAccessInvalid": "SimpleFIN geçersiz bir erişim URL'si döndürdü. SimpleFIN Bridge'de yeni bir kurulum belirteci oluşturun.",
+    "simplefinEncryptionRequired": "Bu sunucu SimpleFIN kimlik bilgilerini saklayamıyor. Bir yöneticiden ENCRYPTION_KEY ayarını yapılandırmasını isteyin.",
+    "simplefinOwnerMissing": "Bu SimpleFIN bağlantısının kullanıcı hesabı artık mevcut değil.",
+    "simplefinReplaceRequired": "Yeniden bağlanmadan önce mevcut SimpleFIN bağlantısının değiştirilmesini onaylayın.",
+    "simplefinCredentialsUnreadable": "Kayıtlı SimpleFIN kimlik bilgileri okunamıyor. SimpleFIN Bridge'den yeni bir kurulum belirteciyle yeniden bağlanın.",
+    "simplefinDisconnected": "SimpleFIN bağlantısı Monize'de kesildi. Eşitlemeyi sürdürmek için yeniden bağlanın; uzaktan erişimi kaldırmak için SimpleFIN Bridge'de uygulama belirtecini iptal edin.",
+    "simplefinSetupInvalid": "SimpleFIN Bridge tarafından oluşturulan geçerli bir kurulum belirteci yapıştırın.",
+    "simplefinSetupRunning": "Bir SimpleFIN kurulumu zaten çalışıyor. Yeniden denemeden önce tamamlanmasını bekleyin.",
+    "simplefinSetupAttempted": "Bu kurulum belirteci zaten denendi. Bağlantı varsa hesap keşfini yeniden çalıştırın; yoksa SimpleFIN Bridge üzerinden yeni bir belirteç oluşturun.",
+    "simplefinClaimUncertain": "SimpleFIN kurulumu tamamlanamadı. Belirteç kullanılmış olabilir. Bridge'i kontrol edin, kullanılmayan uygulama belirteçlerini iptal edin ve yeni bir kurulum belirteci oluşturun.",
+    "simplefinClaimStorageFailed": "SimpleFIN belirteci kullandı ancak Monize kimlik bilgilerinin kaydedildiğini doğrulayamadı. Önce bağlantı durumunu kontrol edin. Bağlantı yoksa Bridge üzerinden uygulama belirtecini iptal edip yeni bir kurulum belirteci oluşturun.",
+    "simplefinIdentityReview": "SimpleFIN hesap kimlikleri değişti veya eksik. Eşitlemeyi etkinleştirmeden önce hesapları inceleyin; mevcut eşleştirmeler korundu.",
+    "simplefinSubscriptionRequired": "SimpleFIN Bridge için etkin bir abonelik gerekir. SimpleFIN Bridge üzerinden faturalandırmayı kontrol edin."
   },
   "warranties": {
     "notFound": "{{ id }} kimliğine sahip garanti bulunamadı",

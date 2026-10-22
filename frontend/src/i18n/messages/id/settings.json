@@ -1787,6 +1787,42 @@
           "tag": "Tag dari jenis operasi bank: {tag}"
         }
       }
+    },
+    "simplefin": {
+      "provider": "Penyedia data",
+      "description": "Hubungkan bank di SimpleFIN Bridge, lalu tempel token penyiapan sekali pakai di sini. Akses hanya untuk membaca.",
+      "openBridge": "Buka SimpleFIN Bridge",
+      "setupToken": "Token penyiapan",
+      "connect": "Hubungkan SimpleFIN",
+      "connected": "SimpleFIN terhubung.",
+      "savedDiscoveryFailed": "Terhubung, tetapi penemuan akun memerlukan perhatian. Ulangi tanpa token baru.",
+      "refresh": "Segarkan akun",
+      "failed": "Permintaan tidak dapat diselesaikan. Periksa status koneksi sebelum memakai token baru.",
+      "loadFailed": "Status SimpleFIN tidak dapat dimuat.",
+      "encryptionRequired": "Minta administrator mengonfigurasi enkripsi sebelum menghubungkan SimpleFIN.",
+      "remove": "Hapus SimpleFIN dari Monize",
+      "removeTitle": "Hapus akses untuk semua institusi?",
+      "removeBody": "Ini menonaktifkan semua sinkronisasi SimpleFIN di Monize dan mempertahankan riwayat. Cabut token aplikasi di Bridge untuk mengakhiri akses jarak jauh.",
+      "replaceTitle": "Ganti akses SimpleFIN?",
+      "replaceBody": "Ini mengganti akses semua institusi. Pemetaan akun yang ada tetap dipertahankan; identitas yang berubah perlu ditinjau.",
+      "quota": "{remaining} permintaan tersisa",
+      "nextEligible": "Tersedia berikutnya: {date}",
+      "stopTitle": "Hentikan sinkronisasi {bank}?",
+      "stopBody": "Pemetaan dan transaksi yang ada tetap disimpan. Segarkan akun untuk menghubungkan kembali institusi ini.",
+      "stop": "Hentikan sinkronisasi",
+      "stopped": "Sinkronisasi dihentikan",
+      "title": "SimpleFIN",
+      "enableBanking": "Enable Banking",
+      "errors": {
+        "unauthorized": "Hubungkan kembali dengan token penyiapan baru.",
+        "payment_required": "Periksa langganan SimpleFIN Bridge Anda.",
+        "rate_limited": "Batas permintaan tercapai. Tunggu sebelum menyegarkan.",
+        "no_accounts": "Tidak ada akun yang dibagikan. Periksa akses akun di Bridge.",
+        "partial_data": "Sebagian data akun tidak lengkap. Periksa Bridge lalu segarkan.",
+        "identity_review": "Identitas akun berubah. Tinjau pemetaan sebelum mengaktifkan sinkronisasi.",
+        "invalid_response": "Bridge mengembalikan data yang tidak didukung. Segarkan nanti.",
+        "unavailable": "SimpleFIN tidak menjawab. Coba lagi nanti."
+      }
     }
   }
 }

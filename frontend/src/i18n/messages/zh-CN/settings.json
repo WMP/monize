@@ -1787,6 +1787,42 @@
           "tag": "来自银行操作类型的标签：{tag}"
         }
       }
+    },
+    "simplefin": {
+      "provider": "数据提供商",
+      "description": "在 SimpleFIN Bridge 中连接银行，然后在此粘贴一次性设置令牌。访问权限为只读。",
+      "openBridge": "打开 SimpleFIN Bridge",
+      "setupToken": "设置令牌",
+      "connect": "连接 SimpleFIN",
+      "connected": "SimpleFIN 已连接。",
+      "savedDiscoveryFailed": "已连接，但账户发现需要处理。请重试发现，无需新令牌。",
+      "refresh": "刷新账户",
+      "failed": "无法完成请求。使用新令牌前请检查连接状态。",
+      "loadFailed": "无法加载 SimpleFIN 状态。",
+      "encryptionRequired": "连接 SimpleFIN 前，请管理员配置加密。",
+      "remove": "从 Monize 移除 SimpleFIN",
+      "removeTitle": "移除所有机构的访问权限？",
+      "removeBody": "这会停用 Monize 中的全部 SimpleFIN 同步，并保留历史记录。请在 Bridge 中撤销应用令牌以终止远程访问。",
+      "replaceTitle": "替换 SimpleFIN 访问权限？",
+      "replaceBody": "这会替换所有机构的访问权限。现有账户映射会保留，已更改的标识需要检查。",
+      "quota": "剩余 {remaining} 次请求",
+      "nextEligible": "下次可用时间：{date}",
+      "stopTitle": "停止同步 {bank}？",
+      "stopBody": "现有映射和交易会保留。刷新账户可重新连接此机构。",
+      "stop": "停止同步",
+      "stopped": "已停止同步",
+      "title": "SimpleFIN",
+      "enableBanking": "Enable Banking",
+      "errors": {
+        "unauthorized": "请使用新的设置令牌重新连接。",
+        "payment_required": "请检查您的 SimpleFIN Bridge 订阅。",
+        "rate_limited": "已达到请求限制。请稍后再刷新。",
+        "no_accounts": "没有共享的账户。请在 Bridge 中检查账户访问权限。",
+        "partial_data": "部分账户数据不完整。请检查 Bridge 后刷新。",
+        "identity_review": "账户标识已更改。启用同步前请检查映射。",
+        "invalid_response": "Bridge 返回了不受支持的数据。请稍后刷新。",
+        "unavailable": "SimpleFIN 未响应。请稍后重试。"
+      }
     }
   }
 }

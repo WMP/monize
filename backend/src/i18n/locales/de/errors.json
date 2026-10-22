@@ -881,7 +881,21 @@
     "needsPreview": "Öffnen Sie die Vorschau für dieses Bankkonto und bestätigen Sie den ersten Import, bevor es automatisch synchronisiert wird.",
     "selectionNotNew": "Eine ausgewählte Transaktion ist keine neue Zeile der Bankdaten. Es wurde nichts importiert; erstellen Sie die Vorschau erneut.",
     "selectionOverlap": "Eine Transaktion kann nicht gleichzeitig importiert und zu den Ausnahmen hinzugefügt werden.",
-    "nothingToUpdate": "Senden Sie autoSync, notifySuccess oder tagOperationType, um eine Bankverbindung zu ändern."
+    "nothingToUpdate": "Senden Sie autoSync, notifySuccess oder tagOperationType, um eine Bankverbindung zu ändern.",
+    "simplefinCredentialsMissing": "Verbinde SimpleFIN, bevor du Konten synchronisierst.",
+    "simplefinAccessInvalid": "SimpleFIN hat eine ungültige Zugriffs-URL zurückgegeben. Erstelle in SimpleFIN Bridge ein neues Einrichtungstoken.",
+    "simplefinEncryptionRequired": "Dieser Server kann keine SimpleFIN-Zugangsdaten speichern. Bitte einen Administrator, ENCRYPTION_KEY zu konfigurieren.",
+    "simplefinOwnerMissing": "Das Benutzerkonto für diese SimpleFIN-Verbindung existiert nicht mehr.",
+    "simplefinReplaceRequired": "Bestätige vor dem erneuten Verbinden, dass die bestehende SimpleFIN-Verbindung ersetzt werden soll.",
+    "simplefinCredentialsUnreadable": "Die gespeicherten SimpleFIN-Zugangsdaten können nicht gelesen werden. Verbinde dich mit einem neuen Einrichtungstoken aus SimpleFIN Bridge erneut.",
+    "simplefinDisconnected": "SimpleFIN wurde in Monize getrennt. Verbinde dich erneut, um die Synchronisierung fortzusetzen. Widerrufe das App-Token in SimpleFIN Bridge, um den Fernzugriff zu entfernen.",
+    "simplefinSetupInvalid": "Fügen Sie ein gültiges, von SimpleFIN Bridge erzeugtes Einrichtungstoken ein.",
+    "simplefinSetupRunning": "Eine SimpleFIN-Einrichtung läuft bereits. Warten Sie, bis sie abgeschlossen ist.",
+    "simplefinSetupAttempted": "Dieses Einrichtungstoken wurde bereits verwendet. Wiederholen Sie bei bestehender Verbindung die Kontenerkennung oder erzeugen Sie in SimpleFIN Bridge ein neues Token.",
+    "simplefinClaimUncertain": "Die SimpleFIN-Einrichtung wurde nicht abgeschlossen. Das Token wurde möglicherweise verbraucht. Prüfen Sie Bridge, widerrufen Sie ungenutzte App-Tokens und erzeugen Sie ein neues Einrichtungstoken.",
+    "simplefinClaimStorageFailed": "SimpleFIN hat das Einrichtungstoken verbraucht, aber Monize konnte das Speichern der Zugangsdaten nicht bestätigen. Prüfen Sie zuerst den Verbindungsstatus. Falls keine Verbindung besteht, widerrufen Sie das App-Token in Bridge und erzeugen Sie ein neues Einrichtungstoken.",
+    "simplefinIdentityReview": "SimpleFIN-Kontokennungen haben sich geändert oder fehlen. Prüfen Sie die Konten, bevor Sie die Synchronisierung aktivieren. Bestehende Zuordnungen wurden beibehalten.",
+    "simplefinSubscriptionRequired": "SimpleFIN Bridge erfordert ein aktives Abonnement. Prüfen Sie die Abrechnung in SimpleFIN Bridge."
   },
   "warranties": {
     "notFound": "Garantie mit ID {{ id }} nicht gefunden",

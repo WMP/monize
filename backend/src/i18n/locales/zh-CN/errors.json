@@ -881,7 +881,21 @@
     "needsPreview": "请打开此银行账户的预览，并在其被自动同步之前确认首次导入。",
     "selectionNotNew": "所选的某笔交易不是银行数据中的新记录。未导入任何内容；请重新预览。",
     "selectionOverlap": "一笔交易不能同时被导入并加入例外列表。",
-    "nothingToUpdate": "请发送 autoSync, notifySuccess 或 tagOperationType 以更改银行连接。"
+    "nothingToUpdate": "请发送 autoSync, notifySuccess 或 tagOperationType 以更改银行连接。",
+    "simplefinCredentialsMissing": "请先连接 SimpleFIN，再同步账户。",
+    "simplefinAccessInvalid": "SimpleFIN 返回了无效的访问 URL。请在 SimpleFIN Bridge 中生成新的设置令牌。",
+    "simplefinEncryptionRequired": "此服务器无法存储 SimpleFIN 凭据。请管理员配置 ENCRYPTION_KEY。",
+    "simplefinOwnerMissing": "此 SimpleFIN 连接对应的用户账户已不存在。",
+    "simplefinReplaceRequired": "重新连接之前，请确认替换现有的 SimpleFIN 连接。",
+    "simplefinCredentialsUnreadable": "无法读取已保存的 SimpleFIN 凭据。请使用 SimpleFIN Bridge 中新的设置令牌重新连接。",
+    "simplefinDisconnected": "已在 Monize 中断开 SimpleFIN。请重新连接以恢复同步；如需移除远程访问权限，请在 SimpleFIN Bridge 中撤销应用令牌。",
+    "simplefinSetupInvalid": "请粘贴由 SimpleFIN Bridge 生成的有效设置令牌。",
+    "simplefinSetupRunning": "SimpleFIN 设置正在进行中。请等待完成后再重试。",
+    "simplefinSetupAttempted": "此设置令牌已尝试使用。如果已连接，请重新发现账户；否则请在 SimpleFIN Bridge 中生成新令牌。",
+    "simplefinClaimUncertain": "SimpleFIN 设置未完成。令牌可能已被消耗。请检查 Bridge，撤销未使用的应用令牌，然后生成新的设置令牌。",
+    "simplefinClaimStorageFailed": "SimpleFIN 已消耗设置令牌，但 Monize 无法确认凭据是否已保存。请先检查连接状态。如果尚未连接，请在 Bridge 中撤销应用令牌并生成新的设置令牌。",
+    "simplefinIdentityReview": "SimpleFIN 账户标识已更改或缺失。启用同步前请检查账户；现有映射已保留。",
+    "simplefinSubscriptionRequired": "SimpleFIN Bridge 需要有效订阅。请在 SimpleFIN Bridge 中检查账单。"
   },
   "warranties": {
     "notFound": "未找到 ID 为 {{ id }} 的保修",

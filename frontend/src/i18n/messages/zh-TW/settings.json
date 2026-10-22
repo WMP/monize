@@ -1787,6 +1787,42 @@
           "tag": "來自銀行操作類型的標籤：{tag}"
         }
       }
+    },
+    "simplefin": {
+      "provider": "資料提供者",
+      "description": "在 SimpleFIN Bridge 中連接銀行，然後在此貼上一次性設定權杖。存取權限為唯讀。",
+      "openBridge": "開啟 SimpleFIN Bridge",
+      "setupToken": "設定權杖",
+      "connect": "連接 SimpleFIN",
+      "connected": "SimpleFIN 已連線。",
+      "savedDiscoveryFailed": "已連線，但帳戶探索需要處理。請重試探索，不需要新權杖。",
+      "refresh": "重新整理帳戶",
+      "failed": "無法完成要求。使用新權杖前請檢查連線狀態。",
+      "loadFailed": "無法載入 SimpleFIN 狀態。",
+      "encryptionRequired": "連接 SimpleFIN 前，請管理員設定加密。",
+      "remove": "從 Monize 移除 SimpleFIN",
+      "removeTitle": "移除所有機構的存取權限？",
+      "removeBody": "這會停用 Monize 中的所有 SimpleFIN 同步，並保留歷程記錄。請在 Bridge 中撤銷應用程式權杖以終止遠端存取。",
+      "replaceTitle": "取代 SimpleFIN 存取權限？",
+      "replaceBody": "這會取代所有機構的存取權限。現有帳戶對應會保留，變更的識別資訊需要檢查。",
+      "quota": "剩餘 {remaining} 次要求",
+      "nextEligible": "下次可用時間：{date}",
+      "stopTitle": "停止同步 {bank}？",
+      "stopBody": "現有對應與交易會保留。重新整理帳戶即可重新連接此機構。",
+      "stop": "停止同步",
+      "stopped": "已停止同步",
+      "title": "SimpleFIN",
+      "enableBanking": "Enable Banking",
+      "errors": {
+        "unauthorized": "請使用新的設定權杖重新連線。",
+        "payment_required": "請檢查您的 SimpleFIN Bridge 訂閱。",
+        "rate_limited": "已達要求限制。請稍後再重新整理。",
+        "no_accounts": "沒有共用的帳戶。請在 Bridge 中檢查帳戶存取權限。",
+        "partial_data": "部分帳戶資料不完整。請檢查 Bridge 後再重新整理。",
+        "identity_review": "帳戶識別資訊已變更。啟用同步前請檢查對應。",
+        "invalid_response": "Bridge 傳回不支援的資料。請稍後重新整理。",
+        "unavailable": "SimpleFIN 未回應。請稍後重試。"
+      }
     }
   }
 }

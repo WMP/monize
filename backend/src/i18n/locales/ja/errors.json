@@ -881,7 +881,21 @@
     "needsPreview": "この銀行口座のプレビューを開き、自動同期される前に最初のインポートを確認してください。",
     "selectionNotNew": "選択した取引は、銀行データの新しい行ではありません。何もインポートされませんでした。もう一度プレビューしてください。",
     "selectionOverlap": "1件の取引をインポートと除外リストへの追加の両方に指定することはできません。",
-    "nothingToUpdate": "銀行接続を変更するには、autoSync, notifySuccess または tagOperationType を送信してください。"
+    "nothingToUpdate": "銀行接続を変更するには、autoSync, notifySuccess または tagOperationType を送信してください。",
+    "simplefinCredentialsMissing": "口座を同期する前に SimpleFIN に接続してください。",
+    "simplefinAccessInvalid": "SimpleFIN が無効なアクセス URL を返しました。SimpleFIN Bridge で新しいセットアップトークンを生成してください。",
+    "simplefinEncryptionRequired": "このサーバーでは SimpleFIN の認証情報を保存できません。管理者に ENCRYPTION_KEY の設定を依頼してください。",
+    "simplefinOwnerMissing": "この SimpleFIN 接続のユーザーアカウントは存在しません。",
+    "simplefinReplaceRequired": "再接続する前に、既存の SimpleFIN 接続を置き換えることを確認してください。",
+    "simplefinCredentialsUnreadable": "保存された SimpleFIN の認証情報を読み取れません。SimpleFIN Bridge の新しいセットアップトークンで再接続してください。",
+    "simplefinDisconnected": "Monize で SimpleFIN の接続が解除されました。同期を再開するには再接続してください。リモートアクセスを削除するには SimpleFIN Bridge でアプリのトークンを取り消してください。",
+    "simplefinSetupInvalid": "SimpleFIN Bridge で生成した有効なセットアップトークンを貼り付けてください。",
+    "simplefinSetupRunning": "SimpleFIN のセットアップは既に実行中です。完了してから再試行してください。",
+    "simplefinSetupAttempted": "このトークンでは既にセットアップを試行しています。接続済みの場合は口座の検出を再実行し、未接続の場合は SimpleFIN Bridge で新しいトークンを生成してください。",
+    "simplefinClaimUncertain": "SimpleFIN のセットアップが完了しませんでした。トークンが消費された可能性があります。Bridge を確認し、未使用のアプリトークンを取り消して、新しいセットアップトークンを生成してください。",
+    "simplefinClaimStorageFailed": "SimpleFIN はトークンを消費しましたが、Monize は認証情報の保存を確認できませんでした。まず接続状態を確認してください。未接続の場合は Bridge でアプリトークンを取り消し、新しいセットアップトークンを生成してください。",
+    "simplefinIdentityReview": "SimpleFIN の口座識別情報が変更されたか、見つかりません。同期を有効にする前に口座を確認してください。既存の対応付けは保持されています。",
+    "simplefinSubscriptionRequired": "SimpleFIN Bridge には有効なサブスクリプションが必要です。SimpleFIN Bridge で請求情報を確認してください。"
   },
   "warranties": {
     "notFound": "ID {{ id }} の保証が見つかりません",
