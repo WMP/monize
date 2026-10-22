@@ -31,28 +31,28 @@ Every task is safe to merge in any order that respects its dependencies: the tab
 
 | ID | Task | Depends on | Deploy impact | Status |
 |----|------|-----------|---------------|--------|
-| S1 | Discussion agreeing `warranty-tracker.md`; label `approved-to-build`; answers to W1 to W4 recorded in the design | -- | none | [ ] |
-| B1 | Migration + `schema.sql`: `warranties` and `warranty_claims` with RLS; entities; currency reference column list and SQL function; backup classification (export queries, `RESTORE_PLAN`, `restore-references.ts`, `BackupData`, restore wipe, support-backup rules, `RESTORE_LABELS`); `runOwnedDataDeletes` | S1 | inert | [ ] |
-| B2 | Attachment generalisation: migration on `transaction_attachments` (design 6.3), entity, `AttachmentParent` through `AttachmentsService`, `lockWarrantyRow`, warranty routes in the controller, tool-prep cap per parent, restore references; transaction-only consumers asserted so by test | B1 | neutral | [ ] |
-| B3 | `WarrantiesModule`: `warranty-status.util.ts`, `warranty-expiry.util.ts`, service CRUD with WTY-005, DTOs, controller, list filters, summary route, `warranties.guard.spec.ts` (WTY-001) | B1 | inert | [ ] |
-| B4 | Claims: entity wiring, DTOs, service methods, routes | B3 | inert | [ ] |
-| B5 | Delegate section `warranties` on the backend: migration (design 6.4), entity, `DelegateSection`, `SECTION_FIELD`, `toSectionSet`, `setSectionGrants`, `SetSectionsDto`; `@AllowDelegate` + section on the read routes incl. warranty attachment reads and download; `linkedTransaction` scoping (WTY-007) | B2, B4 | neutral | [ ] |
-| B6 | Notification types, `WARRANTIES` category and channels on both layers; push and email copy; spec row | S1 | neutral | [ ] |
-| B7 | `WarrantyExpiryReminderService` cron, `WITH_CONTEXT_ALLOWLIST`, `docs/cron-jobs.md` row, two-replica test | B3, B6 | inert | [ ] |
-| B8 | Register enrichment `warrantyCount`; `has:warranty` search and interpretation | B3 | neutral | [ ] |
-| B9 | `WarrantyImportService` and `POST /warranties/import` (RFC 4180 via `parseCsv`, dry run, limits, WTY-006) | B3 | inert | [ ] |
-| F1 | `warrantiesApi`, types, `warranties` i18n namespace, Tools link and icon, density view, cache prefix, Warranties page (list, filters, summary, form, archive, delete) | B3 | inert | [ ] |
-| F2 | `attachmentsApi` parent union and `AttachmentsSection` warranty variant; warranty detail page with documents, claims and the linked transaction | F1, B2, B4 | neutral | [ ] |
-| F3 | Register hook: action sheet and Copy dropdown items, `WarrantyBadge`, `TransactionWarrantiesLine`, `?new=1&transactionId=` prefill | F1, B8 | neutral | [ ] |
-| F4 | `WarrantiesExpiringWidget` in the dashboard registry (`defaultEnabled: false`), icon, title section | F1 | inert | [ ] |
-| F5 | Notification copy (`useNotificationCopy`, `notifications.json`) and the `/warranties/<id>` target | B6, F1 | inert | [ ] |
-| F6 | Delegate section on the client: `DelegateAccessModal` toggle, `delegation.ts`, nav gating by section in `AppHeader` and `MobileNavDrawer`, the warranties layout with `DelegateSectionGuard`, `section-layouts.test.tsx`, widget visibility | B5, F1 | neutral | [ ] |
-| F7 | CSV export through `csv-export.ts` and the import dialog (file picker, preview table, commit) | F1, B9 | inert | [ ] |
-| A1 | `list_warranties` on MCP and the in-app assistant over one `getLlmWarranties` method; tool-count and byte-budget specs | B3 | inert | [ ] |
-| Q1 | Backend integration suite `warranties.integration.spec.ts` (RLS buckets, WTY-003 CHECK, WTY-005, WTY-007, backup round-trip with a warranty attachment, cron dedupe across two connections) | B5, B7, B9 | none | [ ] |
-| Q2 | Playwright `tests/warranties.spec.ts` | F2, F3, F7 | none | [ ] |
-| Q3 | Full-locale i18n pass (acceptance, final commit) | all above | none | [ ] |
-| D1 | Wiki page `Warranties.md`, a README feature line, `docs/system-invariants.md` WTY-001..007, `docs/external-side-effects.md` wording for a two-parent attachment | F7 | none | [ ] |
+| S1 | Discussion agreeing `warranty-tracker.md`; label `approved-to-build`; answers to W1 to W4 recorded in the design | -- | none | [ ] approved directly by the maintainer, 2026-10-21; no Discussion was opened |
+| B1 | Migration + `schema.sql`: `warranties` and `warranty_claims` with RLS; entities; currency reference column list and SQL function; backup classification (export queries, `RESTORE_PLAN`, `restore-references.ts`, `BackupData`, restore wipe, support-backup rules, `RESTORE_LABELS`); `runOwnedDataDeletes` | S1 | inert | [x] (b0ea503fc, 2026-10-21) |
+| B2 | Attachment generalisation: migration on `transaction_attachments` (design 6.3), entity, `AttachmentParent` through `AttachmentsService`, `lockWarrantyRow`, warranty routes in the controller, tool-prep cap per parent, restore references; transaction-only consumers asserted so by test | B1 | neutral | [x] (1b4d56711, 2026-10-21) |
+| B3 | `WarrantiesModule`: `warranty-status.util.ts`, `warranty-expiry.util.ts`, service CRUD with WTY-005, DTOs, controller, list filters, summary route, `warranties.guard.spec.ts` (WTY-001) | B1 | inert | [x] (0613ac927, 2026-10-21) |
+| B4 | Claims: entity wiring, DTOs, service methods, routes | B3 | inert | [x] (07cc3ca2d, 2026-10-21) |
+| B5 | Delegate section `warranties` on the backend: migration (design 6.4), entity, `DelegateSection`, `SECTION_FIELD`, `toSectionSet`, `setSectionGrants`, `SetSectionsDto`; `@AllowDelegate` + section on the read routes incl. warranty attachment reads and download; `linkedTransaction` scoping (WTY-007) | B2, B4 | neutral | [x] (44fd5c69b, 2026-10-21) |
+| B6 | Notification types, `WARRANTIES` category and channels on both layers; push and email copy; spec row | S1 | neutral | [x] (1f93214a4, 2026-10-21) |
+| B7 | `WarrantyExpiryReminderService` cron, `WITH_CONTEXT_ALLOWLIST`, `docs/cron-jobs.md` row, two-replica test | B3, B6 | inert | [x] (a8d7367eb, 2026-10-21) |
+| B8 | Register enrichment `warrantyCount`; `has:warranty` search and interpretation | B3 | neutral | [x] (00f19ef59, 2026-10-21) |
+| B9 | `WarrantyImportService` and `POST /warranties/import` (RFC 4180 via `parseCsv`, dry run, limits, WTY-006) | B3 | inert | [x] (db2836f1d, 2026-10-21) |
+| F1 | `warrantiesApi`, types, `warranties` i18n namespace, Tools link and icon, density view, cache prefix, Warranties page (list, filters, summary, form, archive, delete) | B3 | inert | [x] (8a78af826, 2026-10-21) |
+| F2 | `attachmentsApi` parent union and `AttachmentsSection` warranty variant; warranty detail page with documents, claims and the linked transaction | F1, B2, B4 | neutral | [x] (210daf05a, 2026-10-21) |
+| F3 | Register hook: action sheet and Copy dropdown items, `WarrantyBadge`, `TransactionWarrantiesLine`, `?new=1&transactionId=` prefill | F1, B8 | neutral | [x] (1e542138d, 2026-10-21) |
+| F4 | `WarrantiesExpiringWidget` in the dashboard registry (`defaultEnabled: false`), icon, title section | F1 | inert | [x] (1c539dcbe, 2026-10-21) |
+| F5 | Notification copy (`useNotificationCopy`, `notifications.json`) and the `/warranties/<id>` target | B6, F1 | inert | [x] (c438b6e48, 2026-10-21) |
+| F6 | Delegate section on the client: `DelegateAccessModal` toggle, `delegation.ts`, nav gating by section in `AppHeader` and `MobileNavDrawer`, the warranties layout with `DelegateSectionGuard`, `section-layouts.test.tsx`, widget visibility | B5, F1 | neutral | [x] (6575d1608, 2026-10-21) |
+| F7 | CSV export through `csv-export.ts` and the import dialog (file picker, preview table, commit) | F1, B9 | inert | [x] (b1aef04eb, 2026-10-21) |
+| A1 | `list_warranties` on MCP and the in-app assistant over one `getLlmWarranties` method; tool-count and byte-budget specs | B3 | inert | [x] (07b98839c, 2026-10-21) |
+| Q1 | Backend integration suite `warranties.integration.spec.ts` (RLS buckets, WTY-003 CHECK, WTY-005, WTY-007, backup round-trip with a warranty attachment, cron dedupe across two connections) | B5, B7, B9 | none | [x] (1f97366df, 2026-10-21) |
+| Q2 | Playwright `tests/warranties.spec.ts` | F2, F3, F7 | none | [x] (92ccec736, 2026-10-21) |
+| Q3 | Full-locale i18n pass (acceptance, final commit) | all above | none | [x] (17d9e51d1, 2026-10-21) |
+| D1 | Wiki page `Warranties.md`, a README feature line, `docs/system-invariants.md` WTY-001..007, `docs/external-side-effects.md` wording for a two-parent attachment | F7 | none | [x] (527b03545, 2026-10-21) |
 
 **Why B6 depends only on S1:** the category and the two types are additive constants; they can land before the producer exists, as the notification-preferences spec allows ("arrives with its producer" is satisfied by B7 landing before Q3).
 

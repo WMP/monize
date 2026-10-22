@@ -135,6 +135,7 @@
       "toggleTitle": "날짜에서 연도를 빼서 수취인 이름이 더 많이 보이도록 합니다"
     },
     "attachmentsCount": "{count, plural, other {# 개의 첨부 파일}}",
+    "warrantiesCount": "{count, plural, other {보증 #건}}",
     "today": "오늘",
     "export": {
       "button": "내보내기",
@@ -198,7 +199,9 @@
       "duplicateTitle": "거래 복사",
       "copy": "복사",
       "duplicate": "복사본 만들기",
-      "scheduleRecurring": "반복 거래로 예약"
+      "scheduleRecurring": "반복 거래로 예약",
+      "addWarranty": "보증 추가",
+      "viewWarranties": "보증 보기"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "편집",
     "duplicate": "복사본 만들기",
     "scheduleRecurring": "반복 거래로 예약",
+    "addWarranty": "보증 추가",
+    "viewWarranties": "보증 보기",
     "delete": "삭제"
   },
   "filter": {
@@ -465,7 +470,14 @@
       },
       "feeCaption": "{percent}% 해외 거래 수수료({fee})가 포함됩니다."
     },
-    "jointSplitDisabled": "공유 계좌의 분할 거래는 소유자만 관리할 수 있습니다"
+    "jointSplitDisabled": "공유 계좌의 분할 거래는 소유자만 관리할 수 있습니다",
+    "warranties": {
+      "title": "보증",
+      "add": "보증 추가",
+      "expires": "{date} 만료",
+      "loading": "보증을 불러오는 중",
+      "loadError": "이 거래의 보증을 불러올 수 없습니다."
+    }
   },
   "splitEditor": {
     "header": "분할 세부 정보",
@@ -626,7 +638,8 @@
       "amountRange": "금액 50~100",
       "datePeriod": "2026년 3월의 모든 날",
       "isSplit": "분할 거래",
-      "hasAttachment": "첨부 파일 있음"
+      "hasAttachment": "첨부 파일 있음",
+      "hasWarranty": "보증 있음"
     }
   },
   "searchInterpretation": {
@@ -668,6 +681,7 @@
       },
       "has": {
         "attachment": "첨부 파일 있음",
+        "warranty": "보증 있음",
         "ref": "참조 번호 있음",
         "memo": "메모 있음",
         "tag": "태그 있음"

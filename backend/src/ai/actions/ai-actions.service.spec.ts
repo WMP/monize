@@ -372,11 +372,15 @@ describe("AiActionsService", () => {
       const result = await service.confirm(USER, dtoFor(descriptor));
 
       expect(attachmentStore.get).toHaveBeenCalledWith(USER, REF);
-      expect(attachments.create).toHaveBeenCalledWith(USER, "tx-new", {
-        originalname: "receipt.jpg",
-        buffer: FILE_BYTES,
-        size: FILE_BYTES.length,
-      });
+      expect(attachments.create).toHaveBeenCalledWith(
+        USER,
+        { kind: "transaction", id: "tx-new" },
+        {
+          originalname: "receipt.jpg",
+          buffer: FILE_BYTES,
+          size: FILE_BYTES.length,
+        },
+      );
       expect(attachmentStore.releaseForPrompt).toHaveBeenCalledWith(USER, [
         REF,
       ]);
@@ -405,11 +409,15 @@ describe("AiActionsService", () => {
       const result = await service.confirm(USER, dtoFor(descriptor));
 
       expect(transactions.update).toHaveBeenCalled();
-      expect(attachments.create).toHaveBeenCalledWith(USER, TX, {
-        originalname: "receipt.jpg",
-        buffer: FILE_BYTES,
-        size: FILE_BYTES.length,
-      });
+      expect(attachments.create).toHaveBeenCalledWith(
+        USER,
+        { kind: "transaction", id: TX },
+        {
+          originalname: "receipt.jpg",
+          buffer: FILE_BYTES,
+          size: FILE_BYTES.length,
+        },
+      );
       expect(result).toEqual({ type: "update_transaction", id: TX });
     });
 

@@ -615,6 +615,7 @@ describe('useSwipeNavigation', () => {
           budgets: true,
           reports: false,
           ai: false,
+          warranties: false,
         });
       });
 
@@ -635,6 +636,7 @@ describe('useSwipeNavigation', () => {
           budgets: false,
           reports: false,
           ai: false,
+          warranties: false,
           accounts: true,
         });
       });
@@ -656,6 +658,7 @@ describe('useSwipeNavigation', () => {
           budgets: false,
           reports: false,
           ai: false,
+          warranties: false,
         });
       });
 
@@ -674,6 +677,7 @@ describe('useSwipeNavigation', () => {
           budgets: false,
           reports: false,
           ai: false,
+          warranties: false,
           transactions: true,
         });
       });
@@ -695,6 +699,7 @@ describe('useSwipeNavigation', () => {
           budgets: false,
           reports: false,
           ai: false,
+          warranties: false,
         });
       });
 

@@ -27,6 +27,8 @@ function makeAttachment(overrides: Partial<Attachment> = {}): Attachment {
   return {
     id: 'a-1',
     transactionId: 't-1',
+    warrantyId: null,
+    documentKind: 'other',
     filename: 'receipt.png',
     contentType: 'image/png',
     byteSize: 2048,

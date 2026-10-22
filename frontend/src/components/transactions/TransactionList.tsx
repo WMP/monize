@@ -51,6 +51,14 @@ interface TransactionListProps {
   onDuplicate?: (transaction: Transaction) => void;
   onScheduleRecurring?: (transaction: Transaction) => void;
   /**
+   * Warranties, offered on a row's Copy menu and action sheet: "Add warranty"
+   * on a row with none, "View warranties" on a row with some. Only the
+   * Transactions page passes them; a joint row never offers them, as its edit
+   * form never offers attachments.
+   */
+  onAddWarranty?: (transaction: Transaction) => void;
+  onViewWarranties?: (transaction: Transaction) => void;
+  /**
    * Notification that the row has **already been deleted** -- this list owns the
    * confirmation, the `transactionsApi.delete`/`deleteTransfer` call and the
    * toast, and calls this afterwards with the id it removed. It is not a request
@@ -259,6 +267,8 @@ export function TransactionList({
   onEdit,
   onDuplicate,
   onScheduleRecurring,
+  onAddWarranty,
+  onViewWarranties,
   onDeleted,
   onRefresh,
   onTransactionUpdate,
@@ -406,6 +416,13 @@ export function TransactionList({
   }, [onEdit]);
 
   const { cellPadding, headerPadding } = useTableDensity(density);
+
+  // A joint row belongs to the sharing owner, and a warranty is the reader's
+  // own, so a row in an account shared to this user offers no warranty action.
+  const isJointRow = useCallback(
+    (transaction: Transaction) => !!jointPermissionsByAccount?.has(transaction.accountId),
+    [jointPermissionsByAccount],
+  );
 
   const handleActionSheetClose = useCallback(() => {
     setActionSheet({ isOpen: false, transaction: null });
@@ -1007,6 +1024,8 @@ export function TransactionList({
                     }
                     onDuplicate={onDuplicate}
                     onScheduleRecurring={onScheduleRecurring}
+                    onAddWarranty={isJointRow(transaction) ? undefined : onAddWarranty}
+                    onViewWarranties={isJointRow(transaction) ? undefined : onViewWarranties}
                     onDeleteClick={handleDeleteClick}
                     hideDelete={
                       !!jointPermissionsByAccount?.get(transaction.accountId) &&
@@ -1042,6 +1061,8 @@ export function TransactionList({
         onEdit={onEdit}
         onDuplicate={onDuplicate}
         onScheduleRecurring={onScheduleRecurring}
+        onAddWarranty={actionSheet.transaction && isJointRow(actionSheet.transaction) ? undefined : onAddWarranty}
+        onViewWarranties={actionSheet.transaction && isJointRow(actionSheet.transaction) ? undefined : onViewWarranties}
         onDeleteClick={handleDeleteClick}
         onDateFilterClick={onDateFilterClick}
         onAccountFilterClick={onAccountFilterClick}

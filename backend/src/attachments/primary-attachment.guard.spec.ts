@@ -21,9 +21,10 @@ const REVIEWED: Record<string, string> = {
     "declares the column and its relation -- the mapping itself, not a read " +
     "that decides which attachments a user sees",
   "attachments/attachments.service.ts":
-    "sets the link when writing a pair, and names it in the delete so the " +
-    "original's storage key is RETURNED for a prompt sweep; both of its " +
-    "visibility reads go through the shared predicate",
+    "sets the link when writing a pair, names it in the delete so the " +
+    "original's storage key is RETURNED for a prompt sweep, and in the kind " +
+    "update so the pair changes together; its visibility reads go through " +
+    "the shared predicate",
   "backup/restore-plan.ts":
     "defers the self-referential foreign key and repairs it in Phase 3 -- a " +
     "restore ordering concern, and it must name the column to defer it",

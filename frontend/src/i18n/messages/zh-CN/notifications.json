@@ -197,5 +197,11 @@
     "readyMessage": "{count, plural, other {#条}} AI 提案正在等待您的批准，其中 {added} 条为新提案。打开 AI 审核收件箱以批准或忽略。",
     "expiringTitle": "AI 提案即将到期",
     "expiringMessage": "{count, plural, other {#条}} AI 提案即将到期。最早的一条将于 {date} 到期。打开 AI 审核收件箱以批准或忽略。"
+  },
+  "warranty": {
+    "expiringTitle": "{name}：保修将在 {days, plural, other {# 天}}内到期",
+    "expiringMessage": "{name} 的保修将于 {date} 到期。打开即可查看其文档或记录保修申请。",
+    "todayTitle": "{name}：保修今天到期",
+    "todayMessage": "{name} 的保修于今天（{date}）到期。打开即可查看其文档或记录保修申请。"
   }
 }
