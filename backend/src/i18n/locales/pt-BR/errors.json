@@ -477,6 +477,7 @@
     "mnyUnreadableDatabase": "Este arquivo do Money foi descriptografado, mas não foi possível ler o conteúdo. Ele pode estar danificado.",
     "mnyStagedFileMissing": "O arquivo do Money enviado não está mais disponível. Envie-o novamente.",
     "mnyImportAlreadyRunning": "Já existe uma importação em andamento. Aguarde a conclusão antes de iniciar outra.",
+    "mnyAlreadyImported": "Este arquivo já foi importado em {{ date }} (importação {{ jobId }}) e seus registros ainda estão na sua conta. Importá-lo de novo os duplicaria. Para substituí-los, recomece e escolha substituir seus dados existentes.",
     "mnyJobNotFound": "Tarefa de importação não encontrada",
     "mnyFileTooLarge": "Este arquivo do Money é maior que o limite de importação de {{ limit }} MB."
   },

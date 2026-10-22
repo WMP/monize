@@ -477,6 +477,7 @@
     "mnyUnreadableDatabase": "Ce fichier Money a été déchiffré mais son contenu n'a pas pu être lu. Il est peut-être endommagé.",
     "mnyStagedFileMissing": "Le fichier Money envoyé n'est plus disponible. Veuillez l'envoyer à nouveau.",
     "mnyImportAlreadyRunning": "Un import est déjà en cours. Attendez qu'il se termine avant d'en lancer un autre.",
+    "mnyAlreadyImported": "Ce fichier a déjà été importé le {{ date }} (importation {{ jobId }}) et ses enregistrements sont toujours dans votre compte. L'importer à nouveau les dupliquerait. Pour les remplacer, recommencez et choisissez de remplacer vos données existantes.",
     "mnyJobNotFound": "Tâche d'import introuvable",
     "mnyFileTooLarge": "Ce fichier Money dépasse la limite d'import de {{ limit }} Mo."
   },

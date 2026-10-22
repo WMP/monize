@@ -548,6 +548,8 @@
     "mnyImportFailed": "导入过程中出现问题。没有保存任何内容 -- 您可以重试。",
     "mnyJobStalled": "导入已停止响应，很可能是服务器重启所致。您上传的文件仍在，重试是安全的。",
     "mnyJobStalledAfterCommit": "导入在已保存您的数据之后停止响应，很可能是服务器重启所致。导入的记录已在您的账户中，再次导入同一文件会造成重复。请先检查账户，再导入其他文件。",
+    "mnyImportFailedAfterCommit": "导入已保存您的数据,但之后的一个步骤失败了。导入的记录已在您的账户中,再次导入同一文件会造成重复。在导入其他内容之前,请先检查您的账户。",
+    "mnyAlreadyImported": "此文件已导入您的账户,再次导入会使其记录重复。如需替换,请重新开始并选择替换现有数据。",
     "mnyStagedFileMissing": "上传的 Money 文件已不可用，请重新上传。",
     "mnyFileTruncated": "该 Money 文件似乎不完整，上传可能被中断。",
     "mnyNotAMoneyFile": "该文件不是 Microsoft Money (.mny) 文件。",

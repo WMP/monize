@@ -548,6 +548,8 @@
     "mnyImportFailed": "Beim Import ist etwas schiefgegangen. Es wurde nichts gespeichert -- Sie können es erneut versuchen.",
     "mnyJobStalled": "Der Import reagiert nicht mehr, höchstwahrscheinlich weil der Server neu gestartet wurde. Ihre hochgeladene Datei ist noch vorhanden, ein neuer Versuch ist also unbedenklich.",
     "mnyJobStalledAfterCommit": "Der Import reagiert nicht mehr, nachdem er Ihre Daten bereits gespeichert hatte, höchstwahrscheinlich weil der Server neu gestartet wurde. Die importierten Datensätze befinden sich in Ihrem Konto. Ein erneuter Import derselben Datei würde sie duplizieren. Prüfen Sie Ihre Konten, bevor Sie etwas anderes importieren.",
+    "mnyImportFailedAfterCommit": "Der Import hat Ihre Daten gespeichert, aber ein Schritt danach ist fehlgeschlagen. Die importierten Datensätze befinden sich in Ihrem Konto. Ein erneuter Import derselben Datei würde sie duplizieren. Prüfen Sie Ihre Konten, bevor Sie etwas anderes importieren.",
+    "mnyAlreadyImported": "Diese Datei wurde bereits in Ihr Konto importiert. Ein erneuter Import würde ihre Datensätze duplizieren. Um sie zu ersetzen, beginnen Sie von vorn und wählen Sie, Ihre vorhandenen Daten zu ersetzen.",
     "mnyStagedFileMissing": "Die hochgeladene Money-Datei ist nicht mehr verfügbar. Bitte laden Sie sie erneut hoch.",
     "mnyFileTruncated": "Diese Money-Datei scheint unvollständig zu sein. Der Upload wurde möglicherweise unterbrochen.",
     "mnyNotAMoneyFile": "Diese Datei ist keine Microsoft-Money-Datei (.mny).",

@@ -477,6 +477,7 @@
     "mnyUnreadableDatabase": "That Money file was decrypted but its contents could not be read. It may be damaged.",
     "mnyStagedFileMissing": "The uploaded Money file is no longer available. Please upload it again.",
     "mnyImportAlreadyRunning": "An import is already running. Wait for it to finish before starting another.",
+    "mnyAlreadyImported": "This file was already imported on {{ date }} (import {{ jobId }}), and its records are still in your account. Importing it again would duplicate them. To replace them, start over and choose to replace your existing data.",
     "mnyJobNotFound": "Import job not found",
     "mnyFileTooLarge": "That Money file is larger than the {{ limit }} MB import limit."
   },

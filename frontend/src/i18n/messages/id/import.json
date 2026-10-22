@@ -548,6 +548,8 @@
     "mnyImportFailed": "Terjadi kesalahan saat mengimpor. Tidak ada yang disimpan -- Anda dapat mencoba lagi.",
     "mnyJobStalled": "Impor berhenti merespons, kemungkinan besar karena server dimulai ulang. Berkas yang Anda unggah masih ada, jadi mencoba lagi aman.",
     "mnyJobStalledAfterCommit": "Impor berhenti merespons setelah data Anda tersimpan, kemungkinan besar karena server dimulai ulang. Catatan yang diimpor sudah ada di akun Anda, jadi mengimpor berkas yang sama lagi akan menggandakannya. Periksa akun Anda sebelum mengimpor yang lain.",
+    "mnyImportFailedAfterCommit": "Impor telah menyimpan data Anda, tetapi langkah setelahnya gagal. Catatan yang diimpor ada di akun Anda, jadi mengimpor file yang sama lagi akan menggandakannya. Periksa akun Anda sebelum mengimpor hal lain.",
+    "mnyAlreadyImported": "File ini sudah diimpor ke akun Anda, jadi mengimpornya lagi akan menggandakan catatannya. Untuk menggantinya, mulai ulang dan pilih untuk mengganti data Anda yang ada.",
     "mnyStagedFileMissing": "Berkas Money yang diunggah sudah tidak tersedia. Silakan unggah kembali.",
     "mnyFileTruncated": "Berkas Money ini tampak tidak lengkap. Unggahan mungkin terputus.",
     "mnyNotAMoneyFile": "Berkas itu bukan berkas Microsoft Money (.mny).",

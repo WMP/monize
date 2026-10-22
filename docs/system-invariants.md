@@ -57,7 +57,7 @@ implied.
 | ID | Invariant | Status |
 | --- | --- | --- |
 | INV-IMPORT-001 | At most one pending or running MNY import per user | enforced |
-| INV-IMPORT-002 | A retry never double-imports | enforced |
+| INV-IMPORT-002 | A retry never double-imports | partial |
 | INV-IMPORT-003 | A category collision does not abort an import | unenforced |
 | INV-BANKSYNC-001 | A bank transaction is imported into a Monize account at most once | partial |
 | INV-BANKSYNC-002 | A bank sync provider private key never leaves the server | enforced |
@@ -238,10 +238,11 @@ could also reach the destructive wipe.
 ### INV-IMPORT-002 -- a retry never double-imports
 
 ```text
-Statement           Retrying a failed import must not insert a second copy of
-                    rows a previous attempt may have committed.
-Source of truth     import_jobs.data_committed and import_jobs.attempt_token,
-                    written in writeAll's own transaction
+Statement           Retrying a failed import, starting a new one over the same
+                    staged file, or importing a re-upload of the same bytes must
+                    not insert a second copy of rows a previous attempt committed.
+Source of truth     import_jobs.data_committed, import_jobs.content_sha256 and
+                    import_jobs.attempt_token, written in writeAll's own transaction
 Enforcement         A durable commit checkpoint claimed under an attempt fence.
                     import_jobs.data_committed (migration 140) is set by
                     markDataCommitted as the LAST statement of writeAll's
@@ -253,34 +254,70 @@ Enforcement         A durable commit checkpoint claimed under an attempt fence.
                     migration 145's reject_unfenced_import_checkpoint trigger
                     refuses a false->true data_committed on a non-running job from
                     either binary during a rolling deploy. fail() ANDs the caller's
-                    retryable with data_committed = false, and the reaper marks a
-                    committed stalled job non-retryable, so a committed run is
-                    finalized rather than replayed.
-Concurrency scope   per user, per attempt
+                    retryable with data_committed = false and switches error_key to
+                    mnyImportFailedAfterCommit on it; the reaper does the same with
+                    mnyJobStalledAfterCommit; the job DTO carries dataCommitted and
+                    the wizard's copy follows it. The same checkpoint statement
+                    copies the staged file's sha256 into content_sha256, held by
+                    the partial unique index idx_import_jobs_committed_content
+                    (user_id, content_sha256) WHERE content_sha256 IS NOT NULL
+                    (migration 20261022061534, schema.sql, ImportJob entity):
+                    MnyImportJobService.create refuses a start over bytes a job of
+                    this user holds, under LockScope.UserImport and before its row
+                    is inserted, and the index makes a second commit of the same
+                    bytes abort its import transaction (MnyAlreadyImportedError,
+                    non-retryable). A start with wipeExistingData is exempt and
+                    releases the keys after its wipe succeeded
+                    (releaseCommittedContent).
+Concurrency scope   per user, per attempt, per file content
 Retry semantics     Safe. A failure inside writeAll rolled everything back; a
                     committed run is recognised by data_committed and refused a
-                    replay.
-Crash semantics     A crash after writeAll commits leaves data_committed=true, so
-                    the reaper finalizes rather than re-runs; a crash before it
-                    leaves nothing, since the checkpoint is the transaction's last
-                    statement.
-Failure response    reconcile -- finalize the committed run rather than replay it.
+                    replay; a new start over the same bytes is refused with a 409
+                    naming the earlier import.
+Crash semantics     A crash after writeAll commits leaves data_committed=true and
+                    content_sha256 set, so the reaper finalizes rather than
+                    re-runs and the next start over the file is refused; a crash
+                    before it leaves nothing, since the checkpoint is the
+                    transaction's last statement.
+Failure response    reconcile -- finalize the committed run rather than replay it;
+                    409 on a start over committed bytes.
 Required tests      Failpoint present: backend/test/integration/mny-import-job.integration.spec.ts
                     commits writeAll then fails before terminal completion, retries,
                     and asserts the checkpoint is refused after a reap, the whole
                     transaction rolls back so nothing is doubled, a legacy
                     previous-release checkpoint is refused, and a retry claims a
-                    fresh token while the stale worker is fenced.
-Status              enforced
+                    fresh token while the stale worker is fenced; "a run that
+                    committed before it failed" asserts the committed key and
+                    retryable=false from fail() and the reaper on real rows, the
+                    start-time refusal, and the index refusing a second commit with
+                    its rows rolled back. mny-import.integration.spec.ts "a
+                    committed import" runs the real job on sample-cd-redemption.mny
+                    with a failpoint after the commit and asserts the balances stay
+                    5000.00 / 4061.00 / 1000 shares across a second start and a
+                    re-upload.
+Status              partial
 ```
+
+Residual (why `partial`): the key is the exact bytes. A Money file saved again
+between two exports differs byte for byte and is not recognised, so its second
+import still duplicates (no source-record key exists on an imported row, DR-S09-04);
+a "delete my data" from Settings removes the rows but not the keys, so the file is
+refused until the person imports it with "replace existing data"; and committed
+jobs from before migration 20261022061534 are keyed only where their staged file
+still existed when it ran. A post-commit failure is reported, not repaired: the
+post-processing recompute it interrupted is not re-dispatched (maintainer decision
+named in A26-H08).
 
 This entry was itself marked `enforced` in an earlier revision on the strength of
 a source comment ("The whole write is one transaction, so a failure leaves nothing
 behind and Retry cannot double-import") that was true of `writeAll` alone and not
-of the import, which was not finished when `writeAll` committed. It is now
-genuinely enforced, by the mechanism above rather than the comment -- and it
-remains the catalog's cautionary tale that a status copied from a comment is not a
-verified status. `docs/concurrency-and-idempotency.md` CONC-007 is the rule that a
+of the import, which was not finished when `writeAll` committed. It was marked
+`enforced` a second time on the strength of the fence, which covered a retry of the
+same job but not a new start over the same file: the 2026-10 audit (A26-H08) doubled
+every balance through that path, behind copy that said "Nothing was saved". It
+remains the catalog's cautionary tale that a status copied from a comment, or from
+a mechanism that covers a narrower scope than the statement, is not a verified
+status. `docs/concurrency-and-idempotency.md` CONC-007 is the rule that a
 named mechanism has to cover the scope claimed; the "Deciding a worker is dead"
 section of `docs/backend/cron-and-background-work.md` has the fence in full.
 

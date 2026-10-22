@@ -548,6 +548,8 @@
     "mnyImportFailed": "Coś poszło nie tak podczas importu. Nic nie zostało zapisane -- możesz spróbować ponownie.",
     "mnyJobStalled": "Import przestał odpowiadać, najprawdopodobniej z powodu restartu serwera. Przesłany plik nadal tu jest, więc ponowna próba jest bezpieczna.",
     "mnyJobStalledAfterCommit": "Import przestał odpowiadać po zapisaniu Twoich danych, najprawdopodobniej z powodu restartu serwera. Zaimportowane rekordy są na Twoim koncie, więc ponowny import tego samego pliku je zduplikuje. Sprawdź swoje konta, zanim zaimportujesz cokolwiek innego.",
+    "mnyImportFailedAfterCommit": "Import zapisał Twoje dane, ale późniejszy krok się nie powiódł. Zaimportowane rekordy są na Twoim koncie, więc ponowny import tego samego pliku je zduplikuje. Sprawdź swoje konta, zanim zaimportujesz cokolwiek innego.",
+    "mnyAlreadyImported": "Ten plik został już zaimportowany na Twoje konto, więc ponowny import zduplikuje jego rekordy. Aby je zastąpić, zacznij od nowa i wybierz zastąpienie istniejących danych.",
     "mnyStagedFileMissing": "Przesłany plik Money nie jest już dostępny. Prześlij go ponownie.",
     "mnyFileTruncated": "Ten plik Money wygląda na niekompletny. Przesyłanie mogło zostać przerwane.",
     "mnyNotAMoneyFile": "Ten plik nie jest plikiem Microsoft Money (.mny).",

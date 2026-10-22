@@ -73,6 +73,7 @@ function toJobDto(job: ImportJob): MnyImportJobDto {
     result: job.result,
     errorKey: job.errorKey,
     retryable: job.retryable,
+    dataCommitted: job.dataCommitted,
     startedAt: job.startedAt,
     completedAt: job.completedAt,
   };

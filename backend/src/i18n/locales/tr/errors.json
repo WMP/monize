@@ -477,6 +477,7 @@
     "mnyUnreadableDatabase": "Bu Money dosyasının şifresi çözüldü ancak içeriği okunamadı. Dosya bozuk olabilir.",
     "mnyStagedFileMissing": "Yüklenen Money dosyası artık kullanılamıyor. Lütfen yeniden yükleyin.",
     "mnyImportAlreadyRunning": "Zaten bir içe aktarma çalışıyor. Yenisini başlatmadan önce bitmesini bekleyin.",
+    "mnyAlreadyImported": "Bu dosya {{ date }} tarihinde zaten içe aktarıldı (içe aktarma {{ jobId }}) ve kayıtları hâlâ hesabınızda. Yeniden içe aktarmak onları çoğaltır. Bunları değiştirmek için baştan başlayın ve mevcut verilerinizi değiştirmeyi seçin.",
     "mnyJobNotFound": "İçe aktarma görevi bulunamadı",
     "mnyFileTooLarge": "Bu Money dosyası {{ limit }} MB içe aktarma sınırından büyük."
   },

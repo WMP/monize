@@ -238,6 +238,35 @@ describe("MnyImportController", () => {
   });
 
   describe("findJob", () => {
+    it("says when a failed job's rows already reached the ledger", async () => {
+      // A26-H08: without the flag the wizard could only show the generic
+      // failure copy, "Nothing was saved", over a committed import.
+      jobs.findOne.mockResolvedValue({
+        id: "job-1",
+        userId: "user-1",
+        stagedFileId: "staged-1",
+        status: "failed",
+        progress: null,
+        result: null,
+        errorKey: "mnyImportFailedAfterCommit",
+        errorDetail: "verify failed",
+        retryable: false,
+        dataCommitted: true,
+        startedAt: null,
+        completedAt: null,
+        options: DEFAULT_MNY_IMPORT_OPTIONS,
+      } as ImportJob);
+
+      const job = await controller.findJob(USER, "job-1");
+
+      expect(job).toMatchObject({
+        status: "failed",
+        errorKey: "mnyImportFailedAfterCommit",
+        retryable: false,
+        dataCommitted: true,
+      });
+    });
+
     it("returns only the fields the wizard needs, not the staged file id", async () => {
       jobs.findOne.mockResolvedValue({
         id: "job-1",

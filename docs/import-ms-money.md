@@ -124,8 +124,17 @@ and import the resulting `.mny`.
 
 ## Known limitations
 
-**No merge, no de-duplication.** Version 1 targets a fresh profile. Importing
-the same file twice creates the transactions twice.
+**No merge, no de-duplication.** Version 1 targets a fresh profile. Monize
+refuses to import a file whose exact bytes it already imported into your account,
+and names the earlier import; to import it again, start over and choose to replace
+your existing data. A different export of the same Money file (saved again, so its
+bytes differ) is not recognised as the same file, and importing it creates the
+transactions a second time.
+
+**A failure after the data was saved says so.** If an import fails after its
+records were written (a final check, for example), the wizard tells you the records
+are in your account and does not offer to try again: importing the same file again
+would duplicate them.
 
 **Foreign-currency cost basis.** Money stores a foreign holding's cost basis
 converted to your base currency at the historical rate, not in the security's own

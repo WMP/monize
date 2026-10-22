@@ -548,6 +548,8 @@
     "mnyImportFailed": "İçe aktarma sırasında bir şeyler ters gitti. Hiçbir şey kaydedilmedi -- yeniden denebilirsiniz.",
     "mnyJobStalled": "İçe aktarma yanıt vermeyi bıraktı, büyük olasılıkla sunucu yeniden başladığı için. Yüklediğiniz dosya hâlâ burada, bu yüzden yeniden denemek güvenli.",
     "mnyJobStalledAfterCommit": "İçe aktarma, verilerinizi kaydettikten sonra yanıt vermeyi bıraktı; büyük olasılıkla sunucu yeniden başlatıldı. İçe aktarılan kayıtlar hesabınızda, bu yüzden aynı dosyayı yeniden içe aktarmak onları çoğaltır. Başka bir şey içe aktarmadan önce hesaplarınızı kontrol edin.",
+    "mnyImportFailedAfterCommit": "İçe aktarma verilerinizi kaydetti, ancak sonraki bir adım başarısız oldu. İçe aktarılan kayıtlar hesabınızda olduğundan aynı dosyayı yeniden içe aktarmak onları çoğaltır. Başka bir şey içe aktarmadan önce hesaplarınızı kontrol edin.",
+    "mnyAlreadyImported": "Bu dosya zaten hesabınıza içe aktarıldı; yeniden içe aktarmak kayıtlarını çoğaltır. Bunları değiştirmek için baştan başlayın ve mevcut verilerinizi değiştirmeyi seçin.",
     "mnyStagedFileMissing": "Yüklenen Money dosyası artık kullanılamıyor. Lütfen yeniden yükleyin.",
     "mnyFileTruncated": "Bu Money dosyası eksik görünüyor. Yükleme kesilmiş olabilir.",
     "mnyNotAMoneyFile": "Bu dosya bir Microsoft Money (.mny) dosyası değil.",

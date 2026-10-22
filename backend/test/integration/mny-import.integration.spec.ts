@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { ConflictException } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { DataSource, EntityManager } from "typeorm";
@@ -1669,6 +1670,151 @@ describe("mny writers (integration)", () => {
       ).rejects.toThrow(/no longer available/i);
     });
 
+    /**
+     * A failure after `writeAll` committed (A26-H08). The fixture's figures are
+     * the finding's: Sample Deposit Account 5000.00, investment cash 4061.00,
+     * 1000 shares. Before the fix the job said "Nothing was saved", the staged
+     * id survived, and a second start (or a re-upload of the same bytes) took
+     * them to 10000.00, 8122.00 and 2000 shares.
+     */
+    describe("a committed import", () => {
+      async function ledgerSnapshot() {
+        const accounts = await dataSource
+          .getRepository(Account)
+          .find({ where: { userId }, order: { name: "ASC" } });
+        const holdings: { quantity: string }[] = await dataSource.query(
+          `SELECT h.quantity FROM holdings h
+             JOIN accounts a ON a.id = h.account_id
+            WHERE a.user_id = $1 AND h.quantity <> 0`,
+          [userId],
+        );
+        return {
+          transactions: await dataSource
+            .getRepository(Transaction)
+            .count({ where: { userId } }),
+          investmentRows: await dataSource
+            .getRepository(InvestmentTransaction)
+            .count({ where: { userId } }),
+          balances: accounts.map(
+            (account) => `${account.name}=${Number(account.currentBalance)}`,
+          ),
+          shares: holdings
+            .map((holding) => Number(holding.quantity))
+            .sort((a, b) => a - b),
+        };
+      }
+
+      async function stageFixture(): Promise<string> {
+        const staged = await withUserContext(userId, () =>
+          staging.stage(userId, {
+            filename: "sample-cd-redemption.mny",
+            data: stagedBytes("sampleCdRedemption"),
+          }),
+        );
+        return staged.id;
+      }
+
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it("reports a failure after the commit as committed and refuses a second start", async () => {
+        const post = module.get(ImportPostProcessingService);
+        jest
+          .spyOn(post, "run")
+          .mockRejectedValueOnce(new Error("failpoint after commit"));
+        const stagedFileId = await stageFixture();
+
+        const job = await awaitJob(
+          (
+            await withUserContext(userId, () =>
+              importService.start(userId, { stagedFileId }),
+            )
+          ).id,
+        );
+
+        const before = await ledgerSnapshot();
+        expect(job).toMatchObject({
+          status: "failed",
+          dataCommitted: true,
+          retryable: false,
+          errorKey: "mnyImportFailedAfterCommit",
+        });
+        expect(before.balances).toContain("Sample Deposit Account=5000");
+        expect(before.balances).toContain(
+          "Sample Investment Account - Cash=4061",
+        );
+        expect(before.shares).toEqual([1000]);
+
+        // The API path: the staged id survived the failure.
+        await expect(
+          withUserContext(userId, () =>
+            importService.start(userId, { stagedFileId }),
+          ),
+        ).rejects.toThrow(ConflictException);
+        expect(await ledgerSnapshot()).toEqual(before);
+      });
+
+      it("refuses a re-upload of the same bytes while the first import's rows exist", async () => {
+        const first = await awaitJob(
+          (
+            await withUserContext(userId, async () =>
+              importService.start(userId, {
+                stagedFileId: await stageFixture(),
+              }),
+            )
+          ).id,
+        );
+        expect(first.status).toBe("completed");
+        const before = await ledgerSnapshot();
+
+        // The UI path: start over and upload the same file again.
+        const again = await stageFixture();
+        const refusal = withUserContext(userId, () =>
+          importService.start(userId, { stagedFileId: again }),
+        );
+        await expect(refusal).rejects.toThrow(ConflictException);
+        await expect(refusal).rejects.toThrow(/already imported/i);
+        expect(await ledgerSnapshot()).toEqual(before);
+        expect(
+          await dataSource
+            .getRepository(ImportJob)
+            .count({ where: { userId } }),
+        ).toBe(1);
+      });
+
+      it("lets the same bytes in again when the start replaces existing data", async () => {
+        const first = await awaitJob(
+          (
+            await withUserContext(userId, async () =>
+              importService.start(userId, {
+                stagedFileId: await stageFixture(),
+              }),
+            )
+          ).id,
+        );
+        expect(first.status).toBe("completed");
+
+        // `deleteData` is stubbed in this suite, so the rows do not actually
+        // go; what is asserted is that the wipe-and-import is not refused and
+        // that its own commit is not refused by the first job's content key.
+        const second = await awaitJob(
+          (
+            await withUserContext(userId, async () =>
+              importService.start(userId, {
+                stagedFileId: await stageFixture(),
+                options: { wipeExistingData: true },
+              }),
+            )
+          ).id,
+        );
+        expect(second).toMatchObject({
+          status: "completed",
+          dataCommitted: true,
+        });
+      });
+    });
+
     /*
      * money2002.mny is the investment fixture: 86 `SEC` rows, 60 `act` 15
      * transactions and 60 open `LOT` rows across 30 securities. That makes it
@@ -1817,8 +1963,11 @@ describe("mny writers (integration)", () => {
         const rates = await dataSource.getRepository(ExchangeRate).find();
         expect(rates.length).toBe(job.result!.exchangeRatesImported);
 
-        // A second import of the same file must converge, not duplicate.
-        await runImport("money2002");
+        // A second import of the same file must converge, not duplicate. Only a
+        // start that replaces existing data may import the same bytes again
+        // (A26-H08); `deleteData` is stubbed here, so the global rate rows the
+        // first run wrote are still present for the second to collide with.
+        await runImport("money2002", { wipeExistingData: true });
         const after = await dataSource.getRepository(ExchangeRate).find();
         expect(after.length).toBe(rates.length);
       });

@@ -548,6 +548,8 @@
     "mnyImportFailed": "Algo falhou durante a importação. Nada foi guardado -- pode tentar novamente.",
     "mnyJobStalled": "A importação deixou de responder, muito provavelmente porque o servidor reiniciou. O ficheiro que carregou continua aqui, pelo que tentar novamente é seguro.",
     "mnyJobStalledAfterCommit": "A importação deixou de responder depois de já ter guardado os seus dados, muito provavelmente porque o servidor reiniciou. Os registos importados estão na sua conta, pelo que importar o mesmo ficheiro de novo iria duplicá-los. Verifique as suas contas antes de importar mais alguma coisa.",
+    "mnyImportFailedAfterCommit": "A importação guardou os seus dados, mas um passo posterior falhou. Os registos importados estão na sua conta, pelo que importar novamente o mesmo ficheiro iria duplicá-los. Verifique as suas contas antes de importar outra coisa.",
+    "mnyAlreadyImported": "Este ficheiro já foi importado para a sua conta, pelo que importá-lo novamente iria duplicar os seus registos. Para os substituir, recomece e escolha substituir os seus dados existentes.",
     "mnyStagedFileMissing": "O ficheiro do Money carregado já não está disponível. Carregue-o novamente.",
     "mnyFileTruncated": "Este ficheiro do Money parece incompleto. O carregamento pode ter sido interrompido.",
     "mnyNotAMoneyFile": "Este ficheiro não é um ficheiro do Microsoft Money (.mny).",

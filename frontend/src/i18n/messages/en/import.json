@@ -548,6 +548,8 @@
     "mnyImportFailed": "Something went wrong while importing. Nothing was saved -- you can try again.",
     "mnyJobStalled": "The import stopped responding, most likely because the server restarted. Your uploaded file is still here, so trying again is safe.",
     "mnyJobStalledAfterCommit": "The import stopped responding after it had already saved your data, most likely because the server restarted. The imported records are in your account, so importing the same file again would duplicate them. Check your accounts before importing anything else.",
+    "mnyImportFailedAfterCommit": "The import saved your data, but a step after that failed. The imported records are in your account, so importing the same file again would duplicate them. Check your accounts before importing anything else.",
+    "mnyAlreadyImported": "This file was already imported into your account, so importing it again would duplicate its records. To replace them, start over and choose to replace your existing data.",
     "mnyStagedFileMissing": "The uploaded Money file is no longer available. Please upload it again.",
     "mnyFileTruncated": "That Money file looks incomplete. The upload may have been interrupted.",
     "mnyNotAMoneyFile": "That file is not a Microsoft Money (.mny) file.",

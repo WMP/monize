@@ -193,6 +193,10 @@ export class MnyImportService {
           // second claim on a slot this request already owns.
           "mny-import",
         );
+        // The wipe deleted every row an earlier import committed, so the keys
+        // that refuse a second import of those bytes go with them; held, they
+        // would make this import's own commit refuse the file (A26-H08).
+        await this.jobs.releaseCommittedContent(userId);
       } catch (error) {
         // The request is refused, so the slot it took must go back. The stale
         // reap in `create` would clear it on the next start anyway, but only
