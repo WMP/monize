@@ -509,6 +509,14 @@ Enforcement         Every absolute recompute takes the account lock before readi
                     leg, locks the parents before the legs and reverses each
                     locked row through deletionBalanceEffect, as the single
                     delete does (A26-H05).
+                    A transfer edit derives every delta from rows locked inside
+                    its own transaction and refuses with 409 when they differ
+                    from what the edit was built on: both legs ascending
+                    (same-owner and connected cross-owner, each under its own
+                    owner), and for a split-transfer leg the parent and then the
+                    leg (A26-H03). derived-state-writers.guard.spec.ts fails an
+                    update/remove/delete/bulk method that moves a balance
+                    without taking a lock itself, not only a file.
 Concurrency scope   per account
 Retry semantics     A recompute is idempotent against another recompute and, under
                     the lock, against a concurrent delta.
@@ -520,12 +528,14 @@ Required tests      Source scan: common/db/derived-state-writers.guard.spec.ts -
                     Bulk delete of a split-transfer leg, parent, both legs and a
                     cross-owner leg, on the schema's ON DELETE actions:
                     backend/test/integration/bulk-delete-split-leg.integration.spec.ts.
+                    Two concurrent transfer edits, same and different values, on a
+                    split-transfer leg and a connected cross-owner pair:
+                    backend/test/integration/transfer-edit-race.integration.spec.ts.
 Status              partial
 ```
 
 Open breaches found by the 2026-10 audit, each closed in the commit that lands its
-test: a transfer edit (split-transfer leg, connected cross-owner) derives both deltas
-from snapshots read before its lock (A26-H03); undo or redo of an account edit writes
+test: undo or redo of an account edit writes
 the edit-time `current_balance` back absolutely (A26-H06); an investment-pair rename
 or re-currency saves the linked half's stale `current_balance` (A26-M13).
 
@@ -855,7 +865,15 @@ Enforcement         assertReconciledRowsMutable / assertReconciledIdsMutable
                     resolver behind clear / reconcile / unreconcile and
                     PATCH :id/status) and its bulkReconcile,
                     TransactionTransferService.removeTransfer /
-                    updateTransfer, TransactionBulkUpdateService.bulkUpdate /
+                    updateTransfer and each branch they hand off to, scanned on
+                    its own (updateSplitTransferLeg,
+                    updateConnectedCrossOwnerTransfer, updateFrozenTransferLeg,
+                    removeCrossOwnerTransfer,
+                    removeTransferFromSplitInTransaction; an assertion in one
+                    branch no longer satisfies the whole route, A26-M11). A
+                    cross-owner leg is asked under its own owner's setting,
+                    since each owner reconciles their own statement.
+                    TransactionBulkUpdateService.bulkUpdate /
                     bulkDelete, TransactionSplitService.updateSplits / addSplit /
                     removeSplit, ActionHistoryService.undoTransactionUpdate (undo
                     and redo of a transaction edit) and
