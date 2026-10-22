@@ -148,6 +148,7 @@
     "netWorthLabel": "Tài sản ròng",
     "assets": "Tài sản",
     "liabilities": "Nợ phải trả",
+    "partialName": "{name} (chưa đầy đủ)",
     "viewCallouts": "Nhãn",
     "viewLegend": "Chú giải"
   },

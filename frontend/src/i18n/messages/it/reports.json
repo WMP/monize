@@ -316,6 +316,7 @@
     "totalInflows": "Totale entrate",
     "totalOutflows": "Totale uscite",
     "netCashFlow": "Flusso di cassa netto",
+    "notAvailable": "N/D",
     "monthlyCashFlow": "Flusso di cassa mensile",
     "inflowsByCategory": "Entrate per categoria",
     "outflowsByCategory": "Uscite per categoria",
@@ -764,6 +765,7 @@
     "totalValue": "Valore totale",
     "costBasis": "Costo di acquisto",
     "totalGainLoss": "Guadagno/Perdita totale",
+    "gainPartialCaption": "Solo sulle posizioni con prezzo",
     "return": "Rendimento",
     "viewHoldings": "Posizioni",
     "viewAllocation": "Allocazione",
@@ -1146,6 +1148,11 @@
     "vsMonth": "vs {month}",
     "inMonth": "{amount} in {month}",
     "netWorthTotal": "Totale: {amount}",
+    "netWorthSummaryPartial": "Il tuo patrimonio netto in {currentMonth} era <strong>{netWorth}</strong>. La variazione rispetto a {previousMonth} non può essere calcolata perché non è disponibile un tasso di cambio per {pairs}; aggiungine uno nella pagina Valute.",
+    "pdfPartialSuffix": "{amount} (parziale)",
+    "pdfNote": "Nota",
+    "pdfNotAvailable": "N/D",
+    "pdfPartialNote": "Totale parziale: nessun tasso di cambio per {pairs}.",
     "netWorthSummary": "Il tuo patrimonio netto in {currentMonth} era <strong>{netWorth}</strong>, ovvero <delta>{changeAmount}</delta> rispetto a {previousMonth}.",
     "pdfTitle": "Confronto mensile",
     "pdfSubtitle": "{current} vs {previous}",
@@ -1193,7 +1200,12 @@
     "colNetWorth": "Patrimonio netto",
     "barStyle": "Stile delle barre",
     "barStyleNetWorth": "Patrimonio netto",
-    "barStyleAccountType": "Per tipo di conto"
+    "barStyleAccountType": "Per tipo di conto",
+    "notAvailable": "N/D",
+    "colNote": "Nota",
+    "partialMonthNote": "Parziale: nessun tasso di cambio per {pairs}",
+    "pdfPartialNote": "Totale parziale: nessun tasso di cambio per {pairs}. Aggiungine uno nella pagina Valute.",
+    "partialMonth": "Non mostrato: alcuni importi di questo mese non sono stati convertiti, quindi il patrimonio netto è sconosciuto."
   },
   "portfolioValue": {
     "highestValue": "Valore massimo",
@@ -1853,7 +1865,10 @@
   },
   "partialData": {
     "notice": "Alcuni valori sono parziali: {count, plural, one {# importo non è stato convertito in {displayCurrency} ed è escluso} other {# importi non sono stati convertiti in {displayCurrency} e sono esclusi}}. Nessun tasso disponibile per {currencies}; aggiungilo nella pagina Valute.",
-    "noticeExcluded": "Alcuni valori sono parziali: {count, plural, one {# importo non è stato calcolato ed è escluso} other {# importi non sono stati calcolati e sono esclusi}}."
+    "noticeExcluded": "Alcuni valori sono parziali: {count, plural, one {# importo non è stato calcolato ed è escluso} other {# importi non sono stati calcolati e sono esclusi}}.",
+    "pdfNote": "Totale parziale: nessun tasso di cambio per {currencies}",
+    "pdfNoteExcluded": "Totale parziale: {count, plural, one {# importo escluso} other {# importi esclusi}}",
+    "pdfSuffix": "(parziale)"
   },
   "sankey": {
     "help": "Il denaro entrato scorre attraverso il centro verso ciò in cui è stato speso, ciò che è stato risparmiato o investito e ciò che ha rimborsato debiti. Per impostazione predefinita il report copre i tuoi conti correnti, di risparmio, contanti, carte di credito e linee di credito aperti, e un trasferimento tra due di essi non viene mostrato. Escludi un conto di risparmio dal filtro dei conti per vedere quanto vi hai trasferito. Il pagamento di una carta di credito non è mai un rimborso di debito: gli acquisti che salda sono già contati come spese.",

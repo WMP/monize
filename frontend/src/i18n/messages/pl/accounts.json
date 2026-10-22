@@ -61,6 +61,7 @@
     "combinedBreakdown": "Inwestycje {investments} · Gotówka {cash}",
     "combinedUnknown": "Suma niedostępna",
     "combinedUnknownTooltip": "{count, plural, one {# pozycja nie ma ceny, więc nie można obliczyć sumy tego konta} few {# pozycje nie mają ceny, więc nie można obliczyć sumy tego konta} many {# pozycji nie ma ceny, więc nie można obliczyć sumy tego konta} other {# pozycji nie ma ceny, więc nie można obliczyć sumy tego konta}}",
+    "combinedUnknownValuation": "Części pozycji na tym koncie nie udało się przeliczyć na walutę raportowania, więc nie można obliczyć sumy. Dodaj brakujący kurs wymiany na stronie Waluty.",
     "combinedUnknownNoPortfolio": "Nie udało się wczytać pozycji, więc nie można obliczyć sumy tego konta",
     "limit": "Limit: {amount}",
     "pairedWith": "Powiązane z {name}",

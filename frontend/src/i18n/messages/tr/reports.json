@@ -316,6 +316,7 @@
     "totalInflows": "Toplam Girişler",
     "totalOutflows": "Toplam Çıkışlar",
     "netCashFlow": "Net Nakit Akışı",
+    "notAvailable": "Y/A",
     "monthlyCashFlow": "Aylık Nakit Akışı",
     "inflowsByCategory": "Kategoriye Göre Girişler",
     "outflowsByCategory": "Kategoriye Göre Çıkışlar",
@@ -764,6 +765,7 @@
     "totalValue": "Toplam Değer",
     "costBasis": "Maliyet Bazı",
     "totalGainLoss": "Toplam Kazanç/Kayıp",
+    "gainPartialCaption": "Yalnızca fiyatı olan varlıklar üzerinden",
     "return": "Getiri",
     "viewHoldings": "Varlıklar",
     "viewAllocation": "Dağılım",
@@ -1146,6 +1148,11 @@
     "vsMonth": "{month} ile karşılaştırma",
     "inMonth": "{month} içinde {amount}",
     "netWorthTotal": "Toplam: {amount}",
+    "netWorthSummaryPartial": "{currentMonth} ayında net değeriniz <strong>{netWorth}</strong> idi. {pairs} için döviz kuru olmadığından {previousMonth} ayına göre değişim hesaplanamıyor; Para Birimleri sayfasından bir kur ekleyin.",
+    "pdfPartialSuffix": "{amount} (kısmi)",
+    "pdfNote": "Not",
+    "pdfNotAvailable": "Y/A",
+    "pdfPartialNote": "Kısmi toplam: {pairs} için döviz kuru yok.",
     "netWorthSummary": "{currentMonth} ayında net değeriniz <strong>{netWorth}</strong> idi; bu, {previousMonth} ayına kıyasla <delta>{changeAmount}</delta> fark anlamına geliyor.",
     "pdfTitle": "Aylık Karşılaştırma",
     "pdfSubtitle": "{current} - {previous} Karşılaştırması",
@@ -1193,7 +1200,12 @@
     "colNetWorth": "Net Değer",
     "barStyle": "Çubuk stili",
     "barStyleNetWorth": "Net değer",
-    "barStyleAccountType": "Hesap türüne göre"
+    "barStyleAccountType": "Hesap türüne göre",
+    "notAvailable": "Y/A",
+    "colNote": "Not",
+    "partialMonthNote": "Kısmi: {pairs} için döviz kuru yok",
+    "pdfPartialNote": "Kısmi toplam: {pairs} için döviz kuru yok. Para Birimleri sayfasından bir kur ekleyin.",
+    "partialMonth": "Gösterilmiyor: bu aydaki bazı tutarlar çevrilemedi, bu yüzden net değer bilinmiyor."
   },
   "portfolioValue": {
     "highestValue": "En Yüksek Değer",
@@ -1853,7 +1865,10 @@
   },
   "partialData": {
     "notice": "Bazı değerler kısmidir: {count, plural, other {# tutar {displayCurrency} para birimine çevrilemedi ve}} hariç tutuldu. {currencies} için kur yok; Para Birimleri sayfasından ekleyin.",
-    "noticeExcluded": "Bazı değerler kısmidir: {count, plural, other {# tutar hesaplanamadı ve}} hariç tutuldu."
+    "noticeExcluded": "Bazı değerler kısmidir: {count, plural, other {# tutar hesaplanamadı ve}} hariç tutuldu.",
+    "pdfNote": "Kısmi toplam: {currencies} için döviz kuru yok",
+    "pdfNoteExcluded": "Kısmi toplam: {count, plural, other {# tutar}} hariç tutuldu",
+    "pdfSuffix": "(kısmi)"
   },
   "sankey": {
     "help": "Gelen para ortadan geçerek harcandığı yerlere, biriktirilen veya yatırılan kısma ve borç ödemelerine akar. Rapor varsayılan olarak açık vadesiz, birikim, nakit, kredi kartı ve kredili mevduat hesaplarınızı kapsar ve bunlardan ikisi arasındaki transfer gösterilmez. Bir birikim hesabına ne aktardığınızı görmek için o hesabı hesap filtresinden çıkarın. Kredi kartı ödemesi asla borç ödemesi değildir: kapattığı alışverişler zaten harcama olarak sayılmıştır.",

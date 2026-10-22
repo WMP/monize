@@ -316,6 +316,7 @@
     "totalInflows": "Total Arus Masuk",
     "totalOutflows": "Total Arus Keluar",
     "netCashFlow": "Arus Kas Bersih",
+    "notAvailable": "T/A",
     "monthlyCashFlow": "Arus Kas Bulanan",
     "inflowsByCategory": "Arus Masuk per Kategori",
     "outflowsByCategory": "Arus Keluar per Kategori",
@@ -764,6 +765,7 @@
     "totalValue": "Total Nilai",
     "costBasis": "Dasar Biaya",
     "totalGainLoss": "Total Keuntungan/Kerugian",
+    "gainPartialCaption": "Hanya atas kepemilikan yang memiliki harga",
     "return": "Imbal Hasil",
     "viewHoldings": "Kepemilikan",
     "viewAllocation": "Alokasi",
@@ -1146,6 +1148,11 @@
     "vsMonth": "vs {month}",
     "inMonth": "{amount} dalam {month}",
     "netWorthTotal": "Total: {amount}",
+    "netWorthSummaryPartial": "Nilai bersih Anda pada {currentMonth} adalah <strong>{netWorth}</strong>. Perubahan dibandingkan {previousMonth} tidak dapat dihitung karena tidak ada kurs untuk {pairs}; tambahkan di halaman Mata Uang.",
+    "pdfPartialSuffix": "{amount} (parsial)",
+    "pdfNote": "Catatan",
+    "pdfNotAvailable": "T/A",
+    "pdfPartialNote": "Total parsial: tidak ada kurs untuk {pairs}.",
     "netWorthSummary": "Nilai bersih Anda pada {currentMonth} adalah <strong>{netWorth}</strong>, yang merupakan <delta>{changeAmount}</delta> dibandingkan dengan {previousMonth}.",
     "pdfTitle": "Perbandingan Bulanan",
     "pdfSubtitle": "{current} vs {previous}",
@@ -1193,7 +1200,12 @@
     "colNetWorth": "Nilai Bersih",
     "barStyle": "Gaya batang",
     "barStyleNetWorth": "Nilai bersih",
-    "barStyleAccountType": "Menurut jenis akun"
+    "barStyleAccountType": "Menurut jenis akun",
+    "notAvailable": "T/A",
+    "colNote": "Catatan",
+    "partialMonthNote": "Parsial: tidak ada kurs untuk {pairs}",
+    "pdfPartialNote": "Total parsial: tidak ada kurs untuk {pairs}. Tambahkan di halaman Mata Uang.",
+    "partialMonth": "Tidak ditampilkan: beberapa jumlah pada bulan ini tidak dapat dikonversi, sehingga nilai bersihnya tidak diketahui."
   },
   "portfolioValue": {
     "highestValue": "Nilai Tertinggi",
@@ -1853,7 +1865,10 @@
   },
   "partialData": {
     "notice": "Sebagian angka bersifat parsial: {count, plural, other {# jumlah tidak dapat dikonversi ke {displayCurrency} dan}} tidak disertakan. Tidak ada kurs untuk {currencies}; tambahkan di halaman Mata Uang.",
-    "noticeExcluded": "Sebagian angka bersifat parsial: {count, plural, other {# jumlah tidak dapat dihitung dan}} tidak disertakan."
+    "noticeExcluded": "Sebagian angka bersifat parsial: {count, plural, other {# jumlah tidak dapat dihitung dan}} tidak disertakan.",
+    "pdfNote": "Total parsial: tidak ada kurs untuk {currencies}",
+    "pdfNoteExcluded": "Total parsial: {count, plural, other {# jumlah}} tidak disertakan",
+    "pdfSuffix": "(parsial)"
   },
   "sankey": {
     "help": "Uang yang masuk mengalir melalui bagian tengah ke tempat uang itu dibelanjakan, yang ditabung atau diinvestasikan, dan yang membayar utang. Secara bawaan, laporan mencakup rekening giro, tabungan, tunai, kartu kredit, dan jalur kredit Anda yang masih terbuka, dan transfer antara dua di antaranya tidak ditampilkan. Keluarkan rekening tabungan dari filter rekening untuk melihat berapa yang Anda pindahkan ke sana. Pembayaran kartu kredit tidak pernah dianggap pembayaran utang: pembelian yang dilunasinya sudah dihitung sebagai pengeluaran.",

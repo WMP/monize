@@ -148,6 +148,7 @@
     "netWorthLabel": "Чистая стоимость",
     "assets": "Активы",
     "liabilities": "Обязательства",
+    "partialName": "{name} (неполные)",
     "viewCallouts": "Подписи",
     "viewLegend": "Условные обозначения"
   },

@@ -61,6 +61,7 @@
     "combinedBreakdown": "Anlagen {investments} · Bargeld {cash}",
     "combinedUnknown": "Gesamtwert nicht verfügbar",
     "combinedUnknownTooltip": "{count, plural, one {# Position hat keinen Kurs, daher lässt sich der Gesamtwert dieses Kontos nicht ermitteln} other {# Positionen haben keinen Kurs, daher lässt sich der Gesamtwert dieses Kontos nicht ermitteln}}",
+    "combinedUnknownValuation": "Einige Positionen in diesem Konto konnten nicht in Ihre Berichtswährung umgerechnet werden, daher lässt sich die Summe nicht ermitteln. Fügen Sie den fehlenden Wechselkurs auf der Seite Währungen hinzu.",
     "combinedUnknownNoPortfolio": "Die Positionen konnten nicht geladen werden, daher lässt sich der Gesamtwert dieses Kontos nicht ermitteln",
     "limit": "Limit: {amount}",
     "pairedWith": "Verknüpft mit {name}",

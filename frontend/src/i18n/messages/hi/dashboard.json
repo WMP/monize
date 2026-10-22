@@ -148,6 +148,7 @@
     "netWorthLabel": "शुद्ध संपत्ति",
     "assets": "संपत्ति",
     "liabilities": "देनदारियां",
+    "partialName": "{name} (आंशिक)",
     "viewCallouts": "लेबल",
     "viewLegend": "संकेत"
   },

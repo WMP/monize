@@ -148,6 +148,7 @@
     "netWorthLabel": "資產淨值",
     "assets": "資產",
     "liabilities": "負債",
+    "partialName": "{name}（不完整）",
     "viewCallouts": "標籤",
     "viewLegend": "圖例"
   },

@@ -61,6 +61,7 @@
     "combinedBreakdown": "投資 {investments} · 現金 {cash}",
     "combinedUnknown": "合計を表示できません",
     "combinedUnknownTooltip": "{count, plural, other {# 件の保有銘柄に価格がないため、この口座の合計を算出できません}}",
+    "combinedUnknownValuation": "この口座の一部の保有銘柄をレポート通貨に換算できなかったため、合計を算出できません。通貨ページで不足している為替レートを追加してください。",
     "combinedUnknownNoPortfolio": "保有銘柄を読み込めなかったため、この口座の合計を算出できません",
     "limit": "限度額：{amount}",
     "pairedWith": "{name} とペア",

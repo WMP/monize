@@ -148,6 +148,7 @@
     "netWorthLabel": "Net Değer",
     "assets": "Varlıklar",
     "liabilities": "Borçlar",
+    "partialName": "{name} (kısmi)",
     "viewCallouts": "Etiketler",
     "viewLegend": "Gösterge"
   },

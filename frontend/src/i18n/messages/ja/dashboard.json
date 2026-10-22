@@ -148,6 +148,7 @@
     "netWorthLabel": "純資産",
     "assets": "資産",
     "liabilities": "負債",
+    "partialName": "{name}（部分的）",
     "viewCallouts": "ラベル",
     "viewLegend": "凡例"
   },
