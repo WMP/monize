@@ -12,7 +12,7 @@
 | Audit branch | `ccr-1f689e5c-onia07` |
 | Pinned on | 2026-10-21 |
 | Upstream audit baseline | `d5cea9bfa995885ba5198f9843359362927c0fd4` (2026-08-01) |
-| `main` at last delta check | not yet checked (S22) |
+| `main` at last delta check | `72c59ec4bc6e9f2cb3a5d25977c94dd2c09e5a86` (S22, 2026-10-22): equal to the baseline, empty delta; S23 re-fetches `main` before the final report |
 
 A session whose code differs from `AUDIT_BASELINE_SHA` in anything but `docs/audits/2026-10/`
 and `docs/audits/2026-08-upstream/` (the check in plan section 4, step 2) stops and reports
@@ -44,7 +44,7 @@ before auditing.
 | S19 | done | 2026-10-21 | 2026-10-22 | a9f53b1 | 0/2/2/3 | `19-frontend-forms.md` (child session_01LuCrA2Ko2LmWJpCCVZtqu1); verdict REQUEST CHANGES; the five largest forms sampled, Playwright not run |
 | S20 | done | 2026-10-21 | 2026-10-22 | c7a3707 | 0/1/3/4 | `20-frontend-figures.md` (child session_01VSrfzDF4F63zWMJY2giCfB); verdict REQUEST CHANGES; budgets, strategies, bonds, receipts, tours UI sampled by grep only |
 | S21 | in-progress | 2026-10-21 | | | | `21-tests-ci-release.md` (child session_01Xmf7H997Adk6ipvAx74awQ, claude-opus-5-5) |
-| S22 | in-progress | 2026-10-22 | | | | `22-delta-review.md` (child session_014uWBGZjh8U2E8eYrTBBQUi, claude-opus-5-5) |
+| S22 | done | 2026-10-22 | 2026-10-22 | 59a1440 | 0/0/0/0 | `22-delta-review.md` (child session_014uWBGZjh8U2E8eYrTBBQUi); `MAIN_SHA` = `AUDIT_BASELINE_SHA`, empty delta; 8 re-check runs green |
 | S23 | open | | | | | `23-final-report.md`, `remediation-tasks.md` |
 
 Status values: `open`, `in-progress` (resume it first), `done`, `split` (see `sessions.md` for
@@ -92,6 +92,7 @@ the line when it disposes of the hypothesis in its report.
 - from S02 to S13: MON-H12 built-in reports still 1:1 (A26-S02-02), guard blind spot (A26-S02-11), MON-M39 relocated to `report-currency.service.spec.ts:213`.
 - from S02 to S20: MON-H16 residual, FX-incomplete account and dashboard widget (A26-S02-03).
 - from S02 to S21: MON-M45 release job pushes an untested bump (A26-S02-10); A26-S02-12 integration race exercises a copy of the consume SQL.
+- from S22 to S23: state in the final report that the audited revision has no hosted CI run (the commit carries `[skip ci]`; the fork's last push run on `main` is from 2026-10-16); re-fetch `main` before writing the final report and run a second delta review if it moved.
 - from S19 to S21: three undetected mutation rows and the known-wrong rate test (`19-frontend-forms.md` section 12). To S20/S23: the `toFixed` readouts (A26-S19-07) are figure surfaces. To S23: A26-S19-01 joins MON-H11's remediation task; A26-S19-04 joins A26-S12-02 and A26-S13-02 ("a rate for a date").
 - from S20 to S23: the country look-through aggregate carries no completeness (with S13); the intraday response needs a completeness flag before any frontend surface can mark a dropped bond (with S14/S13); `totalGainLoss` (A26-S20-02) is quoted by the AI and MCP portfolio tools (with S17); the bank-sync preview UI and the rules editor were not read (with S10). Coverage gap for S23's ledger: INV-SHARE-001..005 (PWA share target) were audited by neither S18 nor S20.
 - from S18 to S20: `DailyInvestmentValue` flags not read in `InvestmentValueChart.tsx` and `PortfolioValueWidget.tsx`; `?? 0` / `|| 0` on `totalPortfolioValue` in four components. To S19: `PostTransactionDialog.tsx:433` seeds the posting form with `nextOverride?.amount ?? scheduledTransaction.amount` (the banned pattern); `OverrideEditorDialog.tsx:203-290` seeds from the base amount. To S13/S23: server-side weightings skip unpriced holdings with no flag (`sector-weighting.service.ts:420-431`). To S21: A26-S18-02 and -03 as baseline-undetected rows; a guard for `setCache(` outside `apiCache.ts`; no E2E fixture for access-cookie expiry (A26-S18-06: two tabs refreshing at once read as token theft).
