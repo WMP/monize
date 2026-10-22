@@ -50,9 +50,9 @@ Every task is safe to merge in any order that respects its dependencies: the tab
 | F7 | CSV export through `csv-export.ts` and the import dialog (file picker, preview table, commit) | F1, B9 | inert | [x] (b1aef04eb, 2026-10-21) |
 | A1 | `list_warranties` on MCP and the in-app assistant over one `getLlmWarranties` method; tool-count and byte-budget specs | B3 | inert | [x] (07b98839c, 2026-10-21) |
 | Q1 | Backend integration suite `warranties.integration.spec.ts` (RLS buckets, WTY-003 CHECK, WTY-005, WTY-007, backup round-trip with a warranty attachment, cron dedupe across two connections) | B5, B7, B9 | none | [x] (1f97366df, 2026-10-21) |
-| Q2 | Playwright `tests/warranties.spec.ts` | F2, F3, F7 | none | [ ] |
-| Q3 | Full-locale i18n pass (acceptance, final commit) | all above | none | [x] (2026-10-21) |
-| D1 | Wiki page `Warranties.md`, a README feature line, `docs/system-invariants.md` WTY-001..007, `docs/external-side-effects.md` wording for a two-parent attachment | F7 | none | [x] (2026-10-21) |
+| Q2 | Playwright `tests/warranties.spec.ts` | F2, F3, F7 | none | [x] (92ccec736, 2026-10-21) |
+| Q3 | Full-locale i18n pass (acceptance, final commit) | all above | none | [x] (17d9e51d1, 2026-10-21) |
+| D1 | Wiki page `Warranties.md`, a README feature line, `docs/system-invariants.md` WTY-001..007, `docs/external-side-effects.md` wording for a two-parent attachment | F7 | none | [x] (527b03545, 2026-10-21) |
 
 **Why B6 depends only on S1:** the category and the two types are additive constants; they can land before the producer exists, as the notification-preferences spec allows ("arrives with its producer" is satisfied by B7 landing before Q3).
 

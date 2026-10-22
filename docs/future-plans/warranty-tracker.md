@@ -10,7 +10,7 @@ Status: **built** on branch `feat/warranty-tracker` (2026-10-21), approved
 directly by the maintainer on 2026-10-21 rather than through a discussion;
 `backend/src/warranties/`, the Warranties page (route /warranties), and the
 invariants as `INV-WTY-001` to `INV-WTY-007` in `docs/system-invariants.md`.
-Open: Q2 (the Playwright journey) and the open questions W1 to W4 in section
+Open: the open questions W1 to W4 in section
 13, which stand as this plan answered them. Where the build differs from the
 text, "As built" at the end of section 3 says how. A warranty moves no money,
 so sections 4 to 9 are short; they are kept so the plan reads like every other
