@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@/test/render';
+import { render, screen, fireEvent, waitFor, act, cleanup } from '@/test/render';
 import { InvestmentTransactionForm } from './InvestmentTransactionForm';
 import { investmentsApi } from '@/lib/investments';
 import { getLocalDateString } from '@/lib/utils';
@@ -8,16 +8,27 @@ import {
   TRANSACTION_SUBMIT_MODE_KEY,
 } from '@/hooks/useTransactionSubmitMode';
 import toast from 'react-hot-toast';
+import { usePreferencesStore } from '@/store/preferencesStore';
 
-vi.mock('@/hooks/useNumberFormat', async () => {
+// A case about the reader's own number locale switches this on and sets the
+// preferences store; every other case keeps the deterministic en-US stand-in.
+const realNumberFormat = vi.hoisted(() => ({ on: false }));
+
+vi.mock('@/hooks/useNumberFormat', async (importOriginal) => {
   const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  const actual = await importOriginal<typeof import('@/hooks/useNumberFormat')>();
   return {
-    useNumberFormat: () => ({
-      ...numberFormatMockDefaults(),
-      defaultCurrency: 'CAD',
-      formatCurrency: (n: number, c?: string) =>
-        c ? `${c} $${n.toFixed(2)}` : `$${n.toFixed(2)}`,
-    }),
+    useNumberFormat: () => {
+      // Called every render either way so the hook order never changes.
+      const real = actual.useNumberFormat();
+      if (realNumberFormat.on) return real;
+      return {
+        ...numberFormatMockDefaults(),
+        defaultCurrency: 'CAD',
+        formatCurrency: (n: number, c?: string) =>
+          c ? `${c} $${n.toFixed(2)}` : `$${n.toFixed(2)}`,
+      };
+    },
   };
 });
 const getMarketRateMock = vi.fn<(from: string, to: string) => number | null>(
@@ -146,6 +157,7 @@ describe('InvestmentTransactionForm', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    realNumberFormat.on = false;
     getMarketRateMock.mockReset();
     getMarketRateMock.mockReturnValue(null);
     getRateForDateMock.mockReset();
@@ -2039,6 +2051,7 @@ describe('InvestmentTransactionForm', () => {
         description: '',
       } as any;
 
+      realNumberFormat.on = true;
       try {
         await act(async () => {
           render(
@@ -2069,8 +2082,8 @@ describe('InvestmentTransactionForm', () => {
         );
 
         // 100 shares @ $150 -> 200 shares @ $75 after a 2-for-1 split.
-        expect(screen.getByText(/100\.0000/)).toBeInTheDocument();
-        expect(screen.getByText(/200\.0000/)).toBeInTheDocument();
+        expect(screen.getByText('100')).toBeInTheDocument();
+        expect(screen.getByText('200')).toBeInTheDocument();
         expect(screen.getByText(/75\.0000/)).toBeInTheDocument();
 
         // The unhelpful replay-auto sentence must be gone.
@@ -2083,6 +2096,59 @@ describe('InvestmentTransactionForm', () => {
         expect(screen.queryByText(/as of 2026-01-15/)).not.toBeInTheDocument();
         expect(screen.getByText(/Before \(as of/i)).toBeInTheDocument();
       } finally {
+        asOfMock.mockResolvedValue({ quantity: 0, averageCost: 0 });
+      }
+    });
+
+    it('writes the holding preview in the reader number locale', async () => {
+      const asOfMock = vi.mocked(investmentsApi.getHoldingAt);
+      asOfMock.mockImplementation(() =>
+        Promise.resolve({ quantity: 100.25, averageCost: 150.5 }),
+      );
+      const splitTx = {
+        id: 'tx-split',
+        accountId: 'a1',
+        action: 'SPLIT' as const,
+        transactionDate: '2026-01-15',
+        securityId: 'sec-1',
+        security: {
+          id: 'sec-1',
+          symbol: 'AAPL',
+          name: 'Apple Inc.',
+          securityType: 'STOCK',
+          currencyCode: 'USD',
+        } as any,
+        quantity: 2,
+        price: 0,
+        commission: 0,
+        totalAmount: 0,
+        description: '',
+      } as any;
+
+      realNumberFormat.on = true;
+      usePreferencesStore.setState({
+        preferences: { numberFormat: 'pl-PL', language: 'en' } as any,
+      });
+      try {
+        await act(async () => {
+          render(
+            <InvestmentTransactionForm accounts={accounts} transaction={splitTx} />,
+          );
+        });
+        await waitFor(() => {
+          expect(screen.getByText(/Holding preview/i)).toBeInTheDocument();
+        });
+
+        // 100.25 shares @ 150.50 -> 200.5 shares @ 75.25 after a 2-for-1 split.
+        expect(screen.getByText('100,25')).toBeInTheDocument();
+        expect(screen.getByText('200,5')).toBeInTheDocument();
+        expect(screen.getByText(/75,2500/)).toBeInTheDocument();
+        expect(screen.queryByText(/75\.2500/)).not.toBeInTheDocument();
+        // The currency is formatted once: no hand-written symbol beside it.
+        expect(screen.queryByText(/\$.*75,2500/)).not.toBeInTheDocument();
+      } finally {
+        cleanup();
+        usePreferencesStore.setState({ preferences: null });
         asOfMock.mockResolvedValue({ quantity: 0, averageCost: 0 });
       }
     });
@@ -2380,7 +2446,7 @@ describe('InvestmentTransactionForm - extra coverage', () => {
     });
     await waitFor(() => expect(screen.getByText(/Holding preview/i)).toBeInTheDocument());
     // 100 @ $50 -> 200 @ $25 after a 2-for-1 split.
-    expect(screen.getByText(/200\.0000/)).toBeInTheDocument();
+    expect(screen.getByText('200')).toBeInTheDocument();
   });
 
   it('submits an edited transfer leg via the source (OUT) leg', async () => {

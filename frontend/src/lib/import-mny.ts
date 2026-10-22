@@ -233,6 +233,12 @@ export interface MnyImportResult {
   transfersLinked: number;
   securitiesCreated: number;
   investmentTransactionsCreated: number;
+  /**
+   * Imported share acquisitions of a bond-program security stored without a
+   * series (the file names none and none was on sale on the date): the bond
+   * lots report such a row until its series is chosen. Absent when zero.
+   */
+  bondRowsWithoutSeries?: number;
   pricesImported: number;
   exchangeRatesImported: number;
   billsCreated: number;

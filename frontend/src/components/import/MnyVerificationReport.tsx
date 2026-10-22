@@ -161,6 +161,12 @@ export function MnyVerificationReport({
         </p>
       )}
 
+      {(result.bondRowsWithoutSeries ?? 0) > 0 && (
+        <p className="mb-6 text-sm text-amber-800 dark:text-amber-300">
+          {t('mnyComplete.bondRowsWithoutSeries', { count: result.bondRowsWithoutSeries ?? 0 })}
+        </p>
+      )}
+
       {/* Per-account reconciliation */}
       <div className="mb-6">
         <h3 className="text-sm font-semibold text-foreground mb-2">

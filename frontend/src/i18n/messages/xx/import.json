@@ -318,7 +318,8 @@
     "scheduledPaymentsConfigured": "[XX-Scheduled payments configured for {count} account{plural}.-XX]",
     "viewInvestments": "[XX-View Investments-XX]",
     "viewTransactions": "[XX-View Transactions-XX]",
-    "importMoreFiles": "[XX-Import More Files-XX]"
+    "importMoreFiles": "[XX-Import More Files-XX]",
+    "bondRowsWithoutSeries": "[XX-{count, plural, one {# bond purchase was imported without a series. Choose its series in the security's bond lots.} other {# bond purchases were imported without a series. Choose their series in the security's bond lots.}}-XX]"
   },
   "multiAccountReview": {
     "heading": "[XX-Multi-Account QIF Import-XX]",
@@ -501,7 +502,8 @@
     },
     "warningsHeading": "[XX-Notes about this import-XX]",
     "downloadReport": "[XX-Download report-XX]",
-    "done": "[XX-Done-XX]"
+    "done": "[XX-Done-XX]",
+    "bondRowsWithoutSeries": "[XX-{count, plural, one {# bond purchase was imported without a series. Choose its series in the security's bond lots.} other {# bond purchases were imported without a series. Choose their series in the security's bond lots.}}-XX]"
   },
   "mnyWarnings": {
     "missingTable": "[XX-This Money version has no {count, plural, one {# table} other {# tables}} the import uses.-XX]",
@@ -602,7 +604,8 @@
       "notEvaluated": {
         "afterStop": "[XX-Not evaluated: a previous rule stopped the rules.-XX]",
         "disabled": "[XX-Not evaluated: the rule is switched off.-XX]",
-        "invalid": "[XX-Not evaluated: the rule is not valid. Open it to repair it.-XX]"
+        "invalid": "[XX-Not evaluated: the rule is not valid. Open it to repair it.-XX]",
+        "outside_active_window": "[XX-Not evaluated: the row's date is outside the rule's active dates.-XX]"
       },
       "condition": {
         "met": "[XX-Condition met-XX]",
