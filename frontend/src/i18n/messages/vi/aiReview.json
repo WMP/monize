@@ -48,6 +48,7 @@
       "tradeChat": "Bạn đã yêu cầu nhận diện xác nhận giao dịch đính kèm: hãy đề xuất giao dịch đầu tư mà nó báo cáo, là mua, bán, cổ tức tiền mặt hoặc cổ tức tái đầu tư."
     },
     "emailReceipt": "Hóa đơn qua email: {subject} từ {sender}",
+    "emailReceiptForwarded": "Hóa đơn qua email: {subject} từ {sender}, người chuyển tiếp {forwarder}",
     "emailReceiptMissing": "Hóa đơn qua email (email đã bị xóa)",
     "parserDraft": "Dự thảo hồ sơ từ {count, plural, one {# email} other {# email}} ({domain})",
     "viewEmailReceipts": "Xem hóa đơn qua email",

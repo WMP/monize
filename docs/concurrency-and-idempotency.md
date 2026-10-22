@@ -243,6 +243,37 @@ A comment claiming atomicity, a lock, or single-use consumption must name the
 mechanism. Two comments in this codebase claimed a guarantee the code beside
 them did not implement, and both were believed for as long as they existed. If
 the mechanism cannot be named, the comment is wrong, not merely vague.
+
+CONC-008
+An entity read before a SQL statement that writes the same row is not saved
+back whole. TypeORM's save diffs the snapshot against the row and writes every
+column that differs, so it reverts what the statement wrote. Write only the
+columns the path owns (repo.update({ id }, { lastLogin })), and keep the
+in-memory entity in step with the statement for the readers after it. The login
+success path wrote failed_login_attempts = 4 back over its own reset to 0
+(A26-M01; AuthService.recordLastLogin,
+test/integration/credential-writes-atomic.integration.spec.ts).
+
+CONC-009
+Ending a set of rows that a concurrent writer can extend is a converging
+protocol under that writer's lock, not one UPDATE. Blocked on a row a refresh
+rotation holds, UPDATE ... WHERE user_id = ? AND is_revoked = false resumes with
+its old snapshot and misses the successor the rotation inserted. A path that
+ends a user's sessions calls TokenService.revokeAllUserRefreshTokens, or
+revokeRefreshSessionsAfterCommit (auth/credential-revocation.ts) where
+TokenService cannot be injected, after its own commit; an in-transaction
+blanket UPDATE is a first pass only (A26-M02).
+
+CONC-010
+An attempt budget reserves before it checks. Count the attempt with the
+counter's single statement (AuthAttemptCounterService.increment, INSERT ... ON
+CONFLICT ... RETURNING), refuse when the committed count is over the cap, then
+check the code or password; a success resets the counter. A peek followed by an
+increment after a failed check lets K concurrent guesses read the same count
+before any of them is recorded, so all K reach the verifier (A26-L08:
+StepUpAuthService.reserveAttempt, TwoFactorService.reserveUserTotpAttempt;
+test/integration/two-factor-step-up-budget.integration.spec.ts). A peek may stay
+in front as an advisory early refusal.
 ```
 
 ## 4. Retry semantics
@@ -566,11 +597,14 @@ this table when a mechanism lands, not when someone judges the window small.
 | Logout vs rotation | Logout's family revoke is an unlocked bulk `UPDATE`. It happens to be safe because `isRevoked = true` is idempotent and the end state is order-independent -- but this is a property of the value, not a protocol, and it stops holding the moment logout writes anything else. | CONC-003 (tolerated; document, do not copy) |
 | MNY import retry after a committed write | `writeAll`'s transaction commits before post-processing, verification, staged-file deletion and the terminal status update. A failure in that window leaves committed rows behind a retryable job, and a retry re-parses with fresh UUIDs. No checkpoint, run id, or per-record key. See INV-IMPORT-002. | CONC-006, CONC-007 |
 
-Refresh-token rotation is worth reading as a positive finding rather than a gap:
-it is correct and subtle -- the loser blocks on the lock, then sees the winner's
-committed `isRevoked`, and takes the reuse-detection branch that revokes the whole
-family, so a concurrent double-rotation ends in revocation rather than two live
-successors.
+Refresh-token rotation is worth reading as a positive finding rather than a gap,
+with two corrections the 2026-10 audit forced. The loser blocks on the family
+lock, then sees the winner's committed `isRevoked`; inside the rotation grace it
+is answered with an access token only (two tabs of one browser), and outside it
+it is reuse and the family is revoked. A concurrent double-rotation therefore
+ends in exactly one live successor, never two. The reuse revocation commits
+before the 401 is raised: it used to be thrown inside the transaction, which
+rolled back the revocation it reported (A26-H01, INV-AUTH-001).
 
 The MNY import job deserves a more careful verdict than either column allows. It
 has the most complete protocol in the codebase for the races it was built to

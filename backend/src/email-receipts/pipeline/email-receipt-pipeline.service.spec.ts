@@ -12,6 +12,7 @@ import type { AiReviewWorkService } from "../../ai-review/ai-review-work.service
 import type { AiReviewSubmitResult } from "../../ai-review/ai-review-work.types";
 import { Category } from "../../categories/entities/category.entity";
 import { Payee } from "../../payees/entities/payee.entity";
+import { User } from "../../users/entities/user.entity";
 import type { PayeesService } from "../../payees/payees.service";
 import { createScopedDbMocks } from "../../test-helpers/scoped-db-testing";
 import type { EmailReceiptCategoryAiService } from "../ai/email-receipt-category-ai.service";
@@ -221,6 +222,8 @@ interface World {
   rejoinStatusRows?: Array<Record<string, unknown>>;
   /** The components the deleted link rows named (`RETURNING component_receipt_id`). */
   deletedLinkRows?: Array<Record<string, unknown>>;
+  /** The owner's account row (`loadOwnAddresses`); the forward fixtures' Gmail by default. */
+  owner?: Partial<User> | null;
 }
 
 function setup(over: Partial<World> = {}) {
@@ -241,6 +244,17 @@ function setup(over: Partial<World> = {}) {
     delete: jest.fn().mockResolvedValue({ affected: 1 }),
   };
   const mailboxRepo = { findOne: jest.fn(async () => world.mailbox) };
+  const userRepo = {
+    findOne: jest.fn(async () =>
+      world.owner === undefined
+        ? {
+            id: USER,
+            email: "alice.example@gmail.example.com",
+            emailVerified: true,
+          }
+        : world.owner,
+    ),
+  };
   const parserRepo = { find: jest.fn(async () => world.parsers) };
   const payeeRepo = { findOne: jest.fn(async () => world.payee) };
   const categoryRepo = {
@@ -252,6 +266,7 @@ function setup(over: Partial<World> = {}) {
   const { manager, dataSource } = createScopedDbMocks([
     [EmailReceipt, receiptRepo],
     [EmailReceiptMailbox, mailboxRepo],
+    [User, userRepo],
     [EmailReceiptParser, parserRepo],
     [Payee, payeeRepo],
     [Category, categoryRepo],
@@ -1603,6 +1618,91 @@ describe("EmailReceiptPipelineService.process", () => {
       expect(identityUpdates(h)).toHaveLength(1);
     });
 
+    it("never reads the owner's addresses for an email that is no forward", async () => {
+      const h = setup();
+
+      await run(h);
+
+      expect(
+        h.manager.getRepository.mock.calls.some(([entity]) => entity === User),
+      ).toBe(false);
+    });
+
+    describe("from somebody who is not the owner (A26-H02)", () => {
+      it("is not re-identified: the pasted block is text, and the outsider's domain has no parser", async () => {
+        const h = setup({
+          receipt: forwarded({
+            fromAddress: "someone@evil.example",
+            fromDomain: "evil.example",
+          }),
+          candidates: [candidate({ transaction_date: "2026-08-12" })],
+        });
+
+        const result = await run(h);
+
+        expect(identityUpdates(h)).toHaveLength(0);
+        expect(result.status).toBe("no_parser");
+        expect(h.requests.enqueueClaimed).not.toHaveBeenCalled();
+      });
+
+      it("an unverified account email is nobody's", async () => {
+        const h = setup({
+          receipt: forwarded(),
+          owner: {
+            id: USER,
+            email: "alice.example@gmail.example.com",
+            emailVerified: false,
+          },
+        });
+
+        await run(h);
+
+        expect(identityUpdates(h)).toHaveLength(0);
+      });
+
+      it("a row an outsider's block re-identified before the fix is put back under the outsider", async () => {
+        const h = setup({
+          receipt: forwarded({
+            fromAddress: "orders@shop.example.com",
+            fromDomain: "shop.example.com",
+            subject: "Your order ABCD1234",
+            forwardedBy: "someone@evil.example",
+            originalSentAt: new Date("2026-08-10T10:15:00.000Z"),
+          }),
+        });
+
+        const result = await run(h);
+
+        expect(identityUpdates(h)).toEqual([
+          [
+            { id: RECEIPT, userId: USER },
+            {
+              fromAddress: "someone@evil.example",
+              fromDomain: "evil.example",
+              subject: "Your order ABCD1234",
+              forwardedBy: null,
+              originalSentAt: null,
+            },
+          ],
+        ]);
+        expect(result.status).toBe("no_parser");
+      });
+    });
+
+    it("the owner's forward is proposed but never auto-applied (A26-H02)", async () => {
+      const h = setup({
+        receipt: forwarded(),
+        mailbox: mailboxRow({ autoApply: true }),
+        candidates: [candidate({ transaction_date: "2026-08-12" })],
+      });
+
+      const result = await run(h);
+
+      expect(result).toMatchObject({ status: "review", autoApplied: false });
+      expect(h.work.submit).toHaveBeenCalledTimes(1);
+      expect(h.actions.confirm).not.toHaveBeenCalled();
+    });
+
     it("heals before anything is refused for the state, so a refusal that wrote nothing stays that way", async () => {
       const h = setup({
         receipt: forwarded({ status: "skipped" }),
@@ -2209,12 +2309,15 @@ describe("autoApplyAllowed", () => {
     usedFallback: false,
     cardBuilt: true,
     linked: false,
+    forwarded: false,
     ...over,
   });
 
   it("holds when every condition does", () => {
     expect(autoApplyAllowed(facts())).toBe(true);
     expect(autoApplyAllowed(facts({ linked: true }))).toBe(false);
+    // A forward's sender is a claim of its text: a person looks (A26-H02).
+    expect(autoApplyAllowed(facts({ forwarded: true }))).toBe(false);
     expect(autoApplyAllowed(facts({ matchKind: "amount_payee" }))).toBe(true);
     // The profile's own identifier in the bank operation is as strong as an order number.
     expect(autoApplyAllowed(facts({ matchKind: "reference" }))).toBe(true);

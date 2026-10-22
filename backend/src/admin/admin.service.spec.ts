@@ -55,6 +55,42 @@ describe("AdminService", () => {
     );
   };
 
+  /**
+   * Record the transaction boundaries and the credential writes in order, so a
+   * test can tell "PATs revoked in the password's commit" from "in the next one"
+   * and see the converging refresh revoke run after the commit (A26-L07,
+   * A26-M02).
+   */
+  const recordCredentialOrder = (): string[] => {
+    const order: string[] = [];
+    const run = dataSource.transaction.getMockImplementation()!;
+    dataSource.transaction.mockImplementation(async (...args: any[]) => {
+      order.push("begin");
+      const result = await run(...args);
+      order.push("commit");
+      return result;
+    });
+    usersRepository.save.mockImplementation(async (u: unknown) => {
+      order.push("save");
+      return u;
+    });
+    patRepository.update.mockImplementation(async () => {
+      order.push("pats");
+      return { affected: 0 };
+    });
+    transactionManager.query.mockImplementation(async (sql: unknown) => {
+      if (String(sql).includes("SELECT DISTINCT family_id")) {
+        order.push("converge");
+      }
+      return [];
+    });
+    oauthProviderService.revokeAllForUser.mockImplementation(async () => {
+      order.push("oauth");
+      return 0;
+    });
+    return order;
+  };
+
   const mockAdmin = {
     id: "admin-1",
     email: "admin@example.com",
@@ -586,6 +622,25 @@ describe("AdminService", () => {
       expect(refreshTokensRepository.update).not.toHaveBeenCalled();
     });
 
+    it("disables and revokes PATs in one commit, then converges the refresh sessions", async () => {
+      usersRepository.findOne.mockResolvedValue({ ...mockTargetUser });
+      const order = recordCredentialOrder();
+
+      await service.updateUserStatus("admin-1", "user-2", false);
+
+      const write = order.lastIndexOf("save");
+      expect(order.slice(write - 1)).toEqual([
+        "begin",
+        "save",
+        "pats",
+        "commit",
+        "begin",
+        "converge",
+        "commit",
+        "oauth",
+      ]);
+    });
+
     it("revokes all PATs when deactivating a user", async () => {
       usersRepository.findOne.mockResolvedValue({ ...mockTargetUser });
 
@@ -825,6 +880,25 @@ describe("AdminService", () => {
         { userId: "user-2", isRevoked: false },
         { isRevoked: true },
       );
+    });
+
+    it("revokes PATs in the password's own commit and converges the refresh sessions after it", async () => {
+      usersRepository.findOne.mockResolvedValue({ ...mockTargetUser });
+      const order = recordCredentialOrder();
+
+      await service.resetUserPassword("admin-1", "user-2");
+
+      const write = order.lastIndexOf("save");
+      expect(order.slice(write - 1)).toEqual([
+        "begin",
+        "save",
+        "pats",
+        "commit",
+        "begin",
+        "converge",
+        "commit",
+        "oauth",
+      ]);
     });
 
     it("revokes all PATs on password reset", async () => {
