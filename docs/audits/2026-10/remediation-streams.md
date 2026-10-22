@@ -83,7 +83,7 @@
 | Stream | Branch | Started | Child session | Tasks done | Merged |
 |---|---|---|---|---|---|
 | harness | `fix/audit-harness` | 2026-10-22 04:19 UTC | session_01JWWBawaWKEiTgRH4EUCL9M | T08 (head 67041d9; 7 commits, tests and helpers only, no production code; full integration suite 123/123 green) | not yet |
-| ledger | `fix/audit-ledger` (based on `fix/audit-harness`) | 2026-10-22 | see next update | | |
+| ledger | `fix/audit-ledger` (based on `fix/audit-harness`) | 2026-10-22 05:37 UTC | session_0162iK2ZgbyzonPiq6wog7RJ | in progress | not yet |
 | receipts | `fix/audit-receipts` | 2026-10-22 05:13 UTC | session_01Vd7kVJvSZgM5rCdWSbwbDd | in progress | not yet |
 | banksync | `fix/audit-banksync` | 2026-10-22 05:25 UTC | session_01HUQYhLK1iA2SyKqUEunC7S | in progress | not yet |
 | auth | `fix/audit-auth` | 2026-10-22 04:19 UTC | session_01J1DvFkbLT5hNjYcqy139nN | T01, T18, T49 (head 58dca78; 34 files; gate green per commit, run with NODE_OPTIONS=--max-old-space-size=6144; T01 adds a 10 s rotation grace for a second tab, maintainer decision) | not yet |
