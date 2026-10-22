@@ -495,6 +495,50 @@ describe("Warranties under RLS enforcement (integration)", () => {
       expect(JSON.stringify(list)).not.toContain(ungrantedTxId);
     });
 
+    it("delegate filtering the list by a purchase id: matches only a purchase in a granted account", async () => {
+      await setSection(true);
+
+      // The owner's filter finds the warranty whatever the account.
+      const owners = await asAlice(() =>
+        controller.findAll(ownerReq(), { transactionId: ungrantedTxId }),
+      );
+      expect(owners.data.map((row) => row.id)).toEqual([ungrantedWarrantyId]);
+
+      // Without the account grant the id matches nothing: the same answer
+      // an unknown id gets, so the filter cannot confirm the link.
+      const hidden = await asDave(() =>
+        controller.findAll(delegateReq(), { transactionId: ungrantedTxId }),
+      );
+      const unknown = await asDave(() =>
+        controller.findAll(delegateReq(), {
+          transactionId: "00000000-0000-4000-8000-000000000000",
+        }),
+      );
+      expect(hidden).toEqual({
+        data: [],
+        pagination: {
+          page: 1,
+          limit: 50,
+          total: 0,
+          totalPages: 0,
+          hasMore: false,
+        },
+      });
+      expect(hidden).toEqual(unknown);
+
+      // Positive control: with the grant, the filter finds the row.
+      const granted = await asDave(() =>
+        controller.findAll(delegateReq(), { transactionId: grantedTxId }),
+      );
+      expect(granted.pagination.total).toBe(1);
+      expect(granted.data).toHaveLength(1);
+      expect(granted.data[0]).toMatchObject({
+        id: grantedWarrantyId,
+        transactionId: grantedTxId,
+        linkedTransaction: { id: grantedTxId, accountId: grantedAccountId },
+      });
+    });
+
     it("delegate without the section: refused by the guard on every read route", async () => {
       // Section off (the column's default). The real guard reads the real
       // controller's metadata and the delegation row through RLS.

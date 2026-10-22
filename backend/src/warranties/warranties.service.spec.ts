@@ -32,6 +32,7 @@ function qbMock(results: {
   many?: unknown[];
   rawOne?: Record<string, string>;
   rawMany?: unknown[];
+  exists?: boolean;
 }): QbMock {
   const qb: QbMock = {};
   for (const name of [
@@ -55,6 +56,7 @@ function qbMock(results: {
   qb.getMany = jest.fn().mockResolvedValue(results.many ?? []);
   qb.getRawOne = jest.fn().mockResolvedValue(results.rawOne);
   qb.getRawMany = jest.fn().mockResolvedValue(results.rawMany ?? []);
+  qb.getExists = jest.fn().mockResolvedValue(results.exists ?? false);
   return qb;
 }
 
@@ -402,6 +404,116 @@ describe("WarrantiesService", () => {
       );
       expect(listQb.skip).toHaveBeenCalledWith(20);
       expect(listQb.take).toHaveBeenCalledWith(10);
+    });
+
+    describe("the transactionId filter for a delegate (WTY-007)", () => {
+      const SCOPE_CLAUSE = "t.account_id IN (:...delegateScopeAccountIds)";
+      const FILTER = "w.transaction_id = :transactionId";
+
+      it("leaves the owner's filter unchanged, with no scope lookup", async () => {
+        listQb = qbMock({
+          manyAndCount: [[warranty({ transactionId: TX })], 1],
+        });
+        transactionQb = qbMock({ many: [linkedTransactionRow()] });
+
+        const result = await service.findAll(
+          USER,
+          { transactionId: TX },
+          { today: TODAY },
+        );
+
+        expect(listQb.andWhere).toHaveBeenCalledWith(FILTER, {
+          transactionId: TX,
+        });
+        // The one transaction read is the linked purchase's, unnarrowed.
+        expect(transactionRepo.createQueryBuilder).toHaveBeenCalledTimes(1);
+        expect(transactionQb.getExists).not.toHaveBeenCalled();
+        expect(result.pagination.total).toBe(1);
+        expect(result.data[0].transactionId).toBe(TX);
+      });
+
+      it("applies the filter when the purchase's account is in the delegate's scope", async () => {
+        const scopeQb = qbMock({ exists: true });
+        transactionRepo.createQueryBuilder.mockReturnValueOnce(scopeQb);
+        listQb = qbMock({
+          manyAndCount: [[warranty({ transactionId: TX })], 1],
+        });
+        transactionQb = qbMock({ many: [linkedTransactionRow()] });
+
+        const result = await service.findAll(
+          USER,
+          { transactionId: TX },
+          { today: TODAY, accountScope: [ACCOUNT] },
+        );
+
+        expect(scopeQb.where).toHaveBeenCalledWith("t.id = :transactionId", {
+          transactionId: TX,
+        });
+        expect(scopeQb.andWhere).toHaveBeenCalledWith("t.user_id = :userId", {
+          userId: USER,
+        });
+        expect(scopeQb.andWhere).toHaveBeenCalledWith(SCOPE_CLAUSE, {
+          delegateScopeAccountIds: [ACCOUNT],
+        });
+        expect(listQb.andWhere).toHaveBeenCalledWith(FILTER, {
+          transactionId: TX,
+        });
+        expect(result.pagination.total).toBe(1);
+        expect(result.data[0]).toMatchObject({
+          id: W1,
+          transactionId: TX,
+          linkedTransaction: { id: TX, accountId: ACCOUNT },
+        });
+      });
+
+      it("answers an empty page when the purchase's account is outside the scope", async () => {
+        const scopeQb = qbMock({ exists: false });
+        transactionRepo.createQueryBuilder.mockReturnValueOnce(scopeQb);
+        // Were the list read, it would find the row: the filter must not run.
+        listQb = qbMock({
+          manyAndCount: [[warranty({ transactionId: TX })], 1],
+        });
+        const other = "99999999-9999-4999-8999-999999999999";
+
+        const result = await service.findAll(
+          USER,
+          { transactionId: TX, page: 2, limit: 10 },
+          { today: TODAY, accountScope: [other] },
+        );
+
+        expect(scopeQb.andWhere).toHaveBeenCalledWith(SCOPE_CLAUSE, {
+          delegateScopeAccountIds: [other],
+        });
+        expect(warrantyRepo.createQueryBuilder).not.toHaveBeenCalled();
+        // The same answer as an id that matches no warranty at all.
+        expect(result).toEqual({
+          data: [],
+          pagination: {
+            page: 2,
+            limit: 10,
+            total: 0,
+            totalPages: 0,
+            hasMore: false,
+          },
+        });
+      });
+
+      it("answers an empty page for an empty scope without reading anything", async () => {
+        listQb = qbMock({
+          manyAndCount: [[warranty({ transactionId: TX })], 1],
+        });
+
+        const result = await service.findAll(
+          USER,
+          { transactionId: TX },
+          { today: TODAY, accountScope: [] },
+        );
+
+        expect(transactionRepo.createQueryBuilder).not.toHaveBeenCalled();
+        expect(warrantyRepo.createQueryBuilder).not.toHaveBeenCalled();
+        expect(result.data).toEqual([]);
+        expect(result.pagination.total).toBe(0);
+      });
     });
 
     it.each([

@@ -50,7 +50,8 @@ import {
  * owner, and for an acting delegate the accounts they may read, possibly none.
  * A warranty itself is not account-scoped (the section admits the delegate to
  * every row); the scope decides only whether its linked purchase is shown
- * (WTY-007, design truth table C).
+ * (WTY-007, design truth table C), and whether the list's `transactionId`
+ * filter can match that purchase at all.
  */
 export interface WarrantyReadContext {
   today?: string;
@@ -137,6 +138,22 @@ export class WarrantiesService {
     const { page, limit, skip } = clampPagination(query.page, query.limit);
 
     return withScopedDb(this.dataSource, async (m) => {
+      // WTY-007: a delegate filtering by a purchase outside their scope gets
+      // the answer an unknown id gets, an empty page, so the filter cannot
+      // confirm which warranties an unreadable purchase bought.
+      if (
+        query.transactionId &&
+        ctx.accountScope !== undefined &&
+        !(await this.isTransactionInScope(
+          m,
+          userId,
+          query.transactionId,
+          ctx.accountScope,
+        ))
+      ) {
+        return { data: [], pagination: buildPaginationMeta(page, limit, 0) };
+      }
+
       const qb = m
         .getRepository(Warranty)
         .createQueryBuilder("w")
@@ -769,6 +786,29 @@ export class WarrantiesService {
       });
     }
     return linked;
+  }
+
+  /**
+   * Whether the caller's purchase `transactionId` sits in an account the
+   * scope admits, read through `restrictToAccountScope` exactly as
+   * `loadLinkedTransactions` narrows the purchase itself (WTY-007). An empty
+   * scope admits nothing and reads nothing. Only `findAll`'s `transactionId`
+   * filter asks, and only for a delegate.
+   */
+  private async isTransactionInScope(
+    m: EntityManager,
+    userId: string,
+    transactionId: string,
+    accountScope: readonly string[],
+  ): Promise<boolean> {
+    if (accountScope.length === 0) return false;
+    const qb = m
+      .getRepository(Transaction)
+      .createQueryBuilder("t")
+      .select("t.id")
+      .where("t.id = :transactionId", { transactionId })
+      .andWhere("t.user_id = :userId", { userId });
+    return restrictToAccountScope(qb, "t.account_id", accountScope).getExists();
   }
 
   /**

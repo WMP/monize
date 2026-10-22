@@ -207,7 +207,7 @@ implied.
 | INV-WTY-004 | Each warranty reminder threshold notifies once per (warranty, expiry date, threshold), across replicas | enforced |
 | INV-WTY-005 | A warranty or claim write naming a row the caller does not own is refused before the write | enforced |
 | INV-WTY-006 | A warranty import's preview and commit are one computation | enforced |
-| INV-WTY-007 | A delegate never learns a transaction outside their readable accounts through a warranty | partial |
+| INV-WTY-007 | A delegate never learns a transaction outside their readable accounts through a warranty | enforced |
 
 ## Imports
 
@@ -8033,26 +8033,27 @@ Enforcement         The read routes carry @AllowDelegate() and
                     purchase itself; linkedTransactionHidden says only that a
                     hidden purchase exists. getLlmWarranties reads through
                     findAll, so linkedTransactionId is null under the same
-                    rule.
+                    rule. The list's transactionId filter
+                    (GET /warranties?transactionId=) is narrowed by the same
+                    scope: for a delegate, WarrantiesService.findAll first
+                    checks the purchase's account through
+                    restrictToAccountScope, and an id outside the scope
+                    answers the empty page an unknown id answers.
 Concurrency scope   --
 Retry semantics     --
 Crash semantics     --
 Failure response    403 for a delegate without the section, or on a write
 Required tests      Present: warranties.integration.spec.ts (truth table C,
-                    one case per row, and every write route refused to a
-                    delegate with the section), warranties.controller.spec.ts,
+                    one case per row; every write route refused to a delegate
+                    with the section; and "delegate filtering the list by a
+                    purchase id: matches only a purchase in a granted
+                    account", where the ungranted purchase's id answers the
+                    same empty page as an unknown id and the granted one finds
+                    its row), warranties.service.spec.ts (the transactionId
+                    filter for a delegate), warranties.controller.spec.ts,
                     rls-context-smoke.spec.ts.
-Status              partial
+Status              enforced
 ```
-
-Status is `partial` because one read is not narrowed: the list's
-`transactionId` filter (`GET /warranties?transactionId=`) matches
-`warranties.transaction_id` whatever the delegate's scope, so a delegate who
-already holds the id of a purchase in an account they cannot read (from a grant
-since withdrawn, say) can confirm which warranties it bought. The response
-still carries no field of the transaction. It becomes `enforced` when that
-filter is narrowed by the same scope, so an unreadable purchase's id matches
-nothing, with an integration case beside truth table C.
 
 ## Candidates not yet admitted
 
