@@ -6,8 +6,13 @@ numbers, the receipt, manual and photos that prove it, the claims made against
 it, and a reminder before it runs out. The task list is
 [`warranty-tracker-tasks.md`](./warranty-tracker-tasks.md).
 
-Status: **proposal**. It needs its own discussion with the `approved-to-build`
-label before any task starts (`CONTRIBUTING.md`). A warranty moves no money,
+Status: **built** on branch `feat/warranty-tracker` (2026-10-21), approved
+directly by the maintainer on 2026-10-21 rather than through a discussion;
+`backend/src/warranties/`, the Warranties page (route /warranties), and the
+invariants as `INV-WTY-001` to `INV-WTY-007` in `docs/system-invariants.md`.
+Open: Q2 (the Playwright journey) and the open questions W1 to W4 in section
+13, which stand as this plan answered them. Where the build differs from the
+text, "As built" at the end of section 3 says how. A warranty moves no money,
 so sections 4 to 9 are short; they are kept so the plan reads like every other
 plan in this directory.
 
@@ -150,6 +155,48 @@ and never contributes to a balance, a report or a total.
 14. **Explicitly not in v1**: hideable columns on the list, tags on a
     warranty, a total-value card, a Paperless-ngx link, a calendar export,
     multiple photos as a gallery (photos are documents of kind `photo`).
+
+As built (branch `feat/warranty-tracker`), where the implementation is more
+specific than the text above or than sections 6 and 10:
+
+- **Primary keys default to `uuid_generate_v4()`**, the default the rest of
+  `database/schema.sql` uses, not the `gen_random_uuid()` that 6.1 and 6.2
+  show.
+- **The notification types are upper-case**, `WARRANTY_EXPIRING` and
+  `WARRANTY_EXPIRES_TODAY`, as every other `NotificationType` value is;
+  decision 10 and 6.6 write them lower-case.
+- **The delegate section migration backfills.**
+  `20261022004800_delegate_warranties_section.sql` sets `warranties_can_read`
+  on an active delegation that already granted the five older sections and READ
+  on every account the owner has: `DelegationService.grantsWholeLedger`
+  requires every section, so without the backfill such a delegate would lose
+  the AI assistant on deploy. A partial delegation gains nothing.
+- **`linkedTransactionHidden`** joins the view (6.5): `true` only for an acting
+  delegate when the warranty links to a purchase outside their readable
+  accounts, so the detail page says the purchase is in an account they cannot
+  read (section 9) rather than that there is none. It carries no id, so
+  WTY-007 holds.
+- **On import an `ExpirationDate` beside a duration wins.** Warracker's export
+  writes both on every row; the stored fact is the date (decision 1), so the
+  row uses `ExpirationDate` and notes the `WarrantyDuration` columns as
+  ignored, or as disagreeing when they give another date. `IsLifetime` beside
+  either is invalid, and an unknown `WarrantyType` imports as `other` with a
+  note. The service reads the file's text:
+  `WarrantyImportService.run(userId, content, { dryRun, skipInvalid })`.
+- **The dashboard widget's id is `warranties-expiring`.**
+- **The CHECK constraints are SQL-only.** Those of `warranties` and
+  `warranty_claims`, and `chk_attachment_one_parent`, are declared in the
+  migrations and `database/schema.sql` and not on the entities: the RLS spec's
+  generic row seeder builds its rows from the entities and could not satisfy a
+  cross-column rule. `chk_attachment_document_kind`, one column, is on the
+  attachment entity as well.
+- **The form computes a term on the client.** Its duration helper,
+  `warrantyTermEndDate` in `frontend/src/lib/warranties.ts`, applies the same
+  month-end rule as `termToExpiresOn` and submits `expiresOn`; decision 1's
+  "nothing else adds months to a date" holds on the server.
+- **The delegate's account scope is resolved in the controller**, once per
+  request, and the service narrows the purchase with `restrictToAccountScope`
+  in `loadLinkedTransactions`, the one read of a warranty's purchase.
 
 ## 4. Definitions
 

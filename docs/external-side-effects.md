@@ -62,7 +62,7 @@ Three providers behind one interface (`save`/`load`/`delete`), selected by
 deployment.
 
 **An attachment's parent is a transaction or a warranty, never both and never
-neither** (WTY-003): `transaction_attachments` carries `transaction_id` and
+neither** (INV-WTY-003): `transaction_attachments` carries `transaction_id` and
 `warranty_id` under `chk_attachment_one_parent`, and `AttachmentsService.create`
 and `findAllFor` take an `AttachmentParent` (`backend/src/attachments/attachment-parent.ts`)
 rather than an id. Ownership is the row's own `user_id` whichever parent it has,
@@ -193,7 +193,7 @@ cascading `ai_relay_attachment_blobs` row, not through
 `ATTACHMENT_STORAGE_PROVIDER` -- the provider's `database` implementation writes
 `attachment_blobs`, whose primary key is a foreign key to
 `transaction_attachments` and whose policy reads the owner from that row, so a
-relay attachment (which has no transaction) cannot be stored there at all, and
+relay attachment (which has no parent) cannot be stored there at all, and
 branching on the bound provider's name would put a deployment-shaped decision
 inside the relay. The consequence is that this one path has no external side
 effect: bytes and metadata commit or roll back together on every provider, and
