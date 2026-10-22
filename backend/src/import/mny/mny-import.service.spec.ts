@@ -271,7 +271,7 @@ describe("MnyImportService", () => {
     staging = {
       findInfo: jest.fn().mockResolvedValue({ id: "staged-1" }),
       loadBytes: jest.fn().mockResolvedValue(Buffer.from("bytes")),
-      remove: jest.fn().mockResolvedValue(true),
+      removeConsumed: jest.fn().mockResolvedValue(undefined),
     };
     parser = { parse: jest.fn().mockReturnValue(parsedFile()) };
     jobs = {
@@ -771,7 +771,7 @@ describe("MnyImportService", () => {
     it("deletes the staged bytes once the import succeeds", async () => {
       await run();
 
-      expect(staging.remove).toHaveBeenCalledWith("user-1", "staged-1");
+      expect(staging.removeConsumed).toHaveBeenCalledWith("user-1", "staged-1");
     });
 
     it("checkpoints data_committed on the write transaction's own manager, under this attempt's token", async () => {

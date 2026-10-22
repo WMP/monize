@@ -321,7 +321,7 @@ export class MnyImportService {
 
     // Delete-on-complete: the bytes have done their job, and they are the
     // largest thing this feature stores.
-    await this.staging.remove(userId, stagedFileId);
+    await this.staging.removeConsumed(userId, stagedFileId);
     sampleRss();
 
     this.logTiming({

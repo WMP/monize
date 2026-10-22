@@ -243,6 +243,19 @@ A comment claiming atomicity, a lock, or single-use consumption must name the
 mechanism. Two comments in this codebase claimed a guarantee the code beside
 them did not implement, and both were believed for as long as they existed. If
 the mechanism cannot be named, the comment is wrong, not merely vague.
+
+CONC-008
+A delete or update that must spare a row another table is about to reference
+locks its candidates first (`SELECT ... FOR UPDATE`, `SKIP LOCKED` where waiting
+buys nothing) and decides in a later statement. A single
+`DELETE ... WHERE NOT EXISTS (referencing row)` under READ COMMITTED evaluates
+the sub-select on the snapshot it started with: it waits on the referencing
+INSERT's key-share lock and then deletes without looking again, so the reference
+committed while it waited is not seen. The worked example is
+`MnyStagingService.deleteUnlessNeeded` and `remove` (audit A26-L14): a staged
+file a job INSERT was committing against was swept or discarded, and the job ran
+without its bytes. A referencing INSERT that arrives after the lock waits for
+the deleter and then fails its foreign key; report that as the row being gone.
 ```
 
 ## 4. Retry semantics

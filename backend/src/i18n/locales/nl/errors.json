@@ -476,6 +476,7 @@
     "mnyPasswordIncorrect": "Met dit wachtwoord kan het Money-bestand niet worden geopend. Controleer het en probeer het opnieuw.",
     "mnyUnreadableDatabase": "Dit Money-bestand is ontsleuteld, maar de inhoud kon niet worden gelezen. Het is mogelijk beschadigd.",
     "mnyStagedFileMissing": "Het geüploade Money-bestand is niet langer beschikbaar. Upload het opnieuw.",
+    "mnyStagedFileInUse": "Dit Money-bestand wordt geïmporteerd. Wacht tot de import klaar is voordat u het verwijdert.",
     "mnyImportAlreadyRunning": "Er loopt al een import. Wacht tot deze klaar is voordat u een nieuwe start.",
     "mnyAlreadyImported": "Dit bestand is al geïmporteerd op {{ date }} (import {{ jobId }}) en de records staan nog in uw account. Opnieuw importeren zou ze dupliceren. Begin opnieuw en kies ervoor uw bestaande gegevens te vervangen om ze te vervangen.",
     "mnyJobNotFound": "Importtaak niet gevonden",

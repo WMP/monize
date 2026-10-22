@@ -58,7 +58,7 @@ implied.
 | --- | --- | --- |
 | INV-IMPORT-001 | At most one pending or running MNY import per user | enforced |
 | INV-IMPORT-002 | A retry never double-imports | partial |
-| INV-IMPORT-003 | A category collision does not abort an import | unenforced |
+| INV-IMPORT-003 | A category collision does not abort an import | enforced |
 | INV-BANKSYNC-001 | A bank transaction is imported into a Monize account at most once | partial |
 | INV-BANKSYNC-002 | A bank sync provider private key never leaves the server | enforced |
 | INV-BANKSYNC-003 | A synced row is written in the Monize account's currency or not at all | enforced |
@@ -326,26 +326,40 @@ section of `docs/backend/cron-and-background-work.md` has the fence in full.
 ```text
 Statement           A category the import needs, created concurrently by the same
                     user, must not fail the import.
-Source of truth     categories
-Enforcement         None. import.service.ts does findOne then create/save. A
-                    concurrent manual create raises a unique violation that
-                    aborts the whole import transaction.
+Source of truth     categories, UNIQUE(user_id, name, parent_id)
+Enforcement         Every import path that creates a category inserts it with
+                    INSERT ... ON CONFLICT DO NOTHING RETURNING id and adopts the
+                    existing row when the insert loses:
+                    insertCategoryIfAbsent (backend/src/import/insert-category-if-absent.ts)
+                    from the MNY writer (writeCategories, writers/write-reference.ts)
+                    and the QIF importer (ImportService.findOrCreateCategoryDef,
+                    import.service.ts), and ImportEntityCreatorService's own
+                    insertCategoryIfAbsent on the CSV path. The insert still waits
+                    for a concurrent uncommitted insert of the same key; only the
+                    abort is removed.
 Concurrency scope   per user
-Retry semantics     The user must restart the entire import.
-Failure response    Currently a 500 losing the whole import; should be adopting
-                    the winner's row.
-Required tests      Two-connection: manual category create interleaved with an
-                    import needing the same category.
-Status              unenforced
+Retry semantics     None needed: the import adopts the winner's row.
+Failure response    The import continues with the category the other writer
+                    created.
+Required tests      Two-connection: backend/test/integration/import-category-collision.integration.spec.ts
+                    holds an INSERT of "Auto:Fuel" open on a second connection,
+                    runs the MNY writer and a QIF import that need it, commits,
+                    and asserts both adopt that row.
+Status              enforced
 ```
 
-The cost is disproportionate to the cause: an entire `.mny` import is lost
-because one category already existed. `INSERT ... ON CONFLICT DO NOTHING
-RETURNING id` plus adopting the winner's row is the fix, and per
-`docs/financial-calculation-contract.md` section 6 the conflict path must then
-re-read rather than reuse the pre-insert snapshot. Note that no unique index
-currently covers top-level categories (`parent_id IS NULL`), so closing this
-properly needs the index too.
+Residual: the constraint does not cover top-level categories (`parent_id` is NULL,
+and NULL never equals NULL), so a top-level category created concurrently is not a
+collision at all; the import does not abort, and two rows of that name can exist.
+Closing it needs a `COALESCE`-style unique index, a separate schema proposal.
+Payees carry no unique constraint, so a payee created concurrently cannot abort an
+import either.
+
+The conflict path re-reads the winner in a new statement rather than reusing the
+pre-insert snapshot (`docs/financial-calculation-contract.md` section 6). This
+entry named only `import.service.ts` while it was `unenforced`; the 2026-10 audit
+(A26-L15) found the MNY writer had the same gap after the CSV path was fixed, so
+the enforcement above lists every path.
 
 ## Bank sync
 

@@ -476,6 +476,7 @@
     "mnyPasswordIncorrect": "To hasło nie otwiera pliku Money. Sprawdź je i spróbuj ponownie.",
     "mnyUnreadableDatabase": "Ten plik Money został odszyfrowany, ale nie udało się odczytać jego zawartości. Może być uszkodzony.",
     "mnyStagedFileMissing": "Przesłany plik Money nie jest już dostępny. Prześlij go ponownie.",
+    "mnyStagedFileInUse": "Ten plik Money jest właśnie importowany. Poczekaj na zakończenie importu, zanim go odrzucisz.",
     "mnyImportAlreadyRunning": "Import już trwa. Poczekaj na jego zakończenie, zanim rozpoczniesz następny.",
     "mnyAlreadyImported": "Ten plik został już zaimportowany {{ date }} (import {{ jobId }}), a jego rekordy nadal są na Twoim koncie. Ponowny import je zduplikuje. Aby je zastąpić, zacznij od nowa i wybierz zastąpienie istniejących danych.",
     "mnyJobNotFound": "Nie znaleziono zadania importu",

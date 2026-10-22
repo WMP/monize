@@ -3,6 +3,7 @@ import { EntityManager } from "typeorm";
 import { Account } from "../../../accounts/entities/account.entity";
 import { Category } from "../../../categories/entities/category.entity";
 import { Payee } from "../../../payees/entities/payee.entity";
+import { insertCategoryIfAbsent } from "../../insert-category-if-absent";
 import {
   MappedAccount,
   MappedCategory,
@@ -189,9 +190,9 @@ export async function writeCategories(
       continue;
     }
 
-    const id = randomUUID();
-    await repo.insert({
-      id,
+    // Adopts a row another transaction created since the read above rather
+    // than aborting the whole import on its unique violation (INV-IMPORT-003).
+    const { id, inserted } = await insertCategoryIfAbsent(manager, {
       userId,
       name: category.name,
       parentId,
@@ -199,7 +200,9 @@ export async function writeCategories(
     });
     idByFullName.set(category.fullName, id);
     existingByKey.set(key, id);
-    created += 1;
+    if (inserted) {
+      created += 1;
+    }
   }
 
   return { idByFullName, created };

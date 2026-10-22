@@ -476,6 +476,7 @@
     "mnyPasswordIncorrect": "Questa password non apre il file Money. Controllala e riprova.",
     "mnyUnreadableDatabase": "Questo file Money è stato decifrato ma non è stato possibile leggerne il contenuto. Potrebbe essere danneggiato.",
     "mnyStagedFileMissing": "Il file Money caricato non è più disponibile. Caricalo di nuovo.",
+    "mnyStagedFileInUse": "Questo file di Money è in fase di importazione. Attendi il termine dell'importazione prima di scartarlo.",
     "mnyImportAlreadyRunning": "Un'importazione è già in corso. Attendi che finisca prima di avviarne un'altra.",
     "mnyAlreadyImported": "Questo file è già stato importato il {{ date }} (importazione {{ jobId }}) e i suoi record sono ancora nel tuo account. Importarlo di nuovo li duplicherebbe. Per sostituirli, ricomincia e scegli di sostituire i dati esistenti.",
     "mnyJobNotFound": "Attività di importazione non trovata",

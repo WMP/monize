@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger } from "@nestjs/common";
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { DataSource, EntityManager, QueryFailedError } from "typeorm";
@@ -200,6 +205,26 @@ export function isActiveJobConflict(error: unknown): boolean {
   );
 }
 
+/** PostgreSQL SQLSTATE for a foreign-key violation. */
+const FOREIGN_KEY_VIOLATION = "23503";
+
+/**
+ * True when a job INSERT was refused because its staged file no longer
+ * exists. The INSERT names two foreign keys, the user and the staged file, and
+ * the user is the authenticated caller, so a 23503 on `import_jobs` here is the
+ * staged file.
+ */
+export function isStagedFileGone(error: unknown): boolean {
+  if (!(error instanceof QueryFailedError)) {
+    return false;
+  }
+  const driver = error.driverError as
+    { code?: string; table?: string } | undefined;
+  return (
+    driver?.code === FOREIGN_KEY_VIOLATION && driver?.table === "import_jobs"
+  );
+}
+
 /**
  * True when this error is the committed-content index refusing a second commit
  * of the same bytes for one user (audit A26-H08). Matched on the constraint
@@ -397,6 +422,17 @@ export class MnyImportJobService {
     } catch (error) {
       if (isActiveJobConflict(error)) {
         throw importAlreadyRunningException();
+      }
+      if (isStagedFileGone(error)) {
+        // The staged row was deleted (swept or discarded) while this INSERT
+        // waited on its lock: the foreign key refused the job, so nothing was
+        // written and the bytes are gone (audit A26-L14).
+        throw new NotFoundException(
+          tr(
+            "errors.import.mnyStagedFileMissing",
+            "The uploaded Money file is no longer available. Please upload it again.",
+          ),
+        );
       }
       throw error;
     }

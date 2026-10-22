@@ -476,6 +476,7 @@
     "mnyPasswordIncorrect": "该密码无法打开 Money 文件。请检查后重试。",
     "mnyUnreadableDatabase": "该 Money 文件已解密，但无法读取其内容。文件可能已损坏。",
     "mnyStagedFileMissing": "上传的 Money 文件已不可用，请重新上传。",
+    "mnyStagedFileInUse": "此 Money 文件正在导入。请等待导入完成后再丢弃它。",
     "mnyImportAlreadyRunning": "已有导入正在进行。请等待其完成后再开始新的导入。",
     "mnyAlreadyImported": "此文件已于 {{ date }} 导入(导入 {{ jobId }}),其记录仍在您的账户中。再次导入会造成重复。如需替换,请重新开始并选择替换现有数据。",
     "mnyJobNotFound": "未找到导入任务",

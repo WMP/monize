@@ -55,6 +55,7 @@ Each module holds `{feature}.module.ts`, controller, service, their specs, `enti
 | Any database access | `withScopedDb` and the identity contexts in `AGENTS.md` | an injected repository, a query runner, a bare `dataSource.query` |
 | Several queries in one transaction | `await` each in turn | `Promise.all` or `mapWithConcurrency` over the transaction's manager: one connection, and pg's client-side queue is deprecated |
 | A refusal (ownership, precondition, revision) | the check inside the same transaction as the write, before it | a check after a commit that a status code then contradicts |
+| A delete that must spare a row another table is about to reference | lock the candidates (`FOR UPDATE`), then decide in a second statement (CONC-008) | one `DELETE ... WHERE NOT EXISTS (...)`, blind to a reference committed while it waited |
 | A raw `SELECT` of a DATE or numeric | `TO_CHAR(col, 'YYYY-MM-DD')` and `Number(...)` at the boundary | trusting the entity transformer or the global DATE parser |
 | An optional DTO field with a format validator | `@ValidateIf((_o, v) => v !== null && v !== "")` beside `@IsOptional()` | `@IsOptional()` alone |
 | A request-supplied array | `@ArrayMaxSize(n)`; iterate with `entries()` | an unbounded array, `.length` as a loop bound in a scoped callback |

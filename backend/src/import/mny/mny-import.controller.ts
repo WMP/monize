@@ -211,6 +211,10 @@ export class MnyImportController {
     status: 404,
     description: "No such staged file for this user",
   })
+  @ApiResponse({
+    status: 409,
+    description: "A pending or running import still needs the file",
+  })
   async discard(
     @Request() req,
     @Param("id", ParseUUIDPipe) id: string,
