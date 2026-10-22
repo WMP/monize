@@ -93,6 +93,11 @@
     "viewAll": "Alle Einblicke anzeigen",
     "activeCount": "{count} aktiv"
   },
+  "warrantiesExpiring": {
+    "title": "Bald ablaufende Garantien",
+    "empty": "In den nächsten 30 Tagen läuft nichts ab",
+    "loadFailed": "Ihre ablaufenden Garantien konnten nicht geladen werden. Laden Sie das Dashboard neu, um es erneut zu versuchen."
+  },
   "topMovers": {
     "title": "Top-Beweger",
     "empty": {

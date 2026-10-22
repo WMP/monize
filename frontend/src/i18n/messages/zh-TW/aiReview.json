@@ -48,6 +48,7 @@
       "tradeChat": "你要求辨識所附的交易確認：請提出它所回報的投資交易，即買入、賣出、現金股利或股利再投資。"
     },
     "emailReceipt": "郵件收據：來自 {sender} 的 {subject}",
+    "emailReceiptForwarded": "郵件收據：來自 {sender} 的 {subject}，轉寄者 {forwarder}",
     "emailReceiptMissing": "郵件收據（該郵件已被刪除）",
     "parserDraft": "來自 {count, plural, one {# 封電子郵件} other {# 封電子郵件}} 的設定檔草稿 ({domain})",
     "viewEmailReceipts": "檢視郵件收據",

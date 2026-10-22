@@ -54,6 +54,8 @@ const PINNED_DEFAULTS: Record<
   [NotificationCategory.BONDS]: GLOBAL_DEFAULT,
   // Proposals waiting for approval: the global rule.
   [NotificationCategory.AI_REVIEW]: GLOBAL_DEFAULT,
+  // Warranty reminders: the global rule (report email on, push off).
+  [NotificationCategory.WARRANTIES]: GLOBAL_DEFAULT,
 };
 
 describe("NotificationPreferenceService", () => {

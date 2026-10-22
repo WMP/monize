@@ -298,7 +298,9 @@ is on; the profile is `approved`; the reading is complete; `consistent` is
 `true` (a price was stated and agrees with the shares and the total), or, for a
 cash dividend only, `null` (`tradeMayAutoApply`, the dividend spec section 6); the card
 was built (account and security resolved, preview valid); no trade of that
-description exists, accounted for or not. It then calls the same `/ai/actions/confirm` a person's
+description exists, accounted for or not; the email is no forward
+(`isForwardedReceipt`: the broker of a forward is what its text claims, and only
+the owner's own forward is read as the broker's at all, A26-H02). It then calls the same `/ai/actions/confirm` a person's
 approval calls. Anything else waits in the inbox. The daily AI write limit counts
 a trade (the exemption of a profile's proposal applies to `update_transaction`
 only).
@@ -325,7 +327,8 @@ second is proposed, never auto-applied, and the person approving sees both.
 | Reader (`parse-trade.spec.ts`) | The Wealthsimple email; a sell; each incomplete reason; price-only and total-only; the consistency table; share-count, direction and date grammars |
 | Validator (same file) | Valid profile; each new code; wrong capture; unknown key in a rule |
 | Currency (`parse-trade.spec.ts`, `trade-reading.spec.ts`, `securities.service.spec.ts`) | Prefixed dollar signs; a marker and its trace; amounts before a marker; the security's currency only when a rule needs it, and none for listings in two currencies; a `*` rule without account text; `invalid_currency`; listings narrowed by the email's currency |
-| Pipeline (`email-receipt-pipeline.service.spec.ts`, `email-receipt-trade.service.spec.ts`) | Branch to the trade service; no bank-transaction lookup; request closed when none is held; duplicate; conflict; refusal; each auto-apply gate condition |
+| Pipeline (`email-receipt-pipeline.service.spec.ts`, `email-receipt-trade.service.spec.ts`) | Branch to the trade service; no bank-transaction lookup; request closed when none is held; duplicate; conflict; refusal; each auto-apply gate condition, a forward included |
+| Forwarded sender (`test/integration/email-receipts-forwarded-sender.integration.spec.ts`) | An outside sender's pasted "Forwarded message" block books nothing (BUY 10 AAPL, the cash stays 10 000.00); the owner's forward is proposed, never auto-applied; the broker's own email auto-applies through the real poll, card and confirm |
 | Queue (`ai-review-requests.service.spec.ts`) | `enqueueTrade` conflict clause; `markTradeApplied` predicate and 409 |
 | Card (`ai-review-work.service.spec.ts`) | Strict ticker; total passed as the fact, no price; refusals; inbox rebuild; approval; agents cannot answer the kind |
 | Confirm (`ai-actions.service.spec.ts`, `investment-transactions.service.spec.ts`) | The hook runs first, on the write's manager; a refusal writes nothing; a card that pays a schedule posts the schedule instead of creating a row |
@@ -335,6 +338,8 @@ second is proposed, never auto-applied, and the person approving sees both.
 
 Not covered by a unit test: the migration against a real PostgreSQL
 (`scripts/verify-schema.sh`) and the integration suites, which need Docker.
+The forwarded-sender suite is the one trade integration test: it gives the
+harness's `ScheduledTransactionsService` stub `findInvestmentOccurrenceForTrade`.
 
 ## 8. Follow-ups
 

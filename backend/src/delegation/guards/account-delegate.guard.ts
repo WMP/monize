@@ -28,6 +28,7 @@ import {
 import { DelegationService } from "../delegation.service";
 import { CrossOwnerAccessService } from "../cross-owner-access.service";
 import { withDelegateContext } from "../../common/db/with-context";
+import { isAccessTokenPayload } from "../../auth/access-token";
 
 const SECTION_LABELS: Record<DelegateSection, string> = {
   bills: "Bills & Deposits",
@@ -35,6 +36,7 @@ const SECTION_LABELS: Record<DelegateSection, string> = {
   budgets: "Budgets",
   reports: "Reports",
   ai: "AI Assistant",
+  warranties: "Warranties",
 };
 
 const RESOURCE_LABELS: Record<DelegateCapabilityReq["resource"], string> = {
@@ -107,7 +109,9 @@ export class AccountDelegateGuard implements CanActivate {
       return true; // AuthGuard('jwt') will reject it
     }
 
-    if (payload?.type === "2fa_pending") return true;
+    // Only an access token is checked here; JwtStrategy refuses every other
+    // type (`access-token.ts`), so AuthGuard('jwt') rejects it after this.
+    if (!isAccessTokenPayload(payload)) return true;
     if (!payload?.actingAsUserId || !payload?.delegationId) {
       return true; // acting as self / normal user
     }

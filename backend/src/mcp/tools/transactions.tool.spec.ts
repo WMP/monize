@@ -2337,7 +2337,7 @@ describe("McpTransactionsTools", () => {
       expect(transactionsService.create).toHaveBeenCalledTimes(1);
       expect(attachmentsService.create).toHaveBeenCalledWith(
         UUID_USER,
-        "t1",
+        { kind: "transaction", id: "t1" },
         expect.objectContaining({ originalname: "receipt.png" }),
       );
       expect(relayAttachmentStore.releaseForPrompt).toHaveBeenCalledWith(
@@ -2470,7 +2470,7 @@ describe("McpTransactionsTools", () => {
       );
       expect(attachmentsService.create).toHaveBeenCalledWith(
         UUID_USER,
-        TXID,
+        { kind: "transaction", id: TXID },
         expect.objectContaining({ originalname: "receipt.png" }),
       );
       const parsed = result.structuredContent as any;

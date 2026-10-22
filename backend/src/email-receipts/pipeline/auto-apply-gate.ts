@@ -19,6 +19,11 @@ export interface AutoApplyFacts {
   cardBuilt: boolean;
   /** A part of the receipt was joined to a component (`hasJoinedPart`): a person approves every join. */
   linked: boolean;
+  /**
+   * The sender identity came from a forwarded header block (`forwarded_by` is
+   * set): a claim of the email's text, so a person looks (A26-H02).
+   */
+  forwarded: boolean;
 }
 
 const MONEY_UNITS = 10000;
@@ -34,7 +39,8 @@ const MONEY_UNITS = 10000;
  * category lines themselves (itemized or one category), not a description-only
  * proposal or the fallback of a refused one, because the design promises that
  * what is applied "balances to the cent". A receipt with a joined or scaled
- * part (linked receipts 7) never auto-applies.
+ * part (linked receipts 7) never auto-applies, nor does a forward: who sent it
+ * is what its text says, and a person decides whether to believe it.
  */
 export function autoApplyAllowed(facts: AutoApplyFacts): boolean {
   return (
@@ -53,6 +59,7 @@ export function autoApplyAllowed(facts: AutoApplyFacts): boolean {
       facts.proposalKind === "single_category") &&
     !facts.usedFallback &&
     facts.cardBuilt &&
-    !facts.linked
+    !facts.linked &&
+    !facts.forwarded
   );
 }

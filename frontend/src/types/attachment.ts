@@ -1,10 +1,37 @@
 /**
- * Metadata for a file attached to a transaction. The bytes themselves are never
- * part of this payload -- they are fetched from the download endpoint.
+ * What a document is. A warranty's new document is stored as `other` and the
+ * reader sets its kind on its row (`warranty` is the warranty certificate
+ * itself); a transaction's attachments are always `other`
+ * (docs/future-plans/warranty-tracker.md decision 7).
+ */
+export type DocumentKind = 'receipt' | 'manual' | 'photo' | 'warranty' | 'other';
+
+export const DOCUMENT_KINDS: readonly DocumentKind[] = [
+  'receipt',
+  'manual',
+  'photo',
+  'warranty',
+  'other',
+];
+
+/**
+ * The row an attachment hangs off: a transaction or a warranty, never both
+ * (WTY-003). A caller names one; the API module builds the route from it.
+ */
+export type AttachmentParent = { transactionId: string } | { warrantyId: string };
+
+/**
+ * Metadata for a file attached to a transaction or a warranty. The bytes
+ * themselves are never part of this payload -- they are fetched from the
+ * download endpoint. Exactly one of `transactionId` and `warrantyId` is set,
+ * so a row with `warrantyId` in a transaction's list is a linked warranty's
+ * document, not the transaction's own.
  */
 export interface Attachment {
   id: string;
-  transactionId: string;
+  transactionId: string | null;
+  warrantyId: string | null;
+  documentKind: DocumentKind;
   filename: string;
   contentType: string;
   byteSize: number;
@@ -19,6 +46,13 @@ export interface Attachment {
    * way.
    */
   originalAttachmentId?: string | null;
+  /**
+   * The warranty's name on a row that is one of its documents. A
+   * transaction's list carries the documents of every warranty linked to it
+   * after its own rows, and this is what labels them; `null` on a
+   * transaction's own row.
+   */
+  warrantyName?: string | null;
 }
 
 /** Client-side limits mirroring the server (server remains authoritative). */

@@ -386,7 +386,8 @@
         "BANK_SYNC_ACTIVITY": "银行同步结果",
         "EMAIL_RECEIPTS": "电子邮件收据",
         "BONDS": "债券",
-        "AI_REVIEW": "AI 审核提案"
+        "AI_REVIEW": "AI 审核提案",
+        "WARRANTIES": "保修提醒"
       },
       "channelNotApplicable": "不适用于此通知类型",
       "emailToggleLabel": "{category} 的报告邮件",
@@ -984,7 +985,11 @@
     },
     "sections": {
       "description": "授予对整个应用功能区域的只读访问权限。账户范围的数据还需要逐账户访问权限。",
-      "aiRequiresFullAccess": "AI 助手会读取所有账户和功能区域，因此只有当该委托人能够读取您的所有账户和其他所有功能区域时，它才会为其回答。"
+      "aiRequiresFullAccess": "AI 助手会读取所有账户和功能区域，因此只有当该委托人能够读取您的所有账户和其他所有功能区域时，它才会为其回答。",
+      "warranties": {
+        "label": "保修",
+        "description": "保修及其文档和保修申请。关联的购买记录仅在其所在账户可供被授权人读取时显示。"
+      }
     },
     "accounts": {
       "noAccounts": "无账户可授权。",

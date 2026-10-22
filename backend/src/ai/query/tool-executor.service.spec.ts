@@ -28,6 +28,8 @@ import { AiReviewWorkService } from "../../ai-review/ai-review-work.service";
 import { EmailReceiptParserToolsService } from "../../email-receipts/parsers/email-receipt-parser-tools.service";
 import { SeriesFetchError } from "../../bonds/bond-adapter";
 import { BondSeriesService } from "../../bonds/bond-series.service";
+import { WarrantiesService } from "../../warranties/warranties.service";
+import { LlmWarrantyList } from "../../warranties/warranty-llm-shape";
 import { TransactionRuleToolPrepService } from "../../transaction-rules/rule-tool-prep.service";
 
 describe("ToolExecutorService", () => {
@@ -49,6 +51,11 @@ describe("ToolExecutorService", () => {
   let builtInReports: Record<string, jest.Mock>;
   let exchangeRates: { convertOnDate: jest.Mock };
   let bondSeries: { fetchSeries: jest.Mock };
+  let warranties: {
+    getLlmWarranties: jest.MockedFunction<
+      WarrantiesService["getLlmWarranties"]
+    >;
+  };
   let attachmentPrep: Record<string, jest.Mock>;
   let attachmentStore: Record<string, jest.Mock>;
 
@@ -607,6 +614,10 @@ describe("ToolExecutorService", () => {
       }),
     };
 
+    warranties = {
+      getLlmWarranties: jest.fn().mockResolvedValue(warrantyList()),
+    };
+
     bondSeries = {
       fetchSeries: jest.fn().mockResolvedValue({
         id: "i1",
@@ -696,6 +707,7 @@ describe("ToolExecutorService", () => {
         { provide: AiReviewWorkService, useValue: {} },
         { provide: EmailReceiptParserToolsService, useValue: {} },
         { provide: BondSeriesService, useValue: bondSeries },
+        { provide: WarrantiesService, useValue: warranties },
         { provide: TransactionRuleToolPrepService, useValue: {} },
         // Real prep + builder wrapping the mocked services, so the executor's
         // name resolution, preview building, and pending-action construction
@@ -1321,6 +1333,47 @@ describe("ToolExecutorService", () => {
 
       expect(result.summary).toContain("1 payee");
       expect(result.summary).toContain("of 9 matching");
+    });
+
+    it("list_warranties reads the shared warranty method, unnarrowed", async () => {
+      // Same method the MCP tool calls, so both surfaces answer alike; no
+      // account scope, because a delegate reaches the assistant only with
+      // READ on every account (DelegateRequiresFullScope).
+      const result = await service.execute(userId, "list_warranties", {});
+
+      expect(warranties.getLlmWarranties).toHaveBeenCalledWith(userId, {});
+      expect(result.data).toEqual(warrantyList());
+      expect(result.sources[0].type).toBe("warranties");
+      expect(result.summary).toBe("2 warranties as of 2026-10-21.");
+    });
+
+    it("list_warranties passes the filters down and says a capped list is part of the matches", async () => {
+      warranties.getLlmWarranties.mockResolvedValueOnce({
+        ...warrantyList(),
+        warranties: warrantyList().warranties.slice(0, 1),
+        total: 5,
+      });
+      const input = { status: "expiring", q: "laptop", limit: "1" };
+
+      const result = await service.execute(userId, "list_warranties", input);
+
+      expect(warranties.getLlmWarranties).toHaveBeenCalledWith(userId, {
+        status: "expiring",
+        q: "laptop",
+        limit: 1,
+      });
+      expect(result.summary).toBe(
+        '1 warranty expiring matching "laptop" (of 5) as of 2026-10-21.',
+      );
+    });
+
+    it("list_warranties refuses a limit above the cap before reading", async () => {
+      const result = await service.execute(userId, "list_warranties", {
+        limit: 51,
+      });
+
+      expect(warranties.getLlmWarranties).not.toHaveBeenCalled();
+      expect(result.summary).toContain("Invalid input for list_warranties");
     });
 
     it("generate_report delegates to the matching built-in report", async () => {
@@ -3258,3 +3311,43 @@ describe("ToolExecutorService", () => {
     });
   });
 });
+
+/** What `WarrantiesService.getLlmWarranties` answers: a dated and a lifetime row. */
+function warrantyList(): LlmWarrantyList {
+  const row = {
+    id: "w-1",
+    name: "Laptop",
+    vendorName: "Best Buy",
+    warrantyKind: "manufacturer" as const,
+    purchaseDate: "2026-10-01",
+    expiresOn: "2026-11-01",
+    isLifetime: false,
+    status: "expiring" as const,
+    daysLeft: 11,
+    purchasePrice: 1499.99,
+    currencyCode: "CAD",
+    serialNumbers: ["SN-1"],
+    linkedTransactionId: "tx-1",
+    openClaimCount: 0,
+    documentCount: 1,
+    archived: false as const,
+  };
+  return {
+    today: "2026-10-21",
+    windowDays: 30,
+    warranties: [
+      row,
+      {
+        ...row,
+        id: "w-2",
+        name: "Cast iron pan",
+        expiresOn: null,
+        isLifetime: true,
+        status: "lifetime",
+        daysLeft: null,
+        linkedTransactionId: null,
+      },
+    ],
+    total: 2,
+  };
+}

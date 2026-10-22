@@ -386,7 +386,8 @@
         "BANK_SYNC_ACTIVITY": "Wyniki synchronizacji bankowej",
         "EMAIL_RECEIPTS": "Potwierdzenia e-maili",
         "BONDS": "Obligacje",
-        "AI_REVIEW": "Propozycje przeglądu AI"
+        "AI_REVIEW": "Propozycje przeglądu AI",
+        "WARRANTIES": "Przypomnienia o gwarancjach"
       },
       "channelNotApplicable": "Nie dotyczy tego typu powiadomienia",
       "emailToggleLabel": "E-mail (raport) dla: {category}",
@@ -984,7 +985,11 @@
     },
     "sections": {
       "description": "Przyznaj dostęp tylko do odczytu do całych sekcji aplikacji. Dane przypisane do kont nadal wymagają dostępu na poziomie poszczególnych kont.",
-      "aiRequiresFullAccess": "Asystent AI odczytuje wszystkie konta i sekcje, dlatego odpowiada temu pełnomocnikowi dopiero wtedy, gdy może on odczytać wszystkie Twoje konta i każdą pozostałą sekcję."
+      "aiRequiresFullAccess": "Asystent AI odczytuje wszystkie konta i sekcje, dlatego odpowiada temu pełnomocnikowi dopiero wtedy, gdy może on odczytać wszystkie Twoje konta i każdą pozostałą sekcję.",
+      "warranties": {
+        "label": "Gwarancje",
+        "description": "Gwarancje wraz z dokumentami i zgłoszeniami. Powiązany zakup jest widoczny tylko wtedy, gdy znajduje się na koncie, które pełnomocnik może odczytać."
+      }
     },
     "accounts": {
       "noAccounts": "Brak kont do przyznania.",

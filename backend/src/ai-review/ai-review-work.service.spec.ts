@@ -785,6 +785,7 @@ describe("AiReviewWorkService inbox", () => {
       Object.assign(new EmailReceipt(), {
         id: RECEIPT,
         fromAddress: "orders@shop.example.com",
+        forwardedBy: null,
         subject: "Your order #123",
         receivedAt: new Date("2026-09-29T07:30:00Z"),
       }),
@@ -798,6 +799,7 @@ describe("AiReviewWorkService inbox", () => {
       emailReceipt: {
         id: RECEIPT,
         fromAddress: "orders@shop.example.com",
+        forwardedBy: null,
         subject: "Your order #123",
         receivedAt: "2026-09-29T07:30:00.000Z",
       },
@@ -810,8 +812,39 @@ describe("AiReviewWorkService inbox", () => {
     expect(where.select).toEqual({
       id: true,
       fromAddress: true,
+      forwardedBy: true,
       subject: true,
       receivedAt: true,
+    });
+  });
+
+  it("names who forwarded an email, since the sender it is read as is a claim of its text (A26-H02)", async () => {
+    const { service, requests, txRepo, receiptRepo } = setup();
+    requests.listForUser.mockResolvedValue([
+      request({
+        status: "proposed",
+        kind: "email_trade",
+        ruleId: null,
+        transactionId: null,
+        emailReceiptId: RECEIPT,
+      }),
+    ]);
+    txRepo.find.mockResolvedValue([]);
+    receiptRepo.find.mockResolvedValue([
+      Object.assign(new EmailReceipt(), {
+        id: RECEIPT,
+        fromAddress: "notifications@broker.example.com",
+        forwardedBy: "receipts@example.com",
+        subject: "Your order has been filled",
+        receivedAt: new Date("2026-09-29T07:30:00Z"),
+      }),
+    ]);
+
+    const [item] = await service.listInbox(USER);
+
+    expect(item.emailReceipt).toMatchObject({
+      fromAddress: "notifications@broker.example.com",
+      forwardedBy: "receipts@example.com",
     });
   });
 

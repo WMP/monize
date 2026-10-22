@@ -386,7 +386,8 @@
         "BANK_SYNC_ACTIVITY": "Kết quả đồng bộ ngân hàng",
         "EMAIL_RECEIPTS": "Biên lai email",
         "BONDS": "Trái phiếu",
-        "AI_REVIEW": "Đề xuất xem xét AI"
+        "AI_REVIEW": "Đề xuất xem xét AI",
+        "WARRANTIES": "Nhắc nhở bảo hành"
       },
       "channelNotApplicable": "Không áp dụng cho loại thông báo này",
       "emailToggleLabel": "Email báo cáo cho {category}",
@@ -984,7 +985,11 @@
     },
     "sections": {
       "description": "Cấp quyền truy cập chỉ đọc vào toàn bộ các phần ứng dụng. Dữ liệu phạm vi tài khoản vẫn cần quyền truy cập từng tài khoản.",
-      "aiRequiresFullAccess": "Trợ lý AI đọc toàn bộ tài khoản và các phần, vì vậy chỉ trả lời cho người đại diện này khi họ có thể đọc tất cả tài khoản của bạn và mọi phần khác."
+      "aiRequiresFullAccess": "Trợ lý AI đọc toàn bộ tài khoản và các phần, vì vậy chỉ trả lời cho người đại diện này khi họ có thể đọc tất cả tài khoản của bạn và mọi phần khác.",
+      "warranties": {
+        "label": "Bảo hành",
+        "description": "Bảo hành, tài liệu và yêu cầu bảo hành kèm theo. Giao dịch mua được liên kết chỉ hiển thị nếu nằm trong tài khoản mà người được ủy quyền có thể đọc."
+      }
     },
     "accounts": {
       "noAccounts": "Không có tài khoản nào để cấp.",

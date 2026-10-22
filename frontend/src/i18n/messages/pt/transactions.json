@@ -135,6 +135,7 @@
       "toggleTitle": "Retirar o ano das datas para caber mais do beneficiário"
     },
     "attachmentsCount": "{count, plural, one {# anexo} other {# anexos}}",
+    "warrantiesCount": "{count, plural, one {# garantia} other {# garantias}}",
     "today": "Hoje",
     "export": {
       "button": "Exportar",
@@ -198,7 +199,9 @@
       "duplicateTitle": "Duplicar transação",
       "copy": "Copiar",
       "duplicate": "Duplicar",
-      "scheduleRecurring": "Agendar como Recorrente"
+      "scheduleRecurring": "Agendar como Recorrente",
+      "addWarranty": "Adicionar garantia",
+      "viewWarranties": "Ver garantias"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "Editar",
     "duplicate": "Duplicar",
     "scheduleRecurring": "Agendar como Recorrente",
+    "addWarranty": "Adicionar garantia",
+    "viewWarranties": "Ver garantias",
     "delete": "Eliminar"
   },
   "filter": {
@@ -465,7 +470,14 @@
       },
       "feeCaption": "Inclui uma comissão de transação estrangeira de {percent}% ({fee})."
     },
-    "jointSplitDisabled": "As transações divididas numa conta partilhada só podem ser geridas pelo proprietário"
+    "jointSplitDisabled": "As transações divididas numa conta partilhada só podem ser geridas pelo proprietário",
+    "warranties": {
+      "title": "Garantias",
+      "add": "Adicionar garantia",
+      "expires": "Expira em {date}",
+      "loading": "A carregar garantias",
+      "loadError": "Não foi possível carregar as garantias desta transação."
+    }
   },
   "splitEditor": {
     "header": "Detalhes das Parcelas",
@@ -626,7 +638,8 @@
       "amountRange": "Montante de 50 a 100",
       "datePeriod": "Qualquer dia de março de 2026",
       "isSplit": "Transações divididas",
-      "hasAttachment": "Tem um anexo"
+      "hasAttachment": "Tem um anexo",
+      "hasWarranty": "Tem uma garantia"
     }
   },
   "searchInterpretation": {
@@ -668,6 +681,7 @@
       },
       "has": {
         "attachment": "Tem um anexo",
+        "warranty": "Tem uma garantia",
         "ref": "Tem um número de referência",
         "memo": "Tem uma nota",
         "tag": "Tem uma etiqueta"

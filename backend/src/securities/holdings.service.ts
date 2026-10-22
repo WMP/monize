@@ -24,6 +24,7 @@ import {
   isQuantityOnlyAction,
   INVESTMENT_REPLAY_ORDER,
   projectedHoldingRow,
+  basisAfterReturnOfCapital,
 } from "./investment-replay.util";
 import { Holding } from "./entities/holding.entity";
 import {
@@ -220,6 +221,10 @@ export class HoldingsService {
           qty -= txQty;
           break;
         }
+        case InvestmentAction.RETURN_OF_CAPITAL:
+          // Same basis rule as the full rebuild; no shares move.
+          totalCost = basisAfterReturnOfCapital(totalCost, tx);
+          break;
         default:
           // ADD_SHARES / REMOVE_SHARES move shares without a cost; SPLIT scales
           // the position by its ratio; cash actions leave it alone. All three
@@ -518,7 +523,13 @@ export class HoldingsService {
     >();
 
     for (const tx of transactions) {
-      if (!SHARE_MOVING_ACTIONS.includes(tx.action) || !tx.securityId) {
+      // A return of capital moves no shares but does move the basis, so it is
+      // the one cash action this fold must read.
+      const returnsCapital = tx.action === InvestmentAction.RETURN_OF_CAPITAL;
+      if (
+        (!SHARE_MOVING_ACTIONS.includes(tx.action) && !returnsCapital) ||
+        !tx.securityId
+      ) {
         continue;
       }
 
@@ -550,7 +561,10 @@ export class HoldingsService {
       // subtracted) and `recomputeAsOf` both already carry as negative, and
       // clamping it here made the same position reconcile in one replay and
       // not another.
-      if (tx.action === InvestmentAction.SPLIT) {
+      if (returnsCapital) {
+        // Pays back cost, never below zero, in the security's currency.
+        holding.totalCost = basisAfterReturnOfCapital(holding.totalCost, tx);
+      } else if (tx.action === InvestmentAction.SPLIT) {
         // Total cost basis is preserved across a split; the per-share cost
         // falls out of totalCost / quantity once the ratio is applied.
       } else if (isQuantityOnlyAction(tx.action)) {

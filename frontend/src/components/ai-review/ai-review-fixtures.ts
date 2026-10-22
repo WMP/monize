@@ -133,6 +133,7 @@ export function makeTradeItem(overrides: Partial<AiReviewItem> = {}): AiReviewIt
     emailReceipt: {
       id: 'rcpt-1',
       fromAddress: 'notifications@o.wealthsimple.com',
+      forwardedBy: null,
       subject: 'Your order has been filled',
       receivedAt: '2026-10-15T16:10:19.000Z',
     },

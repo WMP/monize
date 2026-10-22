@@ -198,6 +198,7 @@
     "actionCapitalGainShort": "Keuntungan Modal Jangka Pendek",
     "actionCapitalGainLong": "Keuntungan Modal Jangka Panjang",
     "actionRedeem": "Pencairan CD/Obligasi",
+    "actionReturnOfCapital": "Pengembalian Modal",
     "allActions": "Semua Tindakan"
   },
   "transactionForm": {
@@ -218,6 +219,7 @@
     "actionCapitalGainShort": "Keuntungan Modal Jangka Pendek",
     "actionCapitalGainLong": "Keuntungan Modal Jangka Panjang",
     "actionRedeem": "Pencairan CD/Obligasi",
+    "actionReturnOfCapital": "Pengembalian Modal",
     "actionTransfer": "Transfer",
     "brokerageAccount": "Akun Perantara",
     "fromAccount": "Dari Akun",
@@ -262,6 +264,7 @@
     "sharesAt": "lembar @",
     "avgCostSuffix": "biaya rata-rata.",
     "transferCostNote": "Biaya per lembar (diisi otomatis dari akun sumber) dibawa ke tujuan agar laporan keuntungan dan laba Anda tetap benar. Ini hanya memindahkan lembar -- tidak ada perubahan tunai.",
+    "returnOfCapitalNote": "Pengembalian modal bukan pendapatan. Ini mengembalikan sebagian dari biaya perolehan saham, sehingga menurunkan dasar biaya kepemilikan Anda sebesar jumlah ini. Jumlah yang melebihi sisa dasar biaya dilaporkan sebagai keuntungan modal yang direalisasi.",
     "totalAmount": "Total Jumlah ({currency})",
     "sharesAtPrice": "{shares} lembar @ {symbol}{price}",
     "commissionSuffix": "komisi",

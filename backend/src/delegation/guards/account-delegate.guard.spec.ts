@@ -78,6 +78,20 @@ describe("AccountDelegateGuard", () => {
     expect(reflector.getAllAndOverride).not.toHaveBeenCalled();
   });
 
+  it("leaves a token that is not an access token to AuthGuard('jwt')", async () => {
+    // A step-up token is no access token, whatever claims it carries; the
+    // delegate checks are for access tokens, and JwtStrategy refuses the rest.
+    jwtService.verify.mockReturnValue({
+      sub: "11111111-1111-4111-8111-111111111111",
+      type: "step_up",
+      actingAsUserId: "22222222-2222-4222-8222-222222222222",
+      delegationId: "33333333-3333-4333-8333-333333333333",
+    });
+    const ctx = makeContext({ headers: { authorization: "Bearer x" } });
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(reflector.getAllAndOverride).not.toHaveBeenCalled();
+  });
+
   it("blocks a delegate on a route not annotated @AllowDelegate (fail closed)", async () => {
     jwtService.verify.mockReturnValue({
       sub: "d1111111-1111-4111-8111-111111111111",

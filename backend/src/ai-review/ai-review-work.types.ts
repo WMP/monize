@@ -325,7 +325,14 @@ export interface AiReviewTransactionSummary {
 /** The email an inbox row of kind `email_receipt` or `email_trade` was raised for. */
 export interface AiReviewInboxEmailReceipt {
   id: string;
+  /** The sender the email is read as: the shop's or broker's for a forward. */
   fromAddress: string;
+  /**
+   * Who actually sent it when it was the owner's forward (the outer From), else
+   * null. The card shows it, because the shop's address above is a claim of the
+   * forwarded text (A26-H02).
+   */
+  forwardedBy: string | null;
   subject: string;
   receivedAt: string;
 }

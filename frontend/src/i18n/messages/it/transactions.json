@@ -135,6 +135,7 @@
       "toggleTitle": "Togli l’anno dalle date per lasciare più spazio al beneficiario"
     },
     "attachmentsCount": "{count, plural, one {# allegato} other {# allegati}}",
+    "warrantiesCount": "{count, plural, one {# garanzia} other {# garanzie}}",
     "today": "Oggi",
     "export": {
       "button": "Esporta",
@@ -198,7 +199,9 @@
       "duplicateTitle": "Duplica transazione",
       "copy": "Copia",
       "duplicate": "Duplica",
-      "scheduleRecurring": "Pianifica come ricorrente"
+      "scheduleRecurring": "Pianifica come ricorrente",
+      "addWarranty": "Aggiungi garanzia",
+      "viewWarranties": "Visualizza garanzie"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "Modifica",
     "duplicate": "Duplica",
     "scheduleRecurring": "Pianifica come ricorrente",
+    "addWarranty": "Aggiungi garanzia",
+    "viewWarranties": "Visualizza garanzie",
     "delete": "Elimina"
   },
   "filter": {
@@ -465,7 +470,14 @@
       },
       "feeCaption": "Include una commissione per transazione estera del {percent}% ({fee})."
     },
-    "jointSplitDisabled": "Le transazioni suddivise in un conto condiviso possono essere gestite solo dal proprietario"
+    "jointSplitDisabled": "Le transazioni suddivise in un conto condiviso possono essere gestite solo dal proprietario",
+    "warranties": {
+      "title": "Garanzie",
+      "add": "Aggiungi garanzia",
+      "expires": "Scade il {date}",
+      "loading": "Caricamento delle garanzie",
+      "loadError": "Impossibile caricare le garanzie di questa transazione."
+    }
   },
   "splitEditor": {
     "header": "Dettagli suddivisione",
@@ -626,7 +638,8 @@
       "amountRange": "Importo da 50 a 100",
       "datePeriod": "Qualsiasi giorno di marzo 2026",
       "isSplit": "Transazioni suddivise",
-      "hasAttachment": "Ha un allegato"
+      "hasAttachment": "Ha un allegato",
+      "hasWarranty": "Ha una garanzia"
     }
   },
   "searchInterpretation": {
@@ -668,6 +681,7 @@
       },
       "has": {
         "attachment": "Ha un allegato",
+        "warranty": "Ha una garanzia",
         "ref": "Ha un numero di riferimento",
         "memo": "Ha una nota",
         "tag": "Ha un tag"

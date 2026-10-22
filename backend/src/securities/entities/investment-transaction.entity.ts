@@ -45,6 +45,12 @@ const numericTransformer = {
  * (`securities/investment-replay.util.ts`) so a refinement cannot behave
  * differently from its base by accident; only income-classification surfaces
  * read the raw value.
+ *
+ * RETURN_OF_CAPITAL (issue #1800) is a base action of its own, not a
+ * refinement: its cash arrives like a DIVIDEND's, but it is not income -- it
+ * pays back part of what the shares cost, so it reduces the position's cost
+ * basis (`applyReturnOfCapital`), and only what exceeds the basis is a gain.
+ * `docs/specs/return-of-capital.md` is the definition.
  */
 export enum InvestmentAction {
   BUY = "BUY",
@@ -64,6 +70,7 @@ export enum InvestmentAction {
   CAPITAL_GAIN_SHORT = "CAPITAL_GAIN_SHORT",
   CAPITAL_GAIN_LONG = "CAPITAL_GAIN_LONG",
   REDEEM = "REDEEM",
+  RETURN_OF_CAPITAL = "RETURN_OF_CAPITAL",
 }
 
 @Entity("investment_transactions")

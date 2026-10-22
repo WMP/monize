@@ -48,6 +48,7 @@
       "tradeChat": "Je vroeg om de bijgevoegde handelsbevestiging te herkennen: stel de beleggingstransactie voor die erin staat, een aankoop, een verkoop, een contant dividend of een herbelegd dividend."
     },
     "emailReceipt": "E-mailbon: {subject} van {sender}",
+    "emailReceiptForwarded": "E-mailbon: {subject} van {sender}, doorgestuurd door {forwarder}",
     "emailReceiptMissing": "E-mailbon (de e-mail is verwijderd)",
     "parserDraft": "Profielconcept uit {count, plural, one {# e-mail} other {# e-mails}} ({domain})",
     "viewEmailReceipts": "E-mailbonnen bekijken",

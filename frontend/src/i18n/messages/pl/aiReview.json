@@ -48,6 +48,7 @@
       "tradeChat": "Poprosiłeś o rozpoznanie załączonego potwierdzenia transakcji: zaproponuj zgłaszaną w nim transakcję inwestycyjną, czyli kupno, sprzedaż, dywidendę pieniężną lub reinwestowaną dywidendę."
     },
     "emailReceipt": "Paragon z e-maila: {subject}, nadawca: {sender}",
+    "emailReceiptForwarded": "Paragon z e-maila: {subject}, nadawca: {sender}, przekazane przez: {forwarder}",
     "emailReceiptMissing": "Paragon z e-maila (wiadomość została usunięta)",
     "parserDraft": "Szkic profilu z {count, plural, one {# wiadomości} few {# wiadomości} many {# wiadomości} other {# wiadomości}} ({domain})",
     "viewEmailReceipts": "Zobacz paragony z e-maili",

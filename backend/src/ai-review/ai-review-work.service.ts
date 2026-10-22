@@ -125,6 +125,7 @@ function inboxEmail(
     ? {
         id: receipt.id,
         fromAddress: receipt.fromAddress,
+        forwardedBy: receipt.forwardedBy ?? null,
         subject: receipt.subject,
         receivedAt: receipt.receivedAt.toISOString(),
       }
@@ -905,6 +906,7 @@ export class AiReviewWorkService {
               select: {
                 id: true,
                 fromAddress: true,
+                forwardedBy: true,
                 subject: true,
                 receivedAt: true,
               },
