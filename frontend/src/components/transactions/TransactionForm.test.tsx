@@ -3156,6 +3156,125 @@ describe('TransactionForm', () => {
   // Form initial empty state
   // =========================================================================
 
+  // =========================================================================
+  // A cross-currency transfer opened from its receiving leg (A26-H13): the
+  // "Transfer Amount" field is the SOURCE amount, so it loads the FROM leg's
+  // figure whichever leg the form was opened on, and an unedited save re-sends
+  // exactly what was loaded.
+  // =========================================================================
+  describe('a cross-currency transfer opened from its receiving leg', () => {
+    // USD 100.00 from acc-3 arrived as CAD 135.00 in acc-1; the form is opened
+    // on the CAD (positive, receiving) leg.
+    function createIncomingCadLeg(overrides = {}) {
+      return createExistingTransaction({
+        accountId: 'acc-1',
+        amount: 135,
+        currencyCode: 'CAD',
+        isTransfer: true,
+        linkedTransactionId: 'linked-usd',
+        linkedTransaction: {
+          ...createExistingTransaction({
+            id: 'linked-usd',
+            accountId: 'acc-3',
+            amount: -100,
+            currencyCode: 'USD',
+            isTransfer: true,
+            linkedTransactionId: '123e4567-e89b-12d3-a456-426614174000',
+            payeeId: null,
+            payeeName: null,
+            categoryId: null,
+            category: null,
+          }),
+          account: { id: 'acc-3', name: 'USD Account' },
+        },
+        payeeId: null,
+        payeeName: null,
+        categoryId: null,
+        category: null,
+        ...overrides,
+      });
+    }
+
+    it('loads and re-sends the source amount on an unedited save', async () => {
+      const incoming = createIncomingCadLeg();
+      await act(async () => {
+        render(
+          <TransactionForm transaction={incoming} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />,
+        );
+      });
+      await waitFor(() => expect(screen.getByLabelText('Transfer Amount (USD)')).toBeInTheDocument());
+      expect((screen.getByLabelText('Transfer Amount (USD)') as HTMLInputElement).value).toBe('100.00');
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Update Transfer/i }));
+      });
+
+      await waitFor(() => expect(mockUpdateTransfer).toHaveBeenCalledTimes(1));
+      expect(mockUpdateTransfer.mock.calls[0][1]).toEqual(
+        expect.objectContaining({ fromAccountId: 'acc-3', toAccountId: 'acc-1', amount: 100, toAmount: 135 }),
+      );
+    });
+
+    it('duplicates the transfer with the source amount', async () => {
+      const incoming = createIncomingCadLeg();
+      await act(async () => {
+        render(
+          <TransactionForm duplicateFrom={incoming} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />,
+        );
+      });
+      await waitFor(() => expect(screen.getByLabelText('Transfer Amount (USD)')).toBeInTheDocument());
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Create Transfer/i }));
+      });
+
+      await waitFor(() => expect(mockCreateTransfer).toHaveBeenCalledTimes(1));
+      expect(mockCreateTransfer.mock.calls[0][0]).toEqual(
+        expect.objectContaining({ fromAccountId: 'acc-3', toAccountId: 'acc-1', amount: 100, toAmount: 135 }),
+      );
+    });
+
+    it('saves a reconciled receiving leg unedited without the reconciliation warning', async () => {
+      const incoming = createIncomingCadLeg({ status: TransactionStatus.RECONCILED, isReconciled: true });
+      await act(async () => {
+        render(
+          <TransactionForm transaction={incoming} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />,
+        );
+      });
+      await waitFor(() => expect(screen.getByLabelText('Transfer Amount (USD)')).toBeInTheDocument());
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Update Transfer/i }));
+      });
+
+      await waitFor(() => expect(mockUpdateTransfer).toHaveBeenCalledTimes(1));
+      expect(screen.queryByText('Edit reconciled transaction?')).not.toBeInTheDocument();
+      expect(mockUpdateTransfer.mock.calls[0][1]).toEqual(expect.objectContaining({ amount: 100 }));
+    });
+
+    it('asks before saving a reconciled receiving leg whose source amount was edited', async () => {
+      const incoming = createIncomingCadLeg({ status: TransactionStatus.RECONCILED, isReconciled: true });
+      await act(async () => {
+        render(
+          <TransactionForm transaction={incoming} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />,
+        );
+      });
+      await waitFor(() => expect(screen.getByLabelText('Transfer Amount (USD)')).toBeInTheDocument());
+
+      // 135 is the received figure; as a SOURCE amount it is an edit of 100.
+      const source = screen.getByLabelText('Transfer Amount (USD)');
+      fireEvent.focus(source);
+      fireEvent.change(source, { target: { value: '135.00' } });
+      fireEvent.blur(source);
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Update Transfer/i }));
+      });
+
+      await waitFor(() => expect(screen.getByText('Edit reconciled transaction?')).toBeInTheDocument());
+      expect(mockUpdateTransfer).not.toHaveBeenCalled();
+    });
+  });
+
   describe('a web address in the description field', () => {
     /**
      * The register makes the address in a saved description clickable, but the

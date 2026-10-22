@@ -92,6 +92,18 @@ const buildTransactionSchema = (t: (key: string) => string) => z.object({
 type TransactionFormData = z.infer<ReturnType<typeof buildTransactionSchema>>;
 
 /**
+ * The figure a transfer form shows as "Transfer Amount": the FROM (negative)
+ * leg's, whichever leg the form was opened on. The receiving leg holds the
+ * amount in the destination currency, which is the "Amount Received" field,
+ * so loading it here would re-price the transfer on an unedited save.
+ */
+function transferSourceAmount(source: Transaction): number {
+  const linked = source.linkedTransaction;
+  const fromLeg = Number(source.amount) >= 0 && linked ? linked : source;
+  return Math.abs(Number(fromLeg.amount));
+}
+
+/**
  * A reconciled transaction was matched against a statement during
  * reconciliation. Only the date and amount feed that match, so editing other
  * fields (payee, category, notes, reference) leaves the reconciliation intact
@@ -105,10 +117,10 @@ function reconciledEditAffectsReconciliation(
   data: TransactionFormData,
 ): boolean {
   const dateChanged = data.transactionDate !== original.transactionDate;
-  // Mirror the form's defaultValues normalization: transfers always load an
-  // absolute amount, everything else keeps its sign.
+  // Mirror the form's defaultValues normalization: transfers always load the
+  // source leg's absolute amount, everything else keeps its sign.
   const originalAmount = original.isTransfer
-    ? Math.abs(Math.round(Number(original.amount) * 100) / 100)
+    ? Math.round(transferSourceAmount(original) * 100) / 100
     : Math.round(Number(original.amount) * 100) / 100;
   const amountChanged =
     Math.round(Number(data.amount) * 100) !== Math.round(originalAmount * 100);
@@ -337,9 +349,9 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
           payeeId: initSource.payeeId || '',
           payeeName: initSource.payeeName || '',
           categoryId: initSource.categoryId || '',
-          // For transfers, always show absolute amount
+          // For transfers, the source (FROM) leg's absolute amount
           amount: initSource.isTransfer
-            ? Math.abs(Math.round(Number(initSource.amount) * 100) / 100)
+            ? Math.round(transferSourceAmount(initSource) * 100) / 100
             : Math.round(Number(initSource.amount) * 100) / 100,
           currencyCode: initSource.currencyCode,
           description: initSource.description || '',
