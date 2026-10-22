@@ -310,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Reinvestimento de rendimento de longo prazo",
       "CAPITAL_GAIN_SHORT": "Rendimento de capital de curto prazo",
       "CAPITAL_GAIN_LONG": "Rendimento de capital de longo prazo",
-      "REDEEM": "Resgate de CD/obrigação"
+      "REDEEM": "Resgate de CD/obrigação",
+      "RETURN_OF_CAPITAL": "Devolução de capital"
     },
     "toasts": {
       "loadHistoryFailed": "Falha ao carregar histórico",

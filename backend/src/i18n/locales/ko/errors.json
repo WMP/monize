@@ -44,6 +44,7 @@
     "changeCurrencyWithTransactions": "거래가 있는 계정의 통화는 변경할 수 없습니다.",
     "alreadyClosed": "계정이 이미 폐쇄되었습니다",
     "closeNonZeroBalance": "잔액이 0이 아닌 계정은 폐쇄할 수 없습니다. 현재 잔액: {{ currentBalance }}",
+    "closeWithFutureTransactions": "미래 날짜의 거래가 있는 계좌는 해지할 수 없습니다. 오늘 이후 날짜의 거래가 {{ count }}건 있습니다. 먼저 삭제하거나 무효 처리하세요.",
     "closeWithHoldings": "증권을 보유한 투자 계좌는 닫을 수 없습니다. 수량이 0이 아닌 보유 종목이 {{ holdingCount }}개 있습니다. 먼저 매도하거나 이전하세요.",
     "notClosed": "계정이 폐쇄되지 않았습니다",
     "modifyBalanceClosed": "폐쇄된 계정의 잔액은 수정할 수 없습니다",
@@ -85,6 +86,7 @@
     "paymentMatchingFailed": "대출은 저장되었지만 결제 매칭 규칙을 만들 수 없습니다. 대출 세부 정보에서 만드세요."
   },
   "actionHistory": {
+    "loanEditNotUndoable": "이 대출 변경은 자동으로 실행 취소할 수 없습니다. 되돌리려면 대출을 편집하세요.",
     "nothingToUndo": "실행 취소할 항목이 없습니다",
     "nothingToRedo": "다시 실행할 항목이 없습니다",
     "undoNotSupportedForEntityType": "엔터티 유형에 대한 실행 취소가 지원되지 않습니다: {{ entityType }}",
@@ -762,6 +764,7 @@
     "investmentCashLegStatusLocked": "이 거래는 투자 거래의 현금 측면입니다. 양쪽이 함께 변경되도록, 투자 거래의 상태를 변경하여 무효화하거나 복원하세요.",
     "notFoundById": "ID가 {{ id }}인 거래를 찾을 수 없습니다",
     "bulkUpdateNoFields": "하나 이상의 업데이트 필드를 제공해야 합니다",
+    "bulkUpdateConcurrentChange": "업데이트가 실행되는 동안 이 거래들이 변경되었습니다. 새로고침 후 다시 시도하세요.",
     "bulkSplitNoMatchingLinesOne": "분할 라인 중 어느 것도 카테고리 업데이트와 일치하지 않아 분할 거래 1건을 건너뛰었습니다",
     "bulkSplitNoMatchingLinesMany": "분할 라인 중 어느 것도 카테고리 업데이트와 일치하지 않아 분할 거래 {{ count }}건을 건너뛰었습니다",
     "bulkSplitTransferLegSkippedOne": "분할 이체 1건을 건너뛰었습니다(양쪽이 함께 변경되도록 해당 분할 거래에서 무효화하거나 복원하세요)",

@@ -310,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Wiederanlage langfristiger Kapitalerträge",
       "CAPITAL_GAIN_SHORT": "Kurzfristiger Kapitalertrag",
       "CAPITAL_GAIN_LONG": "Langfristiger Kapitalertrag",
-      "REDEEM": "CD/Anleihe einlösen"
+      "REDEEM": "CD/Anleihe einlösen",
+      "RETURN_OF_CAPITAL": "Kapitalrückzahlung"
     },
     "toasts": {
       "loadHistoryFailed": "Verlauf konnte nicht geladen werden",

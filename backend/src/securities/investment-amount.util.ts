@@ -57,6 +57,7 @@ export function deriveInvestmentTotal(input: InvestmentAmountInput): number {
     case InvestmentAction.DIVIDEND:
     case InvestmentAction.INTEREST:
     case InvestmentAction.CAPITAL_GAIN:
+    case InvestmentAction.RETURN_OF_CAPITAL:
       return roundMoney((quantity || 1) * price);
     default:
       // ADD_SHARES / REMOVE_SHARES / SPLIT / REINVEST / the transfer legs move
@@ -77,6 +78,7 @@ export function actionCarriesTotal(action: InvestmentAction | string): boolean {
     case InvestmentAction.DIVIDEND:
     case InvestmentAction.INTEREST:
     case InvestmentAction.CAPITAL_GAIN:
+    case InvestmentAction.RETURN_OF_CAPITAL:
       return true;
     default:
       return false;
@@ -121,6 +123,7 @@ export function derivePriceFromTotal(input: {
     case InvestmentAction.DIVIDEND:
     case InvestmentAction.INTEREST:
     case InvestmentAction.CAPITAL_GAIN:
+    case InvestmentAction.RETURN_OF_CAPITAL:
       return roundToDecimals(
         total / (quantity || 1),
         INVESTMENT_PRICE_DECIMALS,
