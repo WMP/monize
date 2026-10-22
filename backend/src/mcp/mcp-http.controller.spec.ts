@@ -6,6 +6,7 @@ import { PatService } from "../auth/pat.service";
 import { OAuthProviderService } from "../oauth/oauth-provider.service";
 import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
+import type { AuthInfo } from "@modelcontextprotocol/server";
 
 describe("McpHttpController", () => {
   let controller: McpHttpController;
@@ -1167,6 +1168,37 @@ describe("McpHttpController", () => {
         scopes: "read",
         credentialId: "pat:tok-a",
       });
+    });
+
+    it("serves an existing session's tools the scopes of the token presented now", async () => {
+      // INV-MCP-001 / MON-M04 (A26-S17-05): the session was opened with a
+      // write-scoped token; the same credential now carries read only. What the
+      // tools see is the `authInfo` the transport forwards from `req.auth`, so
+      // that is what must carry the narrowed scope when the request reaches the
+      // session -- not the scopes stored when the session was created.
+      const sessionId = "narrowed-tool-session";
+      let authAtDispatch: AuthInfo | undefined;
+      const handleRequest = seedSession(sessionId, {
+        userId: USER,
+        scopes: "read,write",
+        credentialId: "pat:tok-n",
+      });
+      handleRequest.mockImplementation(async (req: { auth?: AuthInfo }) => {
+        authAtDispatch = req.auth;
+      });
+      patService.validateToken.mockResolvedValue({
+        userId: USER,
+        scopes: "read",
+        tokenId: "tok-n",
+      });
+
+      await controller.handlePost(post(sessionId), makeRes());
+
+      expect(handleRequest).toHaveBeenCalledTimes(1);
+      expect(authAtDispatch?.scopes).toEqual(["read"]);
+      expect(authAtDispatch?.extra).toEqual(
+        expect.objectContaining({ userId: USER, credentialId: "pat:tok-n" }),
+      );
     });
 
     it("accepts the same credential and still rejects another user's", async () => {

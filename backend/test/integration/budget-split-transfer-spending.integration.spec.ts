@@ -6,6 +6,7 @@ import {
   TransactionStatus,
 } from "@/transactions/entities/transaction.entity";
 import { TransactionSplit } from "@/transactions/entities/transaction-split.entity";
+import { SplitKind } from "@/transactions/entities/split-kind.enum";
 import { BudgetCategory } from "@/budgets/entities/budget-category.entity";
 import { queryCategorySpending } from "@/budgets/budget-spending.util";
 import { withScopedDb } from "@/common/db/scoped-db";
@@ -134,6 +135,10 @@ describe("queryCategorySpending split transfers (integration)", () => {
     } as Partial<TransactionSplit>);
     const transferSplit = dataSource.manager.create(TransactionSplit, {
       transactionId: parent.id,
+      // What the production writer stores for a transfer line; the column's
+      // default is "category", which chk_split_kind_exclusive refuses beside a
+      // transfer account.
+      kind: SplitKind.TRANSFER,
       transferAccountId: savingsId,
       linkedTransactionId: counterpart.id,
       amount: transferAmount,
