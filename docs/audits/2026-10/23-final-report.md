@@ -6,7 +6,7 @@
 **Audit mode:** read-only, fixed revision, executed: every HIGH candidate was run against the baseline (suite, mutation, probe or failpoint) or says why not
 **Sessions consumed:** S01-S22 (22 reports, `01-baseline.md` .. `22-delta-review.md`), the ledger, the prior-findings register
 **Companion:** [`remediation-tasks.md`](./remediation-tasks.md) (one task per PR, dependency-ordered)
-**Report status:** in-progress, remaining: chapters 7.2-7.3, sections 8-24, appendices; remediation-tasks.md
+**Report status:** in-progress, remaining: sections 8-24, appendices; remediation-tasks.md
 
 Reading guide. Sections 1 to 6 and 17 to 24 are the maintainer's summary. Section 7 carries every
 session finding in the protocol's 15-field format, verbatim from its session report under the
@@ -2179,3 +2179,3543 @@ Superseded by the primary above: same root cause, and its scenario is one surfac
 15. **Residual risks:** the sweep covered the 49 components that render `ReportToolbarActions` for an early error return or a `disabled` prop; reports with several requests (Debt Payoff Timeline, Cash Flow Sankey, the budget reports) were not traced request by request; handed to S20.
 
 Causality: `PRE_EXISTING_UNREPORTED` for the PDF captions; `EXPOSED_OR_AMPLIFIED` for Cash Flow (the server field became nullable, the consumer kept `?? 0`).
+
+
+
+### 7.2 MEDIUM findings
+
+
+### A26-M01 - A successful password login writes the pre-bcrypt snapshot back and restores the failed-login counter it just reset
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S03-02 (primary, 03-security-auth.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-AUTH-002.
+- **Lens:** security.
+
+#### A26-S03-02 (primary) - A successful password login writes the pre-bcrypt snapshot back and restores the failed-login counter it just reset
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed against PostgreSQL 16)
+3. **Location:** `backend/src/auth/auth.service.ts:387-391` (snapshot read), `:470-478` (SQL reset), `:537-538` (`user.lastLogin = new Date(); repo.save(user)`), same at `:509-511` (trusted-device 2FA path); `backend/src/auth/login-lockout.ts` (escalation reads the restored counter).
+4. **Violated invariant:** the success-path reset described in INV-AUTH-002 ("The success-path reset writes a fixed absolute value and was always safe") and the code comment at `auth.service.ts:463-469` ("A correct password is authoritative about the attempts before it").
+5. **Reproduction:** an account has `failed_login_attempts = 4` (four typos, below the threshold of 5). The owner then signs in with the correct password. `loginWithinContext` read the `User` entity before bcrypt (`failedLoginAttempts = 4`), resets the row to 0 in SQL, then `repo.save(user)` lets TypeORM diff the snapshot against the database (`4` vs `0`) and writes `failed_login_attempts = 4` back. The next single wrong password -- by the owner or by anyone who knows the address -- reaches 5 and locks the account for 30 minutes and sends the lockout email. After a past lockout the snapshot also restores the expired `locked_until`, so the escalation logic treats the next failure as a repeat offence.
+6. **Observed:** probe `AUDIT S03 probe: login counter reset survives the snapshot save` drives the real `AuthService.login` (local account, no 2FA, verified email) against real PostgreSQL: `AUDIT-PROBE after successful login {"failed_login_attempts":4,"locked_until":null}`, `Expected: 0 / Received: 4`.
+7. **Expected:** `failed_login_attempts = 0`, `locked_until = NULL` after a successful password check.
+8. **Impact:** availability and security operations: a user who recovered from typos is one typo (or one hostile attempt) away from a 30-minute lockout and an alarming email; lockout notifications overcount. No credential is exposed.
+9. **Root cause:** a whole-entity `save` of a snapshot taken before a SQL write to the same row. The reset was moved into SQL (audit P4-012) but the later `save` of the stale entity was left in place, so the two writes disagree and the later one wins.
+10. **Recommended correction:** update only the column the success path owns (`last_login`) and fold the counter reset into the same statement.
+11. **Suggested remediation diff (illustrative, not applied):**
+    ```diff
+    --- a/backend/src/auth/auth.service.ts
+    +++ b/backend/src/auth/auth.service.ts
+    @@
+    -    await withScopedDb(this.dataSource, (manager) =>
+    -      manager.query(
+    -        `UPDATE users
+    -            SET failed_login_attempts = 0, locked_until = NULL
+    -          WHERE id = $1
+    -            AND (failed_login_attempts <> 0 OR locked_until IS NOT NULL)`,
+    -        [user.id],
+    -      ),
+    -    );
+    +    await withScopedDb(this.dataSource, (manager) =>
+    +      manager.query(
+    +        `UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = $1`,
+    +        [user.id],
+    +      ),
+    +    );
+    +    user.failedLoginAttempts = 0;
+    +    user.lockedUntil = null;
+    @@ (trusted-device branch and final branch)
+    -          user.lastLogin = new Date();
+    -          await this.scoped(User, (repo) => repo.save(user));
+    +          user.lastLogin = new Date();
+    +          await this.scoped(User, (repo) =>
+    +            repo.update({ id: user.id }, { lastLogin: user.lastLogin }),
+    +          );
+    ```
+    Keeping the entity in step (`user.failedLoginAttempts = 0`) matters because `sanitizeUser(user)` and `generateTokenPair(user)` read it afterwards. Still to verify: `auth.service.spec.ts` (it mocks `save`), the probe as a permanent integration test, and the other whole-entity saves listed in section 9.
+12. **Recommended regression test:** an integration test that seeds `failed_login_attempts = 4`, logs in successfully through `AuthService.login`, and asserts 0; plus one failed attempt afterwards asserts `locked_until IS NULL`.
+13. **Suggested regression-test diff (illustrative, not applied):** the probe in section 1 (`a successful login leaves failed_login_attempts at 0`) moved into `test/integration/login-lockout.integration.spec.ts`, which already has the module set-up.
+14. **Verification method:** that test, with the 2FA trusted-device variant (seed a trusted device) as a second case.
+15. **Residual risks:** the same stale-snapshot `save(user)` shape exists on other credential paths (section 9, design risk D-S03-01); this diff fixes only the login path.
+
+- **Causality class:** `PRE_EXISTING_UNREPORTED` (MON-M24 is the concurrent-failure lost increment, fixed; this is the success path overwriting the reset).
+
+
+### A26-M02 - Change-password, admin reset/disable and owner-of-delegate reset end refresh sessions with one blanket UPDATE that misses a concurrently inserted successor
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S03-07 (primary, 03-security-auth.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-AUTH-005, INV-AUTH-004.
+- **Lens:** security.
+
+#### A26-S03-07 (primary) - Change-password, admin reset/disable and owner-of-delegate reset end refresh sessions with one blanket UPDATE, which misses a successor inserted by a concurrent rotation
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed against PostgreSQL 16)
+3. **Location:** `backend/src/users/users.service.ts:479-485` (`update({ userId, isRevoked: false }, { isRevoked: true })` inside the password transaction); `backend/src/admin/admin.service.ts:723-733` (`revokeSessionsAndTokens`, used by reset at `:609`, and at `:445`, `:505`); `backend/src/delegation/delegation.service.ts:1530-1535`. Contrast `backend/src/auth/token.service.ts:313-361` (`revokeAllUserRefreshTokens`: capture families, lock each, re-revoke until a pass changes nothing), used by the email reset, 2FA reset, OIDC link and emergency claim.
+4. **Violated invariant:** INV-AUTH-005 ("no ... refresh token ... issued before it keeps working") and the statement-snapshot rule recorded in `token.service.ts:126-131` and INV-AUTH-004: a single `UPDATE ... WHERE user_id = ? AND is_revoked = false` blocked on the row a rotation holds sees, after that rotation commits, the old row but not the replacement inserted after its snapshot.
+5. **Reproduction:** an attacker holds a stolen refresh token and keeps refreshing it. The account owner changes their password from Settings (or an administrator resets it, or disables the account, or the owner of a delegate-only user resets it). If a rotation is in flight when the revoking UPDATE starts, the UPDATE waits on the rotating row, revokes it, and misses its successor. The password change reports success; the attacker's successor keeps rotating.
+6. **Observed:** probe `AUDIT S03 probe: blanket per-user revoke vs rotation`, 60 rotate-versus-revoke pairs per run, two runs: the blanket statement (the exact `repo.update` these three paths issue) leaked a live token in `{"leaks":35}` and `{"leaks":34}` of 60 (an earlier run: 23); `revokeAllUserRefreshTokens` under the same harness leaked `{"leaks":0}` in both runs.
+7. **Expected:** after the call resolves, no refresh token issued before it is live.
+8. **Impact:** security. The remedy a user reaches for after suspecting theft -- change the password -- can leave the thief's session alive, and with A26-S03-01 the reuse alarm does not end it either. The window is the duration of one rotation, so an attacker who rotates on every allowed refresh (10 per minute) and a user who changes the password once have a small but real chance per change; the admin "disable account" path has the same gap.
+9. **Root cause:** three call sites predate or bypass the converging helper and open-code the blanket statement the helper's comment explains is unsafe.
+10. **Recommended correction:** after the commit, call `TokenService.revokeAllUserRefreshTokens(userId)` on all three paths (the change-password path may keep the in-transaction blanket UPDATE as a first pass; the post-commit convergence is what closes the gap). For change-password from Settings, pass the caller's refresh token as `keepSessionOf` only if the product wants the current session kept (today it is revoked too; keep that).
+11. **Suggested remediation diff (illustrative, not applied):**
+    ```diff
+    --- a/backend/src/users/users.service.ts
+    +++ b/backend/src/users/users.service.ts
+    @@ changePassword
+         await withScopedDb(this.dataSource, async (manager) => {
+           await manager.getRepository(User).save(user);
+           await manager
+             .getRepository(RefreshToken)
+             .update({ userId, isRevoked: false }, { isRevoked: true });
+           await revokeStandingCredentials(manager, userId);
+         });
+    +    // The blanket UPDATE above has a statement-snapshot blind spot against a
+    +    // concurrent rotation; converge after the commit (token.service.ts).
+    +    await this.tokenService.revokeAllUserRefreshTokens(userId);
+    --- a/backend/src/admin/admin.service.ts
+    +++ b/backend/src/admin/admin.service.ts
+    @@ private async revokeSessionsAndTokens(targetUserId: string)
+         await withScopedDb(this.dataSource, async (manager: EntityManager) => {
+    ...
+         });
+    +    await this.tokenService.revokeAllUserRefreshTokens(targetUserId);
+         await this.oauthProviderService.revokeAllForUser(targetUserId);
+    --- a/backend/src/delegation/delegation.service.ts
+    +++ b/backend/src/delegation/delegation.service.ts
+    @@ resetDelegatePassword
+    +    await withSystemContext(() => this.tokenService.revokeAllUserRefreshTokens(delegate.id));
+         await revokeOAuthGrantsAfterCommit(
+    ```
+    `UsersService`, `AdminService` and `DelegationService` need `TokenService` injected (check `module-graph.spec.ts` for a cycle; `forwardRef` per `backend/CLAUDE.md` if one appears). Still to verify: unit specs of the three services, the integration test below, and the context each call runs under (admin and delegation paths are under `withSystemContext` already; `users.service` runs in the caller's user context, which owns the rows).
+12. **Recommended regression test:** the probe as a permanent integration test against each service method, not against the bare statement.
+13. **Suggested regression-test diff (illustrative, not applied):**
+    ```diff
+    +it.each(["changePassword", "adminReset", "delegateReset"])(
+    +  "%s leaves no live refresh token under a concurrent rotation", async (path) => {
+    +    for (let i = 0; i < 40; i++) {
+    +      const { refreshToken: t0 } = await withSystemContext(() => tokens.generateTokenPair(user, false));
+    +      await Promise.allSettled([rotate(t0), sleep(i % 4).then(() => runPath(path))]);
+    +      expect(await liveTokens(user.id)).toBe(0);
+    +    }
+    +  });
+    ```
+14. **Verification method:** that test; the probe's `revokeAllUserRefreshTokens` variant shows the expected result (0/60).
+15. **Residual risks:** `revokeAllUserRefreshTokens` gives up after 10 passes with a warning; a client rotating faster than that is not realistic at a 10-per-minute throttle.
+
+- **Causality class:** `PRE_EXISTING_UNREPORTED` (MON-M23 was raised for logout only; the same root cause on these three paths was not reported).
+- **Rule 7 surfaces:** `users.service.ts` changePassword; `admin.service.ts` reset password, disable, delete (via `revokeSessionsAndTokens`); `delegation.service.ts` resetDelegatePassword.
+
+
+### A26-M03 - Two tabs refreshing at once read as token theft: the family is revoked and every session ends with no explanation
+
+- **Canonical severity:** MEDIUM. kept MEDIUM; remediated with A26-H01, whose fix makes this false positive more frequent (section 8).
+- **Absorbs:** A26-S18-06 (primary, 18-frontend-core.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-AUTH-001.
+- **Lens:** security.
+
+#### A26-S18-06 (primary) - Two tabs refreshing at once read as token theft: the family is revoked and every session ends with no explanation
+
+1. **Severity:** MEDIUM
+2. **Confidence:** medium-high (static and deterministic once both requests carry the same cookie; not executed in a browser)
+3. **Location:** `frontend/src/lib/api.ts:187-247` (per-tab single flight `isRefreshingToken`, no cross-tab coordination: no `BroadcastChannel`, `navigator.locks` or storage event in `lib/` or `store/`), `:109-119` (`attemptTokenRefresh` discards the response, so the 401 reason is lost); backend `backend/src/auth/token.service.ts:149-177` (rotation under `lockTokenFamily`; a revoked token is "reuse" and revokes the family, no grace for the immediately rotated token).
+4. **Violated invariant:** INV-AUTH-001/004 are about theft; a legitimate concurrent refresh must not be indistinguishable from it, and a forced sign-out must say why (S03 hand-off).
+5. **Reproduction:** two tabs (or the installed PWA and a tab) are open; the access token expires (laptop wakes, both tabs poll). Both tabs get 401 and each sends `POST /auth/refresh` with the same `refresh_token` cookie T1 before either response sets T2.
+6. **Observed:** the first request rotates T1 -> T2 and revokes T1; the second, serialized behind the family lock, finds T1 revoked, revokes the whole family and answers 401 "Refresh token reuse detected". That tab logs out and `replace('/login')`s; the first tab's next refresh with T2 now fails too (family revoked). The login page shows the ordinary signed-out state.
+7. **Expected:** one refresh per browser (a cross-tab lock, or a short server grace that answers the just-rotated token with the current one), and a distinct login-page message when the server reports reuse.
+8. **Impact:** availability (every device session of the user ends, including the PWA), and the one real security signal the server has is shown to the user as a routine expiry, so an actual theft is never reported.
+9. **Root cause:** refresh rotation is single-flight per tab only, and the client throws away the 401 body.
+10. **Recommended correction:** serialize refresh across tabs with `navigator.locks.request('monize-refresh', ...)` (fallback: the current per-tab flight), retry the original request after another tab's refresh, and on a reuse 401 set a `sessionStorage` reason the login page renders.
+11. **Suggested remediation diff (illustrative, not applied)**
+
+```diff
+--- a/frontend/src/lib/api.ts
++++ b/frontend/src/lib/api.ts
+@@ -109,12 +109,26 @@
+-async function attemptTokenRefresh(): Promise<boolean> {
++type RefreshOutcome = 'ok' | 'reuse' | 'failed';
++
++async function refreshOnce(): Promise<RefreshOutcome> {
+   try {
+     // Use raw axios to avoid interceptor recursion; refresh_token cookie sent automatically
+     await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
+-    logger.info('Access token refreshed');
+-    return true;
+-  } catch (_) {
+-    logger.warn('Token refresh failed');
+-    return false;
++    return 'ok';
++  } catch (error) {
++    const message = (error as AxiosError<{ code?: string }>).response?.data?.code;
++    return message === 'REFRESH_TOKEN_REUSE' ? 'reuse' : 'failed';
+   }
+ }
++
++// One refresh per browser: a second tab waiting on the lock finds the cookie
++// already rotated and its own request then succeeds with it.
++async function attemptTokenRefresh(): Promise<boolean> {
++  const run = () => refreshOnce();
++  const outcome = typeof navigator !== 'undefined' && navigator.locks
++    ? await navigator.locks.request('monize-token-refresh', run)
++    : await run();
++  if (outcome === 'reuse') markSessionRevokedForReuse();
++  return outcome === 'ok';
++}
+```
+
+   A waiting tab still sends T1 after the lock is released unless it first re-tries the original request (which now carries the rotated access cookie); the diff needs that "retry before refresh" step, and the backend needs a stable error code (the message is translated). Maintainer decision: client lock, server grace window, or both.
+12. **Recommended regression test:** a Playwright two-page test in one context that expires the access cookie and fires a request from both pages; both pages must stay signed in.
+13. **Suggested regression-test diff:** incomplete (needs an E2E fixture that can expire the access cookie; `e2e/` has none today).
+14. **Verification:** the E2E case above; a backend integration case with two concurrent refreshes of one token under a grace rule, if chosen.
+15. **Residual risks:** a grace window weakens reuse detection by its width; the lock alone does not cover two browsers on one account (no shared cookie, so no collision). Causality: `PRE_EXISTING_UNREPORTED`.
+
+
+### A26-M04 - Grantee and cross-owner writes are authorized in earlier transactions and written under the system bypass without a re-check
+
+- **Canonical severity:** MEDIUM. kept MEDIUM: cross-tenant, but the owner chooses the revoke and nobody can time the window (S04's reasoning stands).
+- **Absorbs:** A26-S04-01 (primary, 04-rls-tenancy.md, session severity MEDIUM).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** security.
+
+#### A26-S04-01 (primary) - Grantee and cross-owner writes are authorized in earlier transactions and written under the system bypass without a re-check, so a write lands in the owner's ledger after the owner's revoke has committed
+
+1. **Severity:** MEDIUM. A cross-tenant write by a principal whose authority was withdrawn and committed before the write; the window is one request's latency (it includes an FX provider call on a cross-currency transfer), and the owner, not the grantee, chooses when to revoke. Not HIGH because nobody can widen or time the window against the owner.
+2. **Confidence:** high (executed).
+3. **Location:** `backend/src/transactions/transaction-transfer.service.ts:516-545` (`createTransfer`: `prepareTransfer` then `writeTransferLegs`), `:645-749` (`prepareTransfer`, authorization at `:689-702` through `CrossOwnerAccessService.accountAccessFor`, each in its own `withScopedDb`, `backend/src/delegation/cross-owner-access.service.ts:66-110`), `:761-940` (`writeTransferLegs`, `withSystemContext(withScopedDb(writeLegsAtomically))` at `:911-920`, no authorization inside), `:641-643` (the comment that rationalises it). Same shape: `backend/src/transactions/joint-register.service.ts:58-153` (`create` / `update` / `remove` / `markCleared`: `jointAccessFor` then `withSystemContext(transactionsService.*)`), `backend/src/categories/joint-categories.service.ts:51-72`, and the cross-owner update / delete branches `transaction-transfer.service.ts:1590-1637, 2044-...` (authorization before the system transaction; to be traced by S07).
+4. **Violated invariant:** AGENTS.md "Transactions (CRITICAL)": every check that can refuse (ownership, tenant identity, precondition) runs inside the same transaction as the mutation, under the same lock where concurrency matters. For a grantee, "the grant is active" is that check; `docs/specs/joint-accounts.md` W2 ("freeze on revoke") assumes it.
+5. **Realistic reproduction scenario:** Alice shares "A chequing" with Bob (joint, `can_create`). Bob submits a 700.00 transfer from his "B savings" to "A chequing". While Bob's request is between `prepareTransfer` and `writeTransferLegs` (for a cross-currency pair this includes the rate lookup), Alice revokes Bob. Executed under `monize_app` with `RLS_MODE=enforce` (barrier between the two calls, timing only): `{"delegationsAfterRevoke":0,"err":"Transaction with ID 85eb2589-... not found","legsInA":[{"amount":700,"owned_by_a":true}],"aBalance":5700}`.
+6. **Observed:** the delegation is gone, then both legs commit under the bypass; Alice's balance moves from 5000.00 to 5700.00; Bob's request then fails in the post-commit read-back (`completeTransfer` -> `findOne(toOwnerId, ...)` under Bob's own scope can no longer see Alice's leg), so Bob is told the transfer failed although it is in both ledgers.
+7. **Expected:** once the revoke commits, Bob's write is refused and nothing is written; if the write commits first, the revoke follows it and Bob is told it succeeded.
+8. **Impact:** data integrity and security: a 700.00 movement (100 percent of the transfer) in another tenant's ledger after the owner withdrew consent, attributed to a delegate who no longer exists in the owner's list; the actor receives an error for a committed write and may re-enter it by another route. Same for a joint-register edit or delete racing an owner's revoke or the owner moving the row to an unshared account (`update` authorizes on the row's account read in `loadRowById`, then updates by id under the bypass).
+9. **Root cause:** the write identity (system bypass) is a different identity from the authorization identity (the grantee), and `withScopedDb` refuses to join across identities (`scoped-db.ts:165-180`), so the code decides first and writes later, in two transactions, and never re-reads the grant inside the bypass transaction; nothing locks the `account_delegates` row against the revoke's `DELETE`.
+10. **Recommended correction:** inside the system-context write transaction, re-read the delegation and grant that authorized the request with `FOR SHARE` (the revoke's `DELETE` then waits for the write or the write sees the row gone), refuse with the same 404/403 when it is absent or no longer grants the operation, and only then write. Apply it once in a helper on `CrossOwnerAccessService` taking the transaction's `EntityManager`, called from `writeLegsAtomically`, the cross-owner update/delete transactions, and the joint-register / joint-categories bypass bodies.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/delegation/cross-owner-access.service.ts
++++ b/backend/src/delegation/cross-owner-access.service.ts
+@@
++  /**
++   * Re-assert, inside the write's own transaction, the grant `accountAccessFor`
++   * found earlier. FOR SHARE on the delegation row makes a concurrent revoke
++   * (a DELETE) wait for this transaction, or makes this read see it gone.
++   * Runs on the caller's manager, so under the system bypass of the write.
++   */
++  async assertGrantStillHeld(
++    m: EntityManager,
++    realUserId: string,
++    accountId: string,
++    op: DelegateOperation,
++  ): Promise<void> {
++    const rows: Array<GrantFlags> = await m.query(
++      `SELECT g.can_create AS "canCreate", g.can_edit AS "canEdit",
++              g.can_delete AS "canDelete"
++         FROM account_delegates d
++         JOIN account_delegate_grants g ON g.delegation_id = d.id
++         JOIN accounts a ON a.id = g.account_id AND a.user_id = d.owner_user_id
++        WHERE d.delegate_user_id = $1 AND g.account_id = $2
++          AND d.status = 'active' AND g.can_read
++          FOR SHARE OF d, g`,
++      [realUserId, accountId],
++    );
++    if (rows.length === 0) throw this.accountNotFound(accountId);
++    if (!this.grantAllows(rows[0], op)) {
++      throw new ForbiddenException(/* same tr(...) as accountAccessFor */);
++    }
++  }
+--- a/backend/src/transactions/transaction-transfer.service.ts
++++ b/backend/src/transactions/transaction-transfer.service.ts
+@@ const writeLegsAtomically = async (m: EntityManager): Promise<WrittenTransfer> => {
++      if (hasForeignLeg) {
++        for (const [accountId, ownerId] of [
++          [fromAccountId, fromOwnerId],
++          [toAccountId, toOwnerId],
++        ] as const) {
++          if (ownerId !== prepared.realUserId) {
++            await this.crossOwnerAccess.assertGrantStillHeld(
++              m, prepared.realUserId, accountId, "create",
++            );
++          }
++        }
++      }
+       if (externalId) {
+--- a/backend/src/transactions/joint-register.service.ts
++++ b/backend/src/transactions/joint-register.service.ts
+@@ (create / update / remove / markCleared)
+-    return withSystemContext(() =>
+-      this.transactionsService.update(access.ownerUserId, transactionId, dto, {
++    return withSystemContext(() =>
++      withScopedDb(this.dataSource, async (m) => {
++        await this.crossOwnerAccess.assertGrantStillHeld(m, realUserId, row.accountId, "edit");
++        // and re-read the row's account inside m (an owner move to an
++        // unshared account must refuse), then:
++        return this.transactionsService.update(access.ownerUserId, transactionId, dto, {
+```
+
+    The joint-register half joins `TransactionsService`'s own `withScopedDb` (same system identity, so the nested call joins), which keeps the re-check and the write in one transaction.
+12. **Recommended regression test:** under `createEnforcedIntegrationModule`, a barrier between authorization and write (as in the probe), revoke in the gap, assert no leg in the owner's account and the owner's balance unchanged; the same for a joint-register update after the owner moves the row out of the joint account.
+13. **Suggested regression-test diff (illustrative, not applied):** add to `test/integration/cross-owner-transfers.integration.spec.ts` a `describe("under enforcement")` block on `createEnforcedIntegrationModule([TransactionsModule])` with the probe's case: `jest.spyOn(transfers, "writeTransferLegs")` gated on a promise, `revokeDelegate` in the gap, then `expect(legsInA).toEqual([])` and `expect(balance).toBe(5000)`; it fails at the baseline with `legsInA.length === 1` and balance 5700.
+14. **Verification method:** the regression test above (fails on the baseline, as executed); `cross-owner-transfers` and `joint-accounts` suites green; a second variant where the write commits first and the revoke follows (expect success and a revoked delegation).
+15. **Residual risks / patch limitations:** `FOR SHARE` makes revoke wait for in-flight writes (bounded by one request); `revokeDelegate` must keep taking its `DELETE` lock in the same order (delegation row first) to avoid a new deadlock; the cross-owner update/delete paths were sampled, not traced line by line (S07).
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT` (joint accounts and cross-owner transfers, plan section 5). Surfaces (Rule 7): cross-owner transfer create, update, delete; joint-register create, update, remove, mark-cleared; joint category create. Invariant ID: none in the index (section 11).
+
+
+### A26-M05 - Delegation management reads in one transaction and writes back the stale entity in another: a revoked delegation is re-instated
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S04-02 (primary, 04-rls-tenancy.md, session severity MEDIUM).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** security.
+
+#### A26-S04-02 (primary) - Delegation management reads in one transaction and writes back the stale entity with a whole-entity `save` in another: a revoked delegation is re-inserted, and an owner rotates a login another owner has just linked
+
+1. **Severity:** MEDIUM. Two security decisions (revocation is final; an owner may rotate only its own pure delegate's credentials) are undone by an ordinary race, executed under the unprivileged role; each needs two requests inside a short window.
+2. **Confidence:** high (executed, both instances).
+3. **Location:** `backend/src/delegation/delegation.service.ts:940-970` (`setSectionGrants`: `scoped(findOne)` then `scoped(save)`), `:972-1006` (`setCapabilities`, same), `:1465-1544` (`resetDelegatePassword`: `systemScoped(findOne)` at `:1484`, `canOwnerResetDelegatePassword` in its own system transaction at `:1502` / `:763-787`, bcrypt, `systemScoped(save)` at `:1523`); the racing writers `:1309-1373` (`revokeDelegate`, hard `DELETE`) and `:1110-1261` (`createDelegate` link, no lock on the `users` row it reads by email).
+4. **Violated invariant:** a revoked delegation stays revoked; `resetDelegatePassword` refuses once any other owner has a delegation to the login (the rule its own comment and `createDelegate`'s `delegateOfAnotherOwner` state); AGENTS.md "a rejected command must not already have written ... under the same lock".
+5. **Realistic reproduction scenario:** (a) Alice toggles "may create categories" for delegate Bob and, before that request finishes, clicks Revoke in another tab. (b) Alice resets the password of Dave, her pure delegate, while Bob (another owner) adds `dave@...` as his delegate. Both executed under `monize_app` with a barrier between the read and the write (timing only, the spies call through):
+   - (a) `{"afterRevoke":[],"afterSave":[{"id":"ded6fbf1-...","status":"active","categories_can_create":true}],"err":null,"sameId":true}`
+   - (b) `{"checkAfterLink":false,"resetReturnedPassword":true,"err":null,"passwordChanged":true,"activeOwners":2}`
+6. **Observed:** (a) the revoke deletes the row, then TypeORM's `save` finds no row by id and INSERTs the snapshot, so the same delegation id is back with `status = 'active'` and its capability flags (its account grants stay deleted, by cascade); Bob can switch into Alice's context again, read her categories, payees and tags (the policy arm needs only an active delegation, `schema.sql:3696-3724`) and use any section flags that were on. (b) the check passed before Bob's link, the write landed after it, and Alice now holds a temporary password for a login that also opens Bob's shared data; the check, rerun after the link, answers `false`.
+7. **Expected:** (a) the capability update affects zero rows and returns 404 after a revoke; (b) the reset is refused, or Bob's link waits for the reset and then makes the next reset refuse.
+8. **Impact:** security: revoked access silently restored (a); a cross-owner credential takeover by the first owner (b). Also, from the same root cause, two settings saves on one delegation overwrite each other's columns.
+9. **Root cause:** whole-entity `save` of an entity read in an earlier transaction, with no row lock and no predicate on the expected state; TypeORM reloads by id, writes every differing column and inserts when the row is gone. This is the concurrent instance of S03's D-S03-01 (handed to this session).
+10. **Recommended correction:** for the flag setters, one conditional `UPDATE ... WHERE id = $1 AND owner_user_id = $2` of only the changed columns, refusing on zero affected rows; for the reset, one system transaction that locks the delegate's `users` row `FOR UPDATE` and the delegate's `account_delegates` rows `FOR SHARE`, runs the "no other owner" check, and writes the credential columns with `update`, not `save`; `createDelegate`'s link reads the existing user `FOR UPDATE` so the two serialize.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/delegation/delegation.service.ts
++++ b/backend/src/delegation/delegation.service.ts
+@@ async setCapabilities(ownerUserId, delegationId, caps) {
+-    const delegation = await this.scoped(AccountDelegate, (repo) =>
+-      repo.findOne({ where: { id: delegationId, ownerUserId } }),
+-    );
+-    if (!delegation) { throw new NotFoundException(...); }
+-    for (const [key, value] of Object.entries(caps)) {
+-      if (value !== undefined) { (delegation as ...)[key] = value; }
+-    }
+-    await this.scoped(AccountDelegate, (repo) => repo.save(delegation));
++    const patch = Object.fromEntries(
++      Object.entries(caps).filter(([, v]) => v !== undefined),
++    );
++    const result = await this.scoped(AccountDelegate, (repo) =>
++      repo.update({ id: delegationId, ownerUserId }, patch),
++    );
++    if (!result.affected) { throw new NotFoundException(...); }
+   }
+   // setSectionGrants: the same change.
+@@ async resetDelegatePassword(ownerUserId, delegationId) {
+-    const delegate = await this.systemScoped(User, (repo) => repo.findOne(...));
+-    ...
+-    if (!(await this.canOwnerResetDelegatePassword(delegate.id))) { throw ... }
+-    ...
+-    await this.systemScoped(User, (repo) => repo.save(delegate));
++    const temporaryPassword = generateReadablePassword();
++    const hash = await bcrypt.hash(temporaryPassword, this.BCRYPT_ROUNDS);
++    await withSystemContext(() => withScopedDb(this.dataSource, async (m) => {
++      const [d] = await m.query(
++        `SELECT u.id, u.oidc_subject FROM users u WHERE u.id = $1 FOR UPDATE`,
++        [delegation.delegateUserId]);
++      if (!d) throw new NotFoundException(...);
++      if (d.oidc_subject) throw new BadRequestException(...);
++      await m.query(
++        `SELECT 1 FROM account_delegates WHERE delegate_user_id = $1 FOR SHARE`,
++        [d.id]);
++      // canOwnerResetDelegatePassword's predicates, evaluated on m
++      if (!(await this.ownerMayResetOn(m, d.id))) throw new ForbiddenException(...);
++      await m.getRepository(User).update({ id: d.id }, {
++        passwordHash: hash, mustChangePassword: true, resetToken: null,
++        resetTokenExpiry: null, failedLoginAttempts: 0, lockedUntil: null,
++      });
++      await m.getRepository(RefreshToken).update({ userId: d.id, isRevoked: false }, { isRevoked: true });
++      await revokeStandingCredentials(m, d.id);
++    }));
+@@ createDelegateWithinContext: inside the transaction
+-      let delegateUser = await manager.findOne(User, { where: { email } });
++      let delegateUser = await manager.findOne(User, {
++        where: { email }, lock: { mode: "pessimistic_write" },
++      });
+```
+
+    `ownerMayResetOn(m, id)` is `canOwnerResetDelegatePassword`'s body taking the manager; bcrypt moves before the transaction so the lock is not held across it. The same "update, not save" change applies to the other D-S03-01 rows listed in section 12.
+12. **Recommended regression test:** under `createEnforcedIntegrationModule([DelegationModule])`, the two probe cases: revoke between the capability read and write (expect zero rows after), and a second owner's link between the reset's check and write (expect the hash unchanged or a 403).
+13. **Suggested regression-test diff (illustrative, not applied):** a new `test/integration/delegation-management.integration.spec.ts` with the probe's cases (the spy on the private `scoped` is replaced, after the fix, by a two-pool barrier: pool 1 opens the reset transaction and holds the `users` lock; pool 2's `createDelegate` must block until pool 1 commits). Both fail at the baseline as quoted in field 5.
+14. **Verification method:** the two tests; `delegation.service.spec.ts` updated for `update` instead of `save`; `joint-accounts`, `cross-owner-transfers` green.
+15. **Residual risks / patch limitations:** the sweep in section 12 lists 32 read-then-`save` sites, 26 across transactions, most on `users`; this finding covers the delegation ones only, the auth and admin ones are handed back (section 12); a lock on `users` rows during reset adds contention with login for the same user only.
+
+Causality: `PRE_EXISTING_UNREPORTED` for `resetDelegatePassword` (the upstream audit cites `delegation.service.ts` management paths, P2-007) and, for the capability setters, not determinable in this shallow clone (plan ledger: `d5cea9bf` is unreachable); classified `PRE_EXISTING_UNREPORTED` with that caveat. Disposes of D-S03-01 for the delegation and RLS paths (section 5).
+
+
+### A26-M06 - The `account_delegates` and `account_delegate_grants` policies let a delegate-side session issue itself a delegation from any owner
+
+- **Canonical severity:** MEDIUM. kept MEDIUM: the RLS containment fails, but no current application path reaches it without a second defect.
+- **Absorbs:** A26-S04-03 (primary, 04-rls-tenancy.md, session severity MEDIUM).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** security.
+
+#### A26-S04-03 (primary) - The `account_delegates` and `account_delegate_grants` policies let a delegate-side session issue itself a delegation from any owner, which the joint read arms then turn into a read of that owner's accounts and transactions
+
+1. **Severity:** MEDIUM. RLS is the documented containment for "the query that forgets to" filter (`docs/row-level-security-contract.md` section 1); this policy does not contain one, and the escalation is cross-tenant. Not HIGH because no current application path inserts into either table under a delegate's own identity with a request-chosen owner (all writers listed in section 12), so it needs a second defect (an injection or a mistaken query) to be reached.
+2. **Confidence:** high (executed at the policy level).
+3. **Location:** `database/schema.sql:4111-4118` (`account_delegates_isolation`, mirrored from `database/migrations/114_rls_policies_special.sql:51`), `database/schema.sql:4076-4086` (`account_delegate_grants_isolation`, from `113_rls_policies_indirect.sql:238`); the read arms that consume them, `schema.sql:3651-3724` (`transactions`, `accounts`, `monthly_account_balances`, `categories`, `payees`, `tags`) and the indirect splits/tags arms.
+4. **Violated invariant:** only an owner (current identity) can create a delegation that grants access to its own data; a policy's WITH CHECK must not admit a row the caller could not legitimately create.
+5. **Realistic reproduction scenario:** any statement run in Mallory's own session (current = real = Mallory) that inserts into `account_delegates` with a chosen `owner_user_id`. Executed as `monize_app` with Mallory's GUCs, inside `withScopedDb`, rolled back afterwards: `{"before":0,"insertedDelegation":true,"insertedGrant":true,"victimAccountsVisible":["Victim savings"]}`.
+6. **Observed:** the INSERT passes WITH CHECK through the `delegate_user_id = app_real_user_id()` arm; the grant INSERT passes through `ad.delegate_user_id = app_real_user_id()` (the FK to `accounts` is checked without RLS, so any account id works); the next SELECT shows the victim's account through the `accounts` joint read arm, and the same arms expose `transactions`, `monthly_account_balances`, `categories`, `payees`, `tags`, splits and transaction tags.
+7. **Expected:** `new row violates row-level security policy` on the first INSERT.
+8. **Impact:** security: one statement turns any database-reachable defect in a delegate-side code path into a read of any tenant's ledger, defeating the layer whose purpose is to contain such a defect. Also an application-level escalation if a row so written is later trusted by `validateActingContext` (it reads `account_delegates` by id and checks only status, delegate and owner, `delegation.service.ts:192-238`).
+9. **Root cause:** one policy (USING and WITH CHECK identical) for every command; the delegate arm is needed for SELECT (the delegate lists its own delegations) and DELETE-side reads, but was also given to INSERT and UPDATE.
+10. **Recommended correction:** keep the delegate arm in USING; make WITH CHECK owner-only (`owner_user_id = app_current_user_id() OR app_bypass_rls()`) on `account_delegates`, and `ad.owner_user_id = app_current_user_id()` only on `account_delegate_grants`. Every current writer is an owner-scoped or system transaction (section 12), so nothing legitimate is refused.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- /dev/null
++++ b/database/migrations/20261021120000_delegation_policies_owner_only_check.sql
++-- Delegation rows are issued by their owner only: keep the delegate's read
++-- arm in USING, drop it from WITH CHECK (A26-S04-03).
++DROP POLICY IF EXISTS account_delegates_isolation ON account_delegates;
++CREATE POLICY account_delegates_isolation ON account_delegates
++  USING (owner_user_id = (SELECT app_current_user_id())
++      OR delegate_user_id = (SELECT app_real_user_id())
++      OR (SELECT app_bypass_rls()))
++  WITH CHECK (owner_user_id = (SELECT app_current_user_id())
++      OR (SELECT app_bypass_rls()));
++
++DROP POLICY IF EXISTS account_delegate_grants_isolation ON account_delegate_grants;
++CREATE POLICY account_delegate_grants_isolation ON account_delegate_grants
++  USING ((SELECT app_bypass_rls()) OR EXISTS (
++    SELECT 1 FROM account_delegates ad
++    WHERE ad.id = account_delegate_grants.delegation_id
++      AND (ad.owner_user_id = (SELECT app_current_user_id())
++        OR ad.delegate_user_id = (SELECT app_real_user_id()))))
++  WITH CHECK ((SELECT app_bypass_rls()) OR EXISTS (
++    SELECT 1 FROM account_delegates ad
++    JOIN accounts a ON a.id = account_delegate_grants.account_id
++                   AND a.user_id = ad.owner_user_id
++    WHERE ad.id = account_delegate_grants.delegation_id
++      AND ad.owner_user_id = (SELECT app_current_user_id())));
+--- a/database/schema.sql
++++ b/database/schema.sql
+@@ (the same two policies, lines 4076-4086 and 4111-4118)
+```
+
+    The grants WITH CHECK also requires the account to belong to the delegation's owner, which the FK cannot express.
+12. **Recommended regression test:** in `rls-enforcement.integration.spec.ts`, as a delegate session: INSERT `account_delegates` naming another owner -> `42501`; INSERT a grant on a delegation the session is only the delegate of -> `42501`; as the owner, a grant on another owner's account -> `42501`.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++  it("a delegate cannot issue itself a delegation or a grant", async () => {
++    await expect(asUser(mallory, (m) => m.query(
++      `INSERT INTO account_delegates (owner_user_id, delegate_user_id, status)
++       VALUES ($1, $2, 'active')`, [victim, mallory]))).rejects.toThrow(/row-level security/);
++  });
+```
+
+14. **Verification method:** the test above fails at the baseline (executed equivalent quoted in field 5) and passes after; `scripts/verify-schema.sh`; `migration:lint`; the enforced suites (`calendar-*`, `push-hold`, `email-receipts-*`) green.
+15. **Residual risks / patch limitations:** the read arms themselves still trust any active delegation whose `delegate_user_id` is the real user, including while the delegate acts for a different owner (D-S04-01); this diff closes only the issuing of such rows.
+
+Causality: `PRE_EXISTING_UNREPORTED` (the WITH CHECK is migration 114's); amplified by the read arms of migrations 132 and 134 (`EXPOSED_OR_AMPLIFIED` in Rule 3's terms).
+
+
+### A26-M07 - Automatic-backup retention deletes legacy flat-root artifacts of other owners (MON-H01 residual, MON-M43)
+
+- **Canonical severity:** MEDIUM. kept MEDIUM: loss of other users' pre-upgrade recovery points, a one-time population; live data and the sharded layout are unaffected. Not raised to HIGH because current recovery points keep being written.
+- **Absorbs:** A26-S06-01 (primary, 06-backup-restore.md, session severity MEDIUM); A26-S02-06 (superseded, 02-prior-high-triage.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-BACKUP-001, MON-H01, MON-M43.
+- **Lens:** data.
+
+#### A26-S06-01 (primary) - Automatic-backup retention deletes legacy flat-root artifacts of other owners (MON-H01 residual, MON-M43; carries A26-S02-06)
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed: mutation M1)
+3. **Location:** `backend/src/backup/auto-backup.service.ts:2253-2311` (sort tie-break `:2297`, comment `:2256-2263`); `backend/src/backup/storage/local-backup-storage.target.ts:335-341` (`list` returns the flat base as `legacy: true`), `:427-434` (`remove` deletes there); specs `auto-backup.service.spec.ts:3870`, `:3907`.
+4. **Violated invariant:** INV-BACKUP-001 "namespaced by owner": one owner's retention pass never deletes another owner's artifact.
+5. **Realistic reproduction scenario:** a deployment upgraded from the pre-sharding layout holds `monize-backup-daily-*.json.gz` files of several users directly in `BACKUP_CONTAINER_DIR`. Any user's next run (cron or the admin's "Run Backup Now" fan-out, which runs every account) lists those files as its own `legacy` entries and `deleteExcess` removes every one past that user's `retentionDaily`.
+6. **Observed:** the flat files are deleted by whichever account runs first; on an equal date the legacy copy is preferred for deletion. Two tests assert this as correct.
+7. **Expected:** an artifact whose owner cannot be recovered from its name is never deleted by a per-user pass; it is left for an explicit operator action.
+8. **Impact:** loss of other users' only pre-upgrade recovery points (encrypted or plaintext), silently, the first hour after the upgrade. Recovery and data-integrity impact on a one-time population; no ongoing cross-owner effect on the sharded layout.
+9. **Root cause:** the owner ambiguity of a legacy name is resolved by sweeping instead of refusing; `open()` already refuses legacy entries for the same reason (`:392-395`), so the two methods disagree about whether a legacy file belongs to the caller.
+10. **Recommended correction:** exclude `legacy` entries from `deleteExcess`; document the flat root as operator-owned (a one-line release note and a log line counting what is left).
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/backup/auto-backup.service.ts
++++ b/backend/src/backup/auto-backup.service.ts
+@@ -2290,9 +2290,11 @@
+     const deleteExcess = async (tier: BackupTier, limit: number) => {
+       if (!tiers.includes(tier)) return;
++      // A legacy flat-root file names no owner, so it is never this user's to
++      // delete (open() refuses it for the same reason).
+       const sorted = files
+-        .filter((f) => f.tier === tier)
++        .filter((f) => f.tier === tier && !f.entry.legacy)
+         .sort(
+           (a, b) =>
+-            b.date.getTime() - a.date.getTime() ||
+-            Number(a.entry.legacy) - Number(b.entry.legacy),
++            b.date.getTime() - a.date.getTime(),
+         );
+```
+
+12. **Recommended regression test:** invert `auto-backup.service.spec.ts:3870` and `:3907`: legacy files survive any user's retention, and a sharded file is still pruned to the limit.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
+-    it("counts files left flat in the base folder by an older version", async () => {
++    it("never deletes a file left flat in the base folder by an older version", async () => {
+ ...
+-      for (const name of legacyNames) {
+-        await expect(fs.access(join(root, name))).rejects.toThrow();
+-      }
++      for (const name of legacyNames) {
++        await expect(fs.access(join(root, name))).resolves.toBeUndefined();
++      }
+```
+
+14. **Verification method:** `TZ=UTC npm run test:unit -- auto-backup`; M1 shows exactly these two tests change verdict.
+15. **Residual risks / patch limitations:** legacy files then accumulate until an operator removes them; the instance-namespace half (two deployments sharing one directory or bucket prefix with the same user ids) is a design decision, section 9.
+
+Causality: `PRIOR_REPORTED`, `CONFIRMED_WITH_DIFFERENT_ROOT_CAUSE` (MON-H01 residual; MON-M43 narrowed to the two legacy tests). Rule 7 surfaces: cron path and manual fan-out, both through `applyBackupOutcome -> enforceRetention`.
+
+#### A26-S02-06 (superseded) - Automatic-backup retention deletes legacy flat-root artifacts of other owners; keys carry no instance namespace (MON-H01 residual; MON-M43 narrowed)
+
+Superseded by the primary above: same root cause, and its scenario is one surface of the primary's reproduction. Full text: `02-prior-high-triage.md` section 4.
+
+
+### A26-M08 - The S3 half of INV-BACKUP-006 rests on a suite that never runs in CI and fails when it does; no local/S3 attachment round trip exists (MON-M47)
+
+- **Canonical severity:** MEDIUM. kept MEDIUM; A26-S06-05 (LOW) is the same storage-target fidelity gap and is absorbed.
+- **Absorbs:** A26-S06-02 (primary, 06-backup-restore.md, session severity MEDIUM); A26-S06-05 (merged surface, 06-backup-restore.md, session severity LOW).
+- **Invariants and prior findings named:** INV-BACKUP-006, INV-ATTACHMENT-001, MON-H02, MON-M47.
+- **Lens:** test.
+
+#### A26-S06-02 (primary) - The S3 half of INV-BACKUP-006 rests on an integration suite that never runs in CI and fails when it does
+
+1. **Severity:** MEDIUM (verification defect)
+2. **Confidence:** high (executed against an S3-compatible endpoint)
+3. **Location:** `backend/test/integration/backup-store-s3.integration.spec.ts:21-41` (gate on `BACKUP_STORE_S3_TEST_ENDPOINT`), `:160-185` (test defect); `.github/workflows/ci.yml` (no MinIO service, no endpoint variable: `grep -i minio` returns nothing); `docs/system-invariants.md` INV-BACKUP-006 "Required tests ... Integration against MinIO", status `enforced`.
+4. **Violated invariant:** `docs/release-integrity.md` / verification contract: a property listed as enforced by a test is enforced by a test that runs and passes.
+5. **Realistic reproduction scenario:** run the suite with an endpoint: `BACKUP_STORE_S3_TEST_ENDPOINT=http://127.0.0.1:9000 npm run test:integration -- backup-store-s3` (bucket `monize-store-test` created).
+6. **Observed:** 7 passed, 2 failed. (a) "carries one hourly cycle end to end" names its dailies `monize-backup-daily-2026-09-${day}` with `day` unpadded (8, 9, 10..14), prunes by `localeCompare`, and so keeps `09-8` and `09-9` as "newest": the test's own pruning is wrong, independent of the emulator. The production names are zero-padded (`getLocalDateString`, `en-CA` 2-digit), so this is a test defect, not a code defect. (b) "is refused by the destination when the declared checksum does not match" resolved: moto does not validate `ChecksumSHA256`. That is an emulator limitation, but it also shows the invariant text's claim "where an S3-compatible service ignores the checksum header we learn it from a rejected put, not from a silent acceptance" is false for at least one S3-compatible implementation: an ignoring service accepts silently.
+7. **Expected:** the suite runs in the `backend-integration-tests` job (the comment at `:23-27` says that is where it is meant to run) and passes; or INV-BACKUP-006 records the S3 half as `partial` until it does.
+8. **Impact:** the only bucket-backed evidence for atomic publish, promotion and prune on S3 has never executed green; a regression in `s3-backup-storage.target.ts` would ship. Operations: an S3-compatible store that ignores checksums gives no integrity check on publish, contrary to the invariant text.
+9. **Root cause:** an environment-gated suite with no CI job that sets the gate, plus a fixture that was never run.
+10. **Recommended correction:** add the MinIO service and the variable to the integration job (an agreed `.github/` change, out of this audit's scope), fix the fixture to zero-pad, and reword the checksum sentence to "a store that ignores the header accepts silently; only AWS S3 and MinIO are known to validate".
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/test/integration/backup-store-s3.integration.spec.ts
++++ b/backend/test/integration/backup-store-s3.integration.spec.ts
+-      const dailies = [8, 9, 10, 11, 12, 13, 14].map(
+-        (day) => `monize-backup-daily-2026-09-${day}.mzbe`,
+-      );
++      const dailies = [8, 9, 10, 11, 12, 13, 14].map(
++        (day) => `monize-backup-daily-2026-09-${String(day).padStart(2, "0")}.mzbe`,
++      );
+--- a/docs/system-invariants.md
++++ b/docs/system-invariants.md
+-                    S3-compatible service ignores the checksum header we learn
+-                    it from a rejected put, not from a silent acceptance.
++                    S3-compatible service ignores the checksum header, the put
++                    is accepted silently; the integration suite against MinIO
++                    is what shows the configured store validates it.
+```
+
+12. **Recommended regression test:** the existing suite, run in CI with the endpoint set.
+13. **Suggested regression-test diff:** the fixture fix above; the CI service block is a `.github/` change for the maintainer.
+14. **Verification method:** the command in field 5 against MinIO: 9 passed.
+15. **Residual risks / patch limitations:** not re-run against MinIO here (no image reachable); case (b) is expected to pass on MinIO and remains unverified in this session.
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the S3 store target and its suite postdate `d5cea9bf`). Handed to S21 for the CI half.
+
+#### A26-S06-05 (merged surface) - The repository still has no local/S3 attachment backup-restore round trip (MON-M47)
+
+1. **Severity:** LOW (missing test; the behaviour itself was executed and holds)
+2. **Confidence:** high
+3. **Location:** `backend/test/integration/backup-restore.integration.spec.ts` (database provider only, via `attachmentStorageProviders()`, `test/helpers/integration-setup.ts:502-516`); `backend/src/backup/backup.service.spec.ts` (mocked storage).
+4. **Violated invariant:** INV-ATTACHMENT-001 and MON-H02's fix: a restored external attachment downloads the same bytes under its remapped key.
+5. **Realistic reproduction scenario:** revert the carried-bytes branch of `stageAttachmentObjects` for external providers; every repository suite stays green because none restores onto `local` or `s3`.
+6. **Observed:** no repository test uses `LocalStorageProvider` or `S3StorageProvider` in a restore.
+7. **Expected:** the six cases of the scratch spec (R1..R6) in the repository, parameterized over `local` (real tmpdir) and, where an endpoint is set, `s3`.
+8. **Impact:** regression risk on the path MON-H02 fixed.
+9. **Root cause:** the shared harness binds the database provider because it "needs no extra config".
+10. **Recommended correction:** add the parameterized spec.
+11. **Suggested remediation diff:** `<scratchpad>/s06-roundtrip.integration.spec.ts` lines 1-30 (provider factory) and R1..R3, R6; R4 and R5 belong to A26-S06-03 and section 9.
+12. **Recommended regression test:** as 10.
+13. **Suggested regression-test diff:** as 11.
+14. **Verification method:** `S06_PROVIDER=local npm run test:integration -- <spec>`: 6 passed here; `S06_PROVIDER=s3` with an endpoint: 6 passed here.
+15. **Residual risks / patch limitations:** the S3 variant needs the CI endpoint of A26-S06-02.
+
+Causality: `PRIOR_REPORTED`, `CONFIRMED` (MON-M47, still open).
+
+
+### A26-M09 - VOID crossings are decided from a status read before the row lock (bulk VOID expansion and `addSplit`; MON-H10 residual)
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S07-03 (primary, 07-cash-ledger.md, session severity MEDIUM); A26-S02-07 (superseded, 02-prior-high-triage.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-TRANSFER-001, MON-H10.
+- **Lens:** concurrency.
+
+#### A26-S07-03 (primary) - VOID crossings decided from a status read before the row lock (bulk VOID expansion and `addSplit`; MON-H10 residual)
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed, both surfaces)
+3. **Location:** `backend/src/transactions/transaction-bulk-update.service.ts:204-211` (`expandTransferCounterparts`, `:1184-1245`, reads `status` unlocked) before the lock at `:255`; `backend/src/transactions/transaction-split.service.ts:1197-1226` (`addSplit` writes the new counterpart with `status: transaction.status`, the caller's snapshot, while `parent` is the locked row at `:1116`); same shape, static: `updateSplits` passes `parentStatus: transaction.status` (`:1023`).
+4. **Violated invariant:** INV-TRANSFER-001; FIN-001.
+5. **Reproduction:** (a) transfer pair A (-100.00 chequing) / B (+100.00 savings), both VOID. Request 1 `POST /transactions/bulk-update {ids:[A], status: VOID}`; Request 2 `PATCH /transactions/A/transfer {status: CLEARED}` commits between Request 1's expansion and its lock. (b) split parent -100.00 with a -60.00 category line; `POST /transactions/:id/splits {amount: -30, transferAccountId: savings}` while `PATCH /transactions/:id {status: VOID}` commits between the caller's `findOne` and the parent lock.
+6. **Observed (executed, P4 and R2; the interleaving forced by a spy that awaits a barrier after the unlocked read, timing only):** (a) A VOID, B CLEARED; chequing 5 000.00, savings 2 100.00 (stored = ledger). (b) parent VOID, new leg +30.00 UNRECONCILED; savings 2 030.00.
+7. **Expected:** (a) both legs VOID (or the second request refused); (b) the new leg VOID and savings 2 000.00, or a refusal.
+8. **Impact:** 100.00 (a) and 30.00 (b) exist in one account with no matching outflow; every report and net worth carry it. Window: one request's latency (a provider rate lookup in (b)).
+9. **Root cause:** the crossing set and the counterpart status are decided on unlocked reads; the comment at `:199-203` calls the expansion "a structural read", but its filter is the status.
+10. **Recommended correction:** (a) lock the selected rows first, then expand on their locked statuses and lock the added mirrors (one ascending batch is safe: both legs are mirror legs); (b) use `parent.status` from the locked row.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/transactions/transaction-split.service.ts
++++ b/backend/src/transactions/transaction-split.service.ts
+@@ addSplit
+-          status: transaction.status,
++          status: parent.status as TransactionStatus,
+@@
+-        if (transaction.status === TransactionStatus.VOID) {
++        if (parent.status === TransactionStatus.VOID) {
+--- a/backend/src/transactions/transaction-bulk-update.service.ts
++++ b/backend/src/transactions/transaction-bulk-update.service.ts
+@@
+-      statusIds = isUpdatingStatus
+-        ? await this.expandTransferCounterparts(m, userId, eligibleIds, dto.status!)
+-        : eligibleIds;
++      if (isUpdatingStatus) {
++        // Statuses decide the crossing, so read them under the lock.
++        await lockTransactionRows(m, eligibleIds, userId);
++      }
++      statusIds = isUpdatingStatus
++        ? await this.expandTransferCounterparts(m, userId, eligibleIds, dto.status!)
++        : eligibleIds;
+```
+
+**Suggested remediation diff: incomplete** for (a): the second `lockTransactionRows` at `:255` then locks the added mirrors after the selection, which is not one ascending batch; whether that order can deadlock against `updateTransfer` (which locks both legs ascending) needs a decision: lock the pair's union ascending after a first unlocked discovery and re-check, or refuse when the locked statuses no longer match the expansion.
+12. **Recommended regression test:** both interleavings with two connections and a barrier.
+13. **Suggested regression-test diff (illustrative, not applied):** probes P4 and R2 as integration specs; assert both legs share VOID and stored = ledger.
+14. **Verification:** those specs; `npm run test:unit -- transaction-bulk-update transaction-split`.
+15. **Residual risks:** `updateSplits` (`:1023`) not executed; the bulk lock-order decision above.
+
+Causality: `PRIOR_REPORTED`, `CONFIRMED_WITH_DIFFERENT_ROOT_CAUSE` (MON-H10). Supersedes A26-S02-07 (now executed).
+
+#### A26-S02-07 (superseded) - Bulk VOID decides the mirror-leg expansion from statuses read before the row lock (MON-H10 residual race)
+
+Superseded by the primary above: same root cause, and its scenario is one surface of the primary's reproduction. Full text: `02-prior-high-triage.md` section 4.
+
+
+### A26-M10 - `PATCH /transactions/:id` changes the amount, rate or account of one transfer leg only (MON-H11 server residual)
+
+- **Canonical severity:** MEDIUM. kept MEDIUM: reached by REST, PAT and the joint register, not by the transfer form; S07 and S17 agree on the mechanism (section 17.2).
+- **Absorbs:** A26-S07-04 (primary, 07-cash-ledger.md, session severity MEDIUM).
+- **Invariants and prior findings named:** MON-H11.
+- **Lens:** financial.
+
+#### A26-S07-04 (primary) - `PATCH /transactions/:id` changes the amount, rate or account of one transfer leg only (MON-H11 residual)
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed)
+3. **Location:** `backend/src/transactions/transactions.service.ts:2534-2984` (`update`: no `isTransfer` refusal; writes `amount`, `exchangeRate`, `accountId` onto the row; the mirror is touched only on a VOID crossing at `:2919-2936`); controller `transactions.controller.ts:1527-1569` (also the joint-register bypass). The MCP and AI single edits refuse transfers in their previews (`transactions.service.ts:954`, `transaction-tool-prep.service.ts:511`); the AI batch row path was not traced to its preview (section 12).
+4. **Violated invariant:** FIN-001 and the conservation rule `resolveTransferFx` enforces on the transfer routes ("A transfer between two USD accounts must move the same amount on both sides", `transaction-transfer.service.ts:257-268`).
+5. **Reproduction:** transfer 100.00 chequing -> savings (same currency). `PATCH /transactions/<savings leg> {amount: 150}` from a REST client, a personal access token or a joint grantee's register.
+6. **Observed (executed, P3):** 200; legs -100.00 / +150.00, both still `isTransfer` and linked; savings 2 150.00.
+7. **Expected:** refusal pointing at `/transfer` (as the MCP/AI previews do), or routing to `updateTransfer`.
+8. **Impact:** 50.00 created (50 % of the transfer); balances agree with their ledgers, so no recompute repairs it, while every transfer-aware report pairs two different amounts. An `accountId` move re-denominates `currencyCode` to the new account but keeps the number, and `exchangeRate` is written as sent.
+9. **Root cause:** the transfer refusal lives in the MCP/AI preview helpers, not in the write.
+10. **Recommended correction:** inside `update()`'s transaction, after the row lock, refuse a structural change (amount, account, date, rate) to a row with `isTransfer` or a split-transfer leg; keep presentational fields allowed.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/transactions/transactions.service.ts
++++ b/backend/src/transactions/transactions.service.ts
+@@ async update(
+       await assertReconciledRowsMutable(m, userId, [locked]);
++      const structural =
++        ("amount" in updateData && roundMoney(Number(updateData.amount)) !== locked.amount) ||
++        ("accountId" in updateData && updateData.accountId !== locked.accountId) ||
++        ("transactionDate" in updateData && updateData.transactionDate !== locked.transactionDate) ||
++        "exchangeRate" in updateData;
++      if (locked.linkedTransactionId && structural) {
++        throw new BadRequestException(
++          tr("errors.transactions.cannotEditTransfer",
++             "Transfers can't be edited here. Edit the transfer from the Transactions screen."),
++        );
++      }
+```
+
+12. **Recommended regression test:** PATCH amount on each leg of a plain pair and on a split-transfer leg; expect 400 and unchanged rows.
+13. **Suggested regression-test diff:** probe P3 with `rejects.toThrow(/Transfers can't be edited here/)` and both legs still -100.00/+100.00.
+14. **Verification:** that spec; `npm run test:unit -- transactions.service`; grep `e2e/` for a spec editing a transfer through the generic form.
+15. **Residual risks:** a date-only change is structural for a pair too; the diff refuses it (the transfer route handles it); confirm no frontend path relies on PATCH for transfer descriptions with a resent amount (the value comparison keeps an unchanged resend allowed, but `exchangeRate` presence would refuse it: use a value comparison there too).
+
+Causality: `PRIOR_REPORTED`, `CONFIRMED_WITH_DIFFERENT_ROOT_CAUSE` (MON-H11 server half: the transfer routes are fixed; this route bypasses them).
+
+
+### A26-M11 - The strict reconciled lock is skipped on split-transfer leg and cross-owner transfer edits and deletes
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S07-05 (primary, 07-cash-ledger.md, session severity MEDIUM); A26-S02-08 (superseded, 02-prior-high-triage.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-RECONCILE-001.
+- **Lens:** financial.
+
+#### A26-S07-05 (primary) - The strict reconciled lock is skipped on split-transfer leg and cross-owner transfer edits and deletes
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed)
+3. **Location:** `transaction-transfer.service.ts:1728-1736` (early return into `updateSplitTransferLeg`), `:1515-1522` (`removeTransferFromSplitInTransaction`; the assertion at `:1554` is in the `else` branch only), `:1747-1753` -> `:2091-2207` and `:2219-2472` (cross-owner frozen and connected edits), `:1506` -> `:1590-1637` (`removeCrossOwnerTransfer`). `reconciled-lock.guard.spec.ts:55-63` scans `updateTransfer` and `removeTransfer` as whole bodies, so the assertion in one branch satisfies it.
+4. **Violated invariant:** INV-RECONCILE-001.
+5. **Reproduction:** lock on; (a) a RECONCILED split-transfer leg: `PATCH .../transfer {amount: 55}` then `DELETE .../transfer`; (b) Bob's RECONCILED own leg of a connected cross-owner transfer, Bob's lock on: same two requests.
+6. **Observed (executed, P2 and Q2):** all four accepted. (a) leg 55.00 still RECONCILED, parent re-totalled to -115.00; the delete then removed the leg, the parent and its category line. (b) amount changed, then both legs deleted.
+7. **Expected:** `ConflictException` from `assertReconciledRowsMutable` and nothing written.
+8. **Impact:** the user's explicit setting ignored on reconciled history; in (a) the delete also removes an unreconciled parent's whole split.
+9. **Root cause:** the assertion was placed per branch, and the guard checks per method.
+10. **Recommended correction:** assert on the locked rows inside each branch's transaction (split leg and parent; own leg for cross-owner, under the acting owner's preference; the counterpart under its owner's preference for connected edits).
+11. **Suggested remediation diff:** A26-S07-01's diff adds the split-leg edit assertion; for the rest:
+
+```diff
+@@ private async removeTransferFromSplitInTransaction(
+     const parent = await lockTransactionRow(m, parentTransactionId, userId);
+@@
+     const locked = await lockTransactionRows(m, [...siblingLegIds, transaction.id], userId);
++    await assertReconciledRowsMutable(m, userId, [parent, ...locked.values()].filter(Boolean));
+@@ const removeLeg = async (m: EntityManager, leg: Transaction) => {
+       const locked = await lockTransactionRow(m, leg.id, leg.userId);
+       if (!locked) return;
++      await assertReconciledRowsMutable(m, leg.userId, [locked]);
+@@ updateFrozenTransferLeg / updateConnectedCrossOwnerTransfer, after the lock
++      await assertReconciledRowsMutable(m, effectiveUserId, [lockedOwnLeg]);
+```
+
+12. **Recommended regression test:** one unit case per branch with `lockReconciledTransactions: true`; make the guard enumerate the private branch methods.
+13. **Suggested regression-test diff (illustrative, not applied):** add `updateSplitTransferLeg`, `removeTransferFromSplitInTransaction`, `updateFrozenTransferLeg`, `updateConnectedCrossOwnerTransfer`, `removeCrossOwnerTransfer` to `ENFORCEMENT_SITES` in `reconciled-lock.guard.spec.ts`, plus P2/Q2 as integration cases.
+14. **Verification:** `npm run test:unit -- reconciled-lock transaction-transfer`.
+15. **Residual risks:** whose preference governs a counterpart in another owner's ledger is a policy decision (per-ledger reading proposed).
+
+Causality: `PRE_EXISTING_UNREPORTED` for the split-leg branch; `NEW_SINCE_UPSTREAM_AUDIT` for the cross-owner branches. Supersedes A26-S02-08.
+
+#### A26-S02-08 (superseded) - Editing a split-transfer leg bypasses the strict reconciled lock
+
+Superseded by the primary above: same root cause, and its scenario is one surface of the primary's reproduction. Full text: `02-prior-high-triage.md` section 4.
+
+
+### A26-M12 - An account closes over a pending future-dated row, which the due-balance cron later applies to the closed account (MON-M20 residual)
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S07-06 (primary, 07-cash-ledger.md, session severity MEDIUM).
+- **Invariants and prior findings named:** MON-M20.
+- **Lens:** financial.
+
+#### A26-S07-06 (primary) - An account closes over a pending future-dated row, which the due-balance cron later applies to the closed account (MON-M20 residual)
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed)
+3. **Location:** `backend/src/accounts/accounts.service.ts:1264-1349` (`close`: checks `current_balance = 0` and holdings, not future rows), `:2178-2260` (`applyDueTransactionBalances`: absolute recompute with no `is_closed` predicate); `recalculateCurrentBalance` (`:1504-1545`) likewise.
+4. **Violated invariant:** a closed account holds zero and moves no balance (MON-M20's invariant).
+5. **Reproduction:** empty account (0.00) with a -25.00 row dated in the future; close it; the row's date arrives.
+6. **Observed (executed, P7; the row's date moved to `CURRENT_DATE` and the cron method called directly):** close succeeds; after the cron the account is `is_closed = true`, `current_balance = -25.00`.
+7. **Expected:** close refused while the account carries a non-VOID future row (or the row refused).
+8. **Impact:** a closed account with a balance the user cannot touch without reopening; 25.00 here, any amount in general (a scheduled bill posted into the future, an import of post-dated cheques).
+9. **Root cause:** "zero now" is checked, "zero including what is already booked" is not; the absolute writers do not carry the `is_closed` predicate the delta path has.
+10. **Recommended correction:** in `close()`, under the same lock, refuse when a non-VOID row dated after today exists (both halves of a pair).
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+@@ async close(userId: string, id: string): Promise<Account> {
++      const [pending] = await m.query(
++        `SELECT COUNT(*)::int AS n FROM transactions
++          WHERE account_id = ANY($1) AND status <> 'VOID'
++            AND parent_transaction_id IS NULL AND transaction_date > $2`,
++        [halves.map((h) => h.id), todayYMD()],
++      );
++      if (pending.n > 0) {
++        throw new BadRequestException(tr("errors.accounts.closeWithFutureTransactions",
++          "Cannot close an account with future-dated transactions."));
++      }
+```
+
+12. **Recommended regression test:** P7 as an integration case.
+13. **Suggested regression-test diff:** P7 with `expect(close).rejects.toThrow()`.
+14. **Verification:** that spec; i18n key added and pseudo-locale regenerated.
+15. **Residual risks:** a future row inserted after close by a path that does not refuse closed accounts (the create path's closed check was not traced in full).
+
+Causality: `PRIOR_REPORTED`, `CONFIRMED_WITH_DIFFERENT_ROOT_CAUSE` (MON-M20; the delta race it described is fixed by the `is_closed` predicate).
+
+
+### A26-M13 - A whole-entity save or an absolute write puts a snapshot's `current_balance` back: investment-pair rename or re-currency, QIF/CSV opening balance
+
+- **Canonical severity:** MEDIUM. MEDIUM for the group; A26-S10-05 (LOW) is the same "balance updates are atomic SQL" violation on the import path and is absorbed.
+- **Absorbs:** A26-S07-07 (primary, 07-cash-ledger.md, session severity MEDIUM); A26-S10-05 (merged surface, 10-rules-banksync-csv.md, session severity LOW).
+- **Invariants and prior findings named:** INV-BALANCE-001, MON-H07.
+- **Lens:** concurrency.
+
+#### A26-S07-07 (primary) - Renaming or re-currencying an investment pair writes back the linked half's stale `current_balance`
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed)
+3. **Location:** `backend/src/accounts/accounts.service.ts:1138-1145` (linked half read without a lock), `:1190-1201` (`m.save(linkedAccount)`); same shape at `:1937-1942` (`delete`: unlocked read, `m.save` of the linked half to null its link).
+4. **Violated invariant:** INV-BALANCE-001 (a balance changes only by an atomic delta or a locked recompute).
+5. **Reproduction:** investment pair, cash half 1 000.00. The user renames the brokerage; while that request is between reading the cash half and saving it, a posting moves the cash half by +10.00.
+6. **Observed (executed, P8; a `BEFORE UPDATE` trigger sleeping 1 s on the brokerage row widens the window, timing only):** cash half 1 010.00 after the posting, 1 000.00 after the rename commits; ledger 1 010.00.
+7. **Expected:** 1 010.00.
+8. **Impact:** 10.00 lost here; any concurrent posting in general (a trade settling into the cash half, an import, the due-balance cron).
+9. **Root cause:** TypeORM `save` diffs the in-memory entity against a fresh `SELECT` and writes every differing column, so the stale `currentBalance` becomes an absolute write.
+10. **Recommended correction:** lock the linked half (`pessimistic_write`, ascending id order with the addressed half) or write only the changed columns with `m.update(Account, id, { name, currencyCode, institutionId })`.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+-          if (linkedChanged) {
+-            await m.save(linkedAccount);
+-          }
++          if (linkedChanged) {
++            await m.update(Account, linkedAccount.id, {
++              name: linkedAccount.name,
++              currencyCode: linkedAccount.currencyCode,
++              institutionId: linkedAccount.institutionId,
++            });
++          }
+@@ delete
+-        if (linkedAccount) {
+-          linkedAccount.linkedAccountId = null;
+-          await m.save(linkedAccount);
+-        }
++        await m.update(Account, account.linkedAccountId, { linkedAccountId: null });
+```
+
+12. **Recommended regression test:** P8 as an integration case.
+13. **Suggested regression-test diff:** P8 (trigger widening the window), asserting 1 010.00.
+14. **Verification:** that spec; `npm run test:unit -- accounts.service`.
+15. **Residual risks:** the addressed account's own `m.save(account)` is safe only because that row is locked at `:867`.
+
+Causality: `PRE_EXISTING_UNREPORTED` (S04 sweep item, D-S03-01 family).
+
+#### A26-S10-05 (merged surface) - The QIF/CSV opening balance is an absolute, unlocked balance write from a snapshot read in another transaction, rounded to 2 dp
+
+1. **Severity:** LOW
+2. **Confidence:** medium (static)
+3. **Location:** `backend/src/import/import-entity-creator.service.ts:379-398`; callers `backend/src/import/import.service.ts:1251-1255` (the account read in its own `withScopedDb`), `:1407-1414`; multi-account `:404-406, 464-471` (read in the transaction, not locked).
+4. **Violated invariant:** INV-BALANCE-001 / MON-H07 (an absolute balance write under the account lock from a current read); "Money is `decimal(20,4)`".
+5. **Reproduction:** account with opening 0 and current 500. The import reads it; a transaction of -100 commits (current 400); the import writes `current = 500 - 0 + 1000 = 1500` instead of 1400. A file opening balance of `100.1234` is stored as `100.12`.
+6. **Observed:** `current_balance` is wrong by the concurrent delta until the post-processing recompute (`import-post-processing.service.ts:68-101`, locked) rewrites it after the commit; if that recompute fails (logged as an error), it stays wrong. `opening_balance` keeps the 2 dp value permanently, and the recompute adds it, so the balance is off by up to 0.0049.
+7. **Expected:** the opening balance written at 4 dp, and `current_balance` moved by `newOpening - oldOpening` as an atomic delta (or left to the recompute) under the account lock.
+8. **Impact:** narrow: a transient wrong balance and a sub-cent persistent difference for files with 4 dp opening balances.
+9. **Root cause:** a pre-delta-era absolute write kept in the import path.
+10. **Recommended correction:** write `opening_balance` with `roundMoney`, and the current balance as an atomic delta of the opening change.
+11. **Suggested remediation diff (illustrative, not applied)**
+
+```diff
+--- a/backend/src/import/import-entity-creator.service.ts
++++ b/backend/src/import/import-entity-creator.service.ts
+   async applyOpeningBalance(
+     manager: EntityManager,
+     accountId: string,
+-    account: Account,
++    userId: string,
+     openingBalance: number,
+   ): Promise<void> {
+-    const existingOpeningBalance = Number(account.openingBalance) || 0;
+-    const existingCurrentBalance = Number(account.currentBalance) || 0;
+-    const newOpeningBalance = Math.round(openingBalance * 100) / 100;
+-    const newCurrentBalance = ...
+-    await manager.update(Account, accountId, {
+-      openingBalance: newOpeningBalance,
+-      currentBalance: newCurrentBalance,
+-    });
++    await lockAccountsForBalanceWrite(manager, [accountId], userId);
++    const [row] = await manager.query(
++      `SELECT opening_balance FROM accounts WHERE id = $1`,
++      [accountId],
++    );
++    const newOpening = roundMoney(openingBalance);
++    const delta = roundMoney(newOpening - Number(row?.opening_balance ?? 0));
++    await manager.query(
++      `UPDATE accounts SET opening_balance = $2,
++              current_balance = current_balance + $3
++        WHERE id = $1`,
++      [accountId, newOpening, delta],
++    );
+   }
+```
+
+   The lock must stay after `lockImportedHoldingScopes` (advisory first, `import.service.ts:1336-1337`).
+12. **Recommended regression test:** `import-balance-delta.integration.spec.ts`: an opening balance of `100.1234` and a concurrent delta on a second connection; expect opening `100.1234` and current equal to the ledger.
+13. **Suggested regression-test diff:** omitted (LOW); the case above in that suite's style.
+14. **Verification:** `npm run test:integration -- import-balance-delta`.
+15. **Residual risks:** none beyond the post-processing step's own failure path.
+
+Causality: `PRE_EXISTING_UNREPORTED` (S02 hand-off `applyOpeningBalance`; MON-H07 itself is FIXED_VERIFIED by S07 for the recompute paths).
+
+
+### A26-M14 - An error after a single-use write commits is reported as a failure, so the offered retry writes again (scheduled post and its cron alert, AI action confirm)
+
+- **Canonical severity:** MEDIUM. kept MEDIUM: needs a post-commit failure to start; each duplicate is one row, visible and recoverable. Shares the class of A26-H08, which is HIGH because a whole file is duplicated.
+- **Absorbs:** A26-S08-02 (primary, 08-scheduler-cron.md, session severity MEDIUM); A26-S17-02 (merged surface, 17-ai-mcp-notifications.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-OCCURRENCE-001, INV-MCP-004.
+- **Lens:** concurrency.
+
+#### A26-S08-02 (primary) - An error after the posting commit is reported as "could not be posted": the cron raises a false alert telling the user to post manually, and the HTTP caller sees a failure for a committed post
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed, P6)
+3. **Location:** `backend/src/scheduled-transactions/scheduled-transactions.service.ts:3743-3767` (post-commit `completeTransfer`, `recalculateLoanPaymentSplits`, `findOne` inside `post()`); classification `:628-728` (only `ConflictException` and a vanished schedule are "skipped"; every other error raises `SCHEDULED_POST_FAILED` with "You can post it manually from Bills").
+4. **Violated invariant:** a reported failure means nothing was written (the "rejection before write" rule read in reverse: a caller must be able to tell "not posted" from "posted, follow-up failed"); INV-OCCURRENCE-001 through its consequence.
+5. **Realistic reproduction scenario:** a split schedule (any `splits.length > 0`, loan templates included) due 2026-09-01 auto-posts; the post-commit `recalculateLoanPaymentSplits` fails (a lock timeout or deadlock against a concurrent ledger writer, a connection drop). For a transfer schedule the same holds for `completeTransfer` (two `findOne` reads and the history write).
+6. **Observed implementation behavior (executed, failure injected into the post-commit recalculation):** the September row is committed and the cursor advanced to 2026-10-01, yet the cron raised "Rent could not be posted" (`SCHEDULED_POST_FAILED`). On the manual path the first `post()` rejected with the injected error after committing October; the user's retry posted again: three rows (2026-09-01, 2026-10-01, 2026-10-01), claims through 2026-11-01, balance -50.00 instead of 0.00.
+7. **Expected behavior:** the posting succeeds as far as the caller is concerned; the follow-up failure is logged (and, for the loan recalculation, retried by the next posting's re-resolution, which already exists) without changing the outcome reported.
+8. **Impact:** the alert text instructs the exact action that books the bill a second time (A26-S08-01); the HTTP error invites a retry with the same result. -50.00 per occurrence in the example, 100 % of the bill.
+9. **Root cause:** the post-commit half of `post()` propagates its errors through the same promise as the posting itself; neither the cron's classifier nor the client can distinguish them.
+10. **Recommended correction:** catch and log the post-commit half inside `post()` (it is best-effort by design: the net-worth recalculation and the loan template are both re-derived later), and return the posted schedule; keep the error path only for failures before the commit.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/scheduled-transactions/scheduled-transactions.service.ts
++++ b/backend/src/scheduled-transactions/scheduled-transactions.service.ts
+@@ post()
+-    if (preparedTransfer && writtenTransfer) {
+-      await this.transactionsService.completeTransfer(
+-        preparedTransfer,
+-        writtenTransfer.savedFromId,
+-        writtenTransfer.savedToId,
+-      );
+-    }
++    // Everything below runs after the occurrence committed. A failure here must
++    // not be reported as "not posted": the cron would alert the user to post
++    // it again, and a client would retry an operation that already happened.
++    await this.afterPostCommit(id, async () => {
++      if (preparedTransfer && writtenTransfer) {
++        await this.transactionsService.completeTransfer(
++          preparedTransfer,
++          writtenTransfer.savedFromId,
++          writtenTransfer.savedToId,
++        );
++      }
++    });
+@@
+-    if (scheduled.splits && scheduled.splits.length > 0) {
+-      await this.loanService.recalculateLoanPaymentSplits(id);
+-    }
++    if (scheduled.splits && scheduled.splits.length > 0) {
++      await this.afterPostCommit(id, () =>
++        this.loanService.recalculateLoanPaymentSplits(id),
++      );
++    }
+@@
++  private async afterPostCommit(id: string, fn: () => Promise<unknown>): Promise<void> {
++    try {
++      await fn();
++    } catch (error) {
++      this.logger.error(
++        `Scheduled transaction ${id} posted; a follow-up step failed and is left to the next run`,
++        error instanceof Error ? error.stack : error,
++      );
++    }
++  }
+```
+
+   Self-check: the final `return this.findOne(userId, id)` can still throw (schedule deleted concurrently); the cron already treats a vanished schedule as skipped. A failed `completeTransfer` loses the transfer's tags and history entry (pre-existing post-commit property); the money and the claim are already consistent. Needs: unit tests for both paths, the P6 probe as an integration case.
+12. **Recommended regression test:** inject a failure into the post-commit recalculation; assert the cron raises no `SCHEDULED_POST_FAILED`, `post()` resolves, and a manual retry with the pin of A26-S08-01 is refused.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++  it("a failure after the commit is not reported as a failed posting", async () => {
++    loan.recalculateLoanPaymentSplits.mockRejectedValueOnce(new Error("lock timeout"));
++    await service.processAutoPostTransactions();
++    expect(alerts.raiseUserAlert).not.toHaveBeenCalled();
++    expect(await ledger()).toMatchObject({ n: 1, sum: -50 });
++  });
+```
+
+14. **Verification method:** that case in the integration spec of A26-S08-05; `npm run test:unit -- scheduled-transactions.service`.
+15. **Residual risks / patch limitations:** the AI-action and email-receipt callers of `post()` also see a resolved promise afterwards, which is the intended change; a caller that relied on the throw to roll back its own outer transaction cannot (the posting already committed in its own `withScopedDb` unless nested), so the nesting of those callers should be re-checked (S17, S11).
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the single-transaction posting with a post-commit half is the MON-H06 fix).
+
+#### A26-S17-02 (merged surface) - A failure after the write commits releases the AI action's single-use claim, so the card's "Retry" writes the same transaction a second time
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed, P2; mechanism read end to end)
+3. **Location:** `backend/src/ai/actions/ai-actions.service.ts:224-280` (`confirm`: claim, `execute`, and on ANY throw `singleUseTokens.release`), `:921-949` (`executeCreateTransaction`: `transactionsService.create` commits in its own `withScopedDb`, then `persistAttachments`), `:754-812` (same order on update), `:909-919` (`persistAttachments` -> `attachmentsService.create`, which can throw on storage failure, the per-transaction cap under the row lock, or a refused upload); frontend `frontend/src/store/aiChatStore.ts:730-733` (an `error` action is sendable again) and `frontend/src/components/ai/ConfirmationCardShell.tsx:65-71` ("Retry" re-sends the same signed descriptor). MCP sibling: `backend/src/mcp/tools/transactions.tool.ts:1130-1153` (`create` commits, `writeLimiter.record`, then `persistAttachmentsDirect`; a throw there reaches the model as the generic `safeToolError`, `mcp-context.ts:174`).
+4. **Violated invariant:** INV-MCP-004 / the single-use confirmation the claim implements ("a descriptor commits once"); `docs/external-side-effects.md` ordering (a failure must not leave the user told "not done" for a write that is done); `docs/concurrency-and-idempotency.md` retry after commit.
+5. **Realistic reproduction scenario:** a user drops a receipt photo into the chat and asks the assistant to record a 245.80 PLN purchase with the photo attached. The card shows the transaction and the attachment; the user confirms. The attachment store (S3 or the local volume) refuses the put, or another upload to the same transaction fills the tenth slot between the card and the confirm (update path). The transaction has committed; the card turns red with the storage error and a "Retry" button.
+6. **Observed implementation behavior (P2):** the first `confirm` creates the transaction, `attachments.create` throws, the claim is released, the error reaches the card; the second `confirm` with the same `actionId` and signature passes the claim and calls `transactionsService.create` again: `creates= 2`. On the MCP path the model is told "An error occurred while processing your request" after the row exists and the cap was charged; its documented response to an error is to retry, which asks the human again for a change that is already in the ledger.
+7. **Expected behavior:** once the ledger write has committed, the descriptor is spent: the claim stays taken, the attachment failure is reported as "saved, but the file could not be attached" with the transaction id, and a retry attaches the file to that transaction rather than creating another.
+8. **Impact:** a duplicate transaction of the full amount (balance moved twice: 245.80 PLN extra, 100 percent), with no daily-cap charge for the first one (`record` is skipped on the throw), on a path the UI invites the user to take. Recoverable by deleting the duplicate if noticed.
+9. **Root cause:** the claim-release rule ("released when the write throws, so a transient failure leaves the descriptor confirmable") treats `execute` as atomic, but `execute` is a committed write followed by a separate external side effect.
+10. **Recommended correction:** release the claim only when the failure happened before the ledger write committed: split `execute` into the write (inside which a throw releases) and the post-commit steps (whose failure keeps the claim and returns a partial result), and on MCP return a structured partial success naming the created id.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/ai/actions/ai-actions.service.ts
++++ b/backend/src/ai/actions/ai-actions.service.ts
+@@ executeCreateTransaction
+     const transaction = await this.transactionsService.create(userId, dto, {
+       createPayeeIfMissing: descriptor.createPayee === true,
+     });
+-    await this.persistAttachments(userId, transaction.id, files, refIds);
+-    return { type: "create_transaction", id: transaction.id };
++    // The ledger write has committed: from here a failure must not make the
++    // descriptor confirmable again (a retry would create a second transaction).
++    const attachmentError = await this.persistAttachments(
++      userId, transaction.id, files, refIds,
++    ).then(() => null, (err: unknown) => err);
++    return {
++      type: "create_transaction",
++      id: transaction.id,
++      ...(attachmentError ? { attachmentsFailed: files.length } : {}),
++    };
+   }
+@@ executeUpdateTransaction
+-    await this.persistAttachments(userId, transaction.id, files, refIds);
+-    return { type: "update_transaction", id: transaction.id };
++    const attachmentError = await this.persistAttachments(
++      userId, transaction.id, files, refIds,
++    ).then(() => null, (err: unknown) => err);
++    return {
++      type: "update_transaction",
++      id: transaction.id,
++      ...(attachmentError ? { attachmentsFailed: files.length } : {}),
++    };
+--- a/backend/src/mcp/tools/transactions.tool.ts
++++ b/backend/src/mcp/tools/transactions.tool.ts
+@@ manageCreateSplit (and the other direct commits that attach)
+-    const attachments =
+-      attachmentDtos && attachmentRefs
+-        ? await this.persistAttachmentsDirect(...)
+-        : undefined;
++    let attachments: { id: string; filename: string }[] | undefined;
++    let attachmentsFailed = false;
++    if (attachmentDtos && attachmentRefs) {
++      try {
++        attachments = await this.persistAttachmentsDirect(...);
++      } catch {
++        attachmentsFailed = true; // the transaction exists; do not invite a retry
++      }
++    }
+     return toolResult({
+       id: tx.id,
+       date: tx.transactionDate,
+       count: 1,
+       ...(attachments ? { attachments } : {}),
++      ...(attachmentsFailed ? { attachmentsFailed: true } : {}),
+     });
+```
+
+The `ConfirmActionResult` type, the card's confirmed state ("saved; the file was not attached") and the i18n key are the remaining layers; the design decision for the maintainer is whether a failed attachment should instead be retried from a stored ref (the parked bytes live until the relay store's TTL).
+12. **Recommended regression test:** `ai-actions.service.spec.ts`: `attachments.create` rejects once; the first confirm resolves with `attachmentsFailed`; a second confirm with the same dto is refused by the claim and `transactions.create` was called once. An integration variant against `single_use_tokens` (`ai-action-replay.integration.spec.ts` is the harness).
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++    it("keeps the claim when the transaction committed and the attachment failed", async () => {
++      attachmentStore.get.mockResolvedValue({ data: FILE_BYTES });
++      attachments.create.mockRejectedValueOnce(new Error("S3 unavailable"));
++      const dto = dtoFor(createTxDescriptor({ attachments: [attachmentRef()] }));
++      const first = await service.confirm(USER, dto);
++      expect(first).toMatchObject({ id: "tx-new", attachmentsFailed: 1 });
++      await expect(service.confirm(USER, dto)).rejects.toThrow(BadRequestException);
++      expect(transactions.create).toHaveBeenCalledTimes(1);
++    });
+```
+
+14. **Verification method:** the unit case above (fails at the baseline: P2 shows two creates); `ai-action-replay.integration.spec.ts` extended with a post-commit failure; the frontend card test for the partial state.
+15. **Residual risks / patch limitations:** a throw from the domain service AFTER its own commit (for example a post-commit recompute that rejects) has the same shape; the patch covers only the attachment step. A26-S08-02's change to `ScheduledTransactionsService.post` (resolve after a post-commit failure) closes the scheduled branch of `executeCreateInvestmentTransaction`, where the signed due date already refuses a replay.
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the single-use claim row replaced the in-memory `Map` after 2026-08; the attachment path on cards is new). Rule 7 surfaces: AI `create_transaction` and `update_transaction` confirm; MCP direct commits that attach.
+
+
+### A26-M15 - `post()` advances the cursor past its own slot only, so a slot a settlement rule claimed ahead of the cursor becomes `next_due_date` and the schedule stalls
+
+- **Canonical severity:** MEDIUM. kept MEDIUM; S15's D2 reading of slot selection is recorded in section 17.2.
+- **Absorbs:** A26-S08-03 (primary, 08-scheduler-cron.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-CRON-001.
+- **Lens:** financial.
+
+#### A26-S08-03 (primary) - `post()` advances the cursor past its own slot only, so a slot a settlement rule claimed ahead of the cursor becomes `next_due_date` and the schedule is stuck: every tick is skipped silently and every manual post is refused
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed, P4)
+3. **Location:** `backend/src/scheduled-transactions/scheduled-transactions.service.ts:3739` (`advanceScheduleCursor(m, current, new Set([nextDueDateStr]))`); contrast `loan-installments/claim-loan-occurrence.ts:150-180` (the rule's advance reads every claim on or after the cursor); slot selection `loan-installments/occurrence-slots.ts:96-140, 255-285` (the nearest free slot, cursor and later slots included); classification `scheduled-transactions.service.ts:629-636` (a `ConflictException` counts as "claimed elsewhere", no alert).
+4. **Violated invariant:** `schedule-cursor.ts`'s own contract, "the cursor steps past every consecutive claimed slot so the bill never offers an occurrence whose own claim key is taken"; INV-CRON-001 (one effect per tick, here zero forever with no report).
+5. **Realistic reproduction scenario:** a loan bill (manual or auto-post) whose 2026-08-01 installment is not yet posted; the bank row for the September installment arrives dated in late August and the `settle_loan_installment` rule claims slot 2026-09-01 (nearest free slot; `cursorAdvanced = false`). The August installment is then posted (cron or manual).
+6. **Observed implementation behavior (executed):** after the August post the cursor is 2026-09-01, the slot the rule already holds; two further cron ticks post nothing and raise no alert (`raiseUserAlert` calls: 0); a manual post answers 409 "This occurrence has already been posted." The October, November, ... installments never post until the user presses Skip.
+7. **Expected behavior:** the August post advances the cursor past every consecutive claimed slot (to 2026-10-01), exactly as the rule's own advance does.
+8. **Impact:** a loan's scheduled installments stop being booked with no signal (the cron log counts them as "already claimed elsewhere"); the loan and chequing balances drift by one installment per month until noticed. The manual 409 message is misleading (the bill shown as due is reported as already posted).
+9. **Root cause:** two callers of `advanceScheduleCursor` pass different consumed sets; `post()` predates rule claims ahead of the cursor and was not updated when they became possible.
+10. **Recommended correction:** in `post()`, read the schedule's claims dated on or after the slot inside the locked transaction (after the insert) and pass them all, as `claim-loan-occurrence.ts` does.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/scheduled-transactions/scheduled-transactions.service.ts
++++ b/backend/src/scheduled-transactions/scheduled-transactions.service.ts
+@@ post(), recurring branch
+-      await advanceScheduleCursor(m, current, new Set([nextDueDateStr]));
++      // Step past every slot already claimed at or after this one -- a
++      // settlement rule may hold a later slot (INV-LOAN-008) -- so the cursor
++      // never lands on an occurrence whose claim key is taken.
++      const claimedAhead = returnedRows<{ d: string }>(
++        await m.query(
++          `SELECT TO_CHAR(original_due_date, 'YYYY-MM-DD') AS d
++             FROM scheduled_transaction_postings
++            WHERE scheduled_transaction_id = $1 AND original_due_date >= $2`,
++          [id, nextDueDateStr],
++        ),
++      ).map((r) => r.d);
++      await advanceScheduleCursor(m, current, new Set([nextDueDateStr, ...claimedAhead]));
+```
+
+   Self-check: `advanceScheduleCursor` already decrements `occurrences_remaining` once per stepped slot, so a rule-paid slot is counted as consumed (consistent with the rule's own advance). The skipped-over slot's override is pruned by the existing `original_date < next` delete. Needs: the P4 probe as an integration case; a unit case with a claim ahead.
+12. **Recommended regression test:** P4 against the real `post()`.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++  it("steps past a slot a settlement rule already claimed", async () => {
++    const s = await makeSchedule({ nextDueDate: "2026-08-01" });
++    await insertRuleClaim(s.id, "2026-09-01", bankRowId);
++    await service.processAutoPostTransactions();
++    expect(await cursor(s.id)).toBe("2026-10-01");
++  });
+```
+
+14. **Verification method:** that case; `npm run test:unit -- schedule-cursor scheduled-transactions.service claim-loan-occurrence`.
+15. **Residual risks / patch limitations:** a schedule already stuck in production is not repaired by the fix (its cursor already sits on the claimed slot, so every post is still refused); it needs a skip or a one-off data repair; the cron should also alert when a due occurrence is refused for many consecutive ticks (design risk, section 9).
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT` (rule claims on the occurrence key, INV-LOAN-008).
+
+
+### A26-M16 - A cross-currency transfer into an investment sleeve credits the bank account's amount under the sleeve's currency (MNY import)
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S09-03 (primary, 09-import-mny.md, session severity MEDIUM).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** financial.
+
+#### A26-S09-03 (primary) - A cross-currency transfer into an investment sleeve credits the bank account's amount under the sleeve's currency, and verification cannot see it
+
+1. **Severity:** MEDIUM
+2. **Confidence:** medium-high (mapper probe executed; the amount convention for the far row is the one the repository already relies on for cross-currency banking pairs, `map-transactions.spec.ts:457`)
+3. **Location:** `backend/src/import/mny/map/map-transactions.ts:445-461` (`amount: roundMoney(-row.amount)`, `currencyCode: input.currencyByHandle.get(far.account)`); trade cash leg `map/map-investments.ts:203-206, 281` (`|far.amount|`); expected balances `mny-parser.service.ts:194-250`.
+4. **Violated invariant:** each side of a transfer carries its own account's amount in its own currency (`docs/financial-semantics.md` section 2; the banking pair already does this).
+5. **Reproduction:** Money file with a EUR chequing account and a USD investment account; a transfer of EUR 2,400.00 that buys shares, stored by Money as bank row `-2400` (EUR) and far row `+2640` with `hsec` (USD). Probe (`mapTransactions`, scratch spec): output `[{acct-1, -2400, EUR}, {acct-5-cash, 2400, USD}]`, no warning.
+6. **Observed:** the sleeve is credited USD 2,400.00; the trade's cash leg takes USD 2,640.00 out (`totalAmountOf` uses `|row.amount|` of the far row). Sleeve: -240.00 USD per such transfer, 9.1 percent of the transfer, cumulative over every cross-currency funded buy.
+7. **Expected:** sleeve credited USD 2,640.00 (the far row's own amount); sleeve nets 0.00.
+8. **Impact:** a negative cash balance in the brokerage sleeve and a wrong net worth; silent, because `computeExpectedBalances` sums the same mapped rows, so the verification report shows `matches: true`.
+9. **Root cause:** the synthesized counterpart mirrors the near side's amount instead of reading the far row's own amount; correct only when the two accounts share a currency.
+10. **Recommended correction:** use the far row's amount (sign from the near side), and warn when the two currencies differ and the far amount is zero.
+11. **Suggested remediation diff (illustrative, not applied)**
+
+```diff
+--- a/backend/src/import/mny/map/map-transactions.ts
++++ b/backend/src/import/mny/map/map-transactions.ts
+@@ -449,7 +449,13 @@ function buildCashCounterparts(
+       transactionDate: (far.date ?? row.date) as string,
+-      // The mirror of the bank side, so the pair sums to zero.
+-      amount: roundMoney(-row.amount),
++      // Each side in its own currency: the far row records what arrived in the
++      // sleeve. The mirror is only a fallback when Money stored no amount there.
++      amount:
++        far.amount !== 0
++          ? roundMoney(Math.sign(-row.amount) * Math.abs(far.amount))
++          : roundMoney(-row.amount),
+       currencyCode: input.currencyByHandle.get(far.account) ?? "",
+```
+
+Needs verification on a real multi-currency Money file that the far row's `amt` is in the investment account's currency for this pairing (the maintainer's file; no committed fixture has two currencies here).
+
+12. **Recommended regression test:** a cross-currency variant of "pairs the bank row with a cash-sleeve row that funds the trade" asserting the sleeve amount 2640 and, at writer level, a sleeve balance of 0.00 after the trade.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++      it("credits the sleeve in its own currency for a cross-currency transfer", () => {
++        const result = mapTransactions(investmentInput({
++          currencyByHandle: new Map([...CURRENCIES, [1, "EUR"], [5, "USD"]]),
++          transactions: transactionData({
++            transactions: [
++              mnyTransaction({ handle: 1, account: 1, amount: -2400 }),
++              mnyTransaction({ handle: 2, account: 5, amount: 2640, security: 9 }),
++            ],
++            transfers: [mnyTransfer({ from: 1, to: 2 })],
++          }),
++        }));
++        expect(result.transactions[1]).toMatchObject({ amount: 2640, currencyCode: "USD" });
++      });
+```
+
+14. **Verification:** `npm run test:unit -- map-transactions`; a writer-level integration case asserting the sleeve balance.
+15. **Residual risks:** the verification report remains self-referential for every mapping defect (section 9).
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the synthesized counterpart, issues #1175/#1211/#1212 era).
+
+
+### A26-M17 - User actions create or leave global, active currencies offered to every user (MNY import, preferences, deleted users' custom currencies)
+
+- **Canonical severity:** MEDIUM. MEDIUM for the group; A26-S13-06 (LOW) is the same global-list pollution through user deletion and is absorbed.
+- **Absorbs:** A26-S09-06 (primary, 09-import-mny.md, session severity MEDIUM); A26-S13-06 (merged surface, 13-valuation-fx-networth.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** security.
+
+#### A26-S09-06 (primary) - Any user's MNY import creates a global, active currency with an arbitrary code, offered to every user
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed)
+3. **Location:** `backend/src/import/mny/dto/mny-import.dto.ts` `MnyAccountOptionDto.currencyOverride` (`@IsString() @Length(3, 3)` only); `map/map-reference.ts:154-161` (`override.toUpperCase()`, unchecked); file codes `map/map-reference.ts:61-65` (`/^[A-Za-z]{3}$/`, not ISO 4217); `mny-import.service.ts:281-283` (`ensureSystemCurrency` per code); `backend/src/currencies/currencies.service.ts:239-275` (INSERT with `is_active = true`, `created_by_user_id = NULL`), `:176-195` (`findAll` lists every active system currency to every user). Same shape outside this slice: `users/dto/update-preferences.dto.ts:50-53` (`defaultCurrency`, `@MaxLength(3)` only) into `users.service.ts:405`.
+4. **Violated invariant:** server-authoritative metadata; a tenant's request must not write global reference data offered to other tenants (the bond catalog path deliberately creates its currencies inactive for this reason, `currencies.service.ts:243-252`). The repository's validator for a currency code is `IsCurrencyCode` (`common/validators/is-currency-code.validator.ts`, `^[A-Z]{3}$`).
+5. **Reproduction:** authenticated user stages any readable Money file and posts `/import/mny/start` with `options.accounts = [{ handle, include: true, currencyOverride: "q#!" }]`. Executed (scratch spec on `money2008`): job `completed`; `currencies` row `{"code":"Q#!","is_active":true,"created_by_user_id":null}`; both imported accounts denominated `Q#!`.
+6. **Observed:** `Q#!` is a system currency, active, and appears in every user's currency list (`findAll`'s `created_by_user_id IS NULL` arm). A crafted file does the same with any three letters (`ZZZ`), and an ordinary legacy Money file activates real but retired codes (for example `DEM`, `FRF`) for every user.
+7. **Expected:** an override validated as an ISO 4217 code (`IsCurrencyCode` after upper-casing); currencies the import needs created inactive and activated only for the importing user (`user_currency_preferences`), as the bond catalog does for its own.
+8. **Impact:** cross-tenant pollution of a global list (every user's currency pickers); the code becomes a primary key other rows reference, so removing it later is not a simple delete; any job that iterates active currencies may query providers for a non-currency (not bounded here; handed to S13).
+9. **Root cause:** `ensureSystemCurrency` is a global, active insert used from per-user request paths with codes the user controls.
+10. **Recommended correction:** validate the override with `IsCurrencyCode` (and the file's codes with the same regular expression after upper-casing); in the import, ensure the currency inactive and activate it for the importing user only.
+11. **Suggested remediation diff (illustrative, not applied)**
+
+```diff
+--- a/backend/src/import/mny/dto/mny-import.dto.ts
++++ b/backend/src/import/mny/dto/mny-import.dto.ts
+@@ -45,6 +45,8 @@ export class MnyAccountOptionDto {
+   @IsOptional()
+-  @IsString()
+-  @Length(3, 3)
++  @ValidateIf((_o, v) => v !== null && v !== "")
++  @Transform(({ value }) => (typeof value === "string" ? value.toUpperCase() : value))
++  @IsCurrencyCode()
+   currencyOverride?: string | null;
+--- a/backend/src/import/mny/mny-import.service.ts
++++ b/backend/src/import/mny/mny-import.service.ts
+@@ -281,3 +281,6 @@ export class MnyImportService {
+     for (const code of parsed.currencyCodes) {
+-      await this.currencies.ensureSystemCurrency(code);
++      // Reference data other users see: created inactive, offered only to
++      // the user whose accounts need it.
++      await this.currencies.ensureCatalogCurrency(code);
++      await this.currencies.activateForUser(userId, code);
+     }
+```
+
+`activateForUser` does not exist: `Suggested remediation diff: incomplete` for that half. The missing piece is an upsert into `user_currency_preferences (user_id, currency_code, is_active)`; the maintainer decides whether an import may activate a currency for its user at all or should only reference an inactive one.
+
+12. **Recommended regression test:** DTO test refusing `"q#!"`; integration test asserting that an import with a foreign-currency account leaves `currencies.is_active = false` for a code not previously present and that a second user's `findAll` does not list it.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++    it("does not offer a currency an import created to other users", async () => {
++      // stage + start with currencyOverride "ZZZ" for an included account
++      const other = await createUser();
++      const list = await withUserContext(other, () => currencies.findAll(other));
++      expect(list.map((c) => c.code)).not.toContain("ZZZ");
++    });
+```
+
+14. **Verification:** `npm run test:unit -- mny-import.dto`; `npm run test:integration -- mny-import`; the same check for `UpdatePreferencesDto.defaultCurrency`.
+15. **Residual risks:** existing junk or legacy rows already in `currencies` are untouched by the fix.
+
+Causality: `PRE_EXISTING_UNREPORTED`. Rule 7 surfaces: MNY `currencyOverride`, MNY file currency table, preferences `defaultCurrency` (the last outside S09; handed to S13 for confirmation).
+
+#### A26-S13-06 (merged surface) - A deleted user's custom currencies become active system currencies offered to every user, and `GET /currencies/:code` exposes a currency creator's user id
+
+1. **Severity:** LOW
+2. **Confidence:** medium (reading; the FK action and the `findAll` predicate are unambiguous, not executed)
+3. **Location:** `database/schema.sql:70` (`currencies.created_by_user_id REFERENCES users(id) ON DELETE SET NULL`); `backend/src/users/users.service.ts:561-645` (account deletion; no currency cleanup); `currencies/currencies.service.ts:176-195` (`findAll` lists `created_by_user_id IS NULL AND is_active` to everyone), `:314-321`, `:446` (a NULL creator can be neither edited nor deleted by anyone); `currencies.controller.ts:351-356` with `entities/currency.entity.ts:26-27` (`createdByUserId` serialized); `currencies/dto/create-currency.dto.ts:15-18` (`@Length(3, 3)` only, so `POST /currencies` accepts `"q#!"`).
+4. **Violated invariant:** a tenant's data does not become reference data other tenants see (the reason `ensureCatalogCurrency` creates inactive rows, `currencies.service.ts:243-252`); identifiers of other users are not returned (`AGENTS.md` security rules).
+5. **Reproduction:** user A creates `PTS / Family Points`, deletes their account; user B lists currencies.
+6. **Observed (by reading):** `PTS` now has `created_by_user_id NULL`, `is_active true`, and appears in every user's picker as a system currency; no user can edit or delete it. While A exists, `GET /currencies/PTS` returns A's user UUID to any authenticated caller who knows the code.
+7. **Expected:** the deleted user's unreferenced custom currencies deleted with the account (or kept inactive), and `createdByUserId` omitted from the response.
+8. **Impact:** cross-tenant visibility of a user-chosen name and symbol, permanently; a user id disclosed. No financial figure changes.
+9. **Root cause:** the FK action turns ownership into "system" on delete; the entity has no `@Exclude`.
+10. **Recommended correction:** in the account deletion, `DELETE FROM currencies WHERE created_by_user_id = $1 AND NOT currency_code_in_use_globally(code)` before the user row goes, and set the rest inactive; exclude `createdByUserId` from serialization (the view type `UserCurrencyView` already omits it); validate `CreateCurrencyDto.code` with `IsCurrencyCode` or a three-letter pattern.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/currencies/entities/currency.entity.ts
++++ b/backend/src/currencies/entities/currency.entity.ts
+@@ -24,5 +24,6 @@
++  @Exclude()
+   @Column({ name: "created_by_user_id", type: "uuid", nullable: true })
+   createdByUserId: string | null;
+--- a/backend/src/users/users.service.ts
++++ b/backend/src/users/users.service.ts
+@@ (account deletion, before the user row is removed)
++      // A custom currency nobody else references goes with its creator; one
++      // still referenced stays, inactive, rather than becoming a system
++      // currency offered to every user (created_by_user_id ON DELETE SET NULL).
++      await m.query(
++        `DELETE FROM currencies WHERE created_by_user_id = $1
++           AND NOT currency_code_in_use_globally(code)`,
++        [userId],
++      );
++      await m.query(
++        `UPDATE currencies SET is_active = false WHERE created_by_user_id = $1`,
++        [userId],
++      );
+```
+
+   Needs: the deletion's own context (it is a self-delete under the user's identity; the definer function is callable there) and a check that `ClassSerializerInterceptor` applies to `findOne`'s entity return.
+12. **Recommended regression test:** integration: user A creates and deletes; user B's `findAll` does not list A's code.
+13. **Suggested regression-test diff:** as 12; not written out.
+14. **Verification:** the integration case; `npm run test:unit -- currencies users.service`.
+15. **Residual risks:** S09-06 (MNY import) remains the active creation path for junk codes; the daily refresh then asks Yahoo for any referenced code on every run (`yahoo-fx.provider.ts:155-157` carries every code; no negative cache on the refresh), an operational cost recorded in section 9.
+
+- Causality: `PRE_EXISTING_UNREPORTED`.
+
+
+### A26-M18 - A QIF split-transfer leg into another account is written in the source account's currency and amount (MON-H11 QIF half)
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S10-02 (primary, 10-rules-banksync-csv.md, session severity MEDIUM); A26-S02-09 (superseded, 02-prior-high-triage.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-CURRENCY-001, MON-M27, MON-H11.
+- **Lens:** financial.
+
+#### A26-S10-02 (primary) - A QIF split-transfer leg into another account is written in the source account's currency and amount (MON-H11 QIF half; A26-S02-09 confirmed)
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed)
+3. **Location:** `backend/src/import/import-regular-processor.service.ts:589-623` (`currencyCode: ctx.account.currencyCode` at `:604`, `amount: linkedAmount` = `-split.amount` at `:508`); the pending-placeholder branch `:548-587` writes the same unconverted amount; compare the plain transfer `:720-790`, which uses the target's currency and the `PENDING IMPORT` note.
+4. **Violated invariant:** a row's currency is derived from the account that holds it (MON-M27, `assertTransactionCurrencyMatchesAccount`); a cross-currency transfer resolves its rate or is flagged (MON-H11).
+5. **Reproduction (executed):** USD checking (1000), CAD savings (0). Import into checking: `D01/15/2025 T-100.00 PShop SGroceries $-40.00 S[Savings CAD] $-60.00`, mapping `Savings CAD` to the CAD account.
+6. **Observed:** the CAD-account row is `{amount: 60.0000, currency_code: USD}`, no note; the CAD balance is `60.0000`.
+7. **Expected:** a CAD row (at 1.35 CAD per USD, 81.00 CAD) or the plain path's flagged placeholder in CAD.
+8. **Impact:** the CAD account's balance is off by 21.00 CAD (26 percent) per such split at that rate, with no flag to correct it; the row is labelled USD in a CAD account, in every report, export and backup.
+9. **Root cause:** the split path was not given the plain path's target-account lookup and cross-currency branch.
+10. **Recommended correction:** load the target account; same currency: as today in the target's code; different currency: the plain path's placeholder (target code, `PENDING IMPORT` note) so the other account's file corrects it, never a silent 1:1 row.
+11. **Suggested remediation diff (illustrative, not applied)**
+
+```diff
+--- a/backend/src/import/import-regular-processor.service.ts
++++ b/backend/src/import/import-regular-processor.service.ts
+@@ private async processSplitTransfer(
+     ctx.affectedAccountIds.add(splitTransferAccountId);
+     const linkedAmount = -split.amount;
++    const targetAccount = await ctx.manager.findOne(Account, {
++      where: { id: splitTransferAccountId, userId: ctx.userId },
++    });
++    const isCrossCurrency =
++      targetAccount !== null &&
++      targetAccount.currencyCode !== ctx.account.currencyCode;
+@@
+     const linkedSplitTx = ctx.manager.create(Transaction, {
+@@
+-      description: split.memo || qifTx.memo,
++      description: isCrossCurrency
++        ? `${split.memo || qifTx.memo || ""} ${PENDING_IMPORT_NOTE}`.trim()
++        : split.memo || qifTx.memo,
+       status,
+-      currencyCode: ctx.account.currencyCode,
++      currencyCode: targetAccount?.currencyCode ?? ctx.account.currencyCode,
+```
+
+   with `PENDING_IMPORT_NOTE` hoisted from `processTransfer` to a module constant, so both paths write the note `matchPendingTransfer` searches for.
+12. **Recommended regression test:** the executed case, asserting the leg's currency is CAD and the row carries the pending note.
+13. **Suggested regression-test diff (illustrative, not applied):** add to `backend/test/integration/transaction-rules-import.integration.spec.ts` (or a new `import-qif-split-transfer.integration.spec.ts`) the probe of `<scratchpad>/mut/backend/test/integration/audit-s10-qif-split.integration.spec.ts`, with `expect(cadLeg.currency_code).toBe("CAD")` and `expect(cadLeg.description).toContain("PENDING IMPORT")`.
+14. **Verification:** `npm run test:integration -- import`; `npm run test:unit -- import-regular-processor`.
+15. **Residual risks:** the placeholder is still an unconverted amount in the target account until the other file is imported (the plain path's documented behaviour); `matchPendingTransfer` updates a pending leg's amount without a VOID or reconciled check (section 9).
+
+Causality: `PRIOR_REPORTED` (MON-H11, `CONFIRMED`, QIF half), first located by S02 as A26-S02-09; this finding supersedes A26-S02-09. OFX and CSV rows carry no splits on this path (only QIF has `S` lines), so the split shape is QIF-only; the plain transfer path of all three is the flagged-placeholder design.
+
+#### A26-S02-09 (superseded) - A QIF split-transfer leg is written in the source account's currency, unconverted (MON-H11 residual)
+
+Superseded by the primary above: same root cause, and its scenario is one surface of the primary's reproduction. Full text: `02-prior-high-triage.md` section 4.
+
+
+### A26-M19 - Deleting an account checks "no transactions" in one transaction and deletes in another: a concurrent sync or import is cascaded away
+
+- **Canonical severity:** MEDIUM. kept MEDIUM (not executed; static).
+- **Absorbs:** A26-S10-03 (primary, 10-rules-banksync-csv.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-TRANSFER-001.
+- **Lens:** concurrency.
+
+#### A26-S10-03 (primary) - Deleting an account checks "no transactions" in one transaction and deletes in another: a concurrent bank sync or import is cascaded away and its legs in other accounts are orphaned
+
+1. **Severity:** MEDIUM
+2. **Confidence:** medium (static; the window is short)
+3. **Location:** `backend/src/accounts/accounts.service.ts:1868-1947` (counts at `:1872-1876` and `:1889-1897` each in their own `withScopedDb`, removal at `:1935-1947`, no account lock); `database/schema.sql:358` (`transactions.account_id ... ON DELETE CASCADE`), `:378` (`linked_transaction_id ... ON DELETE SET NULL`); writers `bank-sync-writer.service.ts:231`, `import-regular-processor.service.ts:590-623, 775-796`, `convert-to-transfer.ts`.
+4. **Violated invariant:** AGENTS.md "A rejected command must not already have written: every check that can refuse a request runs inside the same transaction as the mutation, under the same lock where concurrency matters"; INV-TRANSFER-001 (a transfer's legs exist together).
+5. **Reproduction:** an empty linked checking account A; the daily bank-sync cron writes 20 rows into A, and an import rule converts "Savings" rows into transfers to account S (the counterpart moves S's balance). The user deletes A: the count runs before the sync commits (0), the sync commits, then `m.remove(account)` cascades A's 20 rows.
+6. **Observed (by reading):** A and its rows are gone; S keeps the counterpart legs with `linked_transaction_id` NULL and their balance contribution, as one-legged "transfers" from an account that no longer exists. The writer's `FOR UPDATE` on A only makes the delete wait until the sync commits, then it proceeds.
+7. **Expected:** the delete is refused with "Close the account instead", because the account has transactions when it is deleted.
+8. **Impact:** money appears in S with no source (for a 300.00 transfer, S overstates by 300.00); the deleted rows are not in the action-history snapshot (`beforeData` is the account only), so undo cannot bring them back. The same shape applies to a QIF import's transfer legs.
+9. **Root cause:** the guard and the delete are separate transactions, and the account row is not locked before the count.
+10. **Recommended correction:** one `withScopedDb`: lock the account (`lockAccountsForBalanceWrite`, which every writer of its balance also takes), count both tables, then unlink and remove.
+11. **Suggested remediation diff (illustrative, not applied)**
+
+```diff
+--- a/backend/src/accounts/accounts.service.ts
++++ b/backend/src/accounts/accounts.service.ts
+@@ async delete(userId: string, id: string): Promise<void> {
+-    const transactionCount = await withScopedDb(this.dataSource, (m) =>
+-      m.getRepository(Transaction).count({
+-        where: { accountId: id },
+-      }),
+-    );
+-    if (transactionCount > 0) { ...throw }
+-    const investmentTransactionCount = await withScopedDb(...)
+-    if (investmentTransactionCount > 0) { ...throw }
++    // Refuse and delete under the account's write lock: a writer that moves its
++    // balance takes the same lock, so no row can land between the count and the
++    // removal (and the cascade).
++    const assertEmpty = async (m: EntityManager): Promise<void> => {
++      await lockAccountsForBalanceWrite(m, [id], userId);
++      const transactionCount = await m
++        .getRepository(Transaction)
++        .count({ where: { accountId: id } });
++      if (transactionCount > 0) { ...throw as today }
++      const investmentTransactionCount = await m
++        .getRepository(InvestmentTransaction)
++        .count({ where: { accountId: id } });
++      if (investmentTransactionCount > 0) { ...throw as today }
++    };
++    await withScopedDb(this.dataSource, assertEmpty); // early answer, as today
+@@
+     await withScopedDb(this.dataSource, async (m) => {
++      await assertEmpty(m);
+       if (account.linkedAccountId) {
+```
+
+   The early check keeps today's behaviour of refusing before the loan schedule is removed; the in-transaction check is the one that holds.
+12. **Recommended regression test:** two connections: connection 1 holds A's row lock and inserts a row (as the writer does), connection 2 calls `delete`; release; expect `BadRequestException` and the row present.
+13. **Suggested regression-test diff (illustrative, not applied):** a new case in `backend/test/integration/accounts-*.integration.spec.ts` with a barrier on `lockAccountsForBalanceWrite`, asserting `count(transactions where account_id = A) = 1` after both finish.
+14. **Verification:** the two-connection test; `npm run test:unit -- accounts.service`.
+15. **Residual risks:** the loan-schedule removal before the delete stays outside the transaction (existing best-effort design).
+
+Causality: `PRE_EXISTING_UNREPORTED` (S07 hand-off; the bank-sync writer and rule conversions make the cross-account leg reachable). Not executed: MEDIUM (plan step 7 requires execution for HIGH and BLOCKER only); the FK actions and the transaction boundaries are read directly from `schema.sql` and the method.
+
+
+### A26-M20 - An AI or MCP edit that names no rate replaces the row's own exchange rate with a freshly resolved market rate (INV-FX-002)
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S12-03 (primary, 12-securities-holdings.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-FX-002.
+- **Lens:** financial.
+
+#### A26-S12-03 (primary) - An AI or MCP edit that names no rate replaces the row's own exchange rate with a freshly resolved market rate
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed, P4)
+3. **Location:** `backend/src/securities/investment-transactions.service.ts:1912-1915` (`previewUpdateInvestmentTransaction` passes `exchangeRate: input.exchangeRate`, so the preview re-resolves when the edit names none); commit: `mcp/tools/investments.tool.ts:869-881` and the bulk loop after `:950` send `exchangeRate: preview.exchangeRate`; `ai/actions/ai-action-builder.service.ts:693-726` signs `exchangeRate: preview.exchangeRate` into the descriptor; `update()` writes any DTO rate (`:4706-4707`). The confirmation text (`mcp/tools/investments.tool.ts:1236-1280`, `editLines`) shows no rate.
+4. **Violated invariant:** INV-FX-002 (the row's own rate is the fact); `AGENTS.md` "A presentation-only edit does not re-resolve an FX rate"; the `update()` contract at `:4700-4705` (keep the stored rate unless the pair changed).
+5. **Reproduction:** a SELL of 141 shares of a USD security from a CAD brokerage, entered at its statement total 820.91 USD and the broker's settlement rate 1.40 (cash +1,149.27 CAD); today's stored USD/CAD is 1.37. Through MCP `manage_investment_transactions` (or the assistant) the user asks to change only the description.
+6. **Observed (executed):** the preview resolves 1.3699999999986299 (unrounded, not `roundFxRate`) and `cashAmount` 1,124.65; after confirmation the row stores 1.37 and the cash leg +1,124.65.
+7. **Expected:** the stored 1.40 kept; cash leg unchanged at +1,149.27.
+8. **Impact:** -24.62 CAD (2.1 percent) on a description edit; the realized gain on the sale moves by the same amount; the user is shown no rate line, only a cash figure, so the change is not disclosed. A back-dated row combines with A26-S12-02 (today's rate).
+9. **Root cause:** the preview reconstructs the edit as a create and therefore resolves a rate; the commit sends what the preview resolved as if the user had supplied it.
+10. **Recommended correction:** in `previewUpdateInvestmentTransaction`, when the edit names no rate and changes neither the account, funding account nor security, carry the stored rate (`Number(existing.exchangeRate)`) into the preview; the adapters then send it back unchanged. Show the rate line in `editLines` when it differs from the stored one.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/securities/investment-transactions.service.ts
++++ b/backend/src/securities/investment-transactions.service.ts
+@@ -1909,10 +1909,15 @@
+-      // Only an explicit override pins the rate; otherwise the preview
+-      // re-resolves it fresh (for the new currency pair if the security or
+-      // account changed), matching update()'s re-resolution precedence.
+-      exchangeRate: input.exchangeRate,
++      // update() keeps the stored rate unless the pair changed (INV-FX-002), and
++      // the adapters commit exactly what this preview resolved, so the preview
++      // must carry the stored rate rather than re-resolve it.
++      exchangeRate:
++        input.exchangeRate ??
++        (input.securityQuery === undefined ||
++        input.securityQuery === existing.security?.symbol
++          ? Number(existing.exchangeRate)
++          : undefined),
+```
+
+Needs: a same-currency row still resolves to 1 (the same-currency branch dominates a supplied rate, `:770-772`); unit cases for the preview; the AI executor's update path (`ai/query/tool-executor.service.ts:2189, 2226`) re-checked.
+
+12. **Recommended regression test:** preview a description-only edit of a cross-currency row with a stored rate different from the market and assert `preview.exchangeRate` equals the stored rate; at integration level, P4 asserting the cash leg.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++  it("keeps the row's own rate when an AI edit names none", async () => {
++    const sell = await sellUsdFromCad({ totalAmount: 820.91, exchangeRate: 1.4 });
++    const preview = await svc.previewUpdateInvestmentTransaction(userId, sell.id, { description: "x" });
++    expect(preview.exchangeRate).toBe(1.4);
++    expect(preview.cashAmount).toBe(1149.27);
++  });
+```
+
+14. **Verification:** P4 green; `npm run test:unit -- investment-transactions mcp/tools/investments ai-action-builder`.
+15. **Residual risks:** a security change through `securityQuery` still re-resolves, which is correct; the preview's unrounded rate (1.3699999999986299 versus the stored 1.3700000000) is a separate precision nit (section 9).
+
+- Causality: `PRE_EXISTING_UNREPORTED`. Surfaces (Rule 7): MCP single, MCP bulk, AI assistant confirmation.
+
+
+### A26-M21 - Realized gains and capital-gains replays price a transferred-in lot at the carried per-share figure and rate 1 (MON-M35 residual)
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S12-04 (primary, 12-securities-holdings.md, session severity MEDIUM).
+- **Invariants and prior findings named:** MON-M35.
+- **Lens:** financial.
+
+#### A26-S12-04 (primary) - Realized gains and capital-gains replays price a transferred-in lot at the carried per-share figure and rate 1, so a cross-currency transfer resets the basis (MON-M35 still open off the lots surface)
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed, P5)
+3. **Location:** `backend/src/securities/portfolio-calculation.service.ts:1302-1310` (`calculateRealizedGains`: `TRANSFER_IN` through `acquisitionCost(tx)`, rate 1 from `transferSecurity` `investment-transactions.service.ts:2414, 2439`), `:293-311` (`applyTxToState`, the capital-gains seed), `:1615-1625` (same fold); the correct fold is `calculateCostBasisLotsInAccountCurrency` `:940-963`, whose own comment (`:926-935`) describes this exact defect.
+4. **Violated invariant:** basis conservation across a transfer (`portfolio-calculation.service.ts:785-791`); `AGENTS.md` "The fix for one surface is not the fix".
+5. **Reproduction:** two CAD brokerages, USD security. BUY 10 @ 100.00 USD at 1.37 in A (basis 1,370.00 CAD). `transferSecurity` 10 shares A -> B. SELL 10 @ 140.00 USD at 1.37 in B (proceeds 1,918.00 CAD). `calculateRealizedGains`.
+6. **Observed (executed):** realized gain 918.00 with cost basis 1,000 (the USD figure under a CAD label).
+7. **Expected:** (1,400 - 1,000) x 1.37 = 548.00 CAD.
+8. **Impact:** +370.00 CAD phantom gain (67.5 percent) on every sale after a cross-currency transfer, carried into the realized-gains report, the capital-gains-by-month/day charts, the AI/MCP `get_capital_gains` answer (`getLlmCapitalGains`) and any tax figure built from them; the lots surface on the same screen says 548, so two surfaces answer one sale with two figures.
+9. **Root cause:** the MON-M35 fix moved only `calculateCostBasisLotsInAccountCurrency` to "the destination takes what the source released"; the three other replays still treat `TRANSFER_IN` as an acquisition.
+10. **Recommended correction:** extract the carried-basis handling (the `carriedByTransferOut` map keyed on `linkedTransactionId`, with the OUT-before-IN ordering) into one helper used by all four folds, or route realized gains through the lots replay.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/securities/portfolio-calculation.service.ts
++++ b/backend/src/securities/portfolio-calculation.service.ts
+@@ -1300,12 +1300,24 @@
+       switch (baseInvestmentAction(tx.action)) {
++        case InvestmentAction.TRANSFER_IN: {
++          // The destination takes what the paired OUT leg released, in the
++          // source's currency -- never quantity x carried price at rate 1.
++          const carried = tx.linkedTransactionId
++            ? released.get(tx.linkedTransactionId)
++            : undefined;
++          if (carried !== undefined) entry.costBasis += carried;
++          entry.quantity += quantity;
++          break;
++        }
+         case InvestmentAction.BUY:
+-        case InvestmentAction.REINVEST:
+-        case InvestmentAction.TRANSFER_IN: {
++        case InvestmentAction.REINVEST: {
+@@ -1313,6 +1325,9 @@
+         case InvestmentAction.TRANSFER_OUT: {
+           const costBasisSold = sellQty * avgCostPerShare;
++          if (tx.action === InvestmentAction.TRANSFER_OUT) {
++            released.set(tx.id, costBasisSold);
++          }
+```
+
+plus the OUT-before-IN sort the lots replay uses (`:871-884`), and the same change in `applyTxToState` and `:1615-1625`. An unknown carried basis needs the lots replay's `transferred_basis_unknown` treatment, which `RealizedGainEntry` has no field for: a maintainer decision.
+
+12. **Recommended regression test:** P5 at integration level asserting 548.00 from `calculateRealizedGains` and equality with the lots surface; a source scan that no replay folds `TRANSFER_IN` through `acquisitionCost`.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++  it("a transfer between two CAD accounts carries the CAD basis into the gain", async () => {
++    // BUY 10 @ 100 USD at 1.37 in A, transfer to B, SELL 10 @ 140 USD at 1.37 in B
++    const [gain] = await calc.calculateRealizedGains(userId, {});
++    expect(gain.realizedGain).toBeCloseTo(548, 2);
++  });
+```
+
+14. **Verification:** P5 green; `npm run test:unit -- portfolio-calculation`.
+15. **Residual risks:** valuation and FX aggregation of these figures are S13's; the holdings page's average cost of a transferred lot is in the security's currency and unaffected by this finding.
+
+- Causality: `PRIOR_REPORTED` MON-M35, `CONFIRMED` (residual on three of four replays).
+
+
+### A26-M22 - A security transfer's basis is the leg's stored price (today's average on create, the client's figure on edit); the form shows an editable cost the server replaces
+
+- **Canonical severity:** MEDIUM. MEDIUM for the group; A26-S19-05 (LOW) is the client face of the same basis decision and is absorbed.
+- **Absorbs:** A26-S12-05 (primary, 12-securities-holdings.md, session severity MEDIUM); A26-S19-05 (merged surface, 19-frontend-forms.md, session severity LOW).
+- **Invariants and prior findings named:** INV-HOLDING-001.
+- **Lens:** financial.
+
+#### A26-S12-05 (primary) - A security transfer's basis is the leg's stored price, which is today's average cost on create and whatever the client sends on edit, so a back-dated or edited transfer creates or destroys basis
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed, P1)
+3. **Location:** `backend/src/securities/investment-transactions.service.ts:2365-2372` (`carriedCost` from the stored holding, read before the transaction, rounded to 6 dp), `:2412, 2436` (both legs priced at it); `updateLinkedTransfer` `:3985-3986` (`leg.price = updateDto.price`, trusted), `:3989-3990` (date and quantity change keep the old price); fold `holdings.service.ts:558-576` (the IN leg adds `acquisitionCost` = quantity x leg price, the OUT leg relieves at the running average as of its date).
+4. **Violated invariant:** basis conservation across a transfer (INV-HOLDING-001 projection; `portfolio-calculation.service.ts:785-791`); server-authoritative financial metadata (`AGENTS.md`); INV-HOLDING-001 known gap names only the race.
+5. **Reproduction:** BUY 10 @ 100 on 2026-01-10, BUY 10 @ 200 on 2026-03-10 (stored average 150). Record a transfer of 10 shares dated 2026-02-10 (when the source held 10 @ 100).
+6. **Observed (executed):** source 10 @ 200.00 (basis 2,000), destination 10 @ 150.00 (basis 1,500); total 3,500.
+7. **Expected:** source 10 @ 200 (2,000), destination 10 @ 100 (1,000); total 3,000, what was paid.
+8. **Impact:** +500.00 of basis (16.7 percent) created, understating the unrealized and later realized gain on the destination; the opposite sign when later purchases were cheaper. The edit path lets any API client set the destination's basis per share outright. The lots surface (`calculateCostBasisLotsInAccountCurrency`) carries the released basis and disagrees with the holdings page.
+9. **Root cause:** the destination's basis is stored as a per-share price on the IN leg and computed once, from today's projection, instead of being the basis the OUT leg releases at its own date in the replay.
+10. **Recommended correction:** make the holdings fold carry the OUT leg's released basis to the linked IN leg (the lots replay's rule, one helper shared with A26-S12-04) so the IN leg's price is presentation only; at minimum compute `carriedCost` inside the transaction from `getHoldingAt(..., transactionDate)` and ignore a client `price` on transfer legs.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/securities/holdings.service.ts
++++ b/backend/src/securities/holdings.service.ts
+@@ -553,7 +553,20 @@
+-      if (tx.action === InvestmentAction.SPLIT) {
++      if (tx.action === InvestmentAction.TRANSFER_IN && tx.linkedTransactionId) {
++        // The destination takes what the paired OUT leg released at its own
++        // date, not quantity x the leg's stored price.
++        const carried = releasedByTransferOut.get(tx.linkedTransactionId);
++        if (carried !== undefined) holding.totalCost += carried;
++      } else if (tx.action === InvestmentAction.SPLIT) {
+@@ -571,6 +584,9 @@
+       } else if (holding.quantity > 0) {
+         const avgCost = holding.totalCost / holding.quantity;
+         const relieved = Math.min(Math.abs(quantityChange), holding.quantity);
+         holding.totalCost -= relieved * avgCost;
++        if (tx.action === InvestmentAction.TRANSFER_OUT) {
++          releasedByTransferOut.set(tx.id, relieved * avgCost);
++        }
+       }
+```
+
+with the replay reading both accounts of a pair (a scope rebuild of the destination alone does not see the source's OUT leg: `rebuildScopesFromTransactions` filters to the requested pairs, so the transfer paths must request both scopes, as they already do) and the OUT-before-IN tie order. Decision for the maintainer: the drift report will then flag every existing transfer whose stored price disagreed.
+
+12. **Recommended regression test:** P1 at integration level (basis sum 3,000), and an edit case that changes the transfer's date and asserts the destination's basis follows.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++  it("a back-dated transfer carries the basis the source held on its date", async () => {
++    await buy(10, 100, "2026-01-10");
++    await buy(10, 200, "2026-03-10");
++    await transfer(10, "2026-02-10");
++    expect(await basis(brokerage2Id)).toBeCloseTo(1000, 4);
++    expect((await basis(brokerageId)) + (await basis(brokerage2Id))).toBeCloseTo(3000, 4);
++  });
+```
+
+14. **Verification:** P1 green; `npm run test:integration -- security-transfer holding-ledger-projection`.
+15. **Residual risks:** the client prefilled `costPerShare` is S19's; cross-currency transfer basis is A26-S12-04.
+
+- Causality: `PRE_EXISTING_UNREPORTED`.
+
+#### A26-S19-05 (merged surface) - The transfer form's cost per share is editable, but the server replaces it with the source holding's average on create
+
+1. **Severity:** LOW
+2. **Confidence:** high (by reading; the server override is unit-tested per S12)
+3. **Location:** `frontend/src/components/investments/InvestmentTransactionForm.tsx:905-915` (prefill), `:1591-1599` (editable `NumericInput`), `:996, :1032` (`costPerShare: Number(data.price) || 0`); `backend/src/securities/investment-transactions.service.ts:2356-2372`; copy `frontend/src/i18n/messages/en/investments.json:297` ("The cost per share ... is carried to the destination").
+4. **Violated invariant:** an explicit user instruction is not silently ignored; a field that has no effect is not offered as editable.
+5. **Reproduction:** transfer 10 shares whose source average is 100.00; the user types 150.00 as the cost per share.
+6. **Observed:** the request carries `costPerShare: 150`; the server writes both legs at 100.00 (the source holds the security).
+7. **Expected:** the field is read-only when the server will carry the source basis, or the server honours the stated cost.
+8. **Impact:** narrow: the basis is conserved (the server's choice is the correct accounting), but the screen accepted a different figure without saying it would be ignored.
+9. **Root cause:** the server became authoritative for the basis (to stop a stale client value poisoning it) and the field stayed editable.
+10. **Recommended correction:** render the carried cost as a read-only figure for a new transfer from a holding.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/frontend/src/components/investments/InvestmentTransactionForm.tsx
++++ b/frontend/src/components/investments/InvestmentTransactionForm.tsx
+@@ -1591,6 +1591,8 @@
+             <NumericInput
+               label={t('transactionForm.costPerShare', { currency: transactionCurrency })}
+               prefix={currencySymbol}
+               value={watchedPrice || undefined}
++              // The server carries the source's average cost on a new transfer.
++              disabled={isTransfer && !!selectedTransferHolding}
+               onChange={(value) => setValue('price', value, { shouldValidate: true })}
+```
+
+12. **Recommended regression test:** a new transfer from a holding renders the cost field disabled, showing the source average.
+13. **Suggested regression-test diff (illustrative, not applied):** in the transfer block of `InvestmentTransactionForm.test.tsx`, after selecting the source holding, `expect(screen.getByLabelText(/Cost per Share/)).toBeDisabled()`.
+14. **Verification method:** the component test above.
+15. **Residual risks:** the edit path sends `price` and the server's update path was not re-read for its basis rule. Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the upstream P6-004 described the opposite: the client value trusted).
+
+
+### A26-M23 - The holdings fold snaps every intermediate position under 0.0001 shares to zero
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S12-06 (primary, 12-securities-holdings.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-HOLDING-001, INV-HOLDING-002.
+- **Lens:** financial.
+
+#### A26-S12-06 (primary) - The holdings fold snaps every intermediate position under 0.0001 shares to zero, so small fractional purchases never form a holding
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed, P2; the sell consequence by reading)
+3. **Location:** `backend/src/securities/holdings.service.ts:584-588` (per-step `if (Math.abs(holding.quantity) < 0.0001) { quantity = 0; totalCost = 0 }`); not shared with `getHoldingAt` (`:233-236`, end-only snap at 1e-8), `validateNoNegativeHoldingsHistory` (`:376-403`, no snap) or the net-worth reducers (`net-worth/net-worth.service.ts:1853, 2252, 2908`, no snap); `projectedHoldingRow` uses 1e-8 (`investment-replay.util.ts:457, 475`).
+4. **Violated invariant:** INV-HOLDING-001 (the stored row equals a replay of the ledger) and INV-HOLDING-002 (one share count per position across surfaces).
+5. **Reproduction:** a CRYPTO security (`security-enums.ts:53`); two BUYs of 0.00005 at 60,000.00 (DTO allows 8 dp, `dto/create-investment-transaction.dto.ts:51-53`). A daily recurring buy of 5.00 of bitcoin is 0.000083 BTC.
+6. **Observed (executed):** no holding row after the two BUYs (cash -6.00 posted). By reading: each further buy starts from the snapped 0 and is snapped again, so a year of 0.00009 daily buys (0.03285 BTC, about 1,971.00 at 60,000) holds nothing; a later SELL of 0.03 passes `validateNoNegativeHoldingsHistory` (unsnapped sum 0.03285) and the fold then stores a short position of -0.03.
+7. **Expected:** a holding of 0.0001 (two buys), 0.03285 (the year).
+8. **Impact:** the position is absent from the holdings page and from every valuation that reads `holdings` (`portfolio.service.ts:1249, 1380, 1520`), while the net-worth replay values it; the cash left the account. Narrow in instruments (fractional crypto, fractional shares under 0.0001), unbounded in amount.
+9. **Root cause:** a "ghost holding" guard written per step in the fold rather than once at projection, where `projectedHoldingRow` already applies a 1e-8 epsilon.
+10. **Recommended correction:** remove the per-step snap from `computeHoldingsMap` and let `projectedHoldingRow` decide at the end; if a residue guard is still wanted mid-fold, use `HOLDING_QUANTITY_EPSILON` (1e-8), the stored scale.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/securities/holdings.service.ts
++++ b/backend/src/securities/holdings.service.ts
+@@ -582,10 +582,11 @@
+-      // Snap near-zero to exactly zero to prevent ghost holdings
+-      if (Math.abs(holding.quantity) < 0.0001) {
++      // A rounding residue of the fold, at the stored scale (8 dp); a real
++      // fractional position of 0.00005 is not a ghost.
++      if (Math.abs(holding.quantity) <= HOLDING_QUANTITY_EPSILON) {
+         holding.quantity = 0;
+         holding.totalCost = 0;
+       }
+```
+
+The 0.0001 "held" predicate in the valuation (`portfolio.service.ts:1249` and siblings) is a separate display threshold and a maintainer decision.
+
+12. **Recommended regression test:** P2 at integration level, and a unit case in `holdings.service.spec.ts` folding 10 BUYs of 0.00009.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++  it("keeps a position built from purchases under 0.0001 shares", async () => {
++    for (let d = 10; d < 20; d++) await buy(0.00009, 60000, `2026-01-${d}`);
++    const h = await holdingOf(brokerageId);
++    expect(Number(h.quantity)).toBeCloseTo(0.0009, 8);
++  });
+```
+
+14. **Verification:** P2 green; `npm run test:unit -- holdings.service investment-replay`.
+15. **Residual risks:** the drift report will flag existing micro positions after the fix, which is the intended repair path.
+
+- Causality: `PRE_EXISTING_UNREPORTED`.
+
+
+### A26-M24 - A Money-imported trade of a security quoted in another currency stores its price and total in the account's currency, read as the security's
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S12-09 (primary, 12-securities-holdings.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-PRICE-001, INV-HOLDING-001.
+- **Lens:** financial.
+
+#### A26-S12-09 (primary) - A Money-imported trade of a security quoted in another currency stores its price and total in the account's currency, and the app reads both as the security's
+
+1. **Severity:** MEDIUM
+2. **Confidence:** medium (reading across two slices; not executed, no committed two-currency Money fixture)
+3. **Location:** `backend/src/import/mny/map/map-investments.ts:283-284` (`currencyCode` is the **investment account's**), `import/mny/writers/write-investments.ts:274-292` (price, total and cash amount denominated in `transaction.currencyCode`, `exchangeRate: 1`); readers that assume the security's currency: `holdings.service.ts:558-570` ("Prices here are in the security's currency, as is `averageCost`"), `security-price.service.ts:2314-2372` and `:2374-2458` (`upsertTransactionPrice` / `backfillTransactionPrices` copy the average trade price into `security_prices`, whose currency is `securities.currency_code`), `net-worth/position-price.util.ts:27-34` (`txFallback` reads trade prices as closes).
+4. **Violated invariant:** INV-PRICE-001 (a row in `security_prices` is in the security's currency) through the transaction-derived writer; INV-HOLDING-001's denomination (average cost in the security's currency).
+5. **Reproduction:** a Money file with a CAD investment account holding a USD security; Money records the buy of 10 shares at the account's CAD figure (S09: "trades in account currency at rate 1, prices in the security's currency"). After import, any edit or the maintenance pass (`POST` behind `securities.controller.ts:750`) writes the CAD trade price as that day's USD close; the holdings fold blends CAD totals into an average the valuation treats as USD.
+6. **Observed:** (by reading) on a day with no provider bar, the position is valued at the CAD trade price read as USD and converted again (x 1.37 at USD/CAD 1.37, a 37 percent overstatement on those days); the holding's average cost is CAD under a USD label beside app-created rows in USD.
+7. **Expected:** the trade row carries the security's price and an `exchange_rate` to the account (the convention every app-created row follows, `investment-transactions.service.ts:803-850`), or the transaction-derived writer refuses a row whose currency is not the security's.
+8. **Impact:** wrong market values on unpriced days and a wrong average cost for imported cross-currency positions; silent, because no row records the currency it was written in (INV-PRICE-001 known gap).
+9. **Root cause:** two conventions for `investment_transactions.price`: "in the security's currency, converted by `exchange_rate`" (the app) and "in the account's currency, rate 1" (the Money writer).
+10. **Recommended correction:** a maintainer decision: convert at import (security-currency price, `exchange_rate` = account/security) or exclude rows whose account currency differs from the security's from `upsertTransactionPrice` and the holdings basis, reporting them as unknown.
+11. **Suggested remediation diff: incomplete.** Supported by the evidence: guard the transaction-derived writer so it averages only rows denominated in the security's currency.
+
+```diff
+--- a/backend/src/securities/security-price.service.ts
++++ b/backend/src/securities/security-price.service.ts
+@@ -2333,8 +2333,12 @@
+        FROM investment_transactions
++       JOIN accounts a ON a.id = investment_transactions.account_id
++       JOIN securities s ON s.id = investment_transactions.security_id
+        WHERE security_id = $1
+          AND transaction_date = $2
+          AND action = ANY($3)
+          AND price IS NOT NULL
+-         AND status != 'VOID'`,
++         AND status != 'VOID'
++         -- a rate-1 row in another currency is denominated in the account's
++         AND (exchange_rate <> 1 OR a.currency_code = s.currency_code)`,
+```
+
+Missing: which currency the Money writer's `price` is in for every action (S09 confirmed the total and cash amount; the price is inferred from the same writer comment), and the import-side conversion, which is S09/S10's.
+
+12. **Recommended regression test:** an MNY writer case with a CAD account and a USD security asserting the stored price and rate, and a transaction-price case asserting no `security_prices` row from a rate-1 cross-currency trade.
+13. **Suggested regression-test diff:** incomplete (needs the decision in 10).
+14. **Verification:** `npm run test:integration -- mny-import`; a two-currency Money fixture.
+15. **Residual risks:** valuation of such holdings (S13).
+
+- Causality: `PRE_EXISTING_UNREPORTED` (S09 hand-off "valuation of a holding whose security currency differs from its account's", answered here for the trade-price half).
+
+
+### A26-M25 - Choosing a default currency that is not yet in the table fails on the foreign key: onboarding on a fresh instance accepts only USD
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S13-05 (primary, 13-valuation-fx-networth.md, session severity MEDIUM).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** frontend.
+
+#### A26-S13-05 (primary) - Choosing a default currency that is not yet in the table fails on the foreign key: onboarding on a fresh instance accepts only USD
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed, P1, and replayed against `database/schema.sql`)
+3. **Location:** `backend/src/users/users.service.ts:373-379` (the patch, including `default_currency`, is written inside the transaction), `:399-409` (`ensureSystemCurrency` runs after the transaction commits); FK `database/schema.sql:1561` (`user_preferences.default_currency REFERENCES currencies(code)`, not deferrable); `frontend/src/components/auth/OnboardingPreferences.tsx:68-70, 100-115` (the picker offers the whole catalog, "the chosen one is created when saved").
+4. **Violated invariant:** the on-demand currency contract stated at `currencies.service.ts:47-53, 64-69` and `:232-238` ("Idempotent and safe to call on every default-currency change ... instead of seeding a whole list up front").
+5. **Reproduction:** a fresh instance (only USD exists, `onApplicationBootstrap`); a new user picks CAD (or PLN, EUR) at onboarding and saves.
+6. **Observed (executed, P1):** `updatePreferences(userId, { defaultCurrency: "PLN" })` throws `QueryFailedError: insert or update on table "user_preferences" violates foreign key constraint`; no currency row is created; the onboarding toast reports the save failed. The SQL replay on `schema.sql` gives the same violation for `PLN` and for lower-case `pln` (the DTO does not upper-case; `@MaxLength(3)` only).
+7. **Expected:** the currency ensured (validated as ISO 4217, upper-cased) before the preference row is written, in the same transaction.
+8. **Impact:** every non-USD user on a fresh deployment cannot finish onboarding with their currency; the work-around (keep USD, add the currency on the Currencies page, then change the default) is undiscoverable from the error. A reporting currency left at USD by mistake then converts every figure the user reads.
+9. **Root cause:** the ensure was placed with the post-commit side effects (the rate refresh), after a write that depends on it; the unit spec mocks the repository (`users.service.spec.ts:148`) and the entity harness has no such FK, so no test can see the order.
+10. **Recommended correction:** validate `defaultCurrency` with `IsCurrencyCode` after an upper-casing `@Transform`, and call `ensureSystemCurrency` inside the transaction before the update (it joins the ambient transaction).
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/users/dto/update-preferences.dto.ts
++++ b/backend/src/users/dto/update-preferences.dto.ts
+@@ -49,6 +49,8 @@
+   @IsOptional()
+-  @IsString()
+-  @MaxLength(3)
++  @Transform(({ value }) => (typeof value === "string" ? value.toUpperCase() : value))
++  @ValidateIf((_o, v) => v !== null && v !== "")
++  @IsCurrencyCode()
+   defaultCurrency?: string;
+--- a/backend/src/users/users.service.ts
++++ b/backend/src/users/users.service.ts
+@@ -331,6 +331,13 @@
+       async (manager) => {
+         await ensureUserPreferencesRow(manager, userId);
++        // The FK to currencies(code) is checked at the UPDATE below, so the
++        // currency has to exist first; ensureSystemCurrency joins this
++        // transaction.
++        if (dto.defaultCurrency !== undefined) {
++          await this.moduleRef
++            .get(CurrenciesService, { strict: false })
++            .ensureSystemCurrency(dto.defaultCurrency);
++        }
+         const repo = manager.getRepository(UserPreference);
+```
+
+   Needs: removal of the post-commit ensure at `:399-409`; a decision whether a user's default should create an active system currency (A26-S13-06 and S09-06 argue for inactive plus a preference row).
+12. **Recommended regression test:** an integration case on a database carrying the schema's FK: a fresh user sets `defaultCurrency: "PLN"`, the row is saved and `currencies` holds PLN.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++  it("creates the chosen default currency before writing the preference", async () => {
++    const saved = await users.updatePreferences(userId, { defaultCurrency: "PLN" });
++    expect(saved.defaultCurrency).toBe("PLN");
++    expect(await currencyExists("PLN")).toBe(true);
++  });
+```
+
+14. **Verification:** P1 re-run on a schema-faithful database; the onboarding E2E with a non-USD currency (S20/S21).
+15. **Residual risks:** the same ordering exists wherever a referenced code is written before `ensure*` (none other found: the MNY import ensures before its transaction).
+
+- Causality: `PRE_EXISTING_UNREPORTED` (introduction date not determinable in the shallow clone).
+- Disposes the S09 hand-off "A26-S09-06's preferences surface": the preferences path cannot create a currency at all (the FK refuses first), so it is not a global-creation path; it is this functional defect instead.
+
+
+### A26-M26 - On a day the bond engine refuses to price, the blend readers still value the holding; current per-account surfaces use the blended price (INV-BOND-010)
+
+- **Canonical severity:** MEDIUM. MEDIUM for the group; A26-S14-02 (LOW) is the current-surface half of the same INV-BOND-010 gap and is absorbed.
+- **Absorbs:** A26-S14-01 (primary, 14-bonds.md, session severity MEDIUM); A26-S14-02 (merged surface, 14-bonds.md, session severity LOW).
+- **Invariants and prior findings named:** INV-BOND-010, INV-BOND-002, INV-BOND-005.
+- **Lens:** financial.
+
+#### A26-S14-01 (primary) - On a day the bond engine refuses to price, the blend readers still value the holding, from a carried-forward engine close or one lot's trade price
+
+1. **Severity:** MEDIUM
+2. **Confidence:** medium-high (static, traced through every branch named; not executed against a database, see 14)
+3. **Location:** `backend/src/net-worth/net-worth.service.ts:1891-1895` (`loadDailyInvestments`), `:2924-2928` (`recalculateBrokerageAccount`, the stored `monthly_account_balances.market_value`), `:3071-3118` (`loadTxPriceSeries`, no bond-linked exclusion); `backend/src/net-worth/position-price.util.ts:68-84` (`positionClosePointAsOf`: the newer of the stored close and the transaction price); producer of the gap `backend/src/bonds/bond-price.service.ts:435-443, 502-516` (no row for a day whose lots or rates are unknown, and its stale rows deleted). Secondary consumers (sweep, section 12): `getLatestNetWorth` (`net-worth.service.ts:1051`) and through it the dashboard net worth and `AccountsService.getSummary` / `getLlmAccounts` totals (`accounts.service.ts:1598, 1817`); `foldInvestmentBreakdown` (`:2281`); the period result end value (`portfolio-period-result.service.ts:295`, `portfolio-period-results-batch.service.ts:235`); `daily-movement.service.ts:363`; `investment-report-data.service.ts:371`; `monte-carlo.service.ts:512-539, 709-726`; `portfolio.service.ts:1466` (month-over-month movers); `portfolio-price-freshness.util.ts:215`.
+4. **Violated invariant:** INV-BOND-010 "An unknown lot makes the holding unpriced (marketValue null, pricesComplete false), never the blend"; INV-BOND-002 (a started period without a rate has no value, nothing substitutes another value); INV-BOND-005 "a transaction price is one lot's trade price, not the holding's value"; AGENTS.md "A subtotal is not a total".
+5. **Realistic reproduction scenario:** Account A holds 100 bonds of EDO1034 (bought 2024-10-15 at 100.00; the engine prices it daily). On 2026-10-14 the person imports an OFX/QIF file with a BUY of 10 more EDO at 100.00 dated in a month whose series is not in the catalog. Per INV-BOND-007 the import stores the row with `bond_instrument_id` NULL and counts it in `bondRowsWithoutSeries`. From 2026-10-14 `bondLotsFromTransactions` refuses with `SERIES_NOT_DETERMINED` (`bond-lots.ts:229-236`), so `dailyPrices` emits no price for 2026-10-14 onward and `deleteStalePrices` removes any engine row there. The same happens without an import whenever a started period's benchmark observation is missing (a stalled CPI feed, a benchmark never fetched), or a lot is REFUSED (`PURCHASE_OUTSIDE_SALE_WINDOW`).
+6. **Observed behaviour:** The portfolio summary and account market values (routed through `valueBondHoldings`) say the holding is unpriced: `marketValue` null, `pricesComplete` false. Net worth, the account summary totals, the period result and the investment report instead value the 110 bonds at `positionCloseAsOf`: the newer of the last engine close (2026-10-13) and the import row's trade price (2026-10-14, 100.00), so 110 x 100.00 = 11,000.00, presented as a settled figure. Without a priced row on or after the gap (a missing rate, an ADD_SHARES), the last engine close is carried forward over the unknown days for every lot, the unknown ones included.
+7. **Expected behaviour:** A day on which the engine refuses a linked security's lots is unknown on every surface: the figure is null (or relabelled as a known subtotal of the derivable lots) with the refusal named, as the routed surfaces already do. A transaction price of a linked security never stands for the holding's value.
+8. **Impact:** Financial display integrity. Numerical example (the engine close is illustrative, the arithmetic is exact): engine close on 2026-10-13 P = 111.62; known part (the 100 derivable bonds) = 11,162.00; the 10 new bonds unknown. Net worth shows 11,000.00 as a total; the honest answer is "unknown" with a known subtotal of 11,162.00 for the 100 bonds; difference against that subtotal 162.00 (1.45 %), and the figure carries no flag. In the carry-forward variant (no newer trade price) it shows 110 x 111.62 = 12,278.20, which prices 10 bonds the engine cannot value. The dashboard net worth and the per-account list (routed) then disagree by the whole holding. The AI/MCP `list_accounts` totals inherit the same figure. No balance or ledger row is wrong; the derived figures are.
+9. **Root cause:** The blend readers treat `security_prices` as "the latest accepted close on or before the day", the right rule for a quoted security. For a bond-linked security the absence of an engine row is a refusal, not a missing quote, and `loadTxPriceSeries` and `positionClosePointAsOf` know nothing of the link, so the refusal is overwritten by a carry-forward or a trade price.
+10. **Recommended correction:** In the net-worth valuation series, for a security with `bond_program_id`, read only `bond_engine` (or `manual`) rows and only on their own day: no transaction-price fallback and no carry-forward past a day the engine left without a row; a missing day makes the security's value for that day unknown and the series' completeness flag false, the same `FxAggregate`/`pricesComplete` channel the series already uses for a missing rate. The decision belongs to S13 (net worth) for the flag plumbing; this slice states the bond side.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/net-worth/net-worth.service.ts
++++ b/backend/src/net-worth/net-worth.service.ts
+@@ -3079,10 +3079,14 @@ export class NetWorthService {
+     const rows = await this.scopedQuery<TransactionPriceRow>(
+       `WITH boundary_dates AS (
+          SELECT DISTINCT ON (security_id) security_id, transaction_date
+            FROM investment_transactions
+           WHERE security_id = ANY($1::UUID[])
++            -- A bond-linked security is valued by the engine only (INV-BOND-005,
++            -- INV-BOND-010): one lot's trade price never stands for the holding.
++            AND security_id NOT IN (
++                  SELECT id FROM securities WHERE bond_program_id IS NOT NULL)
+             AND action = ANY($2)
+@@ -3102,6 +3106,8 @@ export class NetWorthService {
+        windowed AS (
+          SELECT security_id, transaction_date,
+                 ROUND(AVG(price::numeric), 6) AS price
+            FROM investment_transactions
+           WHERE security_id = ANY($1::UUID[])
++            AND security_id NOT IN (
++                  SELECT id FROM securities WHERE bond_program_id IS NOT NULL)
+             AND action = ANY($2)
+--- a/backend/src/net-worth/position-price.util.ts
++++ b/backend/src/net-worth/position-price.util.ts
+@@ -51,6 +51,20 @@
++/**
++ * A bond-linked security's close on `date` itself, or null: the engine writes a
++ * row for every day it can value and none for a day it refuses (INV-BOND-002),
++ * so a carried close would price a refusal.
++ */
++export function engineCloseOn(
++  stored: PricePoint[] | undefined,
++  date: string,
++): number | null {
++  const point = stored && stored.length > 0 ? pointAsOf(stored, date) : null;
++  return point && point.date === date ? point.close : null;
++}
+```
+
+    and at `net-worth.service.ts:1891` and `:2924`, `const price = security?.bondProgramId ? engineCloseOn(pricesBySec.get(secId), dateStr) : positionCloseAsOf(...)`, with a null price recorded as an unknown component of that day's `FxAggregate` (not skipped). **Incomplete**: the month-end variant (`:2924`) needs a decision for a month whose last day falls before the user's financial today has been priced (the 06:45 cron), and the series flag that carries "unknown" to the dashboard and the LLM shape is S13's; `securities.bond_program_id` is assumed to be on the loaded `securityMap` entity.
+12. **Recommended regression test:** an integration test with one linked security, two derivable lots and a third BUY stored with a NULL series: `getDailyInvestments` (and `getLatestNetWorth`) on a day after the NULL row reports the security unknown, never `quantity x` the trade price or the carried engine close.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
+--- a/backend/test/integration/bond-holding-value.integration.spec.ts
++++ b/backend/test/integration/bond-holding-value.integration.spec.ts
+@@
++  it("a day the engine refuses is unknown in net worth, never a trade price", async () => {
++    // 100 bonds of a stored series bought 2024-10-15; recompute writes engine rows.
++    // A BUY of 10 at 100.00 on 2026-10-14 written with bond_instrument_id NULL
++    // (the import path), then recompute: no engine row from 2026-10-14.
++    const series = await netWorth.getDailyInvestments(userId, "2026-10-13", "2026-10-15");
++    const day = series.find((p) => p.date === "2026-10-15")!;
++    expect(day.value).toBeNull();               // not 11000.00
++    expect(day.valuationComplete).toBe(false);
++  });
+```
+
+14. **Verification method:** the integration test above against PostgreSQL; `bond-prices.integration.spec.ts` and `bond-holding-value.integration.spec.ts` still green; the net-worth unit suite for the non-bond fallback (a manual or imported price still honoured for an ordinary security, #1242). Not executed in this session: the scenario needs the import writer plus the net-worth fold on a real database, and MEDIUM does not require it under plan step 7.
+15. **Residual risks:** the diff does not cover the intraday path (`portfolio.service.ts:2049, 2577-2586`), which values a linked security at the ledger close of the day, nor the per-account split (A26-S14-02).
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the bond link and the engine price are new; the net-worth fallback predates them and was not adapted). Surfaces (Rule 7): net worth daily and monthly, latest net worth (dashboard, account summary totals, LLM account totals), period result, daily movement, investment report, Monte Carlo, month-over-month movers, late-price adjustment. Overlap: S13 owns the net-worth flag; consolidate there in S23 if S13 reports the same root.
+
+#### A26-S14-02 (merged surface) - Three current per-account surfaces value a bond-linked holding at quantity x the blended price; INV-BOND-010 lists only historical series as not enforced
+
+1. **Severity:** LOW
+2. **Confidence:** high
+3. **Location:** `backend/src/monte-carlo/monte-carlo.service.ts:709, 717-728` (`getHoldingStats`, per-account `marketValue`); `backend/src/investment-reports/investment-report-data.service.ts:333, 368-369` (`computeHoldings`, per account unless `mergeAccounts`, as-of defaulting to the latest market day); `backend/src/net-worth/net-worth.service.ts:2924-2935` (`recalculateBrokerageAccount`, current month's per-account `market_value`, read by net worth by account). Index: `docs/system-invariants.md:3880-3898` (INV-BOND-010 Enforcement).
+4. **Violated invariant:** INV-BOND-010: the current market value of a bond-linked holding (one account, one security) is its own account's lots, never quantity x the daily blend.
+5. **Realistic reproduction scenario:** One security linked to an EDO-like program; account A holds 100 bonds of an older series, account B 100 bonds of a newer one. Engine gross values today (illustrative): A 111.62 per bond, B 101.10 per bond. Blend = (11,162.00 + 10,110.00) / 200 = 106.36.
+6. **Observed behaviour:** Monte Carlo's holding stats, the investment report and net worth by account show A = 10,636.00 and B = 10,636.00.
+7. **Expected behaviour:** A = 11,162.00, B = 10,110.00, as the portfolio summary and the account list (`valueBondHoldings`) show; difference 526.00 per account (4.7 % of A, 5.2 % of B). Totals agree (21,272.00), so the error is the split.
+8. **Impact:** per-account figures disagree across surfaces for a person holding one bond program in two accounts; the Monte Carlo per-account table and the investment report misstate each account. No total, ledger row or balance is wrong. The S01 hand-off named the Monte Carlo path; the weighting path (`:512-539`) sums over accounts and is exact (R6).
+9. **Root cause:** These surfaces read `security_prices` per holding; the index's "not enforced" list names only historical per-account series, so the current surfaces were never routed.
+10. **Recommended correction:** route the three current surfaces through `valueBondHoldings` (or `ownLotsGrossValue` per holding) as `calculateHoldingsWithValues` does; and widen the INV-BOND-010 Status text to name what is still unrouted, so the index states the gap honestly.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/monte-carlo/monte-carlo.service.ts
++++ b/backend/src/monte-carlo/monte-carlo.service.ts
+@@ -706,6 +706,9 @@
+     const currentPrices =
+       await this.portfolioService.getLatestPrices(securityIds);
++    // A bond-linked holding is its own account's lots (INV-BOND-010).
++    const bondValues = await this.portfolioCalculation.valueBondHoldings(
++      userId, active);
+@@ -722,8 +725,11 @@
+         quantity: Number(h.quantity),
+-        marketValue:
+-          price == null ? null : roundMoney(Number(h.quantity) * price),
++        marketValue: h.security?.bondProgramId
++          ? bondValues.get(`${h.accountId}:${h.securityId}`) ?? null
++          : price == null
++            ? null
++            : roundMoney(Number(h.quantity) * price),
+--- a/docs/system-invariants.md
++++ b/docs/system-invariants.md
+@@ -3897,1 +3897,4 @@
+-Status              partial (historical per-account series)
++Status              partial (historical per-account series; and three current
++                    per-account surfaces still read the blend: Monte Carlo
++                    holding stats, the investment report holdings, net worth by
++                    account for the current month)
+```
+
+    **Incomplete**: `valueBondHoldings`' exact signature and return shape (`portfolio-calculation.service.ts:1742`) must be matched, and `MonteCarloService` may not inject `PortfolioCalculationService` today; the investment report and the net-worth month need the same routing in their own idiom.
+12. **Recommended regression test:** a Monte Carlo `getHoldingStats` unit test with two accounts holding different series of one program, asserting each account's `marketValue` equals its lots' value.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/monte-carlo/monte-carlo.service.spec.ts
++++ b/backend/src/monte-carlo/monte-carlo.service.spec.ts
+@@
++  it("values a bond-linked holding from its own account's lots", async () => {
++    // valueBondHoldings mock: A -> 11162.00, B -> 10110.00; getLatestPrices -> 106.36
++    const stats = await service.getHoldingStats(userId, [accountA, accountB]);
++    expect(stats.find((a) => a.accountId === accountA)!.holdings[0].marketValue).toBe(11162);
++    expect(stats.find((a) => a.accountId === accountB)!.holdings[0].marketValue).toBe(10110);
++  });
+```
+
+14. **Verification method:** the unit test above; `portfolio-calculation.service.spec.ts` unchanged; `instruction-files`/`doc-paths` specs after the doc edit.
+15. **Residual risks:** the routed value is computed on the person's financial today; the investment report's as-of may be a past day, which needs `valueByAccount(userId, securityId, date)` with that date.
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT`.
+
+
+### A26-M27 - GEM momentum prices one role from a close up to 14 days before the boundary while its series holds a later close
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S15-02 (primary, 15-loans-strategies.md, session severity MEDIUM).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** financial.
+
+#### A26-S15-02 (primary) - GEM momentum prices one role from a close up to 14 days before the boundary while its series already holds a later close, so the signal compares different sessions and is materialized for good
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed)
+3. **Location:** `backend/src/strategies/gem-momentum.util.ts:191-237` (`spanCloses`: each end `pointAsOf` within `BOUNDARY_LAG_DAYS`; the "settled" test is only `prices[last].date < to`), `backend/src/common/time-series/price-boundary.util.ts:44, 82-99`; materialized once: `gem-signal.service.ts:439-441, 481-486` (per the sweep, read).
+4. **Violated invariant:** the AGENTS.md rule "a board of movers is one session's" applied to a ranking of returns (`keepNewestSession`): roles compared over one window must be priced at the same session; and the hint's "signal computed at one session".
+5. **Reproduction:** monthly GEM, 12-month lookback, evaluation 2026-09-30. US fund 100 -> 110 (close on 09-30). Ex-US fund 100 -> its feed has no closes 2026-09-19..09-30 (a refresh outage), last close 104 on 09-18, then 113 on 10-01 when the feed resumes; its true 09-30 close was 112. Safe asset +3 %.
+6. **Observed (executed, `src/zz/zz-gem.spec.ts` over the real `momentumSnapshot` and `evaluate`):** `{"US_EQUITY":10,"EX_US_EQUITY":4,"SAFE":3}` -> `RISK_ON`, target `US_EQUITY`, lead 6 pp.
+7. **Expected:** the ex-US span is not settled for 09-30 (the series has a gap at the boundary while other roles have the boundary's close), so the period defers (`UNELAPSED`) or refuses naming the role and the missing session; with the true close (+12 %) the target is `EX_US_EQUITY`.
+8. **Impact:** the wrong fund is recommended for the whole period and the stored signal is never re-evaluated after the gap is repaired; the user may switch the whole strategy allocation (a financially significant action) on it.
+9. **Root cause:** the settled test asks whether the series has *any* close at or after the boundary, not whether its exit close is the boundary session the other roles use; the 14-day lag that tolerates exchange holidays also tolerates a feed gap.
+10. **Recommended correction:** price the exit of every role at one common session: the newest date on or before the boundary on which every role has a close (or each role's exit within a small holiday tolerance of the newest exit across roles), otherwise `UNELAPSED`/refuse with the role named.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/strategies/gem-momentum.util.ts
++++ b/backend/src/strategies/gem-momentum.util.ts
+@@ export function spanCloses(
+   if (end === "BOUNDARY" && prices[prices.length - 1].date < to) {
+     return { state: "UNELAPSED" };
+   }
++  // A close exists after the boundary but none near it: the series has a gap
++  // at the boundary (a feed outage), not a holiday. Defer rather than price the
++  // span off an older session than the other roles use.
++  if (end === "BOUNDARY" && daysBetween(exit.date, to) > BOUNDARY_HOLIDAY_DAYS) {
++    return { state: "UNELAPSED" };
++  }
+```
+
+   with `BOUNDARY_HOLIDAY_DAYS` (for example 4) in `price-boundary.util.ts`. Decision for the maintainer: a per-role holiday tolerance (above) or a common-session rule across roles in `momentumSnapshot` (stronger, needs the roles' series together). Needs: unit cases, the backfill's gap test (`gem-backfill.service.ts:98-104`) aligned.
+12. **Recommended regression test:** the counterexample above as a `gem-momentum.util.spec.ts` case asserting the ex-US role is not `PRICED` (or the snapshot refuses) for 2026-09-30.
+13. **Suggested regression-test diff (illustrative, not applied):** `it("does not price a role across a feed gap at the boundary", () => { const m = momentumSnapshot({ US_EQUITY: us, EX_US_EQUITY: exWithGap, SAFE: safe }, "2026-09-30", 12); expect(m.EX_US_EQUITY).toBeNull(); });`
+14. **Verification:** `TZ=UTC npm run test:unit -- src/strategies`; a backtest regression to confirm holiday boundaries still price.
+15. **Residual risks:** a market closed for more than the tolerance (a long national holiday) would defer a period; the materialized row needs re-evaluation for periods already stored on a gap (a data repair decision).
+
+- Causality: `NEW_SINCE_UPSTREAM_AUDIT` (`backend/src/strategies/` is new).
+
+
+### A26-M28 - The loan payment history counts VOID payments, VOID interest expenses and future-dated payments as paid
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S15-03 (primary, 15-loans-strategies.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-TRANSFER-001, INV-LOAN-HISTORY-001.
+- **Lens:** financial.
+
+#### A26-S15-03 (primary) - The loan payment history counts VOID payments, VOID interest expenses and future-dated payments as paid
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (VOID: executed by the frontend sweep's Vitest probe over the real `deriveLoanPaymentHistory`, re-verified by reading; future-dated: executed by the same probe)
+3. **Location:** `frontend/src/lib/loan-history.ts:1536-1552` (`fetchAllAccountTransactions`: no `statuses`, no date bound), the derivation (no `status` or date read anywhere in the module: `grep -n "VOID\|status" loan-history.ts` returns nothing); backend `transactions.service.ts:1403-1407` (status filtered only when `statuses` is passed). Consumers: `LoanAmortizationReport.tsx` cards, table, CSV/PDF, the projection seed (`observedInstallment`), `hooks/useLoanProjection.ts`.
+4. **Violated invariant:** INV-TRANSFER-001 ("VOID means no balance moved, on every surface"), INV-LOAN-HISTORY-001 (interest counted as paid is ledger-backed), and the shared inclusion rule `LEDGER_MOVEMENT_PREDICATE` the backend balance readers use.
+5. **Reproduction:** loan opening 10,000; a 1,000 payment on 2026-01-15; a second 1,000 payment on 2026-02-15 that bounced and was voided. Separately: a standalone interest expense of 50 voided. Separately: a 500 payment entered for 2026-12-15 (today 2026-10-21).
+6. **Observed:** cumulative principal **2,000.00**, last history balance **8,000.00** (account balance 9,000.00); interest **50.00** from the voided expense; the future 500 is listed as paid (history principal 1,500) and the projection, which starts from the 9,000.00 current balance, pays it again (history + projection principal 10,500.02 on a 10,000 loan).
+7. **Expected:** 1,000.00 / 9,000.00; 0.00; the future row either excluded from history or the projection anchored after it.
+8. **Impact:** "Total Principal Paid", "Total Interest Paid", the per-row balance, the exports and the projection seed are wrong by the voided or future amount; 1,000.00 here (10 % of the loan).
+9. **Root cause:** the client history re-derives row inclusion instead of applying the ledger's (non-VOID, top-level, dated through today).
+10. **Recommended correction:** request only `statuses` other than VOID and bound the fetch at the user's today (`financialTodayYmd`), or filter both in `deriveLoanPaymentHistory`; add a source-scan guard that the module reads `status`.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/frontend/src/lib/loan-history.ts
++++ b/frontend/src/lib/loan-history.ts
+@@ export function deriveLoanPaymentHistory(
+-  const sorted = [...transactions].sort(byDate);
++  // The ledger's own inclusion: a VOID row moved nothing, and a row dated
++  // after today is not history yet (the projection pays it).
++  const counts = (t: Transaction) =>
++    t.status !== 'VOID' && t.transactionDate <= todayYmd;
++  const sorted = transactions.filter(counts).sort(byDate);
++  const interestRows = interestTransactions.filter(counts);
+```
+
+   (`todayYmd` passed in by the callers, which already hold it for the projection, INV-LOAN-006's frontend half). Needs: the call sites, the tests.
+12. **Recommended regression test:** the three probe cases in `loan-history.test.ts` with monetary asserts.
+13. **Suggested regression-test diff (illustrative, not applied):** `it("ignores a VOID payment", () => { const h = deriveLoanPaymentHistory(acct(), [tx({ amount: 1000, transactionDate: "2026-01-15" }), tx({ amount: 1000, transactionDate: "2026-02-15", status: "VOID" })], [], [], "2026-10-21"); expect(h.cumulativePrincipal).toBe(1000); });`
+14. **Verification:** `npm run test -- loan-history LoanAmortizationReport`; `npm run type-check`.
+15. **Residual risks:** a refund sign (A26-S15-05) and the shared-category merge (section 11) are separate.
+
+- Causality: `PRE_EXISTING_UNREPORTED` for VOID (the module's history predates the upstream audit by its own comments; not provable in the shallow clone), the future-date half likewise.
+
+
+### A26-M29 - An installment below the period's interest is booked as settling the period; the unpaid interest is recorded nowhere
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S15-04 (primary, 15-loans-strategies.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-LOAN-006.
+- **Lens:** financial.
+
+#### A26-S15-04 (primary) - An installment below the period's interest is booked as settling the period; the unpaid interest is recorded nowhere and the loan stops growing
+
+1. **Severity:** MEDIUM
+2. **Confidence:** medium (executed; the expected treatment is a product decision)
+3. **Location:** `backend/src/accounts/loan-payment-waterfall.util.ts:59-71` (`interest = Math.min(interest, paymentAmount); principal = 0`), consumed by `priceInstallment` (`price-installment.ts:677-683`) for every purpose.
+4. **Violated invariant:** INV-LOAN-006's statement "the interest of a scheduled loan installment is roundMoney(debt x periodic rate)", and "withholding a figure is only honest if the reader learns why" (AGENTS.md): the shortfall is neither booked nor reported.
+5. **Reproduction:** LOAN 400,000 at 6 % monthly, schedule payment 1,500 (for example after a rate rise whose payment sync the user declined, INV-LOAN-006 known gap). Post 2026-08-01 and 2026-09-01.
+6. **Observed (executed, R3):** each posting books interest 1,500.00 and principal 0.00; the loan ledger stays at 400,000.00; the template keeps 1,500 / 0; no log, alert or flag.
+7. **Expected:** interest accrued 2,000.00 per period; either the 500.00 shortfall is capitalized onto the debt (negative amortization, debt 400,500 then 401,002.50) or the posting/template carries an explicit "does not cover interest" state the bill and the loan page show.
+8. **Impact:** the loan balance understates the debt by 500.00 per period (6,000.00 after a year, 1.5 %); every forecast and payoff date read from the ledger is optimistic; the frontend projection already refuses the same loan (`coveredInterest: false`), so the two layers disagree silently.
+9. **Root cause:** the cap was added so a child cannot exceed its parent (RR2-006); nothing records what the cap removed.
+10. **Recommended correction:** decide the convention (capitalize, or flag); minimum: return the shortfall from `allocateLoanPayment` and surface it on the occurrence projection and the bill as a warning; capitalization would add a loan-side interest accrual row.
+11. **Suggested remediation diff: incomplete.** Supported part:
+
+```diff
+--- a/backend/src/accounts/loan-payment-waterfall.util.ts
++++ b/backend/src/accounts/loan-payment-waterfall.util.ts
+@@ export interface LoanPaymentAllocation {
+   total: number;
++  /** Accrued interest the installment did not cover (0 when covered). */
++  unpaidInterest: number;
+ }
+@@
+-  if (interest > basePayment) {
++  const accrued = interest;
++  if (interest > basePayment) {
+     interest = Math.min(interest, paymentAmount);
+     principal = 0;
+   }
+@@
+   return {
+     principal,
+     interest,
+     extraPrincipal,
+     total: roundMoney(principal + interest + extraPrincipal),
++    unpaidInterest: roundMoney(Math.max(0, accrued - interest)),
+   };
+```
+
+   Missing: the maintainer's choice between capitalizing (a ledger row on the loan, with its own invariant) and flagging (the occurrence projection's `complete`/warning field and the bill UI).
+12. **Recommended regression test:** R3 with an assert on the chosen behaviour (`unpaidInterest === 500` on the allocation and on the projection).
+13. **Suggested regression-test diff (illustrative, not applied):** `expect(allocateLoanPayment({ paymentAmount: 1500, extraPrincipal: 0, interest: 2000, principal: -500, currentBalance: 400000 })).toMatchObject({ interest: 1500, principal: 0, unpaidInterest: 500 });`
+14. **Verification:** `npm run test:unit -- loan-payment-waterfall price-installment`; R3 through `post()`.
+15. **Residual risks:** a lender that treats the shortfall as arrears (not capitalized) would want a third treatment.
+
+- Causality: `PRE_EXISTING_UNREPORTED` (the cap predates the new modules; the exact introduction date is not provable in the shallow clone).
+
+
+### A26-M30 - Loan payment setup accepts a source account in another currency; every posting of the bill is then refused
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S15-10 (primary, 15-loans-strategies.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-LOAN-006.
+- **Lens:** financial.
+
+#### A26-S15-10 (primary) - Loan payment setup accepts a source account in another currency and writes a bill in the loan's currency on it; every posting of that bill is refused
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high for the posting refusal (executed); medium that the setup path reaches it (by reading: no currency check found)
+3. **Location:** `backend/src/accounts/loan-payment-setup.service.ts:227-237` (source account checked for ownership only), `:488-505` (schedule created on `dto.sourceAccountId` with `currencyCode: account.currencyCode`, the loan's); `scheduled-transactions.service.ts:960-975` (`create` stores the DTO's `currencyCode`; `resolveScheduleFx` only reads `originalCurrencyCode`); the refusal at posting `common/fx-entry.util.ts:205` through `transactionsService.create`; the create paths in `loan-mortgage-account.service.ts:290, 533` pass the same currency (not traced to their source-account check). Frontend: no currency filter on the setup dialog's source account (`LoanPaymentSetupDialog.tsx`, searched).
+4. **Violated invariant:** "a currency code is derived from the account, never accepted from the request" (`assertTransactionCurrencyMatchesAccount`); a schedule that can never post is the state INV-LOAN-006's fail-safe text calls the worst outcome ("a bill that never posts again").
+5. **Reproduction:** a EUR mortgage (or a CHF one, common for Polish borrowers) paid from a PLN current account: set up payments with the PLN account as source.
+6. **Observed (executed, `zz-s15-fx`, the setup's shape: schedule currency EUR on a PLN account, transfer split to the EUR loan):** `post()` answers **400 "Transaction currency EUR must match the account currency PLN. Use originalAmount and originalCurrencyCode for a foreign-currency entry."**; nothing written, no claim, cursor unchanged; every auto-post tick fails the same way (the cron raises an alert for a non-conflict error).
+7. **Expected:** the setup refuses a source account in another currency with a message naming both currencies, or builds a cross-currency transfer bill the posting can convert (a decision: the settlement path already refuses `transfer_currency_mismatch`, spec section 11 row 8, so refusing is consistent).
+8. **Impact:** the loan's payments are never booked by the app; the user learns it only from the posting error or the alert, after the setup reported success.
+9. **Root cause:** the setup validates ownership but not currency, and the schedule create trusts the DTO's currency.
+10. **Recommended correction:** refuse in `setupLoanPayments` (and the account-create paths) when `sourceAccount.currencyCode !== account.currencyCode`, before any write; independently, make `ScheduledTransactionsService.create` derive or verify `currencyCode` against the schedule's account.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/accounts/loan-payment-setup.service.ts
++++ b/backend/src/accounts/loan-payment-setup.service.ts
+@@
+     if (!sourceAccount) {
+       throw new BadRequestException(
+         tr("errors.accounts.sourceNotFound", "Source account not found"),
+       );
+     }
++    // The bill is booked on the source account in the loan's currency; a
++    // posting refuses a currency the account does not hold.
++    if (sourceAccount.currencyCode !== account.currencyCode) {
++      throw new BadRequestException(
++        tr(
++          "errors.accounts.loanSourceCurrencyMismatch",
++          `The payment account is in ${sourceAccount.currencyCode} and the loan in ${account.currencyCode}. Choose an account in ${account.currencyCode}.`,
++          { source: sourceAccount.currencyCode, loan: account.currencyCode },
++        ),
++      );
++    }
+```
+
+   Needs: the i18n key; the same check on the create paths; a decision whether cross-currency loan payment is a feature to build (then an FX transfer template, which INV-LOAN-006's pricing would have to price in two currencies).
+12-14. **Test:** a `loan-payment-setup.service.spec.ts` case with a PLN source and a EUR loan asserting the refusal and no schedule written; the `zz-s15-fx` probe as an integration case for the posting side. `npm run test:unit -- loan-payment-setup`.
+15. **Residual risks:** existing schedules already in this state stay unpostable until edited (a data question for the maintainer).
+
+- Causality: `PRE_EXISTING_UNREPORTED` (setup predates the new modules; not provable in the shallow clone).
+
+
+### A26-M31 - The account exclusions chosen in the budget wizard are stored and never applied
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S16-02 (primary, 16-budgets-reports.md, session severity MEDIUM).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** financial.
+
+#### A26-S16-02 (primary) - The account exclusions chosen in the budget wizard are stored and never applied
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (static; a repo-wide search finds no reader)
+3. **Location:** written by `frontend/src/components/budgets/BudgetWizardStrategy.tsx:145-149` and `BudgetWizardReview.tsx:71-72` (shown back as "N accounts excluded", `:158-164`); stored in `budgets.config` (`entities/budget.entity.ts:29-30`); read nowhere in `backend/src` (no match outside the entity and two specs).
+4. **Violated invariant:** an explicit user instruction is honoured (protocol MEDIUM example "explicit user instruction silently ignored").
+5. **Reproduction:** create a budget through the wizard, excluding a business credit card; spend 300.00 in Groceries on that card.
+6. **Observed:** Groceries `spent` includes 300.00; alerts fire on it.
+7. **Expected:** the excluded account's rows are out of every actuals query and out of the generator's history analysis.
+8. **Impact:** wrong budget actuals and alerts for every user who used the exclusion; the review screen tells them it was applied.
+9. **Root cause:** the option was added to the wizard and the JSONB config without a backend consumer.
+10. **Recommended correction:** apply `t.account_id NOT IN (:...excluded)` in `queryCategorySpending`, `computePeriodActuals`, `computeActualIncome`, the transfer builders (source side) and `BudgetGeneratorService`; or remove the option from the wizard. Product decision; the safer candidate is to honour it.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/budgets/budget-spending.util.ts
++++ b/backend/src/budgets/budget-spending.util.ts
+@@ export async function queryCategorySpending(
+   periodStart: string,
+   periodEnd: string,
++  excludedAccountIds: readonly string[] = [],
+ ): Promise<{
+@@
+       .andWhere("t.is_split = false")
++    if (excludedAccountIds.length > 0) {
++      directQb.andWhere("t.account_id NOT IN (:...excludedAccountIds)", {
++        excludedAccountIds,
++      });
++    }
+```
+
+   and the callers pass `budget.config?.excludedAccountIds ?? []`.
+12. **Recommended regression test:** an integration case with one excluded account: its expense is not in `spent`.
+13. **Suggested regression-test diff:** as A26-S16-01's spec, with `config: { excludedAccountIds: [cardId] }` and `expect(spent).toBe(200)`.
+14. **Verification:** `npm run test:unit -- budget`, `npm run test:integration -- budget`.
+15. **Residual risks:** a transfer line whose source is an excluded account is a semantic choice to state in the spec.
+
+Causality: `PRE_EXISTING_UNREPORTED` (not verified whether the wizard option predates `d5cea9bf`).
+
+
+### A26-M32 - Closing a budget period never writes a rollover: `closePeriod` does not load the relation `computeRollover` reads
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S16-03 (primary, 16-budgets-reports.md, session severity MEDIUM).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** financial.
+
+#### A26-S16-03 (primary) - Closing a period never writes a rollover: `closePeriod` does not load the relation `computeRollover` reads
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed, P2)
+3. **Location:** `backend/src/budgets/budget-period.service.ts:130-133` (`relations: ["periodCategories"]`), `:156-157`, `:293-300` (`if (!budgetCategory || ...) return 0`).
+4. **Violated invariant:** a category with `rollover_type != NONE` carries its unused budget into the next period (the feature's contract, `computeRollover`).
+5. **Reproduction (executed):** budget line Groceries 500.00, `rollover_type = MONTHLY`, no cap; OPEN period September 2026 with `effective_budget 500`; -200.00 spent in September; `closePeriod`.
+6. **Observed:** September `actual_amount 200, rollover_out 0`; October `rollover_in 0, effective_budget 500` (probe P2).
+7. **Expected:** `rollover_out 300`; October `rollover_in 300, effective_budget 800`.
+8. **Impact:** -300.00 (-37.5 percent of the expected effective budget) per category per month; the rollover setting is silently inert for every user, on the cron and the manual path alike.
+9. **Root cause:** `BudgetPeriodCategory.budgetCategory` is a lazy-free `@ManyToOne` that is not hydrated; the unit fixtures hydrate it by hand (`budget-period-lifecycle.spec.ts:405, 421, 437, 453`), so the defect is invisible to every suite (fixture cleaner than production).
+10. **Recommended correction:** load `periodCategories.budgetCategory` in the second read (the lock is on the first query, so the outer join is allowed there), or look the line up in `budget.categories` (already loaded, `:159-161`).
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/budgets/budget-period.service.ts
++++ b/backend/src/budgets/budget-period.service.ts
+@@ -130,7 +130,7 @@
+       const openPeriod = await periods.findOne({
+         where: { id: locked.id },
+-        relations: ["periodCategories"],
++        relations: ["periodCategories", "periodCategories.budgetCategory"],
+       });
+```
+
+12. **Recommended regression test:** the P2 scenario against PostgreSQL.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++it("carries the unused budget into the next period", async () => {
++  // MONTHLY rollover, 500 budgeted, 200 spent in the closed month
++  await withUserContext(userId, () => periods.closePeriod(userId, budgetId));
++  const [closed, next] = await rowsByPeriod(budgetId);
++  expect(closed.rollover_out).toBe("300.0000");
++  expect(next.rollover_in).toBe("300.0000");
++  expect(next.effective_budget).toBe("800.0000");
++});
+```
+
+14. **Verification:** the new integration case; `npm run test:unit -- budget-period`.
+15. **Residual risks:** `QUARTERLY` and `ANNUAL` are treated as `MONTHLY` by `computeRollover`; that semantics is not decided by this fix. The live budget page (`getSummary`) uses `bc.amount` and ignores `effective_budget` entirely, so even a fixed rollover reaches only the period detail view.
+
+Causality: `PRE_EXISTING_UNREPORTED`.
+
+
+### A26-M33 - A category's cost is not its signed sum: the custom report engine sums absolute values, the loan summary adds an interest refund to "Interest Paid"
+
+- **Canonical severity:** MEDIUM. MEDIUM for the group; A26-S15-05 (LOW) violates the same netting rule and is absorbed.
+- **Absorbs:** A26-S16-05 (primary, 16-budgets-reports.md, session severity MEDIUM); A26-S15-05 (merged surface, 15-loans-strategies.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** financial.
+
+#### A26-S16-05 (primary) - The custom report engine sums the absolute value of every row, so a refund raises a category's cost
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (static; the arithmetic is direct)
+3. **Location:** `backend/src/reports/reports.service.ts:817, 833, 855, 858, 896, 905, 959, 1019, 1030, 1091` (`Math.abs(...)` per row or line); direction filter `:581-596` (`EXPENSES_ONLY` default `:74`, keeps `amount < 0` only).
+4. **Violated invariant:** AGENTS "A category's cost is its signed sum over rows of both signs, netted within one category" (`isNetSpending` / `NET_SPEND_AMOUNT`, issue #1125).
+5. **Reproduction:** Groceries -100.00 and a +30.00 refund in the same month. Built-in Spending by Category; custom report by category with direction `EXPENSES_ONLY`, then `BOTH`.
+6. **Observed:** built-in 70.00; custom `EXPENSES_ONLY` 100.00 (refund dropped, the pre-#1125 rule); custom `BOTH` 130.00 (refund added).
+7. **Expected:** 70.00 for the category on every surface.
+8. **Impact:** +30.00 (+42.9 percent) or +60.00 (+85.7 percent) on the example; two report surfaces disagree on one category and month.
+9. **Root cause:** the engine was written before the netting rule and aggregates magnitudes.
+10. **Recommended correction:** accumulate the signed amount per group and present `-sum` for expense groupings (drop a group whose net is not spending, as `isNetSpending`); keep the direction filter as a row filter only where the user asked for a cash-direction view. Product decision on `BOTH`.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/reports/reports.service.ts
++++ b/backend/src/reports/reports.service.ts
+@@ -893,7 +893,7 @@
+           const existing = dataMap.get(categoryId) || { sum: 0, count: 0 };
+-          existing.sum = roundMoney(
+-            existing.sum + Math.abs(Number(split.amount)),
+-          );
++          existing.sum = roundMoney(existing.sum - Number(split.amount));
+@@ -905 +905 @@
+-        existing.sum = roundMoney(existing.sum + Math.abs(Number(tx.amount)));
++        existing.sum = roundMoney(existing.sum - Number(tx.amount));
+```
+
+   and the same change in the other aggregators, with the sign flipped for an `INCOME_ONLY` report.
+12. **Recommended regression test:** the -100 / +30 case through `executeReport`, asserting 70.
+13. **Suggested regression-test diff:** a `reports.service.spec.ts` case with two hydrated transactions, `expect(result.data[0].value).toBe(70)`.
+14. **Verification:** `npm run test:unit -- reports.service`.
+15. **Residual risks:** the direction filter is user configuration; whether `EXPENSES_ONLY` should mean "categories that net to spending" is the maintainer's decision.
+
+Causality: `PRE_EXISTING_UNREPORTED`.
+
+#### A26-S15-05 (merged surface) - An interest refund in the loan's interest category is added to "Interest Paid" instead of netted
+
+1. **Severity:** LOW
+2. **Confidence:** high (executed by the frontend sweep's probe; lines re-read)
+3. **Location:** `frontend/src/lib/loan-history.ts:1313` (`Math.abs(Number(tx.amount))` for every standalone interest row), `:1244-1246` (per split line).
+4. **Violated invariant:** "a category's cost is its signed sum over rows of both signs" (AGENTS.md, `netEntityTotal`).
+5. **Reproduction:** a -200.00 interest expense on 2026-01-15 and a +50.00 interest refund on 2026-01-16 from the lender.
+6. **Observed:** interest **250.00**; an orphan +50.00 refund becomes an interest row of +50.00.
+7. **Expected:** 150.00; the orphan refund reduces cumulative interest (-50.00).
+8. **Impact:** Interest Paid, the exports and the tax-relevant interest total overstated by twice the refund (100.00 here).
+9. **Root cause:** magnitude taken per row before summing.
+10. **Recommended correction:** sum signed amounts and negate once.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+-    const amount = Math.abs(Number(tx.amount));
++    // Signed: an expense is negative, a refund positive; interest paid is the
++    // negated net, so a refund reduces it.
++    const amount = -Number(tx.amount);
+```
+
+   and the split-line sum likewise (`-Number(s.amount)`), clamping only the displayed per-row figure if a negative row must not render. Needs: the pairing code that assumes non-negative amounts re-checked.
+12. **Recommended regression test / 13. diff:** `it("nets an interest refund", () => { ... intx({ amount: -200 }), intx({ amount: 50 }) ...; expect(h.cumulativeInterest).toBe(150); })`.
+14. **Verification:** `npm run test -- loan-history`.
+15. **Residual risks:** a refund of interest from another year changes a past year's total (correct, but visible).
+
+- Causality: `PRE_EXISTING_UNREPORTED`.
+
+
+### A26-M34 - The AI and MCP `spending_anomalies` report passes the requested number of months as the z-score threshold
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S17-03 (primary, 17-ai-mcp-notifications.md, session severity MEDIUM).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** financial.
+
+#### A26-S17-03 (primary) - The AI and MCP `spending_anomalies` report passes the requested number of months as the z-score threshold
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (read; the unit tests assert the defect; M4)
+3. **Location:** `backend/src/ai/query/tool-executor.service.ts:2908-2924`, `backend/src/mcp/tools/reports.tool.ts:85-90` (`getSpendingAnomalies(userId, args.months ?? 3)`); callee `backend/src/built-in-reports/anomaly-reports.service.ts:37-40` (`threshold: number = 2`, fixed six-month window at `:51-54`); HTTP route `built-in-reports.controller.ts:188-197` clamps the threshold to `[0.5, 10]`. Tool descriptions `tool-definitions.ts:1051-1056`, `reports.tool.ts:65-67` ("months of history. Default 3", bounds 1..24).
+4. **Violated invariant:** the tool contract it documents (months of history), parity with the HTTP report (same data, same threshold), and "A preview computes what the commit will do, through the same code" in its read form: the same report must answer the same question on every surface.
+5. **Realistic reproduction scenario:** a user asks "any unusual spending?". The model omits `months` (default 3) or passes 12.
+6. **Observed implementation behavior:** the anomaly search runs with z-score threshold 3 (or 12) over the fixed six-month window; at 12 nothing can qualify and the tool description tells the model an empty list "means nothing was unusual". At `months: 1` the threshold is 1 and ordinary purchases are flagged. The AI summary also says "over the last N months", which is not the window used.
+7. **Expected behavior:** the default threshold (2, as the Reports page) and either a real `months` window or no `months` input.
+8. **Impact:** the assistant and MCP clients answer "nothing unusual" while the Reports page lists anomalies for the same user and data, or flag noise; an explicit user parameter is silently reinterpreted. No stored data changes.
+9. **Root cause:** a positional argument of the wrong meaning; the tests mock the callee and assert the wrong value.
+10. **Recommended correction:** pass the threshold explicitly (the HTTP default) and either drop `months` from both schemas or add a `months` window parameter to `getSpendingAnomalies`.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/ai/query/tool-executor.service.ts
++++ b/backend/src/ai/query/tool-executor.service.ts
+@@ generateReport
+-      const months = (input.months as number | undefined) ?? 3;
+-      const data = await this.builtInReportsService.getSpendingAnomalies(
+-        userId,
+-        months,
+-      );
++      // The second parameter is the z-score threshold, not a window; the
++      // window is the report's own six months, as on the Reports page.
++      const data = await this.builtInReportsService.getSpendingAnomalies(userId);
+       const count = data.anomalies.length;
+       return {
+         data,
+-        summary: `${count} spending anomal${count === 1 ? "y" : "ies"} detected over the last ${months} month${months === 1 ? "" : "s"}.`,
++        summary: `${count} spending anomal${count === 1 ? "y" : "ies"} detected over the last 6 months.`,
+--- a/backend/src/mcp/tools/reports.tool.ts
++++ b/backend/src/mcp/tools/reports.tool.ts
+-            const data = await this.reportsService.getSpendingAnomalies(
+-              user.userId,
+-              args.months ?? 3,
+-            );
++            const data = await this.reportsService.getSpendingAnomalies(user.userId);
+```
+
+plus removing `months` from `tool-input-schemas.ts:329`, `tool-definitions.ts:1051-1056` and `reports.tool.ts:65-67` (a `tools/list` byte reduction).
+12. **Recommended regression test:** both adapter specs assert `getSpendingAnomalies` is called with the user id only (or with the documented threshold), replacing the two known-wrong assertions.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/ai/query/tool-executor.service.spec.ts
++++ b/backend/src/ai/query/tool-executor.service.spec.ts
+@@ ~1348
+-      expect(builtInReports.getSpendingAnomalies).toHaveBeenCalledWith(
+-        "user-1",
+-        6,
+-      );
++      expect(builtInReports.getSpendingAnomalies).toHaveBeenCalledWith("user-1");
+```
+
+(same in `mcp/tools/reports.tool.spec.ts:228, 243`).
+14. **Verification method:** the two specs; `tools-list-budget.spec.ts` (the caps are a ratchet: lower them); `tool-output-schemas.spec.ts`.
+15. **Residual risks / patch limitations:** removing an input field breaks a client that sends it only if the schema were strict; the MCP SDK validates against the declared input schema, so a stale client sending `months` would be refused. The safer first step keeps `months` accepted and ignored.
+
+Causality: `PRE_EXISTING_UNREPORTED`. Handed from S13 (`13-valuation-fx-networth.md` section 12). Rule 7 surfaces: AI and MCP `generate_report` `spending_anomalies`.
+
+
+### A26-M35 - Client caches outlive the data they derive from: recategorising writes, non-ledger valuation inputs and MNY imports invalidate nothing, and hand-rolled reads are not generation-aware (INV-CACHE-001 client half)
+
+- **Canonical severity:** MEDIUM. MEDIUM for the group: one invariant, four client surfaces (A26-S18-07 LOW absorbed).
+- **Absorbs:** A26-S18-01 (primary, 18-frontend-core.md, session severity MEDIUM); A26-S18-02 (merged surface, 18-frontend-core.md, session severity MEDIUM); A26-S18-03 (merged surface, 18-frontend-core.md, session severity MEDIUM); A26-S18-07 (merged surface, 18-frontend-core.md, session severity LOW).
+- **Invariants and prior findings named:** INV-CACHE-001, MON-M38.
+- **Lens:** frontend.
+
+#### A26-S18-01 (primary) - Recategorising writes leave cached budget progress stale (MON-M38 residual)
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed, P1 and P2)
+3. **Location:** `frontend/src/lib/categories.ts:69-78` (`reassignTransactions`, no invalidation), `frontend/src/lib/payees.ts:187-204` (`applyCategorySuggestions` with `backfillTransactions`, drops only `payees:`); callers `components/categories/CategoryList.tsx:235-258`, `app/categories/[id]/page.tsx:532-549`, `components/payees/CategoryAutoAssignDialog.tsx:122-131`, `app/payees/page.tsx:190-203`; guard `frontend/src/lib/balance-cache.guard.test.ts:29-37` (route list).
+4. **Violated invariant:** INV-CACHE-001 ("a money-moving write invalidates every derived cache"); `docs/frontend/api-and-cache.md` "any categorised amount moves the budget it falls in"; MON-M38.
+5. **Reproduction:** budget "Groceries 500.00", spent 300.00, `budgets:dashboard` cached (30 s), `budgets:cat-status:*` cached (60 s), `budgets:all` (120 s). Delete category "Supermarket" (120.00 of this month's spending) choosing "Groceries" as the reassignment target, or run "Auto-assign categories" with "also update existing transactions".
+6. **Observed (P1, P2):** the reassign `POST /categories/:id/reassign` and the backfill `POST /payees/category-suggestions/apply` return 2xx; the next `budgetsApi.getDashboardSummary()` is served from the pre-write cache (one network call in the probe, the second read equals the first).
+7. **Expected:** both writes drop `budgets:` (and the transaction-derived prefixes generally), so the dashboard shows spent 420.00, remaining 80.00.
+8. **Impact:** remaining budget overstated by 120.00 (24 % of the budget) for up to two minutes after the write, on the screen a spending decision is made from; navigation does not help (the remount is served from the cache).
+9. **Root cause:** the guard's `BALANCE_WRITING_ROUTES` names routes that move balances; recategorising moves no balance but moves budget progress, so neither guard sees the omission, and the two lib methods never call `invalidateBalanceCaches()`.
+10. **Recommended correction:** call `invalidateBalanceCaches()` in both methods (the budget family is the one that matters; dropping `accounts:`/`investments:` too is cheap and matches the helper's contract "three views of the same rows"), and widen the guard to "routes that write transaction rows", adding the two routes.
+11. **Suggested remediation diff (illustrative, not applied)**
+
+```diff
+--- a/frontend/src/lib/categories.ts
++++ b/frontend/src/lib/categories.ts
+@@ -69,10 +69,13 @@
+   reassignTransactions: async (
+     fromCategoryId: string,
+     toCategoryId: string | null,
+   ): Promise<{ transactionsUpdated: number; splitsUpdated: number }> => {
+     const response = await apiClient.post<{ transactionsUpdated: number; splitsUpdated: number }>(
+       `/categories/${fromCategoryId}/reassign`,
+       { toCategoryId },
+     );
++    // Moving rows between categories moves budget progress.
++    invalidateBalanceCaches();
++    invalidateCache('categories:');
+     return response.data;
+   },
+--- a/frontend/src/lib/payees.ts
++++ b/frontend/src/lib/payees.ts
+@@ -200,6 +200,9 @@
+     invalidateCache('payees:');
++    // A backfill writes category_id onto existing transactions.
++    if (totalBackfilled > 0) invalidateBalanceCaches();
+     return { updated: totalUpdated, transactionsBackfilled: totalBackfilled };
+--- a/frontend/src/lib/balance-cache.guard.test.ts
++++ b/frontend/src/lib/balance-cache.guard.test.ts
+@@ -29,6 +29,10 @@
+ const BALANCE_WRITING_ROUTES = [
+   /['`]\/transactions/,
++  // Recategorising writes category_id on transaction rows: budget progress moves.
++  /['`]\/categories\/\$\{[^}]+\}\/reassign['`]/,
++  /['`]\/payees\/category-suggestions\/apply['`]/,
+```
+
+12. **Recommended regression test:** prime `budgets:dashboard`, run each write, assert the next read goes to the network.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
+--- a/frontend/src/lib/categories.test.ts
++++ b/frontend/src/lib/categories.test.ts
++  it('reassigning transactions drops cached budget progress', async () => {
++    setCache('budgets:dashboard', { remaining: 100 });
++    vi.mocked(apiClient.post).mockResolvedValue({ data: { transactionsUpdated: 1, splitsUpdated: 0 } });
++    await categoriesApi.reassignTransactions('from', 'to');
++    expect(getCached('budgets:dashboard')).toBeUndefined();
++  });
+```
+
+14. **Verification:** `npm run test -- categories payees balance-cache apiCache`; the probe P1/P2 inverted.
+15. **Residual risks:** the guard stays a route list; a future recategorising route (rules run already uses `clearAllCache()`) needs adding. Causality: `PRIOR_REPORTED` (MON-M38), `CONFIRMED_WITH_DIFFERENT_ROOT_CAUSE`: the transaction create/edit/delete/VOID paths named by MON-M38 are fixed; the residual is the recategorising surfaces.
+
+#### A26-S18-02 (merged surface) - Hand-rolled cache reads are not generation-aware, so a read in flight across a trade writes the pre-trade valuation back for 60 s
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed, P3, with a `dedupe` control that does not reproduce)
+3. **Location:** `frontend/src/lib/investments.ts:120-129` (`getPortfolioSummary`), `:132-141`, `:146-155`, `:163-177`, `:182-202`, `:227-234` (`investments:accounts`), `:286-293` (top movers), `:585-592` (favourites), `:912-929` (prices), `:935-942` (market indexes), `:1180-1222` (three weightings); `frontend/src/lib/budgets.ts:264-278` (`budgets:cat-status:*`); `lib/custom-reports.ts:30-36`, `lib/investment-reports.ts:64-70`.
+4. **Violated invariant:** INV-CACHE-001; the `apiCache.ts:10-17` contract ("a read that began before a mutation could be re-served after it ... issue #1167 close-out").
+5. **Reproduction:** Investments page mounts; `GET /portfolio/summary` (seconds of server work) is in flight and reads the ledger before the trade commits. The user saves a BUY of 20 000.00 from the trade form. `invalidateBalanceCaches()` runs; the page's refetch goes out and returns first; the original read lands afterwards.
+6. **Observed (P3):** the late response executes `setCache('investments:summary:all', <pre-trade>, 60_000)`; the next `getPortfolioSummary()` (any remount, the dashboard widget) returns the pre-trade summary. The same race through `dedupe` (`budgets:dashboard`, control case) keeps the fresh payload.
+7. **Expected:** a response whose key was invalidated after its request started is returned to its own caller but never written to the cache.
+8. **Impact:** the portfolio total, cash and holdings show the pre-trade state (here 20 000.00 of cash still present, the new position absent) for up to 60 s on every surface that reads the key, including after navigation; the per-category budget status behind the transaction form for 60 s.
+9. **Root cause:** the #1167 fix moved only `dedupe` onto the generation counter; sixteen read sites (13 in `investments.ts`, one each in `budgets.ts`, `custom-reports.ts`, `investment-reports.ts`) still call `getCached`/`setCache` directly, which knows nothing about `invalidateCache`'s generation bump.
+10. **Recommended correction:** route every cached read through `dedupe` (it already handles TTL, in-flight sharing and the generation); keep `getCached`/`setCache` for the two optimistic list rewrites (`custom-reports.ts:75-80`, `investment-reports.ts:110-116`) only.
+11. **Suggested remediation diff (illustrative, not applied)**
+
+```diff
+--- a/frontend/src/lib/investments.ts
++++ b/frontend/src/lib/investments.ts
+@@ -120,10 +120,12 @@
+   getPortfolioSummary: async (accountIds?: string[]): Promise<PortfolioSummary> => {
+     const cacheKey = `investments:summary:${accountIds?.join(',') || 'all'}`;
+-    const cached = getCached<PortfolioSummary>(cacheKey);
+-    if (cached) return cached;
+-    const response = await apiClient.get<PortfolioSummary>('/portfolio/summary', {
+-      params: accountIds && accountIds.length > 0 ? { accountIds: accountIds.join(',') } : undefined,
+-    });
+-    setCache(cacheKey, response.data, 60_000);
+-    return response.data;
++    return dedupe(cacheKey, async () => {
++      const response = await apiClient.get<PortfolioSummary>('/portfolio/summary', {
++        params: accountIds && accountIds.length > 0 ? { accountIds: accountIds.join(',') } : undefined,
++      });
++      return response.data;
++    }, 60_000);
+   },
+```
+
+   (the same shape for each listed site; `budgets.ts:264` becomes `dedupe(cacheKey, () => apiClient.post(...).then(r => r.data), 60_000)`).
+12. **Recommended regression test:** a source scan in `cache-prefix-classification.guard.test.ts` that fails a `setCache(` outside `apiCache.ts` and the two list-rewrite sites, plus one behavioural case per family.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
+--- a/frontend/src/lib/investments.test.ts
++++ b/frontend/src/lib/investments.test.ts
++  it('a summary read in flight across a trade does not resurrect the pre-trade payload', async () => {
++    let resolveOld!: (v: unknown) => void;
++    vi.mocked(apiClient.get).mockImplementationOnce(() => new Promise((r) => { resolveOld = r; }));
++    const old = investmentsApi.getPortfolioSummary();
++    vi.mocked(apiClient.post).mockResolvedValueOnce({ data: {} });
++    await investmentsApi.createTransaction({} as never);
++    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: { totalPortfolioValue: 120 } });
++    await investmentsApi.getPortfolioSummary();
++    resolveOld({ data: { totalPortfolioValue: 100 } });
++    await old;
++    expect(getCached('investments:summary:all')).toEqual({ totalPortfolioValue: 120 });
++  });
+```
+
+14. **Verification:** `npm run test -- investments budgets apiCache cache-prefix`.
+15. **Residual risks:** `dedupe` shares one promise between callers, so a caller that mutates the returned object would now mutate a shared one (none found in the readers sampled). Causality: `PRE_EXISTING_UNREPORTED` (the hand-rolled sites predate the #1167 generation fix, which covered `dedupe` only).
+
+#### A26-S18-03 (merged surface) - Valuation inputs that are not ledger rows invalidate nothing derived: a manual price, a security's currency, the reporting currency
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed, P4 and P5)
+3. **Location:** `frontend/src/lib/investments.ts:1160-1177` (manual price create/update/delete drop only `investments:prices:`); `:652-670` (`updateSecurity` drops only `scheduled:` unless a bond program changes); `frontend/src/lib/user-settings.ts:40-43` and `components/settings/PreferencesSection.tsx:135-150` (`defaultCurrency` change, no cache drop); renderer `components/investments/PortfolioSummaryCard.tsx:43-80` (formats backend totals with the preference `defaultCurrency`; `PortfolioSummary` carries no currency code, `types/investment.ts:304-382`).
+4. **Violated invariant:** INV-CACHE-001; `AGENTS.md` "a total names its currency"; Calibration Rule 5 (every channel that changes an upstream dependency of a cached derived value invalidates it).
+5. **Reproduction:** (a) on a security page, enter a manual close of 200.00 for a holding of 500 shares last priced 100.00, then open Investments within 60 s; (b) change a security's currency from USD to EUR; (c) in Settings change the default currency USD -> CAD (USD->CAD 1.37), then open Investments within 60 s.
+6. **Observed:** (a, P4) `investments:summary:all` survives the price write; the portfolio shows 50 000.00 for the holding instead of 100 000.00. (c, P5) the summary cached in USD survives the preference change and `PortfolioSummaryCard` renders `totalPortfolioValue` 100 000 as "CA$100,000.00".
+7. **Expected:** (a) 100 000.00 after the write; (c) CA$137 000.00, or the figure withheld until the CAD payload arrives.
+8. **Impact:** (a) 50 000.00 understated (50 %) for up to 60 s; (c) 37 000.00 understated (27 %) under the wrong currency label for up to 60 s on the summary, allocation, weightings, top movers and favourites, 30 s on the budget dashboard; `accounts:daily-balance-totals` keys `displayCurrency ?? ''`, so a caller that omits it is also served the old currency.
+9. **Root cause:** the invalidation rule was written as "a write that moves money"; valuation also depends on prices, the security's currency and the reporting currency, and none of those writes is classified.
+10. **Recommended correction:** a price write and a security currency edit drop `investments:` and `accounts:`; a preference write that changes `defaultCurrency` (or `timezone`, which moves "today") calls `clearAllCache()`.
+11. **Suggested remediation diff (illustrative, not applied)**
+
+```diff
+--- a/frontend/src/lib/investments.ts
++++ b/frontend/src/lib/investments.ts
+@@ -1160,19 +1160,22 @@
+   createSecurityPrice: async (securityId: string, data: CreateSecurityPriceData): Promise<SecurityPrice> => {
+     const response = await apiClient.post<SecurityPrice>(`/securities/${securityId}/prices`, data);
+-    invalidateCache('investments:prices:');
++    // A stored close values every holding of the security.
++    invalidateBalanceCaches();
+     return response.data;
+   },
+@@ (same for updateSecurityPrice and deleteSecurityPrice)
+@@ -665,6 +668,8 @@
+     invalidateScheduledFxReadModel();
++    // The security's currency decides how its holdings convert.
++    if (data.currencyCode !== undefined) invalidateBalanceCaches();
+     if (data.bondProgramId !== undefined) invalidateCache('investments:');
+--- a/frontend/src/lib/user-settings.ts
++++ b/frontend/src/lib/user-settings.ts
+@@ -40,4 +40,8 @@
+   updatePreferences: async (data: UpdatePreferencesData): Promise<UserPreferences> => {
+     const response = await apiClient.patch<UserPreferences>('/users/preferences', data);
++    // Every cached figure is denominated in the reporting currency and dated by
++    // the reader's today; neither payload names which one it was computed for.
++    if (data.defaultCurrency !== undefined || data.timezone !== undefined) clearAllCache();
+     return response.data;
+   },
+```
+
+12. **Recommended regression test:** one lib case per channel asserting the summary key is dropped; a guard row classifying `/securities/:id/prices` as transaction-derived.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
+--- a/frontend/src/lib/user-settings.test.ts
++++ b/frontend/src/lib/user-settings.test.ts
++  it('a reporting-currency change drops currency-denominated caches', async () => {
++    setCache('investments:summary:all', { totalPortfolioValue: 100000 });
++    vi.mocked(apiClient.patch).mockResolvedValue({ data: { defaultCurrency: 'CAD' } });
++    await userSettingsApi.updatePreferences({ defaultCurrency: 'CAD' });
++    expect(getCached('investments:summary:all')).toBeUndefined();
++  });
+```
+
+14. **Verification:** `npm run test -- investments user-settings PortfolioSummaryCard`.
+15. **Residual risks:** the payloads still carry no currency code, so any other path that keeps one across a currency change repeats (c); the durable fix is a `currency` field on `PortfolioSummary` and an assertion in the card that it equals the rendered currency (maintainer decision). Causality: `PRE_EXISTING_UNREPORTED`.
+
+#### A26-S18-07 (merged surface) - A finished MNY import drops only the balance caches; categories, payees, tags and schedules it created (or wiped) stay cached
+
+1. **Severity:** LOW
+2. **Confidence:** high (executed, P6)
+3. **Location:** `frontend/src/lib/import-mny.ts:320-332` (`getJob` terminal state -> `invalidateBalanceCaches()` only); TTLs `categories.ts:26-34` and `payees.ts:88-95`, `tags.ts:13-20` (5 min), `scheduled-transactions.ts:30-37` (2 min). Compare `email-import/run-import.ts:308`, `transaction-rules-api.ts:144`, `backupApi.ts:499` (`clearAllCache()` for writes that touch anything).
+4. **Violated invariant:** `docs/frontend/api-and-cache.md` "Where the write can touch anything ... use `clearAllCache()`".
+5. **Reproduction:** with "wipe existing data", import a `.mny`; open a transaction form within five minutes.
+6. **Observed (P6):** `categories:all` still holds the pre-import list; the pickers offer deleted category and payee ids and miss the imported ones; a save with a stale id is refused by the server.
+7. **Expected:** the import's terminal state calls `clearAllCache()`.
+8. **Impact:** confusing failures and missing choices for up to five minutes; no ledger corruption (the server refuses the stale ids).
+9. **Root cause:** the MNY import writes every table, but its invalidation was modelled on the transaction-only importers.
+10. **Recommended correction / 11. diff (illustrative, not applied):**
+
+```diff
+--- a/frontend/src/lib/import-mny.ts
++++ b/frontend/src/lib/import-mny.ts
+@@ -328,5 +328,6 @@
+     if (response.data.status === 'completed' || response.data.status === 'failed') {
+-      invalidateBalanceCaches();
++      // Accounts, categories, payees, tags, securities and schedules are all written.
++      clearAllCache();
+     }
+```
+
+12. **Regression test / 13. diff:** extend `import-mny.test.ts` with `setCache('categories:all', [...])` then a completed `getJob`, asserting the key is gone.
+14. **Verification:** `npm run test -- import-mny useMnyImport`.
+15. **Residual risks:** `clearAllCache()` on each poll of a terminal job repeats harmlessly. Causality: `PRE_EXISTING_UNREPORTED`.
+
+
+### A26-M36 - The intraday portfolio series is cached in sessionStorage with no user or acting-context key and survives sign-out and context switches
+
+- **Canonical severity:** MEDIUM. MEDIUM: S18 (LOW) and S20 (MEDIUM) found the same defect; S23 takes S20's rating because the delegate-context switch shows the owner's figures under the delegate's own session, not only on a shared device.
+- **Absorbs:** A26-S20-04 (primary, 20-frontend-figures.md, session severity MEDIUM); A26-S18-08 (merged surface, 18-frontend-core.md, session severity LOW).
+- **Invariants and prior findings named:** INV-SHARE-003.
+- **Lens:** security.
+
+#### A26-S20-04 (primary) - The intraday portfolio series is cached in sessionStorage under a key with no user and no acting context, and neither sign-out nor a context switch clears it, so the next user (or context) on the tab is drawn the previous one's portfolio
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed at unit level; hydration path read)
+3. **Location:** `frontend/src/components/investments/portfolio-chart-utils.tsx:115-122` (`buildIntradayCacheKey(range, accountIds, currency)`), `:124-134` (`readIntradayCache`, no freshness check), `:147-160` (`clearAllIntradayCache`, called only on refresh in `InvestmentValueChart.tsx:407, 430`); readers `InvestmentValueChart.tsx:258-276` and `PortfolioValueReport.tsx:598-613` (hydrate before the network answers); `store/authStore.ts:97-114` (logout clears `apiCache`, two localStorage keys and the share inbox, not this); `components/layout/DelegationBanner.tsx:28-31` (context switch is a `window.location.reload()`, which keeps sessionStorage).
+4. **Violated invariant:** a page never shows data fetched under another identity (the hint's delegated-session lens; `frontend/CLAUDE.md` "Asynchronous data belongs to the request that produced it"); the persisted-storage rule's intent (`store/persisted-storage.guard.test.ts` covers localStorage only).
+5. **Reproduction:** user A opens Investments on 1D with all accounts in USD, signs out; user B signs in on the same tab and opens Investments on 1D, all accounts, USD. Or: a delegate acting as an owner opens 1D, then switches back to their own context.
+6. **Observed (executed, probe P7):** after `useAuthStore.getState().logout()` the entry written for A is still returned for B's identical key (`expected { fetchedAt: ..., ... } to be null`). The chart sets A's points (`setLoadedPoints`) and drops the skeleton before B's request answers; it is replaced only when B's response arrives.
+7. **Expected:** the cache keyed by the user and acting context, and cleared on sign-out and on a context switch.
+8. **Impact:** another person's portfolio value series and its Highest / Lowest figures shown on a shared device for the length of an intraday request (which fetches every holding from the provider), and the owner's figures shown under the delegate's own context after a switch.
+9. **Root cause:** the cache identity covers what the request names (range, accounts, currency) but not whose request it is (Rule 5: two dependencies of the payload, user and acting context, have no invalidation path).
+10. **Recommended correction:** add the user id and `actingAsUserId` to the key and call `clearAllIntradayCache()` from `logout()` and before the context-switch reload.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/frontend/src/store/authStore.ts
++++ b/frontend/src/store/authStore.ts
+       logout: () => {
+         clearAllCache();
++        import('@/components/investments/portfolio-chart-utils').then(({ clearAllIntradayCache }) => clearAllIntradayCache());
+--- a/frontend/src/components/layout/DelegationBanner.tsx
++++ b/frontend/src/components/layout/DelegationBanner.tsx
+       await delegationApi.switchContext(targetUserId);
++      clearAllIntradayCache();
+       window.location.reload();
+--- a/frontend/src/components/investments/portfolio-chart-utils.tsx
++++ b/frontend/src/components/investments/portfolio-chart-utils.tsx
+-export function buildIntradayCacheKey(range: string, accountIds: string[] | undefined, currency: string): string {
++export function buildIntradayCacheKey(range: string, accountIds: string[] | undefined, currency: string, identity: string): string {
+   const accts = (accountIds ?? []).slice().sort().join(',');
+-  return `${INTRADAY_CACHE_PREFIX}${range}|${accts}|${currency}`;
++  return `${INTRADAY_CACHE_PREFIX}${identity}|${range}|${accts}|${currency}`;
+```
+
+   (`identity` = `${user.id}:${actingAsUserId ?? 'self'}` from `useAuthStore`.) The logout import is dynamic to keep the store free of a component dependency; a `lib/` home for the cache helpers is the cleaner fix.
+12. **Recommended regression test:** the probe below, plus a key test asserting two identities never share a key.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++// store/authStore.test.ts
++it('drops the intraday portfolio cache on logout', () => {
++  const key = buildIntradayCacheKey('1d', [], 'USD', 'user-a:self');
++  writeIntradayCache(key, { fetchedAt: Date.now(), points: [{ timestamp: '2026-10-21T14:30:00Z', value: 1, securitiesValue: 1 }], interval: '5m', currency: 'USD', fallbackToDaily: false, skippedSymbols: [], failedSymbols: [] });
++  useAuthStore.getState().logout();
++  expect(readIntradayCache(key)).toBeNull();
++});
+```
+
+14. **Verification:** `npm run test -- authStore portfolio-chart-utils InvestmentValueChart PortfolioValueReport DelegationBanner`; a two-user browser check on one tab.
+15. **Residual risks:** other sessionStorage users (`stepUpToken`, `logout-state`, `whatsNewStore`) were not swept for identity; localStorage report settings that hold account ids are discussed in section 9 (D-S20-02).
+
+Causality: `PRE_EXISTING_UNREPORTED` (not datable in the shallow clone).
+
+#### A26-S18-08 (merged surface) - Logout leaves the intraday portfolio series in `sessionStorage`, keyed without a user, and the next account on the tab is shown it
+
+1. **Severity:** LOW
+2. **Confidence:** high (executed, P8)
+3. **Location:** `frontend/src/components/investments/portfolio-chart-utils.tsx:97-160` (`monize-intraday|<range>|<accounts>|<currency>`, no user id); `InvestmentValueChart.tsx:262-280` (hydrates from the entry before the network answers); `frontend/src/store/authStore.ts:97-129` (`logout` clears the API cache, the share inbox, preferences, the AI chat and Monte Carlo keys, but not these); `store/persisted-storage.guard.test.ts` covers `localStorage` only.
+4. **Violated invariant:** the logout sweep the store documents ("so conversations don't leak across accounts"); INV-SHARE-003's reasoning applied to the same device-sharing threat.
+5. **Reproduction:** user A views Investments on 1D (all accounts, USD), signs out; user B signs in on the same tab and opens Investments on 1D.
+6. **Observed (P8):** the entry survives `logout()`; B's chart is drawn from A's points (value 250 000 in the probe) until B's request answers, and stays if B's intraday request fails (the fallback loads B's daily series, which replaces it).
+7. **Expected:** `logout` calls `clearAllIntradayCache()`; the key carries the user id.
+8. **Impact:** another account's portfolio value series is displayed briefly on a shared device.
+9. **Root cause:** the sweep in `logout` was written for `localStorage` keys; the `sessionStorage` cache was added later without a guard.
+10. **Correction / 11. diff (illustrative, not applied):**
+
+```diff
+--- a/frontend/src/store/authStore.ts
++++ b/frontend/src/store/authStore.ts
+@@ -108,6 +108,10 @@
+         import('@/store/preferencesStore').then(({ usePreferencesStore }) => {
+           usePreferencesStore.getState().clearPreferences();
+         });
++        // SECURITY: the intraday chart cache is one account's portfolio series.
++        import('@/components/investments/portfolio-chart-utils').then(
++          ({ clearAllIntradayCache }) => clearAllIntradayCache(),
++        );
+```
+
+12. **Regression test / 13. diff:** in `authStore.test.ts`, write an `INTRADAY_CACHE_PREFIX` key, call `logout()`, await the dynamic import, assert it is gone; extend the persisted-storage guard to scan `sessionStorage.setItem` writers.
+14. **Verification:** `npm run test -- authStore persisted-storage portfolio-chart-utils`.
+15. **Residual risks:** `localStorage` filter state (account-id lists and the free-text search in `AccountList.tsx:282-316`, `useTransactionFilters.ts:631-636`) also survives logout; it holds ids and the user's own typed text, recorded as a design risk (section 9). Causality: `PRE_EXISTING_UNREPORTED`.
+
+
+### A26-M37 - Four-decimal amounts are loaded and blurred at two decimals, so an unedited save re-amounts a row or is refused (MON-M37)
+
+- **Canonical severity:** MEDIUM. kept MEDIUM.
+- **Absorbs:** A26-S19-03 (primary, 19-frontend-forms.md, session severity MEDIUM).
+- **Invariants and prior findings named:** MON-M37.
+- **Lens:** frontend.
+
+#### A26-S19-03 (primary) - Four-decimal amounts are loaded and blurred at two decimals, so an unedited save re-amounts a row or is refused (MON-M37)
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed: P2 and P3 component payloads, the `CurrencyInput` probe, and both backend probes)
+3. **Location:** `frontend/src/components/ui/CurrencyInput.tsx:118-124` (parse rounds to cents), `:190-193` (`notifyIfChanged` compares the 2dp parse with the 4dp value), `:209-239` (blur); loaders: `TransactionForm.tsx:341-343`, `AccountForm.tsx:411-415` (`openingBalance`, always sent on edit; also `creditLimit`, `paymentAmount`, `originalPrincipal`), `OverrideEditorDialog.tsx:203, 223`, `ScheduledTransactionForm.tsx:271-273, 292-294`; the split check `TransactionForm.tsx:1309-1318` (cents) against `backend/src/common/split-amount.util.ts:43-54` (exact 4dp).
+4. **Violated invariant:** an unchanged value re-sent by the client is not a change (AGENTS.md); money is `decimal(20,4)` and the server rounds with `roundMoney`.
+5. **Reproduction:** four-decimal rows are written by the server itself: `applyFxConversion` (`fx-entry.util.ts:126-137`; a foreign entry through an import, the assistant or MCP), the implied destination of a cross-currency transfer (`roundMoney(amount * rate)`), investment cash legs. (a) A -3.3333 expense opened and saved with a description edit; (b) a -12.3457 split parent with lines -6.1728 and -6.1729 saved unedited; (c) a tab through any `CurrencyInput` holding -3.3333.
+6. **Observed (executed):** (a) payload `amount: -3.33`; on PostgreSQL the balance moves 96.6667 -> 96.67 and the row becomes -3.3300. (b) payload parent `-12.35`, lines `[-6.1728, -6.1729]`; the server refuses with "Split amounts (-12.3457) must equal transaction amount (-12.35)", so the row cannot be saved from the form at all. (c) `onChange(-3.33)` fires on a bare focus and blur.
+7. **Expected:** an untouched field reports nothing; the loaded value keeps its stored precision until the user types.
+8. **Impact:** sub-cent balance drift on every cosmetic edit (+0.0033 in the example; a reconciled row is re-amounted with no confirmation because `reconciledEditAffectsReconciliation` compares cents), a split row that cannot be edited at all (workflow failure), and the same rounding on account opening balances and schedule templates. The per-row money is small; the refusal is the material part.
+9. **Root cause:** the forms round at load, and `CurrencyInput` treats "the text on screen parses to the held value" as the no-edit test, which is false whenever the held value has more precision than the display; the client split check tolerates a cent the server does not.
+10. **Recommended correction:** keep the stored value on load (no `Math.round` in the defaults) and make `notifyIfChanged` treat a 2dp parse equal to the held value at display precision as no edit; compare split sums at 4dp on the client.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/frontend/src/components/ui/CurrencyInput.tsx
++++ b/frontend/src/components/ui/CurrencyInput.tsx
+@@ -190,5 +190,11 @@
+     const notifyIfChanged = (next: number | undefined) => {
+       if (next === value) return;
++      // The field shows two decimals; a stored 4dp value (-3.3333) re-parses
++      // as its display (-3.33). That is the same field untouched, not an edit.
++      if (next !== undefined && value !== undefined && roundToCents(value) === next) return;
+       onChange(next);
+     };
+--- a/frontend/src/components/transactions/TransactionForm.tsx
++++ b/frontend/src/components/transactions/TransactionForm.tsx
+@@ -341,3 +341,3 @@
+           amount: initSource.isTransfer
+             ? Math.abs(Math.round(Number(initSource.amount) * 100) / 100)
+-            : Math.round(Number(initSource.amount) * 100) / 100,
++            : Number(initSource.amount),
+@@ -1310,4 +1310,4 @@
+         const splitsTotal = splitsData.reduce((sum, s) => sum + s.amount, 0);
+-        const roundedSplitsTotal = Math.round(splitsTotal * 100) / 100;
+-        const roundedAmount = Math.round(data.amount * 100) / 100;
++        const roundedSplitsTotal = roundMoney(splitsTotal);
++        const roundedAmount = roundMoney(data.amount);
+```
+
+(the same load change applies to the `AccountForm`, override editor and schedule form loaders; the transfer default is A26-S19-01's diff).
+
+12. **Recommended regression test:** `CurrencyInput` with `value={-3.3333}` focused and blurred reports nothing; `TransactionForm` reopening -3.3333 sends -3.3333; a -12.3457 split parent saves unedited.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
+--- a/frontend/src/components/ui/CurrencyInput.test.tsx
++++ b/frontend/src/components/ui/CurrencyInput.test.tsx
+@@ -171,4 +171,13 @@
+     });
++
++    it('stays silent when a four-decimal value is blurred untouched', () => {
++      const onChange = vi.fn();
++      render(<CurrencyInput label="Total" value={-3.3333} onChange={onChange} />);
++      const input = screen.getByLabelText('Total');
++      fireEvent.focus(input);
++      fireEvent.blur(input);
++      expect(onChange).not.toHaveBeenCalled();
++    });
+```
+
+14. **Verification method:** the tests above fail at the baseline (probe: `onChange(-3.33)`); the backend probes re-run with the corrected payloads leave the balance at 96.6667 and accept the split save.
+15. **Residual risks:** the guard drops a user's deliberate entry of the rounded figure over a 4dp value (typing -3.33 over -3.3333). Currencies with three decimals (KWD, BHD) still display two; currency-aware precision is the full remedy the upstream report asked for. Causality: `PRIOR_REPORTED` MON-M37, `CONFIRMED_WITH_DIFFERENT_ROOT_CAUSE` (the loss is in load and blur, not in the split editor's redistribution; the tolerance conflict is client cents against server exact). Rule 7 surfaces: transaction, split parent, account opening balance, override editor, schedule form.
+
+
+### A26-M38 - Portfolio gain is the priced market value less the cost of every holding, so an unpriced holding reads as a loss of its whole cost
+
+- **Canonical severity:** MEDIUM. kept MEDIUM; quoted by the AI and MCP portfolio tools (S20 hand-off).
+- **Absorbs:** A26-S20-02 (primary, 20-frontend-figures.md, session severity MEDIUM).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** financial.
+
+#### A26-S20-02 (primary) - Portfolio gain is the priced market value less the cost of every holding, so an unpriced holding reads as a loss of its whole cost; the Investment Performance report and the Portfolio Value account breakdown print it unflagged
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (frontend executed; server arithmetic read line by line)
+3. **Location:** server `backend/src/securities/portfolio-calculation.service.ts:1976-1995` (cost added for every holding, including `marketValue === null`) versus `:2018-2025` (market value added only when priced); summary `backend/src/securities/portfolio.service.ts:902-909` (`totalGainLoss = totalHoldingsValue - totalCostBasis`); per account `portfolio-calculation.service.ts:2140-2193` (same asymmetry). Consumers: `frontend/src/components/reports/InvestmentPerformanceReport.tsx:172-195` (single-account branch recomputes the same difference client side), `:305-309` (PDF), `:380-390` (cards); `PortfolioValueReport.tsx:1045, 1783` (account gain, CSV and table). `GroupedHoldingsList.tsx:274, 292` marks the account but still prints the gain beside the mark.
+4. **Violated invariant:** AGENTS "A subtotal is not a total ... a field named `gain` carries a value only when every component is known"; a gain is market value less the cost OF THE SAME holdings.
+5. **Reproduction:** holding A priced, market value 100,000, cost 80,000; holding B with no price, cost 50,000. Open Reports -> Investment Performance.
+6. **Observed (executed, probe P5):** "Total Gain/Loss -$30,000.00", "Return -23.08%", no marker (`{ gainShown: true, marked: false }`).
+7. **Expected:** the gain withheld (unknown) or reported over the priced holdings only (+20,000, +25 percent) under a caption that says so; never -30,000.
+8. **Impact:** a fabricated loss equal to the unpriced holdings' cost: 50,000 of swing on the example (-30,000 shown, +20,000 on the known part), a -23.1 percent "Return" against +25 percent. A reader sees a loss the portfolio has not made.
+9. **Root cause:** the two `FxAggregate`s (cost and value) skip different components: the value aggregate skips an unpriced holding, the cost aggregate does not, so their difference is not a subtotal of anything.
+10. **Recommended correction:** on the server, add a holding's cost to the gain's cost basis only when its market value joined the value total (keep the full cost under `totalCostBasis` for the basis card), or return `totalGainLoss: null` when `valuationComplete` is false (maintainer decision); on the client, read `valuationComplete === false` before printing gain, return and cost-derived figures.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/securities/portfolio-calculation.service.ts
++++ b/backend/src/securities/portfolio-calculation.service.ts
+@@ (calculateHoldingsWithValues, per holding)
++      const pricedCost = marketValue === null ? null : costBasisAccountCurrency;
+       if (marketValue !== null) {
+         holdingsValueTotal.add(...);
++        pricedCostTotal.add(await this.convertToDefault(pricedCost, accountCurrency, defaultCurrency, rateCache), accountCurrency, defaultCurrency);
+       }
+@@ return
++      totalCostBasisOfPriced: pricedCostTotal.knownSubtotal,
+--- a/backend/src/securities/portfolio.service.ts
++++ b/backend/src/securities/portfolio.service.ts
+-    const totalGainLoss =
+-      holdingsResult.totalHoldingsValue - holdingsResult.totalCostBasis;
++    const totalGainLoss =
++      holdingsResult.totalHoldingsValue - holdingsResult.totalCostBasisOfPriced;
+--- a/frontend/src/components/reports/InvestmentPerformanceReport.tsx
++++ b/frontend/src/components/reports/InvestmentPerformanceReport.tsx
+@@
+-          {summaryValues.totalGainLoss >= 0 ? '+' : ''}{fmtSummary(summaryValues.totalGainLoss)}
++          {portfolio?.valuationComplete === false
++            ? <UnknownAmount reason="noPrice" />
++            : <>{summaryValues.totalGainLoss >= 0 ? '+' : ''}{fmtSummary(summaryValues.totalGainLoss)}</>}
+```
+
+   The same change in `buildHoldingsByAccount` (`:2140-2193`) and in the single-account branch (`InvestmentPerformanceReport.tsx:174-188`, which should read the server's per-account gain rather than recompute it). Needs verification: the AI/MCP portfolio tools that quote `totalGainLoss` (S17's surface) and the backend specs at `portfolio.service.spec.ts:1237-1256`.
+12. **Recommended regression test:** a backend unit case with one priced and one unpriced holding asserting the gain is over the priced holding (or null), and the frontend probe below.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++// InvestmentPerformanceReport.test.tsx
++it('does not print the gain/return as complete when valuationComplete is false', async () => {
++  mockGetPortfolioSummary.mockResolvedValue({ ...fullPortfolio, holdingsByAccount: [],
++    totalPortfolioValue: 100000, totalCostBasis: 130000, totalGainLoss: -30000, totalGainLossPercent: -23.076923,
++    pricesComplete: false, fxComplete: true, valuationComplete: false, unpricedSecurityIds: ['sec-x'], missingRatePairs: [] });
++  mockGetInvestmentAccounts.mockResolvedValue([]);
++  render(<InvestmentPerformanceReport />);
++  await waitFor(() => expect(screen.getByText('Total Value')).toBeInTheDocument());
++  expect(document.body.textContent).not.toMatch(/-\$?30,?000/);
++});
+```
+
+14. **Verification:** backend `npm run test:unit -- portfolio-calculation portfolio.service`; frontend `npm run test -- InvestmentPerformanceReport PortfolioValueReport GroupedHoldingsList`.
+15. **Residual risks:** the same asymmetry applies when a holding's market value has no rate but its historical cost does (the two aggregates use different pairs); not executed separately.
+
+Causality: `PRE_EXISTING_UNREPORTED` (not in the upstream report or S02/S12/S13; the shallow clone cannot date it).
+
+
+### A26-M39 - A failed or pending request is shown as data: reports keep the previous window through a failed reload, the country view and the dashboard render a failure as empty or zero
+
+- **Canonical severity:** MEDIUM. MEDIUM for the group; A26-S20-05 and -08 (LOW) are the same failure-as-data rule on two more surfaces and are absorbed.
+- **Absorbs:** A26-S20-03 (primary, 20-frontend-figures.md, session severity MEDIUM); A26-S20-05 (merged surface, 20-frontend-figures.md, session severity LOW); A26-S20-08 (merged surface, 20-frontend-figures.md, session severity LOW).
+- **Invariants and prior findings named:** INV-REPORT-002.
+- **Lens:** frontend.
+
+#### A26-S20-03 (primary) - A report keeps the previous request's answer through a failed or pending reload, so its cards (Sankey) and its exports present the old window under the new one
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (Sankey executed; the other reports read)
+3. **Location:** `frontend/src/hooks/useReportData.ts:207-216` (a failure keeps `data`, by design for `dataKey`); consumers that render the toolbar during an error and gate the export on the data being non-empty: `CashFlowSankeyReport.tsx:130, 299, 304-315` (cards shown from `response` above the error), `NetWorthReport.tsx:398-402`, `SpendingByCategoryReport.tsx:296-299`, `IncomeBySourceReport.tsx:270-273`, `SpendingByPayeeReport.tsx:171-174`, `MonthlyCategoryBreakdownReport.tsx:1294`, `CashFlowReport.tsx:284` (no gate; A26-S16-04), `SecurityPerformanceReport.tsx:680-683`. Not affected: reports that return early on `error` or `isLoading` (Debt Payoff Timeline `:636-640`, Budget reports `BudgetVsActualReport.tsx:320-324` and siblings, Geographic `:497`).
+4. **Violated invariant:** `frontend/CLAUDE.md` "Asynchronous data belongs to the request that produced it ... never render a failed lookup as" a result; INV-REPORT-002 (an export carries the screen's figure).
+5. **Reproduction:** open Cash Flow Sankey (month to date), let it load; switch to Subcategories (or another range) while the server fails the request.
+6. **Observed (executed, probe P6):** the five cards still show the previous request's totals above the error panel, and the PDF and CSV buttons stay enabled over the previous answer (`{ staleCard: true, exportEnabled: true }`). On Spending by Category, Income by Source and Spending by Payee the PDF has no subtitle naming the period, so an export taken after a range change carries the previous range unlabelled.
+7. **Expected:** cards and exports only for the data whose request key matches the current selection; the export disabled while loading or failed.
+8. **Impact:** a document leaves the application with the figures of a different window or depth from the one selected; on Sankey the screen itself shows the old totals under the new selection.
+9. **Root cause:** `useReportData` deliberately keeps the last payload and exposes `dataKey`, but these consumers gate on `data` (or its length) instead of `dataKey === requestKey && !error && !isLoading`.
+10. **Recommended correction:** a `dataUnavailable = isLoading || !!error` gate on every inside-tree report's `ReportToolbarActions` and on Sankey's cards (the pattern `NetWorthReport.tsx:316` already defines for its cards and then does not apply to its toolbar).
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/frontend/src/components/reports/CashFlowSankeyReport.tsx
++++ b/frontend/src/components/reports/CashFlowSankeyReport.tsx
+-  const data = response && response.nodes.length > 0 ? response : null;
++  // The previous answer is not this selection's answer while the new request
++  // is pending or failed.
++  const data = !isLoading && !error && response && response.nodes.length > 0 ? response : null;
+--- a/frontend/src/components/reports/NetWorthReport.tsx
++++ b/frontend/src/components/reports/NetWorthReport.tsx
+-            disabled={chartData.length === 0}
++            disabled={dataUnavailable || chartData.length === 0}
+```
+
+   and the same `disabled` in the five other reports listed. Needs: the Sankey drill-down (`open`) and the legend read `data` too; verify a background refresh does not blank the diagram if that is wanted (a maintainer choice between hiding and dimming).
+12. **Recommended regression test:** per report, load once, fail the second request, assert the export is disabled (and on Sankey that no card renders).
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++// CashFlowSankeyReport.test.tsx
++it('does not keep the previous answer on screen, or exportable, when the new request fails', async () => {
++  await renderReport();
++  mockGetSankey.mockRejectedValue(new Error('500'));
++  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Subcategories' })); });
++  await waitFor(() => expect(mockGetSankey).toHaveBeenLastCalledWith(expect.objectContaining({ depth: 2 })));
++  expect(screen.queryByTestId('sankey-card-income')).not.toBeInTheDocument();
++  expect(screen.getByTestId('export-pdf')).toBeDisabled();
++});
+```
+
+14. **Verification:** `npm run test -- CashFlowSankeyReport NetWorthReport SpendingByCategoryReport IncomeBySourceReport SpendingByPayeeReport MonthlyCategoryBreakdownReport SecurityPerformanceReport`.
+15. **Residual risks:** the request-by-request trace covered the 49 `ReportToolbarActions` call sites by their gating expression and the multi-request reports named by S16; reports that early-return were not exercised for a failure of a secondary request (Geographic's country request is A26-S20-05).
+
+Causality: `PRE_EXISTING_UNREPORTED` (extends the export-on-error pattern of A26-S16-04 and A26-S15-08, which name the first-load case only). Mutation M8 (export gate removed, undetected) shows the gate is untested.
+
+#### A26-S20-05 (merged surface) - Geographic Allocation's country view renders a failed country request as an empty table totalling 0, and its PDF prints a different aggregate under the screen card's caption
+
+1. **Severity:** LOW
+2. **Confidence:** high (read)
+3. **Location:** `frontend/src/components/reports/GeographicAllocationReport.tsx:267-273` (country request, error not destructured), `:345-365` (`if (!countryResp) return []`, `countryResp?.totalPortfolioValue ?? 0`), `:780-812` (footer "Total" with the server look-through total and "100%"), `:416-424` (PDF card "Total Portfolio" = `countryTotalValue`, while the screen card `:583-597` prints the client `totalValue` under the same caption).
+4. **Violated invariant:** "never render a failed lookup as an empty result ... a total of zero"; "never `?? 0` on an API value"; one caption, one figure.
+5. **Reproduction:** open Geographic Allocation, choose By country; the country request fails (or is slow) while the summary succeeds.
+6. **Observed:** no error, an empty country table with a footer "Total 0.00 / 100%"; the PDF exports "Total Portfolio 0.00". When both succeed the PDF's "Total Portfolio" is the look-through total, not the figure the screen card shows (the code's own comment at `:788-806` records that this aggregate has no completeness).
+7. **Expected:** the country view in its error state with a retry; the PDF card the same figure and marker as the screen card, or captioned as the look-through total.
+8. **Impact:** a zero portfolio in the country view and its PDF; two different "Total Portfolio" figures for one report.
+9. **Root cause:** the secondary request was added without an error branch; the PDF took the view's own aggregate.
+10. **Recommended correction:** destructure `error` and `isLoading` from the country request and render `ReportError` in the country view; `countryTotalValue: number | null`; caption the PDF card from the view.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+-  const { data: countryResp, reload: reloadCountry } = useReportData(
++  const { data: countryResp, error: countryError, reload: reloadCountry } = useReportData(
+@@
+-  const countryTotalValue = countryResp?.totalPortfolioValue ?? 0;
++  const countryTotalValue = countryResp ? countryResp.totalPortfolioValue : null;
+@@
+-      {viewType === 'country' ? (
++      {viewType === 'country' && countryError ? (
++        <ReportError onRetry={reloadCountry} />
++      ) : viewType === 'country' ? (
+```
+
+12-13. **Regression test:** reject `getCountryWeightings` with the summary resolved, select By country, assert the error and no "0.00" total; mutation M6 (the card's partial marker removed, undetected) is the same file's missing test.
+14. **Verification:** `npm run test -- GeographicAllocationReport`.
+15. **Residual risks:** the look-through aggregate's own completeness is a backend gap (`sector-weighting.service.ts`), handed to S23 (section 12.6).
+
+Causality: `PRE_EXISTING_UNREPORTED`.
+
+#### A26-S20-08 (merged surface) - The dashboard turns a failed net-worth request into "No net worth data available yet"
+
+1. **Severity:** LOW
+2. **Confidence:** high (read)
+3. **Location:** `frontend/src/app/dashboard/page.tsx:159` (`netWorthApi.getMonthly(...).catch(() => [] as MonthlyNetWorth[])`), rendered by `components/dashboard/AssetsVsLiabilities.tsx:103-104` with `assetsVsLiabilities.empty`.
+4. **Violated invariant:** "never render a failed lookup as an empty result".
+5-8. **Observed / expected / impact:** a 500 from `/net-worth/monthly` shows the empty-state copy instead of a failure the reader can retry; the sibling `NetWorthChart` fetches for itself and does show `netWorth.loadFailed`, so the two widgets disagree on one outage.
+9-11. **Root cause / correction / diff (illustrative):** carry `netWorthError` from the page into the widget context and render the same `loadFailed` message: `.catch((e) => { setNetWorthError(true); return [] })` and `ctx.netWorthError ? <WidgetMessage>{t('netWorth.loadFailed')}</WidgetMessage> : ...`.
+12-15. **Test / verification / residual:** reject `getMonthly` in the dashboard page test and assert no empty-state copy; `npm run test -- dashboard/page AssetsVsLiabilities`.
+
+Causality: `PRE_EXISTING_UNREPORTED`.
+
+
+### A26-M40 - The production image is never exercised: no CI gate boots the published target, and both documented Compose deployments mount backup and attachment directories the backend user cannot write
+
+- **Canonical severity:** MEDIUM. kept MEDIUM (S21's rating confirmed): the Compose failure is reported by `describeStore`, not silent, and a boot failure of `:latest` is an availability risk caught at the first pull, not data loss.
+- **Absorbs:** A26-S21-01 (primary, 21-tests-ci-release.md, session severity MEDIUM); A26-S21-03 (merged surface, 21-tests-ci-release.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-RELEASE-001, MON-M01.
+- **Lens:** ci.
+
+#### A26-S21-01 (primary) - No CI gate boots the published images: every job that runs the application builds the `development` target
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high
+3. **Location:** `docker-compose.e2e.yml:67-71`, `:164-172` (`target: development`, `NODE_ENV: development`); `.github/workflows/ci.yml:1501-1510` (E2E), `lighthouse.yml` (same compose file); published targets `ci.yml:1004`, `:1369`; `backend/Dockerfile:1-23` (dev stage: full `npm ci`, `npm run start:dev`, root user) versus `:58-125` (production: `npm ci --omit=dev --libc=musl`, `dist/`, `docker-entrypoint.sh`, user `nestjs` 1001); `frontend/Dockerfile:1-19` versus `:35-93` (`next dev` versus the standalone `server.js`).
+4. **Violated invariant:** S21-I7, and the purpose of INV-RELEASE-001: a release gate's result is evidence about the artifact it ships, not only about the source revision.
+5. **Reproduction scenario:** a change makes the production artifact fail while the development one works. Concrete, reachable classes: (a) a runtime `import` of a package listed only in `devDependencies` (no lint rule forbids it: `backend/eslint.config.mjs` has no `import/no-extraneous-dependencies`); (b) a file the production stage forgets to copy (`backend/Dockerfile:93-110` copies `dist`, `schema.sql`, `migrations`, `release-notes`, the entrypoint, and nothing else); (c) a write to a path the non-root user 1001 cannot write (A26-S21-03 is a live instance: the E2E backend runs as root and never sees it); (d) a `NODE_ENV === "production"` branch (7 backend source files) or the production CSP without `'unsafe-eval'` (`frontend/src/proxy.ts:67`); (e) the `db-init` / `db-migrate` / `main` sequence of `backend/docker-entrypoint.sh`, which the development image replaces with `nest start --watch`. Every one of these passes `backend-unit-tests`, `backend-integration-tests` (no image), `frontend-unit-tests`, `e2e-tests` (development image) and `helm-chart` (render only), and `build-and-push` then pushes, signs and tags the broken image as `:latest` and `:X.Y.Z`; `build-preview` pushes it as `:beta` on every merge.
+6. **Observed:** the only workflow that builds a production target and starts it is `zap.yml` (scheduled nightly, frontend only, `fail_action: false`, not in any `needs:`). No job runs `docker-entrypoint.sh` or `node dist/main.js`.
+7. **Expected:** at least one gate in the `needs:` of `prepare-release` and `prepare-preview` builds the `production` targets the publish jobs build and boots them to `/api/v1/health/ready` (backend, after `db-init` and `db-migrate`) and to a page load (frontend standalone server), as the non-root user.
+8. **Impact:** availability of every installation that pulls `:latest` (the README's production Compose file pins `:latest`, `docker-compose.prod.yml:23`, `:120`): a boot failure ships signed, attested and Trivy-scanned. Also hides security behaviour that exists only in production mode (CSP, `Secure` cookies).
+9. **Root cause:** the E2E stack was built for developer speed (hot reload) and reused as the release gate; `docs/release-integrity.md` section 2 defines "one revision" by commit SHA only, so the artifact gap is not named anywhere.
+10. **Recommended correction:** run the E2E stack (or at least a boot smoke) from the `production` targets in CI, and keep the development targets for local use.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ jobs:
++  image-boot-smoke:
++    name: Production image boot
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
++        with:
++          persist-credentials: false
++      - name: Build the published targets
++        run: |
++          docker build --target production -f backend/Dockerfile -t monize-backend:smoke .
++          docker build --target production -f frontend/Dockerfile -t monize-frontend:smoke frontend
++      - name: Boot them as published
++        run: docker compose -f docker-compose.e2e.yml -f docker-compose.smoke.yml up -d --wait --wait-timeout 600
+@@ prepare-release:
+-        helm-chart,
++        helm-chart,
++        image-boot-smoke,
+       ]
+@@ prepare-preview:
+-        helm-chart,
++        helm-chart,
++        image-boot-smoke,
+       ]
+```
+
+    with a `docker-compose.smoke.yml` overlay setting `image: monize-backend:smoke` / `monize-frontend:smoke`, `NODE_ENV: production` and a named volume at `/data/backups`. Maintainer decision: run the whole E2E suite on production images (stronger, slower) or keep a boot smoke beside the development-image E2E.
+12. **Recommended regression test:** the smoke job itself; plus a guard that every image the publish jobs build (`target: production`) is also built by a job in their `needs:`.
+13. **Suggested regression-test diff:** a case in `backend/src/common/ci-images.guard.spec.ts` (it already reads the workflow and compose text) asserting that the set of `target:` values pushed by `build-and-push` / `build-preview` is a subset of the targets built by a gate listed in `needs:`.
+14. **Verification method:** mutation: add `import "supertest";` to `backend/src/main.ts` (a devDependency) and confirm the new job fails while the other gates stay green.
+15. **Residual risks:** a boot smoke does not exercise the production paths of individual features; only running E2E on the production images does. The workflow change itself is under `.github/` and needs maintainer agreement (`AGENTS.md`).
+
+Causality: `PRE_EXISTING_UNREPORTED` (the upstream audit lists "E2E development targets" in its tool table, `docs/audits/2026-08-upstream/07-tests-ci.md:478`, without a finding). Execution evidence: the trace above at the baseline SHA (every `target:` in every compose file and workflow listed in section 12); the bind-mount probe of A26-S21-03 shows one concrete production-only failure the development image hides. The devDependency mutation was not built into an image in this session (needs a production image build through the proxy).
+
+#### A26-S21-03 (merged surface) - Both documented Compose deployments mount `/data/backups` (and `/data/attachments`) root-owned, so the backend's user 1001 cannot write them (MON-M01 still open, narrowed)
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (executed)
+3. **Location:** `docker-compose.prod.yml:103-108` (bind mounts `./monize/backups`, `./monize/attachments`); `docker-compose.ha.yml:159-163`, `:229-237` (named volume `backups`, `BACKUP_SHARED_VOLUME: "true"` at `:112`); `backend/Dockerfile:111-115` (`adduser -S nestjs -u 1001`, no `/data` directory, no `chown` of it); `README.md:645-658` (production steps: copy `.env`, `up -d`; no directory or ownership step), `README.md:634` (`BACKUP_HOST_DIR` default `./monize/backups`).
+4. **Violated invariant:** S21-I6: a documented default deployment provides a writable durable mount for the features it enables, or the documentation says what the operator must do.
+5. **Reproduction scenario:** on a Linux Docker Engine host, follow `README.md` "Docker Compose (Production)". Docker creates the missing bind source `./monize/backups` as `root:root 0755`; the backend runs as uid 1001; every write under `/data/backups` fails with `EACCES`. Same for the HA stack's named volume, which Docker creates root-owned because the image has no `/data/backups` to copy ownership from.
+6. **Observed (executed):** `docker run -u 1001:1001 -v <new dir>/monize/backups:/data/backups node:24-alpine touch /data/backups/probe` -> `drwxr-xr-x root root /data/backups`, `Permission denied`; the same with a fresh named volume -> `Permission denied`. The Helm chart does not have this defect: it sets `fsGroup: 100` with `runAsGroup: 100` on an opt-in claim (`helm/templates/deployment-backend.yaml:230`, rendered with `backend.persistence.backups.enabled=true` in this session).
+7. **Expected:** the image creates `/data/backups` and `/data/attachments` owned by 1001 (so a named volume inherits it), and the README tells bind-mount users to create the host directory owned by uid 1001 (or the compose file sets `user:` to match the host).
+8. **Impact:** automatic backups (and `ATTACHMENT_STORAGE_PROVIDER=local`) do not work on either documented Compose deployment; S06 established that the service reports the store as unavailable with a reason (`describeStore`), so the failure is visible, not silent -- which is why this is MEDIUM, not HIGH. On the HA stack the operator has asserted `BACKUP_SHARED_VOLUME=true`, so the boot check passes and the feature is unavailable at the point of use. The E2E cluster shard cannot see it: its development image runs as root (A26-S21-01).
+9. **Root cause:** the production image switched to a non-root user without creating the data directories it expects mounts on; the Compose files and README were not updated to match.
+10. **Recommended correction:** create and own the mount points in the image; document the bind-mount ownership.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/Dockerfile
++++ b/backend/Dockerfile
+@@ RUN addgroup -g 1001 -S nodejs && \
+     adduser -S nestjs -u 1001 && \
++    mkdir -p /data/backups /data/attachments && \
++    chown -R nestjs:nodejs /data && \
+     chmod +x ./docker-entrypoint.sh && \
+--- a/README.md
++++ b/README.md
+@@ ### Docker Compose (Production)
++2. Create the host folders the backend writes to, owned by the container user (uid 1001):
++```bash
++mkdir -p monize/backups monize/attachments && sudo chown -R 1001:1001 monize
++```
+```
+
+12. **Recommended regression test:** a production-image boot smoke (A26-S21-01) that mounts a fresh named volume at `/data/backups` and asserts the backup store reports `available: true`.
+13. **Suggested regression-test diff:** in the smoke overlay of A26-S21-01, `volumes: [smoke_backups:/data/backups]` and a step `curl -fsS .../api/v1/...` against the store status (endpoint name to be taken from `backend/src/backup/auto-backup.controller.ts`; not verified here).
+14. **Verification method:** the two `docker run` probes above against the rebuilt image must print `WRITE_OK`.
+15. **Residual risks:** a pre-existing host directory owned by another uid still fails; rootless Docker and Docker Desktop map ownership differently and were not probed.
+
+Causality: `PRIOR_REPORTED` (MON-M01), `CONFIRMED_WITH_DIFFERENT_ROOT_CAUSE`: the upstream finding's Helm persistence half is fixed (section 5), the Compose half is the uid mismatch above. `scripts/check-docs-manifests.mjs` (run: OK, 119 Helm values, 33 documents) checks paths and Helm defaults, not mount ownership.
+
+
+### A26-M41 - Release publication precedes the gates: images reach `:latest` before the CVE gate, and the release job pushes an untested `[skip ci]` bump with an admin token (MON-M45)
+
+- **Canonical severity:** MEDIUM. kept MEDIUM (S21's rating confirmed): the security impact needs a CRITICAL CVE in the image at release time, and the audited revision itself is such an untested bump (section 2).
+- **Absorbs:** A26-S21-02 (primary, 21-tests-ci-release.md, session severity MEDIUM); A26-S02-10 (merged surface, 02-prior-high-triage.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-RELEASE-001, MON-M45.
+- **Lens:** ci.
+
+#### A26-S21-02 (primary) - Release images are pushed to `:latest` and `:X.Y.Z` before the CVE gate and before the release decision; any later failure or cancellation leaves them published, and the next dispatch reuses the version
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high
+3. **Location:** `.github/workflows/ci.yml:998-1027` (`push: true`, tags `:latest` and `:X.Y.Z`), `:1035-1044` (cosign on all three references), `:1072-1080` (Trivy report, `exit-code: '0'`), `:1089-1096` (the CVE gate, `exit-code: '1'`, after the push), `:1098-1100` (comment: "so a failed or vulnerable build never leaves a dangling version commit"), `:41-43` (one concurrency group per workflow and ref, `cancel-in-progress: true`), `:896-918` (version derived from `backend/package.json` at `github.sha`); `docs/release-integrity.md:207` ("CVE gate fails the build ... The scan is a gate, not a report"); `docs/system-invariants.md` INV-RELEASE-001 "Retry semantics".
+4. **Violated invariant:** INV-RELEASE-001 and REL-003: what a consumer pulls under a release tag is a verified, released revision; and the CVE gate keeps a CRITICAL-CVE image from being published.
+5. **Reproduction scenario (three entry points, one root):**
+   - (a) A base-image or dependency CVE rated CRITICAL with a fix available: `build-and-push` pushes `ghcr.io/kenlasko/monize-backend:latest` and `:1.19.1`, signs them, then "Fail on critical CVEs" exits 1. The job is red, `release` does not run -- and `:latest` already points at the vulnerable digest. Every `docker compose -f docker-compose.prod.yml pull` (`:latest`, `docker-compose.prod.yml:23`) installs it.
+   - (b) The maintainer merges a PR while a release dispatch on `main` is in `build-and-push` or later. The push to `main` starts a run in the group `CI Pipeline-refs/heads/main`, the same group as the dispatch (`github.ref` is `refs/heads/main` for both), and `cancel-in-progress` cancels the release. Images already pushed stay published; no bump, no tag. Hosted evidence for the mechanism: runs 270 to 329 of this repository's `CI Pipeline` on PR #31 all ended `cancelled` by the next push of the same ref.
+   - (c) After (a) or (b), the next dispatch reads `backend/package.json` (still the old version, the bump never landed), resolves the same `1.19.1`, and pushes a different digest under `:1.19.1`. An operator who pinned `:1.19.1` between the two runs now runs a different image under the same version tag, and both digests carry a valid cosign signature for `:1.19.1`.
+6. **Observed:** publication to the consumer-facing tags is the first side effect of the release path; every gate after it (CVE gate, git bump, tag) can fail without unpublishing. INV-RELEASE-001's "Retry semantics" says "A re-run after a partial release may bump the version twice"; the more likely outcome of a re-dispatch after an image-stage failure is the opposite: the same version is reused for a different digest.
+7. **Expected:** push by digest (or to a staging tag) first, run the CVE gate on that digest, and move `:latest` / `:X.Y.Z` only after the gate and, ideally, after the git half succeeded; refuse a dispatch whose version tag already exists in the registry; exclude release runs from cancellation.
+8. **Impact:** security (a CRITICAL-CVE image reaches every `:latest` consumer despite the gate the docs describe), integrity of version identity (one version string, two images), operations (a half-published release no tag refers to, as the invariant's own crash semantics say).
+9. **Root cause:** `docker/build-push-action` is configured with the final tags and `push: true` in the same step that builds, so the scan can only report on something already published; the concurrency group does not distinguish a release from a push.
+10. **Recommended correction:** build and push by digest only (no tags), scan and sign the digest, then a final step (after the CVE gate, and in the `release` job if the maintainer wants tag-after-commit) adds `:X.Y.Z` and `:latest` with `docker buildx imagetools create`; give `workflow_dispatch` runs their own non-cancelling group; refuse when `:X.Y.Z` already exists.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@
+ concurrency:
+-  group: ${{ github.workflow }}-${{ github.ref }}
+-  cancel-in-progress: true
++  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && 'release' || github.ref }}
++  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+@@ build-and-push:
+-          push: true
++          # Digest only: no consumer-facing tag exists until the CVE gate passed.
++          outputs: type=image,name=${{ matrix.image }},push-by-digest=true,name-canonical=true,push=true
+           platforms: linux/amd64,linux/arm64
+           provenance: true
+           sbom: true
+-          tags: |
+-            ${{ matrix.image }}:latest
+-            ${{ matrix.image }}:${{ needs.prepare-release.outputs.version }}
+@@
+       - name: Fail on critical CVEs
+         ...
++      - name: Refuse a version that is already published
++        env:
++          IMAGE: ${{ matrix.image }}
++          VERSION: ${{ needs.prepare-release.outputs.version }}
++        run: |
++          if docker buildx imagetools inspect "${IMAGE}:${VERSION}" >/dev/null 2>&1; then
++            echo "::error::${IMAGE}:${VERSION} already exists"; exit 1
++          fi
++      - name: Publish the gated digest under its tags
++        env:
++          IMAGE: ${{ matrix.image }}
++          DIGEST: ${{ steps.build.outputs.digest }}
++          VERSION: ${{ needs.prepare-release.outputs.version }}
++        run: docker buildx imagetools create -t "${IMAGE}:${VERSION}" -t "${IMAGE}:latest" "${IMAGE}@${DIGEST}"
+```
+
+    The cosign step then signs `${IMAGE}@${DIGEST}` only (a signature is per digest; the tag references are redundant). Maintainer decision: whether `:latest` moves before or after the `release` job's git half.
+12. **Recommended regression test:** a workflow self-test (the INV-RELEASE-001 "Required tests" row) asserting, by parsing `ci.yml`, that no step with `push: true` in `build-and-push` carries a non-digest tag before the step named "Fail on critical CVEs", and that `workflow_dispatch` runs are not in a cancelling group.
+13. **Suggested regression-test diff:** add to `backend/src/common/ci-images.guard.spec.ts`:
+
+```ts
+// The spec reads workflow text (it has no YAML parser); keep it textual.
+it("publishes no consumer-facing tag before the CVE gate", () => {
+  const ci = readFileSync(join(requireRepoRoot(), ".github/workflows/ci.yml"), "utf8");
+  const job = ci.slice(ci.indexOf("\n  build-and-push:"), ci.indexOf("\n  release:"));
+  const gate = job.indexOf("name: Fail on critical CVEs");
+  const tagged = job.search(/\$\{\{ matrix\.image \}\}:(latest|\$\{\{ needs\.prepare-release\.outputs\.version)/);
+  expect(gate).toBeGreaterThan(-1);
+  expect(tagged === -1 || tagged > gate).toBe(true);
+});
+```
+
+14. **Verification method:** a dispatch in a fork with a deliberately vulnerable base image: the registry must show no new `:latest`; a push to `main` during a dispatch must not cancel it.
+15. **Residual risks:** the preview path pushes `:beta` with no CVE scan at all, by design (`ci.yml:1300-1304`); that is a documented choice, recorded as DR-S21-1, not part of this finding.
+
+Causality: `PRE_EXISTING_UNREPORTED` (MON-M45 covers the git half only; S01 recorded the shared concurrency group as DR-S01-6, not executed). Rule 7: one root (publication precedes the gates), three entry points. Execution evidence: the step order traced at the baseline SHA, and the hosted cancellation of every superseded run on PR #31.
+
+#### A26-S02-10 (merged surface) - The release job pushes an untested `[skip ci]` version-bump commit with an admin token (MON-M45 still open)
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high (static; the audited baseline itself is such a commit: `72c59ec4 chore: bump version to 1.19.0 [skip ci]`)
+3. **Location:** `.github/workflows/ci.yml:1101-1152`.
+4. **Violated invariant:** INV-RELEASE-001 (index status `partial`, `docs/system-invariants.md:6627-6640`, which records this gap).
+5. **Reproduction:** run the manual release.
+6. **Observed:** the job edits `package.json` and both lock files, commits with `[skip ci]`, runs `git pull --rebase` (which can incorporate commits merged after the tested SHA) and pushes to protected main with `RELEASE_TOKEN`; no gate runs on the pushed commit.
+7. **Expected:** the pushed commit is the tested commit, or a full gate runs on it before the push.
+8. **Impact:** release provenance and protected main point at an unverified revision; the `pull --rebase` can ship untested code under the release tag.
+9. **Root cause:** the version commit is created after verification.
+10. **Recommended correction:** create the version bump before the gate (release branch or PR), or refuse the push when `git rev-parse HEAD^` is not the tested SHA after the rebase.
+11. **Suggested remediation diff (illustrative, not applied)**
+
+```diff
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+           git commit -m "chore: bump version to ${VERSION} [skip ci]"
+-          git pull --rebase
+-          git push
++          # Refuse to publish anything but the tested revision plus this bump.
++          git fetch origin main
++          if [ "$(git rev-parse origin/main)" != "${{ needs.prepare-release.outputs.sha }}" ]; then
++            echo "main moved after the tested revision; re-run the release" >&2; exit 1
++          fi
++          git push origin HEAD:main
+```
+
+   (`prepare-release.outputs.sha` must exist; changes under `.github/` need the maintainer's agreement per AGENTS.md.)
+12. **Recommended regression test:** a dry-run comparing tested, pushed, image and tag SHAs.
+13. **Suggested regression-test diff:** not given; it belongs in S21's release-integrity check.
+14. **Verification:** release dry-run.
+15. **Residual risks:** the admin bypass remains a policy decision.
+
+Causality: `PRIOR_REPORTED`, `CONFIRMED` (MON-M45). Owner: S21.
+
+
+### A26-M42 - The concurrency, post-commit and database-boundary invariants behind the program's HIGH and MEDIUM findings have no test at the production boundary (MON-M46)
+
+- **Canonical severity:** MEDIUM. kept MEDIUM: missing tests; each defect they fail to catch is counted in its own finding.
+- **Absorbs:** A26-S21-04 (primary, 21-tests-ci-release.md, session severity MEDIUM); A26-S03-04 (merged surface, 03-security-auth.md, session severity MEDIUM); A26-S04-04 (merged surface, 04-rls-tenancy.md, session severity MEDIUM); A26-S05-01 (merged surface, 05-migrations-schema.md, session severity MEDIUM); A26-S07-09 (merged surface, 07-cash-ledger.md, session severity LOW); A26-S08-05 (merged surface, 08-scheduler-cron.md, session severity LOW); A26-S16-09 (merged surface, 16-budgets-reports.md, session severity LOW); A26-S17-05 (merged surface, 17-ai-mcp-notifications.md, session severity LOW); A26-S02-12 (merged surface, 02-prior-high-triage.md, session severity LOW); A26-S06-06 (merged surface, 06-backup-restore.md, session severity LOW); A26-S09-02 (merged surface, 09-import-mny.md, session severity MEDIUM).
+- **Invariants and prior findings named:** INV-AUTH-001, INV-CLAIM-001, INV-OCCURRENCE-001, INV-CRON-001, INV-MCP-001, INV-BACKUP-009, INV-IMPORT-002, MON-M46, MON-M04.
+- **Lens:** test.
+
+#### A26-S21-04 (primary) - Program-wide: the concurrency, post-commit and database-boundary invariants behind 15 HIGH and MEDIUM findings have no test at the production boundary (MON-M46 still open; consolidation of every session's undetected rows)
+
+1. **Severity:** MEDIUM (missing test; the defects it fails to catch are counted in their own findings)
+2. **Confidence:** high (59 undetected mutation rows across 17 sessions, each executed or traced by its session; four re-checked against source here)
+3. **Location:** the family table in section 6.2; harness roots in `backend/test/helpers/integration-setup.ts:160-215` (`ScheduledTransactionsModule` replaced by `{}` stubs for its three exports and internals in every suite built through `createIntegrationModule`), `INTEGRATION_TYPEORM_OPTIONS` (schema from entities, A26-S05-01).
+4. **Violated invariant:** S21-I4 (`docs/verification-contract.md` sections 2-3: a lock, a lease, a CAS or a post-commit ordering is proved only by a test with independent connections or a failpoint at the same boundary as production).
+5. **Reproduction scenario:** per row of section 6.2: delete the lock, predicate or ordering; every committed suite stays green. Examples executed by their sessions: `token.service.ts:149`/`:261` `lockTokenFamily` removed (S03, `token.service.spec.ts` 33/33 green, probe 59/60 leaks); `transaction-split.service.ts:1116` parent read without `FOR UPDATE` (S07, all suites green); `job-claim.service.ts:144/146/281` lease predicates (S08, only SQL-text unit assertions fail); `134_joint_native_read_rls.sql:47` delegate predicate (S04, 175/175 integration green); `budget-spending.util.ts:132` VOID filter (S16, 510 unit and 3 integration green).
+6. **Observed:** eleven root-cause families (section 6.2), of which three are harness properties rather than missing cases: no reusable two-connection harness (F1), an entity-built schema without the production keys and CHECKs (F3, A26-S05-01), and the scheduled module stubbed for every integration suite (F4: 22 production files outside `src/scheduled-transactions/` consume the stubbed services; `scheduled-loan-pricing-concurrency.integration.spec.ts:40` and `loan-settlement-claim.integration.spec.ts:53` both state the real `post()` "cannot be constructed here").
+7. **Expected:** the harness builds the schema from `database/schema.sql` (or a parity guard holds the entities to it), constructs the real scheduled module, and offers a two-connection barrier helper; each HIGH finding of the program has a red test before its fix.
+8. **Impact:** every HIGH concurrency or post-commit fix of the remediation program can regress silently; the suites the docs name as the owners (`Backend Integration Tests` "owns six test kinds", `docs/verification-contract.md:358-362`) cannot currently host the tests for F3 and F4 at all.
+9. **Root cause:** the integration harness trades fidelity for construction convenience (entity `synchronize`, module stubs to break a forwardRef cycle), and no harness primitive exists for two connections with a barrier, so each session that needed one wrote a throwaway probe.
+10. **Recommended correction:** three harness tasks before the per-finding tests: (1) `createIntegrationModule` builds the real `ScheduledTransactionsModule` (resolve the cycle with `forwardRef` in the test module, as production does); (2) build the test schema by applying `schema.sql`, or add the parity guard S05 proposed; (3) a `raceTwo(dataSource, a, b, barrier)` helper under `test/helpers/`. Then one red test per family row.
+11. **Suggested remediation diff:** incomplete -- the harness change is supported by the evidence (`integration-setup.ts:200-212`, delete the `overrideModule(ScheduledTransactionsModule)` block and import the real module), but whether the cycle resolves in a `TestingModule` without the stub was not tried in this session; that is the missing information.
+12. **Recommended regression test:** per family, the first test listed in section 6.2's "first red test" column.
+13. **Suggested regression-test diff:** the two-connection pattern S03 used for its probe (two `DataSource`s, a `pg_advisory_lock` barrier) promoted to `test/helpers/race.ts`; not written here.
+14. **Verification method:** re-run each section 6.2 mutation after the harness change; every row must turn `covered`.
+15. **Residual risks:** frontend cache rows (F11) need a browser or a component harness, not the database helper.
+
+Causality: `PRIOR_REPORTED` (MON-M46), `CONFIRMED`, and widened: the upstream finding named seven race classes; the program found 59 undetected rows in eleven families. Joins, by Rule 7, the session test-coverage findings A26-S03-04, A26-S04-04, A26-S05-01 (harness half), A26-S07-09, A26-S08-05, A26-S16-09, A26-S17-05 (S23 keeps each defect finding separate and merges these test findings here or keeps them as surfaces of this one).
+
+#### A26-S03-04 (merged surface) - The concurrency mechanisms behind INV-AUTH-001/004 and INV-CLAIM-001 have no behavioural test: removing them leaves every existing suite green
+
+1. **Severity:** MEDIUM (test coverage; the mutations reintroduce MON-M23 and MON-H09)
+2. **Confidence:** high (mutations executed, section 6)
+3. **Location:** `backend/src/auth/token.service.ts:149` (family lock in `refreshTokens`), `:261` (family lock in `revokeTokenFamily`), `:164-177` (reuse branch); `backend/src/emergency-access/emergency-access-claim.controller.ts:219-231` (conditional consume); tests `backend/src/auth/token.service.spec.ts`, `backend/test/integration/logout-revoke-failpoint.integration.spec.ts`, `backend/test/integration/emergency-access-grant-cycles.integration.spec.ts`, `backend/src/emergency-access/emergency-access-claim.controller.spec.ts`.
+4. **Violated invariant:** `docs/verification-contract.md` -- a concurrency claim needs a real two-connection test; INV-AUTH-001 and INV-CLAIM-001 each list that test as "required" / "still owed".
+5. **Reproduction (mutation):** delete `await lockTokenFamily(manager, familyId)` from `revokeTokenFamily`: `token.service.spec.ts` 33/33 pass, `logout-revoke-failpoint` 2/2 pass; the session's race probe (60 rotate-versus-logout pairs) reports `{"leaks":48,"rotationsWon":49}` -- 48 logouts returned success with a live token in the family. Deleting the family lock from `refreshTokens` instead: same suites green, probe `{"leaks":59,"rotationsWon":60}`. Removing both claim guards (`claim_token_used_at IS NULL` and `claim_token_hash = NULL`): the integration suite `emergency` 15/15 pass; only the unit spec fails, and only because it matches the SQL text; the probe shows both concurrent claims succeed in 5/5 rounds (`{"ok":2,"statuses":["ok","ok"]}`), the exact MON-H09 takeover race.
+6. **Observed:** the mechanisms work at the baseline (probe: 0/60 leaks; 5/5 claim rounds with one winner) but nothing in the repository's suites would notice their removal; A26-S03-01 is a defect of exactly this blind spot.
+7. **Expected:** one integration test per mechanism that fails on the mutation.
+8. **Impact:** regression risk on three security-critical properties; the invariant index marks them `enforced` on the strength of mechanisms no test protects.
+9. **Root cause:** unit tests with a mocked transaction stand in for concurrency proofs.
+10. **Recommended correction:** add the three two-connection tests below to `test/integration/` (the session's probe is a working draft of each).
+11. **Suggested remediation diff (illustrative, not applied):** this finding is the test itself (protocol item 12 exception: the defect is the missing test).
+    ```diff
+    --- /dev/null
+    +++ b/backend/test/integration/auth-concurrency.integration.spec.ts
+    @@
+    +// INV-AUTH-004: logout racing a rotation of the same token leaves no live member.
+    +it("logout covers a replacement inserted by a concurrent rotation", async () => {
+    +  for (let i = 0; i < 40; i++) {
+    +    const { refreshToken: t0 } = await withSystemContext(() => tokens.generateTokenPair(user, false));
+    +    const familyId = await familyOf(t0);
+    +    await Promise.allSettled([
+    +      withSystemContext(() => tokens.refreshTokens(t0)),
+    +      sleep(i % 4).then(() => withSystemContext(() => tokens.revokeRefreshToken(t0))),
+    +    ]);
+    +    expect(await liveMembers(familyId)).toBe(0);
+    +  }
+    +});
+    +// INV-AUTH-001: two concurrent rotations of one token yield one successor.
+    +it("two concurrent rotations produce exactly one live successor", async () => { /* allSettled x2, count fulfilled === 1 */ });
+    +// INV-CLAIM-001: two concurrent completes with different passwords -> one 200, one 404, one password.
+    +it("a claim token is consumed once under concurrency", async () => { /* see probe */ });
+    ```
+12. **Recommended regression test:** as above; each must be shown failing on its mutation before it is merged.
+13. **Suggested regression-test diff:** above.
+14. **Verification method:** run each test on the baseline (green) and on the mutations of section 6 (red).
+15. **Residual risks:** timing-based races are probabilistic; the logout test hit the window 48-59 times in 60 here, which is ample, but a slower CI runner should keep the iteration count rather than lower it.
+
+- **Causality class:** `PRE_EXISTING_UNREPORTED` (slice-specific instance of MON-M46, which S21 owns).
+
+#### A26-S04-04 (merged surface) - No test runs delegation management, joint-account writes or cross-owner transfers on the unprivileged role, and a policy mutation that exposes every granted account to every user is undetected
+
+1. **Severity:** MEDIUM (missing test on a security mechanism; A26-S04-01 to -03 are all invisible to the current suites for this reason).
+2. **Confidence:** high (executed mutation, section 6).
+3. **Location:** `backend/test/integration/joint-accounts.integration.spec.ts:138`, `cross-owner-transfers.integration.spec.ts:122` (both `createIntegrationModule`, the owner role, RLS not applied to the module's connection); no integration spec calls `createDelegate`, `delegateEmailExists`, `resetDelegatePassword`, `setCapabilities` or `setSectionGrants` (the only callers are `revokeDelegate` in the two owner-role suites); `rls-enforcement.integration.spec.ts` has positive cases for the delegate arms (`:420-730`) and per-user exact-set reads, but none that a third user cannot see an account carrying a grant to somebody else (mutation MA stays green).
+4. **Violated invariant:** `docs/verification-contract.md`: a mock proves the call, not the property; the RLS contract's guarantee needs a test on the role it is about.
+5. **Realistic reproduction scenario:** mutation MA (section 6): drop `AND d.delegate_user_id = (SELECT app_real_user_id())` from the `accounts` read arm in `134_joint_native_read_rls.sql:47`, so every account carrying any active grant is readable by every user; result `Tests: 175 passed, 175 total` over `rls-*`, `security-cross-user-isolation`, `joint-accounts`, `cross-owner-transfers`, `calendar-day-notes`, `calendar-read-models`, and `35 passed` on `rls-enforcement` alone. Mutation MD (the real-user GUC collapsed onto the current one in `scoped-db.ts:208`) is also green on every integration suite of that set and is caught only by mocked unit specs.
+6. **Observed:** green.
+7. **Expected:** at least one failure.
+8. **Impact:** a regression of the tenant boundary on the shared-account surface ships green.
+9. **Root cause:** the two feature suites predate or bypass `createEnforcedIntegrationModule`; `rls-enforcement` tests that the delegate sees the granted rows, not that nobody else does.
+10. **Recommended correction:** run `joint-accounts` and `cross-owner-transfers` (or a second describe block of each) on `createEnforcedIntegrationModule`, add a delegation-management suite on it, and add cross-tenant negative reads for the joint arms to `rls-enforcement`.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/test/integration/joint-accounts.integration.spec.ts
++++ b/backend/test/integration/joint-accounts.integration.spec.ts
+-    module = await createIntegrationModule([
++    harness = await createEnforcedIntegrationModule([
+       TransactionsModule, TransactionRulesModule, CategoriesModule, ...
+     ]);
++    module = harness.module;
++    dataSource = harness.owner; // seeds and inspects; the module runs as monize_app
++  it("a third user sees none of the joint account under enforcement", async () => {
++    const carol = await createTestUserDirect(dataSource, { firstName: "Carol" });
++    const seen = await withUserContext(carol.id, () =>
++      withScopedDb(harness.app, (m) => m.query("SELECT id FROM accounts WHERE id = $1", [jointAccountId])));
++    expect(seen).toEqual([]);
++  });
+```
+
+12. **Recommended regression test:** the case above (fails under mutation MA).
+13. **Suggested regression-test diff:** field 11.
+14. **Verification method:** rerun mutation MA after the change: expect the new case to fail.
+15. **Residual risks / patch limitations:** moving the suites to the enforced harness will surface any other enforce-only defects in those paths at once; that is the purpose, but it may not be one PR.
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the joint and cross-owner suites are new). Joins MON-M46 for S21.
+
+#### A26-S05-01 (merged surface) - The integration harness lacks 15 production unique keys and 82 production CHECK constraints, and no guard compares them
+
+1. **Severity:** MEDIUM
+2. **Confidence:** high
+3. **Location:** `backend/test/integration/schema-entity-parity.integration.spec.ts:29-160` (the only schema/entity parity guard; FK delete rules only); `backend/test/helpers/integration-setup.ts:52-70` (`synchronize: true`); `backend/test/helpers/rls-setup.ts:335-476` (`applyRlsPolicies`, which restores policies, triggers, functions and exclusion constraints but no unique key or CHECK); `backend/src/budgets/entities/budget-period.entity.ts:32` vs `database/schema.sql:2407` and `backend/src/budgets/budget-period.service.ts:237-243`; the 15 keys listed below.
+4. **Violated invariant:** S05-B, the `AGENTS.md` rule that an index or constraint is declared in the migration, `schema.sql` and an entity decorator, "because the integration suite builds from entities, so a missing decorator lets race tests pass against a database with no constraint to contend over"; and `docs/verification-contract.md` VER-001's premise that a two-connection integration test is evidence about production.
+5. **Realistic reproduction scenario:** Build the harness exactly as every integration suite does (`INTEGRATION_TYPEORM_OPTIONS` + `applyRlsPolicies`), build a second database from `schema.sql`, and diff `pg_index`/`pg_constraint`. Executed in the scratch worktree: the harness has no unique arbiter for these 15 production keys:
+   - `budget_periods (budget_id, period_start)`, `budget_period_categories (budget_period_id, budget_category_id)`, `categories (user_id, name, parent_id)`, `import_column_mappings (user_id, name)`, `ai_provider_configs (user_id, provider, priority)`, `loan_rate_changes (account_id, effective_date)`, `account_delegates (owner_user_id, delegate_user_id)`, `account_delegate_grants (delegation_id, account_id)`;
+   - expression or token indexes: `tags (user_id, lower(name))`, `payee_aliases (user_id, lower(alias))`, `loan_scenarios (user_id, account_id, lower(name))`, `emergency_access_contacts (owner_user_id, lower(email))`, `refresh_tokens (token_hash)`, `personal_access_tokens (token_hash)`, `trusted_devices (token_hash)`.
+
+   And 82 production CHECK constraints are absent from the harness (61 of them on tables created or changed by the 56 migrations since 2026-08), among them `ck_ai_review_requests_parser_draft_shape`, `ck_ai_review_requests_trade_shape`, `ck_email_receipt_mailboxes_credentials`, `ck_bank_sync_accounts_linked_has_cutoff`, `accounts_prepayment_mode_linear_only`, `accounts_payment_amount_method_check`, `ck_calendar_day_notes_span`, `ck_backup_offsite_uploads_status`. The harness has no CHECK that production lacks.
+
+   Concrete consequence, executed: `INSERT INTO budget_periods ... ON CONFLICT (budget_id, period_start) DO NOTHING` (the statement `BudgetPeriodService.createPeriodForBudget` issues) returns `INSERT 0 0` on the `schema.sql` database and `ERROR: there is no unique or exclusion constraint matching the ON CONFLICT specification` on the harness database. The production write path that decides "who creates this month's period" therefore cannot run in any integration suite; no integration suite calls it (`budget-period-rollover.integration.spec.ts:24-26` tests only the job claim in front of it and says "the rollover's own writes ... have their own specs", which are unit specs with mocks).
+6. **Observed implementation behavior:** Each suite that needs a production key re-creates it by hand (`bank-sync.integration.spec.ts:2268-2280` creates and drops `idx_tags_user_name`; `email-receipts-schema.integration.spec.ts` builds a separate `schema.sql` database because "every other integration suite builds its schema from entity metadata, which creates none of the CHECK constraints"). Every other suite runs without them. The parity guard asserts only `ON DELETE` rules, with a 55-entry shrink-only baseline.
+7. **Expected behavior:** The harness carries every unique key, exclusion constraint and CHECK `schema.sql` declares, or a guard fails the build when an entity omits one, the way the FK guard does for delete rules.
+8. **Impact:** Data integrity and verification. A race or duplicate-write test over any of the 15 keys passes against a database with no constraint to contend over (`refresh_tokens.token_hash`, `personal_access_tokens.token_hash` and `trusted_devices.token_hash` are the token lookup keys; `account_delegates`/`account_delegate_grants` are the delegation keys; `categories`, `tags`, `payee_aliases` decide find-or-create convergence). A write that a production CHECK rejects (a parser-draft row of the wrong shape, an OAuth mailbox carrying a password) passes every integration suite and fails only in production, as a 500. No present-day production corruption was established: production has the constraints. The defect is that the suite the repository names as its evidence for these properties cannot observe them, and `ON CONFLICT` paths on missing keys are untestable at the integration level.
+9. **Root cause:** The rule "declare it in all three places" has no machine check for unique keys or CHECKs; `schema-entity-parity` was written for the P2-009 FK case only, and `applyRlsPolicies` restores the categories TypeORM "cannot express" (exclusion constraints) but not the ones the entities simply omit.
+10. **Recommended correction:** Extend the parity guard to unique keys (including partial and expression indexes) and CHECK constraints, with the same shrink-only baseline shape; then shrink the baseline by declaring the keys on the entities (`@Unique`, `@Index(..., { unique: true, where })`, `@Check`) or, for expression indexes TypeORM cannot express, by having `applyRlsPolicies` apply them from `schema.sql` the way it applies exclusion constraints.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/test/integration/schema-entity-parity.integration.spec.ts
++++ b/backend/test/integration/schema-entity-parity.integration.spec.ts
+@@
++  /**
++   * Unique keys and CHECKs schema.sql declares that the entity-built harness
++   * lacks. Shrink-only, like KNOWN_DRIFT: a race test over a key that is not
++   * here runs against a database with nothing to contend over.
++   */
++  const KNOWN_MISSING_KEYS: string[] = [
++    "account_delegate_grants|UNIQUE (delegation_id, account_id)",
++    // ... the 15 unique keys and 82 CHECKs found at 72c59ec4, sorted
++  ];
++
++  it("carries every unique key and CHECK schema.sql declares", async () => {
++    const prod = await catalogOf(await schemaSqlDatabase());
++    const harness = await catalogOf(dataSource);
++    const missing = prod.filter((k) => !harness.has(k)).sort();
++    expect(missing.filter((k) => !KNOWN_MISSING_KEYS.includes(k))).toEqual([]);
++    expect(KNOWN_MISSING_KEYS.filter((k) => !missing.includes(k))).toEqual([]);
++  });
+--- a/backend/src/budgets/entities/budget-period.entity.ts
++++ b/backend/src/budgets/entities/budget-period.entity.ts
+@@
+-@Entity("budget_periods")
++@Entity("budget_periods")
++@Unique("budget_periods_budget_id_period_start_key", ["budgetId", "periodStart"])
+```
+
+12. **Recommended regression test:** the extended parity guard above, plus a two-connection integration test of `createPeriodForBudget` for one budget and one month.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++++ b/backend/test/integration/budget-period-create-race.integration.spec.ts
++it("two concurrent creations of one month's period leave one row and both succeed", async () => {
++  const [a, b] = await Promise.all([
++    withUserContext(ownerId, () => periodsA.createPeriodForBudget(ownerId, budget, monthStart)),
++    withUserContext(ownerId, () => periodsB.createPeriodForBudget(ownerId, budget, monthStart)),
++  ]);
++  expect(a.id).toBe(b.id);
++  expect(await count("budget_periods", { budget_id: budget.id })).toBe(1);
++});
+```
+
+    Fails today with 42P10 in the harness, which is the point: it cannot pass until the key is in the harness.
+14. **Verification method:** run the extended guard on the baseline (expect the baseline list), add the `@Unique`, re-run (expect the entry to leave the list), run the race test.
+15. **Residual risks / patch limitations:** declaring a key on an entity changes nothing in production (no `synchronize` there), so the fix is test-only; expression indexes need the `schema.sql`-extraction route; the baseline approach keeps the gap visible but does not close it.
+
+Causality: `PRE_EXISTING_UNREPORTED` for the 15 unique keys (all on tables older than `d5cea9bf`; the upstream phase 7 inventory row for `integration-setup.ts` says the harness "can hide ... migration differences" without naming one); `NEW_SINCE_UPSTREAM_AUDIT` for the 61 CHECKs on tables from the 56 new migrations. One finding per Rule 7: one violated rule, one root cause. Execution evidence: `<scratchpad>/three-place.json` (catalog diff) and the arbiter probe in section 7.
+
+#### A26-S07-09 (merged surface) - No suite detects removal of the split-parent lock, the closed-account predicate or the transfer compare-and-set at the database level (test coverage; joins MON-M46)
+
+1. **Severity:** LOW
+2. **Confidence:** high (executed mutations M1-M3, section 6)
+3. **Location:** `backend/src/transactions/transaction-split.service.ts:1116`; `backend/src/accounts/accounts.service.ts:173`; `backend/src/transactions/transaction-transfer.service.ts:1890-1903`; tests: `transaction-split.service.spec.ts`, `test/integration/transactions.integration.spec.ts`, `transfers.integration.spec.ts`.
+4. **Violated invariant:** `docs/verification-contract.md` (a lock, a predicate or a CAS needs a two-connection test).
+5. **Reproduction:** apply M1 (`addSplit` reads the parent without `FOR UPDATE`): unit 93/93 green, integration green. M2 and M3 are caught only by mocked unit specs that assert the SQL text or the thrown 409.
+6. **Observed:** section 6.
+7. **Expected:** a two-connection integration case per mechanism fails.
+8. **Impact:** a refactor that drops one of these can ship green.
+9. **Root cause:** the race suites cover `balance-delta-recompute` only.
+10. **Recommended correction:** add two-connection cases: concurrent `addSplit`; close versus an un-void; two concurrent `updateTransfer` with different amounts.
+11. **Suggested remediation diff:** test-only, by design (the defect is the missing test): the A26-S07-01 regression spec plus
+
+```diff
++it("two concurrent addSplit calls never exceed the parent", async () => {
++  // parent -100.00 with a -60.00 line; two -30.00 additions, a barrier after the
++  // prewarm hook so both have read the snapshot before either locks
++  ...
++  expect(sum).toBeGreaterThanOrEqual(-100);
++});
+```
+
+12-14. **Regression test / verification:** each case must fail under its mutation (M1-M3) and pass at the baseline. Note: the session's own concurrent `addSplit` probe (Q3) did not interleave under M1 either, so the case needs a barrier, not `Promise.all` alone.
+15. **Residual risks:** none beyond coverage.
+
+Causality: `PRE_EXISTING_UNREPORTED` (handed to S21 with MON-M46).
+
+#### A26-S08-05 (merged surface) - No integration test runs the real `post()`, the auto-post cron, or the lease semantics against PostgreSQL
+
+1. **Severity:** LOW
+2. **Confidence:** high
+3. **Location:** `backend/test/helpers/integration-setup.ts:117-150` (the module is stubbed); `scheduled-loan-pricing-concurrency.integration.spec.ts:38-45` and `loan-settlement-claim.integration.spec.ts:53` say so; `src/common/jobs/job-claim.service.spec.ts:62-195` (asserts SQL text); `job-claim-lease-rollout.integration.spec.ts` (migration-143 trigger only).
+4. **Violated invariant:** INV-OCCURRENCE-001 "a two-instance integration test is still owed"; INV-CRON-001 "two-instance per job"; `docs/verification-contract.md` (a mock proves the call, not the property).
+5. **Reproduction:** mutations M1-M3 and M5-M7 (section 6) leave every integration suite green; A26-S08-01..03 are invisible to the suite.
+6. **Observed:** the probes in this report are the first runs of the real posting path against PostgreSQL in the program.
+7. **Expected:** the probe harness (construct `ScheduledTransactionsService` by hand over the real `TransactionsService`, stub only the loan and FX collaborators) in the suite, plus a real-database lease test (retake after expiry, no retake once delivered, stale holder's `markDelivered` refused).
+8. **Impact:** regressions of the occurrence protocol reach `main` with green CI as long as the unit mocks are unchanged.
+9. **Root cause:** the module cycle the stub breaks, and no hand-constructed alternative.
+10. **Recommended correction:** add `scheduled-posting.integration.spec.ts` built as `<scratchpad>/mut/backend/test/integration/zz-s08-probe.integration.spec.ts` is built, and `job-claim-lease.integration.spec.ts`.
+11. **Suggested remediation diff (illustrative, not applied):** a test-only change, acceptable here because the defect is the missing test:
+
+```diff
++++ b/backend/test/integration/scheduled-posting.integration.spec.ts
++  function replica(): ScheduledTransactionsService {
++    return new ScheduledTransactionsService(
++      accounts, transactions, {} as any, {} as any, {} as any, {} as any,
++      loanStub as any, dataSource, history, {} as any, alerts as any,
++    );
++  }
++  it("two replicas, one tick: one posting", async () => { /* P1 with a two-party barrier after selection */ });
++  it("a replica that selected before the winner committed posts nothing", async () => { /* P1b */ });
++  it("a failure between claim and money leaves no claim", async () => { /* P5 */ });
+```
+
+12-14. **Regression test / diff / verification:** as above; `npm run test:integration -- scheduled-posting job-claim-lease`.
+15. **Residual risks:** the hand-built service stubs the FX and investment collaborators, so FX and investment postings still need their own cases.
+
+Causality: `PRE_EXISTING_UNREPORTED` as a test gap (S02 noted it; joins MON-M46 in S21).
+
+#### A26-S16-09 (merged surface) - No committed test can exercise the two unique keys budgets rely on, and VOID removal from budget spending is undetected (test coverage)
+
+1. **Severity:** LOW
+2. **Confidence:** high (executed)
+3. **Location:** `idx_notifications_fingerprint` and `budget_periods UNIQUE(budget_id, period_start)` exist in `database/schema.sql` (`:2483`, `:2407`) but on neither entity (`notification-center/entities/notification.entity.ts`, `budgets/entities/budget-period.entity.ts`); the integration harness builds from entities (`test/helpers/integration-setup.ts:60`).
+4. **Violated invariant:** the protocol's "declared in all three"; docs/verification-contract.md (a race claim needs a real two-connection test).
+5. **Reproduction (executed):** `closePeriod` in the integration schema fails with "there is no unique or exclusion constraint matching the ON CONFLICT specification" until the constraint is added by hand (probe first run); no integration spec touches the fingerprint (`grep` finds only `migration-140-preflight`, which tests the preflight, not the race). Mutation M5 (VOID kept in budget category spending) passes both `budget*` unit suites and the budget integration suite.
+6. **Observed:** the period close and both race arbiters are untestable in the committed harness; three mutations survive (section 6).
+7. **Expected:** entity decorators matching `schema.sql`; a two-connection race test for alerts and for the period insert; a VOID case for category actuals.
+8. **Impact:** a regression in MON-L03's fix, in period creation or in the VOID filter would ship green.
+9. **Root cause:** the keys were added by migration only.
+10. **Recommended correction:** `@Index("idx_notifications_fingerprint", ...)` is not expressible with `COALESCE` in a decorator, so the harness should apply the expression index after synchronize (beside `applyRlsPolicies`); `@Unique(["budgetId", "periodStart"])` on `BudgetPeriod`.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/budgets/entities/budget-period.entity.ts
++++ b/backend/src/budgets/entities/budget-period.entity.ts
+-@Entity("budget_periods")
++@Entity("budget_periods")
++@Unique(["budgetId", "periodStart"])
+ export class BudgetPeriod {
+```
+
+12. **Recommended regression test:** P4 (two `pg` clients, barrier, one row) and P2/P3 as committed integration specs; a VOID expense in `budget-split-transfer-spending` asserting it is not in `spent`.
+13. **Suggested regression-test diff:** the probe in section 7, minus the hand-made constraint.
+14. **Verification:** `npm run test:integration -- budget`.
+15. **Residual risks:** the harness change touches every suite's schema; run the whole integration job once.
+
+Causality: `PRE_EXISTING_UNREPORTED`.
+
+#### Confirmed hand-off: A26-S07-08 (custom-report text filter)
+
+Confirmed at `reports.service.ts:571-577` (`searchText`) and `:719-735` (`text` condition): `%${value.trim().toLowerCase()}%`, no escape, outside `applyTransactionSearch`. Keeps S07's ID and severity (LOW); no new finding.
+
+#### A26-S17-05 (merged surface) - No test pins that a 2025-era session's tools see the presenting token's scopes (the MON-M04 fix is undetected by every suite)
+
+1. **Severity:** LOW
+2. **Confidence:** high (executed, M2)
+3. **Location:** `backend/src/mcp/mcp-http.controller.ts:235-257` (`authorize` sets `req.auth` per request), `:298-325` (existing-session POST); tests `mcp-http.controller.spec.ts`, `mcp-eras.spec.ts`.
+4. **Violated invariant:** INV-MCP-001 ("with that credential's current scopes"); `docs/verification-contract.md` (a material invariant needs a test that fails when it is broken).
+5. **Realistic reproduction scenario:** an OAuth MCP client refreshes its access token with a narrower `scope` (`monize:read` only) on the same grant; the 2025-era session continues.
+6. **Observed implementation behavior:** correct today (the tool sees `read`). Mutation M2, which serves the tools the scopes stored at session creation (the exact MON-M04 defect), passes all 802 MCP unit tests.
+7. **Expected behavior:** a test fails when a tool on an existing 2025-era session is served anything but the presenting request's scopes.
+8. **Impact:** a regression of MON-M04 (a narrowed token keeping write scope for up to the 1-hour session TTL) would ship green.
+9. **Root cause:** the controller spec asserts the 403 on a credential mismatch and the modern request's own `authInfo`, but no case drives a same-credential, narrowed-scope request through an existing session to a tool.
+10. **Recommended correction:** add that case (and, separately, the documentation line in INV-MCP-001's "Required tests").
+11. **Suggested remediation diff (illustrative, not applied):** test-only by nature; the production code is correct (the defect is the missing test, protocol item 12).
+12. **Recommended regression test / 13. Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++++ b/backend/src/mcp/mcp-http.controller.spec.ts
++it("serves an existing session's tool the scopes of the token presented now", async () => {
++  // initialize with oauth grant g1 scopes "read,write"; then call a tool with
++  // the same grant (credentialId oauth:g1) whose current scope is "read".
++  validateAccessToken.mockResolvedValueOnce({ userId: "u1", scopes: "read,write", grantId: "g1" });
++  const sid = await initializeSession();
++  validateAccessToken.mockResolvedValueOnce({ userId: "u1", scopes: "read", grantId: "g1" });
++  const req = toolCallRequest(sid);
++  await controller.handlePost(req, res);
++  expect((req as { auth?: AuthInfo }).auth?.scopes).toEqual(["read"]);
++});
+```
+
+14. **Verification method:** re-run M2 with the new case: it must fail.
+15. **Residual risks / patch limitations:** the assertion is on `req.auth`; the end-to-end property also depends on the SDK forwarding `req.auth` per request (`@modelcontextprotocol/node` `index.cjs:238`), which an SDK upgrade could change; `mcp-eras.spec.ts` is the place for a real-SDK variant.
+
+Causality: `PRIOR_REPORTED` (MON-M04, test half; the defect itself is `FIXED_VERIFIED`, section 5).
+
+#### A26-S02-12 (merged surface) - The emergency-access integration race exercises a copy of the consume SQL, not the controller
+
+1. **Severity:** LOW
+2. **Confidence:** high (executed mutation M3i)
+3. **Location:** `backend/test/integration/emergency-access-grant-cycles.integration.spec.ts:484` "honours a delivered claim token exactly once".
+4. **Violated invariant:** `docs/verification-contract.md`: a concurrency claim is proven at the production boundary.
+5. **Reproduction:** remove `AND claim_token_used_at IS NULL` from the controller's consume (`emergency-access-claim.controller.ts:224-225`).
+6. **Observed:** the integration suite stays green (15 passed); only the unit SQL-text assertion fails (M3).
+7. **Expected:** the integration race fails.
+8. **Impact:** a refactor that keeps the SQL text check happy but changes the call (for example to an ORM `update`) reopens MON-H09 with green integration.
+9. **Root cause:** the test races two `dataSource.query` calls on hard-coded SQL.
+10. **Recommended correction:** race two real `controller.complete` (or the service method) calls.
+11. **Suggested remediation diff:** test-only change (this finding is a test defect): replace the two `dataSource.query(CONSUME_SQL)` calls with two `controller.complete({ token, newPassword })` calls built from the testing module.
+12. **Recommended regression test:** as item 11, asserting one success, one 404, one password.
+13. **Suggested regression-test diff:** as item 11.
+14. **Verification:** re-run mutation M3i; it must fail.
+15. **Residual risks:** none beyond the test.
+
+Causality: `PRE_EXISTING_UNREPORTED` (test coverage). Owner: S03.
+
+#### A26-S06-06 (merged surface) - The Phase-3 owner predicate of the restore has no test that fails without it (M4 undetected)
+
+1. **Severity:** LOW (missing test on a defence-in-depth layer)
+2. **Confidence:** high (executed: mutation M4)
+3. **Location:** `backend/src/backup/backup-restore-database.service.ts` `restoreDeferredFkColumns` (the `"user_id = $3"` / `ownedThrough` predicate); `backend/src/backup/restore-plan.spec.ts:141-169` (checks the `DEFERRED_FK_REPAIRS` declarations, not the SQL); INV-BACKUP-009 lists that spec as the test of the confinement.
+4. **Violated invariant:** INV-BACKUP-009 "Phase-3 repair UPDATEs carry user_id = $3", as a tested property.
+5. **Realistic reproduction scenario:** replace the predicate with `(user_id = $3 OR true)`.
+6. **Observed:** 208 unit tests in `restore-plan`, `backup-restore-database`, `backup.service` and 25 integration tests pass.
+7. **Expected:** a test seeds a second user's row and calls `restoreDeferredFkColumns` with a `data` row whose id is that row's id, and asserts the other row is unchanged.
+8. **Impact:** today unreachable (resolveRestoreReferences and the remap make every id fresh); the predicate is the layer that must hold if either regresses, and nothing would notice its removal.
+9. **Root cause:** the spec proves the plan is declared confined, not that the SQL is.
+10. **Recommended correction:** add the direct test; reword INV-BACKUP-009's required-tests line.
+11. **Suggested remediation diff:** none to production code.
+12. **Recommended regression test:** as 7.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++  it("a Phase-3 repair never updates another user's row, whatever id the data names", async () => {
++    const victim = await createTestUserDirect(dataSource);
++    const v = await seedUserData(victim.id);
++    const restorer = await createTestUserDirect(dataSource);
++    await withScopedDb(dataSource, (m) =>
++      module.get(BackupRestoreDatabaseService).restoreDeferredFkColumns(
++        m, { categories: [{ id: v.childCategoryId, parent_id: null as never, }],
++             payees: [{ id: v.payeeId, default_category_id: v.childCategoryId }] } as never,
++        restorer.id));
++    const [row] = await dataSource.query(`SELECT default_category_id FROM payees WHERE id = $1`, [v.payeeId]);
++    expect(row.default_category_id).toBe(v.childCategoryId); // unchanged
++  });
+```
+
+14. **Verification method:** M4 must turn this case red.
+15. **Residual risks / patch limitations:** none beyond the test's own fixture.
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the predicate and the spec postdate the upstream audit).
+
+#### A26-S09-02 (merged surface) - The guard that stops a committed run being offered Retry is held by no test
+
+1. **Severity:** MEDIUM (test coverage of a HIGH-impact invariant)
+2. **Confidence:** high (mutations executed)
+3. **Location:** `backend/src/import/mny/mny-import-job.service.ts:618` (`retryable = ($4 AND data_committed = false)`), `:159` (reaper); `backend/test/integration/mny-import-job.integration.spec.ts`, `mny-import.integration.spec.ts`; `src/import/mny/mny-import-job.service.spec.ts`.
+4. **Violated invariant:** INV-IMPORT-002; `docs/system-invariants.md` claims a failpoint that "commits writeAll then fails before terminal completion".
+5. **Reproduction:** mutation M2, `retryable = $4`: `mny-import-job|mny-staging|mny-import.integration` 110/110 green; every unit spec under `src/import` 1848/1848 green. With M2 the failpoint run of A26-S09-01 ends `retryable = true` and the wizard's own Retry button re-imports the file. Mutation M1 (reaper `retryable = true`) is detected only by three unit tests that assert the SQL text of a mocked query; the integration suites stay 110/110 green.
+6. **Observed:** no test enters the production path at "a body that throws after `markDataCommitted` committed" and asserts the row's `retryable`.
+7. **Expected:** a real-database test per guard.
+8. **Impact:** a one-token regression re-opens UI-driven double import with the suite green.
+9. **Root cause:** the failpoint tests in `mny-import-job.integration.spec.ts:517-765` fail the job by reaping it (token cleared) or by refusing the checkpoint; none commits and then throws from the body.
+10. **Recommended correction:** add the test of A26-S09-01 item 13 (it fails under M2) and one reaper case on a real row with `data_committed = true`.
+11. **Suggested remediation diff (illustrative, not applied):** test-only by nature (the defect is the missing test):
+
+```diff
++    it("reaps a committed stale job non-retryable", async () => {
++      const job = await createRunning(userId);            // existing helper pattern
++      await dataSource.query(`UPDATE import_jobs SET data_committed = true,
++        heartbeat_at = now() - interval '10 minutes' WHERE id = $1`, [job.id]);
++      await service.reapStaleJobs();
++      const row = await dataSource.getRepository(ImportJob).findOneByOrFail({ id: job.id });
++      expect(row).toMatchObject({ status: "failed", retryable: false,
++        errorKey: "mnyJobStalledAfterCommit" });
++    });
+```
+
+12-13. As above, plus the A26-S09-01 test.
+14. **Verification:** re-run M1 and M2; both must turn the integration suite red.
+15. **Residual risks:** none beyond A26-S09-01.
+
+Causality: `PRE_EXISTING_UNREPORTED` (verification defect).
