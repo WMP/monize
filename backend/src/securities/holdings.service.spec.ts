@@ -624,6 +624,83 @@ describe("HoldingsService", () => {
       expect(stored.averageCost).not.toBeCloseTo(15, 4);
     });
 
+    /**
+     * A26-M23 (A26-S12-06), INV-HOLDING-001/002: the fold snapped every
+     * intermediate position under 0.0001 shares to zero, so ten daily buys of
+     * 0.00009 BTC never formed a holding (each started from the snapped 0).
+     * Only a residue at the stored scale (8 dp) is a ghost; both sides of the
+     * old 0.0001 line are pinned.
+     */
+    const microBuys = (count: number, quantity: number) =>
+      Array.from({ length: count }, (_, i) => ({
+        id: `micro-${i}`,
+        accountId: "acc-1",
+        securityId: "sec-1",
+        action: InvestmentAction.BUY,
+        transactionDate: `2026-01-${String(10 + i).padStart(2, "0")}`,
+        quantity,
+        price: 60000,
+        commission: 0,
+        createdAt: sameInstant,
+      }));
+
+    it("keeps a position built from purchases under 0.0001 shares", async () => {
+      stubLedger(microBuys(10, 0.00009));
+      holdingsRepository.find.mockResolvedValue([]);
+
+      await service.rebuildScopesFromTransactions(
+        USER,
+        [{ accountId: "acc-1", securityId: "sec-1" }],
+        mockQueryRunner.manager as never,
+      );
+
+      expect(holdingsRepository.save).toHaveBeenCalledTimes(1);
+      const stored = holdingsRepository.save.mock.calls[0][0];
+      expect(stored.quantity).toBeCloseTo(0.0009, 8);
+      expect(stored.averageCost).toBeCloseTo(60000, 6);
+    });
+
+    it.each([
+      ["just under the old line", 0.00009999],
+      ["exactly on it", 0.0001],
+      ["just over it", 0.00010001],
+    ])("stores a single purchase %s", async (_label, quantity) => {
+      stubLedger(microBuys(1, quantity));
+      holdingsRepository.find.mockResolvedValue([]);
+
+      await service.rebuildScopesFromTransactions(
+        USER,
+        [{ accountId: "acc-1", securityId: "sec-1" }],
+        mockQueryRunner.manager as never,
+      );
+
+      const stored = holdingsRepository.save.mock.calls[0][0];
+      expect(stored.quantity).toBeCloseTo(quantity, 8);
+    });
+
+    it("still drops a residue at the stored scale", async () => {
+      // BUY 1, SELL 0.999999995: 5e-9 left, below the 8-decimal column.
+      const rows = [
+        ...microBuys(1, 1),
+        {
+          ...microBuys(1, 0.999999995)[0],
+          id: "sell",
+          action: InvestmentAction.SELL,
+          transactionDate: "2026-01-20",
+        },
+      ];
+      stubLedger(rows);
+      holdingsRepository.find.mockResolvedValue([]);
+
+      await service.rebuildScopesFromTransactions(
+        USER,
+        [{ accountId: "acc-1", securityId: "sec-1" }],
+        mockQueryRunner.manager as never,
+      );
+
+      expect(holdingsRepository.save).not.toHaveBeenCalled();
+    });
+
     it("re-converges after the back-dated row is deleted", async () => {
       // The same position with the SELL gone: two purchases, 200 shares,
       // basis 3,000. A delta applied to the stored 16.6667 could not reach it.

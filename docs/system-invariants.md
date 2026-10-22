@@ -754,7 +754,10 @@ Enforcement         No path writes the columns incrementally. Every ledger write
                     the row is deleted. Every writer takes that decision, and
                     the average cost a short position stores, through
                     projectedHoldingRow. An imported opening position is an
-                    ADD_SHARES row, not a holding with nothing behind it.
+                    ADD_SHARES row, not a holding with nothing behind it. The fold
+                    snaps a position to zero only below the stored scale
+                    (HOLDING_QUANTITY_EPSILON, 1e-8), never at 0.0001 per step, so
+                    purchases under 0.0001 shares form a holding (A26-M23).
 Concurrency scope   per (account, security)
 Retry semantics     Serialized by the lock; a lost update cannot occur.
 Failure response    the stored holding equals a deterministic replay of the ledger.
@@ -804,6 +807,8 @@ Required tests      Two-connection (concurrent trades on one holding, the stored
                     A back-dated transfer carries the source's basis on its date,
                     follows a date edit, and ignores a client price:
                     backend/test/integration/security-transfer-basis.integration.spec.ts.
+                    Two BUYs of 0.00005 hold 0.0001:
+                    backend/test/integration/holding-fractional.integration.spec.ts.
                     Out-of-order entry through the real service, stored row
                     compared against the replay:
                     backend/test/integration/holding-ledger-projection.integration.spec.ts.

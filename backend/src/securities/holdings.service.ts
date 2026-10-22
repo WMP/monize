@@ -686,8 +686,13 @@ export class HoldingsService {
         releasedByTransferOut.set(tx.id, costBefore - holding.totalCost);
       }
 
-      // Snap near-zero to exactly zero to prevent ghost holdings
-      if (Math.abs(holding.quantity) < 0.0001) {
+      // Snap a rounding residue to exactly zero, at the stored scale (8 dp).
+      // It used to be 0.0001 at every step, so purchases under 0.0001 shares
+      // (a daily 0.00009 BTC) each started from a snapped zero and never
+      // formed a holding while their cash left the account (A26-M23). A real
+      // fractional position is not a ghost; `projectedHoldingRow` decides at
+      // the end with the same epsilon.
+      if (Math.abs(holding.quantity) <= HOLDING_QUANTITY_EPSILON) {
         holding.quantity = 0;
         holding.totalCost = 0;
       }
