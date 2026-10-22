@@ -29,7 +29,9 @@
     "unsupportedType": "Непідтримуваний тип файлу. Дозволені типи: {{ types }}",
     "tooMany": "Ця транзакція вже має максимальну кількість вкладень — {{ max }}",
     "swept": "Завантаження тривало надто довго, і його сховище було звільнено. Спробуйте ще раз.",
-    "pairRequiresImages": "Відсканований документ і його оригінал мають бути зображеннями"
+    "pairRequiresImages": "Відсканований документ і його оригінал мають бути зображеннями",
+    "warrantyNotFound": "Гарантію не знайдено",
+    "tooManyForWarranty": "Ця гарантія вже має максимальну кількість вкладень — {{ max }}"
   },
   "accounts": {
     "accountWithIdNotFound": "Рахунок з ідентифікатором {{ id }} не знайдено",
@@ -871,5 +873,47 @@
     "selectionNotNew": "Вибрана операція не є новим рядком у даних банку. Нічого не імпортовано; повторіть попередній перегляд.",
     "selectionOverlap": "Операцію не можна одночасно імпортувати й додати до винятків.",
     "nothingToUpdate": "Надішліть autoSync, notifySuccess або tagOperationType, щоб змінити банківське підключення."
+  },
+  "warranties": {
+    "notFound": "Гарантію з ідентифікатором {{ id }} не знайдено",
+    "transactionNotFound": "Транзакцію з ідентифікатором {{ id }} не знайдено",
+    "transactionIsSplitLine": "Гарантія пов'язується з усією покупкою, а не з одним із її розділених рядків",
+    "payeeNotFound": "Одержувача з ідентифікатором {{ id }} не знайдено",
+    "invalidTerm": "Строк гарантії має бути більшим за нуль",
+    "expiryRequired": "Гарантії, яка не є довічною, потрібна дата закінчення або строк",
+    "expiresBeforePurchase": "Гарантія не може закінчитися раніше за дату покупки",
+    "priceNeedsCurrency": "Ціну покупки та її валюту вказують разом або не вказують зовсім",
+    "claimNotFound": "Звернення з ідентифікатором {{ id }} не знайдено",
+    "claimResolvedOnNeedsOutcome": "Дата закриття звернення можлива лише зі статусом «вирішене» або «відхилене»",
+    "claimResolvedBeforeClaimDate": "Звернення не можна закрити раніше за дату його подання",
+    "import": {
+      "noFile": "Виберіть CSV-файл для імпорту",
+      "notCsv": "Файл має бути у форматі CSV",
+      "fileTooLarge": "Файл імпорту має бути не більшим за 1 МіБ",
+      "emptyFile": "Файл має містити рядок заголовків і принаймні один рядок даних",
+      "tooManyRows": "У файлі імпорту рядків: {{ count }}; дозволено не більше {{ max }}",
+      "missingColumns": "У рядку заголовків файлу немає стовпця {{ columns }}",
+      "invalidRows": "Недійсних рядків: {{ count }}, тому нічого не імпортовано; виправте або пропустіть їх",
+      "nameRequired": "Потрібно вказати ProductName",
+      "purchaseDateRequired": "Потрібно вказати PurchaseDate",
+      "tooLong": "{{ column }} має містити не більше {{ max }} символів",
+      "invalidDate": "{{ column }} має бути датою у форматі YYYY-MM-DD",
+      "invalidDuration": "{{ column }} має бути цілим числом від 0 до {{ max }}",
+      "invalidLifetime": "IsLifetime має бути true, false, yes, no, 1 або 0",
+      "noExpirySource": "Заповніть ExpirationDate, стовпець WarrantyDuration або IsLifetime",
+      "lifetimeWithExpiry": "IsLifetime має значення true, але рядок також містить ExpirationDate або WarrantyDuration; заповніть лише одне",
+      "durationIgnored": "Використано ExpirationDate; сусідні стовпці WarrantyDuration проігноровано",
+      "durationDisagrees": "Використано ExpirationDate {{ expiresOn }}; стовпці WarrantyDuration дають {{ derived }}, що не збігається",
+      "negativePrice": "PurchasePrice не може бути від'ємним",
+      "invalidPrice": "PurchasePrice має бути числом від 0 до {{ max }} з не більше ніж 4 знаками після коми",
+      "currencyWithoutPrice": "Currency вказано, але PurchasePrice порожній",
+      "unknownCurrency": "Валюта «{{ value }}» невідома; використано {{ currency }}",
+      "unknownWarrantyType": "WarrantyType «{{ value }}» не є manufacturer, extended, store чи other; імпортовано як other",
+      "invalidSerialJson": "SerialNumber починається з [, але не є JSON-масивом рядків",
+      "tooManySerials": "У SerialNumber значень: {{ count }}; дозволено не більше {{ max }}",
+      "serialTooLong": "Кожен серійний номер має містити не більше {{ max }} символів",
+      "invalidUrl": "ProductURL має бути адресою http або https",
+      "invalidField": "Недійсне значення {{ field }}"
+    }
   }
 }

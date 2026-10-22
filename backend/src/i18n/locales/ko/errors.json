@@ -29,7 +29,9 @@
     "unsupportedType": "지원되지 않는 파일 형식입니다. 허용되는 형식: {{ types }}",
     "tooMany": "이 거래에는 이미 최대 {{ max }}개의 첨부 파일이 있습니다",
     "swept": "업로드에 너무 오래 걸려 저장 공간이 회수되었습니다. 다시 시도해 주세요.",
-    "pairRequiresImages": "스캔한 문서와 원본은 모두 이미지여야 합니다"
+    "pairRequiresImages": "스캔한 문서와 원본은 모두 이미지여야 합니다",
+    "warrantyNotFound": "보증을 찾을 수 없습니다",
+    "tooManyForWarranty": "이 보증에는 이미 최대 {{ max }}개의 첨부 파일이 있습니다"
   },
   "accounts": {
     "accountWithIdNotFound": "ID가 {{ id }}인 계정을 찾을 수 없습니다",
@@ -871,5 +873,47 @@
     "selectionNotNew": "선택한 거래가 은행 데이터의 새 행이 아닙니다. 아무것도 가져오지 않았습니다. 미리보기를 다시 실행하세요.",
     "selectionOverlap": "하나의 거래를 가져오기와 예외 목록 추가에 동시에 지정할 수 없습니다.",
     "nothingToUpdate": "은행 연결을 변경하려면 autoSync, notifySuccess 또는 tagOperationType 중 하나를 보내세요."
+  },
+  "warranties": {
+    "notFound": "ID가 {{ id }}인 보증을 찾을 수 없습니다",
+    "transactionNotFound": "ID가 {{ id }}인 거래를 찾을 수 없습니다",
+    "transactionIsSplitLine": "보증은 분할 항목 하나가 아니라 구매 전체에 연결됩니다",
+    "payeeNotFound": "ID가 {{ id }}인 수취인을 찾을 수 없습니다",
+    "invalidTerm": "보증 기간은 0보다 길어야 합니다",
+    "expiryRequired": "평생 보증이 아닌 보증에는 만료일이나 기간이 필요합니다",
+    "expiresBeforePurchase": "보증은 구매일 이전에 만료될 수 없습니다",
+    "priceNeedsCurrency": "구매 가격과 통화는 함께 설정하거나 둘 다 비워 두어야 합니다",
+    "claimNotFound": "ID가 {{ id }}인 보증 청구를 찾을 수 없습니다",
+    "claimResolvedOnNeedsOutcome": "보증 청구의 종료일은 상태가 해결됨 또는 거절됨일 때만 설정할 수 있습니다",
+    "claimResolvedBeforeClaimDate": "보증 청구는 청구일 이전에 종료될 수 없습니다",
+    "import": {
+      "noFile": "가져올 CSV 파일을 선택하세요",
+      "notCsv": "파일은 CSV 파일이어야 합니다",
+      "fileTooLarge": "가져오기 파일은 1 MiB 이하여야 합니다",
+      "emptyFile": "파일에는 머리글 행과 하나 이상의 데이터 행이 있어야 합니다",
+      "tooManyRows": "가져오기 파일에 {{ count }}개 행이 있습니다. 최대 {{ max }}개까지 허용됩니다",
+      "missingColumns": "파일의 머리글 행에 {{ columns }} 열이 없습니다",
+      "invalidRows": "{{ count }}개 행이 유효하지 않아 아무것도 가져오지 않았습니다. 수정하거나 건너뛰세요",
+      "nameRequired": "ProductName은 필수입니다",
+      "purchaseDateRequired": "PurchaseDate는 필수입니다",
+      "tooLong": "{{ column }}은(는) {{ max }}자 이하여야 합니다",
+      "invalidDate": "{{ column }}은(는) YYYY-MM-DD 형식의 날짜여야 합니다",
+      "invalidDuration": "{{ column }}은(는) 0부터 {{ max }}까지의 정수여야 합니다",
+      "invalidLifetime": "IsLifetime은 true, false, yes, no, 1, 0 중 하나여야 합니다",
+      "noExpirySource": "ExpirationDate, WarrantyDuration 열 또는 IsLifetime을 입력하세요",
+      "lifetimeWithExpiry": "IsLifetime이 true인데 행에 ExpirationDate나 WarrantyDuration도 있습니다. 하나만 입력하세요",
+      "durationIgnored": "ExpirationDate를 사용했습니다. 옆의 WarrantyDuration 열은 무시되었습니다",
+      "durationDisagrees": "ExpirationDate {{ expiresOn }}을(를) 사용했습니다. WarrantyDuration 열로 계산하면 {{ derived }}(으)로 일치하지 않습니다",
+      "negativePrice": "PurchasePrice는 음수일 수 없습니다",
+      "invalidPrice": "PurchasePrice는 0부터 {{ max }}까지의 숫자이며 소수점 이하 4자리까지 가능합니다",
+      "currencyWithoutPrice": "Currency가 설정되었지만 PurchasePrice가 비어 있습니다",
+      "unknownCurrency": "통화 \"{{ value }}\"을(를) 알 수 없어 {{ currency }}을(를) 사용했습니다",
+      "unknownWarrantyType": "WarrantyType \"{{ value }}\"은(는) manufacturer, extended, store, other 중 어느 것도 아니어서 other로 가져왔습니다",
+      "invalidSerialJson": "SerialNumber가 [로 시작하지만 텍스트로 된 JSON 배열이 아닙니다",
+      "tooManySerials": "SerialNumber에 값이 {{ count }}개 있습니다. 최대 {{ max }}개까지 허용됩니다",
+      "serialTooLong": "각 일련번호는 {{ max }}자 이하여야 합니다",
+      "invalidUrl": "ProductURL은 http 또는 https 주소여야 합니다",
+      "invalidField": "{{ field }}이(가) 유효하지 않습니다"
+    }
   }
 }

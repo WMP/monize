@@ -383,6 +383,12 @@
       "readyMessage": "Voorstellen die op je beslissing wachten: {{ count }}. Nieuw sinds de laatste melding: {{ added }}. Open om te beoordelen.",
       "expiringTitle": "AI-beoordelingsvoorstellen verlopen binnenkort",
       "expiringMessage": "Voorstellen die binnen 3 dagen verlopen: {{ count }}. Het eerste verloopt op {{ date }}. Open om te beoordelen."
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}: garantie verloopt binnenkort",
+      "expiringMessage": "De garantie voor {{ name }} verloopt op {{ date }}. Open hem om de documenten te bekijken of een claim vast te leggen.",
+      "todayTitle": "{{ name }}: garantie verloopt vandaag",
+      "todayMessage": "De garantie voor {{ name }} verloopt vandaag, {{ date }}. Open hem om de documenten te bekijken of een claim vast te leggen."
     }
   },
   "backupOffsite": {

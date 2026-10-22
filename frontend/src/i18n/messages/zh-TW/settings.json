@@ -386,7 +386,8 @@
         "BANK_SYNC_ACTIVITY": "銀行同步結果",
         "EMAIL_RECEIPTS": "電子郵件收據",
         "BONDS": "債券",
-        "AI_REVIEW": "AI 審核提案"
+        "AI_REVIEW": "AI 審核提案",
+        "WARRANTIES": "保固提醒"
       },
       "channelNotApplicable": "不適用於此通知類型",
       "emailToggleLabel": "{category} 的報告郵件",
@@ -984,7 +985,11 @@
     },
     "sections": {
       "description": "授予整個應用程式區段的唯讀存取。以科目為範圍的資料仍需要個別科目存取。",
-      "aiRequiresFullAccess": "AI 助理會讀取所有科目與區段，因此只有當此委派人能讀取您的所有科目及其他所有區段時，它才會為其回答。"
+      "aiRequiresFullAccess": "AI 助理會讀取所有科目與區段，因此只有當此委派人能讀取您的所有科目及其他所有區段時，它才會為其回答。",
+      "warranties": {
+        "label": "保固",
+        "description": "保固及其文件與保固申請。連結的購買紀錄只有在受託人可讀取的帳戶中時才會顯示。"
+      }
     },
     "accounts": {
       "noAccounts": "無可授予的科目。",

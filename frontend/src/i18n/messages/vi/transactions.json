@@ -135,6 +135,7 @@
       "toggleTitle": "Bỏ năm khỏi ngày để hiện được nhiều tên người nhận hơn"
     },
     "attachmentsCount": "{count, plural, other {# tệp đính kèm}}",
+    "warrantiesCount": "{count, plural, other {# bảo hành}}",
     "today": "Hôm nay",
     "export": {
       "button": "Xuất",
@@ -198,7 +199,9 @@
       "duplicateTitle": "Sao chép giao tác",
       "copy": "Sao chép",
       "duplicate": "Nhân bản",
-      "scheduleRecurring": "Lên lịch định kỳ"
+      "scheduleRecurring": "Lên lịch định kỳ",
+      "addWarranty": "Thêm bảo hành",
+      "viewWarranties": "Xem bảo hành"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "Chỉnh sửa",
     "duplicate": "Nhân bản",
     "scheduleRecurring": "Lên lịch định kỳ",
+    "addWarranty": "Thêm bảo hành",
+    "viewWarranties": "Xem bảo hành",
     "delete": "Xóa"
   },
   "filter": {
@@ -465,7 +470,14 @@
       },
       "feeCaption": "Bao gồm phí giao dịch nước ngoài {percent}% ({fee})."
     },
-    "jointSplitDisabled": "Chỉ chủ sở hữu mới có thể quản lý giao dịch tách trong tài khoản được chia sẻ"
+    "jointSplitDisabled": "Chỉ chủ sở hữu mới có thể quản lý giao dịch tách trong tài khoản được chia sẻ",
+    "warranties": {
+      "title": "Bảo hành",
+      "add": "Thêm bảo hành",
+      "expires": "Hết hạn {date}",
+      "loading": "Đang tải bảo hành",
+      "loadError": "Không thể tải các bảo hành của giao tác này."
+    }
   },
   "splitEditor": {
     "header": "Chi tiết phần chia",
@@ -626,7 +638,8 @@
       "amountRange": "Số tiền từ 50 đến 100",
       "datePeriod": "Bất kỳ ngày nào trong tháng 3 năm 2026",
       "isSplit": "Giao dịch tách",
-      "hasAttachment": "Có tệp đính kèm"
+      "hasAttachment": "Có tệp đính kèm",
+      "hasWarranty": "Có bảo hành"
     }
   },
   "searchInterpretation": {
@@ -668,6 +681,7 @@
       },
       "has": {
         "attachment": "Có tệp đính kèm",
+        "warranty": "Có bảo hành",
         "ref": "Có số tham chiếu",
         "memo": "Có ghi chú",
         "tag": "Có thẻ"

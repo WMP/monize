@@ -197,5 +197,11 @@
     "readyMessage": "{count, plural, other {# usulan AI}} menunggu persetujuan Anda, {added} di antaranya baru. Buka kotak masuk tinjauan AI untuk menyetujui atau menolaknya.",
     "expiringTitle": "Usulan AI segera kedaluwarsa",
     "expiringMessage": "{count, plural, other {# usulan AI}} segera kedaluwarsa. Yang pertama kedaluwarsa pada {date}. Buka kotak masuk tinjauan AI untuk menyetujui atau menolaknya."
+  },
+  "warranty": {
+    "expiringTitle": "{name}: garansi berakhir dalam {days, plural, other {# hari}}",
+    "expiringMessage": "Garansi untuk {name} berakhir pada {date}. Buka untuk meninjau dokumennya atau mencatat klaim.",
+    "todayTitle": "{name}: garansi berakhir hari ini",
+    "todayMessage": "Garansi untuk {name} berakhir hari ini, {date}. Buka untuk meninjau dokumennya atau mencatat klaim."
   }
 }

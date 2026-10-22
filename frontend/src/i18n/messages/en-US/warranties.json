@@ -1,0 +1,13 @@
+{
+  "page": {
+    "subtitle": "What you bought, when its coverage ends, and who sold it",
+    "empty": {
+      "description": "Add a warranty to keep track of when its coverage ends."
+    }
+  },
+  "form": {
+    "expiry": {
+      "label": "Coverage ends"
+    }
+  }
+}
