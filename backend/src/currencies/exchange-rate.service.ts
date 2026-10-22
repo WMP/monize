@@ -911,10 +911,30 @@ export class ExchangeRateService implements OnModuleInit {
   }
 
   /**
-   * Get the latest exchange rates (most recent per currency pair)
+   * The current rate of every pair, one row per directionless pair.
+   *
+   * The answer `resolveFxRate` gives in `live` mode, listed rather than asked
+   * for: the newest observation of either stored direction that is inside
+   * `FX_MAX_RATE_AGE_DAYS` of today, and nothing for a pair whose newest row is
+   * older (a rate is a price; a nine-month-old one does not describe today). A
+   * tie on the date goes to the canonical orientation, so the choice never
+   * depends on row order.
+   *
+   * One row per pair, not one per stored direction, because a database upgraded
+   * from before 1.17 holds a frozen mirror row (`USD->CAD`) beside the canonical
+   * row the refresh keeps current (`CAD->USD`), and a direct-first reader of a
+   * list that carried both took the frozen one (INV-FX-001, INV-FX-003).
+   *
+   * The bound is a `YYYY-MM-DD` string compared with the row's date, never a
+   * `Date` (see `ymdSpan`). The query still takes the newest row per stored
+   * direction, so it returns at most two rows per pair whatever the history.
    */
   async getLatestRates(): Promise<ExchangeRate[]> {
-    return withScopedDb(this.dataSource, (manager) =>
+    const today = todayYMD();
+    const oldest = addDaysYMD(today, -FX_MAX_RATE_AGE_DAYS);
+    // `live` mode may take an observation from after today inside the same bound.
+    const newest = addDaysYMD(today, FX_MAX_RATE_AGE_DAYS);
+    const rows = await withScopedDb(this.dataSource, (manager) =>
       manager
         .getRepository(ExchangeRate)
         .createQueryBuilder("er")
@@ -924,6 +944,34 @@ export class ExchangeRateService implements OnModuleInit {
         .addOrderBy("er.rate_date", "DESC")
         .getMany(),
     );
+
+    const chosen = new Map<string, { row: ExchangeRate; date: string }>();
+    for (const row of rows) {
+      // Zero and negative are absent, not applicable (`resolveFxRate`).
+      if (!(Number(row.rate) > 0)) continue;
+      const date =
+        row.rateDate instanceof Date
+          ? row.rateDate.toISOString().slice(0, 10)
+          : String(row.rateDate).slice(0, 10);
+      if (date < oldest || date > newest) continue;
+      const key = directionlessPairKey(row.fromCurrency, row.toCurrency);
+      const held = chosen.get(key);
+      if (
+        held === undefined ||
+        date > held.date ||
+        (date === held.date &&
+          isCanonicalOrientation(row.fromCurrency, row.toCurrency))
+      ) {
+        chosen.set(key, { row, date });
+      }
+    }
+    return [...chosen.values()]
+      .map(({ row }) => row)
+      .sort(
+        (a, b) =>
+          a.fromCurrency.localeCompare(b.fromCurrency) ||
+          a.toCurrency.localeCompare(b.toCurrency),
+      );
   }
 
   /**
@@ -943,36 +991,31 @@ export class ExchangeRateService implements OnModuleInit {
     /**
      * Reject a stored rate older than this many days, returning null instead.
      *
-     * Omitted, the newest rate is returned whatever its age -- which is what
-     * every caller that only needs an indicative conversion has always got. A
-     * caller whose output is a money figure the user acts on should supply a
-     * bound: a rate is a price like any other, and one from nine months ago
-     * converts a 10,000 USD holding into a confident PLN total that is off by
-     * the year's currency move, with nothing in the payload saying so
-     * (`docs/financial-calculation-contract.md` rules 3 and 4).
+     * Omitted, `FX_MAX_RATE_AGE_DAYS` applies, like every other rate lookup. A
+     * rate is a price: one from nine months ago converts a 10,000 USD holding
+     * into a confident PLN total that is off by the year's currency move, with
+     * nothing in the payload saying so (`docs/financial-calculation-contract.md`
+     * rules 3 and 4). A caller that really wants a different bound passes it;
+     * none asks for an unbounded answer.
      */
-    maxAgeDays?: number,
+    maxAgeDays: number = FX_MAX_RATE_AGE_DAYS,
   ): Promise<number | null> {
     if (from === to) return 1;
     const today = todayYMD();
     // The age bound on the query as well as in the resolver: the resolver
     // decides admissibility, this just keeps the rows it reads bounded. A
     // calendar step, not a local-midnight `Date` read back through `toISOString`.
-    const bound: { rateDate?: FindOperator<Date> } =
-      maxAgeDays === undefined
-        ? {}
-        : {
-            // `MoreThanOrEqual` stays spelled out here rather than behind a
-            // helper: `price-boundary.one-door.spec.ts` reads the lower bound of
-            // a newest-row read off the lines around the ordering, and a bound
-            // it cannot see is a bound the next reader cannot see either. The
-            // string cast is what `ymdSpan` explains -- a `Date` bound is
-            // rendered by `pg` in the process time zone and, west of UTC, names
-            // the previous calendar day.
-            rateDate: MoreThanOrEqual(
-              addDaysYMD(today, -maxAgeDays),
-            ) as unknown as FindOperator<Date>,
-          };
+    // `MoreThanOrEqual` stays spelled out here rather than behind a helper:
+    // `price-boundary.one-door.spec.ts` reads the lower bound of a newest-row
+    // read off the lines around the ordering, and a bound it cannot see is a
+    // bound the next reader cannot see either. The string cast is what
+    // `ymdSpan` explains -- a `Date` bound is rendered by `pg` in the process
+    // time zone and, west of UTC, names the previous calendar day.
+    const bound = {
+      rateDate: MoreThanOrEqual(
+        addDaysYMD(today, -maxAgeDays),
+      ) as unknown as FindOperator<Date>,
+    };
     const [direct, reverse] = await withScopedDb(
       this.dataSource,
       async (manager) => {
@@ -996,8 +1039,8 @@ export class ExchangeRateService implements OnModuleInit {
     };
 
     // `live`: the freshest observation rather than one dated on or before today,
-    // which is what "the latest rate" has always meant here. An omitted bound is
-    // no bound at all, as before.
+    // which is what "the latest rate" has always meant here, under the same age
+    // bound as every other lookup.
     return resolveFxRate(
       from,
       to,
@@ -1005,7 +1048,7 @@ export class ExchangeRateService implements OnModuleInit {
       (f, t) => (f === from && t === to ? observed(direct) : observed(reverse)),
       {
         mode: "live",
-        maxAgeDays: maxAgeDays ?? Number.POSITIVE_INFINITY,
+        maxAgeDays,
         today,
       },
     ).rate;

@@ -827,6 +827,7 @@ export function OverrideEditorDialog({
                 onTransactionAmountChange={handleAmountChange}
                 currencyCode={scheduledTransaction.currencyCode}
                 onCreateCategory={onCreateCategory}
+                transactionDate={selectedDate}
               />
             ) : (
               <div>

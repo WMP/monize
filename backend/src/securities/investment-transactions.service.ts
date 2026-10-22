@@ -90,7 +90,7 @@ import {
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { SplitKind } from "../transactions/entities/split-kind.enum";
 import { Account, AccountSubType } from "../accounts/entities/account.entity";
-import { isTransactionInFuture } from "../common/date-utils";
+import { isTransactionInFuture, todayYMD } from "../common/date-utils";
 import { deletionBalanceEffect } from "../common/deletion-balance.util";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import {
@@ -668,8 +668,9 @@ export class InvestmentTransactionsService {
    *     caller supplied one from the broker's settlement data).
    *  2. The market rate as of the transaction's date (stored, or fetched from
    *     Yahoo for that date), not the latest snapshot -- a back-dated buy must
-   *     convert at the historical rate.
-   *  3. The latest stored rate, as a secondary source.
+   *     convert at the historical rate. No transaction date means today. The
+   *     rate is `getRateForDate`'s answer: the newest observation on or before
+   *     the date within `FX_MAX_RATE_AGE_DAYS`, never one struck after it.
    *
    * For a genuine cross-currency pair with no determinable rate this throws
    * rather than silently returning 1.0: posting at 1.0 corrupts the cash
@@ -775,22 +776,15 @@ export class InvestmentTransactionsService {
       return supplied;
     }
 
-    // Prefer the rate as of the transaction date (fetching from Yahoo for that
-    // date when not already stored); fall back to the latest stored snapshot.
-    let rate: number | null = null;
-    if (transactionDate) {
-      rate = await this.exchangeRateService.getRateForDate(
-        sourceCurrency,
-        cashCurrency,
-        transactionDate,
-      );
-    }
-    if (rate === null) {
-      rate = await this.exchangeRateService.getLatestRate(
-        sourceCurrency,
-        cashCurrency,
-      );
-    }
+    // The rate as of the transaction date (fetching from the provider chain for
+    // that date when not already stored). There is no fallback to the latest
+    // stored snapshot: a rate for another date is not this date's rate, and
+    // "unknown" is the answer that makes the caller supply one.
+    const rate = await this.exchangeRateService.getRateForDate(
+      sourceCurrency,
+      cashCurrency,
+      transactionDate || todayYMD(),
+    );
 
     if (rate === null || !(Number(rate) > 0)) {
       // Unknown, not applicable: a zero/negative or absent rate is "no rate".

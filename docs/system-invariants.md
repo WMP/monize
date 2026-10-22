@@ -944,6 +944,26 @@ Enforcement         The 1:1 half is enforced. Consumers return null on an absent
                     Yahoo adapter currencies/providers/yahoo-fx.provider.ts for
                     the refresh's and the live rate's quotes alike;
                     quoted-rate.util.spec.ts and yahoo-fx.provider.spec.ts).
+                    The latest-rate readers are on the same rule (A26-H11):
+                    ExchangeRateService.getLatestRates answers one row per
+                    directionless pair, the newer stored direction inside
+                    FX_MAX_RATE_AGE_DAYS of today (a tie to the canonical row),
+                    so the built-in reports' rate map and GET
+                    /currencies/exchange-rates no longer carry a frozen
+                    pre-1.17 mirror row or a rate of any age; getLatestRate's
+                    bound defaults to FX_MAX_RATE_AGE_DAYS instead of none; and
+                    InvestmentTransactionsService.resolveCashExchangeRateOrNull
+                    asks getRateForDate for the trade date (today when there is
+                    none) with no latest-rate fallback, so a back-dated trade
+                    with no admissible rate is refused (posting) or unknown
+                    (forecast). On the client, useExchangeRates leaves a row
+                    older than FX_MAX_RATE_AGE_DAYS out of its conversion map
+                    (frontend/src/lib/fx-rate-age.ts, held to the backend
+                    constant by fx-rate-age.contract.test.ts) and keeps the
+                    newer orientation of a pair; InvestmentTransactionForm and
+                    the embedded InvestmentSplitFields prefill the rate from
+                    getRateForDate for the trade date and ask again when the
+                    date changes, unless the person typed a rate.
                     The mislabelling half is enforced on the built-in report
                     path as well: ReportCurrencyService.convertAmount, the
                     pass-through that returned the unconverted amount, is
@@ -987,6 +1007,14 @@ Required tests      Present: common/fx-fallback.guard.spec.ts (the source scans
                     pair with no rate (A26-H10); portfolio.service.spec.ts
                     asserts the intraday resolver's no-series, no-spot branch is
                     unknown rather than 1 (A26-L05).
+                    test/integration/fx-latest-rates.integration.spec.ts: a
+                    stale mirror row beside a fresh canonical row lists one row
+                    carrying the fresh rate, a 324-day-old pair is absent,
+                    Spending by Payee converts 1,000.00 USD to 1,400.00 CAD, and
+                    a 1990 trade with only today's rate is refused with no row
+                    written; the client cases are in useExchangeRates.test.ts,
+                    InvestmentTransactionForm.test.tsx and
+                    InvestmentSplitFields.test.tsx.
 Status              partial
 ```
 
@@ -1070,7 +1098,12 @@ Enforcement         Every writer routes through canonicalRateRow: saveRate and
                     use. currencies/exchange-rate-orientation.guard.spec.ts is
                     the scan: an INSERT INTO exchange_rates in a third file, or
                     in one of those two without the helper, fails it.
-                    On the read side getLatestRate now resolves either stored
+                    On the read side getLatestRates lists one row per pair, the
+                    newer direction inside the age bound (a database upgraded
+                    from before the expand release still holds the mirror row,
+                    and a direct-first reader of a list carrying both took it),
+                    and the client rate map keeps the newer orientation.
+                    getLatestRate now resolves either stored
                     direction through resolveFxRate (INV-FX-001's door) rather
                     than reading one orientation, the backfill coverage probe
                     counts a pair held either way as covered, and
