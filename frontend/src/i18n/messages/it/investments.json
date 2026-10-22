@@ -198,6 +198,7 @@
     "actionCapitalGainShort": "Plusvalenza a breve termine",
     "actionCapitalGainLong": "Plusvalenza a lungo termine",
     "actionRedeem": "Rimborso CD/obbligazione",
+    "actionReturnOfCapital": "Rimborso di capitale",
     "allActions": "Tutte le azioni"
   },
   "transactionForm": {
@@ -218,6 +219,7 @@
     "actionCapitalGainShort": "Plusvalenza a breve termine",
     "actionCapitalGainLong": "Plusvalenza a lungo termine",
     "actionRedeem": "Rimborso CD/obbligazione",
+    "actionReturnOfCapital": "Rimborso di capitale",
     "actionTransfer": "Trasferimento",
     "brokerageAccount": "Conto di intermediazione",
     "fromAccount": "Conto di origine",
@@ -262,6 +264,7 @@
     "sharesAt": "azioni @",
     "avgCostSuffix": "costo medio.",
     "transferCostNote": "Il costo per azione (precompilato dal conto di origine) viene trasferito alla destinazione in modo che i report su guadagni e profitti rimangano corretti. Questo sposta solo le azioni -- non vengono trasferiti contanti.",
+    "returnOfCapitalNote": "Un rimborso di capitale non è un reddito. Restituisce parte di quanto sono costate le azioni, quindi riduce di questo importo il costo di acquisto della posizione. L'eventuale eccedenza rispetto al costo di acquisto residuo viene registrata come plusvalenza realizzata.",
     "totalAmount": "Importo totale ({currency})",
     "sharesAtPrice": "{shares} azioni @ {symbol}{price}",
     "commissionSuffix": "commissione",

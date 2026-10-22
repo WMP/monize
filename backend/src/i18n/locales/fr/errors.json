@@ -44,6 +44,7 @@
     "changeCurrencyWithTransactions": "Impossible de changer la devise d'un compte qui a des transactions.",
     "alreadyClosed": "Le compte est déjà fermé",
     "closeNonZeroBalance": "Impossible de fermer un compte avec un solde non nul. Solde actuel : {{ currentBalance }}",
+    "closeWithFutureTransactions": "Impossible de clôturer un compte comportant des transactions à date future. Il a {{ count }} transaction(s) datée(s) après aujourd'hui ; supprimez-les ou annulez-les d'abord.",
     "closeWithHoldings": "Impossible de fermer un compte de placement qui détient encore des titres. Il comporte {{ holdingCount }} position(s) avec une quantité non nulle ; vendez-les ou transférez-les d'abord.",
     "notClosed": "Le compte n'est pas fermé",
     "modifyBalanceClosed": "Impossible de modifier le solde d'un compte fermé",
@@ -85,6 +86,7 @@
     "paymentMatchingFailed": "Le prêt a été enregistré, mais sa règle de rapprochement des paiements n'a pas pu être créée. Créez-la depuis les détails du prêt."
   },
   "actionHistory": {
+    "loanEditNotUndoable": "Cette modification du prêt ne peut pas être annulée automatiquement. Modifiez le prêt pour la rétablir.",
     "nothingToUndo": "Rien à annuler",
     "nothingToRedo": "Rien à rétablir",
     "undoNotSupportedForEntityType": "Annulation non prise en charge pour le type d'entité : {{ entityType }}",
@@ -762,6 +764,7 @@
     "investmentCashLegStatusLocked": "Cette transaction est le volet espèces d'une transaction d'investissement. Annulez-la ou rétablissez-la en modifiant le statut de la transaction d'investissement, afin que les deux côtés changent ensemble.",
     "notFoundById": "Transaction avec l'ID {{ id }} introuvable",
     "bulkUpdateNoFields": "Au moins un champ de mise à jour doit être fourni",
+    "bulkUpdateConcurrentChange": "Ces transactions ont été modifiées pendant la mise à jour. Rechargez et réessayez.",
     "bulkSplitNoMatchingLinesOne": "1 transaction ventilée a été ignorée car aucune de ses fractions ne correspondait à la mise à jour de catégorie",
     "bulkSplitNoMatchingLinesMany": "{{ count }} transactions ventilées ont été ignorées car aucune de leurs fractions ne correspondait à la mise à jour de catégorie",
     "bulkSplitTransferLegSkippedOne": "1 virement fractionné a été ignoré (annulez-le ou restaurez-le depuis la transaction fractionnée à laquelle il appartient, afin que les deux côtés changent ensemble)",

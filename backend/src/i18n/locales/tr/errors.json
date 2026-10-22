@@ -44,6 +44,7 @@
     "changeCurrencyWithTransactions": "İşlem içeren bir hesabın para birimi değiştirilemez.",
     "alreadyClosed": "Hesap zaten kapalı",
     "closeNonZeroBalance": "Sıfır olmayan bakiyeli hesap kapatılamaz. Mevcut bakiye: {{ currentBalance }}",
+    "closeWithFutureTransactions": "Gelecek tarihli işlemleri olan bir hesap kapatılamaz. Hesapta bugünden sonraki bir tarihe ait {{ count }} işlem var; önce bunları silin veya geçersiz kılın.",
     "closeWithHoldings": "Hâlâ menkul kıymet bulunan bir yatırım hesabı kapatılamaz. Miktarı sıfır olmayan {{ holdingCount }} varlık var; önce bunları satın veya devredin.",
     "notClosed": "Hesap kapalı değil",
     "modifyBalanceClosed": "Kapalı bir hesabın bakiyesi değiştirilemez",
@@ -85,6 +86,7 @@
     "paymentMatchingFailed": "Kredi kaydedildi, ancak ödeme eşleştirme kuralı oluşturulamadı. Kredi ayrıntılarından oluşturun."
   },
   "actionHistory": {
+    "loanEditNotUndoable": "Bu kredi değişikliği otomatik olarak geri alınamaz. Geri almak için krediyi düzenleyin.",
     "nothingToUndo": "Geri alınacak işlem yok",
     "nothingToRedo": "Yeniden yapılacak işlem yok",
     "undoNotSupportedForEntityType": "{{ entityType }} varlık türü için geri alma desteklenmiyor",
@@ -762,6 +764,7 @@
     "investmentCashLegStatusLocked": "Bu işlem, bir yatırım işleminin nakit tarafıdır. İki tarafın birlikte değişmesi için, yatırım işleminin durumunu değiştirerek iptal edin veya geri yükleyin.",
     "notFoundById": "{{ id }} kimliğine sahip işlem bulunamadı",
     "bulkUpdateNoFields": "En az bir güncelleme alanı sağlanmalıdır",
+    "bulkUpdateConcurrentChange": "Güncelleme çalışırken bu işlemler değişti. Yeniden yükleyip tekrar deneyin.",
     "bulkSplitNoMatchingLinesOne": "Hiçbir bölümü kategori güncellemesiyle eşleşmediği için 1 bölünmüş işlem atlandı",
     "bulkSplitNoMatchingLinesMany": "Hiçbir bölümü kategori güncellemesiyle eşleşmediği için {{ count }} bölünmüş işlem atlandı",
     "bulkSplitTransferLegSkippedOne": "1 bölünmüş transfer atlandı (her iki taraf birlikte değişsin diye, ait olduğu bölünmüş işlemden iptal edin veya geri yükleyin)",

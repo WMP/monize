@@ -436,6 +436,7 @@
       "destinationRequired": "請選擇目的科目",
       "sameAccount": "來源科目與目的科目不能相同",
       "negativeTransfer": "轉帳金額不得為負數",
+      "convertToTransferUnsupported": "無法在此將現有交易轉換為轉帳。請刪除該交易，然後改為建立轉帳。",
       "payeeCreated": "收款人「{name}」已建立",
       "payeeCreateFailed": "建立收款人失敗",
       "payeeReactivated": "收款人「{name}」已重新啟用",

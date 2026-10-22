@@ -226,7 +226,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "長期キャピタルゲインの再投資",
       "CAPITAL_GAIN_SHORT": "短期キャピタルゲイン",
       "CAPITAL_GAIN_LONG": "長期キャピタルゲイン",
-      "REDEEM": "CD・債券の償還"
+      "REDEEM": "CD・債券の償還",
+      "RETURN_OF_CAPITAL": "資本の払い戻し"
     },
     "submitCreate": "作成",
     "submitUpdate": "更新",

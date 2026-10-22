@@ -436,6 +436,7 @@
       "destinationRequired": "Veuillez sélectionner un compte destination",
       "sameAccount": "Les comptes source et destination doivent être différents",
       "negativeTransfer": "Le montant du virement ne doit pas être négatif",
+      "convertToTransferUnsupported": "Une transaction existante ne peut pas être transformée en virement ici. Supprimez-la et créez plutôt le virement.",
       "payeeCreated": "Bénéficiaire « {name} » créé",
       "payeeCreateFailed": "Échec de la création du bénéficiaire",
       "payeeReactivated": "Bénéficiaire « {name} » réactivé",
