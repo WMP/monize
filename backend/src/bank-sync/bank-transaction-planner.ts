@@ -142,6 +142,7 @@ export interface BankImportContext {
 
 /** A row that passed lines 1 to 7, before its key is assigned. */
 interface Draft {
+  providerKey: string | null;
   transactionDate: string;
   amount: number;
   /** The unsigned amount, for the hash. */
@@ -272,6 +273,11 @@ function classify(row: BankTransaction, ctx: BankImportContext): Classified {
   return {
     kind: "planned",
     draft: {
+      providerKey:
+        typeof row.externalKey === "string" &&
+        /^simplefin:v1:[a-f0-9]{64}$/.test(row.externalKey)
+          ? row.externalKey
+          : null,
       transactionDate,
       // Not `-0`: a debit of nothing is nothing.
       amount: signed === 0 ? 0 : signed,
@@ -538,6 +544,7 @@ function nextOccurrence(
  * so a reference holding `|` cannot make two rows share a key.
  */
 function keyFor(draft: Draft, occurrences: Map<string, number>): string {
+  if (draft.providerKey !== null) return draft.providerKey;
   if (draft.entryReference !== null) {
     const base = `ref:${draft.entryReference}|${draft.transactionDate}|${draft.amount.toFixed(4)}`;
     return fitKey("ref:", `${base}:${nextOccurrence(base, occurrences)}`);

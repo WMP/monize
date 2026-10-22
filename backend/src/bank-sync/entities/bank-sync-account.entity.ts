@@ -205,6 +205,10 @@ export class BankSyncAccount {
   })
   bankBalanceDate: string | null;
 
+  /** Source balance instant; never replaced by the sync completion time. */
+  @Column({ type: "timestamptz", name: "bank_balance_at", nullable: true })
+  bankBalanceAt?: Date | null;
+
   @CreateDateColumn({ type: "timestamptz", name: "created_at" })
   createdAt: Date;
 

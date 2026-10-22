@@ -163,6 +163,7 @@ export class BankSyncMatchService {
     if (missing.length === 0) return 0;
 
     const { connection } = input;
+    if (connection.provider === "simplefin") return 0;
     if (
       connection.status !== "active" ||
       (connection.validUntil !== null &&

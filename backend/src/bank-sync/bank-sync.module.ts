@@ -1,3 +1,11 @@
+import { SimplefinProvider } from "./providers/simplefin/simplefin.provider";
+import { SimplefinController } from "./simplefin.controller";
+import { SimplefinDiscoveryService } from "./simplefin-discovery.service";
+import { SimplefinSetupService } from "./simplefin-setup.service";
+import { SimplefinClient } from "./providers/simplefin/simplefin.client";
+import { SimplefinTransport } from "./providers/simplefin/simplefin.transport";
+import { SimplefinCredentialsService } from "./simplefin-credentials.service";
+import { SimplefinRequestBudgetService } from "./simplefin-request-budget.service";
 import { Module, type OnModuleInit } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AccountsModule } from "../accounts/accounts.module";
@@ -55,11 +63,18 @@ import { EnableBankingProvider } from "./providers/enable-banking/enable-banking
     // imports nothing that imports back here, so the edge is bare.
     NotificationsModule,
   ],
-  controllers: [BankSyncController],
+  controllers: [BankSyncController, SimplefinController],
   providers: [
     EnableBankingProvider,
     BankSyncProviderRegistry,
     BankSyncCredentialsService,
+    SimplefinCredentialsService,
+    SimplefinSetupService,
+    SimplefinDiscoveryService,
+    SimplefinClient,
+    SimplefinProvider,
+    { provide: SimplefinTransport, useFactory: () => new SimplefinTransport() },
+    SimplefinRequestBudgetService,
     BankSyncConnectionsService,
     BankSyncWriterService,
     BankSyncPreviewService,

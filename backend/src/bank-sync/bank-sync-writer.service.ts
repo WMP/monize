@@ -51,6 +51,7 @@ import { BankSyncAccount } from "./entities/bank-sync-account.entity";
 
 /** A bank balance that passed validation, at the column's money precision. */
 export interface NormalizedBankBalance {
+  reportedAt?: string | null;
   amount: number;
   currencyCode: string;
   referenceDate: string | null;
@@ -627,6 +628,11 @@ export class BankSyncWriterService {
           input.balance.referenceDate,
         ],
       );
+      if (input.balance.reportedAt !== undefined)
+        await m.query(
+          "UPDATE bank_sync_accounts SET bank_balance_at=$1::timestamptz WHERE id=$2 AND user_id=$3",
+          [input.balance.reportedAt, input.bankAccountId, input.userId],
+        );
     }
   }
 }

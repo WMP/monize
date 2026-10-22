@@ -82,8 +82,10 @@ const accountRow = (
 
 describe("BankSyncCronService", () => {
   const { manager, dataSource } = createScopedDbMocks();
-  const bankSync: jest.Mocked<Pick<BankSyncService, "syncAccountEntry">> = {
+  const bankSync: jest.Mocked<Pick<BankSyncService, "syncAccountEntry">> &
+    Pick<BankSyncService, "withReadContext"> = {
     syncAccountEntry: jest.fn(),
+    withReadContext: (_user, _ids, run) => run(),
   };
   const notifier: jest.Mocked<Pick<BankSyncOutcomeNotifier, "report">> = {
     report: jest.fn(),

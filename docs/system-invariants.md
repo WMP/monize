@@ -60,7 +60,7 @@ implied.
 | INV-IMPORT-002 | A retry never double-imports | partial |
 | INV-IMPORT-003 | A category collision does not abort an import | enforced |
 | INV-BANKSYNC-001 | A bank transaction is imported into a Monize account at most once | partial |
-| INV-BANKSYNC-002 | A bank sync provider private key never leaves the server | enforced |
+| INV-BANKSYNC-002 | Bank sync provider secrets never leave the server | enforced |
 | INV-BANKSYNC-003 | A synced row is written in the Monize account's currency or not at all | enforced |
 | INV-BANKSYNC-004 | Nothing imports a bank account awaiting its first preview except the confirmed single-account sync | enforced |
 | INV-API-001 | An API create carrying an `externalId` produces at most one row per account and key | partial |
@@ -429,13 +429,12 @@ deleted row is not brought back by the next sync. The ledger is not in the
 backup yet (docs/future-plans/bank-sync-tasks.md BS11); the link form's
 default cut-off date is the mitigation after a restore.
 
-### INV-BANKSYNC-002 -- a bank sync provider private key never leaves the server
+### INV-BANKSYNC-002 -- bank sync provider secrets never leave the server
 
 ```text
-Statement           The RSA private key a user stores for a bank sync provider
-                    is never returned by any route, logged, or written to a
-                    backup.
-Source of truth     bank_sync_credentials.private_key_enc
+Statement           RSA private keys and SimpleFIN access URLs are never returned
+                    by any route, logged, or written to a backup.
+Source of truth     bank_sync_credentials.private_key_enc / access_url_enc
 Enforcement         Encrypted with EncryptionService (AES-256-GCM). The view type
                     has privateKeySet: boolean and no field for the key; the
                     table is in INTENTIONALLY_EXCLUDED_TABLES; the column is not
@@ -445,7 +444,8 @@ Retry semantics     --
 Crash semantics     --
 Failure response    --
 Required tests      Unit: the credentials view and every controller answer carry
-                    no key material (bank-sync-credentials.service.spec.ts).
+                    no key material (bank-sync-credentials.service.spec.ts and
+                    simplefin-credentials.service.spec.ts).
 Status              enforced
 ```
 

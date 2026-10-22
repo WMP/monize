@@ -1959,3 +1959,18 @@ describe('BankSyncConnectionCard', () => {
     });
   });
 });
+
+it('keeps a stopped SimpleFIN institution usable after discovery reconnects the same card', async () => {
+  mockDeleteConnection.mockResolvedValue(undefined);
+  const conn = connection({provider:'simplefin', validUntil:null});
+  const {rerender,onChanged} = renderCard(conn);
+  expect(screen.queryByRole('button',{name:'Renew consent'})).toBeNull();
+  await click('Stop syncing');
+  expect(screen.getByText('Existing mappings and transactions stay. Use Refresh accounts to reconnect this institution.')).toBeInTheDocument();
+  await act(async () => { fireEvent.click(within(screen.getByRole('dialog')).getByRole('button',{name:'Stop syncing'})); });
+  await waitFor(() => expect(onChanged).toHaveBeenCalled());
+  rerender(<BankSyncConnectionCard connection={{...conn,status:'revoked'}} accounts={defaultAccounts} linkedAccountIds={new Set()} onChanged={onChanged} />);
+  expect(screen.getByText('Syncing stopped')).toBeInTheDocument();
+  rerender(<BankSyncConnectionCard connection={conn} accounts={defaultAccounts} linkedAccountIds={new Set()} onChanged={onChanged} />);
+  expect(screen.getByRole('button',{name:'Stop syncing'})).toBeEnabled();
+});

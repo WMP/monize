@@ -7,6 +7,7 @@ import {
   ManyToOne,
   JoinColumn,
   Unique,
+  Check,
 } from "typeorm";
 import { User } from "../../users/entities/user.entity";
 import type { BankSyncProviderName } from "../bank-sync.constants";
@@ -21,6 +22,11 @@ import type { BankSyncProviderName } from "../bank-sync.constants";
  * these entities.
  */
 @Entity("bank_sync_credentials")
+@Unique("uq_bank_sync_credentials_id_user", ["id", "userId"])
+@Check(
+  "ck_bank_sync_credentials_shape",
+  "(provider = 'enable_banking' AND application_id IS NOT NULL AND private_key_enc IS NOT NULL AND access_url_enc IS NULL) OR (provider = 'simplefin' AND application_id IS NULL AND private_key_enc IS NULL AND access_url_enc IS NOT NULL)",
+)
 @Unique("uq_bank_sync_credentials_user_provider", ["userId", "provider"])
 export class BankSyncCredential {
   @PrimaryGeneratedColumn("uuid")
@@ -36,12 +42,21 @@ export class BankSyncCredential {
   @Column({ type: "varchar", length: 30, default: "enable_banking" })
   provider: BankSyncProviderName;
 
-  @Column({ type: "varchar", name: "application_id", length: 100 })
-  applicationId: string;
+  @Column({
+    type: "varchar",
+    name: "application_id",
+    length: 100,
+    nullable: true,
+  })
+  applicationId: string | null;
 
   /** Encrypted with `EncryptionService`; never returned to a client. */
-  @Column({ type: "text", name: "private_key_enc" })
-  privateKeyEnc: string;
+  @Column({ type: "text", name: "private_key_enc", nullable: true })
+  privateKeyEnc: string | null;
+
+  /** Encrypted SimpleFIN Access URL; never returned or exported. */
+  @Column({ type: "text", name: "access_url_enc", nullable: true })
+  accessUrlEnc: string | null;
 
   @CreateDateColumn({ type: "timestamptz", name: "created_at" })
   createdAt: Date;

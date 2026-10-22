@@ -100,6 +100,7 @@ export interface BankSyncAccountView {
   bankBalance: string | null;
   bankBalanceCurrency: string | null;
   bankBalanceDate: string | null;
+  bankBalanceAt?: string | null;
   /**
    * True while the bank account is linked and its link has no successful sync
    * yet: the first sync after a link, or after its account or cut-off date

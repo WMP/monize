@@ -111,8 +111,10 @@ describe("bank sync RLS context smoke (real withScopedDb)", () => {
         return null;
       }),
     };
-    const bankSync: jest.Mocked<Pick<BankSyncService, "syncAccountEntry">> = {
+    const bankSync: jest.Mocked<Pick<BankSyncService, "syncAccountEntry">> &
+      Pick<BankSyncService, "withReadContext"> = {
       syncAccountEntry: jest.fn().mockResolvedValue(syncResult),
+      withReadContext: (_user, _ids, run) => run(),
     };
     const module: TestingModule = await Test.createTestingModule({
       providers: [

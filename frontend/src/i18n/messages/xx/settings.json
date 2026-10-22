@@ -1787,6 +1787,42 @@
           "tag": "[XX-Tag from the bank's operation type: {tag}-XX]"
         }
       }
+    },
+    "simplefin": {
+      "title": "[XX-SimpleFIN-XX]",
+      "provider": "[XX-Data provider-XX]",
+      "description": "[XX-Connect banks in SimpleFIN Bridge, then paste a one-time setup token here. Access is read-only.-XX]",
+      "openBridge": "[XX-Open SimpleFIN Bridge-XX]",
+      "setupToken": "[XX-Setup token-XX]",
+      "connect": "[XX-Connect SimpleFIN-XX]",
+      "connected": "[XX-SimpleFIN is connected.-XX]",
+      "savedDiscoveryFailed": "[XX-Connected, but account discovery needs attention. Retry discovery without a new token.-XX]",
+      "refresh": "[XX-Refresh accounts-XX]",
+      "failed": "[XX-Could not complete the request. Check connection status before using a new token.-XX]",
+      "loadFailed": "[XX-Could not load SimpleFIN status.-XX]",
+      "encryptionRequired": "[XX-Ask an administrator to configure encryption before connecting SimpleFIN.-XX]",
+      "remove": "[XX-Remove SimpleFIN from Monize-XX]",
+      "removeTitle": "[XX-Remove access for all institutions?-XX]",
+      "removeBody": "[XX-This disables all SimpleFIN syncing in Monize and preserves your history. Revoke the app token in Bridge to end remote access.-XX]",
+      "replaceTitle": "[XX-Replace SimpleFIN access?-XX]",
+      "replaceBody": "[XX-This replaces access for all institutions. Existing account mappings stay; changed identities need review.-XX]",
+      "quota": "[XX-{remaining} requests remaining-XX]",
+      "nextEligible": "[XX-Next available: {date}-XX]",
+      "stopTitle": "[XX-Stop syncing {bank}?-XX]",
+      "stopBody": "[XX-Existing mappings and transactions stay. Use Refresh accounts to reconnect this institution.-XX]",
+      "stop": "[XX-Stop syncing-XX]",
+      "errors": {
+        "unauthorized": "[XX-Reconnect using a new setup token.-XX]",
+        "payment_required": "[XX-Check your SimpleFIN Bridge subscription.-XX]",
+        "rate_limited": "[XX-Request limit reached. Wait before refreshing.-XX]",
+        "no_accounts": "[XX-No accounts were shared. Check account access in Bridge.-XX]",
+        "partial_data": "[XX-Some account data is incomplete. Review Bridge, then refresh.-XX]",
+        "identity_review": "[XX-Account identities changed. Review mappings before enabling sync.-XX]",
+        "invalid_response": "[XX-Bridge returned unsupported data. Refresh later.-XX]",
+        "unavailable": "[XX-SimpleFIN did not answer. Try later.-XX]"
+      },
+      "enableBanking": "[XX-Enable Banking-XX]",
+      "stopped": "[XX-Syncing stopped-XX]"
     }
   }
 }

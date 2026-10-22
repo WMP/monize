@@ -1,3 +1,5 @@
+import { SimplefinProvider } from "./providers/simplefin/simplefin.provider";
+import { syncWindow } from "./bank-sync-window";
 import {
   BadRequestException,
   ConflictException,
@@ -5,10 +7,11 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import { DataSource, EntityManager } from "typeorm";
 import { Account, AccountSubType } from "../accounts/entities/account.entity";
-import { addDaysYMD, todayYMD } from "../common/date-utils";
+import { todayYMD } from "../common/date-utils";
 import { returnedRows } from "../common/db/query-result";
 import { withScopedDb } from "../common/db/scoped-db";
 import {
@@ -20,7 +23,7 @@ import { isCalendarDate } from "../common/validators/is-calendar-date.validator"
 import { tr } from "../i18n/translate";
 import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
 import { NetWorthService } from "../net-worth/net-worth.service";
-import { SYNC_LEASE_TTL_MS, SYNC_OVERLAP_DAYS } from "./bank-sync.constants";
+import { SYNC_LEASE_TTL_MS } from "./bank-sync.constants";
 import type { BankSyncConnectionStatus } from "./bank-sync.constants";
 import { BankSyncCredentialsService } from "./bank-sync-credentials.service";
 import {
@@ -64,6 +67,7 @@ import { BankSyncConnection } from "./entities/bank-sync-connection.entity";
 import type {
   BankBalance,
   BankSyncCredentials,
+  BankTransaction,
   PsuContext,
 } from "./providers/bank-sync-provider.interface";
 import { isBankSyncProviderError } from "./providers/bank-sync-provider.errors";
@@ -78,21 +82,7 @@ const BALANCE_AMOUNT_PATTERN = /^-?\d{1,16}(\.\d{1,8})?$/;
  * the future is clamped to today, so the request is never inverted and every row
  * it returns is counted as before the cut-off rather than imported.
  */
-export function syncWindow(
-  link: Pick<BankSyncAccount, "syncFromDate" | "lastSuccessAt">,
-  today: string,
-): { dateFrom: string; dateTo: string } {
-  let dateFrom = link.syncFromDate ?? today;
-  if (link.lastSuccessAt) {
-    const overlapStart = addDaysYMD(
-      link.lastSuccessAt.toISOString().slice(0, 10),
-      -SYNC_OVERLAP_DAYS,
-    );
-    if (overlapStart > dateFrom) dateFrom = overlapStart;
-  }
-  if (dateFrom > today) dateFrom = today;
-  return { dateFrom, dateTo: today };
-}
+export { syncWindow } from "./bank-sync-window";
 
 /**
  * A balance from the provider as the value that will be stored, or null when it
@@ -114,6 +104,9 @@ export function normalizeBankBalance(
   const referenceDate = balance.referenceDate?.trim();
   return {
     amount: roundMoney(Number(amountText)),
+    ...(balance.reportedAt !== undefined
+      ? { reportedAt: balance.reportedAt }
+      : {}),
     currencyCode,
     referenceDate: isCalendarDate(referenceDate) ? referenceDate : null,
   };
@@ -164,7 +157,19 @@ export class BankSyncService {
     private readonly previewer: BankSyncPreviewService,
     private readonly jobClaims: JobClaimService,
     private readonly netWorth: NetWorthService,
+    @Optional() private readonly simplefin?: SimplefinProvider,
   ) {}
+
+  /** Operation-scoped sharing; no cache survives a preview, sync or daily run. */
+  withReadContext<T>(
+    userId: string,
+    ids: readonly string[],
+    run: () => Promise<T>,
+  ): Promise<T> {
+    return this.simplefin
+      ? this.simplefin.withReadContext(userId, ids, run)
+      : run();
+  }
 
   /**
    * Map a bank account to a Monize account, or (with `accountId: null`) unmap
@@ -456,6 +461,17 @@ export class BankSyncService {
       true,
       async ({ ctx, credentials }) => {
         const { account, link, connection } = ctx;
+        if (
+          connection.provider === "simplefin" &&
+          bankAccountNeedsPreview(link) &&
+          !expectedFingerprint
+        )
+          throw new BankSyncPlanChangedException(
+            tr(
+              "errors.bankSync.needsPreview",
+              "Open the preview for this bank account and confirm the first import before it is synced automatically.",
+            ),
+          );
         const { explained, balance } = await this.fetchAndPlan(
           ctx,
           credentials,
@@ -603,27 +619,51 @@ export class BankSyncService {
     balance: NormalizedBankBalance | null;
   }> {
     const { link, connection, account } = ctx;
-    const provider = this.registry.getByName(connection.provider);
     const today = todayYMD();
     const window = syncWindow(link, today);
-
-    // Step 3: read the bank, outside any transaction.
-    const rows = await provider.fetchTransactions(
-      credentials,
-      link.externalAccountId,
-      window,
-      psu,
-    );
+    let rows: BankTransaction[];
+    let pending = 0;
     let balance: NormalizedBankBalance | null = null;
-    try {
-      balance = normalizeBankBalance(
-        await provider.fetchBalance(credentials, link.externalAccountId, psu),
+    if (connection.provider === "simplefin") {
+      if (!this.simplefin || credentials.provider !== "simplefin")
+        throw new Error("SimpleFIN reader is not configured");
+      const read = await this.registry
+        .getReadProvider("simplefin")
+        .readAccount(link.userId, credentials, link.externalAccountId, window);
+      if (read.currencyCode !== account.currencyCode.toUpperCase())
+        throw new BadRequestException(
+          tr(
+            "errors.bankSync.accountCurrencyMismatch",
+            "The bank account is in {{ bankCurrency }} but the account is in {{ accountCurrency }}. Link an account in the same currency.",
+            {
+              bankCurrency: read.currencyCode ?? "",
+              accountCurrency: account.currencyCode,
+            },
+          ),
+        );
+      rows = read.transactions;
+      pending = read.pending;
+      balance = normalizeBankBalance(read.balance);
+    } else {
+      const provider = this.registry.getByName(connection.provider);
+      // Step 3: read the bank, outside any transaction.
+      rows = await provider.fetchTransactions(
+        credentials,
+        link.externalAccountId,
+        window,
+        psu,
       );
-    } catch (error) {
-      // A balance failure leaves the stored balance as it was.
-      this.logger.warn(
-        `Bank balance of bank account ${link.id} could not be read: ${describeSyncFailure(error)}`,
-      );
+
+      try {
+        balance = normalizeBankBalance(
+          await provider.fetchBalance(credentials, link.externalAccountId, psu),
+        );
+      } catch (error) {
+        // A balance failure leaves the stored balance as it was.
+        this.logger.warn(
+          `Bank balance of bank account ${link.id} could not be read: ${describeSyncFailure(error)}`,
+        );
+      }
     }
 
     // Step 4: plan.
@@ -632,6 +672,7 @@ export class BankSyncService {
       syncFromDate: link.syncFromDate ?? today,
       today,
     });
+    explained.plan.pending += pending;
     return { explained, balance };
   }
 
@@ -699,15 +740,21 @@ export class BankSyncService {
       await this.credentials.resolveCredentials(userId, connection.provider);
     }
 
-    const entries: BankSyncConnectionSyncEntry[] = [];
-    for (const account of linked) {
-      entries.push(
-        account.needsPreview
-          ? needsPreviewFailure(account.id)
-          : await this.syncAccountEntry(userId, account.id, psu),
-      );
-    }
-    return entries;
+    return this.withReadContext(
+      userId,
+      linked.filter((a) => !a.needsPreview).map((a) => a.id),
+      async () => {
+        const entries: BankSyncConnectionSyncEntry[] = [];
+        for (const account of linked) {
+          entries.push(
+            account.needsPreview
+              ? needsPreviewFailure(account.id)
+              : await this.syncAccountEntry(userId, account.id, psu),
+          );
+        }
+        return entries;
+      },
+    );
   }
 
   // ---------------------------------------------------------------------------

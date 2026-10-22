@@ -62,6 +62,9 @@ export function toBankSyncAccountView(
     bankBalance: moneyText(row.bankBalance),
     bankBalanceCurrency: row.bankBalanceCurrency,
     bankBalanceDate: row.bankBalanceDate,
+    ...(row.bankBalanceAt !== undefined
+      ? { bankBalanceAt: row.bankBalanceAt?.toISOString() ?? null }
+      : {}),
     needsPreview: bankAccountNeedsPreview(row),
   };
 }

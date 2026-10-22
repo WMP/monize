@@ -1787,6 +1787,42 @@
           "tag": "Tag from the bank's operation type: {tag}"
         }
       }
+    },
+    "simplefin": {
+      "title": "SimpleFIN",
+      "provider": "Data provider",
+      "description": "Connect banks in SimpleFIN Bridge, then paste a one-time setup token here. Access is read-only.",
+      "openBridge": "Open SimpleFIN Bridge",
+      "setupToken": "Setup token",
+      "connect": "Connect SimpleFIN",
+      "connected": "SimpleFIN is connected.",
+      "savedDiscoveryFailed": "Connected, but account discovery needs attention. Retry discovery without a new token.",
+      "refresh": "Refresh accounts",
+      "failed": "Could not complete the request. Check connection status before using a new token.",
+      "loadFailed": "Could not load SimpleFIN status.",
+      "encryptionRequired": "Ask an administrator to configure encryption before connecting SimpleFIN.",
+      "remove": "Remove SimpleFIN from Monize",
+      "removeTitle": "Remove access for all institutions?",
+      "removeBody": "This disables all SimpleFIN syncing in Monize and preserves your history. Revoke the app token in Bridge to end remote access.",
+      "replaceTitle": "Replace SimpleFIN access?",
+      "replaceBody": "This replaces access for all institutions. Existing account mappings stay; changed identities need review.",
+      "quota": "{remaining} requests remaining",
+      "nextEligible": "Next available: {date}",
+      "stopTitle": "Stop syncing {bank}?",
+      "stopBody": "Existing mappings and transactions stay. Use Refresh accounts to reconnect this institution.",
+      "stop": "Stop syncing",
+      "errors": {
+        "unauthorized": "Reconnect using a new setup token.",
+        "payment_required": "Check your SimpleFIN Bridge subscription.",
+        "rate_limited": "Request limit reached. Wait before refreshing.",
+        "no_accounts": "No accounts were shared. Check account access in Bridge.",
+        "partial_data": "Some account data is incomplete. Review Bridge, then refresh.",
+        "identity_review": "Account identities changed. Review mappings before enabling sync.",
+        "invalid_response": "Bridge returned unsupported data. Refresh later.",
+        "unavailable": "SimpleFIN did not answer. Try later."
+      },
+      "enableBanking": "Enable Banking",
+      "stopped": "Syncing stopped"
     }
   }
 }

@@ -11,11 +11,22 @@ export type { BankSyncProviderName } from "../bank-sync.constants";
  */
 
 /** The provider application a user registered, decrypted for one call. */
-export interface BankSyncCredentials {
+export interface EnableBankingCredentials {
+  /** Omitted only by legacy Enable Banking callers. */
+  provider?: "enable_banking";
   applicationId: string;
   /** PEM. Never logged, never returned, never put in an error message. */
   privateKeyPem: string;
 }
+
+export interface SimplefinCredentials {
+  provider: "simplefin";
+  credentialId: string;
+  accessUrl: string;
+}
+
+export type BankSyncCredentials =
+  EnableBankingCredentials | SimplefinCredentials;
 
 /** A bank the provider can connect to. */
 export interface BankInstitution {
@@ -49,6 +60,8 @@ export interface BankAccountDescriptor {
 
 /** One transaction as the provider reported it, before any Monize rule. */
 export interface BankTransaction {
+  /** Trusted adapter-provided stable identity; only the SimpleFIN namespace is accepted. */
+  externalKey?: string;
   /** Unique and immutable across sessions: the duplicate key's first choice. */
   entryReference: string | null;
   /**
@@ -79,6 +92,7 @@ export interface BankTransaction {
 
 /** One balance of one account, signed as the bank reported it. */
 export interface BankBalance {
+  reportedAt?: string | null;
   amount: string;
   currencyCode: string;
   referenceDate: string | null;

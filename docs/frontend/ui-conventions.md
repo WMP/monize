@@ -528,3 +528,7 @@ stored `body_text` that is really HTML is drawn the same way (`looksLikeHtml`). 
 ## Nothing interactive goes inside a `<button>` or an `<a>`
 
 The parser closes the outer element at the inner tag, so the click target ends where the nested control begins and the server's HTML stops matching React's -- a hydration mismatch. Fix it at the call site by making the two **siblings**: a wrapper carrying the border and hover, with the navigation button and the nested control side by side. Do not demote the inner control to a focusable `<span>` -- its implicit role is generic, screen readers drop its `aria-label`, and the result is a tab stop announcing nothing. `ui-conventions.test.ts` scans for this; changing a shared component's trigger element is a change to every call site, and the guard tells you which.
+
+## Bank Sync provider default
+
+The Bank Sync settings page defaults to SimpleFIN when at least one active connection has an account linked to an open Monize account and every such connection uses SimpleFIN. Pending, expired, revoked, failed, unlinked and closed-account-only connections do not decide the default. Automatic sync selects the cadence and is not an enablement test. Empty, loading and failed reads retain Enable Banking; a manual provider selection wins over subsequent reads for the current visit. Regression coverage is in `frontend/src/app/settings/bank-sync/page.test.tsx`.

@@ -153,6 +153,8 @@ export const INTENTIONALLY_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   // exports it): after a restore the link form defaults the cut-off date to the
   // day after the newest transaction so history is not re-imported.
   "bank_sync_credentials",
+  // Provider request reservations are instance-local quota state, not portable financial data.
+  "bank_sync_provider_requests",
   "bank_sync_connections",
   "bank_sync_accounts",
   "bank_sync_imported_transactions",

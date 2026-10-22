@@ -1,5 +1,7 @@
-import { Injectable } from "@nestjs/common";
-import { BANK_SYNC_PROVIDERS } from "../bank-sync.constants";
+import { SimplefinProvider } from "./simplefin/simplefin.provider";
+import { BankSyncProviderError } from "./bank-sync-provider.errors";
+import { Injectable, Optional } from "@nestjs/common";
+import { BANK_SYNC_PROVIDER_CAPABILITIES } from "./bank-sync-capabilities";
 import type { BankSyncProviderName } from "../bank-sync.constants";
 import type { BankSyncProvider } from "./bank-sync-provider.interface";
 import { EnableBankingProvider } from "./enable-banking/enable-banking.client";
@@ -11,20 +13,51 @@ import { EnableBankingProvider } from "./enable-banking/enable-banking.client";
  */
 @Injectable()
 export class BankSyncProviderRegistry {
-  constructor(private readonly enableBanking: EnableBankingProvider) {}
+  constructor(
+    private readonly enableBanking: EnableBankingProvider,
+    @Optional() private readonly simplefin?: SimplefinProvider,
+  ) {}
 
   /** Throws for a name no provider answers to (a value the database should not hold). */
   getByName(name: BankSyncProviderName): BankSyncProvider {
     switch (name) {
       case "enable_banking":
         return this.enableBanking;
+      case "simplefin":
+        throw new BankSyncProviderError(
+          "bad_request",
+          "Use the SimpleFIN setup-token flow instead of bank redirect authorization.",
+        );
       default:
         throw new Error(`Unknown bank sync provider "${String(name)}"`);
     }
   }
 
-  /** Every provider a connection can be made through. */
+  /** Data adapters are separate from redirect/session authorization adapters. */
+  getReadProvider(name: "simplefin"): SimplefinProvider;
+  getReadProvider(name: "enable_banking"): BankSyncProvider;
+  getReadProvider(
+    name: BankSyncProviderName,
+  ): BankSyncProvider | SimplefinProvider;
+  getReadProvider(
+    name: BankSyncProviderName,
+  ): BankSyncProvider | SimplefinProvider {
+    if (name === "simplefin") {
+      if (!this.simplefin)
+        throw new Error("SimpleFIN reader is not registered");
+      return this.simplefin;
+    }
+    return this.getByName(name);
+  }
+
+  capabilities(name: BankSyncProviderName) {
+    return BANK_SYNC_PROVIDER_CAPABILITIES[name];
+  }
+
+  /** Every currently registered adapter. SimpleFIN is registered with its transport milestone. */
   listNames(): readonly BankSyncProviderName[] {
-    return BANK_SYNC_PROVIDERS;
+    return this.simplefin
+      ? [this.enableBanking.name, this.simplefin.name]
+      : [this.enableBanking.name];
   }
 }

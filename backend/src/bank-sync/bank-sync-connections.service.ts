@@ -543,6 +543,17 @@ export class BankSyncConnectionsService {
     );
     if (!row) throw this.connectionNotFound(connectionId);
 
+    if (row.provider === "simplefin") {
+      await withScopedDb(this.dataSource, async (m) => {
+        await m
+          .getRepository(BankSyncConnection)
+          .update(
+            { id: connectionId, userId },
+            { autoSync: false, status: "revoked" },
+          );
+      });
+      return;
+    }
     if (row.externalSessionId) {
       await this.revokeBestEffort(userId, row.provider, row.externalSessionId);
     }

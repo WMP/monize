@@ -8,7 +8,7 @@
  */
 
 /** The aggregators Monize can talk to; `enable_banking` is the first. */
-export const BANK_SYNC_PROVIDERS = ["enable_banking"] as const;
+export const BANK_SYNC_PROVIDERS = ["enable_banking", "simplefin"] as const;
 export type BankSyncProviderName = (typeof BANK_SYNC_PROVIDERS)[number];
 
 /**

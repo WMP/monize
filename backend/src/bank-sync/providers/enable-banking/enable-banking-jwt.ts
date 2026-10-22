@@ -53,6 +53,11 @@ export function signEnableBankingJwt(
   credentials: BankSyncCredentials,
   nowMs: number = Date.now(),
 ): string {
+  if (credentials.provider === "simplefin")
+    throw new BankSyncProviderError(
+      "bad_request",
+      "These credentials are not for Enable Banking.",
+    );
   const key = parseRsaPrivateKey(credentials.privateKeyPem);
   const iat = Math.floor(nowMs / 1000);
   const header = { typ: "JWT", alg: "RS256", kid: credentials.applicationId };

@@ -1,3 +1,5 @@
+import { SimplefinCredentialsService } from "./simplefin-credentials.service";
+import { BankSyncProviderQueryDto } from "./dto/bank-sync-provider-query.dto";
 import "reflect-metadata";
 import { PATH_METADATA, METHOD_METADATA } from "@nestjs/common/constants";
 import { GUARDS_METADATA } from "@nestjs/common/constants";
@@ -98,12 +100,51 @@ describe("BankSyncController", () => {
       user: { id: string };
     };
 
+  it("selects SimpleFIN status without asking the Enable Banking credential service", async () => {
+    await expect(
+      controller.getStatus(req(), { provider: "simplefin" }),
+    ).resolves.toMatchObject({ provider: "simplefin", credentialSet: false });
+    expect(credentials.getStatus).not.toHaveBeenCalled();
+  });
+
+  it("keeps Enable Banking as the omitted-provider default", async () => {
+    await controller.getStatus(req());
+    expect(credentials.getStatus).toHaveBeenCalledWith(USER_ID);
+  });
+
+  it("validates the selected provider instead of accepting arbitrary values", async () => {
+    expect(
+      await validate(
+        plainToInstance(BankSyncProviderQueryDto, { provider: "simplefin" }),
+      ),
+    ).toHaveLength(0);
+    expect(
+      await validate(
+        plainToInstance(BankSyncProviderQueryDto, { provider: "other" }),
+      ),
+    ).not.toHaveLength(0);
+    expect(
+      await validate(
+        plainToInstance(BankSyncProviderQueryDto, { provider: ["simplefin"] }),
+      ),
+    ).not.toHaveLength(0);
+  });
+
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       controllers: [BankSyncController],
       providers: [
         { provide: BankSyncCredentialsService, useValue: credentials },
+        {
+          provide: SimplefinCredentialsService,
+          useValue: {
+            status: jest.fn().mockResolvedValue({
+              provider: "simplefin",
+              credentialSet: false,
+            }),
+          },
+        },
         { provide: BankSyncConnectionsService, useValue: connections },
         { provide: BankSyncService, useValue: bankSync },
       ],
