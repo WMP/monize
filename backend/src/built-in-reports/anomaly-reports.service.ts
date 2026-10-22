@@ -45,6 +45,12 @@ interface ConvertedExpense extends RawExpense {
   converted: number;
 }
 
+/** The z-score above which a transaction is unusual: the Reports page's default. */
+export const SPENDING_ANOMALY_DEFAULT_THRESHOLD = 2;
+
+/** Months of history the analysis reads unless a caller names a window. */
+export const SPENDING_ANOMALY_DEFAULT_MONTHS = 6;
+
 @Injectable()
 export class AnomalyReportsService {
   constructor(
@@ -52,9 +58,16 @@ export class AnomalyReportsService {
     private currencyService: ReportCurrencyService,
   ) {}
 
+  /**
+   * @param threshold the z-score a transaction must exceed for its category.
+   * @param months the window of history read, ending today. Two numbers of
+   *   different meaning in adjacent positions: the AI and MCP adapters once
+   *   passed the months as the threshold (audit A26-M34).
+   */
   async getSpendingAnomalies(
     userId: string,
-    threshold: number = 2,
+    threshold: number = SPENDING_ANOMALY_DEFAULT_THRESHOLD,
+    months: number = SPENDING_ANOMALY_DEFAULT_MONTHS,
   ): Promise<SpendingAnomaliesResponse> {
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
@@ -67,9 +80,9 @@ export class AnomalyReportsService {
     const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
 
     const now = new Date();
-    const sixMonthsAgo = new Date(now);
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    const startDate = formatDateYMD(sixMonthsAgo);
+    const windowStart = new Date(now);
+    windowStart.setMonth(windowStart.getMonth() - months);
+    const startDate = formatDateYMD(windowStart);
     const endDate = formatDateYMD(now);
 
     const query = `
