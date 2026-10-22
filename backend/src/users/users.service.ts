@@ -28,6 +28,7 @@ import { PersonalAccessToken } from "../auth/entities/personal-access-token.enti
 import {
   revokeOAuthGrantsAfterCommit,
   revokeStandingCredentials,
+  revokeRefreshSessionsAfterCommit,
 } from "../auth/credential-revocation";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { UpdatePreferencesDto } from "./dto/update-preferences.dto";
@@ -484,6 +485,14 @@ export class UsersService {
         .update({ userId, isRevoked: false }, { isRevoked: true });
       await revokeStandingCredentials(manager, userId);
     });
+    // The blanket UPDATE above is a first pass: blocked on a row a concurrent
+    // rotation holds, it resumes with its old snapshot and misses the successor
+    // that rotation inserted. Converge after the commit, under the family locks.
+    await revokeRefreshSessionsAfterCommit(
+      this.dataSource,
+      userId,
+      this.logger,
+    );
 
     // Re-wrap the backup key under the new login password so automatic
     // backups written from now on open with it (earlier ones keep opening with

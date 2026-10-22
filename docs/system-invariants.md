@@ -4379,27 +4379,57 @@ Status              enforced
 ### INV-AUTH-001 -- refresh rotation
 
 ```text
-Statement           A presented refresh token rotates once; a second presentation
-                    revokes the family.
+Statement           A presented refresh token rotates once; presenting it again
+                    revokes the family, except that the immediate predecessor of a
+                    successor minted within the rotation grace is answered with an
+                    access token only.
 Source of truth     refresh_tokens.is_revoked, per family_id
-Enforcement         Pessimistic write lock on the RefreshToken row by tokenHash,
-                    plus family revocation on a token already revoked. The loser
-                    blocks on the lock, sees the winner's committed isRevoked,
-                    and takes the reuse-detection branch.
+Enforcement         TokenService.refreshTokens takes lockTokenFamily, then a
+                    pessimistic write lock on the RefreshToken row by tokenHash.
+                    A token already revoked is reuse: the family UPDATE commits and
+                    the 401 is raised after withScopedDb resolves (a throw inside
+                    the callback rolled the revocation back until A26-H01). The
+                    expired-token mark and the inactive-user family revoke commit
+                    the same way. The one exception is the grace
+                    (TokenService.ROTATION_GRACE_SECONDS, 10 s): when the presented
+                    token's replaced_by_hash names a successor that is still live
+                    and whose created_at is inside the window, the answer is an
+                    access token with no refresh token, nothing is revoked or
+                    minted, and the controller leaves the refresh cookie the first
+                    response set. A predecessor whose successor has itself rotated,
+                    or one presented after the window, is reuse. The browser
+                    client serializes refreshes across tabs with the Web Locks API
+                    (frontend/src/lib/api.ts, monize-token-refresh), so the grace
+                    is the fallback rather than the common path.
 Concurrency scope   per token family
-Retry semantics     A retried rotation of the same token is reuse, not a retry,
-                    and is treated as such by design.
+Retry semantics     A retried rotation of the same token inside the grace gets an
+                    access token; outside it, it is reuse by design.
 Crash semantics     A crash before commit leaves the presented token valid; a
                     crash after leaves the successor valid. Both are consistent.
-Failure response    401, family revoked.
-Required tests      Two-connection: two concurrent rotations of one token; assert
-                    the family ends revoked rather than two live successors.
+Failure response    401 after the family revocation has committed.
+Required tests      Real database: test/integration/refresh-reuse-revokes-family.integration.spec.ts
+                    rotates and re-presents a token past the grace and after a
+                    second rotation (family ends with zero live rows, successor
+                    refused), the grace answer (no revocation, successor still
+                    rotates), two concurrent refreshes of one token (exactly one
+                    live successor), and the durable expired and inactive-user
+                    branches. Unit (supporting): token.service.spec.ts records
+                    whether each refusing transaction committed.
+                    Still owed: a two-page Playwright test that both tabs stay
+                    signed in when the access cookie expires (e2e/ has no fixture
+                    that expires it).
+Known limit         The nightly purge deletes revoked rows, so a token reused more
+                    than a day after its rotation is "invalid", not "reused", and
+                    revokes nothing (D-S03-04). Inside the grace a thief presenting
+                    the predecessor is not detected; it receives one access token
+                    and no refresh token.
 Status              enforced
 ```
 
-Recorded as enforced because the mechanism is real and correct -- and because it
-is subtle enough that a future refactor could remove the lock without any test
-noticing.
+Recorded as enforced because the mechanism is real and a real-database test now
+holds it. It was recorded as enforced before the reuse branch's revocation was
+found to roll back with its own exception (A26-H01): the mock-based unit test
+asserted the `update` call, which a rolled-back update also satisfies.
 
 ### INV-AUTH-004 -- a logout reports only what it achieved
 
@@ -4451,15 +4481,21 @@ Enforcement         An atomic CTE increments in the database. recordFailedLogin
                     lock expired more than 24 hours ago, so a stranger who knows
                     the address cannot extend a lockout without limit. A password
                     reset (email, admin, owner of a delegate, emergency claim)
-                    clears the counter and the lock. The success-path reset writes
-                    a fixed absolute value and was always safe.
+                    clears the counter and the lock. The success path resets the
+                    counter and the lock in SQL and then writes only last_login
+                    (AuthService.recordLastLogin); it used to save the entity read
+                    before bcrypt, which wrote the old count back over the reset
+                    (A26-M01, CONC-008).
 Concurrency scope   per account
 Failure response    the counter equals the number of failures; lockout is not
                     delayed.
 Required tests      Two connections: test/integration/login-lockout.integration.spec.ts
                     runs N concurrent failures on two pools and asserts the counter
                     equals N, and proves the cap and the decay against real
-                    PostgreSQL. Unit: login-lockout.spec.ts pins the parameters;
+                    PostgreSQL. test/integration/credential-writes-atomic.integration.spec.ts
+                    drives AuthService.login with four prior failures (plain and
+                    trusted-device 2FA) and asserts the counter is 0 and one later
+                    failure does not lock. Unit: login-lockout.spec.ts pins the parameters;
                     auth.service.spec.ts asserts the login emits the single
                     incrementing statement; auth-email.service.spec.ts asserts a
                     reset clears the lock.
@@ -4481,8 +4517,16 @@ Enforcement         backend/src/auth/credential-revocation.ts.
                     revokeStandingCredentials revokes PATs and deletes trusted
                     devices inside the password write's own withScopedDb
                     transaction, so a refused reset revokes nothing and a committed
-                    one leaves neither live. After the commit, refresh tokens go
-                    through each path's existing revocation and
+                    one leaves neither live; on every path, the admin reset and
+                    disable and the owner-of-delegate reset included (A26-L07).
+                    After the commit, refresh sessions go through the converging
+                    revocation under the family locks
+                    (TokenService.revokeAllUserRefreshTokens, or
+                    revokeRefreshSessionsAfterCommit where TokenService cannot be
+                    injected: change password, admin reset, disable and delete,
+                    owner-of-delegate reset); an in-transaction blanket UPDATE is
+                    a first pass only, since it misses a successor a concurrent
+                    rotation inserts after its snapshot (A26-M02, CONC-009).
                     revokeOAuthGrantsAfterCommit calls
                     OAuthProviderService.revokeAllForUser; a failure there is logged
                     at error with the account id and rethrown, never reported as a
@@ -4498,8 +4542,17 @@ Required tests      Unit: auth-email.service.spec.ts, users.service.spec.ts,
                     (confirmOidcLink) assert each path revokes PATs, trusted devices
                     and OAuth grants; credential-revocation.spec.ts covers the
                     helper's error path; pat.controller.spec.ts asserts the step-up
-                    metadata. Still owed: a real-database test that a PAT minted
-                    before a reset is refused by the bearer guard after it.
+                    metadata. Real database:
+                    test/integration/credential-writes-atomic.integration.spec.ts
+                    forces a rotation to commit while each path's revoking UPDATE
+                    waits on its row lock and asserts no refresh token is live
+                    afterwards (change password, admin reset, admin disable,
+                    owner-of-delegate reset), and installs a statement-level
+                    BEFORE UPDATE trigger on personal_access_tokens to assert a
+                    failed PAT revocation leaves the admin and delegate resets'
+                    password, and the disable, unchanged. Still owed: a
+                    real-database test that a PAT minted before a reset is refused
+                    by the bearer guard after it.
 Status              enforced
 ```
 

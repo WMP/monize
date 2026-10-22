@@ -52,6 +52,7 @@ describe("DelegationService", () => {
   let emailService: Record<string, jest.Mock>;
   let configService: Record<string, jest.Mock>;
   let dataSource: Record<string, jest.Mock>;
+  let scopedManager: Record<string, jest.Mock>;
 
   beforeEach(() => {
     delegatesRepo = {
@@ -99,6 +100,8 @@ describe("DelegationService", () => {
     ]);
     // `repo.manager` is the transaction's manager, as on a real repository.
     (refreshRepo as Record<string, unknown>).manager = scoped.manager;
+    scopedManager = scoped.manager as unknown as Record<string, jest.Mock>;
+    scopedManager.query.mockResolvedValue([]);
     dataSource = scoped.dataSource as unknown as Record<string, jest.Mock>;
 
     const i18nStub = {
@@ -1425,6 +1428,19 @@ describe("DelegationService", () => {
       };
       usersRepo.findOne.mockResolvedValue(delegate);
       usersRepo.save.mockResolvedValue(delegate);
+      // One live family left after the commit, so the converging revoke runs a
+      // pass under its lock and stops when the next pass changes nothing.
+      scopedManager.query.mockImplementation((sql: string) =>
+        Promise.resolve(
+          sql.includes("SELECT DISTINCT family_id")
+            ? [{ family_id: "fam-1" }]
+            : [],
+        ),
+      );
+      refreshRepo.update
+        .mockResolvedValueOnce({ affected: 1 })
+        .mockResolvedValueOnce({ affected: 1 })
+        .mockResolvedValue({ affected: 0 });
       const res = await service.resetDelegatePassword(OWNER_ID, "g1");
       expect(res.temporaryPassword).toBeTruthy();
       expect((delegate as any).mustChangePassword).toBe(true);
@@ -1435,6 +1451,13 @@ describe("DelegationService", () => {
         { userId: DELEGATE_ID, isRevoked: false },
         { isRevoked: true },
       );
+      // After the commit: the captured family, re-revoked under its lock, so a
+      // successor a concurrent rotation inserted is covered (A26-M02).
+      expect(refreshRepo.update).toHaveBeenCalledWith(
+        { userId: DELEGATE_ID, familyId: In(["fam-1"]), isRevoked: false },
+        { isRevoked: true },
+      );
+      expect(refreshRepo.update).toHaveBeenCalledTimes(3);
     });
 
     it("revokes the delegate's PATs, trusted devices and OAuth grants", async () => {

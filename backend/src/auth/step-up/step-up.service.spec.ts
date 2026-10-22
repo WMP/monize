@@ -326,6 +326,23 @@ describe("StepUpAuthService", () => {
       ).rejects.toThrow(/too many/i);
     });
 
+    it("refuses over the cap without checking the password, even when the peek saw room", async () => {
+      // A concurrent burst: every request's peek read the same low count, so
+      // the bound is the count the reservation committed (A26-L08). The
+      // password here is correct; a check would have issued a token.
+      attemptCounters.peek.mockResolvedValue(0);
+      attemptCounters.increment.mockResolvedValueOnce({
+        count: 11,
+        windowExpiresAt: new Date(Date.now() + 60_000),
+      });
+
+      await expect(
+        service.verifyAndIssue(userId, "emergency-access", {
+          password: "hunter2",
+        }),
+      ).rejects.toThrow(/too many/i);
+    });
+
     it("clears the attempt counter after a successful verification", async () => {
       // First a few failures
       for (let i = 0; i < 3; i++) {
