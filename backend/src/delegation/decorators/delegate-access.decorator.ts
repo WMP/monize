@@ -112,13 +112,13 @@ export const DelegateRequiresCapability = (
 
 /**
  * 3A: a route belonging to a whole app section a delegate can be granted
- * READ on (Bills & Deposits, Investments, Budgets, Reports, AI). A delegate
- * may reach it only if the owner granted that section. Pair with
+ * READ on (Bills & Deposits, Investments, Budgets, Reports, AI, Warranties).
+ * A delegate may reach it only if the owner granted that section. Pair with
  * @AllowDelegate(); account-scoped data still also needs the per-account
  * decorators.
  */
 export type DelegateSection =
-  "bills" | "investments" | "budgets" | "reports" | "ai";
+  "bills" | "investments" | "budgets" | "reports" | "ai" | "warranties";
 export const DELEGATE_SECTION_KEY = "delegateSection";
 export const DelegateRequiresSection = (section: DelegateSection) =>
   SetMetadata(DELEGATE_SECTION_KEY, section);

@@ -3,6 +3,7 @@ import {
   acquisitionCost,
   acquisitionUnitCost,
   applyActionToQuantity,
+  applyReturnOfCapital,
   baseInvestmentAction,
   CASH_INCOME_ACTIONS,
   FUNDING_ACCOUNT_ACTIONS,
@@ -14,6 +15,7 @@ import {
   MARKET_PRICED_TRADE_ACTIONS,
   reinvestedIncomeAmount,
   REINVESTED_INCOME_ACTIONS,
+  returnOfCapitalAmount,
   SHARE_MOVING_ACTIONS,
 } from "./investment-replay.util";
 
@@ -414,6 +416,9 @@ describe("INVESTED_FLOW_KIND_BY_BASE_ACTION", () => {
       REDEEM: "capitalOut",
       TRANSFER_OUT: "capitalOut",
       REMOVE_SHARES: "capitalOut",
+      // A return of capital pays back what was invested: the price falls by
+      // what was paid, so it leaves the invested part without being earned.
+      RETURN_OF_CAPITAL: "capitalOut",
       // Distributions are what the invested part EARNED, cash though they are.
       DIVIDEND: "income",
       INTEREST: "income",
@@ -460,6 +465,8 @@ describe("incomeKind", () => {
       ADD_SHARES: null,
       REMOVE_SHARES: null,
       SPLIT: null,
+      // A return of capital pays back cost; it is not income of any kind.
+      RETURN_OF_CAPITAL: null,
     });
   });
 
@@ -561,5 +568,82 @@ describe("investmentIncomeAmount", () => {
         totalAmount: 10,
       }),
     ).toBe(0);
+  });
+});
+
+/**
+ * A return of capital (issue #1800) is not income: it pays back part of what
+ * the shares cost, so it comes off the basis, never below zero, and only the
+ * excess is a gain. `docs/specs/return-of-capital.md` section 3.
+ */
+describe("return of capital", () => {
+  it("moves no shares and records no income", () => {
+    expect(
+      applyActionToQuantity(10, InvestmentAction.RETURN_OF_CAPITAL, 4),
+    ).toBe(10);
+    expect(SHARE_MOVING_ACTIONS).not.toContain(
+      InvestmentAction.RETURN_OF_CAPITAL,
+    );
+    expect(CASH_INCOME_ACTIONS).not.toContain(
+      InvestmentAction.RETURN_OF_CAPITAL,
+    );
+    expect(
+      investmentIncomeAmount({
+        action: InvestmentAction.RETURN_OF_CAPITAL,
+        totalAmount: 50,
+      }),
+    ).toBe(0);
+  });
+
+  it("is a base action of its own, not a dividend refinement", () => {
+    expect(baseInvestmentAction(InvestmentAction.RETURN_OF_CAPITAL)).toBe(
+      InvestmentAction.RETURN_OF_CAPITAL,
+    );
+    // Its cash settles against the brokerage's cash sleeve, as a dividend's.
+    expect(
+      FUNDING_ACCOUNT_ACTIONS.has(InvestmentAction.RETURN_OF_CAPITAL),
+    ).toBe(false);
+  });
+
+  it("reduces the basis by what it paid back", () => {
+    // 100 shares that cost 1,000; a 150 return of capital leaves 850.
+    expect(applyReturnOfCapital(1000, 150)).toEqual({
+      costBasis: 850,
+      basisReturned: 150,
+      realizedGain: 0,
+    });
+  });
+
+  it("stops at zero and realizes the excess as a gain", () => {
+    // The basis cannot go below nothing; the 50 it could not absorb is a gain.
+    expect(applyReturnOfCapital(100, 150)).toEqual({
+      costBasis: 0,
+      basisReturned: 100,
+      realizedGain: 50,
+    });
+  });
+
+  it("realizes all of it when there is no basis left to return", () => {
+    expect(applyReturnOfCapital(0, 40)).toEqual({
+      costBasis: 0,
+      basisReturned: 0,
+      realizedGain: 40,
+    });
+  });
+
+  it("reads the stored total unsigned, converted at the row's rate", () => {
+    expect(returnOfCapitalAmount({ totalAmount: -25 })).toBe(25);
+    expect(
+      returnOfCapitalAmount({ totalAmount: "25", exchangeRate: 1.5 }),
+    ).toBe(37.5);
+  });
+
+  it("is unknown when the rate cannot convert it, never taken at par", () => {
+    expect(
+      returnOfCapitalAmount({ totalAmount: 25, exchangeRate: 0 }),
+    ).toBeNull();
+    expect(
+      returnOfCapitalAmount({ totalAmount: "abc", exchangeRate: 1 }),
+    ).toBeNull();
   });
 });

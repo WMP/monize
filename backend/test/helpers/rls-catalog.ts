@@ -191,6 +191,17 @@ const FKLESS_PARENT_REFS: Record<string, ForeignKeyInfo> = {
 };
 
 /**
+ * Nullable parent references a production CHECK still requires (`table.column`).
+ * The generator leaves a nullable foreign key NULL, so these are filled -- and
+ * ordered -- like a NOT NULL one. `transaction_attachments` has two nullable
+ * parents and `chk_attachment_one_parent` wants exactly one of them: the row
+ * takes its transaction, the parent every attachment had before warranties.
+ */
+const REQUIRED_NULLABLE_PARENTS = new Set([
+  "transaction_attachments.transaction_id",
+]);
+
+/**
  * Columns a production CHECK constrains to a vocabulary or a shape the generic
  * generator cannot guess (it writes `t1`, `t2`, ... into a text column and
  * leaves a nullable column NULL). The integration schema carries production's
@@ -216,6 +227,8 @@ const PRODUCTION_SHAPED_VALUES: Record<string, Record<string, unknown>> = {
   // bounds these CHECKs hold.
   monte_carlo_cash_flows: { flow_type: "ONE_TIME", start_year: 1 },
   monte_carlo_scenarios: { years_to_retirement: 30 },
+  // chk_warranty_expiry: a warranty is lifetime or has an expiry date.
+  warranties: { is_lifetime: true },
 };
 
 /**
@@ -273,7 +286,7 @@ export class RlsRowSeeder {
           // keys on it), so it is a real dependency here too -- otherwise the row
           // can be ordered before the user it points at and the insert dies on
           // the foreign key.
-          if (!fk || (col.nullable && !USER_REF_COLUMNS.has(col.name))) {
+          if (!fk || (col.nullable && !this.fillsNullableRef(table, col))) {
             return true;
           }
           if (fk.refTable === table) return true;
@@ -346,8 +359,7 @@ export class RlsRowSeeder {
         // is exactly when the bytes most need removing), and skipping it left an
         // ownerless row that neither user could see. The sweep then reported
         // "saw 0 rows" for a table whose policy is fine.
-        const isOwnership = USER_REF_COLUMNS.has(col.name);
-        if (col.nullable && !isOwnership) continue;
+        if (col.nullable && !this.fillsNullableRef(table, col)) continue;
         columns.push(col.name);
         values.push(this.resolveForeignKey(table, fk, ownerId));
         continue;
@@ -430,6 +442,17 @@ export class RlsRowSeeder {
       return { column: column.name, refTable: "users", refColumn: "id" };
     }
     return undefined;
+  }
+
+  /**
+   * Whether a nullable reference is filled anyway: an ownership column (the
+   * policy keys on it) or a parent a production CHECK requires.
+   */
+  private fillsNullableRef(table: string, column: ColumnInfo): boolean {
+    return (
+      USER_REF_COLUMNS.has(column.name) ||
+      REQUIRED_NULLABLE_PARENTS.has(`${table}.${column.name}`)
+    );
   }
 
   private entry(table: string): TableCatalogEntry {

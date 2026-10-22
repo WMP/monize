@@ -160,6 +160,20 @@ const examples = {
     count: 2,
     earliestExpiresAt: "2026-10-21T08:15:00.000Z",
   },
+  WARRANTY_EXPIRING: {
+    warrantyId: "w1",
+    name: "Dishwasher",
+    expiresOn: "2026-10-05",
+    threshold: 30,
+    daysLeft: 30,
+  },
+  WARRANTY_EXPIRES_TODAY: {
+    warrantyId: "w1",
+    name: "Dishwasher",
+    expiresOn: "2026-09-05",
+    threshold: 0,
+    daysLeft: 0,
+  },
   BOND_MATURITY_SOON: {
     ...bondFacts,
     maturityDate: "2026-10-25",
@@ -300,6 +314,36 @@ describe("notification email copy", () => {
       expect(all).not.toMatch(
         /Secret Payee|99\.99|Dear customer|Pay Secret|instruction/,
       );
+    });
+  });
+
+  describe("warranty notifications", () => {
+    const english = (type: NotificationType, data: Record<string, unknown>) =>
+      notificationEmailCopy(source(type, data), englishEmailT, "en", { now });
+
+    it("names the warranty and its stored expiry date, whatever day it is delivered", () => {
+      const expiring = english(
+        NotificationType.WARRANTY_EXPIRING,
+        examples.WARRANTY_EXPIRING,
+      );
+      expect(expiring).toEqual({
+        title: "Dishwasher: warranty expires soon",
+        message:
+          "The warranty for Dishwasher expires on Oct 5, 2026. Open to review its documents or record a claim.",
+      });
+      const today = english(
+        NotificationType.WARRANTY_EXPIRES_TODAY,
+        examples.WARRANTY_EXPIRES_TODAY,
+      );
+      expect(today.title).toBe("Dishwasher: warranty expires today");
+      expect(today.message).toContain("Sep 5, 2026");
+      const later = notificationEmailCopy(
+        source(NotificationType.WARRANTY_EXPIRING, examples.WARRANTY_EXPIRING),
+        englishEmailT,
+        "en",
+        { now: new Date("2026-09-30T12:00:00Z") },
+      );
+      expect(later).toEqual(expiring);
     });
   });
 
@@ -736,6 +780,14 @@ describe("notification email copy", () => {
     [
       NotificationType.AI_REVIEW_PROPOSALS_EXPIRING,
       { count: 1.5, earliestExpiresAt: "2026-10-21T08:15:00.000Z" },
+    ],
+    [
+      NotificationType.WARRANTY_EXPIRING,
+      { ...examples.WARRANTY_EXPIRING, expiresOn: "2026-02-30" },
+    ],
+    [
+      NotificationType.WARRANTY_EXPIRES_TODAY,
+      { ...examples.WARRANTY_EXPIRES_TODAY, name: "" },
     ],
     [
       NotificationType.GEM_SIGNAL_CHANGED,

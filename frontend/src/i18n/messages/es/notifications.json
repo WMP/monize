@@ -197,5 +197,11 @@
     "readyMessage": "{count, plural, one {# propuesta de IA espera} other {# propuestas de IA esperan}} su aprobación, {added} de ellas nuevas. Abra la bandeja de revisión de IA para aprobarlas o descartarlas.",
     "expiringTitle": "Propuestas de IA a punto de caducar",
     "expiringMessage": "{count, plural, one {# propuesta de IA caduca} other {# propuestas de IA caducan}} pronto. La primera caduca el {date}. Abra la bandeja de revisión de IA para aprobarlas o descartarlas."
+  },
+  "warranty": {
+    "expiringTitle": "{name}: la garantía vence en {days, plural, one {# día} other {# días}}",
+    "expiringMessage": "La garantía de {name} vence el {date}. Ábrala para revisar sus documentos o registrar una reclamación.",
+    "todayTitle": "{name}: la garantía vence hoy",
+    "todayMessage": "La garantía de {name} vence hoy, {date}. Ábrala para revisar sus documentos o registrar una reclamación."
   }
 }

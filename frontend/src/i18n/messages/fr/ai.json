@@ -146,7 +146,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Réinvestissement de plus-value à long terme",
       "CAPITAL_GAIN_SHORT": "Plus-value à court terme",
       "CAPITAL_GAIN_LONG": "Plus-value à long terme",
-      "REDEEM": "Remboursement CD/obligation"
+      "REDEEM": "Remboursement CD/obligation",
+      "RETURN_OF_CAPITAL": "Remboursement de capital"
     },
     "createSecurityTitle": "Créer ce titre ?",
     "createdSecurity": "Titre créé",

@@ -44,6 +44,16 @@ const REFS: Record<string, RefRule[]> = {
   email_receipt_parsers: [
     { column: "payee_id", refTable: "payees", onMissing: "null" },
   ],
+  // A warranty outlives its payee and its purchase (both ON DELETE SET NULL),
+  // so either one the file does not carry clears the reference.
+  warranties: [
+    { column: "payee_id", refTable: "payees", onMissing: "null" },
+    { column: "transaction_id", refTable: "transactions", onMissing: "null" },
+  ],
+  // A claim cannot outlive its warranty (NOT NULL, ON DELETE CASCADE).
+  warranty_claims: [
+    { column: "warranty_id", refTable: "warranties", onMissing: "dropRow" },
+  ],
   // transaction_attachments.transaction_id is a real FK (the entity models the
   // relation) between two fully-exported tables, so the coverage guard requires
   // it here even though the de-identified support backup excludes the table. A
@@ -55,6 +65,14 @@ const REFS: Record<string, RefRule[]> = {
     {
       column: "transaction_id",
       refTable: "transactions",
+      onMissing: "dropRow",
+    },
+    // The other parent (WTY-003: exactly one of the two is set, so a null here
+    // is a transaction's attachment, not a dangling link). A warranty's
+    // document cannot outlive its warranty (ON DELETE CASCADE), hence dropRow.
+    {
+      column: "warranty_id",
+      refTable: "warranties",
       onMissing: "dropRow",
     },
     // A scan pair's original points at the visible attachment it was scanned

@@ -1,8 +1,10 @@
 import { parseTransactionSearch } from "./transaction-search-query.util";
+import { attachmentReachableFromTransactionSql } from "../attachments/attachment-parent";
 import {
   buildTransactionSearchWhere,
   escapeLikePattern,
   hasAttachmentSql,
+  hasWarrantySql,
   referenceKey,
   referenceKeySql,
   SearchClauseOptions,
@@ -199,6 +201,7 @@ describe("buildTransactionSearchWhere", () => {
       ["is:split", "transaction.is_split = true"],
       ["is:uncategorized", uncategorizedSql(TX)],
       ["has:attachment", hasAttachmentSql("transaction")],
+      ["has:warranty", hasWarrantySql("transaction")],
       ["has:ref", "NULLIF(btrim(transaction.referenceNumber), '') IS NOT NULL"],
       ["has:memo", "NULLIF(btrim(search_sx.memo), '') IS NOT NULL"],
       [
@@ -207,6 +210,42 @@ describe("buildTransactionSearchWhere", () => {
       ],
     ])("%s", (input, fragment) => {
       expect(build(input).sql).toContain(fragment);
+    });
+
+    // A transaction's attachments are its own rows plus the documents of
+    // every warranty linked to it, archived or not (the maintainer's ruling,
+    // attachment-parent.ts): `has:attachment` reaches both through the shared
+    // fragment, primaries only.
+    it("has:attachment is an EXISTS over the row's own and its linked warranties' visible attachments", () => {
+      expect(hasAttachmentSql("t")).toBe(
+        "EXISTS (SELECT 1 FROM transaction_attachments search_ta WHERE " +
+          `${attachmentReachableFromTransactionSql("search_ta", "t.id")} ` +
+          "AND search_ta.original_of_attachment_id IS NULL)",
+      );
+      expect(attachmentReachableFromTransactionSql("search_ta", "t.id")).toBe(
+        "(search_ta.transaction_id = t.id OR search_ta.warranty_id IN " +
+          "(SELECT reach_w.id FROM warranties reach_w WHERE reach_w.transaction_id = t.id))",
+      );
+      expect(build("has:attachment").params).toEqual({});
+    });
+
+    // A warranty is a second attachment parent: `has:warranty` reads the
+    // warranties table, not the documents, and skips an archived warranty as
+    // the register count does; `has:attachment` counts that warranty's
+    // documents all the same.
+    it("has:warranty is an EXISTS over the row's unarchived warranties", () => {
+      expect(hasWarrantySql("t")).toBe(
+        "EXISTS (SELECT 1 FROM warranties search_w WHERE search_w.transaction_id = t.id AND search_w.archived_at IS NULL)",
+      );
+      const { sql, params } = build("has:warranty");
+      expect(sql).not.toContain("transaction_attachments");
+      expect(params).toEqual({});
+    });
+
+    it("-has:warranty is the NOT EXISTS", () => {
+      expect(build("-has:warranty").sql).toBe(
+        `(NOT COALESCE(${hasWarrantySql("transaction")}, FALSE))`,
+      );
     });
   });
 

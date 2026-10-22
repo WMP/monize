@@ -135,6 +135,7 @@
       "toggleTitle": "Alacaklının adının daha fazlası sığması için tarihlerden yılı çıkar"
     },
     "attachmentsCount": "{count, plural, other {# ek}}",
+    "warrantiesCount": "{count, plural, other {# garanti}}",
     "today": "Bugün",
     "export": {
       "button": "Dışa Aktar",
@@ -198,7 +199,9 @@
       "duplicateTitle": "İşlemi çoğalt",
       "copy": "Kopyala",
       "duplicate": "Çoğalt",
-      "scheduleRecurring": "Tekrarlayan Olarak Zamanla"
+      "scheduleRecurring": "Tekrarlayan Olarak Zamanla",
+      "addWarranty": "Garanti ekle",
+      "viewWarranties": "Garantileri görüntüle"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "Düzenle",
     "duplicate": "Çoğalt",
     "scheduleRecurring": "Tekrarlayan Olarak Zamanla",
+    "addWarranty": "Garanti ekle",
+    "viewWarranties": "Garantileri görüntüle",
     "delete": "Sil"
   },
   "filter": {
@@ -465,7 +470,14 @@
       },
       "feeCaption": "%{percent} yurt dışı işlem ücreti ({fee}) içerir."
     },
-    "jointSplitDisabled": "Paylaşılan bir hesaptaki bölünmüş işlemleri yalnızca sahibi yönetebilir"
+    "jointSplitDisabled": "Paylaşılan bir hesaptaki bölünmüş işlemleri yalnızca sahibi yönetebilir",
+    "warranties": {
+      "title": "Garantiler",
+      "add": "Garanti ekle",
+      "expires": "Bitiş: {date}",
+      "loading": "Garantiler yükleniyor",
+      "loadError": "Bu işlemin garantileri yüklenemedi."
+    }
   },
   "splitEditor": {
     "header": "Bölüm Ayrıntıları",
@@ -626,7 +638,8 @@
       "amountRange": "Tutar 50 ile 100 arası",
       "datePeriod": "Mart 2026'nın herhangi bir günü",
       "isSplit": "Bölünmüş işlemler",
-      "hasAttachment": "Eki var"
+      "hasAttachment": "Eki var",
+      "hasWarranty": "Garantisi var"
     }
   },
   "searchInterpretation": {
@@ -668,6 +681,7 @@
       },
       "has": {
         "attachment": "Eki var",
+        "warranty": "Garantisi var",
         "ref": "Referans numarası var",
         "memo": "Notu var",
         "tag": "Etiketi var"

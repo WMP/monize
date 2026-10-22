@@ -760,6 +760,7 @@ describe("DelegationService", () => {
         ["budgetsCanRead"],
         ["reportsCanRead"],
         ["aiCanRead"],
+        ["warrantiesCanRead"],
       ])("keeps the owner context when %s is granted", async (field) => {
         arrangeGrantee({ [field]: true });
         grantsRepo.find.mockResolvedValue([
@@ -937,6 +938,7 @@ describe("DelegationService", () => {
           budgets: false,
           reports: false,
           ai: false,
+          warranties: false,
         },
       });
     });
@@ -961,6 +963,7 @@ describe("DelegationService", () => {
         budgets: false,
         reports: true,
         ai: false,
+        warranties: false,
       });
     });
 
@@ -1089,6 +1092,7 @@ describe("DelegationService", () => {
         billsCanRead: true,
         investmentsCanRead: false,
         budgetsCanRead: true,
+        warrantiesCanRead: true,
       });
       await expect(service.hasSection("g1", "bills")).resolves.toBe(true);
       await expect(service.hasSection("g1", "investments")).resolves.toBe(
@@ -1096,6 +1100,7 @@ describe("DelegationService", () => {
       );
       await expect(service.hasSection("g1", "budgets")).resolves.toBe(true);
       await expect(service.hasSection("g1", "ai")).resolves.toBe(false);
+      await expect(service.hasSection("g1", "warranties")).resolves.toBe(true);
     });
   });
 
@@ -1107,11 +1112,21 @@ describe("DelegationService", () => {
       budgetsCanRead: true,
       reportsCanRead: true,
       aiCanRead: true,
+      warrantiesCanRead: true,
     };
 
     it("is false when there is no active delegation", async () => {
       delegatesRepo.findOne.mockResolvedValue(null);
       await expect(service.grantsWholeLedger("g1")).resolves.toBe(false);
+    });
+
+    it("is false while the warranties section is withheld: the assistant's tools read warranties too", async () => {
+      delegatesRepo.findOne.mockResolvedValue({
+        ...allSections,
+        warrantiesCanRead: false,
+      });
+      await expect(service.grantsWholeLedger("g1")).resolves.toBe(false);
+      expect(accountsRepo.count).not.toHaveBeenCalled();
     });
 
     it("is false when any section is withheld, without counting accounts", async () => {
@@ -1162,6 +1177,7 @@ describe("DelegationService", () => {
         budgetsCanRead: false,
         reportsCanRead: true,
         aiCanRead: true,
+        warrantiesCanRead: true,
       });
       await expect(service.getSections("g1")).resolves.toEqual({
         bills: true,
@@ -1169,6 +1185,7 @@ describe("DelegationService", () => {
         budgets: false,
         reports: true,
         ai: true,
+        warranties: true,
       });
     });
 
@@ -1180,6 +1197,7 @@ describe("DelegationService", () => {
         budgets: false,
         reports: false,
         ai: false,
+        warranties: false,
       });
     });
   });

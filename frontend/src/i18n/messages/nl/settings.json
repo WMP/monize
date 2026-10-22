@@ -386,7 +386,8 @@
         "BANK_SYNC_ACTIVITY": "Resultaten van banksynchronisatie",
         "EMAIL_RECEIPTS": "E-mailkwitanties",
         "BONDS": "Obligaties",
-        "AI_REVIEW": "AI-beoordelingsvoorstellen"
+        "AI_REVIEW": "AI-beoordelingsvoorstellen",
+        "WARRANTIES": "Garantieherinneringen"
       },
       "channelNotApplicable": "Niet van toepassing op dit type melding",
       "emailToggleLabel": "Rapport-e-mail voor {category}",
@@ -984,7 +985,11 @@
     },
     "sections": {
       "description": "Verleen alleen-lezentoegang tot hele appsecties. Rekeninggebonden gegevens vereisen ook per-rekeningtoegang.",
-      "aiRequiresFullAccess": "De AI-assistent leest alle rekeningen en secties en antwoordt daarom pas voor deze gedelegeerde zodra die al je rekeningen en elke andere sectie kan lezen."
+      "aiRequiresFullAccess": "De AI-assistent leest alle rekeningen en secties en antwoordt daarom pas voor deze gedelegeerde zodra die al je rekeningen en elke andere sectie kan lezen.",
+      "warranties": {
+        "label": "Garanties",
+        "description": "Garanties met hun documenten en claims. Een gekoppelde aankoop is alleen zichtbaar bij een rekening die de gemachtigde mag lezen."
+      }
     },
     "accounts": {
       "noAccounts": "Geen rekeningen om te verlenen.",

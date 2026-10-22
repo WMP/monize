@@ -168,4 +168,5 @@ export const ACTION_COLORS: Record<InvestmentAction, string> = {
   REINVEST: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
   ADD_SHARES: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
   REMOVE_SHARES: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
+  RETURN_OF_CAPITAL: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
 };

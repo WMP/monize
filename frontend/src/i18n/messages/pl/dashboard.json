@@ -93,6 +93,11 @@
     "viewAll": "Zobacz wszystkie analizy",
     "activeCount": "aktywne: {count}"
   },
+  "warrantiesExpiring": {
+    "title": "Gwarancje wkrótce wygasające",
+    "empty": "W ciągu najbliższych 30 dni nic nie wygasa",
+    "loadFailed": "Nie udało się wczytać wygasających gwarancji. Odśwież pulpit, aby spróbować ponownie."
+  },
   "topMovers": {
     "title": "Największe zmiany",
     "empty": {
