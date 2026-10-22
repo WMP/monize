@@ -56,6 +56,8 @@ const mockUpdate = vi.fn();
 const mockDelete = vi.fn();
 const mockArchive = vi.fn();
 const mockUnarchive = vi.fn();
+const mockListAll = vi.fn();
+const mockImport = vi.fn();
 vi.mock('@/lib/warranties', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/warranties')>()),
   warrantiesApi: {
@@ -66,7 +68,15 @@ vi.mock('@/lib/warranties', async (importOriginal) => ({
     delete: (...args: unknown[]) => mockDelete(...args),
     archive: (...args: unknown[]) => mockArchive(...args),
     unarchive: (...args: unknown[]) => mockUnarchive(...args),
+    listAll: (...args: unknown[]) => mockListAll(...args),
+    import: (...args: unknown[]) => mockImport(...args),
   },
+}));
+
+const mockExportCsv = vi.fn();
+vi.mock('@/components/warranties/warranty-csv-export', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/components/warranties/warranty-csv-export')>()),
+  exportWarrantiesCsv: (...args: unknown[]) => mockExportCsv(...args),
 }));
 
 const mockGetTransaction = vi.fn();
@@ -143,6 +153,7 @@ describe('WarrantiesPage', () => {
     mockDelete.mockResolvedValue(undefined);
     mockArchive.mockResolvedValue(warranty());
     mockUnarchive.mockResolvedValue(warranty());
+    mockListAll.mockResolvedValue([warranty()]);
   });
 
   it('lists the current warranties sorted by expiry, with the summary strip', async () => {
@@ -417,6 +428,83 @@ describe('WarrantiesPage', () => {
     expect(toast.error).toHaveBeenCalledWith('That transaction could not be loaded, so the warranty starts blank');
   });
 
+  it('exports every warranty the current filter matches', async () => {
+    await renderPage();
+    const pills = screen.getByRole('group', { name: 'Filter by status' });
+    await act(async () => {
+      fireEvent.click(within(pills).getByRole('button', { name: 'Expiring' }));
+    });
+    const rows = [warranty(), warranty({ id: 'w-2', name: 'Phone' })];
+    mockListAll.mockResolvedValue(rows);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+    });
+    expect(mockListAll).toHaveBeenCalledWith({
+      status: 'expiring',
+      q: undefined,
+      archived: false,
+      sort: 'expiresOn',
+      transactionId: undefined,
+    });
+    expect(mockExportCsv).toHaveBeenCalledWith(rows, 'warranties-2026-10-21');
+    expect(toast.success).toHaveBeenCalledWith('2 warranties exported');
+  });
+
+  it('says a failed export failed', async () => {
+    mockListAll.mockRejectedValue(new Error('500'));
+    await renderPage();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+    });
+    expect(mockExportCsv).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalled();
+  });
+
+  it('imports from the Import CSV dialog and reloads the list and the summary', async () => {
+    const preview = {
+      rows: [
+        {
+          line: 2,
+          outcome: 'valid' as const,
+          name: 'Phone',
+          expiresOn: '2027-10-01',
+          errors: [],
+          warnings: [],
+          warranty: { name: 'Phone', purchaseDate: '2026-10-01', expiresOn: '2027-10-01' },
+        },
+      ],
+      created: 0,
+      skippedColumns: [],
+      dryRun: true,
+    };
+    mockImport.mockResolvedValueOnce(preview);
+    mockImport.mockResolvedValueOnce({
+      ...preview,
+      rows: [{ ...preview.rows[0], outcome: 'created' as const, warrantyId: 'w-9' }],
+      created: 1,
+      dryRun: false,
+    });
+    await renderPage();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Import CSV' }));
+    });
+    const dialog = screen.getByRole('dialog', { name: 'Import warranties from CSV' });
+    const file = new File(['ProductName,PurchaseDate'], 'w.csv', { type: 'text/csv' });
+    await act(async () => {
+      fireEvent.change(within(dialog).getByLabelText('CSV file'), { target: { files: [file] } });
+    });
+    const listCalls = mockList.mock.calls.length;
+    const summaryCalls = mockSummary.mock.calls.length;
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Import 1 warranty' }));
+    });
+    expect(mockImport).toHaveBeenLastCalledWith(file, { dryRun: false, skipInvalid: false });
+    expect(toast.success).toHaveBeenCalledWith('1 warranty imported');
+    expect(mockList.mock.calls.length).toBeGreaterThan(listCalls);
+    expect(mockSummary.mock.calls.length).toBeGreaterThan(summaryCalls);
+    expect(screen.queryByRole('dialog', { name: 'Import warranties from CSV' })).not.toBeInTheDocument();
+  });
+
   describe('for an acting delegate', () => {
     // Set before each render and reset by the outer beforeEach, never while a
     // tree is mounted (an update outside act() fails the test).
@@ -428,6 +516,8 @@ describe('WarrantiesPage', () => {
       await renderPage();
       expect(screen.getByText('Laptop')).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Add warranty' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Import CSV' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Export CSV' })).toBeEnabled();
       expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Archive' })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();

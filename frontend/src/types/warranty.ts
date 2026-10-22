@@ -193,3 +193,44 @@ export interface CreateWarrantyClaimData {
  * the server refuses the pair otherwise.
  */
 export type UpdateWarrantyClaimData = Partial<CreateWarrantyClaimData>;
+
+/** `POST /warranties/import` query: a preview by default, a commit with `dryRun: false`. */
+export interface WarrantyImportOptions {
+  dryRun: boolean;
+  /** On a commit, import the valid rows and report the invalid ones instead of refusing the file. */
+  skipInvalid?: boolean;
+}
+
+/** What became of one data row: `valid` and `invalid` on a preview, `created` on a commit. */
+export type WarrantyImportOutcome = 'valid' | 'invalid' | 'created';
+
+/**
+ * One data row of an import, mirrored from `WarrantyImportRow` in
+ * `backend/src/warranties/warranty-import.service.ts`. `errors` and
+ * `warnings` arrive translated by the server.
+ */
+export interface WarrantyImportRow {
+  /** The row's record number, the header being 1. */
+  line: number;
+  outcome: WarrantyImportOutcome;
+  /** `ProductName` as the file gives it. */
+  name: string | null;
+  /** The expiry the row resolves to; `null` for a lifetime or an invalid row. */
+  expiresOn: string | null;
+  errors: string[];
+  /** What is imported other than as written (an unknown kind or currency). */
+  warnings: string[];
+  /** The create payload the row maps to; `null` on an invalid row. */
+  warranty: CreateWarrantyData | null;
+  /** The created warranty's id, on a committed row. */
+  warrantyId?: string;
+}
+
+/** `POST /warranties/import`. */
+export interface WarrantyImportResult {
+  rows: WarrantyImportRow[];
+  created: number;
+  /** Headers read and ignored (`Tags`) or not recognised, once each. */
+  skippedColumns: string[];
+  dryRun: boolean;
+}

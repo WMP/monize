@@ -1,4 +1,5 @@
 import apiClient from './api';
+import { API_MAX_PAGE_LIMIT } from './api-page-limits';
 import { dedupe, invalidateCache } from './apiCache';
 import { daysInMonth, isCalendarDate, monthOf, shiftDate, shiftMonth } from './calendar-month';
 import type {
@@ -8,6 +9,8 @@ import type {
   UpdateWarrantyData,
   Warranty,
   WarrantyClaim,
+  WarrantyImportOptions,
+  WarrantyImportResult,
   WarrantyListParams,
   WarrantyListResult,
   WarrantySummary,
@@ -53,6 +56,24 @@ export const warrantiesApi = {
       },
       READ_TTL_MS,
     );
+  },
+
+  /**
+   * Every warranty the filter matches, walking the pages at the server's
+   * page ceiling (asking for more is a 400, not a bigger page). The CSV
+   * export reads this: the page itself holds only the page on screen.
+   */
+  listAll: async (params: Omit<WarrantyListParams, 'page' | 'limit'> = {}): Promise<Warranty[]> => {
+    const MAX_PAGES = 1000;
+    const all: Warranty[] = [];
+    for (let page = 1; page <= MAX_PAGES; page++) {
+      const result = await warrantiesApi.list({ ...params, page, limit: API_MAX_PAGE_LIMIT });
+      // An empty page ends the walk whatever `hasMore` says.
+      if (result.data.length === 0) break;
+      all.push(...result.data);
+      if (!result.pagination.hasMore) break;
+    }
+    return all;
   },
 
   summary: async (): Promise<WarrantySummary> => {
@@ -103,6 +124,25 @@ export const warrantiesApi = {
   unarchive: async (id: string): Promise<Warranty> => {
     const response = await apiClient.post<Warranty>(`/warranties/${id}/unarchive`);
     afterWrite();
+    return response.data;
+  },
+
+  /**
+   * `POST /warranties/import`: a Warracker-format CSV. A preview
+   * (`dryRun: true`) writes nothing; a commit creates the valid rows in one
+   * server transaction, so only a commit that answered drops the cache.
+   */
+  import: async (file: File, options: WarrantyImportOptions): Promise<WarrantyImportResult> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post<WarrantyImportResult>('/warranties/import', formData, {
+      params: {
+        dryRun: String(options.dryRun),
+        skipInvalid: String(options.skipInvalid ?? false),
+      },
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    if (!options.dryRun) afterWrite();
     return response.data;
   },
 

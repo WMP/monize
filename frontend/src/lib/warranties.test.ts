@@ -133,6 +133,64 @@ describe('warrantiesApi', () => {
     expect(invalidateCache).toHaveBeenCalledWith('warranties:');
   });
 
+  it('listAll walks every page of the filter at the server ceiling', async () => {
+    vi.mocked(apiClient.get)
+      .mockResolvedValueOnce({
+        data: { data: [{ id: 'w-1' }, { id: 'w-2' }], pagination: { page: 1, limit: 200, total: 3, totalPages: 2, hasMore: true } },
+      })
+      .mockResolvedValueOnce({
+        data: { data: [{ id: 'w-3' }], pagination: { page: 2, limit: 200, total: 3, totalPages: 2, hasMore: false } },
+      });
+    const rows = await warrantiesApi.listAll({ status: 'expired', archived: false });
+    expect(rows.map((w) => w.id)).toEqual(['w-1', 'w-2', 'w-3']);
+    expect(apiClient.get).toHaveBeenNthCalledWith(1, '/warranties', {
+      params: { status: 'expired', archived: 'false', page: '1', limit: '200' },
+    });
+    expect(apiClient.get).toHaveBeenNthCalledWith(2, '/warranties', {
+      params: { status: 'expired', archived: 'false', page: '2', limit: '200' },
+    });
+  });
+
+  it('listAll stops at an empty page whatever hasMore says', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: { data: [], pagination: { page: 1, limit: 200, total: 0, totalPages: 0, hasMore: true } },
+    });
+    expect(await warrantiesApi.listAll()).toEqual([]);
+    expect(apiClient.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('import previews as multipart and leaves the cache alone', async () => {
+    const preview = { rows: [], created: 0, skippedColumns: [], dryRun: true };
+    vi.mocked(apiClient.post).mockResolvedValue({ data: preview });
+    const file = new File(['ProductName'], 'w.csv', { type: 'text/csv' });
+    const result = await warrantiesApi.import(file, { dryRun: true });
+    expect(result).toEqual(preview);
+    const [url, body, config] = vi.mocked(apiClient.post).mock.calls[0];
+    expect(url).toBe('/warranties/import');
+    expect((body as FormData).get('file')).toBe(file);
+    expect(config).toEqual({
+      params: { dryRun: 'true', skipInvalid: 'false' },
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    expect(invalidateCache).not.toHaveBeenCalled();
+  });
+
+  it('import commits with skipInvalid and drops every cached warranty read', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { rows: [], created: 2, skippedColumns: [], dryRun: false } });
+    const file = new File(['x'], 'w.csv');
+    await warrantiesApi.import(file, { dryRun: false, skipInvalid: true });
+    expect(vi.mocked(apiClient.post).mock.calls[0][2]).toMatchObject({
+      params: { dryRun: 'false', skipInvalid: 'true' },
+    });
+    expect(invalidateCache).toHaveBeenCalledWith('warranties:');
+  });
+
+  it('a refused import commit leaves the cache alone', async () => {
+    vi.mocked(apiClient.post).mockRejectedValue(new Error('400'));
+    await expect(warrantiesApi.import(new File(['x'], 'w.csv'), { dryRun: false })).rejects.toThrow('400');
+    expect(invalidateCache).not.toHaveBeenCalled();
+  });
+
   it('a refused claim write leaves the cache alone', async () => {
     vi.mocked(apiClient.patch).mockRejectedValue(new Error('400'));
     await expect(warrantiesApi.updateClaim('w-1', 'c-1', { status: 'open' })).rejects.toThrow();

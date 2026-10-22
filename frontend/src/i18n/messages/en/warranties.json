@@ -3,6 +3,8 @@
     "title": "Warranties",
     "subtitle": "What you bought, when its cover ends, and who sold it",
     "newButton": "Add warranty",
+    "exportButton": "Export CSV",
+    "importButton": "Import CSV",
     "loading": "Loading warranties...",
     "loadFailed": "Your warranties could not be loaded.",
     "retry": "Try again",
@@ -61,7 +63,9 @@
       "deleteFailed": "The warranty could not be deleted",
       "archiveFailed": "The warranty could not be archived",
       "unarchiveFailed": "The warranty could not be restored",
-      "prefillFailed": "That transaction could not be loaded, so the warranty starts blank"
+      "prefillFailed": "That transaction could not be loaded, so the warranty starts blank",
+      "exported": "{count, plural, one {{shown} warranty exported} other {{shown} warranties exported}}",
+      "exportFailed": "The warranties could not be exported"
     }
   },
   "status": {
@@ -236,6 +240,43 @@
       "createFailed": "The claim could not be added",
       "updateFailed": "The claim could not be updated",
       "deleteFailed": "The claim could not be deleted"
+    }
+  },
+  "import": {
+    "title": "Import warranties from CSV",
+    "description": "A CSV file in Warracker's columns, such as one exported from Warracker or from this page. You see every row before anything is saved.",
+    "fileLabel": "CSV file",
+    "chooseFile": "Choose file",
+    "noFileChosen": "No file chosen",
+    "checking": "Checking the file...",
+    "previewFailed": "The file could not be checked",
+    "summary": "{count, plural, one {{valid} of {total} row can be imported.} other {{valid} of {total} rows can be imported.}}",
+    "invalidSummary": "{count, plural, one {{shown} row is invalid and cannot be imported as written.} other {{shown} rows are invalid and cannot be imported as written.}}",
+    "skipInvalid": "Skip the invalid rows and import the rest",
+    "nothingToImport": "Fix the file and choose it again.",
+    "skippedColumns": "Columns not imported:",
+    "columns": {
+      "line": "Line",
+      "name": "Name",
+      "expires": "Expires",
+      "outcome": "Result",
+      "problems": "Problems"
+    },
+    "outcome": {
+      "valid": "Ready",
+      "invalid": "Invalid",
+      "created": "Imported"
+    },
+    "unnamed": "(no name)",
+    "noExpiry": "Not set",
+    "lifetime": "Lifetime",
+    "errorItem": "Error: {message}",
+    "warningItem": "Note: {message}",
+    "submit": "Import",
+    "submitCount": "{count, plural, one {Import {shown} warranty} other {Import {shown} warranties}}",
+    "toasts": {
+      "imported": "{count, plural, one {{shown} warranty imported} other {{shown} warranties imported}}",
+      "failed": "The warranties could not be imported"
     }
   }
 }

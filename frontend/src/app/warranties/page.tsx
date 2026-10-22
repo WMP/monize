@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
-import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, ArrowUpTrayIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -21,7 +21,9 @@ import { Modal } from '@/components/ui/Modal';
 import { SummaryCard, SummaryIcons } from '@/components/ui/SummaryCard';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
+import { WarrantyImportDialog } from '@/components/warranties/WarrantyImportDialog';
 import { WarrantyList } from '@/components/warranties/WarrantyList';
+import { exportWarrantiesCsv } from '@/components/warranties/warranty-csv-export';
 import type { WarrantyPrefill } from '@/components/warranties/WarrantyForm';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useFormModal } from '@/hooks/useFormModal';
@@ -165,6 +167,31 @@ function WarrantiesContent() {
   } = useFormModal<Warranty>();
   const [prefill, setPrefill] = useState<WarrantyPrefill | undefined>(undefined);
   const [deleteTarget, setDeleteTarget] = useState<Warranty | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  // The export is every warranty the current filter matches, fetched page by
+  // page: the page holds only the rows on screen.
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const rows = await warrantiesApi.listAll({
+        status,
+        q: q || undefined,
+        archived,
+        sort,
+        transactionId: transactionFilter ?? undefined,
+      });
+      const today = rows[0]?.today;
+      exportWarrantiesCsv(rows, today ? `warranties-${today}` : 'warranties');
+      toast.success(t('page.toasts.exported', { count: rows.length, shown: formatNumber(rows.length, 0) }));
+    } catch (error) {
+      logger.error(error);
+      toast.error(getErrorMessage(error, t('page.toasts.exportFailed')));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const openNew = useCallback(() => {
     setPrefill(undefined);
@@ -324,12 +351,30 @@ function WarrantiesContent() {
         stale={isStale}
         readOnly={readOnly}
         toolbarActions={
-          readOnly ? undefined : (
-            <button type="button" onClick={openNew} className={LIST_TOOLBAR_BUTTON_CLASS}>
-              <PlusIcon className="h-4 w-4 mr-1" aria-hidden="true" />
-              {t('page.newButton')}
+          <>
+            {/* A read, so a delegate exports too; adding and importing are the owner's. */}
+            <button
+              type="button"
+              onClick={() => void handleExport()}
+              disabled={exporting || pagination?.total === 0}
+              className={LIST_TOOLBAR_BUTTON_CLASS}
+            >
+              <ArrowDownTrayIcon className="h-4 w-4 mr-1" aria-hidden="true" />
+              {t('page.exportButton')}
             </button>
-          )
+            {readOnly ? undefined : (
+              <>
+                <button type="button" onClick={() => setImportOpen(true)} className={LIST_TOOLBAR_BUTTON_CLASS}>
+                  <ArrowUpTrayIcon className="h-4 w-4 mr-1" aria-hidden="true" />
+                  {t('page.importButton')}
+                </button>
+                <button type="button" onClick={openNew} className={LIST_TOOLBAR_BUTTON_CLASS}>
+                  <PlusIcon className="h-4 w-4 mr-1" aria-hidden="true" />
+                  {t('page.newButton')}
+                </button>
+              </>
+            )}
+          </>
         }
         onOpen={openDetail}
         onEdit={openEdit}
@@ -472,6 +517,17 @@ function WarrantiesContent() {
           />
         </Modal>
         <UnsavedChangesDialog {...unsavedChangesDialog} />
+
+        {!readOnly && (
+          <WarrantyImportDialog
+            isOpen={importOpen}
+            onClose={() => setImportOpen(false)}
+            onImported={() => {
+              setImportOpen(false);
+              reload();
+            }}
+          />
+        )}
 
         <ConfirmDialog
           isOpen={deleteTarget !== null}

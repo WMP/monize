@@ -3,6 +3,8 @@
     "title": "[XX-Warranties-XX]",
     "subtitle": "[XX-What you bought, when its cover ends, and who sold it-XX]",
     "newButton": "[XX-Add warranty-XX]",
+    "exportButton": "[XX-Export CSV-XX]",
+    "importButton": "[XX-Import CSV-XX]",
     "loading": "[XX-Loading warranties...-XX]",
     "loadFailed": "[XX-Your warranties could not be loaded.-XX]",
     "retry": "[XX-Try again-XX]",
@@ -61,7 +63,9 @@
       "deleteFailed": "[XX-The warranty could not be deleted-XX]",
       "archiveFailed": "[XX-The warranty could not be archived-XX]",
       "unarchiveFailed": "[XX-The warranty could not be restored-XX]",
-      "prefillFailed": "[XX-That transaction could not be loaded, so the warranty starts blank-XX]"
+      "prefillFailed": "[XX-That transaction could not be loaded, so the warranty starts blank-XX]",
+      "exported": "[XX-{count, plural, one {{shown} warranty exported} other {{shown} warranties exported}}-XX]",
+      "exportFailed": "[XX-The warranties could not be exported-XX]"
     }
   },
   "status": {
@@ -236,6 +240,43 @@
       "createFailed": "[XX-The claim could not be added-XX]",
       "updateFailed": "[XX-The claim could not be updated-XX]",
       "deleteFailed": "[XX-The claim could not be deleted-XX]"
+    }
+  },
+  "import": {
+    "title": "[XX-Import warranties from CSV-XX]",
+    "description": "[XX-A CSV file in Warracker's columns, such as one exported from Warracker or from this page. You see every row before anything is saved.-XX]",
+    "fileLabel": "[XX-CSV file-XX]",
+    "chooseFile": "[XX-Choose file-XX]",
+    "noFileChosen": "[XX-No file chosen-XX]",
+    "checking": "[XX-Checking the file...-XX]",
+    "previewFailed": "[XX-The file could not be checked-XX]",
+    "summary": "[XX-{count, plural, one {{valid} of {total} row can be imported.} other {{valid} of {total} rows can be imported.}}-XX]",
+    "invalidSummary": "[XX-{count, plural, one {{shown} row is invalid and cannot be imported as written.} other {{shown} rows are invalid and cannot be imported as written.}}-XX]",
+    "skipInvalid": "[XX-Skip the invalid rows and import the rest-XX]",
+    "nothingToImport": "[XX-Fix the file and choose it again.-XX]",
+    "skippedColumns": "[XX-Columns not imported:-XX]",
+    "columns": {
+      "line": "[XX-Line-XX]",
+      "name": "[XX-Name-XX]",
+      "expires": "[XX-Expires-XX]",
+      "outcome": "[XX-Result-XX]",
+      "problems": "[XX-Problems-XX]"
+    },
+    "outcome": {
+      "valid": "[XX-Ready-XX]",
+      "invalid": "[XX-Invalid-XX]",
+      "created": "[XX-Imported-XX]"
+    },
+    "unnamed": "[XX-(no name)-XX]",
+    "noExpiry": "[XX-Not set-XX]",
+    "lifetime": "[XX-Lifetime-XX]",
+    "errorItem": "[XX-Error: {message}-XX]",
+    "warningItem": "[XX-Note: {message}-XX]",
+    "submit": "[XX-Import-XX]",
+    "submitCount": "[XX-{count, plural, one {Import {shown} warranty} other {Import {shown} warranties}}-XX]",
+    "toasts": {
+      "imported": "[XX-{count, plural, one {{shown} warranty imported} other {{shown} warranties imported}}-XX]",
+      "failed": "[XX-The warranties could not be imported-XX]"
     }
   }
 }
