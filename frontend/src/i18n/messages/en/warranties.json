@@ -1,0 +1,153 @@
+{
+  "page": {
+    "title": "Warranties",
+    "subtitle": "What you bought, when its cover ends, and who sold it",
+    "newButton": "Add warranty",
+    "loading": "Loading warranties...",
+    "loadFailed": "Your warranties could not be loaded.",
+    "retry": "Try again",
+    "summary": {
+      "active": "Active",
+      "expiring": "Expiring soon",
+      "expired": "Expired",
+      "lifetime": "Lifetime",
+      "unavailable": "Not loaded",
+      "expiringHint": "Within {days} days"
+    },
+    "filters": {
+      "label": "Filter by status",
+      "all": "All",
+      "expiring": "Expiring",
+      "active": "Active",
+      "expired": "Expired",
+      "lifetime": "Lifetime"
+    },
+    "search": {
+      "label": "Search warranties",
+      "placeholder": "Search name, vendor, model or serial number"
+    },
+    "archivedToggle": "Show archived",
+    "transactionChip": {
+      "label": "Warranties for one transaction",
+      "clear": "Show all warranties"
+    },
+    "pager": {
+      "itemName": "warranties",
+      "total": "{count, plural, one {{total} warranty} other {{total} warranties}}"
+    },
+    "empty": {
+      "title": "No warranties yet",
+      "description": "Add a warranty to keep track of when its cover ends.",
+      "filteredTitle": "No warranties match",
+      "filteredDescription": "Try another status, or clear the search.",
+      "archivedTitle": "No archived warranties"
+    },
+    "modal": {
+      "newTitle": "New warranty",
+      "editTitle": "Edit warranty"
+    },
+    "delete": {
+      "title": "Delete warranty",
+      "message": "Delete \"{name}\"? Its claims and documents are deleted with it, and this cannot be undone."
+    },
+    "toasts": {
+      "created": "Warranty added",
+      "updated": "Warranty updated",
+      "deleted": "Warranty deleted",
+      "archived": "Warranty archived",
+      "unarchived": "Warranty restored",
+      "createFailed": "The warranty could not be added",
+      "updateFailed": "The warranty could not be updated",
+      "deleteFailed": "The warranty could not be deleted",
+      "archiveFailed": "The warranty could not be archived",
+      "unarchiveFailed": "The warranty could not be restored",
+      "prefillFailed": "That transaction could not be loaded, so the warranty starts blank"
+    }
+  },
+  "status": {
+    "lifetime": "Lifetime",
+    "active": "Active",
+    "expiring": "Expiring soon",
+    "expired": "Expired"
+  },
+  "daysLeft": {
+    "left": "{count, plural, one {{days} day left} other {{days} days left}}",
+    "today": "Expires today",
+    "ago": "{count, plural, one {Expired {days} day ago} other {Expired {days} days ago}}"
+  },
+  "kind": {
+    "manufacturer": "Manufacturer",
+    "extended": "Extended",
+    "store": "Store",
+    "other": "Other"
+  },
+  "list": {
+    "columns": {
+      "name": "Name",
+      "status": "Status",
+      "expiresOn": "Expires",
+      "purchaseDate": "Purchased",
+      "price": "Price",
+      "documents": "Documents",
+      "claims": "Open claims",
+      "actions": "Actions"
+    },
+    "sortLabel": "Sort by",
+    "lifetime": "Lifetime",
+    "noPrice": "None",
+    "actions": {
+      "archive": "Archive",
+      "unarchive": "Unarchive"
+    }
+  },
+  "form": {
+    "nameLabel": "Name",
+    "namePlaceholder": "What you bought",
+    "vendorLabel": "Vendor",
+    "vendorPlaceholder": "Select or type a vendor",
+    "modelLabel": "Model number",
+    "serialsLabel": "Serial numbers",
+    "serialLabel": "Serial number {index}",
+    "addSerial": "Add serial number",
+    "removeSerial": "Remove serial number {index}",
+    "serialsLimit": "Up to {max} serial numbers",
+    "kindLabel": "Warranty type",
+    "purchaseDateLabel": "Purchase date",
+    "expiry": {
+      "label": "Cover ends",
+      "date": "On a date",
+      "duration": "After a duration",
+      "lifetime": "Never",
+      "expiresOnLabel": "Expires on",
+      "years": "Years",
+      "months": "Months",
+      "days": "Days",
+      "computed": "Expires on {date}",
+      "needsPurchaseDate": "Enter the purchase date to work out when it ends",
+      "lifetimeHint": "A lifetime warranty has no end date and no reminder"
+    },
+    "priceLabel": "Purchase price",
+    "productUrlLabel": "Product page",
+    "productUrlPlaceholder": "https://",
+    "notesLabel": "Notes",
+    "submitCreate": "Add warranty",
+    "submitUpdate": "Save changes"
+  },
+  "validation": {
+    "nameRequired": "Enter a name",
+    "nameTooLong": "Use 200 characters or fewer",
+    "vendorTooLong": "Use 200 characters or fewer",
+    "modelTooLong": "Use 100 characters or fewer",
+    "serialTooLong": "Use 100 characters or fewer for each serial number",
+    "serialsTooMany": "Up to 10 serial numbers",
+    "purchaseDateRequired": "Enter the purchase date",
+    "expiresOnRequired": "Enter the date the warranty ends",
+    "expiresBeforePurchase": "The warranty cannot end before the purchase date",
+    "durationRequired": "Enter a duration longer than zero",
+    "priceNegative": "The price cannot be negative",
+    "priceNeedsCurrency": "Choose the currency of the price",
+    "urlInvalid": "Enter a web address starting with http:// or https://",
+    "urlTooLong": "Use 500 characters or fewer",
+    "notesTooLong": "Use 2000 characters or fewer"
+  }
+}
