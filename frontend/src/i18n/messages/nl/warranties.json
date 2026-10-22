@@ -179,6 +179,7 @@
     "transaction": {
       "title": "Aankoop",
       "open": "Transactie van {date} openen: {payee}, {amount}",
+      "dateInAccount": "{date} · {account}",
       "none": "Geen gekoppelde transactie",
       "unreadable": "De aankoop staat op een rekening die je niet mag lezen.",
       "noPayee": "Geen begunstigde"
@@ -188,6 +189,8 @@
     "title": "Documenten",
     "empty": "Nog geen documenten",
     "kindLabel": "Soort document",
+    "kindFor": "Soort document voor {name}",
+    "kindUpdateFailed": "Soort document wijzigen mislukt",
     "kinds": {
       "receipt": "Bon",
       "manual": "Handleiding",

@@ -17,6 +17,8 @@
   "tooLarge": "檔案過大（最大 {max}）",
   "unsupported": "不支援的檔案類型。允許：圖片或 PDF",
   "tooMany": "每筆交易最多 {max} 個附件",
+  "fromWarranty": "來自保固：{name}",
+  "fromLinkedWarranty": "來自連結的保固",
   "scan": {
     "button": "掃描文件",
     "title": "掃描文件",

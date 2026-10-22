@@ -17,6 +17,8 @@
   "tooLarge": "Tệp quá lớn (tối đa {max})",
   "unsupported": "Loại tệp không được hỗ trợ. Cho phép: hình ảnh hoặc PDF",
   "tooMany": "Tối đa {max} tệp đính kèm cho mỗi giao tác",
+  "fromWarranty": "Từ bảo hành: {name}",
+  "fromLinkedWarranty": "Từ một bảo hành được liên kết",
   "scan": {
     "button": "Quét tài liệu",
     "title": "Quét tài liệu",

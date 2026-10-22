@@ -179,6 +179,7 @@
     "transaction": {
       "title": "購買紀錄",
       "open": "開啟 {date} 的交易：{payee}，{amount}",
+      "dateInAccount": "{date} · {account}",
       "none": "沒有連結的交易",
       "unreadable": "此購買紀錄位於您無權讀取的帳戶中。",
       "noPayee": "無收款人"
@@ -188,6 +189,8 @@
     "title": "文件",
     "empty": "尚無文件",
     "kindLabel": "文件類型",
+    "kindFor": "{name} 的文件類型",
+    "kindUpdateFailed": "變更文件類型失敗",
     "kinds": {
       "receipt": "收據",
       "manual": "使用手冊",

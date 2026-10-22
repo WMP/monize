@@ -17,6 +17,8 @@
   "tooLarge": "Datei ist zu groß (maximal {max})",
   "unsupported": "Nicht unterstützter Dateityp. Erlaubt: Bilder oder PDF",
   "tooMany": "Maximal {max} Anhänge pro Transaktion",
+  "fromWarranty": "Aus der Garantie: {name}",
+  "fromLinkedWarranty": "Aus einer verknüpften Garantie",
   "scan": {
     "button": "Dokument scannen",
     "title": "Dokument scannen",

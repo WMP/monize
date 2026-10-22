@@ -17,6 +17,8 @@
   "tooLarge": "El archivo es demasiado grande (máximo {max})",
   "unsupported": "Tipo de archivo no admitido. Se permiten: imágenes o PDF",
   "tooMany": "Máximo {max} adjuntos por transacción",
+  "fromWarranty": "De la garantía: {name}",
+  "fromLinkedWarranty": "De una garantía vinculada",
   "scan": {
     "button": "Escanear documento",
     "title": "Escanear documento",

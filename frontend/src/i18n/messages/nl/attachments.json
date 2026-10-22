@@ -17,6 +17,8 @@
   "tooLarge": "Bestand is te groot (maximaal {max})",
   "unsupported": "Niet-ondersteund bestandstype. Toegestaan: afbeeldingen of PDF",
   "tooMany": "Maximaal {max} bijlagen per transactie",
+  "fromWarranty": "Uit garantie: {name}",
+  "fromLinkedWarranty": "Uit een gekoppelde garantie",
   "scan": {
     "button": "Document scannen",
     "title": "Document scannen",

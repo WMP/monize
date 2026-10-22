@@ -179,6 +179,7 @@
     "transaction": {
       "title": "Zakup",
       "open": "Otwórz transakcję z {date}: {payee}, {amount}",
+      "dateInAccount": "{date} · {account}",
       "none": "Brak powiązanej transakcji",
       "unreadable": "Zakup znajduje się na koncie, którego nie możesz odczytać.",
       "noPayee": "Brak odbiorcy"
@@ -188,6 +189,8 @@
     "title": "Dokumenty",
     "empty": "Nie ma jeszcze dokumentów",
     "kindLabel": "Rodzaj dokumentu",
+    "kindFor": "Rodzaj dokumentu dla {name}",
+    "kindUpdateFailed": "Nie udało się zmienić rodzaju dokumentu",
     "kinds": {
       "receipt": "Paragon",
       "manual": "Instrukcja",

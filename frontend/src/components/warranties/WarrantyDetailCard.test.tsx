@@ -1,8 +1,31 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@/test/render';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
+import { render, screen, cleanup, act } from '@/test/render';
 import { useAuthStore } from '@/store/authStore';
 import type { Warranty } from '@/types/warranty';
 import { WarrantyDetailCard } from './WarrantyDetailCard';
+
+const mockGetPayee = vi.fn();
+vi.mock('@/lib/payees', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/payees')>()),
+  payeesApi: { getById: (...args: unknown[]) => mockGetPayee(...args) },
+}));
+const mockGetAccounts = vi.fn();
+vi.mock('@/lib/accounts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/accounts')>()),
+  accountsApi: { getAll: (...args: unknown[]) => mockGetAccounts(...args) },
+}));
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }),
+}));
+
+/** Renders and lets the payee and account reads settle. */
+async function renderCard(w: Warranty) {
+  let result!: ReturnType<typeof render>;
+  await act(async () => {
+    result = render(<WarrantyDetailCard warranty={w} />);
+  });
+  return result;
+}
 
 function warranty(overrides: Partial<Warranty> = {}): Warranty {
   return {
@@ -44,13 +67,20 @@ function warranty(overrides: Partial<Warranty> = {}): Warranty {
 }
 
 describe('WarrantyDetailCard', () => {
+  beforeEach(() => {
+    mockGetPayee.mockReset();
+    mockGetPayee.mockResolvedValue({ id: 'p-1', name: 'Best Buy', hasLogo: true });
+    mockGetAccounts.mockReset();
+    mockGetAccounts.mockResolvedValue([{ id: 'acc-1', name: 'Visa' }]);
+  });
+
   afterEach(() => {
     cleanup();
     useAuthStore.setState({ actingAsUserId: null });
   });
 
-  it('shows what the warranty is from the server view', () => {
-    render(<WarrantyDetailCard warranty={warranty()} />);
+  it('shows what the warranty is from the server view', async () => {
+    await renderCard(warranty());
     expect(screen.getByText('711 days left')).toBeInTheDocument();
     expect(screen.getByText('Extended')).toBeInTheDocument();
     expect(screen.getByText('XPS-13')).toBeInTheDocument();
@@ -60,47 +90,38 @@ describe('WarrantyDetailCard', () => {
     expect(screen.getByText('Keep the box')).toBeInTheDocument();
   });
 
-  it('links the vendor to its payee, and leaves a typed vendor as text', () => {
-    const { rerender } = render(<WarrantyDetailCard warranty={warranty()} />);
+  it('links the vendor to its payee, and leaves a typed vendor as text', async () => {
+    await renderCard(warranty());
     expect(screen.getByRole('link', { name: 'Best Buy' })).toHaveAttribute('href', '/payees/p-1');
 
-    rerender(
-      <WarrantyDetailCard
-        warranty={warranty({ payeeId: null, vendorName: 'Corner shop', linkedTransaction: null, transactionId: undefined })}
-      />,
-    );
+    cleanup();
+    await renderCard(warranty({ payeeId: null, vendorName: 'Corner shop', linkedTransaction: null, transactionId: undefined }));
     expect(screen.getByText('Corner shop')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Corner shop' })).not.toBeInTheDocument();
   });
 
-  it('opens the product page in a new tab without a handle on this one', () => {
-    render(<WarrantyDetailCard warranty={warranty()} />);
+  it('opens the product page in a new tab without a handle on this one', async () => {
+    await renderCard(warranty());
     const link = screen.getByRole('link', { name: /example\.com\/laptop/ });
     expect(link).toHaveAttribute('href', 'https://example.com/laptop');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
-  it('never makes a link of an address that is not http or https', () => {
-    render(<WarrantyDetailCard warranty={warranty({ productUrl: 'javascript:alert(1)' })} />);
+  it('never makes a link of an address that is not http or https', async () => {
+    await renderCard(warranty({ productUrl: 'javascript:alert(1)' }));
     expect(screen.getByText('javascript:alert(1)')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /javascript/ })).not.toBeInTheDocument();
   });
 
-  it('says Lifetime with no days left for a lifetime warranty', () => {
-    render(
-      <WarrantyDetailCard
-        warranty={warranty({ isLifetime: true, expiresOn: null, status: 'lifetime', daysLeft: null })}
-      />,
-    );
+  it('says Lifetime with no days left for a lifetime warranty', async () => {
+    await renderCard(warranty({ isLifetime: true, expiresOn: null, status: 'lifetime', daysLeft: null }));
     expect(screen.getByText('Lifetime')).toBeInTheDocument();
     expect(screen.queryByText('Time left')).not.toBeInTheDocument();
   });
 
-  it('says None for the fields that are not filled in', () => {
-    render(
-      <WarrantyDetailCard
-        warranty={warranty({
+  it('says None for the fields that are not filled in', async () => {
+    await renderCard(warranty({
           vendorName: null,
           payeeId: null,
           modelNumber: null,
@@ -109,50 +130,101 @@ describe('WarrantyDetailCard', () => {
           currencyCode: null,
           productUrl: null,
           notes: null,
-        })}
-      />,
-    );
+        }));
     expect(screen.getAllByText('None')).toHaveLength(6);
   });
 
-  it('links the purchase to the register with its date, payee and amount in its currency', () => {
-    render(<WarrantyDetailCard warranty={warranty()} />);
+  it('links the purchase to the register with its date, payee and amount in its currency', async () => {
+    await renderCard(warranty());
     const link = screen.getByRole('link', {
       name: 'Open the transaction of 10/01/2026: Best Buy, -$1,299.99 CAD',
     });
     expect(link).toHaveAttribute('href', '/transactions?targetTransactionId=tx-1');
   });
 
-  it('says there is no linked transaction when the owner has none', () => {
-    render(<WarrantyDetailCard warranty={warranty({ transactionId: undefined, linkedTransaction: null })} />);
+  it('says there is no linked transaction when the owner has none', async () => {
+    await renderCard(warranty({ transactionId: undefined, linkedTransaction: null }));
     expect(screen.getByText('No linked transaction')).toBeInTheDocument();
     expect(screen.queryByText(/cannot read/)).not.toBeInTheDocument();
   });
 
-  it('tells a delegate the purchase is in an account they cannot read, not that there is none', () => {
+  it('tells a delegate the purchase is in an account they cannot read, not that there is none', async () => {
     useAuthStore.setState({ actingAsUserId: 'owner-1' });
-    render(
-      <WarrantyDetailCard
-        warranty={warranty({ transactionId: undefined, linkedTransaction: null, linkedTransactionHidden: true })}
-      />,
-    );
+    await renderCard(warranty({ transactionId: undefined, linkedTransaction: null, linkedTransactionHidden: true }));
     expect(screen.getByText('The purchase is in an account you cannot read.')).toBeInTheDocument();
     expect(screen.queryByText('No linked transaction')).not.toBeInTheDocument();
   });
 
-  it('tells a delegate there is no linked transaction when the server says none is hidden', () => {
+  it('tells a delegate there is no linked transaction when the server says none is hidden', async () => {
     useAuthStore.setState({ actingAsUserId: 'owner-1' });
-    render(<WarrantyDetailCard warranty={warranty({ transactionId: undefined, linkedTransaction: null })} />);
+    await renderCard(warranty({ transactionId: undefined, linkedTransaction: null }));
     expect(screen.getByText('No linked transaction')).toBeInTheDocument();
     expect(screen.queryByText(/cannot read/)).not.toBeInTheDocument();
   });
 
-  it('shows a delegate the purchase when the server sent it', () => {
+  it('shows a delegate the purchase when the server sent it', async () => {
     useAuthStore.setState({ actingAsUserId: 'owner-1' });
-    render(<WarrantyDetailCard warranty={warranty()} />);
+    await renderCard(warranty());
     expect(screen.getByRole('link', { name: /Best Buy.*1,299\.99/ })).toHaveAttribute(
       'href',
       '/transactions?targetTransactionId=tx-1',
     );
+  });
+
+  describe('vendor and purchase logos', () => {
+    it("draws the vendor's logo beside the Vendor value from its payee", async () => {
+      await renderCard(warranty());
+      expect(mockGetPayee).toHaveBeenCalledWith('p-1');
+      const vendorLink = screen.getByRole('link', { name: 'Best Buy' });
+      const logo = vendorLink.parentElement?.querySelector('img');
+      expect(logo).toHaveAttribute('src', '/api/v1/payees/p-1/logo');
+    });
+
+    it('draws the initial when the payee has no logo', async () => {
+      mockGetPayee.mockResolvedValue({ id: 'p-1', name: 'Best Buy', hasLogo: false });
+      await renderCard(warranty());
+      expect(screen.queryByRole('img')).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Best Buy' }).parentElement).toHaveTextContent('BBest Buy');
+    });
+
+    it('shows a typed vendor as text alone and reads no payee', async () => {
+      await renderCard(warranty({ payeeId: null, vendorName: 'Corner shop', linkedTransaction: null, transactionId: undefined }));
+      expect(mockGetPayee).not.toHaveBeenCalled();
+      const value = screen.getByText('Corner shop');
+      expect(value.tagName).toBe('DD');
+      expect(value.children).toHaveLength(0);
+    });
+
+    it("leads with the purchase: the vendor's logo, the server's payee, date, account and amount", async () => {
+      await renderCard(warranty());
+      const block = screen.getByTestId('warranty-purchase');
+      expect(block.tagName).toBe('A');
+      expect(block.querySelector('img')).toHaveAttribute('src', '/api/v1/payees/p-1/logo');
+      expect(block).toHaveTextContent('Best Buy');
+      expect(block).toHaveTextContent('10/01/2026 · Visa');
+      expect(block).toHaveTextContent('-$1,299.99 CAD');
+      expect(mockGetAccounts).toHaveBeenCalledWith(true);
+    });
+
+    it('shows the date alone when the account cannot be read', async () => {
+      mockGetAccounts.mockRejectedValue(new Error('boom'));
+      await renderCard(warranty());
+      const block = screen.getByTestId('warranty-purchase');
+      expect(block).toHaveTextContent('10/01/2026');
+      expect(block).not.toHaveTextContent('·');
+    });
+
+    it('keeps the block shape, with a placeholder, for no purchase and a hidden one', async () => {
+      await renderCard(warranty({ transactionId: undefined, linkedTransaction: null }));
+      let block = screen.getByTestId('warranty-purchase');
+      expect(block.tagName).toBe('DIV');
+      expect(block).toHaveTextContent('No linked transaction');
+      cleanup();
+      await renderCard(warranty({ transactionId: undefined, linkedTransaction: null, linkedTransactionHidden: true }));
+      block = screen.getByTestId('warranty-purchase');
+      expect(block).toHaveTextContent('The purchase is in an account you cannot read.');
+      expect(block.querySelector('img')).toBeNull();
+      expect(mockGetAccounts).not.toHaveBeenCalled();
+    });
   });
 });

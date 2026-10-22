@@ -18,7 +18,9 @@ export type AttachmentParent = { transactionId: string } | { warrantyId: string 
 /**
  * Metadata for a file attached to a transaction or a warranty. The bytes
  * themselves are never part of this payload -- they are fetched from the
- * download endpoint. Exactly one of `transactionId` and `warrantyId` is set.
+ * download endpoint. Exactly one of `transactionId` and `warrantyId` is set,
+ * so a row with `warrantyId` in a transaction's list is a linked warranty's
+ * document, not the transaction's own.
  */
 export interface Attachment {
   id: string;
@@ -39,6 +41,13 @@ export interface Attachment {
    * way.
    */
   originalAttachmentId?: string | null;
+  /**
+   * The warranty's name on a row that is one of its documents. A
+   * transaction's list carries the documents of every warranty linked to it
+   * after its own rows, and this is what labels them; `null` on a
+   * transaction's own row.
+   */
+  warrantyName?: string | null;
 }
 
 /** Client-side limits mirroring the server (server remains authoritative). */

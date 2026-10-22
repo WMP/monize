@@ -56,6 +56,11 @@ vi.mock('next/dynamic', () => ({
                 Form add warranty
               </button>
             )}
+            {props.onOpenWarranty && (
+              <button data-testid="form-open-warranty" onClick={() => props.onOpenWarranty('w-9')}>
+                Form open warranty
+              </button>
+            )}
             {props.onDirtyChange && (
               <button data-testid="form-make-dirty" onClick={() => props.onDirtyChange(true)}>
                 Make dirty
@@ -1895,6 +1900,30 @@ describe('TransactionsPage', () => {
         await waitFor(() =>
           expect(mockPush).toHaveBeenCalledWith('/warranties?new=1&transactionId=tx-1'),
         );
+      });
+
+      // A linked warranty in the window's Warranties line: a bare link was
+      // undone by the closing Modal's history.back(), landing on Transactions.
+      it('opens a linked warranty by closing the window first', async () => {
+        await openEditWindow();
+        fireEvent.click(screen.getByTestId('form-open-warranty'));
+        expect(screen.queryByTestId('unsaved-dialog')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('dynamic-transaction-form')).not.toBeInTheDocument();
+        expect(mockPush).not.toHaveBeenCalled();
+        await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/warranties/w-9'));
+      });
+
+      it('asks about unsaved edits before opening a linked warranty', async () => {
+        await openEditWindow();
+        fireEvent.click(screen.getByTestId('form-make-dirty'));
+        fireEvent.click(screen.getByTestId('form-open-warranty'));
+        expect(screen.getByTestId('unsaved-dialog')).toBeInTheDocument();
+        expect(screen.getByTestId('dynamic-transaction-form')).toBeInTheDocument();
+        await new Promise((r) => setTimeout(r, 150));
+        expect(mockPush).not.toHaveBeenCalled();
+        fireEvent.click(screen.getByTestId('unsaved-discard'));
+        expect(screen.queryByTestId('dynamic-transaction-form')).not.toBeInTheDocument();
+        await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/warranties/w-9'));
       });
     });
 

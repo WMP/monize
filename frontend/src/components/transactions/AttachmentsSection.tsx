@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { Badge } from '@/components/ui/Badge';
@@ -205,9 +205,57 @@ function DocumentKindPicker({
 }
 
 /**
+ * The documents of one linked warranty, as a transaction's list carries them
+ * after its own rows.
+ */
+interface WarrantyDocumentGroup {
+  warrantyId: string;
+  warrantyName: string | null;
+  attachments: Attachment[];
+}
+
+/**
+ * Splits a transaction's list into its own rows and the documents of each
+ * linked warranty, in the order the server sent them. A warranty's own list
+ * is all its own rows.
+ */
+function splitByOwner(
+  list: Attachment[],
+  isWarranty: boolean,
+): { own: Attachment[]; groups: WarrantyDocumentGroup[] } {
+  if (isWarranty) return { own: list, groups: [] };
+  const own: Attachment[] = [];
+  const groups: WarrantyDocumentGroup[] = [];
+  for (const attachment of list) {
+    if (attachment.warrantyId === null) {
+      own.push(attachment);
+      continue;
+    }
+    let group = groups.find((g) => g.warrantyId === attachment.warrantyId);
+    if (!group) {
+      group = {
+        warrantyId: attachment.warrantyId,
+        warrantyName: attachment.warrantyName ?? null,
+        attachments: [],
+      };
+      groups.push(group);
+    }
+    group.attachments.push(attachment);
+  }
+  return { own, groups };
+}
+
+/**
  * Lists, uploads, and deletes the saved attachments of one parent: a
  * transaction, or a warranty (whose rows also say what kind of document each
- * one is).
+ * one is, and let the owner change it).
+ *
+ * A transaction's list also carries the documents of every warranty linked to
+ * it, after its own rows and grouped under the warranty's name: previewed and
+ * deleted the same way, with their kind shown but not edited here (that is the
+ * warranty page's), and never counted against the per-transaction cap, which
+ * is the transaction's own rows only. The register's paperclip count comes
+ * from the same server rule, so the two agree.
  */
 function SavedAttachments({
   parentKind,
@@ -224,6 +272,7 @@ function SavedAttachments({
   const tw = useTranslations('warranties');
   const tc = useTranslations('common');
   const { formatBytes } = useNumberFormat();
+  const groupIdPrefix = useId();
   const isWarranty = parentKind === 'warranty';
   const parent = useMemo<AttachmentParent>(
     () =>
@@ -283,10 +332,16 @@ function SavedAttachments({
 
   /** The list the cap is checked against: only one that loaded. */
   const known = loadFailed ? null : attachments;
+  const split = useMemo(
+    () => (known === null ? null : splitByOwner(known, isWarranty)),
+    [known, isWarranty],
+  );
+  /** The rows the cap counts: this parent's own, never a warranty's documents. */
+  const ownCount = split === null ? null : split.own.length;
 
   const handleFileSelected = async (file: File) => {
-    if (known === null) return;
-    const error = validateSelection(file, known.length, t, formatBytes);
+    if (ownCount === null) return;
+    const error = validateSelection(file, ownCount, t, formatBytes);
     if (error) {
       toast.error(error);
       return;
@@ -324,8 +379,8 @@ function SavedAttachments({
    * path unreachable outside its unit test.
    */
   const handleScanSelected = (file: File) => {
-    if (known === null) return;
-    if (known.length >= MAX_ATTACHMENTS_PER_TRANSACTION) {
+    if (ownCount === null) return;
+    if (ownCount >= MAX_ATTACHMENTS_PER_TRANSACTION) {
       toast.error(t('tooMany', { max: MAX_ATTACHMENTS_PER_TRANSACTION }));
       return;
     }
@@ -364,7 +419,136 @@ function SavedAttachments({
     }
   };
 
-  const atLimit = known !== null && known.length >= MAX_ATTACHMENTS_PER_TRANSACTION;
+  /**
+   * A warranty document's kind, changed on the spot and put back if the
+   * server refuses. Each write touches only a row still showing the kind this
+   * change set, so a quicker second change is never overwritten by the
+   * first one's answer.
+   */
+  const handleKindChange = async (attachment: Attachment, kind: DocumentKind) => {
+    const previous = attachment.documentKind;
+    if (kind === previous) return;
+    const setKindIf = (expected: DocumentKind, next: DocumentKind) =>
+      setAttachments((prev) =>
+        prev === null
+          ? prev
+          : prev.map((row) =>
+              row.id === attachment.id && row.documentKind === expected
+                ? { ...row, documentKind: next }
+                : row,
+            ),
+      );
+    setKindIf(previous, kind);
+    try {
+      const updated = await attachmentsApi.updateDocumentKind(attachment.id, kind);
+      setKindIf(kind, updated.documentKind);
+    } catch (error) {
+      setKindIf(kind, previous);
+      toast.error(getErrorMessage(error, tw('documents.kindUpdateFailed')));
+    }
+  };
+
+  const atLimit = ownCount !== null && ownCount >= MAX_ATTACHMENTS_PER_TRANSACTION;
+
+  /**
+   * One saved row. The kind is a picker on the owner's view of a warranty's
+   * documents, a badge on the delegate's and on a warranty document seen from
+   * its transaction, and absent on a transaction's own row (always `other`).
+   */
+  const renderRow = (attachment: Attachment) => {
+    const isImage = attachment.contentType.startsWith('image/');
+    const showThumb = isImage && !erroredImages[attachment.id];
+    const isWarrantyDocument = isWarranty || attachment.warrantyId !== null;
+    const kindEditable = isWarranty && !readOnly;
+    return (
+      <li
+        key={attachment.id}
+        className="flex items-center gap-3 rounded-md border border-gray-200 dark:border-gray-700 p-2"
+      >
+        {/* The row is the preview trigger: thumbnail, name and size
+            in one button, with the filename as its accessible name.
+            Delete stays a sibling -- a control inside a button is
+            a control nobody can reach. */}
+        <button
+          type="button"
+          onClick={() => setPreview({ kind: 'saved', attachment })}
+          aria-label={t('preview.open', { name: attachment.filename })}
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          {showThumb ? (
+            // Served from our own backend; next/image adds no value and
+            // cannot follow the onError fallback.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={attachmentDownloadUrl(attachment.id)}
+              alt=""
+              loading="lazy"
+              className="h-10 w-10 shrink-0 rounded object-cover"
+              onError={() =>
+                setErroredImages((prev) => ({
+                  ...prev,
+                  [attachment.id]: true,
+                }))
+              }
+            />
+          ) : (
+            <span
+              aria-hidden="true"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-gray-100 dark:bg-gray-700 text-lg"
+            >
+              {attachment.contentType === 'application/pdf' ? '📄' : '📎'}
+            </span>
+          )}
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm text-blue-600 dark:text-blue-400 hover:underline">
+              {attachment.filename}
+            </span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {formatBytes(attachment.byteSize)}
+            </span>
+          </span>
+        </button>
+        {kindEditable && (
+          <div className="w-28 shrink-0">
+            <Select
+              id={`document-kind-select-${attachment.id}`}
+              aria-label={tw('documents.kindFor', { name: attachment.filename })}
+              value={attachment.documentKind}
+              className="py-1 text-xs"
+              options={DOCUMENT_KINDS.map((kind) => ({
+                value: kind,
+                label: tw(`documents.kinds.${kind}`),
+              }))}
+              onChange={(event) =>
+                void handleKindChange(attachment, event.target.value as DocumentKind)
+              }
+            />
+          </div>
+        )}
+        {isWarrantyDocument && !kindEditable && (
+          <Badge
+            variant="gray"
+            data-testid={`document-kind-${attachment.id}`}
+            className="shrink-0"
+          >
+            {tw(`documents.kinds.${attachment.documentKind}`)}
+          </Badge>
+        )}
+        {!readOnly && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label={t('delete')}
+            className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+            onClick={() => setDeleteTarget(attachment)}
+          >
+            {t('delete')}
+          </Button>
+        )}
+      </li>
+    );
+  };
 
   let body;
   if (loadFailed) {
@@ -429,83 +613,37 @@ function SavedAttachments({
       )}
 
       {body ?? (
-        <ul className="space-y-2">
-          {(known ?? []).map((attachment) => {
-            const isImage = attachment.contentType.startsWith('image/');
-            const showThumb = isImage && !erroredImages[attachment.id];
+        <>
+          {split !== null && split.own.length > 0 && (
+            <ul className="space-y-2">
+              {split.own.map((attachment) => renderRow(attachment))}
+            </ul>
+          )}
+          {split?.groups.map((group) => {
+            const headingId = `${groupIdPrefix}-warranty-${group.warrantyId}`;
             return (
-              <li
-                key={attachment.id}
-                className="flex items-center gap-3 rounded-md border border-gray-200 dark:border-gray-700 p-2"
+              <div
+                key={group.warrantyId}
+                role="group"
+                aria-labelledby={headingId}
+                data-testid={`warranty-documents-${group.warrantyId}`}
+                className="space-y-2"
               >
-                {/* The row is the preview trigger: thumbnail, name and size
-                    in one button, with the filename as its accessible name.
-                    Delete stays a sibling -- a control inside a button is
-                    a control nobody can reach. */}
-                <button
-                  type="button"
-                  onClick={() => setPreview({ kind: 'saved', attachment })}
-                  aria-label={t('preview.open', { name: attachment.filename })}
-                  className="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                <h3
+                  id={headingId}
+                  className="pt-1 text-xs font-medium text-gray-500 dark:text-gray-400"
                 >
-                  {showThumb ? (
-                    // Served from our own backend; next/image adds no value and
-                    // cannot follow the onError fallback.
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={attachmentDownloadUrl(attachment.id)}
-                      alt=""
-                      loading="lazy"
-                      className="h-10 w-10 shrink-0 rounded object-cover"
-                      onError={() =>
-                        setErroredImages((prev) => ({
-                          ...prev,
-                          [attachment.id]: true,
-                        }))
-                      }
-                    />
-                  ) : (
-                    <span
-                      aria-hidden="true"
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-gray-100 dark:bg-gray-700 text-lg"
-                    >
-                      {attachment.contentType === 'application/pdf' ? '📄' : '📎'}
-                    </span>
-                  )}
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm text-blue-600 dark:text-blue-400 hover:underline">
-                      {attachment.filename}
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatBytes(attachment.byteSize)}
-                    </span>
-                  </span>
-                </button>
-                {isWarranty && (
-                  <Badge
-                    variant="gray"
-                    data-testid={`document-kind-${attachment.id}`}
-                    className="shrink-0"
-                  >
-                    {tw(`documents.kinds.${attachment.documentKind}`)}
-                  </Badge>
-                )}
-                {!readOnly && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    aria-label={t('delete')}
-                    className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                    onClick={() => setDeleteTarget(attachment)}
-                  >
-                    {t('delete')}
-                  </Button>
-                )}
-              </li>
+                  {group.warrantyName !== null
+                    ? t('fromWarranty', { name: group.warrantyName })
+                    : t('fromLinkedWarranty')}
+                </h3>
+                <ul className="space-y-2">
+                  {group.attachments.map((attachment) => renderRow(attachment))}
+                </ul>
+              </div>
             );
           })}
-        </ul>
+        </>
       )}
 
       <DocumentScanDialog

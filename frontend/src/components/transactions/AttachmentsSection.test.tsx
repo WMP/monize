@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act, cleanup } from '@/test/render';
+import { render, screen, fireEvent, waitFor, act, cleanup, within } from '@/test/render';
 import toast from 'react-hot-toast';
 import { AttachmentsSection } from './AttachmentsSection';
 import { attachmentsApi } from '@/lib/attachments';
@@ -103,12 +103,13 @@ vi.mock('./AttachmentPreviewDialog', () => ({
 // other export for the whole tree under test.
 vi.mock('@/lib/attachments', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/attachments')>()),
-  attachmentsApi: { list: vi.fn(), upload: vi.fn(), delete: vi.fn() },
+  attachmentsApi: { list: vi.fn(), upload: vi.fn(), delete: vi.fn(), updateDocumentKind: vi.fn() },
 }));
 
 const mockList = attachmentsApi.list as ReturnType<typeof vi.fn>;
 const mockUpload = attachmentsApi.upload as ReturnType<typeof vi.fn>;
 const mockDelete = attachmentsApi.delete as ReturnType<typeof vi.fn>;
+const mockUpdateKind = attachmentsApi.updateDocumentKind as ReturnType<typeof vi.fn>;
 
 function makeAttachment(overrides: Partial<Attachment> = {}): Attachment {
   return {
@@ -563,7 +564,9 @@ describe('AttachmentsSection', () => {
       await renderWarranty();
       expect(mockList).toHaveBeenCalledWith({ warrantyId: 'w-1' });
       expect(screen.getByRole('heading', { name: 'Documents' })).toBeInTheDocument();
-      expect(screen.getByTestId('document-kind-a-1')).toHaveTextContent('Manual');
+      expect(
+        screen.getByRole('combobox', { name: 'Document type for manual.pdf' }),
+      ).toHaveValue('manual');
       expect(
         screen.getByRole('button', { name: 'Preview manual.pdf' }),
       ).toBeInTheDocument();
@@ -650,6 +653,138 @@ describe('AttachmentsSection', () => {
       expect(screen.queryByTestId('document-kind-a-1')).not.toBeInTheDocument();
       expect(screen.queryByRole('heading', { name: 'Documents' })).not.toBeInTheDocument();
       expect(screen.getByText('Attachments')).toBeInTheDocument();
+    });
+
+    describe("changing a document's kind", () => {
+      it('saves the new kind and shows it at once', async () => {
+        mockList.mockResolvedValue([warrantyDoc()]);
+        let resolve: (value: Attachment) => void = () => {};
+        mockUpdateKind.mockReturnValue(new Promise((r) => { resolve = r; }));
+        await renderWarranty();
+        const picker = screen.getByRole('combobox', { name: 'Document type for manual.pdf' });
+        fireEvent.change(picker, { target: { value: 'receipt' } });
+        // Optimistic: the row reads Receipt before the server answers.
+        expect(picker).toHaveValue('receipt');
+        expect(mockUpdateKind).toHaveBeenCalledWith('a-1', 'receipt');
+        await act(async () => {
+          resolve(warrantyDoc({ documentKind: 'receipt' }));
+        });
+        expect(screen.getByRole('combobox', { name: 'Document type for manual.pdf' })).toHaveValue('receipt');
+        expect(toast.error).not.toHaveBeenCalled();
+        // The upload picker is a different control and is left alone.
+        expect(screen.getByLabelText('Document type')).toHaveValue('other');
+      });
+
+      it('puts the old kind back and says so when the server refuses', async () => {
+        mockList.mockResolvedValue([warrantyDoc()]);
+        // No server message, so the toast is the section's own.
+        mockUpdateKind.mockRejectedValue({});
+        await renderWarranty();
+        await act(async () => {
+          fireEvent.change(
+            screen.getByRole('combobox', { name: 'Document type for manual.pdf' }),
+            { target: { value: 'photo' } },
+          );
+        });
+        expect(screen.getByRole('combobox', { name: 'Document type for manual.pdf' })).toHaveValue('manual');
+        expect(toast.error).toHaveBeenCalledWith('Failed to change the document type');
+      });
+
+      it("shows a delegate's read-only view the kind as a badge", async () => {
+        mockList.mockResolvedValue([warrantyDoc()]);
+        await act(async () => {
+          render(<AttachmentsSection warrantyId="w-1" readOnly />);
+        });
+        expect(screen.getByTestId('document-kind-a-1')).toHaveTextContent('Manual');
+        expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("a transaction's list with a linked warranty's documents", () => {
+    const linkedDoc = (overrides: Partial<Attachment> = {}) =>
+      makeAttachment({
+        id: 'w-doc-1',
+        transactionId: null,
+        warrantyId: 'w-1',
+        warrantyName: 'Dishwasher',
+        documentKind: 'manual',
+        filename: 'manual.pdf',
+        contentType: 'application/pdf',
+        ...overrides,
+      });
+
+    it("lists the transaction's own row, then the warranty's under its name and kind", async () => {
+      mockList.mockResolvedValue([makeAttachment(), linkedDoc()]);
+      await renderSection();
+
+      expect(
+        screen.getByRole('button', { name: 'Preview receipt.png' }),
+      ).toBeInTheDocument();
+      // The transaction's own row carries no kind.
+      expect(screen.queryByTestId('document-kind-a-1')).not.toBeInTheDocument();
+
+      const group = screen.getByRole('group', { name: 'From warranty: Dishwasher' });
+      expect(
+        within(group).getByRole('button', { name: 'Preview manual.pdf' }),
+      ).toBeInTheDocument();
+      expect(within(group).getByTestId('document-kind-w-doc-1')).toHaveTextContent('Manual');
+      // Read-only here: the kind is changed on the warranty's page.
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+      expect(within(group).queryByRole('button', { name: 'Preview receipt.png' })).not.toBeInTheDocument();
+      expect(screen.queryByText('No attachments yet')).not.toBeInTheDocument();
+    });
+
+    it("previews and deletes a warranty's document like any other row", async () => {
+      mockList.mockResolvedValue([makeAttachment(), linkedDoc()]);
+      mockDelete.mockResolvedValue(undefined);
+      await renderSection();
+      const group = screen.getByRole('group', { name: 'From warranty: Dishwasher' });
+      fireEvent.click(within(group).getByRole('button', { name: 'Preview manual.pdf' }));
+      expect(screen.getByTestId('preview-target')).toHaveTextContent('saved:w-doc-1:none');
+
+      fireEvent.click(within(group).getByRole('button', { name: 'Delete' }));
+      const dialogs = screen.getAllByRole('dialog');
+      await act(async () => {
+        fireEvent.click(within(dialogs[dialogs.length - 1]).getByRole('button', { name: 'Delete' }));
+      });
+      expect(mockDelete).toHaveBeenCalledWith('w-doc-1');
+    });
+
+    it('names the group without a name when the server sends none', async () => {
+      mockList.mockResolvedValue([linkedDoc({ warrantyName: null })]);
+      await renderSection();
+      expect(screen.getByRole('group', { name: 'From a linked warranty' })).toBeInTheDocument();
+    });
+
+    it("counts only the transaction's own rows against the cap: 1 of 10", async () => {
+      // One own row and nine documents from the warranty: ten rows on screen,
+      // one counted, so the transaction can still take an attachment.
+      const docs = Array.from({ length: 9 }, (_, i) =>
+        linkedDoc({ id: `w-doc-${i}`, filename: `doc-${i}.pdf` }),
+      );
+      mockList.mockResolvedValue([makeAttachment(), ...docs]);
+      mockUpload.mockResolvedValue(makeAttachment({ id: 'a-2' }));
+      await renderSection();
+
+      expect(screen.getByRole('button', { name: 'Add attachment' })).toBeEnabled();
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Add attachment'), {
+          target: { files: [fileOfType('image/png')] },
+        });
+      });
+      expect(toast.error).not.toHaveBeenCalled();
+      expect(mockUpload).toHaveBeenCalledTimes(1);
+    });
+
+    it('still stops at ten of its own whatever the warranties hold', async () => {
+      const own = Array.from({ length: 10 }, (_, i) =>
+        makeAttachment({ id: `a-${i}`, filename: `r-${i}.png` }),
+      );
+      mockList.mockResolvedValue([...own, linkedDoc()]);
+      await renderSection();
+      expect(screen.getByRole('button', { name: 'Add attachment' })).toBeDisabled();
     });
   });
 });

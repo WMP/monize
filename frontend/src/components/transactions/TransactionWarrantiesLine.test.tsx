@@ -95,7 +95,11 @@ describe('TransactionWarrantiesLine', () => {
     });
     await act(async () => {
       render(
-        <TransactionWarrantiesLine transaction={{ id: 'tx-1', warrantyCount: 2 }} onAddWarranty={vi.fn()} />,
+        <TransactionWarrantiesLine
+          transaction={{ id: 'tx-1', warrantyCount: 2 }}
+          onAddWarranty={vi.fn()}
+          onOpenWarranty={vi.fn()}
+        />,
       );
     });
     expect(mockList).toHaveBeenCalledWith({ transactionId: 'tx-1' });
@@ -113,7 +117,7 @@ describe('TransactionWarrantiesLine', () => {
   it('says the list failed rather than showing an empty one', async () => {
     mockList.mockRejectedValue(new Error('boom'));
     await act(async () => {
-      render(<TransactionWarrantiesLine transaction={{ id: 'tx-1', warrantyCount: 1 }} />);
+      render(<TransactionWarrantiesLine transaction={{ id: 'tx-1', warrantyCount: 1 }} onOpenWarranty={vi.fn()} />);
     });
     expect(screen.getByRole('alert')).toHaveTextContent(
       'The warranties for this transaction could not be loaded.',
@@ -124,12 +128,66 @@ describe('TransactionWarrantiesLine', () => {
   it('shows a loading line until the list arrives', async () => {
     let resolve: (value: unknown) => void = () => {};
     mockList.mockReturnValue(new Promise((r) => { resolve = r; }));
-    render(<TransactionWarrantiesLine transaction={{ id: 'tx-1', warrantyCount: 1 }} />);
+    render(<TransactionWarrantiesLine transaction={{ id: 'tx-1', warrantyCount: 1 }} onOpenWarranty={vi.fn()} />);
     expect(screen.getByRole('status')).toHaveTextContent('Loading warranties');
     await act(async () => {
       resolve({ data: [makeWarranty()], pagination: { page: 1, limit: 50, total: 1, totalPages: 1, hasMore: false } });
     });
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Dishwasher/ })).toBeInTheDocument();
+  });
+
+  describe('opening a warranty', () => {
+    // The line sits in a pushHistory Modal: a link's own navigation is undone
+    // when the closing Modal pops its history entry, so a plain click goes to
+    // the host, which closes the window first.
+    beforeEach(() => {
+      mockList.mockResolvedValue({
+        data: [makeWarranty()],
+        pagination: { page: 1, limit: 50, total: 1, totalPages: 1, hasMore: false },
+      });
+    });
+
+    it('hands a plain click to the host instead of following the link', async () => {
+      const onOpenWarranty = vi.fn();
+      await act(async () => {
+        render(<TransactionWarrantiesLine transaction={{ id: 'tx-1', warrantyCount: 1 }} onOpenWarranty={onOpenWarranty} />);
+      });
+      const link = screen.getByRole('link', { name: /Dishwasher/ });
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 });
+      fireEvent(link, event);
+      expect(onOpenWarranty).toHaveBeenCalledWith('w-1');
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it('leaves a modified click to the browser, so a new tab still opens', async () => {
+      const onOpenWarranty = vi.fn();
+      await act(async () => {
+        render(<TransactionWarrantiesLine transaction={{ id: 'tx-1', warrantyCount: 1 }} onOpenWarranty={onOpenWarranty} />);
+      });
+      fireEvent.click(screen.getByRole('link', { name: /Dishwasher/ }), { ctrlKey: true });
+      fireEvent.click(screen.getByRole('link', { name: /Dishwasher/ }), { button: 1 });
+      expect(onOpenWarranty).not.toHaveBeenCalled();
+    });
+
+    it('lists the warranties without links when the host cannot close first', async () => {
+      await act(async () => {
+        render(<TransactionWarrantiesLine transaction={{ id: 'tx-1', warrantyCount: 1 }} />);
+      });
+      expect(screen.getByText('Dishwasher')).toBeInTheDocument();
+      expect(screen.queryAllByRole('link')).toHaveLength(0);
+    });
+
+    it('lists warranties only, never their documents', async () => {
+      mockList.mockResolvedValue({
+        data: [makeWarranty({ documentCount: 3 })],
+        pagination: { page: 1, limit: 50, total: 1, totalPages: 1, hasMore: false },
+      });
+      await act(async () => {
+        render(<TransactionWarrantiesLine transaction={{ id: 'tx-1', warrantyCount: 1 }} onOpenWarranty={vi.fn()} />);
+      });
+      // The documents are in the Attachments section above.
+      expect(screen.getByTestId('transaction-warranties')).not.toHaveTextContent('3');
+    });
   });
 });

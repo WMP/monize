@@ -179,6 +179,7 @@
     "transaction": {
       "title": "Kauf",
       "open": "Buchung vom {date} öffnen: {payee}, {amount}",
+      "dateInAccount": "{date} · {account}",
       "none": "Keine verknüpfte Buchung",
       "unreadable": "Der Kauf liegt in einem Konto, das Sie nicht lesen dürfen.",
       "noPayee": "Kein Zahlungsempfänger"
@@ -188,6 +189,8 @@
     "title": "Dokumente",
     "empty": "Noch keine Dokumente",
     "kindLabel": "Dokumentart",
+    "kindFor": "Dokumentart für {name}",
+    "kindUpdateFailed": "Die Dokumentart konnte nicht geändert werden",
     "kinds": {
       "receipt": "Beleg",
       "manual": "Handbuch",

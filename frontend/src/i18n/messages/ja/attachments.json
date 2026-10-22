@@ -17,6 +17,8 @@
   "tooLarge": "ファイルが大きすぎます（最大 {max}）",
   "unsupported": "サポートされていないファイル形式です。使用可能: 画像または PDF",
   "tooMany": "1件の取引につき添付ファイルは最大 {max} 件までです",
+  "fromWarranty": "保証から：{name}",
+  "fromLinkedWarranty": "リンクされた保証から",
   "scan": {
     "button": "書類をスキャン",
     "title": "書類をスキャン",

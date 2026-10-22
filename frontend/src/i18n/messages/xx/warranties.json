@@ -179,6 +179,7 @@
     "transaction": {
       "title": "[XX-Purchase-XX]",
       "open": "[XX-Open the transaction of {date}: {payee}, {amount}-XX]",
+      "dateInAccount": "[XX-{date} · {account}-XX]",
       "none": "[XX-No linked transaction-XX]",
       "unreadable": "[XX-The purchase is in an account you cannot read.-XX]",
       "noPayee": "[XX-No payee-XX]"
@@ -188,6 +189,8 @@
     "title": "[XX-Documents-XX]",
     "empty": "[XX-No documents yet-XX]",
     "kindLabel": "[XX-Document type-XX]",
+    "kindFor": "[XX-Document type for {name}-XX]",
+    "kindUpdateFailed": "[XX-Failed to change the document type-XX]",
     "kinds": {
       "receipt": "[XX-Receipt-XX]",
       "manual": "[XX-Manual-XX]",

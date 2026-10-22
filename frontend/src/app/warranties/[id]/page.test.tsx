@@ -89,7 +89,14 @@ vi.mock('@/lib/attachments', async (importOriginal) => ({
     upload: vi.fn(),
     delete: vi.fn(),
     fetchBytes: vi.fn(),
+    updateDocumentKind: vi.fn(),
   },
+}));
+
+// The purchase line names the account it was filed in.
+vi.mock('@/lib/accounts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/accounts')>()),
+  accountsApi: { getAll: vi.fn().mockResolvedValue([]) },
 }));
 
 function warranty(overrides: Partial<Warranty> = {}): Warranty {
@@ -225,7 +232,9 @@ describe('WarrantyDetailPage', () => {
     expect(mockListAttachments).toHaveBeenCalledWith({ warrantyId: W_ID });
     const documents = screen.getByRole('region', { name: 'Documents' });
     expect(within(documents).getByRole('button', { name: 'Preview receipt.pdf' })).toBeInTheDocument();
-    expect(within(documents).getByTestId('document-kind-a-1')).toHaveTextContent('Receipt');
+    // The owner changes a document's kind on its row; the badge is the reader's.
+    expect(within(documents).getByRole('combobox', { name: 'Document type for receipt.pdf' })).toHaveValue('receipt');
+    expect(within(documents).queryByTestId('document-kind-a-1')).not.toBeInTheDocument();
     expect(within(documents).getByLabelText('Document type')).toBeInTheDocument();
   });
 
@@ -310,6 +319,7 @@ describe('WarrantyDetailPage', () => {
     const documents = screen.getByRole('region', { name: 'Documents' });
     expect(within(documents).getByRole('button', { name: 'Preview receipt.pdf' })).toBeInTheDocument();
     expect(within(documents).getByTestId('document-kind-a-1')).toHaveTextContent('Receipt');
+    expect(within(documents).queryByRole('combobox', { name: /Document type for/ })).not.toBeInTheDocument();
     expect(within(documents).queryByText('Add attachment')).not.toBeInTheDocument();
     expect(within(documents).queryByText('Scan document')).not.toBeInTheDocument();
     expect(within(documents).queryByLabelText('Document type')).not.toBeInTheDocument();

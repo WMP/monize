@@ -17,6 +17,8 @@
   "tooLarge": "Le fichier est trop volumineux (maximum {max})",
   "unsupported": "Type de fichier non pris en charge. Autorisés : images ou PDF",
   "tooMany": "Maximum {max} pièces jointes par transaction",
+  "fromWarranty": "De la garantie : {name}",
+  "fromLinkedWarranty": "D’une garantie liée",
   "scan": {
     "button": "Numériser un document",
     "title": "Numériser un document",

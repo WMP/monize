@@ -157,6 +157,14 @@ interface TransactionFormProps {
    * the line offers no Add.
    */
   onAddWarranty?: (transaction: Transaction) => void;
+  /**
+   * Opens one linked warranty's page from the Warranties line, through the
+   * same close-then-navigate as `onAddWarranty`. A plain link cannot do it:
+   * this form sits in a `pushHistory` Modal, and the Modal's unmount pops its
+   * history entry, which undoes the link's navigation. Leave it off and the
+   * line lists the warranties without links.
+   */
+  onOpenWarranty?: (warrantyId: string) => void;
 }
 
 interface TransactionFormFieldsProps extends TransactionFormProps {
@@ -167,7 +175,7 @@ interface TransactionFormFieldsProps extends TransactionFormProps {
 // Transaction mode type
 type TransactionMode = 'normal' | 'split' | 'transfer';
 
-function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, defaultCategoryId, defaultDate, onSuccess, onCancel, onDirtyChange, submitRef, onCreateAnother, initialStagedFiles, onAddWarranty }: TransactionFormFieldsProps) {
+function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, defaultCategoryId, defaultDate, onSuccess, onCancel, onDirtyChange, submitRef, onCreateAnother, initialStagedFiles, onAddWarranty, onOpenWarranty }: TransactionFormFieldsProps) {
   const t = useTranslations('transactions');
   // An acting delegate never sees the Warranties line: a warranty is the
   // owner's to add, and the same rule makes the Warranties page read-only.
@@ -1795,6 +1803,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
         <TransactionWarrantiesLine
           transaction={transaction}
           onAddWarranty={onAddWarranty ? () => onAddWarranty(transaction) : undefined}
+          onOpenWarranty={onOpenWarranty}
         />
       )}
 

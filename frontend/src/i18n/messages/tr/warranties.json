@@ -179,6 +179,7 @@
     "transaction": {
       "title": "Satın alma",
       "open": "{date} tarihli işlemi aç: {payee}, {amount}",
+      "dateInAccount": "{date} · {account}",
       "none": "Bağlı işlem yok",
       "unreadable": "Satın alma, okuma izniniz olmayan bir hesapta.",
       "noPayee": "Alacaklı yok"
@@ -188,6 +189,8 @@
     "title": "Belgeler",
     "empty": "Henüz belge yok",
     "kindLabel": "Belge türü",
+    "kindFor": "{name} için belge türü",
+    "kindUpdateFailed": "Belge türü değiştirilemedi",
     "kinds": {
       "receipt": "Fiş",
       "manual": "Kılavuz",

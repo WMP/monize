@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { PlusIcon } from '@heroicons/react/24/outline';
@@ -31,16 +31,32 @@ interface TransactionWarrantiesLineProps {
    * about unsaved edits first; without it the line offers no Add.
    */
   onAddWarranty?: () => void;
+  /**
+   * Opens one warranty's detail page, through the host's close-then-navigate
+   * like `onAddWarranty`. A bare link cannot: this line sits in a
+   * `pushHistory` Modal, whose unmount pops its history entry and so undoes
+   * the link's navigation, landing back on the host page. Without it each
+   * warranty is listed as text, never as a link that would be undone.
+   */
+  onOpenWarranty?: (warrantyId: string) => void;
+}
+
+/** A click the browser should handle itself: a new tab or window, a download. */
+function isModifiedClick(event: MouseEvent<HTMLAnchorElement>): boolean {
+  return event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
 }
 
 /**
  * The Warranties line in the transaction edit form: the warranties linked to
- * this purchase, each a link to its detail page, and an "Add warranty" button
- * the host turns into its close-then-navigate. The list is fetched only when
+ * this purchase, each a link to its detail page, and an "Add warranty" button,
+ * both of which the host turns into its close-then-navigate. A link keeps its
+ * `href`, so a middle-click or "open in new tab" still opens the warranty; a
+ * plain click goes through `onOpenWarranty`. The line lists warranties only
+ * (name, status, expiry); their documents are in the Attachments section. The list is fetched only when
  * the register row says the transaction has any (`warrantyCount`); with none
  * the line is the Add button alone and nothing is fetched.
  */
-export function TransactionWarrantiesLine({ transaction, onAddWarranty }: TransactionWarrantiesLineProps) {
+export function TransactionWarrantiesLine({ transaction, onAddWarranty, onOpenWarranty }: TransactionWarrantiesLineProps) {
   const t = useTranslations('transactions');
   const { formatDate } = useDateFormat();
   const transactionId = transaction.id;
@@ -95,12 +111,9 @@ export function TransactionWarrantiesLine({ transaction, onAddWarranty }: Transa
       )}
       {current !== null && 'warranties' in current && current.warranties.length > 0 && (
         <ul className="space-y-1">
-          {current.warranties.map((warranty) => (
-            <li key={warranty.id}>
-              <Link
-                href={`/warranties/${warranty.id}`}
-                className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-sm ${LINK_CLASS}`}
-              >
+          {current.warranties.map((warranty) => {
+            const content = (
+              <>
                 <span className="min-w-0 break-words">{warranty.name}</span>
                 <WarrantyStatusBadge warranty={warranty} />
                 {!warranty.isLifetime && warranty.expiresOn !== null && (
@@ -108,9 +121,30 @@ export function TransactionWarrantiesLine({ transaction, onAddWarranty }: Transa
                     {t('form.warranties.expires', { date: formatDate(warranty.expiresOn) })}
                   </span>
                 )}
-              </Link>
-            </li>
-          ))}
+              </>
+            );
+            return (
+              <li key={warranty.id}>
+                {onOpenWarranty ? (
+                  <Link
+                    href={`/warranties/${warranty.id}`}
+                    onClick={(event) => {
+                      if (event.defaultPrevented || isModifiedClick(event)) return;
+                      event.preventDefault();
+                      onOpenWarranty(warranty.id);
+                    }}
+                    className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-sm ${LINK_CLASS}`}
+                  >
+                    {content}
+                  </Link>
+                ) : (
+                  <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-900 dark:text-gray-100">
+                    {content}
+                  </span>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

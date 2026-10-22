@@ -17,6 +17,8 @@
   "tooLarge": "O arquivo é muito grande (máximo {max})",
   "unsupported": "Tipo de arquivo não suportado. Permitidos: imagens ou PDF",
   "tooMany": "Máximo de {max} anexos por transação",
+  "fromWarranty": "Da garantia: {name}",
+  "fromLinkedWarranty": "De uma garantia vinculada",
   "scan": {
     "button": "Digitalizar documento",
     "title": "Digitalizar documento",

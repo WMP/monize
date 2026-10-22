@@ -8,7 +8,7 @@ import { attachmentsApi, ATTACHMENT_BYTES_TIMEOUT_MS } from './attachments';
 import { invalidateCache } from './apiCache';
 
 vi.mock('./api', () => ({
-  default: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
+  default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
 
 vi.mock('./apiCache', async (importOriginal) => ({
@@ -18,6 +18,7 @@ vi.mock('./apiCache', async (importOriginal) => ({
 
 const mockGet = apiClient.get as ReturnType<typeof vi.fn>;
 const mockPost = apiClient.post as ReturnType<typeof vi.fn>;
+const mockPatch = apiClient.patch as ReturnType<typeof vi.fn>;
 const mockDelete = apiClient.delete as ReturnType<typeof vi.fn>;
 const mockInvalidate = invalidateCache as ReturnType<typeof vi.fn>;
 
@@ -89,6 +90,18 @@ describe('attachmentsApi.delete', () => {
     mockDelete.mockResolvedValue({});
     await attachmentsApi.delete('a-1');
     expect(mockDelete).toHaveBeenCalledWith('/attachments/a-1');
+    expect(mockInvalidate).toHaveBeenCalledWith('attachments:');
+    expect(mockInvalidate).toHaveBeenCalledWith('warranties:');
+  });
+});
+
+describe('attachmentsApi.updateDocumentKind', () => {
+  it('patches the kind by id and drops the attachment and warranty caches', async () => {
+    vi.clearAllMocks();
+    mockPatch.mockResolvedValue({ data: { id: 'a-1', documentKind: 'manual' } });
+    const result = await attachmentsApi.updateDocumentKind('a-1', 'manual');
+    expect(mockPatch).toHaveBeenCalledWith('/attachments/a-1', { documentKind: 'manual' });
+    expect(result).toEqual({ id: 'a-1', documentKind: 'manual' });
     expect(mockInvalidate).toHaveBeenCalledWith('attachments:');
     expect(mockInvalidate).toHaveBeenCalledWith('warranties:');
   });

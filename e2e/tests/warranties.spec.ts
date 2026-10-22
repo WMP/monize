@@ -87,7 +87,7 @@ test.describe('Warranties', () => {
     const documents = page.getByRole('region', { name: 'Documents' });
     await expect(documents.getByText('No documents yet')).toBeVisible();
     // The picker starts on Other; the kind chosen applies to the next upload.
-    await documents.getByLabel('Document type').selectOption('receipt');
+    await documents.getByLabel('Document type', { exact: true }).selectOption('receipt');
     await documents.getByLabel('Add attachment').setInputFiles({
       name: 'proof-of-purchase.png',
       mimeType: 'image/png',
@@ -96,11 +96,17 @@ test.describe('Warranties', () => {
 
     const row = documents.locator('li', { hasText: 'proof-of-purchase.png' });
     await expect(row).toBeVisible({ timeout: 15000 });
-    await expect(row.getByText('Receipt', { exact: true })).toBeVisible();
+    // The owner's row carries its kind as a picker (changeable after upload).
+    await expect(
+      row.getByRole('combobox', { name: 'Document type for proof-of-purchase.png' }),
+    ).toHaveValue('receipt');
 
     await page.reload();
     await expect(row).toBeVisible({ timeout: 15000 });
-    await expect(row.getByText('Receipt', { exact: true })).toBeVisible();
+    // The owner's row carries its kind as a picker (changeable after upload).
+    await expect(
+      row.getByRole('combobox', { name: 'Document type for proof-of-purchase.png' }),
+    ).toHaveValue('receipt');
   });
 
   test('filters, searches and archives a warranty on the Warranties page', async ({

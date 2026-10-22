@@ -182,6 +182,22 @@ export const attachmentsApi = {
     };
   },
 
+  /**
+   * Change what kind of document a warranty's document is. A transaction's
+   * own attachment has no kind to change (the server answers 400).
+   */
+  updateDocumentKind: async (
+    id: string,
+    documentKind: DocumentKind,
+  ): Promise<Attachment> => {
+    const response = await apiClient.patch<Attachment>(`/attachments/${id}`, {
+      documentKind,
+    });
+    invalidateCache('attachments:');
+    invalidateCache('warranties:');
+    return response.data;
+  },
+
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/attachments/${id}`);
     invalidateCache('attachments:');

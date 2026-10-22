@@ -17,6 +17,8 @@
   "tooLarge": "File terlalu besar (maksimum {max})",
   "unsupported": "Jenis file tidak didukung. Diizinkan: gambar atau PDF",
   "tooMany": "Maksimum {max} lampiran per transaksi",
+  "fromWarranty": "Dari garansi: {name}",
+  "fromLinkedWarranty": "Dari garansi yang ditautkan",
   "scan": {
     "button": "Pindai dokumen",
     "title": "Pindai dokumen",

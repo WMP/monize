@@ -179,6 +179,7 @@
     "transaction": {
       "title": "Compra",
       "open": "Abrir la transacción del {date}: {payee}, {amount}",
+      "dateInAccount": "{date} · {account}",
       "none": "Sin transacción vinculada",
       "unreadable": "La compra está en una cuenta que no puedes leer.",
       "noPayee": "Sin beneficiario"
@@ -188,6 +189,8 @@
     "title": "Documentos",
     "empty": "Aún no hay documentos",
     "kindLabel": "Tipo de documento",
+    "kindFor": "Tipo de documento de {name}",
+    "kindUpdateFailed": "No se pudo cambiar el tipo de documento",
     "kinds": {
       "receipt": "Recibo",
       "manual": "Manual",

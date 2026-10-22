@@ -179,6 +179,7 @@
     "transaction": {
       "title": "购买记录",
       "open": "打开 {date} 的交易：{payee}，{amount}",
+      "dateInAccount": "{date} · {account}",
       "none": "没有关联的交易",
       "unreadable": "此购买记录位于您无权读取的账户中。",
       "noPayee": "无收款人"
@@ -188,6 +189,8 @@
     "title": "文档",
     "empty": "还没有文档",
     "kindLabel": "文档类型",
+    "kindFor": "{name} 的文档类型",
+    "kindUpdateFailed": "更改文档类型失败",
     "kinds": {
       "receipt": "收据",
       "manual": "说明书",

@@ -17,6 +17,8 @@
   "tooLarge": "File is too large (maximum {max})",
   "unsupported": "Unsupported file type. Allowed: images or PDF",
   "tooMany": "Maximum {max} attachments per transaction",
+  "fromWarranty": "From warranty: {name}",
+  "fromLinkedWarranty": "From a linked warranty",
   "scan": {
     "button": "Scan document",
     "title": "Scan document",

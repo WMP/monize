@@ -179,6 +179,7 @@
     "transaction": {
       "title": "購入",
       "open": "{date} の取引を開く：{payee}、{amount}",
+      "dateInAccount": "{date} · {account}",
       "none": "リンクされた取引はありません",
       "unreadable": "この購入は、あなたが閲覧できない口座にあります。",
       "noPayee": "支払先なし"
@@ -188,6 +189,8 @@
     "title": "書類",
     "empty": "書類はまだありません",
     "kindLabel": "書類の種類",
+    "kindFor": "{name} の書類の種類",
+    "kindUpdateFailed": "書類の種類を変更できませんでした",
     "kinds": {
       "receipt": "レシート",
       "manual": "取扱説明書",

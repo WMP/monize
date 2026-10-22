@@ -179,6 +179,7 @@
     "transaction": {
       "title": "Pembelian",
       "open": "Buka transaksi tanggal {date}: {payee}, {amount}",
+      "dateInAccount": "{date} · {account}",
       "none": "Tidak ada transaksi yang ditautkan",
       "unreadable": "Pembelian ini ada di akun yang tidak dapat Anda baca.",
       "noPayee": "Tanpa penerima"
@@ -188,6 +189,8 @@
     "title": "Dokumen",
     "empty": "Belum ada dokumen",
     "kindLabel": "Jenis dokumen",
+    "kindFor": "Jenis dokumen untuk {name}",
+    "kindUpdateFailed": "Gagal mengubah jenis dokumen",
     "kinds": {
       "receipt": "Struk",
       "manual": "Buku panduan",

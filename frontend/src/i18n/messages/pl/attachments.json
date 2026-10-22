@@ -17,6 +17,8 @@
   "tooLarge": "Plik jest za duży (maksymalnie {max})",
   "unsupported": "Nieobsługiwany typ pliku. Dozwolone: obrazy lub PDF",
   "tooMany": "Maksymalnie {max} załączników na transakcję",
+  "fromWarranty": "Z gwarancji: {name}",
+  "fromLinkedWarranty": "Z powiązanej gwarancji",
   "scan": {
     "button": "Skanuj dokument",
     "title": "Skanuj dokument",
