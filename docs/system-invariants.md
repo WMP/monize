@@ -1270,11 +1270,21 @@ Enforcement         portfolio-calculation.service.ts has always multiplied
                     prints the line under the KPIs, so the reader is told which
                     rate answered. A row with no usable rate of its own falls
                     back to the rate on its own date, under INV-FX-001.
+                    An edit keeps the row's rate: update() re-resolves only when
+                    the account, funding account or security changes, and the
+                    AI/MCP edit preview (previewUpdateInvestmentTransaction, read
+                    by the MCP single and bulk edits and the assistant's signed
+                    confirmation, which commit the rate it returns) carries the
+                    stored rate unless the edit names one or another security
+                    (A26-M20).
 Test                investment-transaction-summary.service.spec.ts: a sale of
                     820.91 USD settled at 3.7287 reads 3,060.9271 PLN and asks
                     for no market rate; a row without a rate is converted at the
                     market rate and counted; a stored 1 across two currencies is
                     ignored; a third settlement currency is carried onward.
+                    investment-transactions.service.spec.ts "the row's own exchange
+                    rate": a description-only edit previews the stored 1.40, not
+                    today's 1.37.
 Status              enforced
 ```
 

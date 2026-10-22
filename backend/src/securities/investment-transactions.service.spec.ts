@@ -7684,6 +7684,111 @@ describe("InvestmentTransactionsService", () => {
         service.previewUpdateInvestmentTransaction(userId, transactionId, {}),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
+
+    /**
+     * A26-M20 (INV-FX-002): a SELL of 141 USD shares from a CAD brokerage,
+     * entered at its statement total 820.91 USD and the broker's settlement
+     * rate 1.40 (cash +1,149.27 CAD); today's USD/CAD is 1.37. The MCP and
+     * assistant adapters commit `preview.exchangeRate` as the DTO's rate, so a
+     * description-only edit that re-resolved it wrote 1.37 and moved the cash
+     * leg to +1,124.65.
+     */
+    describe("the row's own exchange rate", () => {
+      const usdSecurity = {
+        ...mockSecurity,
+        id: "sec-usd",
+        currencyCode: "USD",
+      };
+      const otherUsdSecurity = {
+        ...mockSecurity,
+        id: "sec-usd-2",
+        symbol: "MSFT",
+        currencyCode: "USD",
+      };
+      const settlementSell = {
+        ...mockBuyTransaction,
+        action: InvestmentAction.SELL,
+        securityId: usdSecurity.id,
+        security: usdSecurity as any,
+        quantity: 141,
+        price: 5.8220567376,
+        commission: 0,
+        totalAmount: 820.91,
+        exchangeRate: 1.4,
+      };
+
+      beforeEach(() => {
+        accountsService.findOne.mockImplementation(
+          (_uid: string, aid: string) => {
+            if (aid === accountId)
+              return Promise.resolve({
+                ...mockInvestmentAccount,
+                currencyCode: "CAD",
+              });
+            if (aid === cashAccountId)
+              return Promise.resolve({
+                ...mockCashAccount,
+                currencyCode: "CAD",
+              });
+            return Promise.reject(new NotFoundException("Account not found"));
+          },
+        );
+        securitiesService.findOne.mockImplementation(
+          (_uid: string, sid: string) =>
+            Promise.resolve(
+              sid === otherUsdSecurity.id ? otherUsdSecurity : usdSecurity,
+            ),
+        );
+        securitiesService.resolveBySymbolOrName.mockImplementation(
+          (_uid: string, query: string) =>
+            Promise.resolve({
+              match: query === "MSFT" ? otherUsdSecurity : usdSecurity,
+              candidates: [],
+            }),
+        );
+        investmentTransactionsRepository.createQueryBuilder.mockReturnValue(
+          createMockQueryBuilder(settlementSell),
+        );
+        exchangeRateService.getRateForDate.mockResolvedValue(1.37);
+      });
+
+      it("keeps the stored rate and cash on a description-only edit", async () => {
+        const preview = await service.previewUpdateInvestmentTransaction(
+          userId,
+          transactionId,
+          { description: "renamed" },
+        );
+
+        expect(preview.exchangeRate).toBe(1.4);
+        expect(preview.cashAmount).toBe(1149.27);
+        expect(exchangeRateService.getRateForDate).not.toHaveBeenCalled();
+      });
+
+      it("takes a rate the edit names", async () => {
+        const preview = await service.previewUpdateInvestmentTransaction(
+          userId,
+          transactionId,
+          { exchangeRate: 1.39 },
+        );
+
+        expect(preview.exchangeRate).toBe(1.39);
+      });
+
+      it("re-resolves the rate for the new pair when the security changes", async () => {
+        const preview = await service.previewUpdateInvestmentTransaction(
+          userId,
+          transactionId,
+          { securityQuery: "MSFT" },
+        );
+
+        expect(preview.exchangeRate).toBe(1.37);
+        expect(exchangeRateService.getRateForDate).toHaveBeenCalledWith(
+          "USD",
+          "CAD",
+          settlementSell.transactionDate,
+        );
+      });
+    });
   });
 
   describe("previewDeleteInvestmentTransaction", () => {

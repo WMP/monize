@@ -1598,6 +1598,12 @@ export class InvestmentTransactionsService {
         action: string;
         transactionDate: string;
         bondInstrumentId: string | null;
+        /**
+         * The row's own rate. Kept when the edit names none and leaves the
+         * security as it is: what `update()` does (INV-FX-002), and the rate the
+         * adapters commit is the one this preview returns.
+         */
+        exchangeRate?: number;
       };
     },
   ): Promise<CreateInvestmentTransactionPreview> {
@@ -1772,12 +1778,22 @@ export class InvestmentTransactionsService {
       totalAmount: suppliedTotal,
     });
 
+    // An edit that names no rate and keeps the security keeps the row's own
+    // rate: the account and the funding account cannot change through the
+    // edit preview, so the currency pair is the stored one (A26-M20). Only a
+    // different security re-resolves, for its pair, as `update()` does.
+    const keptRate =
+      input.exchangeRate === undefined &&
+      input.editing?.exchangeRate !== undefined &&
+      (security?.id ?? null) === input.editing.securityId
+        ? input.editing.exchangeRate
+        : undefined;
     const exchangeRate = await this.resolveCashExchangeRate(
       userId,
       input.accountId,
       input.fundingAccountId ?? null,
       security?.id ?? null,
-      input.exchangeRate,
+      input.exchangeRate ?? keptRate,
       input.transactionDate,
     );
 
@@ -1904,9 +1920,11 @@ export class InvestmentTransactionsService {
       accruedInterest:
         input.accruedInterest ?? Number(existing.accruedInterest ?? 0),
       fundingAccountId: existing.fundingAccountId ?? undefined,
-      // Only an explicit override pins the rate; otherwise the preview
-      // re-resolves it fresh (for the new currency pair if the security or
-      // account changed), matching update()'s re-resolution precedence.
+      // Only an explicit override changes the rate; otherwise the row keeps
+      // its own unless the security changes (`editing.exchangeRate` below),
+      // matching update()'s precedence. The adapters commit what this
+      // preview returns, so a re-resolved market rate here would be written
+      // as if the person had asked for it.
       exchangeRate: input.exchangeRate,
       description: input.description ?? existing.description ?? undefined,
       bondSeriesCode: input.bondSeriesCode,
@@ -1920,6 +1938,7 @@ export class InvestmentTransactionsService {
         action: existing.action,
         transactionDate: existing.transactionDate,
         bondInstrumentId: existing.bondInstrumentId,
+        exchangeRate: Number(existing.exchangeRate),
       },
     });
 
