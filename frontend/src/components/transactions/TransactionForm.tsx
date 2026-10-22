@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, useCallback, MutableRefObject } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, MutableRefObject, type BaseSyntheticEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import { useForm, useWatch, Resolver } from 'react-hook-form';
 import '@/lib/zodConfig';
@@ -64,6 +64,7 @@ import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/errors';
 import { AttachmentsSection } from './AttachmentsSection';
 import { TransactionWarrantiesLine } from './TransactionWarrantiesLine';
+import { rowHasWarranties } from './WarrantyBadge';
 import { attachmentsApi } from '@/lib/attachments';
 import type { StagedAttachment } from '@/types/attachment';
 import { optionalUuid, optionalString } from '@/lib/zod-helpers';
@@ -166,10 +167,20 @@ interface TransactionFormProps {
   /**
    * The Warranties line's "Add warranty": the host closes this form through
    * its own close path (which asks about unsaved edits) and then opens the
-   * Warranties page's form prefilled from the transaction. Leave it off and
-   * the line offers no Add.
+   * Warranties page's form prefilled from the transaction. Edits only; a new
+   * transaction's Add is `onAddWarrantyAfterCreate`. Leave it off and the line
+   * offers no Add, and shows only when the row has warranties to list.
    */
   onAddWarranty?: (transaction: Transaction) => void;
+  /**
+   * A new transaction's "Add warranty": the form saves the transaction first,
+   * through the same validation and submit as Save, and calls this in place of
+   * `onSuccess` once the save succeeded, with the row it created. Nothing is
+   * unsaved by then, so the host closes without asking and opens the
+   * Warranties page's form prefilled from that row. Leave it off and a new
+   * transaction shows no Warranties line.
+   */
+  onAddWarrantyAfterCreate?: (created: Transaction) => void;
   /**
    * Opens one linked warranty's page from the Warranties line, through the
    * same close-then-navigate as `onAddWarranty`. A plain link cannot do it:
@@ -185,10 +196,13 @@ interface TransactionFormFieldsProps extends TransactionFormProps {
   onCreateAnother?: (accountId: string) => void;
 }
 
+/** What a successful create goes on to do in place of closing the form. */
+type AfterCreate = 'addWarranty';
+
 // Transaction mode type
 type TransactionMode = 'normal' | 'split' | 'transfer';
 
-function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, defaultCategoryId, defaultDate, onSuccess, onCancel, onDirtyChange, submitRef, onCreateAnother, initialStagedFiles, onAddWarranty, onOpenWarranty }: TransactionFormFieldsProps) {
+function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, defaultCategoryId, defaultDate, onSuccess, onCancel, onDirtyChange, submitRef, onCreateAnother, initialStagedFiles, onAddWarranty, onAddWarrantyAfterCreate, onOpenWarranty }: TransactionFormFieldsProps) {
   const t = useTranslations('transactions');
   // An acting delegate never sees the Warranties line: a warranty is the
   // owner's to add, and the same rule makes the Warranties page read-only.
@@ -198,6 +212,10 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
   const timeFormat = usePreferencesStore((s) => s.preferences?.timeFormat ?? '24h');
   const timezonePref = usePreferencesStore((s) => s.preferences?.timezone);
   const [isLoading, setIsLoading] = useState(false);
+  // Set on the click, before validation resolves: `isLoading` is set only
+  // once it has, so it cannot stop a second click from creating the row twice.
+  const submitInFlight = useRef(false);
+  const [isSavingForWarranty, setIsSavingForWarranty] = useState(false);
   // What the submit button does once a *new* transaction has been created.
   // Only offered when creating and only when the host can keep the window open;
   // an edit always hands back to the page.
@@ -1241,7 +1259,11 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
    * with this account and the date just used) and the modal stays open;
    * otherwise this is the ordinary `onSuccess` that closes it.
    */
-  const finishAfterCreate = (accountId: string) => {
+  const finishAfterCreate = (accountId: string, created: Transaction, then?: AfterCreate) => {
+    if (then === 'addWarranty' && onAddWarrantyAfterCreate) {
+      onAddWarrantyAfterCreate(created);
+      return;
+    }
     if (canCreateAnother && submitMode === 'new') {
       onCreateAnother?.(accountId);
       return;
@@ -1249,7 +1271,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
     onSuccess?.();
   };
 
-  const performSubmit = async (data: TransactionFormData) => {
+  const performSubmit = async (data: TransactionFormData, then?: AfterCreate) => {
     // Joint accounts: a free-text payee would auto-create on the OWNER's
     // ledger, which needs the delegation's payees-can-create capability. The
     // server enforces this too; refusing here keeps the form's state intact.
@@ -1332,7 +1354,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
           rememberTransactionDate(LAST_TRANSACTION_DATE_KEY, data.transactionDate);
           // Attach staged files to the "from" leg (the account being edited).
           await uploadStagedAttachments(transfer.fromTransaction.id);
-          finishAfterCreate(data.accountId);
+          finishAfterCreate(data.accountId, transfer.fromTransaction, then);
         }
         return;
       }
@@ -1423,7 +1445,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
         // ('' when the account currency was used, which clears the stickiness).
         rememberTransactionCurrency(isForeign ? entryCurrency : '');
         await uploadStagedAttachments(created.id);
-        finishAfterCreate(data.accountId);
+        finishAfterCreate(data.accountId, created, then);
       }
     } catch (error) {
       logger.error('Submit error:', error);
@@ -1438,7 +1460,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
   // leave the date and amount untouched (e.g. fixing a payee or category) don't
   // affect the reconciliation and save without a prompt. New/duplicated
   // transactions start UNRECONCILED, so this only gates genuine edits.
-  const onSubmit = async (data: TransactionFormData) => {
+  const submitThen = async (data: TransactionFormData, then?: AfterCreate) => {
     if (
       transaction?.status === TransactionStatus.RECONCILED &&
       reconciledEditAffectsReconciliation(transaction, data)
@@ -1446,8 +1468,33 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
       setReconciledConfirmData(data);
       return;
     }
-    await performSubmit(data);
+    await performSubmit(data, then);
   };
+
+  // One argument only: react-hook-form passes the submit event second.
+  const onSubmit = (data: TransactionFormData) => submitThen(data);
+
+  /** Save, or a new transaction's save-then-Add-warranty: one at a time. */
+  const guardedSubmit = (then?: AfterCreate) => (event?: BaseSyntheticEvent) => {
+    event?.preventDefault();
+    if (submitInFlight.current) return;
+    submitInFlight.current = true;
+    if (then === 'addWarranty') setIsSavingForWarranty(true);
+    void handleSubmit((data) => submitThen(data, then))(event).finally(() => {
+      submitInFlight.current = false;
+      setIsSavingForWarranty(false);
+    });
+  };
+
+  // An edit's Add leaves for the warranty through the host's own close; a new
+  // transaction's saves it first, as the warranty links to the row it creates.
+  const addWarranty = transaction
+    ? onAddWarranty && (() => onAddWarranty(transaction))
+    : onAddWarrantyAfterCreate && guardedSubmit('addWarranty');
+  const showWarrantiesLine =
+    !selectedIsJoint &&
+    !actingAsDelegate &&
+    (addWarranty !== undefined || (transaction !== undefined && rowHasWarranties(transaction)));
 
   const handleReconciledConfirm = async () => {
     const data = reconciledConfirmData;
@@ -1560,7 +1607,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
   return (
     <form
       {...tourAnchor(TOUR_ANCHORS.transactionForm)}
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={guardedSubmit()}
       className="space-y-4"
     >
       {/* Mode selector - show for new/duplicate transactions, or non-transfer
@@ -1827,14 +1874,15 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
         />
       )}
 
-      {/* Warranties linked to this purchase, and Add warranty. A saved row
-          only (a warranty links to a transaction that exists), not on a joint
-          account's row (a warranty is the reader's own, as attachments are),
-          and not for an acting delegate. */}
-      {transaction && !selectedIsJoint && !actingAsDelegate && (
+      {/* Warranties linked to this purchase, and Add warranty: shown where
+          there is one to list or the host can Add, never as a dead end. Not on
+          a joint account's row (a warranty is the reader's own, as
+          attachments are), and not for an acting delegate. */}
+      {showWarrantiesLine && (
         <TransactionWarrantiesLine
           transaction={transaction}
-          onAddWarranty={onAddWarranty ? () => onAddWarranty(transaction) : undefined}
+          onAddWarranty={addWarranty}
+          isAdding={isSavingForWarranty}
           onOpenWarranty={onOpenWarranty}
         />
       )}
