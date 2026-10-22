@@ -85,7 +85,8 @@
 | harness | `fix/audit-harness` | 2026-10-22 04:19 UTC | session_01JWWBawaWKEiTgRH4EUCL9M | T08 (head 67041d9; 7 commits, tests and helpers only, no production code; full integration suite 123/123 green) | not yet |
 | ledger | `fix/audit-ledger` (based on `fix/audit-harness`) | 2026-10-22 05:37 UTC | session_0162iK2ZgbyzonPiq6wog7RJ | in progress | not yet |
 | receipts | `fix/audit-receipts` | 2026-10-22 05:13 UTC | session_01Vd7kVJvSZgM5rCdWSbwbDd | T02 (head 366e5be; two commits: owner-only forwarded identity, forwarded_by on the inbox card) | not yet |
-| mny | `fix/audit-mny` | 2026-10-22 06:10 UTC | session_019FG9PsmcGWWcRSDqUKYSDk | in progress | not yet |
+| mny | `fix/audit-mny` | 2026-10-22 06:10 UTC | session_019FG9PsmcGWWcRSDqUKYSDk | T04, T26, T52 (head 31022f0) | not yet |
+| scheduler | `fix/audit-scheduler` (based on `fix/audit-harness`) | 2026-10-22 | see next update | | |
 | banksync | `fix/audit-banksync` | 2026-10-22 05:25 UTC | session_01HUQYhLK1iA2SyKqUEunC7S | T05 (head 70005fe; row-keyed dedup, no migration, legacy keys held; residuals recorded in INV-BANKSYNC-001) | not yet |
 | fx | `fix/audit-fx` | 2026-10-22 05:49 UTC | session_01E4fLuC2UsV3VXW9mWmgnkP | in progress | not yet |
 | auth | `fix/audit-auth` | 2026-10-22 04:19 UTC | session_01J1DvFkbLT5hNjYcqy139nN | T01, T18, T49 (head 58dca78; 34 files; gate green per commit, run with NODE_OPTIONS=--max-old-space-size=6144; T01 adds a 10 s rotation grace for a second tab, maintainer decision) | not yet |
