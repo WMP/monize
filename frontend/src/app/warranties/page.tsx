@@ -487,7 +487,7 @@ function WarrantiesContent() {
               </Badge>
             ))}
           </div>
-          <div className="w-full sm:w-auto sm:min-w-[18rem]">
+          <div className="w-full sm:w-auto sm:min-w-[22rem]">
             <Input
               type="search"
               aria-label={t('page.search.label')}
