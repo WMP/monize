@@ -23,6 +23,7 @@ import { repriceSettledLoanTemplates } from "../loan-installments/reprice-templa
 import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
 import { TransactionAttachment } from "../attachments/entities/transaction-attachment.entity";
 import { primaryAttachmentSql } from "../attachments/primary-attachment.util";
+import { Warranty } from "../warranties/entities/warranty.entity";
 import { CreateTransactionDto } from "./dto/create-transaction.dto";
 import { UpdateTransactionDto } from "./dto/update-transaction.dto";
 import { CreateTransactionSplitDto } from "./dto/create-transaction-split.dto";
@@ -148,6 +149,8 @@ export interface CreateTransactionOutcome {
 export interface TransactionWithInvestmentLink extends Transaction {
   linkedInvestmentTransactionId?: string | null;
   attachmentCount?: number;
+  /** Unarchived warranties linked to the row. */
+  warrantyCount?: number;
 }
 
 /**
@@ -2438,6 +2441,7 @@ export class TransactionsService {
     const transactionIds = data.map((tx) => tx.id);
     const investmentLinkMap = new Map<string, string>();
     const attachmentCountMap = new Map<string, number>();
+    const warrantyCountMap = new Map<string, number>();
 
     if (transactionIds.length > 0) {
       // includes VOID rows: records read -- the register links a VOID cash
@@ -2473,6 +2477,23 @@ export class TransactionsService {
       for (const row of attachmentCounts) {
         attachmentCountMap.set(row.transactionId, Number(row.count));
       }
+
+      // The same shape for warranties (idx_warranties_transaction): an
+      // archived warranty is put away, so the register's badge does not
+      // count it.
+      const warrantyCounts = await m
+        .getRepository(Warranty)
+        .createQueryBuilder("w")
+        .select("w.transactionId", "transactionId")
+        .addSelect("COUNT(*)", "count")
+        .where("w.transactionId IN (:...transactionIds)", { transactionIds })
+        .andWhere("w.archivedAt IS NULL")
+        .groupBy("w.transactionId")
+        .getRawMany<{ transactionId: string; count: string }>();
+
+      for (const row of warrantyCounts) {
+        warrantyCountMap.set(row.transactionId, Number(row.count));
+      }
     }
 
     return data.map((tx) => ({
@@ -2482,6 +2503,7 @@ export class TransactionsService {
       isVoid: tx.isVoid,
       linkedInvestmentTransactionId: investmentLinkMap.get(tx.id) || null,
       attachmentCount: attachmentCountMap.get(tx.id) ?? 0,
+      warrantyCount: warrantyCountMap.get(tx.id) ?? 0,
     }));
   }
 

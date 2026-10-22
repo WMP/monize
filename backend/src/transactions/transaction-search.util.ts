@@ -294,6 +294,14 @@ export function hasAttachmentSql(transactionAlias: string): string {
   return `EXISTS (SELECT 1 FROM transaction_attachments search_ta WHERE search_ta.transaction_id = ${transactionAlias}.id AND ${primaryAttachmentSql("search_ta")})`;
 }
 
+/**
+ * A transaction with at least one unarchived warranty linked to it; the
+ * register's `warrantyCount` counts the same rows.
+ */
+export function hasWarrantySql(transactionAlias: string): string {
+  return `EXISTS (SELECT 1 FROM warranties search_w WHERE search_w.transaction_id = ${transactionAlias}.id AND search_w.archived_at IS NULL)`;
+}
+
 function enumCondition(ctx: ClauseContext, term: SearchTerm): string {
   const t = ctx.t;
   if (term.field === "status") {
@@ -307,6 +315,8 @@ function enumCondition(ctx: ClauseContext, term: SearchTerm): string {
   switch (term.value) {
     case "attachment":
       return hasAttachmentSql(t);
+    case "warranty":
+      return hasWarrantySql(t);
     case "ref":
       return `NULLIF(btrim(${t}.referenceNumber), '') IS NOT NULL`;
     case "memo":

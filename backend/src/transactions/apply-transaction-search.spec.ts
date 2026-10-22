@@ -168,4 +168,24 @@ describe("searchInterpretation", () => {
       ],
     });
   });
+
+  it("echoes has:warranty as a recognised value, and a misspelling as ignored", () => {
+    const parsed = parseTransactionSearch("has:warranty -has:warranties", {
+      numberFormat: "en-US",
+      dateFormat: "YYYY-MM-DD",
+    });
+    expect(searchInterpretation(parsed).terms).toEqual([
+      {
+        field: "has",
+        op: "eq",
+        value: "warranty",
+        negated: false,
+        raw: "has:warranty",
+      },
+      expect.objectContaining({
+        raw: "-has:warranties",
+        ignored: "malformed",
+      }),
+    ]);
+  });
 });

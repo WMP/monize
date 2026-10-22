@@ -3,6 +3,7 @@ import {
   buildTransactionSearchWhere,
   escapeLikePattern,
   hasAttachmentSql,
+  hasWarrantySql,
   referenceKey,
   referenceKeySql,
   SearchClauseOptions,
@@ -199,6 +200,7 @@ describe("buildTransactionSearchWhere", () => {
       ["is:split", "transaction.is_split = true"],
       ["is:uncategorized", uncategorizedSql(TX)],
       ["has:attachment", hasAttachmentSql("transaction")],
+      ["has:warranty", hasWarrantySql("transaction")],
       ["has:ref", "NULLIF(btrim(transaction.referenceNumber), '') IS NOT NULL"],
       ["has:memo", "NULLIF(btrim(search_sx.memo), '') IS NOT NULL"],
       [
@@ -207,6 +209,24 @@ describe("buildTransactionSearchWhere", () => {
       ],
     ])("%s", (input, fragment) => {
       expect(build(input).sql).toContain(fragment);
+    });
+
+    // A warranty is a second attachment parent: `has:warranty` must read the
+    // warranties table, never count a warranty's documents as the row's
+    // attachments, and skip an archived warranty as the register count does.
+    it("has:warranty is an EXISTS over the row's unarchived warranties", () => {
+      expect(hasWarrantySql("t")).toBe(
+        "EXISTS (SELECT 1 FROM warranties search_w WHERE search_w.transaction_id = t.id AND search_w.archived_at IS NULL)",
+      );
+      const { sql, params } = build("has:warranty");
+      expect(sql).not.toContain("transaction_attachments");
+      expect(params).toEqual({});
+    });
+
+    it("-has:warranty is the NOT EXISTS", () => {
+      expect(build("-has:warranty").sql).toBe(
+        `(NOT COALESCE(${hasWarrantySql("transaction")}, FALSE))`,
+      );
     });
   });
 
