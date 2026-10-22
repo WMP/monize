@@ -1,6 +1,6 @@
 'use client';
 
-import { useImperativeHandle, useMemo, useRef, type Ref } from 'react';
+import { useEffect, useImperativeHandle, useMemo, useRef, type Ref } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   LineChart,
@@ -130,6 +130,14 @@ interface SecurityComparisonChartProps {
    * the chart DOM the capture needs.
    */
   exportRef?: Ref<SecurityComparisonChartHandle>;
+  /**
+   * Told whether the series on screen is the current request's answer: `false`
+   * while it is loading or has failed (the hook keeps the previous payload
+   * through both) and when this component unmounts. The parent's export button
+   * lives outside this component and reads it, so a document never carries the
+   * previous window's series.
+   */
+  onExportableChange?: (exportable: boolean) => void;
 }
 
 /**
@@ -150,6 +158,7 @@ export function SecurityComparisonChart({
   subtitle,
   reloadKey = 0,
   exportRef,
+  onExportableChange,
 }: SecurityComparisonChartProps) {
   const t = useTranslations('reports');
   const ti = useTranslations('marketIndexes');
@@ -183,6 +192,12 @@ export function SecurityComparisonChart({
     [requestKey, reloadKey],
     { requestKey },
   );
+
+  const exportable = !isLoading && !error;
+  useEffect(() => {
+    onExportableChange?.(exportable);
+    return () => onExportableChange?.(false);
+  }, [exportable, onExportableChange]);
 
   const { rows, series } = useMemo(
     () => (data ? buildPerformanceView(data) : { rows: [], series: [] }),
@@ -230,6 +245,7 @@ export function SecurityComparisonChart({
     exportRef,
     () => ({
       exportPdf: async () => {
+        if (!exportable) return;
         const { exportToPdf } = await import('@/lib/pdf-export');
         await exportToPdf({
           title: t('securityPerformance.comparisonTitle'),
@@ -250,7 +266,7 @@ export function SecurityComparisonChart({
       },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [series, resolvedSubtitle, t, ti],
+    [series, resolvedSubtitle, exportable, t, ti],
   );
 
   if (error) {

@@ -23,7 +23,7 @@ import { SortIcon } from '@/components/ui/SortIcon';
 import { MultiSelect, MultiSelectOption } from '@/components/ui/MultiSelect';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { formatAccountType } from '@/lib/account-utils';
-import { buildLogicalAccounts, type LogicalAccount } from '@/lib/logical-accounts';
+import { buildLogicalAccounts, holdingsValuationIncomplete, type LogicalAccount } from '@/lib/logical-accounts';
 import { useMainAccountName } from '@/hooks/useMainAccountName';
 import { DensityToggleBar } from '@/components/ui/DensityToggle';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -98,6 +98,12 @@ interface AccountListProps {
    * than showing the cash it does know.
    */
   unpricedHoldingCounts?: Map<string, number>;
+  /**
+   * Holdings account ids whose valuation is a subtotal for any cause, a missing
+   * exchange rate included -- which `unpricedHoldingCounts` cannot see. Such an
+   * account's row shows no total, like an unpriced one.
+   */
+  incompleteHoldingAccountIds?: ReadonlySet<string>;
   /**
    * True when the portfolio-summary request failed, so every brokerage market
    * value is unknown rather than a real zero. Group totals exclude and mark
@@ -204,7 +210,7 @@ const EMPTY_CONVERTED_TOTAL: ConvertedTotal = {
   excludedCount: 0,
 };
 
-export function AccountList({ accounts, institutions, brokerageMarketValues, unpricedHoldingCounts, portfolioFailed, defaultCurrency, convertToDefault, onEdit, onRefresh }: AccountListProps) {
+export function AccountList({ accounts, institutions, brokerageMarketValues, unpricedHoldingCounts, incompleteHoldingAccountIds, portfolioFailed, defaultCurrency, convertToDefault, onEdit, onRefresh }: AccountListProps) {
   const t = useTranslations('accounts');
   const tc = useTranslations('common');
   const stripAccountName = useMainAccountName();
@@ -384,8 +390,9 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
     return buildLogicalAccounts(withOverrides, stripAccountName, {
       marketValues: brokerageMarketValues ?? new Map(),
       unpricedCounts: unpricedHoldingCounts ?? new Map(),
+      incompleteAccountIds: incompleteHoldingAccountIds,
     });
-  }, [accounts, favOverrides, stripAccountName, brokerageMarketValues, unpricedHoldingCounts]);
+  }, [accounts, favOverrides, stripAccountName, brokerageMarketValues, unpricedHoldingCounts, incompleteHoldingAccountIds]);
 
   // Keyed on the primary id, which is the id every row action carries.
   const logicalById = useMemo(
@@ -536,7 +543,8 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
       // folded in as a fabricated 0.
       const isUnknownBrokerage = (account: Account) =>
         account.accountSubType === 'INVESTMENT_BROKERAGE' &&
-        (portfolioFailed === true || (unpricedHoldingCounts?.get(account.id) ?? 0) > 0);
+        (portfolioFailed === true ||
+          holdingsValuationIncomplete(account.id, unpricedHoldingCounts, incompleteHoldingAccountIds));
       const known = members.filter((account) => !isUnknownBrokerage(account));
       const unknownCount = members.length - known.length;
       const converted = sumConverted(
@@ -555,7 +563,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
       });
     }
     return totals;
-  }, [groupedAccounts, brokerageMarketValues, unpricedHoldingCounts, portfolioFailed, convertToDefault]);
+  }, [groupedAccounts, brokerageMarketValues, unpricedHoldingCounts, incompleteHoldingAccountIds, portfolioFailed, convertToDefault]);
 
   // Flatten groups into a sequence of header / row entries with stable striping
   // indices so AccountRow alternation continues to look right across groups.
@@ -1072,6 +1080,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
                   institution={item.logical.primary.institutionId ? institutionsById.get(item.logical.primary.institutionId) : undefined}
                   brokerageMarketValue={item.logical.holdingsAccountId ? brokerageMarketValues?.get(item.logical.holdingsAccountId) : undefined}
                   unpricedHoldingsCount={item.logical.holdingsAccountId ? unpricedHoldingCounts?.get(item.logical.holdingsAccountId) : undefined}
+                  valuationIncomplete={item.logical.holdingsAccountId ? incompleteHoldingAccountIds?.has(item.logical.holdingsAccountId) === true : false}
                   defaultCurrency={defaultCurrency}
                   formatCurrencyBase={formatCurrencyBase}
                   convertToDefault={convertToDefault}

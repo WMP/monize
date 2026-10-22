@@ -349,6 +349,12 @@ export interface AccountRowProps {
   brokerageMarketValue: number | undefined;
   /** How many of this account's holdings have no price. Drives the unknown-value tooltip. */
   unpricedHoldingsCount?: number;
+  /**
+   * True when this account's valuation is a subtotal because a rate is missing,
+   * whatever its prices say. Picks the tooltip's cause; the em dash itself
+   * follows from `logical.combinedValue` being null.
+   */
+  valuationIncomplete?: boolean;
   defaultCurrency: string;
   formatCurrencyBase: (value: number, currencyCode?: string) => string;
   /** Returns `null` when no rate for the pair is known. */
@@ -381,6 +387,7 @@ export const AccountRow = memo(function AccountRow({
   wrapped = false,
   brokerageMarketValue,
   unpricedHoldingsCount,
+  valuationIncomplete,
   defaultCurrency,
   formatCurrencyBase,
   convertToDefault,
@@ -457,7 +464,9 @@ export const AccountRow = memo(function AccountRow({
               title={
                 unpricedHoldingsCount
                   ? t('row.combinedUnknownTooltip', { count: unpricedHoldingsCount })
-                  : t('row.combinedUnknownNoPortfolio')
+                  : valuationIncomplete
+                    ? t('row.combinedUnknownValuation')
+                    : t('row.combinedUnknownNoPortfolio')
               }
             >
               {'—'}

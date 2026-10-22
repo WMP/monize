@@ -36,6 +36,8 @@ import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
 import { UnknownAmount } from '@/components/ui/UnknownAmount';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { partialTotalFor } from '@/lib/net-worth-completeness';
 import { periodResultUnknownReason } from '@/components/investments/portfolio-period-result';
 import { parseLocalDate } from '@/lib/utils';
 import type { InvestmentAccountPerformance } from '@/types/monthly-comparison';
@@ -242,6 +244,21 @@ export function MonthlyComparisonReport() {
   const { incomeExpenses: ie, expenses, topCategories, netWorth: nw, investments } = data;
   const currency = data.currency;
 
+  // The net worth block. The four headline figures are `null` when a month could
+  // not be fully converted; the `known*` siblings carry the subtotal that did.
+  // A subtotal is shown marked, and a change measured from or to one is withheld:
+  // never `current - change` on nulls, never a `?? 0`.
+  const nwPairs = nw.missingRatePairs ?? [];
+  const nwPairsLabel = nwPairs.length > 0 ? nwPairs.join(', ') : t('monthlyComparison.pdfNotAvailable');
+  const nwCurrent = nw.currentNetWorth ?? nw.knownCurrentNetWorth ?? null;
+  const nwPrevious = nw.previousNetWorth ?? nw.knownPreviousNetWorth ?? null;
+  const nwCurrentPartial = nw.currentNetWorth === null || nw.fxComplete === false;
+  const nwPreviousPartial = nw.previousNetWorth === null || nw.fxComplete === false;
+  const nwChange =
+    nw.netWorthChange !== null && nw.netWorthChangePercent !== null && nw.fxComplete !== false
+      ? { amount: nw.netWorthChange, percent: nw.netWorthChangePercent }
+      : null;
+
   // A bar is drawn only for a return the server reported; a withheld one is
   // listed with its cause instead, because a zero-length bar reads as 0%.
   const knownReturns = investments.accountPerformance.filter(
@@ -329,15 +346,31 @@ export function MonthlyComparisonReport() {
 
     // Net Worth
     if (netW.monthlyHistory.length > 0) {
-      const changeSign = netW.netWorthChange >= 0 ? '+' : '';
+      // A subtotal leaves the application labelled as one, and a change that
+      // touches one is not printed.
+      const pdfAmount = (value: number | null, partial: boolean) =>
+        value === null
+          ? t('monthlyComparison.pdfNotAvailable')
+          : partial
+            ? t('monthlyComparison.pdfPartialSuffix', { amount: formatCurrency(value, cur) })
+            : formatCurrency(value, cur);
+      const rows: string[][] = [
+        [currentMonthLabel, pdfAmount(nwCurrent, nwCurrentPartial)],
+        [previousMonthLabel, pdfAmount(nwPrevious, nwPreviousPartial)],
+        [
+          t('monthlyComparison.pdfChange'),
+          nwChange
+            ? `${nwChange.amount >= 0 ? '+' : ''}${formatCurrency(nwChange.amount, cur)} (${formatSignedPercent(nwChange.percent, 1)})`
+            : t('monthlyComparison.pdfNotAvailable'),
+        ],
+      ];
+      if (nwCurrentPartial || nwPreviousPartial) {
+        rows.push([t('monthlyComparison.pdfNote'), t('monthlyComparison.pdfPartialNote', { pairs: nwPairsLabel })]);
+      }
       additionalTables.push({
         title: t('monthlyComparison.pdfNetWorth'),
         headers: [t('monthlyComparison.pdfPeriod'), t('monthlyComparison.pdfNetWorth')],
-        rows: [
-          [currentMonthLabel, formatCurrency(netW.currentNetWorth, cur)],
-          [previousMonthLabel, formatCurrency(netW.currentNetWorth - netW.netWorthChange, cur)],
-          [t('monthlyComparison.pdfChange'), `${changeSign}${formatCurrency(netW.netWorthChange, cur)} (${formatSignedPercent(netW.netWorthChangePercent, 1)})`],
-        ],
+        rows,
       });
     }
 
@@ -647,7 +680,8 @@ export function MonthlyComparisonReport() {
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart data={nw.monthlyHistory.map(p => ({
                   name: formatChartDate(parseMonth(p.month), 'MMM yy'),
-                  netWorth: Math.round(p.netWorth),
+                  // A month the server could not fully convert is a gap, never a dip.
+                  netWorth: p.fxComplete === false ? null : Math.round(p.netWorth),
                 }))} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
                   <XAxis dataKey="name" tick={{ fontSize: 12 }} />
@@ -662,14 +696,36 @@ export function MonthlyComparisonReport() {
             </div>
             <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
               <p className="text-sm text-gray-700 dark:text-gray-300">
-                {t.rich('monthlyComparison.netWorthSummary', {
-                  currentMonth: currentMonthLabel,
-                  netWorth: formatCurrency(nw.currentNetWorth, currency),
-                  changeAmount: `${nw.netWorthChange >= 0 ? '+' : ''}${formatCurrency(nw.netWorthChange, currency)} (${formatSignedPercent(nw.netWorthChangePercent, 1)})`,
-                  previousMonth: previousMonthLabel,
-                  strong: (chunks) => <span className="font-semibold">{chunks}</span>,
-                  delta: (chunks) => <span className={`font-semibold ${gainLossColor(nw.netWorthChange)}`}>{chunks}</span>,
-                })}
+                {nwChange && !nwCurrentPartial && nwCurrent !== null ? (
+                  t.rich('monthlyComparison.netWorthSummary', {
+                    currentMonth: currentMonthLabel,
+                    netWorth: formatCurrency(nwCurrent, currency),
+                    changeAmount: `${nwChange.amount >= 0 ? '+' : ''}${formatCurrency(nwChange.amount, currency)} (${formatSignedPercent(nwChange.percent, 1)})`,
+                    previousMonth: previousMonthLabel,
+                    strong: (chunks) => <span className="font-semibold">{chunks}</span>,
+                    delta: (chunks) => <span className={`font-semibold ${gainLossColor(nwChange.amount)}`}>{chunks}</span>,
+                  })
+                ) : (
+                  t.rich('monthlyComparison.netWorthSummaryPartial', {
+                    currentMonth: currentMonthLabel,
+                    // The subtotal marked as one, or unknown where not even a
+                    // subtotal came back; the change is withheld either way.
+                    netWorth: nwCurrent === null ? '' : formatCurrency(nwCurrent, currency),
+                    previousMonth: previousMonthLabel,
+                    pairs: nwPairsLabel,
+                    strong: (chunks) =>
+                      nwCurrent === null ? (
+                        <UnknownAmount reason="displayFx" />
+                      ) : (
+                        <PartialTotal
+                          total={partialTotalFor(nwCurrent, nwCurrentPartial ? false : undefined, nwPairs)}
+                          displayCurrency={currency}
+                        >
+                          <span className="font-semibold">{chunks}</span>
+                        </PartialTotal>
+                      ),
+                  })
+                )}
               </p>
             </div>
           </>

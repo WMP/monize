@@ -21,8 +21,13 @@ vi.mock('@/hooks/useExchangeRates', () => ({
   }),
 }));
 
+// The selection the mocked range hook reports; a test moves it and re-renders.
+const mockRange = { end: '2026-01-01' };
 vi.mock('@/hooks/useDateRange', () => {
-  const resolvedRange = { start: '2025-01-01', end: '2026-01-01' };
+  const resolvedRange = {
+    start: '2025-01-01',
+    get end() { return mockRange.end; },
+  };
   return {
     useDateRange: () => ({
       dateRange: '1y',
@@ -53,10 +58,10 @@ vi.mock('@/components/ui/DateRangeSelector', () => ({
 }));
 
 vi.mock('@/components/ui/ExportDropdown', () => ({
-  ExportDropdown: ({ onExportCsv, onExportPdf }: any) => (
+  ExportDropdown: ({ onExportCsv, onExportPdf, disabled }: any) => (
     <div data-testid="export-dropdown">
       <button data-testid="export-csv" onClick={onExportCsv}>CSV</button>
-      <button data-testid="export-pdf" onClick={onExportPdf}>PDF</button>
+      <button data-testid="export-pdf" onClick={onExportPdf} data-disabled={String(disabled === true)}>PDF</button>
     </div>
   ),
 }));
@@ -122,6 +127,7 @@ const gainEntry = (overrides: Partial<Record<string, unknown>> = {}) => ({
 describe('RealizedGainsReport', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRange.end = '2026-01-01';
   });
 
   it('shows loading state initially', () => {
@@ -581,5 +587,42 @@ describe('RealizedGainsReport', () => {
         expect.objectContaining({ accountIds: 'acc-1' }),
       );
     });
+  });
+});
+
+describe('RealizedGainsReport: a reload is not the previous answer', () => {
+  const answer = [gainEntry()];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetInvestmentAccounts.mockResolvedValue([]);
+    mockRange.end = '2026-01-01';
+  });
+
+  async function loadThenChangeRange(next: () => unknown) {
+    mockGetRealizedGains.mockResolvedValue(answer);
+    let view!: ReturnType<typeof render>;
+    await act(async () => {
+      view = render(<RealizedGainsReport />);
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('export-pdf')).toHaveAttribute('data-disabled', 'false'),
+    );
+
+    mockGetRealizedGains.mockImplementation(next);
+    mockRange.end = '2026-02-01';
+    await act(async () => {
+      view.rerender(<RealizedGainsReport />);
+    });
+    await waitFor(() =>
+      expect(mockGetRealizedGains).toHaveBeenLastCalledWith(
+        expect.objectContaining({ endDate: '2026-02-01' }),
+      ),
+    );
+  }
+
+  it('disables the export while the next request is pending', async () => {
+    await loadThenChangeRange(() => new Promise(() => {}));
+    expect(screen.getByTestId('export-pdf')).toHaveAttribute('data-disabled', 'true');
   });
 });

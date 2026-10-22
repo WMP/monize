@@ -6,6 +6,20 @@ export interface MonthlyNetWorth {
   liabilities: number;
   netWorth: number;
   /**
+   * False when a component of this month could not be converted into the
+   * reporting currency: `assets`, `liabilities` and `netWorth` are then
+   * SUBTOTALS of what did convert, not totals. Read as `=== false` -- optional
+   * because a response from an older backend mid-deploy carries none of the
+   * flags, and absent means no information, not "complete".
+   */
+  fxComplete?: boolean;
+  /** `"ZZZ->USD"` for each pair with no rate this month; empty when complete. */
+  missingRatePairs?: string[];
+  /** `assets` alone is complete when this is not `false`; falls back to `fxComplete`. */
+  assetsFxComplete?: boolean;
+  /** `liabilities` alone is complete when this is not `false`; falls back to `fxComplete`. */
+  liabilitiesFxComplete?: boolean;
+  /**
    * What each account type contributes to `netWorth`: an asset type's value,
    * a liability type's owed amount negated, so the entries sum to `netWorth`
    * (to rounding). Only the types the month holds appear. Optional because a
@@ -359,6 +373,13 @@ export interface IntradayBreakdownPoint {
   timestamp: string;
   total: number;
   values: Record<string, number>;
+  /**
+   * Three completeness bits, as on `InvestmentBreakdownPoint`: `total` is a
+   * SUBTOTAL on a bar where one is false. Optional and read as `=== false`.
+   */
+  fxComplete?: boolean;
+  pricesComplete?: boolean;
+  cashComplete?: boolean;
   /** Set on a session's closing point; see `getIntradayValue`. */
   sessionClose?: true;
 }
@@ -373,4 +394,12 @@ export interface IntradayBreakdown {
   skippedSymbols: string[];
   failedSymbols: string[];
   fallbackToDaily: boolean;
+  /** Completeness over every point; optional, read as `=== false`. */
+  fxComplete?: boolean;
+  pricesComplete?: boolean;
+  valuationComplete?: boolean;
+  /** `"CCY->DISPLAY"` for each pair with no rate at any bar. */
+  missingRatePairs?: string[];
+  /** The securities behind `pricesComplete: false`. */
+  unpricedSecurityIds?: string[];
 }

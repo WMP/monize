@@ -148,6 +148,7 @@
     "netWorthLabel": "Wartość netto",
     "assets": "Aktywa",
     "liabilities": "Zobowiązania",
+    "partialName": "{name} (częściowe)",
     "viewCallouts": "Etykiety",
     "viewLegend": "Legenda"
   },

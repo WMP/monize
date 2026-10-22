@@ -126,8 +126,8 @@ vi.mock('@/lib/investments', () => ({
 
 // Mock child components
 vi.mock('@/components/accounts/AccountList', () => ({
-  AccountList: ({ accounts, onEdit }: any) => (
-    <div data-testid="account-list">
+  AccountList: ({ accounts, onEdit, incompleteHoldingAccountIds }: any) => (
+    <div data-testid="account-list" data-incomplete={[...(incompleteHoldingAccountIds ?? [])].join(',')}>
       {accounts.map((a: any) => (
         <div key={a.id} data-testid={`account-${a.id}`}>
           {a.name}
@@ -504,6 +504,61 @@ describe('AccountsPage', () => {
       });
       expect(screen.getByTestId('summary-Total Assets')).toHaveTextContent('partial total');
       expect(screen.getByTestId('summary-Net Worth')).toHaveTextContent('partial total');
+    });
+
+    // valuationComplete covers a missing rate with every price present, which
+    // unpricedHoldingsCount (zero here) cannot see.
+    it('marks the totals partial when a brokerage is FX-incomplete with every price present', async () => {
+      mockGetAll.mockResolvedValue([
+        { id: 'acc-5', name: 'Brokerage', accountType: 'INVESTMENT', accountSubType: 'INVESTMENT_BROKERAGE', currencyCode: 'USD', currentBalance: 0, isClosed: false, canDelete: false },
+      ]);
+      mockGetPortfolioSummary.mockResolvedValue({
+        holdingsByAccount: [{
+          accountId: 'acc-5', totalMarketValue: 50000, cashBalance: 0,
+          unpricedHoldingsCount: 0, fxComplete: false, missingRatePairs: ['USD->CAD'],
+          pricesComplete: true, valuationComplete: false,
+        }],
+      });
+      render(<AccountsPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('summary-Total Assets')).toHaveTextContent('partial total');
+      });
+      expect(screen.getByTestId('summary-Net Worth')).toHaveTextContent('partial total');
+      // The brokerage is left out of the subtotal rather than added as if complete.
+      expect(screen.getByTestId('summary-Total Assets')).not.toHaveTextContent('$50000.00');
+    });
+
+    it('hands the list the accounts whose valuation is incomplete', async () => {
+      mockGetAll.mockResolvedValue([
+        { id: 'acc-5', name: 'Brokerage', accountType: 'INVESTMENT', accountSubType: 'INVESTMENT_BROKERAGE', currencyCode: 'USD', currentBalance: 0, isClosed: false, canDelete: false },
+      ]);
+      mockGetPortfolioSummary.mockResolvedValue({
+        holdingsByAccount: [{
+          accountId: 'acc-5', totalMarketValue: 50000, cashBalance: 0,
+          unpricedHoldingsCount: 0, valuationComplete: false,
+        }],
+      });
+      render(<AccountsPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('account-list')).toHaveAttribute('data-incomplete', 'acc-5');
+      });
+    });
+
+    it('reads an absent valuationComplete as no information', async () => {
+      mockGetAll.mockResolvedValue([
+        { id: 'acc-5', name: 'Brokerage', accountType: 'INVESTMENT', accountSubType: 'INVESTMENT_BROKERAGE', currencyCode: 'USD', currentBalance: 0, isClosed: false, canDelete: false },
+      ]);
+      mockGetPortfolioSummary.mockResolvedValue({
+        holdingsByAccount: [{ accountId: 'acc-5', totalMarketValue: 50000, cashBalance: 0, unpricedHoldingsCount: 0 }],
+      });
+      render(<AccountsPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('summary-Total Assets')).toHaveTextContent('$50000.00');
+      });
+      expect(screen.getByTestId('summary-Total Assets')).not.toHaveTextContent('partial total');
     });
 
     it('leaves the totals complete when the portfolio request succeeds', async () => {

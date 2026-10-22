@@ -39,6 +39,7 @@ import { useChartDateFormat } from "@/hooks/useChartDateFormat";
 import { useTranslations } from 'next-intl';
 import { useExchangeRates } from "@/hooks/useExchangeRates";
 import { PartialTotal } from "@/components/ui/PartialTotal";
+import { usePartialTotalNote } from "@/hooks/usePartialTotalNote";
 import { useTagKeys } from "@/hooks/useTagKeys";
 import { TagKeyBreakdownSelect } from "@/components/reports/TagKeyBreakdownSelect";
 import { TagKeyBreakdownBuckets } from "@/components/reports/TagKeyBreakdownBuckets";
@@ -203,6 +204,9 @@ export function IncomeVsExpensesReport() {
     [response],
   );
   const reportingCurrency = response?.currency ?? defaultCurrency;
+  // The screen marks income, expenses and savings with `PartialTotal`; the PDF
+  // writes the same three under a note, since a document has no hover.
+  const { noteFor } = usePartialTotalNote();
 
   const sortedTableData = useMemo(() => {
     const sorted = [...chartData];
@@ -259,12 +263,13 @@ export function IncomeVsExpensesReport() {
 
   const handleExportPdf = async () => {
     const { exportToPdf } = await import("@/lib/pdf-export");
+    const partialNote = noteFor({ value: totals.totalIncome, ...completeness });
     await exportToPdf({
       title: t('page.names.income-vs-expenses' as Parameters<typeof t>[0]),
       summaryCards: [
-        { label: t('incomeVsExpenses.totalIncome'), value: formatCurrency(totals.totalIncome), color: "#16a34a" },
-        { label: t('incomeVsExpenses.totalExpenses'), value: formatCurrency(totals.totalExpenses), color: "#dc2626" },
-        { label: t('incomeVsExpenses.totalSavings'), value: formatCurrency(totals.totalSavings), color: totals.totalSavings >= 0 ? "#2563eb" : "#ea580c" },
+        { label: t('incomeVsExpenses.totalIncome'), value: formatCurrency(totals.totalIncome), color: "#16a34a", note: partialNote },
+        { label: t('incomeVsExpenses.totalExpenses'), value: formatCurrency(totals.totalExpenses), color: "#dc2626", note: partialNote },
+        { label: t('incomeVsExpenses.totalSavings'), value: formatCurrency(totals.totalSavings), color: totals.totalSavings >= 0 ? "#2563eb" : "#ea580c", note: partialNote },
         { label: t('incomeVsExpenses.savingsRate'), value: formatPercent(totals.savingsRate, 1), color: totals.savingsRate >= 0 ? "#9333ea" : "#ea580c" },
       ],
       chartContainer: chartRef.current,
@@ -338,7 +343,7 @@ export function IncomeVsExpensesReport() {
           <ReportToolbarActions
             onExportPdf={handleExportPdf}
             onExportCsv={handleExportCsv}
-            disabled={chartData.length === 0}
+            disabled={isLoading || !!error || chartData.length === 0}
           />
         </div>
       </div>

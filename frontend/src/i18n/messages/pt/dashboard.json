@@ -148,6 +148,7 @@
     "netWorthLabel": "Valor Líquido",
     "assets": "Ativos",
     "liabilities": "Passivos",
+    "partialName": "{name} (parcial)",
     "viewCallouts": "Etiquetas",
     "viewLegend": "Legenda"
   },

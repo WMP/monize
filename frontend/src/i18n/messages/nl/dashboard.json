@@ -148,6 +148,7 @@
     "netWorthLabel": "Nettowaarde",
     "assets": "Activa",
     "liabilities": "Passiva",
+    "partialName": "{name} (gedeeltelijk)",
     "viewCallouts": "Labels",
     "viewLegend": "Legenda"
   },

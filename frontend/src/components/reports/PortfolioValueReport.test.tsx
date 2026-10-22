@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent, act } from '@/test/render';
+import { render, screen, waitFor, fireEvent, act, within } from '@/test/render';
 import { PortfolioValueReport } from './PortfolioValueReport';
 import { renderChartFlagDot } from '@/components/investments/portfolio-chart-utils';
 import { chartColors } from '@/lib/chart-colors';
@@ -2239,6 +2239,174 @@ describe('PortfolioValueReport', () => {
       // Not the invested high of the whole month -- one incomplete point leaves
       // both extremes unknown.
       expect(kpi('Highest Value')).not.toContain('$1200');
+    });
+  });
+
+  describe('a per-account breakdown row the server could not value', () => {
+    const accountRow = (overrides: Record<string, unknown> = {}) => ({
+      accountId: 'acc-1',
+      accountName: 'Partial Brokerage',
+      totalMarketValue: 50000,
+      cashBalance: 5000,
+      totalGainLoss: 3000,
+      totalGainLossPercent: 6.0,
+      unpricedHoldingsCount: 0,
+      ...overrides,
+    });
+    const arrange = (rows: Array<Record<string, unknown>>) => {
+      mockGetInvestmentsSampled.mockResolvedValue([
+        { date: '2024-06-01', value: 50000 },
+        { date: '2024-07-01', value: 55000 },
+      ]);
+      mockGetPortfolioSummary.mockResolvedValue({
+        ...emptyPortfolio,
+        holdingsByAccount: rows,
+      });
+      mockGetInvestmentAccounts.mockResolvedValue([]);
+    };
+    const rowFor = (name: string) =>
+      screen.getByText(name).closest('tr') as HTMLElement;
+
+    it('marks holdings, total and gain partial when valuationComplete is false (A26-M38)', async () => {
+      arrange([
+        accountRow({
+          valuationComplete: false,
+          fxComplete: false,
+          missingRatePairs: ['USD->CAD'],
+        }),
+      ]);
+      render(<PortfolioValueReport />);
+      await screen.findByText('Partial Brokerage');
+      const row = rowFor('Partial Brokerage');
+      // Holdings and total are subtotals, so both carry the marker ...
+      // ... cash is a ledger balance and does not.
+      expect(row).toHaveTextContent('$5000.00');
+      // The server's gain is over the holdings that have a value, so it is a
+      // figure, marked partial like its neighbours -- no longer withheld.
+      expect(row.querySelectorAll('[data-testid="partial-total"]')).toHaveLength(3);
+      const gain = within(row).getByText('+$3000.00');
+      expect(gain.closest('[data-testid="partial-total"]')).not.toBeNull();
+      expect(row.querySelector('[data-testid="unknown-amount"]')).toBeNull();
+    });
+
+    it('reads an unpriced holding the same way when no flag is sent', async () => {
+      arrange([accountRow({ unpricedHoldingsCount: 1 })]);
+      render(<PortfolioValueReport />);
+      await screen.findByText('Partial Brokerage');
+      const row = rowFor('Partial Brokerage');
+      expect(row.querySelectorAll('[data-testid="partial-total"]')).toHaveLength(3);
+      expect(
+        within(row).getByText('+$3000.00').closest('[data-testid="partial-total"]'),
+      ).not.toBeNull();
+    });
+
+    it('leaves a complete account and an account with no flags as they were', async () => {
+      arrange([
+        accountRow({ valuationComplete: true }),
+        accountRow({ accountId: 'acc-2', accountName: 'Old Backend', unpricedHoldingsCount: undefined }),
+      ]);
+      render(<PortfolioValueReport />);
+      await screen.findByText('Partial Brokerage');
+      for (const name of ['Partial Brokerage', 'Old Backend']) {
+        const row = rowFor(name);
+        expect(row.querySelector('[data-testid="partial-total"]'), name).toBeNull();
+        expect(row, name).toHaveTextContent('+$3000.00');
+      }
+    });
+
+    it('writes no bare subtotal or bare gain into the exported breakdown table', async () => {
+      const { exportToPdf } = await import('@/lib/pdf-export');
+      (exportToPdf as any).mockClear();
+      arrange([
+        accountRow({ valuationComplete: false, missingRatePairs: ['USD->CAD'] }),
+        accountRow({ accountId: 'acc-2', accountName: 'Whole Account', valuationComplete: true }),
+      ]);
+      render(<PortfolioValueReport />);
+      await screen.findByText('Partial Brokerage');
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('export-pdf'));
+      });
+      const call = (exportToPdf as any).mock.calls[0][0];
+      const rows = call.additionalTables[0].rows as string[][];
+      const partial = rows.find((r) => r[0] === 'Partial Brokerage')!;
+      const whole = rows.find((r) => r[0] === 'Whole Account')!;
+      expect(partial[1]).toMatch(/partial/i);
+      expect(partial[3]).toMatch(/partial/i);
+      // The gain is over the priced holdings only: printed, and suffixed.
+      expect(partial[4]).toContain('+$3000.00');
+      expect(partial[4]).toMatch(/partial/i);
+      expect(whole[1]).not.toMatch(/partial/i);
+      expect(whole[4]).toBe('+$3000.00');
+    });
+  });
+
+  describe('an intraday point the server could not finish', () => {
+    const plotted = () =>
+      JSON.parse(
+        screen.getByTestId('area-chart').getAttribute('data-points') ?? '[]',
+      ) as Array<{ iso: string; Value: number | null }>;
+    const kpi = (label: string) =>
+      screen.getByText(label).parentElement!.textContent;
+
+    it('plots it as null and withholds the extremes', async () => {
+      mockDateRangeValue = '1w';
+      mockGetIntradayValue.mockResolvedValue({
+        points: [
+          { timestamp: '2024-01-02T14:30:00Z', value: 9400, securitiesValue: 9400, fxComplete: true, pricesComplete: true, cashComplete: true },
+          { timestamp: '2024-01-03T14:30:00Z', value: 120, securitiesValue: 120, fxComplete: false, pricesComplete: true, cashComplete: true },
+          { timestamp: '2024-01-04T14:30:00Z', value: 9600, securitiesValue: 9600, fxComplete: true, pricesComplete: true, cashComplete: true },
+        ],
+        interval: '15m',
+        currency: 'CAD',
+        range: '1w',
+        fetchedAt: new Date().toISOString(),
+        skippedSymbols: [],
+        failedSymbols: [],
+        fallbackToDaily: false,
+        fxComplete: false,
+        pricesComplete: true,
+        valuationComplete: false,
+        missingRatePairs: ['EUR->CAD'],
+        unpricedSecurityIds: [],
+      });
+      mockGetPortfolioSummary.mockResolvedValue(emptyPortfolio);
+      mockGetInvestmentAccounts.mockResolvedValue([]);
+      render(<PortfolioValueReport />);
+      await waitFor(() => expect(plotted()).toHaveLength(3));
+      expect(plotted().map((p) => p.Value)).toEqual([9400, null, 9600]);
+      expect(kpi('Highest Value')).not.toContain('$9600');
+      expect(kpi('Lowest Value')).not.toContain('$120');
+    });
+
+    it('withholds the extremes of the by-security intraday breakdown', async () => {
+      mockDateRangeValue = '1w';
+      mockSeriesMode = 'securities';
+      mockGetIntradayBreakdown.mockResolvedValue({
+        series: [{ key: 'sec-1', type: 'security', symbol: 'VFV', name: 'VFV' }],
+        points: [
+          { timestamp: '2024-01-02T14:30:00Z', total: 40000, values: { 'sec-1': 40000 }, fxComplete: true, pricesComplete: true, cashComplete: true },
+          { timestamp: '2024-01-03T14:30:00Z', total: 10, values: { 'sec-1': 10 }, fxComplete: true, pricesComplete: false, cashComplete: true },
+          { timestamp: '2024-01-04T14:30:00Z', total: 50000, values: { 'sec-1': 50000 }, fxComplete: true, pricesComplete: true, cashComplete: true },
+        ],
+        interval: '15m',
+        currency: 'CAD',
+        range: '1w',
+        fetchedAt: new Date().toISOString(),
+        skippedSymbols: [],
+        failedSymbols: [],
+        fallbackToDaily: false,
+        fxComplete: true,
+        pricesComplete: false,
+        valuationComplete: false,
+        missingRatePairs: [],
+        unpricedSecurityIds: ['sec-1'],
+      });
+      mockGetPortfolioSummary.mockResolvedValue(emptyPortfolio);
+      mockGetInvestmentAccounts.mockResolvedValue([]);
+      render(<PortfolioValueReport />);
+      await waitFor(() => expect(mockGetIntradayBreakdown).toHaveBeenCalled());
+      await waitFor(() => expect(kpi('Highest Value')).toContain('N/A'));
+      expect(kpi('Lowest Value')).toContain('N/A');
     });
   });
 });

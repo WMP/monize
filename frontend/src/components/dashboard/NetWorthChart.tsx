@@ -19,6 +19,9 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useReportData } from '@/hooks/useReportData';
 import { useWidgetConfig } from '@/hooks/useWidgetConfig';
 import { ChartViewIcon } from '@/components/ui/ChartViewToggle';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { UnknownAmount } from '@/components/ui/UnknownAmount';
+import { partialTotalFor } from '@/lib/net-worth-completeness';
 import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { NetWorthByAccountTypeChart } from '@/components/reports/NetWorthByAccountTypeChart';
 import { WidgetCard, WidgetConfigRow, WidgetMessage } from './WidgetCard';
@@ -36,13 +39,22 @@ function NetWorthCompositionTooltip({
   labels,
 }: {
   active?: boolean;
-  payload?: Array<{ payload: { name: string; assets: number; liabilities: number } }>;
+  payload?: Array<{ payload: { name: string; assets: number | null; liabilities: number | null } }>;
   formatCurrency: (v: number) => string;
-  labels: { assets: string; liabilities: string; netWorth: string };
+  labels: { assets: string; liabilities: string; netWorth: string; partialMonth: string };
 }) {
   const { formatPercent } = useNumberFormat();
   if (active && payload && payload.length) {
     const d = payload[0].payload;
+    // A month the server could not fully convert has no split to print.
+    if (d.assets === null || d.liabilities === null) {
+      return (
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
+          <p className="font-medium text-gray-900 dark:text-gray-100">{d.name}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 max-w-56">{labels.partialMonth}</p>
+        </div>
+      );
+    }
     const total = d.assets + d.liabilities;
     const pct = (v: number) => (total > 0 ? formatPercent((v / total) * 100, 1) : '0%');
     return (
@@ -69,7 +81,7 @@ interface NetWorthChartProps {
 
 export function NetWorthChart({ isLoading }: NetWorthChartProps) {
   const t = useTranslations('dashboard');
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyLabel, formatPercent } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyLabel, formatPercent, defaultCurrency } = useNumberFormat();
   const formatChartDate = useChartDateFormat();
   const [chartType, setChartType] = useLocalStorage<'bar' | 'stacked'>(
     'dashboard.net-worth.chartType',
@@ -77,7 +89,9 @@ export function NetWorthChart({ isLoading }: NetWorthChartProps) {
   );
   const { config, updateConfig } = useWidgetConfig<NetWorthConfig>(WIDGET_ID, NET_WORTH_DEFAULT);
   const tCommon = useTranslations('common');
+  const tReports = useTranslations('reports');
   const compositionLabels = {
+    partialMonth: tReports('netWorth.partialMonth'),
     assets: t('assetsVsLiabilities.assets'),
     liabilities: t('assetsVsLiabilities.liabilities'),
     netWorth: t('assetsVsLiabilities.netWorthLabel'),
@@ -93,28 +107,43 @@ export function NetWorthChart({ isLoading }: NetWorthChartProps) {
     [config.range],
   );
 
+  // A month with `fxComplete === false` holds SUBTOTALS. It is drawn as `null`
+  // (no bar, no point), never as a measured dip.
   const chartData = useMemo(() =>
-    (data ?? []).map((d) => ({
-      // Raw YYYY-MM keeps the X-axis category stable and locale-independent;
-      // the tick formatter localizes it to a short month for display.
-      month: d.month,
-      key: d.month,
-      name: formatChartDate(`${d.month}-01`, 'MMM yyyy'),
-      netWorth: Math.round(d.netWorth),
-      assets: Math.round(d.assets),
-      liabilities: Math.round(d.liabilities),
-      byAccountType: d.byAccountType,
-    })),
+    (data ?? []).map((d) => {
+      const partial = d.fxComplete === false;
+      return {
+        // Raw YYYY-MM keeps the X-axis category stable and locale-independent;
+        // the tick formatter localizes it to a short month for display.
+        month: d.month,
+        key: d.month,
+        name: formatChartDate(`${d.month}-01`, 'MMM yyyy'),
+        netWorth: partial ? null : Math.round(d.netWorth),
+        assets: partial ? null : Math.round(d.assets),
+        liabilities: partial ? null : Math.round(d.liabilities),
+        byAccountType: partial ? undefined : d.byAccountType,
+      };
+    }),
   [data, formatChartDate]);
 
   const summary = useMemo(() => {
-    if (chartData.length === 0) return null;
-    const current = chartData[chartData.length - 1].netWorth;
-    const initial = chartData[0].netWorth;
+    if (!data || data.length === 0) return null;
+    const last = data[data.length - 1];
+    const first = data[0];
+    const current = Math.round(last.netWorth);
+    const initial = Math.round(first.netWorth);
     const change = current - initial;
     const changePercent = initial !== 0 ? (change / Math.abs(initial)) * 100 : 0;
-    return { current, change, changePercent };
-  }, [chartData]);
+    return {
+      current,
+      change,
+      changePercent,
+      // The headline is the latest month's: marked when it is a subtotal.
+      currentTotal: partialTotalFor(current, last.fxComplete, last.missingRatePairs),
+      // A change measured from or to a subtotal is not a change.
+      changeKnown: last.fxComplete !== false && first.fxComplete !== false,
+    };
+  }, [data]);
 
   // A long window names each January by its year; a shorter one each month.
   const yearTicks = chartData.length > YEAR_TICKS_AFTER;
@@ -203,13 +232,21 @@ export function NetWorthChart({ isLoading }: NetWorthChartProps) {
             <div className={`text-2xl font-bold ${
               summary.current >= 0 ? 'text-gray-900 dark:text-gray-100' : 'text-red-600 dark:text-red-400'
             }`}>
-              {formatCurrency(summary.current)}
+              <PartialTotal total={summary.currentTotal} displayCurrency={defaultCurrency}>
+                {formatCurrency(summary.current)}
+              </PartialTotal>
             </div>
-            <div className={`text-sm font-medium ${
-              isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-            }`}>
-              {isPositive ? '+' : ''}{formatCurrency(summary.change)} ({isPositive ? '+' : ''}{formatPercent(summary.changePercent, 1)})
-            </div>
+            {summary.changeKnown ? (
+              <div className={`text-sm font-medium ${
+                isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+              }`}>
+                {isPositive ? '+' : ''}{formatCurrency(summary.change)} ({isPositive ? '+' : ''}{formatPercent(summary.changePercent, 1)})
+              </div>
+            ) : (
+              <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                <UnknownAmount reason="displayFx" />
+              </div>
+            )}
           </div>
           <div className="h-80">
             {chartType === 'stacked' ? (

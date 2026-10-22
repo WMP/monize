@@ -61,6 +61,7 @@
     "combinedBreakdown": "Investasi {investments} · Kas {cash}",
     "combinedUnknown": "Total tidak tersedia",
     "combinedUnknownTooltip": "{count, plural, other {# kepemilikan tidak memiliki harga, sehingga total akun ini tidak dapat dihitung}}",
+    "combinedUnknownValuation": "Sebagian kepemilikan di akun ini tidak dapat dikonversi ke mata uang pelaporan Anda, sehingga totalnya tidak dapat dihitung. Tambahkan kurs yang belum ada di halaman Mata Uang.",
     "combinedUnknownNoPortfolio": "Kepemilikan tidak dapat dimuat, sehingga total akun ini tidak dapat dihitung",
     "limit": "Batas: {amount}",
     "pairedWith": "Dipasangkan dengan {name}",

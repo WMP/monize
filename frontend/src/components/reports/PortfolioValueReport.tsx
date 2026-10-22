@@ -17,7 +17,7 @@ import {
 import { chartColors, chartSeriesColor } from '@/lib/chart-colors';
 import { netWorthApi } from '@/lib/net-worth';
 import { investmentsApi } from '@/lib/investments';
-import { PortfolioSummary } from '@/types/investment';
+import { PortfolioSummary, AccountHoldings } from '@/types/investment';
 import { InvestmentBreakdownSeries } from '@/types/net-worth';
 import { Account } from '@/types/account';
 import { useChartDateFormat } from '@/hooks/useChartDateFormat';
@@ -52,6 +52,9 @@ import { exportCsvSections, type CsvValue } from '@/lib/csv-export';
 import { createLogger } from '@/lib/logger';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { UnknownAmount } from '@/components/ui/UnknownAmount';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { usePartialTotalNote } from '@/hooks/usePartialTotalNote';
+import { portfolioPartialTotal } from '@/lib/net-worth-completeness';
 
 type PortfolioBreakdownSortField = 'account' | 'holdings' | 'cash' | 'total' | 'gainLoss';
 type PortfolioChartSortField = 'name' | 'value';
@@ -263,6 +266,10 @@ export function PortfolioValueReport() {
   );
   const [reloadKey, setReloadKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  // The last load failed (the chart request, or the summary and accounts that
+  // sit beside it). The loader keeps the previous window's points through a
+  // failure, so an export must not read them as this selection's answer.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [chartViewType, setChartViewType] = useState<'area' | 'table'>('area');
   // Whether the chart stacks per-security contribution bands instead of a
   // single portfolio-total area. Persisted so the choice survives navigation.
@@ -557,16 +564,29 @@ export function PortfolioValueReport() {
         total: p.total,
         invested: breakdownInvestedValue(p, cashKey),
         values: p.values,
+        // A bar short of a price or a rate is a subtotal of the INVESTED
+        // value, exactly as on the daily path; `cashComplete` is not read for
+        // the same reason. An older backend sends neither flag, which is no
+        // information.
+        complete: p.pricesComplete !== false && p.fxComplete !== false,
       }));
       setBreakdown({ series: data.series, points, kind: 'intraday' });
+      // An intraday series reports completeness without dates, so there is no
+      // per-bar list to fold into ranges.
       setIncompleteCauses(NO_INCOMPLETE_DATA);
       setLoadedPoints(
-        points.map((p) => ({ name: p.name, Value: p.invested, iso: p.iso })),
+        points.map((p) => ({
+          name: p.name,
+          Value: p.complete ? p.invested : null,
+          iso: p.iso,
+          complete: p.complete,
+        })),
       );
     };
 
     const loadData = async () => {
       setIsLoading(true);
+      setLoadFailed(false);
       setIntradayUnavailable(null);
       setIntradayFallbackNotice(null);
       // The previous window's causes describe the previous window. Each loader
@@ -603,11 +623,15 @@ export function PortfolioValueReport() {
           const cached = readIntradayCache(cacheKey);
           if (cached && !cached.fallbackToDaily) {
             setLoadedPoints(
-              cached.points.map((p) => ({
-                name: formatIntradayLabel(p.timestamp, dateRange),
-                Value: investedValue(p),
-                iso: p.timestamp,
-              })),
+              cached.points.map((p) => {
+                const complete = p.pricesComplete !== false && p.fxComplete !== false;
+                return {
+                  name: formatIntradayLabel(p.timestamp, dateRange),
+                  Value: complete ? investedValue(p) : null,
+                  iso: p.timestamp,
+                  complete,
+                };
+              }),
             );
             setIsLoading(false);
           }
@@ -654,13 +678,17 @@ export function PortfolioValueReport() {
             }
           } else {
             setLoadedPoints(
-              response.points.map(
-                (p) => ({
+              response.points.map((p) => {
+                // The same per-point rule as the daily path: a bar the server
+                // could not price or convert is a subtotal, plotted as nothing.
+                const complete = p.pricesComplete !== false && p.fxComplete !== false;
+                return {
                   name: formatIntradayLabel(p.timestamp, dateRange),
-                  Value: investedValue(p),
+                  Value: complete ? investedValue(p) : null,
                   iso: p.timestamp,
-                }),
-              ),
+                  complete,
+                };
+              }),
             );
           }
         } else {
@@ -674,9 +702,12 @@ export function PortfolioValueReport() {
           const [portfolioResult, accountsResult] = summaryAndAccountsResult;
           setPortfolio(portfolioResult);
           setAccounts(accountsResult);
+        } else {
+          setLoadFailed(true);
         }
       } catch (error) {
         logger.error('Failed to load portfolio data:', error);
+        if (loadSeqRef.current === seq) setLoadFailed(true);
       } finally {
         if (loadSeqRef.current === seq) {
           setIsLoading(false);
@@ -1031,18 +1062,35 @@ export function PortfolioValueReport() {
   const signedColour = (value: number | null) =>
     value === null ? '#6b7280' : value >= 0 ? '#16a34a' : '#dc2626';
 
+  // The per-account breakdown reads each ACCOUNT's own flags: its totals are in
+  // the account's currency, a different conversion from the summary's, so the
+  // portfolio can be complete while one account is not.
+  const { cellFor } = usePartialTotalNote();
+  const accountPartial = (acct: AccountHoldings, value: number) =>
+    portfolioPartialTotal(value, acct);
+
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
     const accountLabel = selectedAccount
       ? mainAccountName(selectedAccount.name)
       : t('portfolioValue.allAccounts');
     const breakdownHeaders = [t('portfolioValue.pdfColAccount'), t('portfolioValue.pdfColHoldings'), t('portfolioValue.pdfColCash'), t('portfolioValue.pdfColTotal'), t('portfolioValue.pdfColGainLoss')];
+    // An account the server could not fully value exports what the table shows:
+    // its holdings, total and gain (over the priced holdings only) are subtotals,
+    // suffixed as such. A bare subtotal in a document that leaves the application is
+    // the same defect as one on screen.
     const breakdownRows = portfolio?.holdingsByAccount.map((acct) => [
       acct.accountName,
-      fmtFull(acct.totalMarketValue),
+      cellFor(fmtFull(acct.totalMarketValue), accountPartial(acct, acct.totalMarketValue)),
       fmtFull(acct.cashBalance),
-      fmtFull(acct.totalMarketValue + acct.cashBalance),
-      `${acct.totalGainLoss >= 0 ? '+' : ''}${fmtFull(acct.totalGainLoss)}`,
+      cellFor(
+        fmtFull(acct.totalMarketValue + acct.cashBalance),
+        accountPartial(acct, acct.totalMarketValue + acct.cashBalance),
+      ),
+      cellFor(
+        `${acct.totalGainLoss >= 0 ? '+' : ''}${fmtFull(acct.totalGainLoss)}`,
+        accountPartial(acct, acct.totalGainLoss),
+      ),
     ]) || [];
     await exportToPdf({
       title: t('portfolioValue.pdfTitle'),
@@ -1374,7 +1422,7 @@ export function PortfolioValueReport() {
               onRefreshComplete={() => setReloadKey((k) => k + 1)}
               onExportPdf={handleExportPdf}
               onExportCsv={handleExportCsv}
-              disabled={chartPoints.length === 0}
+              disabled={isLoading || loadFailed || chartPoints.length === 0}
             />
           </div>
         </div>
@@ -1767,7 +1815,9 @@ export function PortfolioValueReport() {
                     </td>
                     <td role="cell" className={`col-start-1 row-start-2 text-gray-900 dark:text-gray-100 ${MONEY_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{breakdownColumns.holdings.label}</CellLabel>
-                      {fmtFull(acct.totalMarketValue)}
+                      <PartialTotal total={accountPartial(acct, acct.totalMarketValue)} displayCurrency={acct.currencyCode}>
+                        {fmtFull(acct.totalMarketValue)}
+                      </PartialTotal>
                     </td>
                     <td role="cell" className={`col-start-2 row-start-2 text-gray-900 dark:text-gray-100 ${MONEY_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{breakdownColumns.cash.label}</CellLabel>
@@ -1776,11 +1826,18 @@ export function PortfolioValueReport() {
                     {/* Total: the headline figure, beside the account. */}
                     <td role="cell" className={`col-start-3 row-start-1 font-medium text-gray-900 dark:text-gray-100 ${MONEY_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{breakdownColumns.total.label}</CellLabel>
-                      {fmtFull(acct.totalMarketValue + acct.cashBalance)}
+                      <PartialTotal total={accountPartial(acct, acct.totalMarketValue + acct.cashBalance)} displayCurrency={acct.currencyCode}>
+                        {fmtFull(acct.totalMarketValue + acct.cashBalance)}
+                      </PartialTotal>
                     </td>
                     <td role="cell" className={`col-start-3 row-start-2 font-medium ${gainLossColor(acct.totalGainLoss)} ${MONEY_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{breakdownColumns.gainLoss.label}</CellLabel>
-                      {acct.totalGainLoss >= 0 ? '+' : ''}{fmtFull(acct.totalGainLoss)}
+                      {/* The server's gain is over the holdings that have a value
+                          (A26-M38), so an incomplete account shows it as a
+                          partial figure, marked like its neighbours. */}
+                      <PartialTotal total={accountPartial(acct, acct.totalGainLoss)} displayCurrency={acct.currencyCode}>
+                        {acct.totalGainLoss >= 0 ? '+' : ''}{fmtFull(acct.totalGainLoss)}
+                      </PartialTotal>
                     </td>
                   </tr>
                 ))}

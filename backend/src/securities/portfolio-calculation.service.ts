@@ -2110,6 +2110,20 @@ export class PortfolioCalculationService {
     pricesComplete: boolean;
     /** Securities held in a non-zero quantity with no current price. */
     unpricedSecurityIds: string[];
+    /**
+     * The gain's two sides, over the SAME holdings: the cost and the value of
+     * each holding whose value joined `totalHoldingsValue` and whose cost
+     * converted. `totalHoldingsValue - totalCostBasis` charged the cost of an
+     * unpriced holding against a value that never included it (A26-M38).
+     */
+    gainCostBasis: number;
+    gainMarketValue: number;
+    /**
+     * The converted cost of the holdings left out of the gain because they have
+     * no value. The knownSubtotal of what converted; a holding whose cost could
+     * not be converted is named by `missingRatePairs`.
+     */
+    unpricedCostBasis: number;
   }> {
     let holdings: Holding[] = [];
     if (holdingsAccountIds.length > 0) {
@@ -2153,6 +2167,9 @@ export class PortfolioCalculationService {
 
     const costBasisTotal = new FxAggregate();
     const holdingsValueTotal = new FxAggregate();
+    const gainCostTotal = new FxAggregate();
+    const gainValueTotal = new FxAggregate();
+    const unpricedCostTotal = new FxAggregate();
     const unpricedSecurityIds = new Set<string>();
     const holdingsWithValues: HoldingWithMarketValue[] = [];
 
@@ -2206,6 +2223,10 @@ export class PortfolioCalculationService {
         );
       }
 
+      // This holding's cost in the reporting currency, or `null` when a hop has
+      // no rate. Kept so the gain can take the cost of exactly the holdings
+      // whose value it takes.
+      let costBasisDefaultCurrency: number | null = null;
       if (costBasisAccountCurrency === null) {
         // The conversion that failed is holding -> account; record that pair.
         // Filing it under account -> default named a hop that was never
@@ -2214,13 +2235,14 @@ export class PortfolioCalculationService {
         // that was not missing while never naming the one that was.
         costBasisTotal.add(null, holdingCurrency, accountCurrency);
       } else {
+        costBasisDefaultCurrency = await this.convertToDefault(
+          costBasisAccountCurrency,
+          accountCurrency,
+          defaultCurrency,
+          rateCache,
+        );
         costBasisTotal.add(
-          await this.convertToDefault(
-            costBasisAccountCurrency,
-            accountCurrency,
-            defaultCurrency,
-            rateCache,
-          ),
+          costBasisDefaultCurrency,
           accountCurrency,
           defaultCurrency,
         );
@@ -2250,19 +2272,28 @@ export class PortfolioCalculationService {
             );
       if (marketValue !== null) {
         holdingsValueTotal.add(
-          await this.convertToDefault(
-            marketValue,
-            holdingCurrency,
-            defaultCurrency,
-            rateCache,
-          ),
+          marketValueDefaultCurrency,
           holdingCurrency,
           defaultCurrency,
         );
+        // The gain takes a holding only when both its value and its cost are
+        // in the reporting currency; one without the other is in neither side.
+        if (
+          marketValueDefaultCurrency !== null &&
+          costBasisDefaultCurrency !== null
+        ) {
+          gainValueTotal.addConverted(marketValueDefaultCurrency);
+          gainCostTotal.addConverted(costBasisDefaultCurrency);
+        }
       } else {
         // The position is held and its value is unknown. Recorded rather than
         // silently dropped, so the total can say it is a subtotal.
         unpricedSecurityIds.add(h.securityId);
+        // Its cost is not part of the gain; it is reported apart so a reader
+        // sees how much cost the gain leaves out.
+        if (costBasisDefaultCurrency !== null) {
+          unpricedCostTotal.addConverted(costBasisDefaultCurrency);
+        }
       }
 
       holdingsWithValues.push({
@@ -2312,6 +2343,9 @@ export class PortfolioCalculationService {
       missingRatePairs,
       pricesComplete: unpricedSecurityIds.size === 0,
       unpricedSecurityIds: [...unpricedSecurityIds].sort(),
+      gainCostBasis: gainCostTotal.knownSubtotal,
+      gainMarketValue: gainValueTotal.knownSubtotal,
+      unpricedCostBasis: unpricedCostTotal.knownSubtotal,
     };
   }
 
@@ -2361,6 +2395,10 @@ export class PortfolioCalculationService {
     totalMarketValue: number;
     totalGainLoss: number;
     totalGainLossPercent: number;
+    /** Cost of the holdings the gain is over: those with a value that converted. */
+    gainCostBasis: number;
+    /** Cost of the holdings left out of the gain for having no value. */
+    unpricedCostBasis: number;
     fxComplete: boolean;
     missingRatePairs: string[];
     pricesComplete: boolean;
@@ -2370,6 +2408,9 @@ export class PortfolioCalculationService {
   }> {
     const costBasisAgg = new FxAggregate();
     const marketValueAgg = new FxAggregate();
+    const gainCostAgg = new FxAggregate();
+    const gainValueAgg = new FxAggregate();
+    const unpricedCostAgg = new FxAggregate();
     const unpriced = new Set<string>();
     let unpricedHoldingsCount = 0;
 
@@ -2387,18 +2428,31 @@ export class PortfolioCalculationService {
       if (h.marketValue === null) {
         unpriced.add(h.securityId);
         unpricedHoldingsCount += 1;
+        // Its cost is not part of the gain; it is reported apart.
+        if (h.costBasisAccountCurrency !== null) {
+          unpricedCostAgg.addConverted(h.costBasisAccountCurrency);
+        }
         continue;
       }
+      const valueInAccountCurrency = await this.convertToDefault(
+        h.marketValue,
+        h.currencyCode,
+        accountCurrency,
+        rateCache,
+      );
       marketValueAgg.add(
-        await this.convertToDefault(
-          h.marketValue,
-          h.currencyCode,
-          accountCurrency,
-          rateCache,
-        ),
+        valueInAccountCurrency,
         h.currencyCode,
         accountCurrency,
       );
+      // The gain takes the value and the cost of the same holdings only.
+      if (
+        valueInAccountCurrency !== null &&
+        h.costBasisAccountCurrency !== null
+      ) {
+        gainValueAgg.addConverted(valueInAccountCurrency);
+        gainCostAgg.addConverted(h.costBasisAccountCurrency);
+      }
     }
 
     const missingRatePairs = [
@@ -2415,14 +2469,19 @@ export class PortfolioCalculationService {
 
     const totalCostBasis = costBasisAgg.knownSubtotal;
     const totalMarketValue = marketValueAgg.knownSubtotal;
-    const totalGainLoss = totalMarketValue - totalCostBasis;
+    // Value less cost of the SAME holdings (A26-M38): the unpriced holdings' cost
+    // is not charged against a value that never included them.
+    const gainCostBasis = gainCostAgg.knownSubtotal;
+    const totalGainLoss = gainValueAgg.knownSubtotal - gainCostBasis;
 
     return {
       totalCostBasis,
       totalMarketValue,
       totalGainLoss,
       totalGainLossPercent:
-        totalCostBasis > 0 ? (totalGainLoss / totalCostBasis) * 100 : 0,
+        gainCostBasis > 0 ? (totalGainLoss / gainCostBasis) * 100 : 0,
+      gainCostBasis,
+      unpricedCostBasis: unpricedCostAgg.knownSubtotal,
       fxComplete: missingRatePairs.length === 0,
       missingRatePairs,
       pricesComplete: unpriced.size === 0,
@@ -2501,6 +2560,8 @@ export class PortfolioCalculationService {
         unpricedHoldingsCount: acctTotals.unpricedHoldingsCount,
         totalGainLoss: acctTotals.totalGainLoss,
         totalGainLossPercent: acctTotals.totalGainLossPercent,
+        gainCostBasis: acctTotals.gainCostBasis,
+        unpricedCostBasis: acctTotals.unpricedCostBasis,
         fxComplete: acctTotals.fxComplete,
         missingRatePairs: acctTotals.missingRatePairs,
         pricesComplete: acctTotals.pricesComplete,
@@ -2549,6 +2610,8 @@ export class PortfolioCalculationService {
         unpricedHoldingsCount: acctTotals.unpricedHoldingsCount,
         totalGainLoss: acctTotals.totalGainLoss,
         totalGainLossPercent: acctTotals.totalGainLossPercent,
+        gainCostBasis: acctTotals.gainCostBasis,
+        unpricedCostBasis: acctTotals.unpricedCostBasis,
         fxComplete: acctTotals.fxComplete,
         missingRatePairs: acctTotals.missingRatePairs,
         pricesComplete: acctTotals.pricesComplete,

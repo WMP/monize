@@ -502,7 +502,9 @@ export function LoanAmortizationReport() {
               onExportCsv={handleExportCsv}
               onExportPdf={handleExportPdf}
               // The schedule is drawn from the history, so an export while it is
-              // loading or failed would write an empty one (A26-S15-08).
+              // loading or failed would write an empty one (A26-S15-08); a failed
+              // load also keeps the previous loan's rows in the hook, figures that
+              // are not this loan's.
               disabled={historyLoading || historyError != null}
               className="sm:flex-1"
             />

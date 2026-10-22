@@ -19,7 +19,12 @@ vi.mock('@/hooks/useNumberFormat', async () => {
     }),
 };
 });
-const STABLE_RANGE = { start: "2024-01-01", end: "2025-01-01" };
+// The selection the mocked range hook reports; a test moves it and re-renders.
+const mockRange = { end: "2025-01-01" };
+const STABLE_RANGE = {
+  start: "2024-01-01",
+  get end() { return mockRange.end; },
+};
 vi.mock("@/hooks/useDateRange", () => ({
   useDateRange: () => ({
     dateRange: "1y",
@@ -47,9 +52,9 @@ vi.mock("@/components/ui/ChartViewToggle", () => ({
 }));
 
 vi.mock("@/components/ui/ExportDropdown", () => ({
-  ExportDropdown: ({ onExportPdf, onExportCsv }: any) => (
+  ExportDropdown: ({ onExportPdf, onExportCsv, disabled }: any) => (
     <div data-testid="export-dropdown">
-      <button data-testid="export-pdf" onClick={onExportPdf}>PDF</button>
+      <button data-testid="export-pdf" onClick={onExportPdf} data-disabled={String(disabled === true)}>PDF</button>
       {onExportCsv && (
         <button data-testid="export-csv" onClick={onExportCsv}>CSV</button>
       )}
@@ -98,6 +103,7 @@ describe("MonthlySpendingTrendReport", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockPush.mockClear();
+    mockRange.end = "2025-01-01";
   });
 
   it("shows loading state initially", () => {
@@ -201,5 +207,46 @@ describe("MonthlySpendingTrendReport", () => {
     expect(rows.length).toBeGreaterThan(0);
     await act(async () => { fireEvent.click(rows[0]); });
     await act(async () => { fireEvent.click(screen.getByTestId("export-csv")); });
+  });
+});
+
+describe("MonthlySpendingTrendReport: a reload is not the previous answer", () => {
+  const answer = { data: [{ period: "2024-01", periodStart: "2024-01-01", periodEnd: "2024-01-31", income: 5000, expenses: 3000, net: 2000 }] };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRange.end = "2025-01-01";
+  });
+
+  async function loadThenChangeRange(next: () => unknown) {
+    mockGetIncomeVsExpenses.mockResolvedValue(answer);
+    let view!: ReturnType<typeof render>;
+    await act(async () => {
+      view = render(<MonthlySpendingTrendReport />);
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("export-pdf")).toHaveAttribute("data-disabled", "false"),
+    );
+
+    mockGetIncomeVsExpenses.mockImplementation(next);
+    mockRange.end = "2025-02-01";
+    await act(async () => {
+      view.rerender(<MonthlySpendingTrendReport />);
+    });
+    await waitFor(() =>
+      expect(mockGetIncomeVsExpenses).toHaveBeenLastCalledWith(
+        expect.objectContaining({ endDate: "2025-02-01" }),
+      ),
+    );
+  }
+
+  it("disables the export while the next request has failed", async () => {
+    await loadThenChangeRange(() => Promise.reject(new Error("500")));
+    expect(screen.getByTestId("export-pdf")).toHaveAttribute("data-disabled", "true");
+  });
+
+  it("disables the export while the next request is pending", async () => {
+    await loadThenChangeRange(() => new Promise(() => {}));
+    expect(screen.getByTestId("export-pdf")).toHaveAttribute("data-disabled", "true");
   });
 });

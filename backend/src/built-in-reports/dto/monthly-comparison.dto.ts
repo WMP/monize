@@ -119,25 +119,54 @@ export class NetWorthMonthlyPoint {
   @ApiProperty()
   month: string;
 
+  /** A subtotal of what converted while `fxComplete` is false. */
   @ApiProperty()
   netWorth: number;
+
+  /** False when a component of this month had no rate; see `missingRatePairs`. */
+  @ApiProperty()
+  fxComplete: boolean;
+
+  @ApiProperty({ type: [String] })
+  missingRatePairs: string[];
 }
 
+/**
+ * The two compared months' net worth. A month's figure is a total only while its
+ * own conversion was complete (`docs/financial-calculation-contract.md` section
+ * 1): otherwise `currentNetWorth` / `previousNetWorth` are null and the sum of
+ * what converted is in the matching `known*` field. The change is a difference
+ * of two totals, so it is null unless both months are complete.
+ */
 export class MonthlyComparisonNetWorth {
   @ApiProperty({ type: [NetWorthMonthlyPoint] })
   monthlyHistory: NetWorthMonthlyPoint[];
 
-  @ApiProperty()
-  currentNetWorth: number;
+  @ApiProperty({ type: Number, nullable: true })
+  currentNetWorth: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  previousNetWorth: number | null;
 
   @ApiProperty()
-  previousNetWorth: number;
+  knownCurrentNetWorth: number;
 
   @ApiProperty()
-  netWorthChange: number;
+  knownPreviousNetWorth: number;
 
+  @ApiProperty({ type: Number, nullable: true })
+  netWorthChange: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  netWorthChangePercent: number | null;
+
+  /** True only when both compared months converted completely. */
   @ApiProperty()
-  netWorthChangePercent: number;
+  fxComplete: boolean;
+
+  /** `"JPY->USD"` for each pair either compared month had no rate for. */
+  @ApiProperty({ type: [String] })
+  missingRatePairs: string[];
 }
 
 export class InvestmentAccountPerformance {

@@ -38,6 +38,13 @@ import { ReportError } from '@/components/reports/ReportError';
 import { aggregateHoldingsBySecurity, AggregatedHolding } from '@/lib/aggregate-holdings';
 import { useTranslations } from 'next-intl';
 import { useMainAccountName } from '@/hooks/useMainAccountName';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { usePartialTotalNote } from '@/hooks/usePartialTotalNote';
+import {
+  partialTotalFor,
+  portfolioPartialTotal,
+  type PortfolioCompleteness,
+} from '@/lib/net-worth-completeness';
 
 type HoldingsSortField = 'symbol' | 'quantity' | 'averageCost' | 'currentPrice' | 'marketValue' | 'gainLoss' | 'gainLossPercent';
 
@@ -102,6 +109,8 @@ export function InvestmentPerformanceReport() {
   // The comparison chart owns its own fetched series, colours and chart DOM, so
   // its PDF export is delegated to this handle (matching SecurityPerformanceReport).
   const comparisonExportRef = useRef<SecurityComparisonChartHandle>(null);
+  // Whether that chart (its own request) holds the current selection's answer.
+  const [comparisonExportable, setComparisonExportable] = useState(false);
   // Persisted so the report opens on the accounts the user last chose.
   // Accounts arrive with the data below, so stale IDs are pruned there.
   const [selectedAccountIds, setSelectedAccountIds, pruneAccountFilter] =
@@ -176,15 +185,35 @@ export function InvestmentPerformanceReport() {
       let totalMarketValue = 0;
       let totalCashBalance = 0;
       let totalCostBasis = 0;
+      let totalGainLoss = 0;
+      let gainCostBasis = 0;
+      let unpricedHoldingsCount = 0;
       for (const acct of portfolio.holdingsByAccount) {
         totalMarketValue += acct.totalMarketValue;
         totalCashBalance += acct.cashBalance;
         totalCostBasis += acct.totalCostBasis;
+        // The server's gain is over the holdings that have a value; value less
+        // every cost (the old client-side difference) charged an unpriced
+        // holding's cost against a value that never included it. An older
+        // backend sends no `gainCostBasis`, and its gain was value less the
+        // whole cost, so the whole cost is the base it measured against.
+        totalGainLoss += acct.totalGainLoss;
+        gainCostBasis += acct.gainCostBasis ?? acct.totalCostBasis;
+        unpricedHoldingsCount += acct.unpricedHoldingsCount ?? 0;
       }
       const totalPortfolioValue = totalMarketValue + totalCashBalance;
-      const totalGainLoss = totalMarketValue - totalCostBasis;
-      const totalGainLossPercent = totalCostBasis > 0 ? (totalGainLoss / totalCostBasis) * 100 : 0;
-      return { totalPortfolioValue, totalCostBasis, totalGainLoss, totalGainLossPercent };
+      const totalGainLossPercent = gainCostBasis > 0 ? (totalGainLoss / gainCostBasis) * 100 : 0;
+      // Completeness from the SAME accounts that supplied the figures: their
+      // totals are in the account's own currency, a different conversion from
+      // the summary's.
+      const completeness: PortfolioCompleteness = {
+        valuationComplete: portfolio.holdingsByAccount.every((a) => a.valuationComplete !== false),
+        fxComplete: portfolio.holdingsByAccount.every((a) => a.fxComplete !== false),
+        pricesComplete: portfolio.holdingsByAccount.every((a) => a.pricesComplete !== false),
+        missingRatePairs: [...new Set(portfolio.holdingsByAccount.flatMap((a) => a.missingRatePairs ?? []))],
+        unpricedHoldingsCount,
+      };
+      return { totalPortfolioValue, totalCostBasis, totalGainLoss, totalGainLossPercent, completeness };
     }
     // All accounts: use the backend-converted totals (already in default currency)
     return {
@@ -192,8 +221,29 @@ export function InvestmentPerformanceReport() {
       totalCostBasis: portfolio.totalCostBasis,
       totalGainLoss: portfolio.totalGainLoss,
       totalGainLossPercent: portfolio.totalGainLossPercent,
+      completeness: portfolio as PortfolioCompleteness,
     };
   }, [portfolio, isSingleAccount]);
+
+  // The gain and the return are over the holdings that have a value: a partial
+  // figure whenever the valuation is incomplete, marked as one (A26-M38).
+  const { noteFor } = usePartialTotalNote();
+  const gainPartial = summaryValues
+    ? portfolioPartialTotal(summaryValues.totalGainLoss, summaryValues.completeness)
+    : null;
+  const gainIsPartial = gainPartial !== null && gainPartial.excludedCount > 0;
+  // The value leaves out what could not be priced or converted; the cost basis
+  // counts every holding and is short only of a cost with no rate.
+  const valuePartial = summaryValues
+    ? portfolioPartialTotal(summaryValues.totalPortfolioValue, summaryValues.completeness)
+    : null;
+  const costPartial = summaryValues
+    ? partialTotalFor(
+        summaryValues.totalCostBasis,
+        summaryValues.completeness.fxComplete,
+        summaryValues.completeness.missingRatePairs,
+      )
+    : null;
 
   const fmtSummary = (value: number) => {
     if (isForeignSummary) {
@@ -303,10 +353,10 @@ export function InvestmentPerformanceReport() {
     const { exportToPdf } = await import('@/lib/pdf-export');
 
     const cards = summaryValues ? [
-      { label: t('investmentPerformance.totalValue'), value: fmtSummary(summaryValues.totalPortfolioValue), color: '#111827' },
-      { label: t('investmentPerformance.costBasis'), value: fmtSummary(summaryValues.totalCostBasis), color: '#111827' },
-      { label: t('investmentPerformance.totalGainLoss'), value: `${summaryValues.totalGainLoss >= 0 ? '+' : ''}${fmtSummary(summaryValues.totalGainLoss)}`, color: summaryValues.totalGainLoss >= 0 ? '#16a34a' : '#dc2626' },
-      { label: t('investmentPerformance.return'), value: formatPercent(summaryValues.totalGainLossPercent), color: summaryValues.totalGainLossPercent >= 0 ? '#16a34a' : '#dc2626' },
+      { label: t('investmentPerformance.totalValue'), value: fmtSummary(summaryValues.totalPortfolioValue), color: '#111827', note: valuePartial ? noteFor(valuePartial) : undefined },
+      { label: t('investmentPerformance.costBasis'), value: fmtSummary(summaryValues.totalCostBasis), color: '#111827', note: costPartial ? noteFor(costPartial) : undefined },
+      { label: t('investmentPerformance.totalGainLoss'), value: `${summaryValues.totalGainLoss >= 0 ? '+' : ''}${fmtSummary(summaryValues.totalGainLoss)}`, color: summaryValues.totalGainLoss >= 0 ? '#16a34a' : '#dc2626', note: gainPartial ? noteFor(gainPartial) : undefined },
+      { label: t('investmentPerformance.return'), value: formatPercent(summaryValues.totalGainLossPercent), color: summaryValues.totalGainLossPercent >= 0 ? '#16a34a' : '#dc2626', note: gainPartial ? noteFor(gainPartial) : undefined },
     ] : undefined;
 
     const headers = [t('investmentPerformance.colSecurity'), t('investmentPerformance.colShares'), t('investmentPerformance.colAvgCost'), t('investmentPerformance.colCurrentPrice'), t('investmentPerformance.colMarketValue'), t('investmentPerformance.colGainLoss'), t('investmentPerformance.colReturn')];
@@ -368,26 +418,44 @@ export function InvestmentPerformanceReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('investmentPerformance.totalValue')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
-            {fmtSummary(summaryValues.totalPortfolioValue)}
+            <PartialTotal total={valuePartial!} displayCurrency={summaryCurrency}>
+              {fmtSummary(summaryValues.totalPortfolioValue)}
+            </PartialTotal>
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('investmentPerformance.costBasis')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
-            {fmtSummary(summaryValues.totalCostBasis)}
+            <PartialTotal total={costPartial!} displayCurrency={summaryCurrency}>
+              {fmtSummary(summaryValues.totalCostBasis)}
+            </PartialTotal>
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('investmentPerformance.totalGainLoss')}</div>
           <div className={`text-xl font-bold ${gainLossColor(summaryValues.totalGainLoss)}`}>
-            {summaryValues.totalGainLoss >= 0 ? '+' : ''}{fmtSummary(summaryValues.totalGainLoss)}
+            <PartialTotal total={gainPartial!} displayCurrency={summaryCurrency}>
+              {summaryValues.totalGainLoss >= 0 ? '+' : ''}{fmtSummary(summaryValues.totalGainLoss)}
+            </PartialTotal>
           </div>
+          {gainIsPartial && (
+            <div className="text-xs text-amber-700 dark:text-amber-300">
+              {t('investmentPerformance.gainPartialCaption')}
+            </div>
+          )}
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('investmentPerformance.return')}</div>
           <div className={`text-xl font-bold ${gainLossColor(summaryValues.totalGainLossPercent)}`}>
-            {formatPercent(summaryValues.totalGainLossPercent)}
+            <PartialTotal total={gainPartial!} displayCurrency={summaryCurrency}>
+              {formatPercent(summaryValues.totalGainLossPercent)}
+            </PartialTotal>
           </div>
+          {gainIsPartial && (
+            <div className="text-xs text-amber-700 dark:text-amber-300">
+              {t('investmentPerformance.gainPartialCaption')}
+            </div>
+          )}
         </div>
       </div>
 
@@ -447,6 +515,8 @@ export function InvestmentPerformanceReport() {
           <ReportToolbarActions
             onRefreshComplete={() => setReloadKey((k) => k + 1)}
             onExportPdf={handleExportPdf}
+            // Both requests feed the export; the chart's only its own view.
+            disabled={isLoading || !!error || (viewType === 'performance' && !comparisonExportable)}
           />
         </div>
       </div>
@@ -469,6 +539,7 @@ export function InvestmentPerformanceReport() {
             subtitle={t('investmentPerformance.chartSubtitle')}
             reloadKey={reloadKey}
             exportRef={comparisonExportRef}
+            onExportableChange={setComparisonExportable}
           />
           {isPerformanceChartCapped && (
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">

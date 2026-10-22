@@ -493,7 +493,7 @@ export function RealizedGainsReport() {
             onRefreshComplete={reload}
             onExportCsv={handleExportCsv}
             onExportPdf={handleExportPdf}
-            disabled={entries.length === 0}
+            disabled={isLoading || !!error || entries.length === 0}
           />
         </div>
       </div>

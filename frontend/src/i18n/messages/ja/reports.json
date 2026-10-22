@@ -316,6 +316,7 @@
     "totalInflows": "総流入",
     "totalOutflows": "総流出",
     "netCashFlow": "純キャッシュフロー",
+    "notAvailable": "N/A",
     "monthlyCashFlow": "月次キャッシュフロー",
     "inflowsByCategory": "カテゴリ別流入",
     "outflowsByCategory": "カテゴリ別流出",
@@ -764,6 +765,7 @@
     "totalValue": "総価値",
     "costBasis": "取得原価",
     "totalGainLoss": "総損益",
+    "gainPartialCaption": "価格のある保有銘柄のみ",
     "return": "リターン",
     "viewHoldings": "保有銘柄",
     "viewAllocation": "配分",
@@ -1147,6 +1149,11 @@
     "vsMonth": "{month} 比",
     "inMonth": "{month} に {amount}",
     "netWorthTotal": "合計：{amount}",
+    "netWorthSummaryPartial": "{currentMonth} の純資産は <strong>{netWorth}</strong> でした。{pairs} の為替レートがないため、{previousMonth} との比較による変化を算出できません。通貨ページで追加してください。",
+    "pdfPartialSuffix": "{amount}（部分的）",
+    "pdfNote": "注記",
+    "pdfNotAvailable": "N/A",
+    "pdfPartialNote": "部分的な合計: {pairs} の為替レートがありません。",
     "netWorthSummary": "{currentMonth} の純資産は <strong>{netWorth}</strong> で、{previousMonth} と比較して <delta>{changeAmount}</delta> でした。",
     "pdfTitle": "月次比較",
     "pdfSubtitle": "{current} vs {previous}",
@@ -1194,7 +1201,12 @@
     "colNetWorth": "純資産",
     "barStyle": "棒の表示",
     "barStyleNetWorth": "純資産",
-    "barStyleAccountType": "口座の種類別"
+    "barStyleAccountType": "口座の種類別",
+    "notAvailable": "N/A",
+    "colNote": "注記",
+    "partialMonthNote": "部分的: {pairs} の為替レートがありません",
+    "pdfPartialNote": "部分的な合計: {pairs} の為替レートがありません。通貨ページで追加してください。",
+    "partialMonth": "表示されません: この月の一部の金額を換算できなかったため、純資産は不明です。"
   },
   "portfolioValue": {
     "highestValue": "最高値",
@@ -1855,7 +1867,10 @@
   },
   "partialData": {
     "notice": "一部の数値は部分的です: {count, plural, other {# 件の金額}}を {displayCurrency} に換算できなかったため除外しています。{currencies} の為替レートがありません。通貨ページで追加してください。",
-    "noticeExcluded": "一部の数値は部分的です: {count, plural, other {# 件の金額}}を算出できなかったため除外しています。"
+    "noticeExcluded": "一部の数値は部分的です: {count, plural, other {# 件の金額}}を算出できなかったため除外しています。",
+    "pdfNote": "部分的な合計: {currencies} の為替レートがありません",
+    "pdfNoteExcluded": "部分的な合計: {count, plural, other {# 件の金額}}を除外",
+    "pdfSuffix": "（部分的）"
   },
   "sankey": {
     "help": "入ってきたお金は中央を通って、支出、貯蓄や投資、借入の返済へと流れます。既定では、開いている当座、普通預金、現金、クレジットカード、信用枠の口座が対象で、これらの間の振替は表示されません。貯蓄口座へ移した金額を見るには、その口座を口座フィルターから外してください。クレジットカードの支払いは借入の返済にはなりません。精算される購入は、すでに支出として計上されています。",

@@ -148,6 +148,7 @@
     "netWorthLabel": "Nilai Bersih",
     "assets": "Aset",
     "liabilities": "Liabilitas",
+    "partialName": "{name} (parsial)",
     "viewCallouts": "Label",
     "viewLegend": "Keterangan"
   },

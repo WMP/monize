@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent, act } from '@/test/render';
+import { render, screen, waitFor, fireEvent, act, within } from '@/test/render';
 import { NetWorthReport } from './NetWorthReport';
 
 vi.mock('@/lib/pdf-export', () => ({
   exportToPdf: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/lib/csv-export', () => ({
+  exportToCsv: vi.fn(),
 }));
 
 vi.mock('@/components/ui/ChartViewToggle', () => ({
@@ -33,7 +37,12 @@ vi.mock('@/hooks/useNumberFormat', async () => {
   };
 });
 const dateRangeMock = vi.hoisted(() => ({ value: '1y' }));
-const STABLE_RANGE = { start: '2024-01-01', end: '2025-01-01' };
+// The selection the mocked range hook reports; a test moves it and re-renders.
+const rangeMock = { end: '2025-01-01' };
+const STABLE_RANGE = {
+  start: '2024-01-01',
+  get end() { return rangeMock.end; },
+};
 vi.mock('@/hooks/useDateRange', () => ({
   useDateRange: () => ({
     dateRange: dateRangeMock.value,
@@ -61,9 +70,9 @@ vi.mock('@/components/ui/DateRangeSelector', () => ({
 
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: any) => <div data-testid="responsive-container">{children}</div>,
-  AreaChart: ({ children }: any) => <div data-testid="area-chart">{children}</div>,
+  AreaChart: ({ children, data }: any) => <div data-testid="area-chart" data-points={JSON.stringify(data)}>{children}</div>,
   BarChart: ({ children }: any) => <div data-testid="bar-chart">{children}</div>,
-  ComposedChart: ({ children }: any) => <div data-testid="composed-chart">{children}</div>,
+  ComposedChart: ({ children, data }: any) => <div data-testid="composed-chart" data-points={JSON.stringify(data)}>{children}</div>,
   Line: ({ children }: any) => <div>{children}</div>,
   Area: () => null,
   Bar: ({ children }: any) => <div data-testid="bar">{children}</div>,
@@ -136,6 +145,7 @@ describe('NetWorthReport', () => {
     vi.clearAllMocks();
     window.localStorage.clear();
     dateRangeMock.value = '1y';
+    rangeMock.end = '2025-01-01';
     setMobile(false);
   });
 
@@ -567,5 +577,183 @@ describe('NetWorthReport', () => {
     if (csvBtn) {
       await act(async () => { fireEvent.click(csvBtn); });
     }
+  });
+});
+
+describe('NetWorthReport completeness', () => {
+  const complete = {
+    month: '2024-11-01', assets: 50000, liabilities: 0, netWorth: 50000,
+    fxComplete: true, missingRatePairs: [] as string[],
+  };
+  const partial = {
+    month: '2024-12-01', assets: 50000, liabilities: 0, netWorth: 50000,
+    fxComplete: false, missingRatePairs: ['ZZZ->USD'],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+    dateRangeMock.value = '1y';
+    setMobile(false);
+  });
+
+  async function renderReport(months: unknown[]) {
+    mockGetMonthly.mockResolvedValue(months);
+    await act(async () => {
+      render(<NetWorthReport />);
+    });
+    await waitFor(() => expect(screen.getByText('Current Net Worth')).toBeInTheDocument());
+  }
+
+  const card = (label: string) => screen.getByText(label).parentElement as HTMLElement;
+
+  async function exportAs(kind: RegExp) {
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /export/i }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText(kind));
+    });
+  }
+
+  it('marks the headline partial and names the missing currency when the latest month is a subtotal', async () => {
+    await renderReport([complete, partial]);
+    const headline = card('Current Net Worth');
+    expect(within(headline).getByTestId('partial-total')).toBeInTheDocument();
+    expect(within(headline).getByRole('button').getAttribute('aria-label')).toContain('ZZZ');
+    expect(screen.getByTestId('partial-data-notice')).toHaveTextContent('ZZZ');
+  });
+
+  it('withholds the change and the percent when an end month is partial', async () => {
+    await renderReport([complete, partial]);
+    expect(within(card('Change')).getByTestId('unknown-amount')).toBeInTheDocument();
+    expect(card('Change')).not.toHaveTextContent('$0');
+    expect(within(card('Change %')).getByTestId('unknown-amount')).toBeInTheDocument();
+    expect(card('Change %')).not.toHaveTextContent(/\d%/);
+  });
+
+  it('withholds the change when only the first month is partial', async () => {
+    await renderReport([partial, { ...complete, month: '2025-01-01' }]);
+    expect(within(card('Change')).getByTestId('unknown-amount')).toBeInTheDocument();
+    expect(within(card('Current Net Worth')).queryByTestId('partial-total')).not.toBeInTheDocument();
+  });
+
+  it('renders no marker for a complete series', async () => {
+    await renderReport([complete, { ...complete, month: '2024-12-01', netWorth: 52000 }]);
+    expect(screen.queryByTestId('partial-total')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('unknown-amount')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('partial-data-notice')).not.toBeInTheDocument();
+    expect(card('Change')).toHaveTextContent('+$2000');
+  });
+
+  it('reads an absent flag as no information, not as partial', async () => {
+    await renderReport([
+      { month: '2024-11-01', assets: 1, liabilities: 0, netWorth: 1 },
+      { month: '2024-12-01', assets: 2, liabilities: 0, netWorth: 2 },
+    ]);
+    expect(screen.queryByTestId('partial-total')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('unknown-amount')).not.toBeInTheDocument();
+  });
+
+  it('marks only the partial month in the table', async () => {
+    await renderReport([complete, partial]);
+    await act(async () => { fireEvent.click(screen.getByText('table')); });
+    const rows = screen.getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(2);
+    const byMonth = (label: string) =>
+      rows.find((r) => r.textContent?.includes(label)) as HTMLElement;
+    expect(within(byMonth('Dec 2024')).getAllByTestId('partial-total').length).toBeGreaterThan(0);
+    expect(within(byMonth('Nov 2024')).queryByTestId('partial-total')).not.toBeInTheDocument();
+  });
+
+  it('draws a partial month as null, never as a measured dip', async () => {
+    await renderReport([complete, partial]);
+    const bar = JSON.parse(screen.getByTestId('composed-chart').getAttribute('data-points')!);
+    expect(bar.map((p: { netWorth: number | null }) => p.netWorth)).toEqual([50000, null]);
+    expect(bar[1].byAccountType).toBeUndefined();
+
+    await act(async () => { fireEvent.click(screen.getByText('line')); });
+    const area = JSON.parse(screen.getByTestId('area-chart').getAttribute('data-points')!);
+    expect(area.map((p: { NetWorth: number | null }) => p.NetWorth)).toEqual([50000, null]);
+    expect(area[1].Assets).toBeNull();
+    expect(area[1].Liabilities).toBeNull();
+  });
+
+  it('labels the partial figure in the PDF and withholds the change', async () => {
+    const { exportToPdf } = await import('@/lib/pdf-export');
+    await renderReport([complete, partial]);
+    await exportAs(/PDF/i);
+    expect(exportToPdf).toHaveBeenCalledTimes(1);
+    const cards = (exportToPdf as any).mock.calls[0][0].summaryCards as Array<{ label: string; value: string; note?: string }>;
+    const current = cards.find((c) => c.label === 'Current Net Worth')!;
+    expect(current.note).toContain('ZZZ');
+    expect(cards.find((c) => c.label === 'Change')!.value).not.toContain('$0');
+    expect(cards.find((c) => c.label === 'Change %')!.value).not.toMatch(/\d%/);
+  });
+
+  it('adds no note to the PDF of a complete series', async () => {
+    const { exportToPdf } = await import('@/lib/pdf-export');
+    await renderReport([complete, { ...complete, month: '2024-12-01', netWorth: 52000 }]);
+    await exportAs(/PDF/i);
+    const cards = (exportToPdf as any).mock.calls[0][0].summaryCards as Array<{ note?: string }>;
+    expect(cards.every((c) => c.note === undefined)).toBe(true);
+  });
+
+  it('marks the partial month in the CSV', async () => {
+    const { exportToCsv } = await import('@/lib/csv-export');
+    await renderReport([complete, partial]);
+    await act(async () => { fireEvent.click(screen.getByText('table')); });
+    await exportAs(/CSV/i);
+    const [, headers, rows] = (exportToCsv as any).mock.calls[0] as [string, string[], unknown[][]];
+    expect(headers).toContain('Note');
+    const dec = rows.find((r) => String(r[0]).includes('Dec 2024'))!;
+    const nov = rows.find((r) => String(r[0]).includes('Nov 2024'))!;
+    expect(String(dec[dec.length - 1])).toContain('ZZZ');
+    expect(nov[nov.length - 1]).toBe('');
+  });
+});
+
+
+describe('NetWorthReport: a reload is not the previous answer', () => {
+  const answer = [
+    { month: '2024-01-01', assets: 50000, liabilities: 10000, netWorth: 40000 },
+    { month: '2024-06-01', assets: 55000, liabilities: 9000, netWorth: 46000 },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+    dateRangeMock.value = '1y';
+    rangeMock.end = '2025-01-01';
+    setMobile(false);
+  });
+
+  async function loadThenChangeRange(next: () => unknown) {
+    mockGetMonthly.mockResolvedValue(answer);
+    let view!: ReturnType<typeof render>;
+    await act(async () => {
+      view = render(<NetWorthReport />);
+    });
+    await screen.findByText('Current Net Worth');
+    expect(screen.getByTitle('Export report')).toBeEnabled();
+
+    mockGetMonthly.mockImplementation(next);
+    rangeMock.end = '2025-02-01';
+    await act(async () => {
+      view.rerender(<NetWorthReport />);
+    });
+    await waitFor(() =>
+      expect(mockGetMonthly).toHaveBeenLastCalledWith({ startDate: '2024-01-01', endDate: '2025-02-01' }),
+    );
+  }
+
+  it('disables the export while the next request has failed', async () => {
+    await loadThenChangeRange(() => Promise.reject(new Error('500')));
+    expect(screen.getByTitle('Export report')).toBeDisabled();
+  });
+
+  it('disables the export while the next request is pending', async () => {
+    await loadThenChangeRange(() => new Promise(() => {}));
+    expect(screen.getByTitle('Export report')).toBeDisabled();
   });
 });

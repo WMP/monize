@@ -148,6 +148,7 @@
     "netWorthLabel": "Net Worth",
     "assets": "Assets",
     "liabilities": "Liabilities",
+    "partialName": "{name} (partial)",
     "viewCallouts": "Labels",
     "viewLegend": "Legend"
   },

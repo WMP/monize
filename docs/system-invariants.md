@@ -130,6 +130,7 @@ implied.
 | INV-ACTIVITY-001 | Activity is attributed to whoever acted, not to whoever was acted for | enforced |
 | INV-PROFILE-001 | A user-profile response is an allowlist | enforced |
 | INV-DISPLAY-001 | A figure addressed to a person is rendered in that person's number locale | partial |
+| INV-DISPLAY-002 | A partial figure is relabelled where it is shown: a scalar total is null with its known subtotal named, a series point is plotted as unknown | partial |
 | INV-MCP-001 | Identity comes from the credential on the request | enforced |
 | INV-MCP-002 | An MCP request is answered by the MCP transport, never by the app shell | enforced |
 | INV-MCP-003 | A write confirmation is bound to one credential and one change | enforced |
@@ -5216,6 +5217,60 @@ Localizing the figure while leaving the sentence in English is right in one plac
 and wrong in another: it is right inside a stored English FALLBACK a client
 overrides, and wrong as a substitute for putting the copy in a catalogue. Both
 halves are decided per surface, and the classification is what the guard holds.
+
+### INV-DISPLAY-002 -- a partial figure is relabelled where it is shown
+
+```text
+Statement           A figure shown under a total's caption -- net worth, total
+                    assets and liabilities, a portfolio's or an account's market
+                    value, a report's headline -- is either complete or marked as
+                    the subtotal it is, on every surface that shows it: the app,
+                    a PDF or CSV export, the assistant's summary line and the MCP
+                    payload. A response carries one flag per cause (fxComplete,
+                    pricesComplete) and one valuationComplete meaning every
+                    component of every total is known. A scalar total is null
+                    while a component is unknown, with the partial sum in its own
+                    known* field and the missing pairs and securities named. A
+                    series point keeps its numeric subtotal beside its flags
+                    (stage 1 of docs/specs/fx-conversion-completeness.md), and a
+                    consumer plots an incomplete point as null and never ranks it
+                    as a period's high or low. The client reads each flag as
+                    `=== false` (absent is no information) from the same
+                    aggregate that produced the number on screen.
+Source of truth     backend/src/accounts/accounts.service.ts NetWorthTotals
+                    (getSummary, getLlmAccounts and through them the MCP
+                    financial-summary resource and both list_accounts tools);
+                    NetWorthService.getLatestNetWorth and getMonthlyNetWorth
+                    (fxComplete, assetsFxComplete, liabilitiesFxComplete);
+                    PortfolioService.getAccountMarketValues (AccountMarketValue)
+                    and the intraday point and response flags;
+                    MonthlyComparisonService.buildNetWorth. On the client
+                    PartialTotal, UnknownAmount and PartialDataNotice, with
+                    lib/net-worth-completeness.ts and lib/logical-accounts.ts
+                    holdingsValuationIncomplete as the shared predicates.
+Enforcement         Server: accounts.service.spec.ts, portfolio.service.spec.ts,
+                    net-worth.service.spec.ts, monthly-comparison.service.spec.ts,
+                    tool-executor.service.spec.ts and
+                    test/integration/net-worth-completeness.integration.spec.ts
+                    (a USD account of 1,000 beside 1,000,000 of a currency with
+                    no rate: netWorth null, knownNetWorthSubtotal 1000, the pair
+                    named, on the summary and the LLM shape). Client: one
+                    component case per surface fed a partial month, a partial
+                    account or an incomplete point (NetWorthReport, NetWorthChart,
+                    AssetsVsLiabilities, the accounts page, AccountList,
+                    logical-accounts, MonthlyComparisonReport, the portfolio
+                    widget and charts, the report exports).
+Status              partial
+```
+
+Partial, and why. The monthly snapshot (`monthly_account_balances`) stores one
+converted figure per account and month, so a past month's `fxComplete` cannot
+see an unpriced position or a gap between a security's currency and its
+account's; the latest month is qualified from the live per-account valuation,
+earlier months are not, and closing that needs a completeness column and a
+migration (`docs/specs/fx-conversion-completeness.md` section 5). The
+look-through and allocation totals (`sector-weighting.service.ts`) carry no
+flags yet. Series values stay numeric subtotals until stage 2 of the FX spec.
 
 ### INV-MCP-001 -- identity comes from the credential on the request
 

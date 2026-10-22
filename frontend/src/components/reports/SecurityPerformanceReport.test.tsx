@@ -7,10 +7,10 @@ vi.mock('@/lib/pdf-export', () => ({
 }));
 
 vi.mock('@/components/ui/ExportDropdown', () => ({
-  ExportDropdown: ({ onExportCsv, onExportPdf }: any) => (
+  ExportDropdown: ({ onExportCsv, onExportPdf, disabled }: any) => (
     <div data-testid="export-dropdown">
       {onExportCsv && <button data-testid="export-csv" onClick={onExportCsv}>CSV</button>}
-      <button data-testid="export-pdf" onClick={onExportPdf}>PDF</button>
+      <button data-testid="export-pdf" onClick={onExportPdf} data-disabled={String(disabled === true)}>PDF</button>
     </div>
   ),
 }));
@@ -1370,5 +1370,89 @@ describe('SecurityPerformanceReport', () => {
         expect.objectContaining({ indexCodes: ['SP500'] }),
       ),
     );
+  });
+});
+
+describe('SecurityPerformanceReport: a failed or pending request is not exportable', () => {
+  const comparison = {
+    window: { start: '2024-01-01', end: '2024-12-31' },
+    sampling: 'day',
+    series: [],
+    points: [],
+    totals: {},
+    gaps: [],
+    excluded: [],
+    status: 'complete',
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetSecurities.mockResolvedValue(mockSecurities);
+    mockGetPortfolioSummary.mockResolvedValue({ holdings: mockHoldings });
+    mockGetInvestmentAccounts.mockResolvedValue([{ id: 'acc-1', name: 'Brokerage 1', currencyCode: 'USD' }]);
+    mockGetMarketIndexes.mockResolvedValue(mockMarketIndexes);
+    mockGetTransactions.mockResolvedValue({ data: [], pagination: { hasMore: false } });
+    mockGetPerformanceComparison.mockResolvedValue(comparison);
+  });
+
+  async function renderReport() {
+    await act(async () => {
+      render(<SecurityPerformanceReport />);
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: SELECT_PLACEHOLDER })).toBeInTheDocument();
+    });
+  }
+
+  it('offers the export for a loaded single security (control)', async () => {
+    mockGetSecurityPrices.mockResolvedValue([
+      { id: 1, securityId: 's-1', priceDate: '2025-01-01', closePrice: 175, createdAt: '' },
+    ]);
+    await renderReport();
+    await selectSecurity('AAPL - Apple Inc.');
+    await screen.findByText('Price Chart');
+    expect(screen.getByTestId('export-pdf')).toHaveAttribute('data-disabled', 'false');
+  });
+
+  it('disables the export while the security detail request has failed', async () => {
+    mockGetSecurityPrices.mockRejectedValue(new Error('500'));
+    await renderReport();
+    await selectSecurity('AAPL - Apple Inc.');
+    await waitFor(() => expect(mockGetSecurityPrices).toHaveBeenCalled());
+    expect(screen.getByTestId('export-pdf')).toHaveAttribute('data-disabled', 'true');
+  });
+
+  it('disables the export while the security detail request is pending', async () => {
+    mockGetSecurityPrices.mockReturnValue(new Promise(() => {}));
+    await renderReport();
+    await selectSecurity('AAPL - Apple Inc.');
+    await waitFor(() => expect(mockGetSecurityPrices).toHaveBeenCalled());
+    expect(screen.getByTestId('export-pdf')).toHaveAttribute('data-disabled', 'true');
+  });
+
+  async function loadComparisonThenAddASecurity(next: () => unknown) {
+    await renderReport();
+    await selectSecurity('AAPL - Apple Inc.');
+    await selectSecurity('VTI - Vanguard Total Stock');
+    await screen.findByText('Performance Comparison');
+    await waitFor(() => expect(screen.getByTestId('export-pdf')).toHaveAttribute('data-disabled', 'false'));
+
+    mockGetPerformanceComparison.mockImplementation(next);
+    await selectSecurity('BARE - Bare Security');
+    await waitFor(() =>
+      expect(mockGetPerformanceComparison).toHaveBeenLastCalledWith(
+        expect.objectContaining({ securityIds: ['s-1', 's-2', 's-4'] }),
+      ),
+    );
+  }
+
+  it('disables the export while the next comparison request has failed', async () => {
+    await loadComparisonThenAddASecurity(() => Promise.reject(new Error('500')));
+    await waitFor(() => expect(screen.getByTestId('export-pdf')).toHaveAttribute('data-disabled', 'true'));
+  });
+
+  it('disables the export while the next comparison request is pending', async () => {
+    await loadComparisonThenAddASecurity(() => new Promise(() => {}));
+    await waitFor(() => expect(screen.getByTestId('export-pdf')).toHaveAttribute('data-disabled', 'true'));
   });
 });

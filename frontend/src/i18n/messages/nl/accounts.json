@@ -61,6 +61,7 @@
     "combinedBreakdown": "Beleggingen {investments} · Contanten {cash}",
     "combinedUnknown": "Totaal niet beschikbaar",
     "combinedUnknownTooltip": "{count, plural, one {# positie heeft geen koers, dus het totaal van deze rekening kan niet worden bepaald} other {# posities hebben geen koers, dus het totaal van deze rekening kan niet worden bepaald}}",
+    "combinedUnknownValuation": "Sommige posities in deze rekening konden niet naar je rapportagevaluta worden omgerekend, dus het totaal kan niet worden berekend. Voeg de ontbrekende wisselkoers toe op de pagina Valuta's.",
     "combinedUnknownNoPortfolio": "De posities konden niet worden geladen, dus het totaal van deze rekening kan niet worden bepaald",
     "limit": "Limiet: {amount}",
     "pairedWith": "Gekoppeld aan {name}",

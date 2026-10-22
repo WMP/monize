@@ -728,7 +728,7 @@ export function InvestmentTransactionHistoryReport() {
             onRefreshComplete={reloadAll}
             onExportCsv={handleExportCsv}
             onExportPdf={handleExportPdf}
-            disabled={filteredTransactions.length === 0}
+            disabled={isLoading || isSummaryLoading || !!error || !!summaryError || filteredTransactions.length === 0}
           />
         </div>
       </div>

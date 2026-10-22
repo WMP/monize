@@ -68,6 +68,8 @@ const summaryOf = (over: Partial<PortfolioSummary> = {}): PortfolioSummary => ({
   totalPortfolioValue: 100_000,
   totalGainLoss: 20_000,
   totalGainLossPercent: 25,
+  gainCostBasis: 80_000,
+  unpricedCostBasis: 0,
   timeWeightedReturn: null,
   timeWeightedReturnReasons: [],
   timeWeightedReturnSince: null,

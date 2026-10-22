@@ -61,6 +61,7 @@
     "combinedBreakdown": "Yatırımlar {investments} · Nakit {cash}",
     "combinedUnknown": "Toplam kullanılamıyor",
     "combinedUnknownTooltip": "{count, plural, one {# varlığın fiyatı yok, bu nedenle bu hesabın toplamı hesaplanamıyor} other {# varlığın fiyatı yok, bu nedenle bu hesabın toplamı hesaplanamıyor}}",
+    "combinedUnknownValuation": "Bu hesaptaki bazı varlıklar raporlama para biriminize çevrilemedi, bu yüzden toplam hesaplanamıyor. Eksik döviz kurunu Para Birimleri sayfasından ekleyin.",
     "combinedUnknownNoPortfolio": "Varlıklar yüklenemedi, bu nedenle bu hesabın toplamı hesaplanamıyor",
     "limit": "Limit: {amount}",
     "pairedWith": "{name} ile eşleştirildi",

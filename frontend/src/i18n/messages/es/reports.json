@@ -316,6 +316,7 @@
     "totalInflows": "Total de entradas",
     "totalOutflows": "Total de salidas",
     "netCashFlow": "Flujo de caja neto",
+    "notAvailable": "N/A",
     "monthlyCashFlow": "Flujo de caja mensual",
     "inflowsByCategory": "Entradas por categoría",
     "outflowsByCategory": "Salidas por categoría",
@@ -764,6 +765,7 @@
     "totalValue": "Valor total",
     "costBasis": "Base de costo",
     "totalGainLoss": "Ganancia/pérdida total",
+    "gainPartialCaption": "Solo sobre posiciones con precio",
     "return": "Retorno",
     "viewHoldings": "Posiciones",
     "viewAllocation": "Asignación",
@@ -1147,6 +1149,11 @@
     "vsMonth": "vs {month}",
     "inMonth": "{amount} en {month}",
     "netWorthTotal": "Total: {amount}",
+    "netWorthSummaryPartial": "Tu patrimonio neto en {currentMonth} fue <strong>{netWorth}</strong>. No se puede calcular el cambio respecto a {previousMonth} porque no hay tipo de cambio para {pairs}; añade uno en la página Divisas.",
+    "pdfPartialSuffix": "{amount} (parcial)",
+    "pdfNote": "Nota",
+    "pdfNotAvailable": "N/A",
+    "pdfPartialNote": "Total parcial: no hay tipo de cambio para {pairs}.",
     "netWorthSummary": "Tu patrimonio neto en {currentMonth} fue <strong>{netWorth}</strong>, lo que representó <delta>{changeAmount}</delta> en comparación con {previousMonth}.",
     "pdfTitle": "Comparación mensual",
     "pdfSubtitle": "{current} vs {previous}",
@@ -1194,7 +1201,12 @@
     "colNetWorth": "Patrimonio neto",
     "barStyle": "Estilo de barras",
     "barStyleNetWorth": "Patrimonio neto",
-    "barStyleAccountType": "Por tipo de cuenta"
+    "barStyleAccountType": "Por tipo de cuenta",
+    "notAvailable": "N/A",
+    "colNote": "Nota",
+    "partialMonthNote": "Parcial: no hay tipo de cambio para {pairs}",
+    "pdfPartialNote": "Total parcial: no hay tipo de cambio para {pairs}. Añade uno en la página Divisas.",
+    "partialMonth": "No se muestra: algunos importes de este mes no se pudieron convertir, por lo que su patrimonio neto es desconocido."
   },
   "portfolioValue": {
     "highestValue": "Valor más alto",
@@ -1855,7 +1867,10 @@
   },
   "partialData": {
     "notice": "Algunas cifras son parciales: {count, plural, one {# importe no se pudo convertir a {displayCurrency} y queda} other {# importes no se pudieron convertir a {displayCurrency} y quedan}} excluidos. No hay tipo de cambio para {currencies}; añádalo en la página Divisas.",
-    "noticeExcluded": "Algunas cifras son parciales: {count, plural, one {# importe no se pudo calcular y queda} other {# importes no se pudieron calcular y quedan}} excluidos."
+    "noticeExcluded": "Algunas cifras son parciales: {count, plural, one {# importe no se pudo calcular y queda} other {# importes no se pudieron calcular y quedan}} excluidos.",
+    "pdfNote": "Total parcial: no hay tipo de cambio para {currencies}",
+    "pdfNoteExcluded": "Total parcial: {count, plural, one {# importe excluido} other {# importes excluidos}}",
+    "pdfSuffix": "(parcial)"
   },
   "sankey": {
     "help": "El dinero que entró fluye por el centro hacia aquello en lo que se gastó, lo que se ahorró o invirtió y lo que pagó deudas. De forma predeterminada, el informe abarca sus cuentas corrientes, de ahorro, de efectivo, de tarjeta de crédito y de línea de crédito abiertas, y una transferencia entre dos de ellas no se muestra. Excluya una cuenta de ahorro del filtro de cuentas para ver lo que transfirió a ella. Un pago de tarjeta de crédito nunca es un pago de deuda: las compras que liquida ya se cuentan como gastos.",

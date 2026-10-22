@@ -89,9 +89,13 @@ export interface DashboardWidgetContext {
   topMovers: TopMover[];
   favouriteSecurities: FavouriteSecurityQuote[];
   netWorthData: MonthlyNetWorth[];
+  /** The net worth request failed; `netWorthData` is then empty, not "no history". */
+  netWorthFailed: boolean;
   brokerageMarketValues: Map<string, number>;
   /** Holdings account id -> how many of its holdings have no price. */
   unpricedHoldingCounts: Map<string, number>;
+  /** Holdings account ids whose valuation is a subtotal for any cause, a missing rate included. */
+  incompleteHoldingAccountIds: ReadonlySet<string>;
   isLoading: boolean;
   hasInvestments: boolean;
   hasSecurities: boolean;
@@ -134,6 +138,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
         accounts={ctx.accounts}
         brokerageMarketValues={ctx.brokerageMarketValues}
         unpricedHoldingCounts={ctx.unpricedHoldingCounts}
+        incompleteHoldingAccountIds={ctx.incompleteHoldingAccountIds}
         isLoading={ctx.isLoading}
         onAccountsChanged={ctx.onAccountsChanged}
       />
@@ -222,7 +227,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
     titleSection: 'assetsVsLiabilities',
     iconType: 'bar',
     defaultEnabled: true,
-    render: (ctx) => <AssetsVsLiabilities data={ctx.netWorthData} isLoading={ctx.isLoading} />,
+    render: (ctx) => <AssetsVsLiabilities data={ctx.netWorthData} isLoading={ctx.isLoading} error={ctx.netWorthFailed} />,
   },
   {
     id: 'expenses-pie',

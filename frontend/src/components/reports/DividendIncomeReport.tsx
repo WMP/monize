@@ -299,7 +299,12 @@ export function DividendIncomeReport() {
   pruneAccountFilter(accounts);
 
   // Lazy-load daily capital gains only when the user switches to the daily view.
-  const { data: dailyResponse, reload: reloadDaily } = useReportData(
+  const {
+    data: dailyResponse,
+    isLoading: isDailyLoading,
+    error: dailyError,
+    reload: reloadDaily,
+  } = useReportData(
     () =>
       viewType === 'daily' && isValid
         ? investmentsApi.getCapitalGains({
@@ -1286,6 +1291,10 @@ export function DividendIncomeReport() {
             onRefreshComplete={reloadAll}
             onExportPdf={handleExportPdf}
             onExportCsv={isTableView ? handleExportCsv : undefined}
+            // Both requests feed the export; the daily one only its own view.
+            disabled={
+              isLoading || !!error || (viewType === 'daily' && (isDailyLoading || !!dailyError))
+            }
           />
         </div>
       </div>

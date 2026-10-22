@@ -198,7 +198,7 @@ export function InvestmentDetailView({ account, refreshKey = 0 }: InvestmentDeta
       <GroupedHoldingsList
         holdingsByAccount={summary?.holdingsByAccount ?? []}
         isLoading={isLoading}
-        totalPortfolioValue={summary?.totalPortfolioValue ?? 0}
+        totalPortfolioValue={summary?.totalPortfolioValue ?? null}
         valuationComplete={summary?.valuationComplete}
       />
 
