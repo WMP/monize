@@ -11,6 +11,7 @@ Paths beginning with `src/` or `scripts/`, and layer configuration filenames, ar
 - `ProtectedRoute` (`components/auth/ProtectedRoute.tsx`) wraps authenticated pages.
 - **No `setState` in `useEffect`** — ESLint rule `react-hooks/set-state-in-effect` is enforced. To reset child state when a prop changes, use the "info from previous render" pattern (track the prop in `useState` and update during render).
 - **Dialogs use `Modal`** (`components/ui/Modal.tsx`) — handles Escape, focus trap, body scroll lock, focus restore, and stacked-modal popstate. Opt into `pushHistory` so the browser back button also closes. `ConfirmDialog` forwards `pushHistory` for stacked confirm flows.
+- **Leaving the page from inside a `pushHistory` modal** closes the modal first, then navigates through `afterModalHistoryPop` (`lib/after-modal-history-pop.ts`), never a bare link and never a fixed `setTimeout`. The closing modal pops its entry with an asynchronous `history.back()`, which undoes any push that lands before it; a guessed delay loses that race on a slow render, so the helper waits for the pop itself.
 
 ## Reusing existing UI patterns
 
