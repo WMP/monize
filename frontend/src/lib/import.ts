@@ -1,5 +1,5 @@
 import apiClient from './api';
-import { invalidateBalanceCaches } from './apiCache';
+import { clearAllCache } from './apiCache';
 
 export type DateFormat = 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'YYYY-DD-MM';
 
@@ -477,7 +477,9 @@ export const importApi = {
   importQif: async (data: ImportQifRequest): Promise<ImportResult> => {
     // Longer timeout for large imports (5 minutes)
     const response = await apiClient.post('/import/qif', data, { timeout: 300000 });
-    invalidateBalanceCaches();
+    // The import creates categories, payees, accounts and securities as well as
+    // transactions, so no prefix is narrow enough.
+    clearAllCache();
     return response.data;
   },
 
@@ -489,7 +491,9 @@ export const importApi = {
 
   importQifMultiAccount: async (data: ImportQifMultiAccountRequest): Promise<ImportResult> => {
     const response = await apiClient.post('/import/qif/multi-account', data, { timeout: 300000 });
-    invalidateBalanceCaches();
+    // The import creates categories, payees, accounts and securities as well as
+    // transactions, so no prefix is narrow enough.
+    clearAllCache();
     return response.data;
   },
 
@@ -501,7 +505,9 @@ export const importApi = {
 
   importOfx: async (data: ImportOfxRequest): Promise<ImportResult> => {
     const response = await apiClient.post('/import/ofx', data, { timeout: 300000 });
-    invalidateBalanceCaches();
+    // The import creates categories, payees, accounts and securities as well as
+    // transactions, so no prefix is narrow enough.
+    clearAllCache();
     return response.data;
   },
 
@@ -518,7 +524,9 @@ export const importApi = {
 
   importCsv: async (data: ImportCsvRequest): Promise<ImportResult> => {
     const response = await apiClient.post('/import/csv', data, { timeout: 300000 });
-    invalidateBalanceCaches();
+    // The import creates categories, payees, accounts and securities as well as
+    // transactions, so no prefix is narrow enough.
+    clearAllCache();
     return response.data;
   },
 

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { exchangeRatesApi, FX_PROVIDER_NAMES, isFxProviderName } from './exchange-rates';
 import { scheduledTransactionsApi } from './scheduled-transactions';
-import { invalidateCache } from './apiCache';
+import { invalidateCache, setCache, getCached, clearAllCache } from './apiCache';
 
 vi.mock('./api', () => ({
   default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -501,5 +501,31 @@ describe('FX_PROVIDER_NAMES', () => {
     expect(isFxProviderName('frankfurter')).toBe(true);
     expect(isFxProviderName('yahoo')).toBe(true);
     expect(isFxProviderName('yahoo_finance')).toBe(false);
+  });
+});
+
+describe('exchangeRatesApi valuation caches (INV-CACHE-001)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearAllCache();
+    setCache('investments:summary:all', { totalPortfolioValue: 1 });
+    setCache('accounts:all:false', [{ id: 'a' }]);
+  });
+
+  const expectDropped = () => {
+    expect(getCached('investments:summary:all')).toBeUndefined();
+    expect(getCached('accounts:all:false')).toBeUndefined();
+  };
+
+  it('refreshRates drops the converted totals', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: {} });
+    await exchangeRatesApi.refreshRates();
+    expectDropped();
+  });
+
+  it('fillRateGaps drops the converted totals', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: {} });
+    await exchangeRatesApi.fillRateGaps('EUR');
+    expectDropped();
   });
 });

@@ -1,5 +1,5 @@
 import apiClient from './api';
-import { invalidateBalanceCaches } from './apiCache';
+import { clearAllCache } from './apiCache';
 import { AccountType } from '@/types/account';
 
 /**
@@ -331,9 +331,11 @@ export const mnyImportApi = {
     );
     // The import runs server-side after `start` returns, so the write lands
     // here rather than at a mutation call. A failed job can still have written
-    // rows before it stopped, so both terminal states invalidate.
+    // rows before it stopped, so both terminal states invalidate. An MNY import
+    // writes accounts, categories, payees, tags, securities and schedules, and a
+    // wipe deletes them, so no prefix is narrow enough.
     if (response.data.status === 'completed' || response.data.status === 'failed') {
-      invalidateBalanceCaches();
+      clearAllCache();
     }
     return response.data;
   },
