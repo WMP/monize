@@ -6,7 +6,7 @@
 **Audit mode:** read-only, fixed revision, executed: every HIGH candidate was run against the baseline (suite, mutation, probe or failpoint) or says why not
 **Sessions consumed:** S01-S22 (22 reports, `01-baseline.md` .. `22-delta-review.md`), the ledger, the prior-findings register
 **Companion:** [`remediation-tasks.md`](./remediation-tasks.md) (one task per PR, dependency-ordered)
-**Report status:** in-progress, remaining: sections 8-24, appendices; remediation-tasks.md
+**Report status:** in-progress, remaining: remediation-tasks.md
 
 Reading guide. Sections 1 to 6 and 17 to 24 are the maintainer's summary. Section 7 carries every
 session finding in the protocol's 15-field format, verbatim from its session report under the
@@ -64,7 +64,7 @@ is never booted by a gate and is pushed before the CVE gate, and the audited rev
 no hosted CI run (section 2).
 
 **Program verdict: REQUEST CHANGES.** Fifteen HIGH findings survived the adversarial challenge of
-their sessions and this consolidation. The remediation plan (section 20) and the task list put the
+their sessions and this consolidation. The remediation plan (section 21) and the task list put the
 two security fixes and the money-creating writers first (P0), then the snapshot and currency
 roots (P1), then the MEDIUM register (P2) and the LOW and documentation items (P3). Every fix lands
 with the red test its finding names; A26-M42's harness half (a two-connection helper, the real scheduled module, schema parity)
@@ -104,7 +104,7 @@ is the first P1 task because most P1 regression tests need it.
 The baseline commit and the two commits below it carry `[skip ci]`; the newest hosted `ci.yml`
 push run on `main` of `WMP/monize` is from 2026-10-16, on a commit not present in the fetched
 history. The program's test evidence for this revision is local: S01's full run of every layer
-and the sessions' focused runs (section 19). This is the concrete instance of A26-M41 (the
+and the sessions' focused runs (section 20). This is the concrete instance of A26-M41 (the
 release job pushes an untested `[skip ci]` bump, MON-M45) and of INV-RELEASE-001's `partial`
 status.
 
@@ -7639,3 +7639,1817 @@ Causality: `PRE_EXISTING_UNREPORTED`.
 15. **Residual risks:** the migration's preflight must not collapse legitimate rows.
 
 Causality: `PRE_EXISTING_UNREPORTED` (the fingerprint shape is from migration 140).
+
+
+## 8. Security and RLS findings
+
+Two HIGH findings are exploitable now without a second defect. A26-H01 is in the refresh-token
+reuse branch: the family revocation runs in the same `withScopedDb` transaction as the
+`UnauthorizedException` that reports the reuse, so it is rolled back, and the existing unit tests
+assert only that `manager.update` was called (known-wrong, section 13). A26-H02 is in the email
+receipt sender check: a pasted "Forwarded message" block replaces the envelope sender, so any
+address can submit a trade the parser attributes to a broker; with auto-apply it is booked.
+
+The MEDIUM register repeats one shape across credential and delegation code: an authorization or
+a snapshot is read in one transaction and the write lands in another (A26-M01, A26-M02, A26-M04,
+A26-M05; D-S03-01 and D-S04-05 in section 15). A26-M06 is the RLS policy that would contain a
+mistake in that code and does not. A26-M03 matters for sequencing: fixing A26-H01 makes the
+false "token theft" of two tabs refreshing at once fire for real, so the two land in one task.
+A26-M17 (user actions create global currencies) and A26-M36 (another person's portfolio series
+from `sessionStorage`) are tenancy defects outside the database. No session found a cross-tenant read
+through RLS on a current application path (S04).
+
+| ID | Severity | Title | Session findings |
+| --- | --- | --- | --- |
+| A26-H01 | HIGH | Refresh-token reuse detection does not revoke the family: the revocation is rolled back by the exception that reports it | A26-S03-01 |
+| A26-H02 | HIGH | Any sender can make an email read as the broker's by pasting a forwarded-message header block; with auto-apply the trade it states is booked | A26-S11-04 |
+| A26-M01 | MEDIUM | A successful password login writes the pre-bcrypt snapshot back and restores the failed-login counter it just reset | A26-S03-02 |
+| A26-M02 | MEDIUM | Change-password, admin reset/disable and owner-of-delegate reset end refresh sessions with one blanket UPDATE that misses a concurrently inserted successor | A26-S03-07 |
+| A26-M03 | MEDIUM | Two tabs refreshing at once read as token theft: the family is revoked and every session ends with no explanation | A26-S18-06 |
+| A26-M04 | MEDIUM | Grantee and cross-owner writes are authorized in earlier transactions and written under the system bypass without a re-check | A26-S04-01 |
+| A26-M05 | MEDIUM | Delegation management reads in one transaction and writes back the stale entity in another: a revoked delegation is re-instated | A26-S04-02 |
+| A26-M06 | MEDIUM | The `account_delegates` and `account_delegate_grants` policies let a delegate-side session issue itself a delegation from any owner | A26-S04-03 |
+| A26-M17 | MEDIUM | User actions create or leave global, active currencies offered to every user (MNY import, preferences, deleted users' custom currencies) | A26-S09-06, A26-S13-06 |
+| A26-M36 | MEDIUM | The intraday portfolio series is cached in sessionStorage with no user or acting-context key and survives sign-out and context switches | A26-S20-04, A26-S18-08 |
+| A26-L06 | LOW | `JwtStrategy` accepts every `JWT_SECRET`-signed token except `2fa_pending` as an access token | A26-S03-03 |
+| A26-L07 | LOW | Admin and owner-of-delegate password resets revoke PATs and trusted devices in a separate transaction from the password write | A26-S03-05 |
+| A26-L08 | LOW | Per-user TOTP and step-up attempt budgets are enforced by peek-then-verify | A26-S03-06 |
+
+## 9. Database, migration, backup and restore findings
+
+The backup lens is largely closed: S06 verified eleven upstream findings fixed (MON-H02, M08-M13,
+M16-M18, L05 and the backup half of M11). What remains is the legacy flat-root retention sweep
+that deletes other owners' pre-upgrade artifacts (A26-M07), the S3 target's only bucket-backed
+suite that never runs in CI and fails when run (A26-M08), restore staging without upload intents
+(A26-L10) and the absence of semantic backfills on restore (A26-L11). Migrations replay as a
+no-op on `schema.sql` (S05, `scripts/verify-schema.sh` twice); one migration contracts a column
+the previous release still reads (A26-L09). The MNY import is the data lens's HIGH (A26-H08).
+
+| ID | Severity | Title | Session findings |
+| --- | --- | --- | --- |
+| A26-H08 | HIGH | A failure after the MNY import's data commit is reported as "Nothing was saved", and the same file can then be imported again | A26-S09-01, A26-S02-05, A26-S18-05 |
+| A26-M07 | MEDIUM | Automatic-backup retention deletes legacy flat-root artifacts of other owners (MON-H01 residual, MON-M43) | A26-S06-01, A26-S02-06 |
+| A26-L09 | LOW | `20260908120000_remove_notification_browser.sql` drops a column the previous release still selects | A26-S05-02 |
+| A26-L10 | LOW | Restore staging writes external attachment objects without an upload intent (MON-M22 residual) | A26-S06-03 |
+| A26-L11 | LOW | A restore applies no semantic backfill to rows from an older artifact (`skip_price_updates`) | A26-S06-04, A26-S05-03 |
+| A26-L14 | LOW | A staged MNY file can still be deleted under a job that was just created (MON-L04 residual) | A26-S09-04 |
+| A26-L16 | LOW | Deleting a rule leaves its open AI review requests rule-less, and they block the email-receipt review of the same transaction | A26-S10-04 |
+| A26-L18 | LOW | The trade card's preview can call the FX provider inside the pipeline's receipt transaction | A26-S11-03 |
+| A26-L28 | LOW | The portfolio-movement alert commits its new baseline before it writes the notification | A26-S17-06 |
+
+## 10. Backend transaction and concurrency findings
+
+The program's most frequent root: a delta, a status or a whole entity derived from a row read
+before the write transaction's lock (A26-H03, A26-H04, A26-H06, A26-M09, A26-M13, A26-L19), or a
+single-use action not pinned to the identity the user saw (A26-H07). The house mechanisms exist and
+are used on the main paths (`lockTransactionRow`, the compare-and-set in `updateTransfer`, the
+occurrence claims, the job leases); the defects are the branches left out when those mechanisms
+were introduced, and the guards that hold them match per file or per public method, so a private
+branch escapes (`derived-state-writers.guard.spec.ts`, `reconciled-lock.guard.spec.ts`). Two
+post-commit shapes recur: a failure after the commit reported as "nothing happened" (A26-H08,
+A26-M14) and leases shorter than the work they guard (A26-L13).
+
+| ID | Severity | Title | Session findings |
+| --- | --- | --- | --- |
+| A26-H03 | HIGH | Transfer edit paths derive both balance deltas from pre-transaction snapshots (split-transfer leg, connected cross-owner transfer) | A26-S07-01, A26-S02-01 |
+| A26-H04 | HIGH | Editing an investment transaction twice at once, or while it is deleted, duplicates or orphans its cash leg | A26-S12-01 |
+| A26-H07 | HIGH | Manual post and skip of a scheduled transaction are not pinned to the occurrence the user saw; a stale view pays a bill twice or consumes the next occurrence | A26-S08-01, A26-S02-04 |
+| A26-M09 | MEDIUM | VOID crossings are decided from a status read before the row lock (bulk VOID expansion and `addSplit`; MON-H10 residual) | A26-S07-03, A26-S02-07 |
+| A26-M13 | MEDIUM | A whole-entity save or an absolute write puts a snapshot's `current_balance` back: investment-pair rename or re-currency, QIF/CSV opening balance | A26-S07-07, A26-S10-05 |
+| A26-M14 | MEDIUM | An error after a single-use write commits is reported as a failure, so the offered retry writes again (scheduled post and its cron alert, AI action confirm) | A26-S08-02, A26-S17-02 |
+| A26-M19 | MEDIUM | Deleting an account checks "no transactions" in one transaction and deletes in another: a concurrent sync or import is cascaded away | A26-S10-03 |
+| A26-L13 | LOW | Job leases are shorter than the provider calls they guard and the saves are not fenced by the lease token (AI insights, email-receipt poll) | A26-S08-04, A26-S11-01 |
+| A26-L19 | LOW | The security-transfer edit writes and validates before taking the holdings lock, from snapshots of both legs | A26-S12-07 |
+
+## 11. Financial-correctness findings
+
+Four invariant families carry the financial HIGH findings: "a rate for a date" (A26-H11; INV-FX-001,
+INV-FX-003), "rate 1 means same currency, never no rate" (A26-H10), "convert before summing"
+(A26-H12) and "a subtotal is not a total" (A26-H15, A26-M38). Each has a shared helper in the
+codebase (`resolveFxRate`, `FxAggregate`, `sumConverted`, the completeness flags) that the failing
+surfaces do not call. Ledger arithmetic proper (signs, splits, VOID inclusion, deletion effects)
+holds on the main paths; the defects are on edges: bulk delete of a split leg (A26-H05), a QIF or
+MNY writer that leaves one leg in the wrong currency (A26-M16, A26-M18), loan-history inclusion
+(A26-M28), installments below the interest (A26-M29), budget periods (A26-M31, A26-M32), and the
+custom report engine (A26-H12, A26-M33, A26-L12).
+
+| ID | Severity | Title | Session findings |
+| --- | --- | --- | --- |
+| A26-H05 | HIGH | Bulk-deleting one leg of a split transfer deletes the parent but leaves the other legs, creating their money | A26-S13-03 |
+| A26-H06 | HIGH | Undo or redo of an account edit restores a whole-entity snapshot: the edit-time balance is written back absolutely and a loan's coupled template is left unrepriced or unlinked | A26-S07-02, A26-S15-01 |
+| A26-H09 | HIGH | A bank transaction whose entry reference the bank repeats on a later day is imported twice, or a later one is silently dropped (INV-BANKSYNC-001) | A26-S10-01 |
+| A26-H10 | HIGH | Built-in reports convert a missing exchange rate 1:1 and label the result in the reporting currency (MON-H12, MON-M39) | A26-S13-01, A26-S02-02 |
+| A26-H11 | HIGH | A rate for a date is not the resolver's: the latest-rate readers use a frozen pre-1.17 mirror row and a rate of any age, and back-dated trades settle or prefill at the newest rate (INV-FX-001, INV-FX-003) | A26-S13-02, A26-S12-02, A26-S19-04, A26-S18-04 |
+| A26-H12 | HIGH | Totals sum amounts of different currencies without conversion: budget actuals, the custom report engine and the AI/MCP transaction analytics | A26-S16-01, A26-S16-06, A26-S17-01 |
+| A26-M10 | MEDIUM | `PATCH /transactions/:id` changes the amount, rate or account of one transfer leg only (MON-H11 server residual) | A26-S07-04 |
+| A26-M11 | MEDIUM | The strict reconciled lock is skipped on split-transfer leg and cross-owner transfer edits and deletes | A26-S07-05, A26-S02-08 |
+| A26-M12 | MEDIUM | An account closes over a pending future-dated row, which the due-balance cron later applies to the closed account (MON-M20 residual) | A26-S07-06 |
+| A26-M15 | MEDIUM | `post()` advances the cursor past its own slot only, so a slot a settlement rule claimed ahead of the cursor becomes `next_due_date` and the schedule stalls | A26-S08-03 |
+| A26-M16 | MEDIUM | A cross-currency transfer into an investment sleeve credits the bank account's amount under the sleeve's currency (MNY import) | A26-S09-03 |
+| A26-M18 | MEDIUM | A QIF split-transfer leg into another account is written in the source account's currency and amount (MON-H11 QIF half) | A26-S10-02, A26-S02-09 |
+| A26-M20 | MEDIUM | An AI or MCP edit that names no rate replaces the row's own exchange rate with a freshly resolved market rate (INV-FX-002) | A26-S12-03 |
+| A26-M21 | MEDIUM | Realized gains and capital-gains replays price a transferred-in lot at the carried per-share figure and rate 1 (MON-M35 residual) | A26-S12-04 |
+| A26-M22 | MEDIUM | A security transfer's basis is the leg's stored price (today's average on create, the client's figure on edit); the form shows an editable cost the server replaces | A26-S12-05, A26-S19-05 |
+| A26-M23 | MEDIUM | The holdings fold snaps every intermediate position under 0.0001 shares to zero | A26-S12-06 |
+| A26-M24 | MEDIUM | A Money-imported trade of a security quoted in another currency stores its price and total in the account's currency, read as the security's | A26-S12-09 |
+| A26-M26 | MEDIUM | On a day the bond engine refuses to price, the blend readers still value the holding; current per-account surfaces use the blended price (INV-BOND-010) | A26-S14-01, A26-S14-02 |
+| A26-M27 | MEDIUM | GEM momentum prices one role from a close up to 14 days before the boundary while its series holds a later close | A26-S15-02 |
+| A26-M28 | MEDIUM | The loan payment history counts VOID payments, VOID interest expenses and future-dated payments as paid | A26-S15-03 |
+| A26-M29 | MEDIUM | An installment below the period's interest is booked as settling the period; the unpaid interest is recorded nowhere | A26-S15-04 |
+| A26-M30 | MEDIUM | Loan payment setup accepts a source account in another currency; every posting of the bill is then refused | A26-S15-10 |
+| A26-M31 | MEDIUM | The account exclusions chosen in the budget wizard are stored and never applied | A26-S16-02 |
+| A26-M32 | MEDIUM | Closing a budget period never writes a rollover: `closePeriod` does not load the relation `computeRollover` reads | A26-S16-03 |
+| A26-M33 | MEDIUM | A category's cost is not its signed sum: the custom report engine sums absolute values, the loan summary adds an interest refund to "Interest Paid" | A26-S16-05, A26-S15-05 |
+| A26-M34 | MEDIUM | The AI and MCP `spending_anomalies` report passes the requested number of months as the z-score threshold | A26-S17-03 |
+| A26-M38 | MEDIUM | Portfolio gain is the priced market value less the cost of every holding, so an unpriced holding reads as a loss of its whole cost | A26-S20-02 |
+| A26-L12 | LOW | The custom-report text filter is a second search door with unescaped LIKE wildcards (INV-SEARCH-001) | A26-S07-08 |
+| A26-L17 | LOW | A trade email that states only a price books a total derived from the price rounded to 4 decimals (INV-TRADE-001) | A26-S11-02 |
+| A26-L20 | LOW | The price-window fill remembers a month as empty when one provider answered nothing and another failed | A26-S12-08 |
+| A26-L21 | LOW | The undo/redo holdings fold adds a dividend's total to the basis and stores the average at 6 decimals | A26-S12-10 |
+| A26-L22 | LOW | A benchmark observation stored outside the 06:25 run is not followed by a price recompute | A26-S14-03 |
+| A26-L23 | LOW | A loan owing exactly one minor unit is treated as paid off on both layers | A26-S15-06 |
+| A26-L24 | LOW | The GEM signal-change alert is not bound to the current period and its dedupe memory is purged after the retention window | A26-S15-07 |
+| A26-L29 | LOW | The insights aggregator computes the month start as a local-midnight date read back in UTC | A26-S17-07 |
+| A26-L38 | LOW | A manual close in the middle of a budget period leaves the budget with no OPEN period for good | A26-S16-07 |
+| A26-L39 | LOW | Two flex groups over 90 percent share one alert fingerprint, so the second is never raised in the period | A26-S16-08 |
+
+## 12. Frontend, contract, cache, date and localization findings
+
+The transfer form is where the frontend can write wrong money: opening a cross-currency transfer
+from its receiving leg (A26-H13) and switching an existing row to Transfer mode (A26-H14). The
+figure surfaces read the server's completeness flags in some places and not in others (A26-H15);
+a failed request is rendered as an empty or zero figure on three surfaces (A26-M39). The client
+cache invalidates by route list and by hand-rolled reads, so recategorising, non-ledger valuation
+inputs and imports leave derived figures stale (A26-M35). Four-decimal amounts are blurred to two
+(A26-M37). Locale and catalog bypasses are LOW (A26-L30).
+
+| ID | Severity | Title | Session findings |
+| --- | --- | --- | --- |
+| A26-H13 | HIGH | A cross-currency transfer opened from its receiving leg loads the received amount into the source-amount field, and an unedited save re-prices the transfer (MON-H11 client half) | A26-S19-01 |
+| A26-H14 | HIGH | Switching an existing income, expense or split to Transfer mode creates a second, new transfer and leaves the original row in place | A26-S19-02 |
+| A26-H15 | HIGH | Completeness flags are not carried or read where totals are shown: net worth, accounts, portfolio widget and history, the AI/MCP account tools, report exports and Cash Flow | A26-S20-01, A26-S02-03, A26-S13-04, A26-S16-04 |
+| A26-M25 | MEDIUM | Choosing a default currency that is not yet in the table fails on the foreign key: onboarding on a fresh instance accepts only USD | A26-S13-05 |
+| A26-M35 | MEDIUM | Client caches outlive the data they derive from: recategorising writes, non-ledger valuation inputs and MNY imports invalidate nothing, and hand-rolled reads are not generation-aware (INV-CACHE-001 client half) | A26-S18-01, A26-S18-02, A26-S18-03, A26-S18-07 |
+| A26-M37 | MEDIUM | Four-decimal amounts are loaded and blurred at two decimals, so an unedited save re-amounts a row or is refused (MON-M37) | A26-S19-03 |
+| A26-M39 | MEDIUM | A failed or pending request is shown as data: reports keep the previous window through a failed reload, the country view and the dashboard render a failure as empty or zero | A26-S20-03, A26-S20-05, A26-S20-08 |
+| A26-L25 | LOW | Loan Amortization Report: "Original Amount" double-counts projected principal when the opening balance is unset; exports run while loading | A26-S15-08 |
+| A26-L26 | LOW | The Post dialog previews the stored template's principal/interest split while the post re-prices the bill from the ledger | A26-S15-09 |
+| A26-L27 | LOW | A price push's chart token lives five minutes, the push it rides on four hours | A26-S17-04 |
+| A26-L30 | LOW | Figures and labels bypass the reader's number locale and the message catalog (lib formatters, form readouts, figure surfaces) | A26-S18-09, A26-S19-07, A26-S20-07 |
+| A26-L31 | LOW | The client forecast accumulates floats and rounds the projected balance with `Math.round(x * 100) / 100` | A26-S18-10 |
+| A26-L32 | LOW | Frontend response types drop signals the backend sends (contract drift) | A26-S18-11 |
+| A26-L33 | LOW | A loan stored at 0 % interest opens with an empty rate and every edit is refused | A26-S19-06 |
+| A26-L34 | LOW | "Interest already saved" counts unrecorded interest as saved for a loan that books interest outside the app | A26-S20-06 |
+
+## 13. Test and CI findings
+
+The suites are large and green at the baseline, and the coverage gates hold; what they lack is the
+production boundary. S21's program table (59 undetected mutation rows in eleven families) shows
+that removing a lock, a lease predicate, a compare-and-set, an RLS predicate or a post-commit
+ordering leaves every committed suite green, because the integration harness has no two-connection
+primitive, builds its schema from entities (15 unique keys and 82 CHECKs missing), and replaces the
+scheduled module with stubs (A26-M42). The release path publishes before it gates and never boots
+the image it publishes (A26-M40, A26-M41), and the audited revision itself has no hosted CI run
+(section 2). Ten tests assert a defect (known-wrong, appendix B); the first of them is the
+`report-currency.service.spec.ts:213` case that `docs/verification-contract.md` section 5 listed as
+"not located".
+
+| ID | Severity | Title | Session findings |
+| --- | --- | --- | --- |
+| A26-M08 | MEDIUM | The S3 half of INV-BACKUP-006 rests on a suite that never runs in CI and fails when it does; no local/S3 attachment round trip exists (MON-M47) | A26-S06-02, A26-S06-05 |
+| A26-M42 | MEDIUM | The concurrency, post-commit and database-boundary invariants behind the program's HIGH and MEDIUM findings have no test at the production boundary (MON-M46) | A26-S21-04, A26-S03-04, A26-S04-04, A26-S05-01, A26-S07-09, A26-S08-05, A26-S16-09, A26-S17-05, A26-S02-12, A26-S06-06, A26-S09-02 |
+| A26-L05 | LOW | `fx-fallback.guard.spec.ts` cannot see a camelCase rate fallback | A26-S02-11 |
+| A26-L37 | LOW | Coverage excludes every DTO; two cross-field or privacy constraints there are held by no test | A26-S21-07 |
+| ID | Severity | Title | Session findings |
+| --- | --- | --- | --- |
+| A26-M40 | MEDIUM | The production image is never exercised: no CI gate boots the published target, and both documented Compose deployments mount backup and attachment directories the backend user cannot write | A26-S21-01, A26-S21-03 |
+| A26-M41 | MEDIUM | Release publication precedes the gates: images reach `:latest` before the CVE gate, and the release job pushes an untested `[skip ci]` bump with an admin token (MON-M45) | A26-S21-02, A26-S02-10 |
+| A26-L01 | LOW | CI's backend lint step runs `eslint --fix`, so a fixable lint error never fails CI | A26-S01-01 |
+| A26-L02 | LOW | The `WITH_CONTEXT_ALLOWLIST` lint fence misses several import forms | A26-S01-02 |
+| A26-L35 | LOW | The E2E release gate passes a test that failed twice out of three, never runs one of its tests, and swaps a shard for the cluster run | A26-S21-05 |
+| A26-L36 | LOW | `push:client:test` passes with zero discovered tests (MON-L07 residual) | A26-S21-06 |
+
+## 14. Documentation inconsistencies
+
+Cross-cutting roots (S23 consolidation):
+
+1. **Status words without their mechanism.** Several `enforced` entries in
+   `docs/system-invariants.md` name a mechanism that covers only part of the paths: INV-BANKSYNC-001
+   names only the hash-to-ref path (A26-H09), INV-IMPORT-003's entry names one writer of three
+   (A26-L15), INV-BOND-010 lists only historical series (A26-M26), INV-CACHE-001 reads `enforced`
+   while undo dispatches no recompute (section 15, S13), INV-BACKUP-006's text claims a rejected
+   put from a checksum-ignoring S3 service (A26-M08). The remediation tasks name the entry each fix
+   must correct.
+2. **Two-transaction prescriptions.** `docs/backend/database-access-and-tenancy.md:31, 35` and
+   `rls-context-smoke.spec.ts` prescribe the shape behind A26-M04 and A26-M05 (D-S04-05).
+3. **Instruction files.** A26-L03 (local coverage run), A26-L04 (`npm install*` pre-approved);
+   `AGENTS.md`'s "`TZ=UTC npm run test:unit -- --coverage` # what CI runs" while CI sets no `TZ`
+   (DR-S01-4).
+4. **Release and deployment docs.** The Compose deployments the README documents cannot write
+   backups (A26-M40); INV-RELEASE-001's retry semantics describe a double bump where a re-dispatch
+   reuses a version for a different digest (A26-M41); `docs/verification-contract.md` section 5's
+   "not located" item 1 is located (appendix B).
+
+| ID | Severity | Title | Session findings |
+| --- | --- | --- | --- |
+| A26-L03 | LOW | The layer instruction files order a local coverage run that `AGENTS.md` and the verification contract say is CI's | A26-S01-03 |
+| A26-L04 | LOW | `.claude/settings.json` pre-approves `npm install*`, an action `AGENTS.md` lists under "Ask first" | A26-S01-04 |
+| A26-L15 | LOW | INV-IMPORT-003 is still unenforced on the MNY and QIF writers, and its index entry names one path of three | A26-S09-05 |
+
+The per-session registers follow verbatim (section 11 of each report; sessions without entries
+are omitted).
+
+#### S01 (`01-baseline.md` section 11)
+
+| # | Where | Inconsistency |
+| --- | --- | --- |
+| D1 | `docs/audits/2026-10/plan.md` s1 | "Invariant index at baseline: 145 entries: 126 enforced, 19 partial, 1 unenforced" sums to 146. The index table says 126/18/1; the entry bodies say 125/19/1. The difference is INV-BONDNOTIFY-003 (D2). |
+| D2 | `docs/system-invariants.md` | INV-BONDNOTIFY-003: index row `enforced`, entry body `Status partial` ("no guard scanning the rules for a recomputed figure"). The plan's list of 19 non-enforced IDs omits it. |
+| D3 | `docs/audits/2026-10/plan.md` s1 | "40 cron jobs": the code and `docs/cron-jobs.md` have 49 `@Cron` handlers in 46 services. |
+| D4 | `docs/audits/2026-10/plan.md` s5 | `backend/src/import-preview/` is "2k"; measured 222 non-test lines (`.ts`). MNY import "73k": `backend/src/import/` is 22.8k non-test `.ts` lines, 83k including non-`.ts` files. Bonds "18k": 13.9k `.ts`, 21.6k all files. |
+| D5 | `docs/backend/testing.md:95` | Recommends injecting repository mocks via `getRepositoryToken()`; production services inject only `DataSource` and the working pattern is `createScopedDbMocks` (`src/built-in-reports/tax-recurring-reports.service.spec.ts:143-163` carries both, the token providers dead). Not scanned by `lint-bans.spec.ts`. MON-M02 residual. |
+| D6 | `backend/src/mcp/CLAUDE.md` | "Three of them hold on every change here" followed by four bullets. |
+| D7 | `CONTRIBUTING.md:39-43` | "Two of them are worth restating" followed by three bullets. |
+| D8 | `docs/system-invariants.md` INV-CRON-001 (from line 5745) | Says the budget rollover is guarded by "ON CONFLICT ... with the loser re-reading the winner"; the code (`budget-period-cron.service.ts:121,203`) and `docs/cron-jobs.md` use `claimOnce` plus `releasePermanentClaim`. |
+| D9 | `docs/cron-jobs.md:27` | The `processAutoPostTransactions` row omits the `scheduled_transaction_postings ON CONFLICT (scheduled_transaction_id, original_due_date)` claim (`scheduled-transactions.service.ts:3651`) that `concurrency-and-idempotency.md` names. |
+| D10 | `docs/cron-jobs.md:36` | The `closeExpiredPeriods` row does not mention the monthly summary email (`budget-period-cron.service.ts:228,401`), guarded only by the per-owner `claimOnce`, with no delivery record. |
+| D11 | `docs/system-invariants.md` INV-HA-001 | Prose says "The E2E above does not exist yet"; Required tests says the positive half exists (`e2e/tests/cluster.spec.ts:117-118` asserts the 200 case). |
+| D12 | `docs/system-invariants.md` INV-LOAN-HISTORY-001 | The second gap ("no reader branches on `interest_booking_mode`") is stale: `loan-installments/plan-loan-settlement.ts:231` and `transaction-rules/rule-loan-settlement.ts:165` branch on it; the history producer still does not. |
+| D13 | `docs/system-invariants.md` INV-RULE-002 | The call-site list omits `bank-sync/bank-sync-writer.service.ts:323`, which the guard's `APPLYING_SITES` includes. |
+| D14 | `docs/verification-contract.md:347`, `AGENTS.md` | Present `npm run lint` as the backend lint check; it is a fixer (A26-S01-01). |
+| D16 | `AGENTS.md` (Commands: "91/90/87/85 thresholds"), `frontend/CLAUDE.md:17` ("85% branches") | `frontend/vitest.config.ts:31` sets `branches: 84`. Either the threshold was lowered without the documents, or the documents were never right; `AGENTS.md` lists coverage thresholds under "Do not change these casually". Measured branch coverage at the baseline is 87.74, so neither value is binding today. |
+| D15 | root `CLAUDE.md` | Describes `.claude/settings.json` as "read-only git"; it allows `git add*` and `git checkout -b*` (A26-S01-04). |
+
+#### S02 (`02-prior-high-triage.md` section 11)
+
+- `docs/concurrency-and-idempotency.md:470-476` says manual posting is covered by the occurrence pin; the HTTP path is not (A26-S02-04).
+- `docs/system-invariants.md:219-221` (INV-IMPORT-001) says the reaper fails a crashed job "retryably"; it does so only when `data_committed = false`, and the index is credited to migration 135 only (140 re-creates it).
+- `docs/system-invariants.md` INV-IMPORT-002 says the committed run is finalized; nothing re-runs post-processing after a post-commit failure (A26-S02-05).
+- `auto-backup.service.ts:2256-2263` documents the legacy sweep as intended, against the upstream remediation (A26-S02-06).
+- `net-worth.service.spec.ts` around `:4025`: comment "100 - 30 - 20 + 50 = 100" no longer describes the asserted ratio fixture (cosmetic).
+
+#### S03 (`03-security-auth.md` section 11)
+
+- `docs/system-invariants.md` INV-AUTH-001 says the loser "takes the reuse-detection branch" and the family ends revoked; at the baseline the branch's revocation rolls back (A26-S03-01).
+- `docs/system-invariants.md` INV-AUTH-005 says standing credentials are revoked "inside the password write's own withScopedDb transaction"; the admin and owner-of-delegate resets do it in a second transaction (A26-S03-05), and three paths do not use the converging refresh revocation its "existing revocation" wording implies (A26-S03-07).
+- `docs/system-invariants.md` INV-AUTH-002 says "the success-path reset writes a fixed absolute value and was always safe"; a later whole-entity save overwrites it (A26-S03-02).
+- `docs/system-invariants.md` INV-CLAIM-001 names only `claim_token_used_at IS NULL` as the guard; at the baseline `claim_token_hash = NULL` in the same statement is an equally sufficient second guard, which is why removing the named predicate alone does not reopen the race (section 6). Not wrong, but a reader removing the "redundant" hash clear would then depend on the predicate alone without knowing it.
+
+#### S04 (`04-rls-tenancy.md` section 11)
+
+- `docs/row-level-security-contract.md` section 2: `push_chart_artifacts` is in `RLS_EXEMPT_TABLES` but has no row in the exemption table; its rationale is an unheaded paragraph after section 6, so step 3 of the contract's own section 5 checklist is not met.
+- `docs/backend/database-access-and-tenancy.md:71` says there is "exactly one sanctioned direct-`DataSource` exception"; the canonical contract (section 4) documents a second one (the `PgListener` connection).
+- `docs/backend/database-access-and-tenancy.md:55-58`: the `withScopedDb` code sample has lost its opening fence and first lines (a stray `// ...mutate + repo.save(row)` and a closing fence render as body text).
+- `docs/backend/database-access-and-tenancy.md:31, 35` versus `:9` (D-S04-05).
+- `backend/src/transactions/transaction-transfer.service.ts:641-643` ("account ownership and delegation grants are not written by the posting that follows") is true of the posting and false of the system: a concurrent revoke writes them (A26-S04-01).
+- `backend/src/transactions/joint-register.service.ts:38` ("Every check that can refuse runs before the system-context window opens") states as a safety property the shape that A26-S04-01 shows unsafe.
+- `docs/system-invariants.md` has no entry for joint-account or delegation tenancy; the session plan (`sessions.md` S04, `plan.md` section 5) names INV-SHARE-001..005 for joint accounts, but those IDs are the PWA share target (`system-invariants.md:139-143`).
+- `docs/row-level-security-contract.md` section 1 ("RLS is what contains the query that forgets to") overstates what the delegation policies contain (A26-S04-03).
+
+#### S05 (`05-migrations-schema.md` section 11)
+
+- `backend/test/integration/email-receipts-schema.integration.spec.ts` header: "entity metadata ... creates none of the CHECK constraints". Sixteen entities carry `@Check` (e.g. `transaction-rule.entity.ts:52`, `scheduled-transaction-posting.entity.ts:46-47`, `exchange-rate-coverage.entity.ts:39`); the correct statement is "most", 82 of the production CHECKs being absent.
+- `AGENTS.md` / `.claude/commands/audit.md` state the three-place rule as if held; nothing holds it for unique keys or CHECKs (A26-S05-01).
+- `backend/src/common/db/required-db-functions.ts`: `currency_code_in_use_globally` names `136_currency_global_liveness.sql` as its migration; the body in force is `20261010190000_currency_in_use_bond_instruments.sql` (after `20260920163144`). Harmless for the existence check, misleading for an operator reading the boot failure.
+- `scripts/verify-schema.sh` and `database/CLAUDE.md` are precise about what is proven ("no-op when replayed on top of schema.sql", not historical upgrade parity); consistent.
+
+#### S06 (`06-backup-restore.md` section 11)
+
+- `docs/system-invariants.md` INV-BACKUP-006: status `enforced` with "Integration against MinIO: test/integration/backup-store-s3.integration.spec.ts" as required test; CI never sets the endpoint and the suite fails when run (A26-S06-02). The sentence "where an S3-compatible service ignores the checksum header we learn it from a rejected put, not from a silent acceptance" is false for a service that ignores the header (moto accepts silently).
+- INV-BACKUP-006 "Two runs for the same user and day cannot interleave -- the run is claimed (claimDueBackup)": the manual fan-out (`runManualBackupClaimed` -> `runBackupForUser`) takes only the deployment-wide manual claim, never the per-user one (section 7).
+- INV-BACKUP-009 lists `restore-plan.spec.ts` "confines every repair to the restoring user's rows" as the test of the Phase-3 scoping; it tests the declarations, not the SQL (A26-S06-06).
+- `auto-backup.service.ts:2256-2263` documents the legacy sweep as intended, while `local-backup-storage.target.ts:392-395` refuses to serve the same files because they "can[not] be attributed to anybody" (A26-S06-01).
+- `docs/external-side-effects.md` restore paragraph says nothing about the staged objects' crash semantics (A26-S06-03).
+
+#### S07 (`07-cash-ledger.md` section 11)
+
+- `docs/financial-semantics.md` section 10 (gap register) still lists "Does a cross-currency transfer need a real rate? `exchangeRate` defaults to `1` ... a transfer created as `VOID` still moves both balances" and "`PATCH /transactions/:id/status` ... touch only the row given ... Breaches FIN-001"; the transfer routes now resolve or refuse a rate and VOID creates move nothing (`docs/system-invariants.md` INV-BALANCE-001 says so), and a VOID crossing on the generic route mirrors the counterpart. The register describes fixed behaviour as open.
+- `docs/system-invariants.md` INV-BALANCE-001 says "only sanctioned services write current_balance, and each reads under a lock"; the account-edit undo writes it from a snapshot (A26-S07-02).
+- INV-RECONCILE-001 lists `removeTransfer` / `updateTransfer` as covered; their split-leg and cross-owner branches are not (A26-S07-05).
+- INV-TRANSFER-001 status `enforced` with "both legs' balances stay consistent across a VOID transition" on every path; A26-S07-03 is a concurrent counterexample.
+- The comment at `transaction-bulk-update.service.ts:199-203` ("it does not read the statuses ... safe to run before the lock") is false.
+- The comment at `transaction-transfer.service.ts:2215-2217` ("authorization was fully decided before entry") describes A26-S04-01's gap as a design.
+- No document states the sign policy of split lines (mixed-sign is supported in practice; MON-M28 rejected on that basis).
+
+#### S08 (`08-scheduler-cron.md` section 11)
+
+- `docs/system-invariants.md` INV-OCCURRENCE-001 "Crash semantics: a crash between claim and advance leaves the claim row, so the next tick is refused rather than reposting" describes the pre-fix two-transaction shape; claim, money and advance now commit or roll back together (P5).
+- `docs/concurrency-and-idempotency.md:470-476` says manual posting is covered by the occurrence pin; the HTTP path is not (A26-S08-01; S02 recorded the same line).
+- `schedule-cursor.ts` header: "the cursor steps past every consecutive claimed slot so the bill never offers an occurrence whose own claim key is taken" is true of the rule's caller, not of `post()` (A26-S08-03).
+- `docs/audits/2026-10/plan.md` section 1 and `sessions.md` S08 say 40 cron jobs; the code has 49 `@Cron` handlers in 46 files (and `docs/cron-jobs.md` has 49 rows).
+- `docs/cron-jobs.md` `email-receipt-poll` "at most 5 provider calls ... per user per tick": the code also allows `AI_CATEGORY_CALLS_PER_POLL = 10` (`email-receipt-poll.service.ts:54, 355`; sweep, not executed) -- to S11.
+- `docs/cron-jobs.md` `updates.service` "every 12 hours": the 12-hour window equals the period with a strict comparison (`updates.service.ts:28, 302-308`), so a tick can find the window not yet elapsed; effective cadence up to 24 h (sweep, not executed) -- to S17.
+- `docs/cron-jobs.md` notification purge "both deletes are by predicate on stored timestamps": the cutoffs come from the process clock (`notification.service.ts:323`); harmless across replicas.
+
+#### S09 (`09-import-mny.md` section 11)
+
+- `docs/system-invariants.md` INV-IMPORT-002: "a committed run is finalized rather than replayed" and "Failpoint present ... commits writeAll then fails before terminal completion": no such failpoint exists; the committed in-process failure is neither finalized nor protected from a second start (A26-S09-01/-02).
+- `docs/system-invariants.md` INV-IMPORT-003 names only `import.service.ts`; the CSV path was fixed, the MNY writers have the same gap.
+- `mny-staging.service.ts:96-103`: "a started import can never have its bytes swept out from under it" overstates the mechanism (A26-S09-04).
+- `frontend/src/i18n/messages/*/import.json` `mnyErrors.mnyImportFailed`: "Nothing was saved" is false whenever `data_committed` is true.
+- `docs/audits/monize-audit-01-remediation-review-response.md` RFR-001 describes `assertStillHoldsSlot` / `MnyImportSlotLostError`, since replaced by `markDataCommitted`; it is a shipped record (not to be edited) and no live document repeats it.
+
+#### S10 (`10-rules-banksync-csv.md` section 11)
+
+- `docs/system-invariants.md` INV-BANKSYNC-001 Status names one key-instability path (`hash:` to `ref:`); the fetch-local discriminator is a second one (A26-S10-01), and the spec section 6 ("so none is lost and the key does not depend on the listing order") is true within one fetch only.
+- INV-RULE-002 "Call sites" lists bank sync only through INV-RULE-005 and the guard; the call-site sentence omits `BankSyncWriterService` (the guard's APPLYING_SITES has it).
+- `bank-sync-writer.service.ts:136-172` docblock sits above `CreatedOperation`, not the class it describes (cosmetic, not a finding).
+
+#### S11 (`11-email-receipts.md` section 11)
+
+- `docs/cron-jobs.md` row `email-receipt-poll.service`: "take a bounded AI step (at most 5 provider calls, 2 of them parser drafts, per user per tick)". The poll also asks up to `AI_CATEGORY_CALLS_PER_POLL = 10` category questions per tick in the pipeline loop for any mailbox whose AI mode is not `off` (`poll.service.ts:54, :355`; `pipeline.service.ts:368-397`), so the bound is 15 per tick (and 10 in mode `on_demand`). `docs/specs/email-receipt-matching.md:292` ("The poll's automatic step never calls the AI for categories") is literally true of `runAutomaticStep` and misleading about the poll. `email-receipt-ai.service.ts:139-143` ("AI mode governs only what happens by itself: the poll's automatic step calls AiService for automatic mailboxes alone") is contradicted by the same category calls.
+- `docs/system-invariants.md` INV-RECEIPT-006: "the poll starts no new work after 8" minutes; provider calls already started run on, and the AI step's calls are not checked against the budget at all (A26-S11-01).
+- `docs/future-plans/email-receipts.md` decision 12 and `receipt-rows.ts:85-87` describe a forward "from the user's own address"; the code honours a forwarded header block from any sender, and decision 12's safety argument ("it never reaches the ledger except through the same card and approval") does not hold under auto-apply (A26-S11-04).
+- INV-RECEIPT-008 lists `Present` tests that are all unit specs and states the integration gap honestly; after P3 the gap is narrower than "absent" only in this audit's scratch worktree.
+
+#### S12 (`12-securities-holdings.md` section 11)
+
+- `portfolio-calculation.service.ts:1243-1248` says the realized-gain replay omits the acquisition commission; it uses `acquisitionCost` and includes it.
+- `investment-transactions.service.ts:666-672` documents the latest-rate fallback as precedence item 3, against INV-FX-001 and `backend/CLAUDE.md`.
+- `docs/system-invariants.md` INV-HOLDING-001 known gap describes the update/remove snapshot as a scope problem only; the cash duplication (A26-S12-01) and the transfer-basis rule (A26-S12-05) are not recorded; its "transferSecurity reads the source position's carried cost before the transaction" names the race but not the as-of-date defect.
+- `holdings.service.ts:562-563` says prices and `averageCost` are in the security's currency; Money-imported cross-currency rows are not (A26-S12-09).
+- `portfolio-calculation.service.ts:785-791` states the transfer rule as if it held for the module; it holds for one of four replays (A26-S12-04).
+
+#### S13 (`13-valuation-fx-networth.md` section 11)
+
+- `docs/specs/exchange-rate-canonical-orientation.md` section 8 says the client rate map and the report map "already fall back to the inverse key, so receiving one orientation per pair needs no change"; during the expand window they receive both orientations and prefer the frozen one (A26-S13-02).
+- `common/time-series/fx-rate.one-door.spec.ts:16-19` calls `getLatestRates()` "the plural admin listing", but it feeds every built-in report and the frontend; INV-FX-001's enforcement text does not mention it.
+- INV-FX-003's status text records the pre-release mirror rows as harmless duplicates; it does not record that direct-first readers prefer them.
+- INV-CACHE-001 reads `enforced`; undo/redo and `removeAll` of investment transactions dispatch nothing and rely on the sweep, which the entry does not name.
+- `sessions.md` S13 names INV-PORTMOVE-001..002; the index holds only INV-PORTMOVE-007 and -008.
+- `currencies.service.ts:232-238` says `ensureSystemCurrency` is "safe to call on every default-currency change"; the caller runs it after the FK-checked write (A26-S13-05).
+- The session plan's runtime line names `net-worth*`, `currenc*`, `exchange*`, `portfolio*` integration suites; only `portfolio-movement-flow` and `portfolio-tag-keys` match.
+
+#### S14 (`14-bonds.md` section 11)
+
+- **D1** INV-BONDNOTIFY-003: index row `enforced` (`docs/system-invariants.md:116`), body `partial` (`:3968-3969`). Confirms the S01 hand-off.
+- **D2** INV-BOND-010 Enforcement lists only historical per-account series as unrouted (`:3885-3889`); three current surfaces read the blend (A26-S14-02), and every blend surface values a refused day (A26-S14-01).
+- **D3** INV-BOND-005 says "a transaction price is one lot's trade price, not the holding's value" and covers the `security_prices` writers only; `NetWorthService.loadTxPriceSeries` reads trade prices of linked securities as closes.
+- **D4** `docs/cron-jobs.md:42` says the bond price cron runs "After the benchmark refresh"; the ordering is a 20-minute clock gap with no dependency, and a store outside the 06:25 run has no recompute of its own (A26-S14-03).
+
+#### S15 (`15-loans-strategies.md` section 11)
+
+- **D-1** `sessions.md` (S15) and the plan name INV-LOAN-001..011; the index has INV-LOAN-001..010 plus INV-LOAN-HISTORY-001; there is no INV-LOAN-011.
+- **D-2** INV-LOAN-HISTORY-001 (`docs/system-invariants.md:3171-3180`): "the provenance of a SPLIT-recorded interest line is enforced" is false when one parent pays two loans whose interest lines share a category (`readRecordedInterest`, `loan-history.ts:1256-1263`; sweep probe F: 300 shown, 200 correct); "no reader branches on `interest_booking_mode`" is false on the backend (`loan-payment-detector.service.ts:280,286`, `plan-loan-settlement.ts:231`, `rule-loan-settlement.ts:165`), and the layers disagree for a SPLIT loan (the backend detector refuses to pair standalone expenses, the frontend history pairs them). Same stale sentence in `docs/frontend/financial-figures.md:198`.
+- **D-3** INV-LOAN-HISTORY-001 does not mention VOID, refund or future-dated rows (A26-S15-03, -05).
+- **D-4** `docs/specs/gem-signal-change-notifications.md:3` says "proposed, awaiting maintainer approval" while the cron is implemented and registered (`docs/cron-jobs.md:44`); its INV-GEM-NOTIFY-001..005 are not in `docs/system-invariants.md`; its producer pseudo-code (section 4) reads "two latest" rows, the same shape as A26-S15-07(a).
+- **D-5** `docs/gem-strategy.md:24-25` says the benchmark is "US equity leg or the safe asset"; the code uses `benchmarkRoleFor` (risk-free when assigned), as the same document says at lines 197-198. `docs/gem-strategy.md:552-562` presents the settled-boundary rule as complete; it does not cover a gap just before the boundary (A26-S15-02). `frontend/src/types/gem-strategy.ts:82` says "Trailing 12-month" for a configurable lookback.
+- **D-6** `docs/frontend/financial-figures.md:171` places `resolveEffectiveLoanTerms` in `lib/loan-schedule.ts`; it is defined in `lib/loan-comparison.ts:129`.
+- **D-7** `bookLoanAllocation`'s comment (`loan-payment-waterfall.util.ts:113-119`) says a residue "of less than one unit" reads as paid off; the threshold it names (`debt <= 0.01`) includes one whole unit (A26-S15-06); `docs/specs/loan-installment-settlement.md` 7.2 and E15 state `<= 0.01`.
+- **D-8** INV-LOAN-006's statement "the interest ... is roundMoney(debt x periodic rate)" does not mention the cap at the installment (A26-S15-04).
+
+#### S16 (`16-budgets-reports.md` section 11)
+
+- `budget-alert.service.ts:403-411` says "the unique fingerprint ... arbitrates", true in production and unprovable in the test harness (A26-S16-09).
+- `budget-period-cron.service.ts:112-115` says the next period's `ON CONFLICT` "is what actually enforces once"; true, but the same conflict swallows the next period after a mid-period close (A26-S16-07).
+- `budget-spending.util.ts:211-221` documents "signed net sums" with no word on currency; `budgets.module.ts:54-55` says the budget converts occurrences "before totalling", which a reader can take to cover actuals.
+- `docs/system-invariants.md:1741-1760` describes the custom report engine as covered for INV-REPORT-001 without noting that it neither nets nor converts.
+
+#### S17 (`17-ai-mcp-notifications.md` section 11)
+
+- `docs/cron-jobs.md` states `updates.service` runs "every 12 hours"; with `UPDATE_CHECK_WINDOW_MS` equal to the period and a strict `<` in `claimCheck` (`updates.service.ts:298-312`), the effective cadence is between 12 and 24 hours.
+- `docs/system-invariants.md` INV-MCP-001 "Required tests" lists no test of the per-request scope on an existing 2025-era session, while its statement promises "that credential's current scopes" (A26-S17-05).
+- `docs/backend/ai-and-payees.md` "Shared AI tools" does not list `render_chart` as an assistant-only presentation tool beside `enter_bond_series_manually`'s documented MCP-only status.
+- The `spending_anomalies` tool descriptions (`tool-definitions.ts:1051-1056`, `reports.tool.ts:65-67`) promise a months window the implementation does not have (A26-S17-03).
+
+#### S18 (`18-frontend-core.md` section 11)
+
+- `docs/system-invariants.md` INV-CACHE-001 is `enforced`, but three classes of derived-cache staleness reproduce (A26-S18-01, -02, -03); the entry should be `partial` with these paths named.
+- `docs/system-invariants.md` INV-FX-001 "Known gap" names only the built-in reports; the client's ageless conversion (A26-S18-04) is a second gap.
+- `docs/frontend/api-and-cache.md` says "A write that moves money calls `invalidateBalanceCaches()`"; the budget family is moved by writes that move no money (recategorisation), and the guard enforces the narrower reading.
+- `frontend/src/lib/apiCache.ts:10-17` describes the in-flight generation fix as closing the resurrection class; it closes it for `dedupe` only.
+- `import.json` `mnyImportFailed` contains `--`, which `frontend/CLAUDE.md` forbids in copy (the em-dash rule); cosmetic.
+
+#### S19 (`19-frontend-forms.md` section 11)
+
+- `docs/system-invariants.md` records INV-DISPLAY-001 as `enforced`, but nine form readouts use `toFixed` and the guard is keyed on `%` only (A26-S19-07).
+- `docs/frontend/forms-and-formatting.md:19` says `CurrencyInput` rounds "so the stored value never carries sub-cent precision the 2dp display hides", and `:35` says "a field that hands back its own value has not been edited"; for a four-decimal stored value the two statements conflict and the first wins (A26-S19-03).
+- `docs/frontend/financial-figures.md:55` states that an investment price or quantity the user saved is never written over; the same paragraph exempts the Post dialog's refresh of a template price; the first sentence should name the exception.
+- `frontend/src/i18n/messages/en/investments.json:297` tells the user the cost per share they see is carried; it is, but a typed one is not (A26-S19-05).
+
+#### S20 (`20-frontend-figures.md` section 11)
+
+- `docs/frontend/financial-figures.md` ("Portfolio Value Over Time is the same shape, per date") describes the per-point rule for the report only; the investments page chart and the widget, which the same document lists as reading the same series, do not apply it.
+- `types/net-worth.ts:30-35` tells consumers to read the flags; the sibling `MonthlyNetWorth` in the same file has none to read.
+- `GeographicAllocationReport.tsx:788-806` documents the country aggregate's missing completeness as known; no invariant entry or plan records it.
+
+#### S21 (`21-tests-ci-release.md` section 11)
+
+| Document | Claim | Reality |
+| --- | --- | --- |
+| `docs/release-integrity.md:207` | "CVE gate fails the build ... The scan is a gate, not a report" | the gate runs after `:latest` and `:X.Y.Z` are pushed (A26-S21-02) |
+| `docs/release-integrity.md:205` | the SHA binding is "the pattern to copy" | true for the revision; the artifact built is a different target from the one the gates ran (A26-S21-01) |
+| `docs/release-integrity.md:72-73` | "No runner carries such a flag today either ... Playwright fails by default when it discovers no spec files" | `node --test` passes on zero (A26-S21-06) |
+| `docs/release-integrity.md:75-76` | "the 35 suites tracked under `backend/test/integration/`" | 118 spec files at the baseline; the guard asserts `> 30` |
+| `docs/system-invariants.md` INV-RELEASE-001 "Retry semantics" | "may bump the version twice" | a re-dispatch after an image-stage failure reuses the version for a different digest (A26-S21-02 (c)); both outcomes are possible |
+| `docs/verification-contract.md:345-354` | the jobs "that exist in `.github/workflows/ci.yml`" include `Lighthouse audit` | Lighthouse is `lighthouse.yml`, pull-request only, in no `needs:` |
+| `docs/verification-contract.md` section 5 | four items "reported but not located" | item 1 located; ten audit-located known-wrong tests absent from the register (section 10.1) |
+| `frontend/CLAUDE.md` Commands | `test:cov` "85% branches" | `vitest.config.ts` branches 84 (S01 D16, still open) |
+| `ci.yml:1451` | "Gates releases: build-and-push lists this job in its needs" | `prepare-release` / `prepare-preview` list it; `build-and-push` needs only `prepare-release` (transitively equivalent; wording only) |
+| `README.md:651-656` | "Build and start" `docker-compose.prod.yml` | the file pulls `:latest`, builds nothing; no ownership step for the bind mounts (A26-S21-03) |
+| `backend/src/net-worth/net-worth.service.spec.ts:1961` | title "returns amount unconverted when no rate exists" | the body asserts the gap; title stale |
+
+#### S22 (`22-delta-review.md` section 11)
+
+None introduced by the delta. One note for the plan: `plan.md` section 4 step 2's pin-check
+command uses pathspecs that resolve against the working directory, so it must be run from the
+repository root; run from `docs/audits/2026-10/` it reports the audit reports as a code change.
+
+## 15. Design risks and open hypotheses
+
+Not counted in the 96. Cross-cutting design risks (S23):
+
+- **Numeric `total*` fields when incomplete** (S02, S18, S20 D-S20-04): the server keeps a
+  subtotal under a total's name and every consumer must remember the flag; this is how A26-H15
+  and A26-M38 recur. A typed `{ value, complete }` or `null` plus a `known*Subtotal` field would
+  make the read compulsory.
+- **Whole-entity `save` after an earlier read** (D-S03-01, the 26-site sweep of S04, S12's
+  `updatePrice`): every site is a lost-update candidate; A26-M01, -M05, -M13 are the proven ones.
+- **"Today" is computed four ways** across the cash ledger and the scheduler (S07, S08 design
+  risks); replicas with different `TZ` would disagree.
+- **No source key on imported rows** (DR-S09-04): duplicate prevention lives only in job state
+  machines, which is why A26-H08 and A26-H09 are possible.
+- **Nearest-slot selection with a wide rule window** (S15 D2) turns into a stuck cursor through
+  A26-M15.
+- **Built-in reports convert past buckets at today's rate** (S13): the look-ahead clause of
+  INV-FX-001 for a past period; needs a maintainer policy statement or `convertAtDate`.
+- **Release:** `:beta` and fork images are unbooted and unscanned (DR-S21-1, DR-S21-2); liveness
+  versus a long migration (DR-S05-1, DR-S21-3); branch protection unverifiable (DR-S21-5).
+- **Open hypotheses handed to S23 and not promoted:** server-side sector weightings skip unpriced
+  holdings with no flag (`sector-weighting.service.ts:420-431`, S18); the country look-through
+  aggregate carries no completeness and the intraday response has no flag for a dropped bond
+  (S20, with S13/S14); `currencyCode ?? "USD"` at `monte-carlo.service.ts:721` (S14). Each is a
+  surface for task T17 or T33 to check, not a confirmed finding.
+
+The per-session design-risk registers follow verbatim (section 9 of each report).
+
+#### S01 (`01-baseline.md` section 9)
+
+- **DR-S01-1 The lint gate's strength rests on undocumented rule properties.** The RLS bans hold under `--fix` only because no fixer exists for them; adding an auto-fixable custom rule later would silently stop gating (A26-S01-01 widens this).
+- **DR-S01-2 `cron-doc.spec.ts` checks prose, not code.** It proves each `docs/cron-jobs.md` row names a mechanism from `REPLICA_MECHANISM_VOCABULARY`; nothing checks that the handler calls it (M5). A handler refactor can drop its claim with the doc unchanged.
+- **DR-S01-3 No `engines` field and no `.nvmrc`.** `npm ci` fails on Node 22 with an engine message about a transitive package, not about the project; README.md:491 is the only statement.
+- **DR-S01-4 CI's UTC is implicit.** `backend-unit-tests` runs `npm run test:unit -- --coverage` without `TZ`; it is UTC because GitHub's `ubuntu-latest` image is. `AGENTS.md` says "`TZ=UTC npm run test:unit -- --coverage` # what CI runs". A self-hosted runner in another zone would make `insights-aggregator.service.spec.ts` and `net-worth.service.spec.ts` flap (verification-contract s7).
+- **DR-S01-5 E2E CI retries.** `e2e/playwright.config.ts:12` sets `retries: 2` under `CI`; a test that fails twice and passes once is green. Handed to S21.
+- **DR-S01-6 Workflow concurrency group shared with releases.** `ci.yml:41-43` groups by workflow and ref with `cancel-in-progress: true`; a push to `main` can cancel an in-flight `workflow_dispatch` release on `main` (not tested). Handed to S21 (INV-RELEASE-001).
+
+#### S02 (`02-prior-high-triage.md` section 9)
+
+- Portfolio `total*` fields stay numeric (the known subtotal) when `valuationComplete` is false (`portfolio-calculation.service.ts:2184-2185`); AGENTS.md says `null` plus a separate subtotal field. Consumers must read the flag, which A26-S02-03 shows they do not everywhere. Owner S13/S20.
+- Cross-currency transfer `toAmount` / `exchangeRate` accepted without a tolerance against the market rate (MON-H11). Maintainer policy decision.
+- No instance namespace in backup keys (A26-S02-06 second half).
+- `currency-conversion.util.ts:20` treats an empty source currency code as "same currency"; protected by a report spec. Hypothesis for S13.
+- `investment-transactions.service.ts:782-792` falls back to `getLatestRate` with no age bound when the trade date has no rate (INV-FX-001 "never one struck after it"). Hypothesis for S12/S13.
+- `update()` takes `effectiveAccount` / currency from the pre-lock snapshot (`transactions.service.ts:2575-2579, 2799`); `PATCH /transactions/:id` with `amount` on a mirror transfer leg may change one leg only; `update()` vs `updateTransfer` lock order can deadlock. Hypotheses for S07.
+- A scheduled transfer into another owner's account can never post (`writeTransferLegs` refuses cross-owner on a caller's manager, `:751-760`). Functional gap, S08.
+
+#### S03 (`03-security-auth.md` section 9)
+
+- D-S03-01: whole-entity `repo.save(user)` after an earlier read and an intervening SQL write to the same row appears on several credential paths (`auth.service.ts:511, 538, 786, 903, 920`; `auth-email.service.ts:119, 224`; `two-factor.service.ts:367, 516, 581, 615, 905, 998`; `users.service.ts:173, 481`). TypeORM's `save` diffs the snapshot against the current row and writes every column that differs, so a concurrent committed change to another column of `users` (a password reset, a lockout, a 2FA disable) can be reverted. A26-S03-02 is the instance proven on a single request; the concurrent instances are not yet demonstrated (handed to S04/S07 as a pattern search, section 12).
+- D-S03-02: step-up tokens are reusable for their purpose for 5 minutes (no `jti` consumption). Acceptable for the two current purposes; a future destructive purpose added to `STEP_UP_PURPOSES` would inherit replayability. A guard that refuses a destructive purpose without a `jti` claim would make the rule machine-checked.
+- D-S03-03: an acting delegate receives the owner's `lastLogin`, `lastActivityAt`, `role`, `authProvider` and `emailVerified` from `/users/me` and `/auth/profile`. Not credential state, and the UI may need some of it; whether a delegate should see the owner's presence timestamps is a product decision (they reveal when the owner was last active, which is also the emergency-access clock).
+- D-S03-04: the nightly purge deletes revoked refresh tokens (`token.service.ts:378-382`), which also deletes the evidence reuse detection needs; once A26-S03-01 is fixed, a token stolen more than a day before reuse will be "invalid", not "reused".
+
+#### S04 (`04-rls-tenancy.md` section 9)
+
+- D-S04-01: the joint read arms (`schema.sql:3651-3724` and the indirect splits/tags arms) key on `app_real_user_id()` and any active delegation, so while Bob acts for Alice his session can also read, at the database level, what Carol granted him. Application code narrows it; RLS does not. A predicate pairing the delegation's owner with `app_current_user_id()` when the two GUCs differ would make RLS agree with the app.
+- D-S04-02: `push_chart_artifacts` holds rendered images of a person's figures in an exempt table readable by every session; the safety argument is the token-keyed consume and the short expiry, not a policy. The contract's section 2 table has no row for it (section 11).
+- D-S04-03: `revokeDelegate` decides "delete the login" from counts without locking the `users` row against a concurrent link (section 8).
+- D-S04-04: the startup role check is a point-in-time check; an attribute granted after boot is not seen until restart (documented in `app-role.ts:57-62`). A periodic re-check, or the readiness probe asking the same question, would close it.
+- D-S04-05: `docs/backend/database-access-and-tenancy.md:31, 35` and `src/delegation/rls-context-smoke.spec.ts` prescribe "authorization read under the caller's identity before any bypass opens", which is the two-transaction shape behind A26-S04-01 and A26-S04-02; the same document's section "Rejection happens before the write" requires the opposite. A rule that names the in-transaction re-check would resolve it.
+
+#### S05 (`05-migrations-schema.md` section 9)
+
+- **DR-S05-1 Liveness probe vs the lock holder.** `db-init`/`db-migrate` run before `app.listen`; the chart's liveness probe (`helm/values.yaml:282-288`: `initialDelaySeconds: 10`, `periodSeconds: 60`, default `failureThreshold: 3`) kills a container that has not answered in about 190 s, and nothing distinguishes "migrating" from "hung". A single migration longer than that (an index build or table rewrite on a large table) is killed and rolled back on every attempt, a deterministic crash loop on that database only. Followers waiting on the lock are also killed, which is harmless. `advisory-locks.ts` itself says "a large migration run can hold the lock for minutes". Decision needed: a `startupProbe` with a long budget, or running migrations as a pre-upgrade Job. Not a present-day failure for a household-sized database.
+- **DR-S05-2 Off/shadow mode owner writes the ledger.** By design the runtime is the owner at `RLS_MODE=off|shadow`, so MON-M15's protection applies only under `enforce`.
+- **DR-S05-3 Session lock requires a direct connection.** Documented in `advisory-locks.ts`: through a transaction-mode pooler the lock and the DDL can land on different server sessions. Nothing checks it at startup for the migrator (INV-HA-001's LISTEN check runs later, in `main.ts`).
+- **DR-S05-4 Redundant index.** `idx_transaction_rules_user_position` duplicates the btree of `uq_transaction_rules_user_position` (same columns, same order), the case `20260912131500` already fixed for calendar notes; cost is one extra index write per rule save.
+- **DR-S05-5 Boot check covers called functions, not triggers.** Invariants held by triggers (`bond_reject_mutation` for INV-BOND-001, `guard_job_claim_lease_ownership`, `reject_unfenced_import_checkpoint`, the attachment tombstone triggers) are not part of `REQUIRED_DB_FUNCTIONS`; a database whose trigger was dropped by hand boots and serves.
+
+#### S06 (`06-backup-restore.md` section 9)
+
+- **Post-commit `.then` chained to the failure `.catch`** (`backup-restore.service.ts:417-448`): any throw after the commit runs `discardStagedAttachmentObjects` over keys the committed metadata now names, and reports a committed restore as failed. Every callee swallows today (`deleteDisplacedAttachmentObjects` per-key try, `recomputeLinkedSecurities` wraps everything, `invalidatePortfolioSummary` synchronous), so it is not reachable; M2/R5 shows the first future throwing call deletes every restored attachment's bytes, and no test would notice. Remedy: `.then(onCommitted, onFailed)` form, or wrap the post-commit block in its own try so only pre-commit failures discard.
+- **No instance namespace in automatic-backup keys** (A26-S02-06 second half): two deployments sharing a directory or `BACKUP_STORE_S3_*` bucket and prefix with the same user ids (a staging clone) write and retain each other's artifacts. Operator-configurable for S3 (prefix), not for local beyond the mount. Needs a decision on an instance id.
+- **Currency codes are one global namespace**: a restore onto an instance where another user already created the same custom code keeps that user's `name`, `symbol` and `decimal_places` (`ON CONFLICT (code) DO NOTHING`), and the restoring user cannot edit it.
+- **The local attachment provider reuses the backup temp prefix** (`writeFileAtomic`): a crash mid-upload leaves `.monize-backup-tmp-*` inside attachment shard directories, and `cleanStaleTempFiles` is only ever called on backup folders. Storage leak only.
+- **Restore format has no producing-release marker** (A26-S06-04 root): every future semantic backfill repeats the gap.
+
+#### S07 (`07-cash-ledger.md` section 9)
+
+- Writers disagree on "today": `recalculateCurrentBalance` (`todayYMD()`), action-history `recalculateBalance` and import post-processing (`CURRENT_DATE`), bulk VOID (`formatDateYMDLocal(new Date())`), the due-balance cron (user timezone). Handed to S08.
+- The action-history delta writer (`action-history.service.ts:1799-1805`) has no `is_closed = false` predicate, so an undo can move a closed account's balance (not executed).
+- `updateTransfer`'s CAS compares amount, account and date but not status; the VOID decision reads `lockedFrom.status` only (`:1914`).
+- Cross-owner authorization outside the write transaction (A26-S04-01) also covers update and delete; the fix is S04's helper.
+- `derived-state-writers.guard.spec.ts` and `reconciled-lock.guard.spec.ts` match per file or per public method, so a private branch method escapes both (A26-S07-01, -05).
+
+#### S08 (`08-scheduler-cron.md` section 9)
+
+- No alert for a schedule refused tick after tick: the cron counts a `ConflictException` as "claimed elsewhere" (`:629-636`) whatever its cause, so any state that makes the cursor's slot unclaimable is silent (A26-S08-03, and the undo rewind below). A refusal of the same occurrence across, say, 24 ticks is not a replica race.
+- Undo of a schedule edit restores `next_due_date`, `occurrences_remaining`, `is_active`, `last_posted_date` absolutely (A26-S07-02 family); with a posting that recorded no action or a rule claim, it rewinds the cursor onto a claimed slot.
+- "Today" in this slice: the cron selects by the user's timezone (`todayInTimezone`), while `advanceScheduleCursor` stamps `last_posted_date` with `todayYMD()`, which outside a request is the server's local date (`common/date-utils.ts:111-122`); the bill reminder's run date, the mortgage reminder key and the emergency-access key are server-local too. Replicas with different `TZ` would key reminders differently (one email each); a single image has one `TZ`, so this is a configuration hazard, not a present failure.
+- `close()` neither deactivates nor warns about active schedules on the account; the cron then fails daily with `SCHEDULED_POST_FAILED`.
+- Lease overruns of the same class as A26-S08-04, not executed: `email-receipt-poll` (10-min lease, work budget checked only before a step, provider steps up to 20 min; stored rows are idempotent, provider calls are not); `bond-series` `withLease` 90 min against a worst case of about 270 x (3 s + 2 x 30 s); `backup-offsite-retry` reclaims after 60 min and the late worker's outcome write is conditioned on `status = 'uploading'` only.
+- A post-commit failure in `completeTransfer` loses the transfer's tags and history entry (the money is consistent); independent of A26-S08-02's reporting fix.
+
+#### S09 (`09-import-mny.md` section 9)
+
+- **DR-S09-01 Verification is self-referential.** `verify` checks write fidelity (database versus mapper), not mapping fidelity (mapper versus Money). A26-S09-03 is invisible to it. Money stores no per-account balance in the tables read, so a stronger check would need Money's own computed balance or a second, independent fold.
+- **DR-S09-02 Synchronous parse versus the 5-minute stale threshold.** `parser.parse` is synchronous (`mny-import.service.ts:265`); the heartbeat timer cannot fire while it runs. A parse longer than about 5 minutes on a loaded pod lets another replica's poll reap a healthy job; the fence then rolls the import back and the retry repeats the same parse. Bounded by the documented 3-minute target for 37,000 transactions; no measurement in the repository.
+- **DR-S09-03 Wipe longer than `JOB_STALE_AFTER_MS`.** The pending row created before the wipe is reaped after 5 minutes (S02 item); the claim then returns null and the import never runs after a completed wipe; Retry (no second wipe) recovers. The slot is free during the remainder of the wipe, so a restore could start alongside it.
+- **DR-S09-04 Fresh UUIDs per parse.** Nothing on an imported row identifies its Money source record, so every duplicate-prevention rule has to live in the job state machine; a source key (`htrn`) would make replay idempotent at the row level.
+
+#### S10 (`10-rules-banksync-csv.md` section 9)
+
+- **Bank-sync preview does not disclose structural rule effects.** `bank-sync-preview.service.ts:368-466` shows payee, category, tags and the matched rules; a `convert_to_transfer`, `split` or `settle_loan_installment` the commit will write (moving money in another account) is not shown, each row is planned alone without the pass's prior settlements (`planForRow`, `:381`), and the confirm fingerprint covers only the bank rows (`bank-sync-plan-fingerprint.ts`). Today's displayed fields agree with the commit; a person confirming the preview is not told what moves elsewhere. Handed to S19/S20 for the client side.
+- **Rule-application guard patterns.** `rule-application-sites.guard.spec.ts:141-156` does not match `m.save(Transaction, {...})` or `m.insert(Transaction, ...)`-style calls through a variable not named by the held-repository scan; no such site exists today (grep empty).
+- **Bank-sync ledger not in the backup** (`export-table-queries.ts:155-158`, documented BS11): after a restore the link and the ledger are gone; the default cut-off of the new link (day after the newest non-VOID row) is the only defence against a re-import.
+- **Transient balances during a QIF/CSV import.** VOID rows (`:138`) and the opening balance (A26-S10-05) move `current_balance` inside the import transaction in ways only the post-commit recompute corrects; a recompute failure leaves them.
+- **`matchPendingTransfer` / the split pending branch** update a pending leg's amount and the account balance with no VOID or reconciled-lock check, and select the placeholder by `description LIKE '%PENDING IMPORT%'`, a user-editable field (`import-regular-processor.service.ts:244-298, 548-587`).
+
+#### S11 (`11-email-receipts.md` section 9)
+
+- **DR-S11-1** (S05 hand-off): a deleted rule's open review becomes a rule-less open request that blocks the receipt's own request on that transaction (section 8). A `kind` filter (`AND open_request.kind = 'email_receipt'`) in the `NOT EXISTS` would decouple them, but would also let a receipt request sit beside an orphaned review; the maintainer decides.
+- **DR-S11-2**: the trade link (`email-receipt-trade-link.service.ts:150-308`) records `investment_transaction_id` after a `claimedElsewhere` read with no lock on the linked row and no unique index (`idx_email_receipts_investment_transaction` is non-unique), so two different emails linked to one row at the same moment both account for it. Needs two simultaneous person actions on two copies of one confirmation; the visible effect is that a third identical email is proposed as a second fill (never auto-applied).
+- **DR-S11-3**: a component's re-join of waiting settlements (`pipeline.service.ts:318-320`) runs after the component's commit with no durable marker; a crash between them leaves an applied settlement unenriched by the component until a person reprocesses it (an applied settlement is not in the rematch selection).
+- **DR-S11-4**: `ignore` and `remove` decide "applied" before closing the requests and do not re-read, unlike the trade link (section 8); harmless today because of the candidate exclusion, but the two paths encode the same race differently.
+
+#### S12 (`12-securities-holdings.md` section 9)
+
+- `update()` assigns a supplied `exchangeRate` directly (`investment-transactions.service.ts:4706-4707`), skipping the "same currency dominates" rule `create` applies (`:770-772`): a same-currency row edited through the API with `exchangeRate: 1.35` posts its cash x 1.35. The form does not offer the field for a same-currency pair (S19 to confirm). A reversed rate (CAD->USD supplied for USD->CAD) is accepted on every path without a tolerance against the market; same policy question as MON-H11.
+- The preview returns an unrounded rate (`1.3699999999986299` in P4) while the row stores `NUMERIC(20,10)`; `roundFxRate` is not applied in `resolveCashExchangeRateOrNull`.
+- Post-commit work in `create`/`update`/`remove` (SPLIT full rebuild, transaction-derived price, bond recompute) is best-effort and logged; a failure leaves a stale derived price row, not a wrong holding.
+- A security's `currency_code` can be changed while it holds provider prices and trades in the old currency (`securities.service.ts:1071-1078` checks only bond links); the INV-PRICE-001 known gap (no currency on a price row) makes the old rows indistinguishable.
+- `getMonthOverMonthMovers` has no age bound: a feed that stopped before `previousEnd` yields the same close on both sides and a 0.00 percent "move" instead of no figure.
+- Quote refresh has no negative cache per security (`refreshPricesForSecurities`, `:873-986`): each refresh of a dead symbol costs one call per routed provider (Yahoo, then MSN autosuggest and quote). Model: 5 dead symbols x 3 calls x one refresh every 5 minutes of an open session = 180 calls an hour; bounded by the breaker and `QUOTE_FETCH_CONCURRENCY`; not demonstrated as an operational problem (Rule 6), so an optimization, not a finding.
+- Yahoo retries 429/503 inside a held semaphore slot for up to 30 s (`yahoo-finance.service.ts:263-286`), so five throttled requests block the whole provider; a design choice documented in place.
+- `updatePrice` (`security-price.service.ts:2579-2622`) reads the price row outside its write transaction and saves the whole entity.
+
+#### S13 (`13-valuation-fx-networth.md` section 9)
+
+- Built-in reports convert every historical bucket at today's rate ("flat latest-rate lookup", `report-currency.service.ts:105`), which is the look-ahead clause of INV-FX-001 for a past period; a currency's move inflates or deflates last year's spending. The maintainer should state this as policy or route reports through `buildRateIndex` / `convertAtDate` as the Sankey report does.
+- `monthly_account_balances` has no completeness column (`net-worth.service.ts:2948-2959`, spec section 5): a security-to-account FX gap and an unpriced position are lost at write time, so the read-time `fxComplete` can say `true` over a stored subtotal.
+- Undo/redo dispatches no net-worth recalc; the 30-minute sweep is the only repair, and INV-CACHE-001 reads `enforced` without naming it. A sweep skipped (an account with no snapshot rows is never swept) leaves the history stale.
+- Unbounded `getLatestRate` fallbacks outside the investment trade path: the scheduled foreign-currency estimate cron (`scheduled-transactions.service.ts:792`) and a dateless split posting (`fx-entry.util.ts:186`). Exposure is low while the daily refresh succeeds; a pair dropped by the provider keeps a stale estimate indefinitely.
+- An imported junk currency code (S09-06) referenced by an account is sent to Yahoo on every refresh (`yahoo-fx.provider.ts:155-157` carries every code; the refresh has no negative cache).
+- Monte Carlo return weights and `getHoldingStats.marketValue` read `getLatestPrices` for a bond-linked holding (`monte-carlo.service.ts:511-539, 708-727`) instead of `valueBondHoldings`; the current value itself is bond-aware. Handed to S14.
+- `POST /currencies/exchange-rates/refresh` lets any authenticated user start a deployment-wide provider refresh (default throttle only); availability, not integrity. Handed to S03/S21.
+- `getAccountMarketValues` accumulates in floats (`portfolio.service.ts:1545-1548`), not through `FxAggregate`; drift is sub-cent at realistic sizes.
+
+#### S14 (`14-bonds.md` section 9)
+
+- **DR1 Matured coupon lot value excludes the final coupon until the REDEEM is booked.** `bond-engine.ts:349-358`; sanctioned by `polish-retail-bonds.md` 6 (lines 490-497). A matured COI1030 lot with period 4 at 5.00 % is worth 100.00 per bond in every holding surface from the maturity day, while it pays 105.00 when booked; the notification of item 4 names the payout. Same ledger lag as every unbooked coupon; not a present-day contradiction of a contract.
+- **DR2 The price cron follows the benchmark refresh by wall clock only** (06:25 weekdays, 06:45 daily, Europe/Warsaw, separate leases). A refresh still running at 06:45 on another replica is not waited for; the 10-minute lease and two small documents make that unlikely. A26-S14-03 covers the stores outside the window.
+- **DR3 The redemption endpoint's same-day order** (R9).
+- **DR4 No negative cache in the cron's unbounded backfill.** `backfillHistory` claims an attempt lease only when `limit` is set (`bond-series.service.ts:772-788`); the 07:15 cron passes none, so every code that answers `SERIES_NOT_PUBLISHED` or `SOURCE_DOCUMENT_MISSING` is asked again each day. Call model: k such codes cost k x (3 s gap + 1-2 requests) per day; with 8 products from 2024-01 (`backfill-codes.ts`, about 270 codes by 2026-10) the bound is about 15 minutes a day of polite requests if every code were missing. An optimization, not a defect (Rule 6).
+
+#### S15 (`15-loans-strategies.md` section 9)
+
+- **D1 Same-day prepayment priced into that day's installment.** `datedLoanDebt` is inclusive of the installment's date (INV-LOAN-006 by definition), so a principal payment dated on the due date reduces that installment's interest: R8, 894.74 instead of 944.74 (50.00) for a 10,000.00 prepayment at 0.5 % a period. A lender accruing to the due date charges the period on the balance before the prepayment. The spec should say which convention it means and why; a row dated the same day as the occurrence is the boundary.
+- **D2 Nearest-slot selection with a wide window** can attribute a late payment to the next slot (and a duplicate bank row, A26-S09-01 / A26-S10-01, to the next installment), which A26-S08-03 turns into a stuck cursor.
+- **D3 VOID keeps a `post()` claim.** A bounced installment (R9) is never re-offered; the spec states this for rule claims (12.5) and the index lists it in INV-LOAN-008's tests; for a bill-driven loan the user must post the missed installment by hand with no prompt.
+- **D4 Delete releases a claim but not the cursor** (spec 12.5): a bill-driven loan silently skips the freed slot.
+- **D5 A declined template (escrow, tax, insurance line) posts its stored lines on the final installment**, so its principal line overpays the debt and pushes the loan into credit; documented as the deliberate fail-safe of INV-LOAN-006 "Scope", but no surface warns at the final installment.
+- **D6 GEM momentum in listing currency.** A US fund in USD +10 % and an ex-US fund in EUR +8 % with EUR +5 % against USD: in USD the ex-US fund is +13.4 % and should win. Documented in the types and `docs/gem-strategy.md:311-312`, not in the Rules section; the settings form warns about cost, not comparability.
+- **D7 Rate-change sync applies a re-plan**, not the confirmed preview (no revision passed down).
+- **D8** a lump sum that would make a non-amortizing loan amortize is refused before it applies (frontend projection).
+- **D9** same-date history attribution depends on the API's order (sweep probe D: `observedInstallment` 1,000 complete vs 800 incomplete for the same data).
+- **D10 A retired schedule is not reactivated** when the final payment is later voided or deleted (the deactivation in `reprice-template.ts:175-178` has no inverse); the loan owes again with no bill.
+
+#### S16 (`16-budgets-reports.md` section 9)
+
+- `computePeriodActuals` (`budget-period.service.ts:339-469`) is a second copy of `queryCategorySpending`'s predicates; they agree today. A predicate fix in one (A26-S16-01, A26-S16-02) can miss the other.
+- A deleted category or transfer account sets `budget_categories.category_id` / `transfer_account_id` to NULL (`schema.sql`, `ON DELETE SET NULL`); the line then reads "Uncategorized" or "Transfer" with `spent` always 0 (`resolveCategorySpent`), while it still takes part in totals and alerts.
+- `computeActualIncome` runs its two halves in two transactions (`budgets.service.ts:1047-1078`).
+- A26-S02-02 confirmation (report surfaces): the 1:1 fallback `convertAmount` serves eleven endpoints: Spending by Payee, Monthly Spending Trend (`spending-reports.service.ts:329, 431`), Income by Source (`income-reports.service.ts:206`, which Cash Flow's inflow table also reads), Year over Year and Weekend vs Weekday (`comparison-reports.service.ts:100, 106, 204`), Spending Anomalies (`anomaly-reports.service.ts:111-317`), Monthly Category Breakdown (`monthly-category-breakdown.service.ts:167-321`), Tax Summary, Recurring Expenses, Bill Payment History (`tax-recurring-reports.service.ts:202, 360, 555`), Uncategorized and Duplicate Transactions (`data-quality-reports.service.ts:117, 197, 204`). Complete-or-null today: Spending by Category (`FxAggregate`), Income vs Expenses (`tryConvertAmount`), Cash Flow Sankey (INV-SANKEY-004).
+
+#### S17 (`17-ai-mcp-notifications.md` section 9)
+
+- **D1 - untrusted email text in a run that offers a tool with no card.** An ordinary assistant run that claims an `email_receipt` or `email_trade` request receives the email body (`ai-review-work.service.ts:233-245, 335-359`, up to `AI_REVIEW_EMAIL_TEXT_MAX_CHARS`), and that run still offers `fetch_bond_series`, which writes reference data with no confirmation card; only the parser generator run withdraws it (`NETWORK_WRITING_TOOL_NAMES`, `tool-definitions.ts:1337`; `email-receipt-parser-generate.service.ts:62-64`). An instruction in a shop's email could make the run fetch and store a bond series the person never asked for (INV-BOND-008: nothing fetches a series until a person acts). Bounded: the target is the issuer's official source, the allowance is 10 a minute, and nothing reaches the ledger. Depends on model compliance, so not a present-day failure (Rule 1). Remediation: pass `excludeTools: NETWORK_WRITING_TOOL_NAMES` for the rest of any run once a tool result carries `emailReceipt(s)`.
+- **D2 - the MCP and AI daily write caps are check-then-act** (`mcp-write-limiter.ts` `reserve`, `ai-actions.service.ts:200-209`): concurrent calls can overshoot by their number. Every write is still confirmed by a person.
+- **D3 - `isGenerating` is process-local** (`ai-insights.service.ts:69, 130`): a second replica answers `false` while the first generates; cosmetic since the lease is the exclusion.
+- **D4 - MCP direct commits build DTOs without class-validator** (`transactions.tool.ts:1130-1143` and siblings), unlike the AI executors' `toValidatedDto`. Today every field comes from a server-side preview, so nothing unvalidated reaches the service; a future field copied from tool input would skip the DTO bounds. A shared commit through `AiActionsService.commitApproved` (as `manage_transaction_rules` already does) would remove the second commit path altogether.
+- **D5 - 2025-era confirmations across replicas** without sticky routing read a lost answer as `"unsupported"` and proceed under the client's own approval (documented in `docs/backend/mcp.md`; deployment rule, not a code defect).
+
+#### S18 (`18-frontend-core.md` section 9)
+
+- `total*` fields on `PortfolioSummary` and `AccountHoldings` stay numeric (a subtotal) when `valuationComplete` is false; every consumer must read the flag (A26-S02-03 shows several do not). Server-side rename to `null` plus a `known*Subtotal` field would make the type enforce it.
+- Decimal columns arrive as strings while every type says `number` (section 7.1 kind 4). Correct today only because readers coerce; a new reader that adds two amounts concatenates them. A response mapper (or a numeric `transformer` on the entities) would close it.
+- Cached payloads carry neither the reporting currency nor the reader's "today", so any cache surviving a preference change mislabels (A26-S18-03 residual).
+- Filter state in `localStorage` (account ids, free-text search) survives logout; ids only resolve for their owner, but the search text is the previous user's typing.
+- The balance-cache guard is a route list; any new write route that moves transaction-derived figures must be added by hand (A26-S18-01).
+
+#### S19 (`19-frontend-forms.md` section 9)
+
+- `getLocalDateString()` for a duplicate's date (`TransactionForm.tsx:336`) is the browser's day, not the financial today that `frontend/CLAUDE.md` names (`useFinancialToday`); a user whose timezone preference differs from the device duplicates onto a different day near midnight.
+- The server cannot distinguish a client-normalized transfer amount from a typed one, so every transfer form defect of the A26-S19-01 kind becomes a re-pricing. A transfer update DTO naming the leg the client treats as the source (or the leg ids it read) would let the server refuse a mismatch.
+- The OIDC delete-data options are not part of what the reauth artifact binds; today the reset to defaults after the redirect makes this safe by accident.
+
+#### S20 (`20-frontend-figures.md` section 9)
+
+- **D-S20-01:** client-side conversion of per-currency summary buckets uses today's rate (`useExchangeRates`), so a historic income total moves with today's FX; INV-FX-002 asks for the row's own rate. A server-authoritative converted summary (as `getTransactionSummary` does for investments) would remove it.
+- **D-S20-02:** report settings persisted in localStorage (`SANKEY_STORAGE_KEYS.accounts` and the account pickers of other reports) are not scoped to the user or the acting context; after a switch the stored owner account ids are sent under the new context, where `resolveScope` intersects them away and the report shows an empty scope. No disclosure (the server filters), a confusing empty report.
+- **D-S20-03:** `PortfolioValueWidget` prints holdings-plus-cash in its header beside a securities-only sparkline with no caption separating the two measures.
+- **D-S20-04:** the server's portfolio `total*` fields stay numeric when incomplete (A26-S02 section 9); every new consumer has to remember the flag, which is how A26-S20-01 and -02 recur. A typed `{ value, complete }` pair would make the read compulsory.
+
+#### S21 (`21-tests-ci-release.md` section 9)
+
+- **DR-S21-1** The preview path pushes `:beta` on every merge with no CVE scan, signature or SBOM (`ci.yml:1300-1304`, deliberate). Combined with A26-S21-01, `:beta` is an unbooted, unscanned image; acceptable only while nobody is told to run it.
+- **DR-S21-2** `fork-images.yml` publishes `:latest` on every push to a fork's `main` and branch images for `feat/**`, `fork/**`, with "NOT gated on the full test/security matrix" (its header). On this fork it is in active use (runs 521-525 on 2026-10-18 built and pushed branch images). Documented choice for forks; a fork that deploys `ghcr.io/<owner>/monize-*:latest` deploys untested images.
+- **DR-S21-3** Liveness versus migration (from S05): the backend runs `db-init` and `db-migrate` before `listen`; the chart's liveness probe (`initialDelaySeconds: 10`, `periodSeconds: 60`, default `failureThreshold: 3`, no `startupProbe`, `values.yaml:282-288`) restarts a pod whose migrations run longer than about 190 s, and the restarted pod starts the same migration again. A `startupProbe` or a pre-upgrade Job is a chart decision.
+- **DR-S21-4** Direct `[skip ci]` pushes by the maintainer: `3519269` "fix(deps): bump vite ... and hono" was committed two seconds before `bfb57ca` "docs(trail) ... [skip ci]" (author dates); if pushed together, no push-triggered gate ran on the dependency bump before the release dispatch tested `bfb57ca`. Not verifiable without the upstream run list (out of this session's repository scope).
+- **DR-S21-5** Branch protection is not readable from the repository (REL-007); the workflow comments imply the only required check is "Verify PR checklist", which auto-passes on push events (`pr-checklist.yml:16-19`). Whether the CI jobs are required checks could not be verified (no admin API access).
+
+#### S22 (`22-delta-review.md` section 9)
+
+- **No hosted CI evidence for `MAIN_SHA`.** The head of `main` and the two commits below it are
+  `[skip ci]`; the newest hosted `ci.yml` push run on `main` in `WMP/monize` is from 2026-10-16
+  on a commit not present in the fetched history. The program's only test evidence for the
+  audited revision is local (S01's full run and this session's focused runs). This joins
+  A26-S02-10 / MON-M45 and INV-RELEASE-001 (`partial`) with S21; S23 should state it in the
+  final report's limitations.
+
+## 16. Areas reviewed without material findings
+
+As recorded by each session (section 12); "not stated" means the session listed none, never that
+the area is clean.
+
+- **S01 baseline (`01-baseline.md`):** The DB-primitive bans and their documented list (MON-M02); allowlist vs call sites (81 entries, 214 call sites, no stale, none missing); cron doc vs code (49 handlers, one row per handler, expressions); CI image registries (Dockerfiles `FROM mirror.gcr.io`); guard specs' skip conditions.
+- **S02 prior high triage (`02-prior-high-triage.md`):** H02 export/stage/restore ordering; H03 start/create/wipe ordering; H07 absolute writers; H08 holding lock namespace; H09 consume; H13 replay sites; H14 form; H15 dialog; M42 logout; M44 discovery.
+- **S03 security auth (`03-security-auth.md`):** Claim consume (MON-H09), logout (MON-M23), lockout increment (MON-M24), OIDC re-auth (MON-M05), activity attribution (MON-M07), profile allowlist (MON-M03), grant issuance (MON-M26), PAT scopes (MON-L01), TOTP replay, admin last-admin locking (`lockAdminsForUpdate`), push subscription ownership clause, OAuth consent CSRF, frontend credential persistence.
+- **S04 RLS tenancy (`04-rls-tenancy.md`):** `withScopedDb` identity join refusal and isolation refusal, GUC emission per mode, fail-closed helpers (`NULLIF(...)::uuid`, `COALESCE`), runtime role check and provisioning (MON-M14), `schema_migrations` write revoke, `WITH_CONTEXT_ALLOWLIST` completeness, the `oauth_payloads` and `PgListener` exceptions, MCP bearer context seeding, MON-M06 flows under enforcement.
+- **S05 migrations schema (`05-migrations-schema.md`):** Replay idempotency of all 56 (guards on every statement; executed); RLS enable + policy shipped in the same file for each of the 19 user-owned tables created; RLS-exempt tables (`push_chart_artifacts`, `auth_attempt_counters`, `single_use_tokens`, `oauth_instance_config`, `fetch_sync`, `update_check_state`, `http_throttle_counters`, `auto_backup_policy`, bond reference tables) carry no owner column; no migration names a role; arbiters for every `ON CONFLICT` except `budget_periods` in the harness; `required-db-functions` registration; the startup lock and the ledger revoke (executed).
+- **S06 backup restore (`06-backup-restore.md`):** Export snapshot, decompression bound, re-auth ordering, AI key transport, reference resolution and remap, carried-bytes validation and blob rebuild, legacy ownership proof, path containment on both stores and both providers, support-backup currency pseudonymisation, admin gating of the policy and browse routes, attachment cap lock.
+- **S07 cash ledger (`07-cash-ledger.md`):** `deletionBalanceEffect` and its single caller pattern (`removeLockedTransactionLeg`); `applyRegisterOrder` total order and the page window; same-owner `updateTransfer` and `removeTransfer`; `update()` and `remove()` lock placement; MCP/AI transfer routing; the `is_closed` predicate; currency derivation on create/update/transfer.
+- **S08 scheduler cron (`08-scheduler-cron.md`):** Cron selection (postponed and override-moved occurrences, `:574-608`); the pre-lock and under-lock checks (`sameScheduleMutationBasis`, override and split bases); loan pricing re-resolution on both posting paths (presence and lock order); the reminder lease and delivery record; the dispatch seam; budget rollover claim and release; the 30-day claim sweep; the S06 manual fan-out.
+- **S09 import mny (`09-import-mny.md`):** One-active-job index and its 409 mapping; claim CAS; token-scoped progress, heartbeat, complete and fail; reaper grouping (`reapStatement` parenthesis); wipe-after-slot ordering; maintenance-lease interlock in `create`; `userId` from the JWT on all routes.
+- **S10 rules banksync csv (`10-rules-banksync-csv.md`):** INV-BANKSYNC-002, -003, -004; INV-RULE-001 (matched row), -004, -005; INV-PAYEE-001, -002; concurrent sync arbitration; rules inside the inserting transaction on every creation path found.
+- **S11 email receipts (`11-email-receipts.md`):** INV-RECEIPT-001 read-only IMAP; INV-RECEIPT-002 ingest transaction and cursor; INV-RECEIPT-004 host policy at save and connect; INV-RECEIPT-005 secrets; INV-RECEIPT-007 OAuth state; the email HTML frame; parser patterns without `RegExp`; archive decompression bounds; the AI's answers (validated, owned categories, never confirmed by the AI path); the write-limit exemption; the trade confirm's `beforeWrite` / `afterWrite` under the holdings lock; the mailbox settings round trip; the parser form's refusal to edit what it cannot represent; the document scanner (client-only).
+- **S12 securities holdings (`12-securities-holdings.md`):** The SPLIT reducer and its guards; commission in basis on every backend replay; non-positive rate refusal; `updateStatus` (row lock and advisory lock, VOID crossings mirror the cash leg); the provider currency checks on every provider write path read; the MSN negative cache; the Yahoo breaker door; the daily-change resolver and the movers board; manual price route ownership.
+- **S13 valuation fx networth (`13-valuation-fx-networth.md`):** The resolver's look-ahead, age bound and direction rule; `FxAggregate`; `getRateForDate` / `getLiveRate` / `resolveStoredRate`; the portfolio summary's `convertToDefault` and `primeLiveRates`; the monthly net-worth fold's flags; Monte Carlo refusals; the currency delete gate and its race; `normalizeFxEntry` / `assertTransactionCurrencyMatchesAccount`; the period-result arithmetic; the forecast's unknown occurrence handling; portfolio movement notifications (read `valuationComplete === true`).
+- **S14 bonds (`14-bonds.md`):** The redemption split identity and its booking; per-bond rounding; window refusals; lots per account and series; the price writer's precedence and deletes; recompute locking; series store idempotency; provider failure in the series fetch; notification dispatch outside transactions and the maturity-coupon exclusion; NBP and GUS coverage.
+- **S15 loans strategies (`15-loans-strategies.md`):** The posting boundary's lock order and re-resolution on both branches; the claim INSERT and its backstop; the rate timeline (dated, 0 % distinct from unknown on the settlement path); the waterfall's clamp order; the minor-unit booking never retiring more than the debt; LOC exemption from deactivation; loan controllers' auth; the settlement amount policy (read against spec section 8).
+- **S16 budgets reports (`16-budgets-reports.md`):** not stated in section 12 (no such list; section 12 lists undetected mutation rows only: VOID in budget actuals; rollover relation; fingerprint index removal; next-period dates; budget currency conversion).
+- **S17 ai mcp notifications (`17-ai-mcp-notifications.md`):** MCP identity per request, credential binding and the 403/401 paths; the relay caller-scoped liveness and card routing; the dispatch seam's lock, dedupe and fan-out order; system-alert insert winner and email claim; push subscribe refusals, endpoint ownership, hold and purge; the chart route's credential (256-bit nonce plus HMAC, one-use `DELETE ... RETURNING`); the AI review claim keys; the MCP bearer verifiers against `JWT_SECRET` tokens.
+- **S18 frontend core (`18-frontend-core.md`):** Logout and its retry (MON-M36/M42); the `dedupe` generation mechanism; `useExchangeRates` 1:1 half; the share target's ownership and logout sweep (INV-SHARE-001..005); `investmentsApi.refreshSelectedPrices` write-nothing rule; scheduled-post, split, transfer, bulk, import, bank-sync and investment-trade invalidation; `backupApi.restoreBackup` `clearAllCache()`; `forecast.ts` settlement-account remap and unknown-rate withholding.
+- **S19 frontend forms (`19-frontend-forms.md`):** The override editor's stored price (MON-H15), the reauthentication artifact on delete-account and delete-data, the restore result counters, the transfer mode lock, the date input, the rules editor value controls, the onboarding serializer (beyond A26-S13-05), the split editor's sign handling.
+- **S20 frontend figures (`20-frontend-figures.md`):** not stated in section 12 (no such list).
+- **S21 tests ci release (`21-tests-ci-release.md`):** not stated in section 12.
+- **S22 delta review (`22-delta-review.md`):** not stated in section 12 (the delta is empty; every A26 HIGH (18) and every STILL_OPEN prior finding recorded as untouched by the delta).
+
+## 17. Complete deduplication and supersession register
+
+### 17.1 Every session finding, exactly once
+
+Relations: `primary` (the canonical text), `merged surface` (a distinct surface of the same root,
+carried verbatim under the canonical), `superseded` (the same root and scenario re-stated by a
+later session; pointer only). 143 rows; the S02-11 re-statement inside `13-valuation-fx-networth.md`
+section 4 is the same finding and is not counted twice.
+
+| Session finding | Report | Canonical | Relation |
+| --- | --- | --- | --- |
+| A26-S01-01 | `01-baseline.md` | A26-L01 | primary |
+| A26-S01-02 | `01-baseline.md` | A26-L02 | primary |
+| A26-S01-03 | `01-baseline.md` | A26-L03 | primary |
+| A26-S01-04 | `01-baseline.md` | A26-L04 | primary |
+| A26-S02-01 | `02-prior-high-triage.md` | A26-H03 | superseded |
+| A26-S02-02 | `02-prior-high-triage.md` | A26-H10 | superseded |
+| A26-S02-03 | `02-prior-high-triage.md` | A26-H15 | superseded |
+| A26-S02-04 | `02-prior-high-triage.md` | A26-H07 | superseded |
+| A26-S02-05 | `02-prior-high-triage.md` | A26-H08 | superseded |
+| A26-S02-06 | `02-prior-high-triage.md` | A26-M07 | superseded |
+| A26-S02-07 | `02-prior-high-triage.md` | A26-M09 | superseded |
+| A26-S02-08 | `02-prior-high-triage.md` | A26-M11 | superseded |
+| A26-S02-09 | `02-prior-high-triage.md` | A26-M18 | superseded |
+| A26-S02-10 | `02-prior-high-triage.md` | A26-M41 | merged surface |
+| A26-S02-11 | `02-prior-high-triage.md` | A26-L05 | primary |
+| A26-S02-12 | `02-prior-high-triage.md` | A26-M42 | merged surface |
+| A26-S03-01 | `03-security-auth.md` | A26-H01 | primary |
+| A26-S03-02 | `03-security-auth.md` | A26-M01 | primary |
+| A26-S03-03 | `03-security-auth.md` | A26-L06 | primary |
+| A26-S03-04 | `03-security-auth.md` | A26-M42 | merged surface |
+| A26-S03-05 | `03-security-auth.md` | A26-L07 | primary |
+| A26-S03-06 | `03-security-auth.md` | A26-L08 | primary |
+| A26-S03-07 | `03-security-auth.md` | A26-M02 | primary |
+| A26-S04-01 | `04-rls-tenancy.md` | A26-M04 | primary |
+| A26-S04-02 | `04-rls-tenancy.md` | A26-M05 | primary |
+| A26-S04-03 | `04-rls-tenancy.md` | A26-M06 | primary |
+| A26-S04-04 | `04-rls-tenancy.md` | A26-M42 | merged surface |
+| A26-S05-01 | `05-migrations-schema.md` | A26-M42 | merged surface |
+| A26-S05-02 | `05-migrations-schema.md` | A26-L09 | primary |
+| A26-S05-03 | `05-migrations-schema.md` | A26-L11 | superseded |
+| A26-S06-01 | `06-backup-restore.md` | A26-M07 | primary |
+| A26-S06-02 | `06-backup-restore.md` | A26-M08 | primary |
+| A26-S06-03 | `06-backup-restore.md` | A26-L10 | primary |
+| A26-S06-04 | `06-backup-restore.md` | A26-L11 | primary |
+| A26-S06-05 | `06-backup-restore.md` | A26-M08 | merged surface |
+| A26-S06-06 | `06-backup-restore.md` | A26-M42 | merged surface |
+| A26-S07-01 | `07-cash-ledger.md` | A26-H03 | primary |
+| A26-S07-02 | `07-cash-ledger.md` | A26-H06 | primary |
+| A26-S07-03 | `07-cash-ledger.md` | A26-M09 | primary |
+| A26-S07-04 | `07-cash-ledger.md` | A26-M10 | primary |
+| A26-S07-05 | `07-cash-ledger.md` | A26-M11 | primary |
+| A26-S07-06 | `07-cash-ledger.md` | A26-M12 | primary |
+| A26-S07-07 | `07-cash-ledger.md` | A26-M13 | primary |
+| A26-S07-08 | `07-cash-ledger.md` | A26-L12 | primary |
+| A26-S07-09 | `07-cash-ledger.md` | A26-M42 | merged surface |
+| A26-S08-01 | `08-scheduler-cron.md` | A26-H07 | primary |
+| A26-S08-02 | `08-scheduler-cron.md` | A26-M14 | primary |
+| A26-S08-03 | `08-scheduler-cron.md` | A26-M15 | primary |
+| A26-S08-04 | `08-scheduler-cron.md` | A26-L13 | primary |
+| A26-S08-05 | `08-scheduler-cron.md` | A26-M42 | merged surface |
+| A26-S09-01 | `09-import-mny.md` | A26-H08 | primary |
+| A26-S09-02 | `09-import-mny.md` | A26-M42 | merged surface |
+| A26-S09-03 | `09-import-mny.md` | A26-M16 | primary |
+| A26-S09-04 | `09-import-mny.md` | A26-L14 | primary |
+| A26-S09-05 | `09-import-mny.md` | A26-L15 | primary |
+| A26-S09-06 | `09-import-mny.md` | A26-M17 | primary |
+| A26-S10-01 | `10-rules-banksync-csv.md` | A26-H09 | primary |
+| A26-S10-02 | `10-rules-banksync-csv.md` | A26-M18 | primary |
+| A26-S10-03 | `10-rules-banksync-csv.md` | A26-M19 | primary |
+| A26-S10-04 | `10-rules-banksync-csv.md` | A26-L16 | primary |
+| A26-S10-05 | `10-rules-banksync-csv.md` | A26-M13 | merged surface |
+| A26-S11-01 | `11-email-receipts.md` | A26-L13 | merged surface |
+| A26-S11-02 | `11-email-receipts.md` | A26-L17 | primary |
+| A26-S11-03 | `11-email-receipts.md` | A26-L18 | primary |
+| A26-S11-04 | `11-email-receipts.md` | A26-H02 | primary |
+| A26-S12-01 | `12-securities-holdings.md` | A26-H04 | primary |
+| A26-S12-02 | `12-securities-holdings.md` | A26-H11 | merged surface |
+| A26-S12-03 | `12-securities-holdings.md` | A26-M20 | primary |
+| A26-S12-04 | `12-securities-holdings.md` | A26-M21 | primary |
+| A26-S12-05 | `12-securities-holdings.md` | A26-M22 | primary |
+| A26-S12-06 | `12-securities-holdings.md` | A26-M23 | primary |
+| A26-S12-07 | `12-securities-holdings.md` | A26-L19 | primary |
+| A26-S12-08 | `12-securities-holdings.md` | A26-L20 | primary |
+| A26-S12-09 | `12-securities-holdings.md` | A26-M24 | primary |
+| A26-S12-10 | `12-securities-holdings.md` | A26-L21 | primary |
+| A26-S13-01 | `13-valuation-fx-networth.md` | A26-H10 | primary |
+| A26-S13-02 | `13-valuation-fx-networth.md` | A26-H11 | primary |
+| A26-S13-03 | `13-valuation-fx-networth.md` | A26-H05 | primary |
+| A26-S13-04 | `13-valuation-fx-networth.md` | A26-H15 | merged surface |
+| A26-S13-05 | `13-valuation-fx-networth.md` | A26-M25 | primary |
+| A26-S13-06 | `13-valuation-fx-networth.md` | A26-M17 | merged surface |
+| A26-S14-01 | `14-bonds.md` | A26-M26 | primary |
+| A26-S14-02 | `14-bonds.md` | A26-M26 | merged surface |
+| A26-S14-03 | `14-bonds.md` | A26-L22 | primary |
+| A26-S15-01 | `15-loans-strategies.md` | A26-H06 | merged surface |
+| A26-S15-02 | `15-loans-strategies.md` | A26-M27 | primary |
+| A26-S15-03 | `15-loans-strategies.md` | A26-M28 | primary |
+| A26-S15-04 | `15-loans-strategies.md` | A26-M29 | primary |
+| A26-S15-05 | `15-loans-strategies.md` | A26-M33 | merged surface |
+| A26-S15-06 | `15-loans-strategies.md` | A26-L23 | primary |
+| A26-S15-07 | `15-loans-strategies.md` | A26-L24 | primary |
+| A26-S15-08 | `15-loans-strategies.md` | A26-L25 | primary |
+| A26-S15-09 | `15-loans-strategies.md` | A26-L26 | primary |
+| A26-S15-10 | `15-loans-strategies.md` | A26-M30 | primary |
+| A26-S16-01 | `16-budgets-reports.md` | A26-H12 | primary |
+| A26-S16-02 | `16-budgets-reports.md` | A26-M31 | primary |
+| A26-S16-03 | `16-budgets-reports.md` | A26-M32 | primary |
+| A26-S16-04 | `16-budgets-reports.md` | A26-H15 | merged surface |
+| A26-S16-05 | `16-budgets-reports.md` | A26-M33 | primary |
+| A26-S16-06 | `16-budgets-reports.md` | A26-H12 | merged surface |
+| A26-S16-07 | `16-budgets-reports.md` | A26-L38 | primary |
+| A26-S16-08 | `16-budgets-reports.md` | A26-L39 | primary |
+| A26-S16-09 | `16-budgets-reports.md` | A26-M42 | merged surface |
+| A26-S17-01 | `17-ai-mcp-notifications.md` | A26-H12 | merged surface |
+| A26-S17-02 | `17-ai-mcp-notifications.md` | A26-M14 | merged surface |
+| A26-S17-03 | `17-ai-mcp-notifications.md` | A26-M34 | primary |
+| A26-S17-04 | `17-ai-mcp-notifications.md` | A26-L27 | primary |
+| A26-S17-05 | `17-ai-mcp-notifications.md` | A26-M42 | merged surface |
+| A26-S17-06 | `17-ai-mcp-notifications.md` | A26-L28 | primary |
+| A26-S17-07 | `17-ai-mcp-notifications.md` | A26-L29 | primary |
+| A26-S18-01 | `18-frontend-core.md` | A26-M35 | primary |
+| A26-S18-02 | `18-frontend-core.md` | A26-M35 | merged surface |
+| A26-S18-03 | `18-frontend-core.md` | A26-M35 | merged surface |
+| A26-S18-04 | `18-frontend-core.md` | A26-H11 | merged surface |
+| A26-S18-05 | `18-frontend-core.md` | A26-H08 | merged surface |
+| A26-S18-06 | `18-frontend-core.md` | A26-M03 | primary |
+| A26-S18-07 | `18-frontend-core.md` | A26-M35 | merged surface |
+| A26-S18-08 | `18-frontend-core.md` | A26-M36 | merged surface |
+| A26-S18-09 | `18-frontend-core.md` | A26-L30 | primary |
+| A26-S18-10 | `18-frontend-core.md` | A26-L31 | primary |
+| A26-S18-11 | `18-frontend-core.md` | A26-L32 | primary |
+| A26-S19-01 | `19-frontend-forms.md` | A26-H13 | primary |
+| A26-S19-02 | `19-frontend-forms.md` | A26-H14 | primary |
+| A26-S19-03 | `19-frontend-forms.md` | A26-M37 | primary |
+| A26-S19-04 | `19-frontend-forms.md` | A26-H11 | merged surface |
+| A26-S19-05 | `19-frontend-forms.md` | A26-M22 | merged surface |
+| A26-S19-06 | `19-frontend-forms.md` | A26-L33 | primary |
+| A26-S19-07 | `19-frontend-forms.md` | A26-L30 | merged surface |
+| A26-S20-01 | `20-frontend-figures.md` | A26-H15 | primary |
+| A26-S20-02 | `20-frontend-figures.md` | A26-M38 | primary |
+| A26-S20-03 | `20-frontend-figures.md` | A26-M39 | primary |
+| A26-S20-04 | `20-frontend-figures.md` | A26-M36 | primary |
+| A26-S20-05 | `20-frontend-figures.md` | A26-M39 | merged surface |
+| A26-S20-06 | `20-frontend-figures.md` | A26-L34 | primary |
+| A26-S20-07 | `20-frontend-figures.md` | A26-L30 | merged surface |
+| A26-S20-08 | `20-frontend-figures.md` | A26-M39 | merged surface |
+| A26-S21-01 | `21-tests-ci-release.md` | A26-M40 | primary |
+| A26-S21-02 | `21-tests-ci-release.md` | A26-M41 | primary |
+| A26-S21-03 | `21-tests-ci-release.md` | A26-M40 | merged surface |
+| A26-S21-04 | `21-tests-ci-release.md` | A26-M42 | primary |
+| A26-S21-05 | `21-tests-ci-release.md` | A26-L35 | primary |
+| A26-S21-06 | `21-tests-ci-release.md` | A26-L36 | primary |
+| A26-S21-07 | `21-tests-ci-release.md` | A26-L37 | primary |
+
+
+### 17.2 Where two sessions disagree, and the reading S23 takes
+
+Each item is marked for the maintainer.
+
+| # | Question | Session A | Session B | S23 reading and evidence |
+| --- | --- | --- | --- | --- |
+| 1 | Should loan-occurrence slot selection prefer the cursor's own unpaid slot? | S08 (A26-S08-03 hand-off): the selection picks the nearest free slot, cursor and later slots included, and a claim ahead of the cursor stalls the schedule | S15 (section 8, D2): nearest-then-earlier is the spec's deliberate rule (`docs/specs` loan settlement 6.2 step 3, truth table rows 10-12); with the default 3/7 window the cursor slot and the next are never both candidates | S15's reading (Rule 2, a documented exception beats similarity). The defect is A26-M15 in `post()`; the selection stays; wide windows are design risk D2. **Maintainer:** confirm the wide-window policy. |
+| 2 | Does `TransactionsService.update()` keep a transfer's counterpart leg in step? | S07 (A26-S07-04, executed): no; `PATCH /transactions/:id` changes one leg (legs -100.00 / +150.00, 200) | S17 (section 12): the AI/MCP previews refuse transfers, `update()` itself does not; reachable by a rule's `convert_to_transfer` between a card and its confirm, and by a plain PATCH | Not a contradiction: S07 answers S17's question with execution. A26-M10 carries S17's two extra entry points as surfaces; task T06 adds the rule-conversion path to its test matrix. **Maintainer:** choose refuse-on-leg (S07's correction) or route to `updateTransfer`. |
+| 3 | Severity of the completeness-flag gap | S02 (A26-S02-03): MEDIUM, static for half | S20 (A26-S20-01): HIGH, four surfaces executed | HIGH (section 6.2). |
+| 4 | Severity of the intraday `sessionStorage` leak | S18 (A26-S18-08): LOW, shared device | S20 (A26-S20-04): MEDIUM, also the delegate-context switch | MEDIUM (A26-M36). |
+| 5 | MON-H14 status | S02: FIXED_VERIFIED (preview and commit align) | S12, S19: STILL_OPEN with a different root (both align on a rate INV-FX-001 forbids) | STILL_OPEN (A26-H11); S02 tested the pair's agreement, S12 the rate's date. |
+| 6 | Is the MNY client copy a separate finding? | S18 (A26-S18-05): distinct from the replay; consolidate if one PR | S09 (A26-S09-01): the false report is part of the root | Merged as a surface of A26-H08, one task (T04). |
+| 7 | Should A26-S14-01 join S13's valuation findings? | S14 hand-off: "a net-worth valuation-series root, consolidate with S13's position-price findings" | S13: no position-price finding of that root was raised | Kept separate (A26-M26): the root is the blend readers not honouring the bond engine's refusal, not a dropped flag; task T33 checks the S13 net-worth readers it names. |
+| 8 | Mutation-table wording | Ledger: S03 row ":222+226 drop both guards" | S21 section 6.2: the report's table has ":222 keep the hash and :226 drop used_at IS NULL" | The report (S21's merge). |
+| 9 | Cron count | `plan.md`: 40 | S01: 49 handlers in 46 services | S01 (counted). |
+
+## 18. Final BLOCKER/HIGH verification ledger
+
+No BLOCKER candidate was raised by any session. Every HIGH member below was executed at the
+baseline code in a scratch worktree (plan section 4 step 7); "Confidence" and "Execution" are the
+session's fields 2 and 6, abridged only where marked with an ellipsis. Superseded members are
+covered by their primary's execution.
+
+**A26-H01** (Refresh-token reuse detection does not revoke the family: the revocation is rolled back by the exception that reports it)
+
+- A26-S03-01 (P, `03-security-auth.md`, session severity HIGH). Confidence: high (executed against PostgreSQL 16) Execution: probe `AUDIT S03 probe: refresh reuse` (scratch worktree, real `TokenService`, real PostgreSQL): AUDIT-PROBE rows after reuse [{"is_revoked":true,"replaced_by_hash":"05a7e8ca..."},{"is_revoked":false,"replaced_by_hash":null}] AUDIT-PROBE successorStillRotates true Expected: false / Received: true The reuse is reported (401 to the victim, cookies cleared) while the attacker's successor rotates successfully afterwards.
+
+**A26-H02** (Any sender can make an email read as the broker's by pasting a forwarded-message header block; with auto-apply the trade it states is booked)
+
+- A26-S11-04 (P, `11-email-receipts.md`, session severity HIGH). Confidence: high (executed, P3, real PostgreSQL under RLS, the real poll, pipeline, card, auto-apply and `confirm`) Execution: `email_receipts` row `from_address = notifications@wealthsimple.com`, `from_domain = wealthsimple.com`, `forwarded_by = someone@evil.example`, status `review`; `ai_review_requests` one `email_trade`, status `applied`; `investment_transactions` one `BUY`, quantity 10, `total_amount` 2000.0000; the linked cash account's `current_balance` 10 000.0000 -> 8 000.0000. Control (P3b, the same body without the block): `from_domain = evil.example`, status `no_parser`, no trade, balance unchanged. Without auto-apply the same email produces a signed card labelled with the broker's identity that waits for approval.
+
+**A26-H03** (Transfer edit paths derive both balance deltas from pre-transaction snapshots (split-transfer leg, connected cross-owner transfer))
+
+- A26-S07-01 (P, `07-cash-ledger.md`, session severity HIGH). Confidence: high (executed, both surfaces) Execution: (a) both 200; chequing stored 4 880.00 vs ledger 4 890.00, savings stored 2 060.00 vs ledger 2 050.00, 5 of 5 iterations. (b) both 200; Bob's savings stored 1 300.00 vs ledger 1 400.00; Alice's chequing stored 5 700.00 vs ledger 5 600.00.
+- A26-S02-01 (superseded): covered by the primary's execution.
+
+**A26-H04** (Editing an investment transaction twice at once, or while it is deleted, duplicates or orphans its cash leg)
+
+- A26-S12-01 (P, `12-securities-holdings.md`, session severity HIGH). Confidence: high (executed, forced interleaving, R1 and R2) Execution: R1 -- two cash rows, ledger -2,200.00, balance 97,800.00; the investment row names C3 only. R2 -- investment row gone, one cash row -1,100.00 left, balance 98,900.00.
+
+**A26-H05** (Bulk-deleting one leg of a split transfer deletes the parent but leaves the other legs, creating their money)
+
+- A26-S13-03 (P, `13-valuation-fx-networth.md`, session severity HIGH). Confidence: high (executed, P4, against the schema's `ON DELETE` actions) Execution: `{"deleted":1}`; balances A 1,000.00, B 0.00, C 40.00; the ledger holds one row, C's +40.00 transfer, with `linked_transaction_id: null`. The sum of the three balances is 1,040.00.
+
+**A26-H06** (Undo or redo of an account edit restores a whole-entity snapshot: the edit-time balance is written back absolutely and a loan's coupled template is left unrepriced or unlinked)
+
+- A26-S07-02 (P, `07-cash-ledger.md`, session severity HIGH). Confidence: high (executed) Execution: `"Undone: Updated account \"Chequing renamed\""`; chequing stored 5 000.00, ledger 4 800.00.
+- A26-S15-01 (M, `15-loans-strategies.md`, session severity HIGH). Confidence: high (executed, both halves) Execution: (a) after the undo the account is ANNUITY with `payment_amount` 1,108.86 and the template still holds 1,333.3333; the next advancement (`rewriteLoanTemplate`, purpose `template`) leaves it at 1,333.3333 (`max(template, dated payment)`), and the posting purpose prices principal 833.3333 + interest 500.00 = **1,333.3333**. (b) after the undo the account's category is A and the template line is B: `identifyLoanTemplate(...).managed === false`, so every later posting declines to re-price (posts the stored split), the template never advances, and a `settle_loan_installment` rule refuses `loan_not_configured` (`managedTemplate`).
+
+**A26-H07** (Manual post and skip of a scheduled transaction are not pinned to the occurrence the user saw; a stale view pays a bill twice or consumes the next occurrence)
+
+- A26-S08-01 (P, `08-scheduler-cron.md`, session severity HIGH). Confidence: high (executed, P2, P3, P7) Execution: (a) P2: two rows dated 2026-09-01, balance 0.00, claims `[2026-09-01, 2026-10-01]`, cursor 2026-11-01 -- October was consumed early under September's date. (b) P7: the deactivated schedule posts again: two rows dated 2026-09-01, balance 0.00 instead of 50.00, a claim on 2026-10-01 for a schedule that had no occurrence left. (c) P3: cursor 2026-10-01 -> 2026-11-01; October is skipped although the user skipped September (already paid), and October's override, if any, is deleted with it.
+- A26-S02-04 (superseded): covered by the primary's execution.
+
+**A26-H08** (A failure after the MNY import's data commit is reported as "Nothing was saved", and the same file can then be imported again)
+
+- A26-S09-01 (P, `09-import-mny.md`, session severity HIGH). Confidence: high (executed: failpoint over three fixtures plus a re-upload variant) Execution: Sample Deposit Account 5000.00 -> 10000.00; investment cash 4061.00 -> 8122.00; holding 1000 -> 2000 shares; job 2 reports `completed` with two `balanceMismatch` warnings. Same-staged-id path: identical result (`money2002`: 60 -> 120 investment rows, every holding 0.02 -> 0.04).
+- A26-S02-05 (superseded): covered by the primary's execution.
+- A26-S18-05 (M, `18-frontend-core.md`, session severity MEDIUM). Confidence: high (static, every link cited; the copy is asserted by the existing test `MnyImportProgress.test.tsx:160-167`) Execution: the job is `failed`, `errorKey: 'mnyImportFailed'`, `retryable: false`; the wizard shows "Something went wrong while importing. Nothing was saved -- you can try again." with only "Start over".
+
+**A26-H09** (A bank transaction whose entry reference the bank repeats on a later day is imported twice, or a later one is silently dropped (INV-BANKSYNC-001))
+
+- A26-S10-01 (P, `10-rules-banksync-csv.md`, session severity HIGH). Confidence: high for the mechanism (executed); medium for frequency (it needs a bank that repeats `entry_reference`, which the spec and the code both say happens: Enable Banking FAQ, `bank-transaction-planner.ts:363-366`, `docs/specs/bank-sync.md` section 6). Execution: scratch integration case on real PostgreSQL (enforced RLS harness of `bank-sync.integration.spec.ts`): sync 2 returns `imported: 2, skipped: 0`; the account holds 3 rows; balance `983` = 1000 - 5 - 5 - 7. The planner probe gives `first=ref:R-1`, `second=["ref:R-1#638be0ba...","ref:R-1#6e56756a..."]`. The other direction: when the reuse arrives after the first row has left the window, the new row is alone in its fetch, keyed `ref:<reference>`, hits the first row's ledger entry, and is counted as `skipped` ("already imported"): a real bank transaction is never imported and nothing says so.
+
+**A26-H10** (Built-in reports convert a missing exchange rate 1:1 and label the result in the reporting currency (MON-H12, MON-M39))
+
+- A26-S13-01 (P, `13-valuation-fx-networth.md`, session severity HIGH). Confidence: high (executed, P2; the known-wrong unit test passes) Execution: `{"data":[{"payeeName":"Shop","total":100000}],"totalSpending":100000}` and the data-quality row `{"amount":-100000,"currencyCode":"USD", ...}` with `summary.expenseTotal: 100000, currencyCode: "USD"`. No field says a currency was not converted. `report-currency.service.spec.ts:213` "returns original amount when no rate is available" asserts the defect and passes (S02 batch; re-run in section 12).
+- A26-S02-02 (superseded): covered by the primary's execution.
+
+**A26-H11** (A rate for a date is not the resolver's: the latest-rate readers use a frozen pre-1.17 mirror row and a rate of any age, and back-dated trades settle or prefill at the newest rate (INV-FX-001, INV-FX-003))
+
+- A26-S13-02 (P, `13-valuation-fx-networth.md`, session severity HIGH). Confidence: high for the behaviour (executed, P3, P3b); medium for the severity, which grows with the time since a deployment upgraded to 1.17.0 and with the currency's move since. Execution: `getLatestRate("USD","CAD")` = 1.399999999972 (the resolver picks today's inverse row); `getLatestRates()` returns `[CAD->USD 2026-10-21, USD->CAD 2026-08-01]`; Spending by Payee answers `totalSpending: 1300`. The frontend `convert(1000, "USD", "CAD")` over the same endpoint returns 1,300.00 by the same direct-first rule (`useExchangeRates.ts:85-86`). P3b: with only a `CAD->USD 0.8` row dated 2025-12-01 (324 days old), the report answers 1,250.00 as a current figure.
+- A26-S12-02 (M, `12-securities-holdings.md`, session severity MEDIUM). Confidence: high (executed, P3) Execution: the row stores `exchange_rate` 1.3700000000 and the cash leg -13,700.00 CAD. The preview carries `exchangeRate` but no field saying which rate answered (trade date, latest, or supplied).
+- A26-S19-04 (M, `19-frontend-forms.md`, session severity MEDIUM). Confidence: high (executed: P4; the server half by reading) Execution: the rate field fills 1.350000 from `getRate('USD', 'CAD')` (the latest; the only call recorded); the payload carries `transactionDate: '2025-01-02', exchangeRate: 1.35`; the server keeps it, so its own dated resolution never runs.
+- A26-S18-04 (M, `18-frontend-core.md`, session severity MEDIUM). Confidence: high (executed, P7) Execution: `convert(100000, 'CHF', 'USD')` returns 113 000; `getRate` returns 1.13. Every client-side aggregate built on it (`sumConverted` on the accounts page, the foreign-account view of `PortfolioSummaryCard`, the calendar and budget conversions) reports a complete figure; the server's resolver for the same pair answers unknown.
+
+**A26-H12** (Totals sum amounts of different currencies without conversion: budget actuals, the custom report engine and the AI/MCP transaction analytics)
+
+- A26-S16-01 (P, `16-budgets-reports.md`, session severity HIGH). Confidence: high (executed, P1) Execution: `totalSpent = 10200`, category `spent = 10200`, `percentUsed = 2040` (probe P1 output `{"totalSpent":10200,"cat":[[10200,2040]]}`).
+- A26-S16-06 (M, `16-budgets-reports.md`, session severity MEDIUM). Confidence: high (static: `reports.service.ts` contains no rate, currency or conversion reference) Execution: Groceries 10 200.
+- A26-S17-01 (M, `17-ai-mcp-notifications.md`, session severity MEDIUM). Confidence: high (executed, P3 against PostgreSQL; see section 7) Execution: `getLlmPeriodComparison` -> `period1.total = 400`, `period2.total = 5000`, `totalChange = 4600`, `totalChangePercent = 1150`; the summary line the model quotes is `Period 2 (...): 5000.00, Change: +4600.00 (+1150%)`. `getLlmListTransactions` -> `totalExpenses = 5000`, summary `Expenses: 5000.00`, with `byCurrency` present in the payload only.
+
+**A26-H13** (A cross-currency transfer opened from its receiving leg loads the received amount into the source-amount field, and an unedited save re-prices the transfer (MON-H11 client half))
+
+- A26-S19-01 (P, `19-frontend-forms.md`, session severity HIGH). Confidence: high (executed: component probe P1 and a backend integration probe on PostgreSQL) Execution: the form shows "Transfer amount (USD) 135.00" and "Amount received (CAD) 135.00" (P1 inputs); the payload is `{ fromAccountId: <USD>, toAccountId: <CAD>, amount: 135, toAmount: 135, ... }`. On PostgreSQL the same payload through `TransactionsService.updateTransfer` on the CAD leg gives: before `usdBal 900, fromLeg -100, toLeg 135, rate 1.35`; after `usdBal 865, fromLeg -135, toLeg 135, rate 1`.
+
+**A26-H14** (Switching an existing income, expense or split to Transfer mode creates a second, new transfer and leaves the original row in place)
+
+- A26-S19-02 (P, `19-frontend-forms.md`, session severity HIGH). Confidence: high (executed: component probe P5; the server half is the ordinary `createTransfer`, covered by `transfers.integration.spec.ts` "should create linked transactions and update both balances") Execution: submit label "Update Transfer"; `createTransfer` called once with `{ fromAccountId: 'acc-1', toAccountId: 'acc-2', amount: 50, categoryId: 'cat-1', ... }`; `update` and `updateTransfer` not called; the toast says the transfer was created.
+
+**A26-H15** (Completeness flags are not carried or read where totals are shown: net worth, accounts, portfolio widget and history, the AI/MCP account tools, report exports and Cash Flow)
+
+- A26-S20-01 (P, `20-frontend-figures.md`, session severity HIGH). Confidence: high (four surfaces executed, the rest read) Execution: (a) "Current Net Worth $50000", no marker, nothing names `ZZZ->USD` (probe P1 fails: `expected false to be true`). (b) Total Assets `$50000.00` with no "partial total" (probe P3 fails). (c) the widget prints `$100000` (probe P2 fails). (d) "Lowest Value $100.00" for the day the holding was unpriced (probe P4 fails). (e) read only.
+- A26-S02-03 (superseded): covered by the primary's execution.
+- A26-S13-04 (M, `13-valuation-fx-networth.md`, session severity MEDIUM). Confidence: high (executed, P5) Execution: `/accounts/summary` -> `{"totalAssets":1000,"netWorth":1000}` with no completeness field; `getLlmAccounts` -> `netWorth: 1000` with `missingRatePairs: ["ZZZ->USD"]` from its separate per-account conversion, and no total-level flag. The AI line prints `Net worth: 1000.00`.
+- A26-S16-04 (M, `16-budgets-reports.md`, session severity MEDIUM). Confidence: high (static; the component code is direct) Execution: Cash Flow: `totals.income = null` renders "Total Inflows 0.00" and "Net +0.00 - expenses" on screen and in the PDF. Income vs Expenses PDF: "Total Income 5 000.00" with no caption. With the Cash Flow request failed: the PDF button stays enabled and writes three zero cards.
+
+
+## 19. Prior-findings disposition summary
+
+All 70 upstream findings were disposed of by their owning sessions; the wording below is the
+register's final wording, with each still-open finding mapped to its canonical ID.
+
+| Disposition | HIGH | MEDIUM | LOW | Total |
+| --- | --- | --- | --- | --- |
+| `FIXED_VERIFIED` | 7 | 35 | 5 | 47 |
+| of which with a residual or test gap named | 0 | 6 (M04, M17, M21, M25, M29, M34) | 1 (L03) | 7 |
+| `STILL_OPEN` (whole or residual) | 9 | 11 | 2 | 22 |
+| `REJECTED` | 0 | 1 (M28) | 0 | 1 |
+| `SUPERSEDED` | 0 | 0 | 0 | 0 |
+| `NOT_LOCATED` | 0 | 0 | 0 | 0 |
+
+The ledger's raw count before consolidation (32 in full, 11 with residual, 24 still open, 2
+rejected) counted split rows (server and client halves) separately; the table above counts each
+upstream ID once, at its worst half. MON-H14 is the one row whose S02 triage (`FIXED_VERIFIED`)
+was overturned by the owning sessions (section 17.2 item 5). No upstream fix has regressed.
+
+| ID | Title (abridged) | Owner | Final disposition | Canonical A26 |
+| --- | --- | --- | --- | --- |
+| MON-H01 | Automatic backups of different owners and instances share one filename and retention namespace | S06 | STILL_OPEN | A26-M07 |
+| MON-H02 | Restore remaps local/S3 attachment metadata without copying or verifying the bytes | S06 | FIXED_VERIFIED | -- |
+| MON-H03 | Concurrent MNY import starts create separate active jobs for one user | S09 | FIXED_VERIFIED | -- |
+| MON-H04 | Import worker crash after the data commit lets retry replay the committed source | S09 | STILL_OPEN (A26-S09-01) | A26-H08 |
+| MON-H05 | Transaction, transfer, reconciliation and bulk mutations derive balance deltas from stale snapshots | S07 | STILL_OPEN (A26-S07-01) | A26-H03 |
+| MON-H06 | Scheduled posting has no durable occurrence identity and commits money before advancing the schedule | S08 | STILL_OPEN (residual, A26-S08-01) | A26-H07 |
+| MON-H07 | Absolute balance recomputation can overwrite a concurrent committed atomic delta | S07 | FIXED_VERIFIED | -- |
+| MON-H08 | Holding updates and full rebuilds can lose concurrent investment transactions | S12 | FIXED_VERIFIED | -- |
+| MON-H09 | One emergency-access claim token can be consumed by two concurrent requests | S03 | FIXED_VERIFIED | -- |
+| MON-H10 | Transfer VOID transitions can leave the two legs and both balances inconsistent | S07 | STILL_OPEN (residual, A26-S07-03) | A26-M09 |
+| MON-H11 | Transfer currencies, FX rate and destination value are not server-authoritative | S07 (client half S19) | STILL_OPEN (server half residual, `07-cash-ledger.md#5`; QIF half A26-S10-02, `10-rules-banksync-csv.md#5`; client half A26-S19-01, `19-frontend-forms.md#5`) | A26-H13, A26-M10, A26-M18 |
+| MON-H12 | Unavailable FX is converted as a valid-looking 1:1 value | S13 | STILL_OPEN (A26-S13-01, A26-S13-02) | A26-H10, A26-H11 |
+| MON-H13 | Historical net-worth replay adds a stock-split ratio instead of multiplying shares | S13 | FIXED_VERIFIED | -- |
+| MON-H14 | Investment preview and commit can use different exchange rates without disclosure | S12 | STILL_OPEN (server half A26-S12-02, `12-securities-holdings.md#5`; client half A26-S19-04, `19-frontend-forms.md#5`) | A26-H11 |
+| MON-H15 | Opening an existing scheduled investment override replaces its stored price with the latest quote | S19 | FIXED_VERIFIED | -- |
+| MON-H16 | Partial or unavailable portfolio valuations are rendered as complete totals | S20 | STILL_OPEN (A26-S20-01, HIGH) | A26-H15 |
+| MON-M01 | Deployment documentation and defaults do not match Compose and Helm manifests | S21 | STILL_OPEN (narrowed, A26-S21-03) | A26-M40 |
+| MON-M02 | Contributor guidance recommends transaction APIs the scoped rule prohibits | S01 | FIXED_VERIFIED | -- |
+| MON-M03 | Delegated `/users/me` responses expose fields outside the delegated profile | S03 | FIXED_VERIFIED | -- |
+| MON-M04 | MCP sessions keep the scopes from session creation after the bearer is revalidated | S17 | FIXED_VERIFIED (test gap, A26-S17-05) | A26-M42 |
+| MON-M05 | OIDC destructive-action confirmation accepts an arbitrary non-empty value | S03 | FIXED_VERIFIED | -- |
+| MON-M06 | Delegation create, link and revoke conflict with enforced RLS ownership | S04 | FIXED_VERIFIED | -- |
+| MON-M07 | Delegated activity is attributed to the effective owner, not the real actor | S03 | FIXED_VERIFIED | -- |
+| MON-M08 | Restore ordering can fail linked asset/loan account relationships | S06 | FIXED_VERIFIED | -- |
+| MON-M09 | Automatic-backup artifacts are published through non-crash-atomic final-file operations | S06 | FIXED_VERIFIED | -- |
+| MON-M10 | Authenticated users can browse and select arbitrary server filesystem backup paths | S06 | FIXED_VERIFIED | -- |
+| MON-M11 | Default Helm deployment exposes automatic backup without a writable persistent mount | S06 (Helm half S21) | FIXED_VERIFIED (backup half `06-backup-restore.md#5`; Helm half `21-tests-ci-release.md#5`) | -- |
+| MON-M12 | Backup export reads tables through separate transactions, not one snapshot | S06 | FIXED_VERIFIED | -- |
+| MON-M13 | Backup export buffers the whole database and archive in memory | S06 | FIXED_VERIFIED | -- |
+| MON-M14 | RLS enforce mode can accept an unsafe runtime database role | S04 | FIXED_VERIFIED | -- |
+| MON-M15 | The runtime application role can write migration history | S05 | FIXED_VERIFIED | -- |
+| MON-M16 | Restore decompression has no effective size or ratio bound | S06 | FIXED_VERIFIED | -- |
+| MON-M17 | Backups containing custom currencies are not portable across instances | S06 | FIXED_VERIFIED (design residual) | -- |
+| MON-M18 | Support backups retain identifying custom-currency names while UI copy says masked | S06 | FIXED_VERIFIED | -- |
+| MON-M19 | Global custom-currency cleanup decides deletion from tenant-filtered evidence | S13 | FIXED_VERIFIED | -- |
+| MON-M20 | Account closure can race a mutation and commit a closed non-zero account | S07 | STILL_OPEN (residual, A26-S07-06) | A26-M12 |
+| MON-M21 | Concurrent incremental split additions can exceed the parent amount | S07 | FIXED_VERIFIED (test gap, A26-S07-09) | A26-M42 |
+| MON-M22 | Local and S3 attachment bytes are not transactionally coupled to metadata | S06 | STILL_OPEN | A26-L10 |
+| MON-M23 | Logout can miss a refresh token created by a concurrent rotation in the same family | S03 | FIXED_VERIFIED | -- |
+| MON-M24 | Parallel failed logins lose counter increments and delay lockout | S03 | FIXED_VERIFIED | -- |
+| MON-M25 | AI insight generation uses a process-local guard and duplicates work across replicas | S08 (claim), S17 (provider) | FIXED_VERIFIED (claim half `08-scheduler-cron.md#5`, residual A26-S08-04; provider half `17-ai-mcp-notifications.md#5`) | A26-L13 |
+| MON-M26 | Emergency-access grant issuance can send links another replica immediately invalidates | S03 | FIXED_VERIFIED | -- |
+| MON-M27 | Ordinary transaction currency can disagree with the owning account currency | S07 (cross-check S10) | FIXED_VERIFIED | -- |
+| MON-M28 | Mixed-sign split children are accepted when their signed total equals the parent | S07 (client half S19) | REJECTED (server half `07-cash-ledger.md#5` and client half `19-frontend-forms.md#5`: mixed-sign splits are a documented shape) | -- |
+| MON-M29 | Explicit zero or negative investment FX rates produce inconsistent cash postings | S12 | FIXED_VERIFIED (create and preview) | -- |
+| MON-M30 | BUY commission is omitted from cost basis although cash and UI wording include fees | S12 | FIXED_VERIFIED (backend `12-securities-holdings.md#5`; UI wording `20-frontend-figures.md#5`) | -- |
+| MON-M31 | Transfer split amounts are omitted from budget spending | S16 | FIXED_VERIFIED | -- |
+| MON-M32 | Final scheduled loan payment recalculates splits without shrinking the parent payment | S15 | FIXED_VERIFIED | -- |
+| MON-M33 | Monte Carlo current-value failure is converted to a real zero | S13 | FIXED_VERIFIED | -- |
+| MON-M34 | Bulk deletion can leave linked-account monthly/net-worth snapshots stale | S13 | FIXED_VERIFIED (counterpart snapshot; related A26-S13-03 on the bulk path) | A26-H05 |
+| MON-M35 | Foreign-security transfer resets destination cost basis to an implied 1:1 value | S12 | STILL_OPEN (A26-S12-04) | A26-M21 |
+| MON-M36 | A failed backend logout is presented as a successful local logout | S18 | FIXED_VERIFIED | -- |
+| MON-M37 | Two-decimal split editing and one-cent tolerance conflict with four-decimal persistence | S19 | STILL_OPEN (A26-S19-03, different root cause) | A26-M37 |
+| MON-M38 | Successful transaction mutations leave cached budget progress stale | S18 | STILL_OPEN (narrowed, A26-S18-01) | A26-M35 |
+| MON-M39 | Tests validate missing FX as a successful 1:1 conversion (verification defect) | S13 | STILL_OPEN (relocated, A26-S13-01) | A26-H10 |
+| MON-M40 | The scheduled-override test expects an existing price to be overwritten (verification defect) | S19 | FIXED_VERIFIED | -- |
+| MON-M41 | The historical stock-split fixture encodes additive shares (verification defect) | S13 | FIXED_VERIFIED | -- |
+| MON-M42 | The AppHeader test expects logout failure to look successful (verification defect) | S18 | FIXED_VERIFIED | -- |
+| MON-M43 | Automatic-backup tests expect generic cross-owner keys (verification defect) | S06 | STILL_OPEN | A26-M07 |
+| MON-M44 | The backend integration CI command can succeed after discovering zero tests | S21 | FIXED_VERIFIED | -- |
+| MON-M45 | The release workflow pushes a `[skip ci]` bump after testing a different SHA | S21 | STILL_OPEN (A26-S02-10) | A26-M41 |
+| MON-M46 | Canonical concurrency defects lack deterministic tests at the production boundary (missing test) | S21 | STILL_OPEN (widened, A26-S21-04) | A26-M42 |
+| MON-M47 | No local/S3 attachment backup-restore round trip verifies bytes and remapping (missing test) | S06 | STILL_OPEN | A26-M08 |
+| MON-L01 | A stale PAT comment mentions a reports scope issuance does not support | S03 | FIXED_VERIFIED | -- |
+| MON-L02 | Database initialization and migration runners are not serialized across replicas | S05 | FIXED_VERIFIED | -- |
+| MON-L03 | Budget-alert deduplication is a check-then-insert race | S16 | FIXED_VERIFIED (with residuals, A26-S16-08) | A26-L39 |
+| MON-L04 | Staged-file expiry can delete bytes a pending or running import still needs | S09 | STILL_OPEN (narrowed, A26-S09-04) | A26-L14 |
+| MON-L05 | Concurrent attachment uploads can exceed the per-transaction cap | S06 | FIXED_VERIFIED | -- |
+| MON-L06 | Bill and mortgage reminder crons send duplicate email from every replica | S08 | FIXED_VERIFIED | -- |
+| MON-L07 | Test and CI documentation overstates enforcement | S21 | STILL_OPEN (narrowed) | A26-L36 |
+
+## 20. Complete review-coverage ledger
+
+### 20.1 Not audited this program
+
+| Area | Why | Where it goes |
+| --- | --- | --- |
+| INV-SHARE-001..005 (PWA share target) | Mislabelled as joint accounts in `sessions.md`; neither S18 nor S20 took it after S04's correction | A follow-up audit session; not reported as clean |
+| Categories, payees, tags, calendar (INV-PAYEE-001/002, INV-DAYNOTE-001) | S16 sampled them through their integration suites only after its sweeps were lost to the usage limit | Same |
+| The five largest forms beyond the sampled ranges; Playwright | S19 size-L deviation | Same; E2E ran green in S01 |
+| Budgets, strategies, bonds, receipts and tours UI | S20 by grep only | Same |
+| Bank-sync preview UI, rules editor | S10 to S19/S20 hand-off, not read | Same |
+| The XL slices outside their recorded ranges | MNY import, securities, frontend reports, frontend lib (plan section 6) | Ranges in 20.2 |
+
+### 20.2 Per session
+
+#### S01 baseline (`01-baseline.md`)
+- **Runtime executed:** Backend lint (check form `npx eslint "{src,apps,libs,test}/**/*.ts" --max-warnings=0`): FAIL, 3 `prettier/prettier` errors; `tsc --noEmit` and typecheck pass. Backend unit `TZ=UTC npm run test:unit -- --coverage`: 1 048 suites; 27 481 tests: 27 479 passed, 2 skipped, 0 failed (thresholds met). Backend build pass. Backend integration `npm run test:integration`: 118 suites (117 passed, 1 failed); 1 479 tests: 1 470 passed, 8 skipped, 1 failed (`ofx-import-fitid` deadlock in `cleanTables`; passes alone 10/10). Frontend lint, type-check, i18n:check pass; `npm run test:cov`: 1 139 files, 22 249 tests passed. E2E Chromium only: 191 tests discovered: 178 passed, 6 flaky, 7 skipped, 0 failed. `node scripts/check-env-docs.mjs`, `check-docs-manifests.mjs` (33 documents), `migration:lint` (233) pass; `check-migration-prefixes.mjs` pass (partial, no base ref). `scripts/verify-schema.sh` not run. Hosted CI not available. Mutations in a scratch worktree at `AUDIT_BASELINE_SHA`. Three delegated read-only sweeps (allowlist, cron matrix, non-enforced invariants).
+- **Read in full:** `AGENTS.md`, `CLAUDE.md`, `backend/CLAUDE.md`, `e2e/CLAUDE.md`, `backend/src/mcp/CLAUDE.md`, `CONTRIBUTING.md`, `.claude/settings.json`, `.lintstagedrc.cjs`, `docs/audits/2026-10/{plan,ledger,prior-findings-register}.md`, S01 block of `sessions.md`.
+- **Sampled / not read:** Sampled: `frontend/CLAUDE.md` and `database/CLAUDE.md` (command and gate lines), `backend/eslint.config.mjs:17-30,270-300,395-475`, `docs/verification-contract.md:483-560`, `docs/backend/testing.md:85-110`, `docs/system-invariants.md` (INV-RELEASE-001 and 20 non-enforced entries), `docs/cron-jobs.md:1-20`, `backend/src/common/db/prohibited-primitive-guidance.ts:1-40`, `ci.yml:23-155,1452-1600`. Upstream baseline `d5cea9bf` not reachable in the shallow clone. Firefox project, cluster shard, push suite not run.
+- **Reviewed without a finding:** The DB-primitive bans and their documented list (MON-M02); allowlist vs call sites (81 entries, 214 call sites, no stale, none missing); cron doc vs code (49 handlers, one row per handler, expressions); CI image registries (Dockerfiles `FROM mirror.gcr.io`); guard specs' skip conditions.
+
+#### S02 prior high triage (`02-prior-high-triage.md`)
+- **Runtime executed:** Node 24.22.1; `npm ci` OK in `backend/` and `frontend/`; PostgreSQL 16 from container binaries (no Docker daemon). Backend unit: 28 suites, 2 065 tests passed, 2 skipped (16 suites, 734 passed, 2 skipped plus 12 suites, 1 331 passed). Backend integration: 13 suites, 204 tests passed, 0 failed (serial). Frontend unit: 15 files, 454 passed. `npm run build` OK. Zero-test check: Jest on a non-matching integration suite exits 1. Mutations: 11 run in a scratch worktree, 9 detected, 2 undetected. Scratch two-connection race spec (R1, R2): MON-H05 reproduced 10 of 10 on the split-transfer-leg path.
+- **Read in full:** Not stated as full reads; read by range (this session): `transaction-transfer.service.ts:1660-1735, 2555-2760`; `report-currency.service.ts:95-125`; `mny-import.service.ts:135-215, 280-335`; `reconciled-lock.util.ts:1-60, 168-200`; `locks.ts:155-175, 245-390`; `transfers.integration.spec.ts:1-245`; `backend/test/jest-integration.json`; `PostTransactionDialog.tsx` (post call and date initialization).
+- **Sampled / not read:** Seven read-only sub-agents reconstructed findings; their reads were "spot-checked at the lines used here". Not a PR: no base, merge base or hosted CI consulted. Dispositions are triage, final call with owners. 23 of 70 prior findings triaged.
+- **Reviewed without a finding:** H02 export/stage/restore ordering; H03 start/create/wipe ordering; H07 absolute writers; H08 holding lock namespace; H09 consume; H13 replay sites; H14 form; H15 dialog; M42 logout; M44 discovery.
+
+#### S03 security auth (`03-security-auth.md`)
+- **Runtime executed:** Node 24.22.1; `backend/` `npm ci` OK; PostgreSQL 16 in Docker after starting `dockerd` by hand. Integration (9 named suites, one worker): 9 suites, 87 tests passed. Unit slice `TZ=UTC npx jest src/auth src/oauth src/users src/admin src/emergency-access src/delegation src/push src/common/interceptors`: 1951 tests passed. Probe file in scratch worktree: refresh reuse fails on baseline (A26-S03-01), login counter fails (A26-S03-02), claim race x5 passes, logout race passes, per-user revoke race (blanket fails, helper passes: A26-S03-07). Mutation runs (section 6): four undetected rows listed.
+- **Read in full:** `emergency-access-claim.controller.ts`, `token.service.ts`, `login-lockout.ts` (code), `step-up.service.ts` (code), `step-up.guard.ts`, `single-use-token.service.ts`, `jwt.strategy.ts` (code), `user-profile.ts` (code), `push-chart.controller.ts`.
+- **Sampled / not read:** Sampled: `auth.service.ts:55-160, 360-560, 930-975`; `auth.controller.ts:1260-1355`; `oidc-reauth.service.ts:100-160, 237-300, 362-458`; `two-factor.service.ts:225-275, 405-440, 477-512`; `emergency-access-monitor.service.ts:75-200, 360-470, 583-670`; `delegation.service.ts:763-787, 1465-1540`; `admin.service.ts:333-395, 552-610, 723-735`; `oauth-interaction.controller.ts:20-170, 370-400`. "Not covered this session (sampled or skipped, never reported clean)": OAuth provider internals, PAT bearer guard and MCP bearer path, remaining `auth.controller.ts` routes, `frontend/src/lib/api.ts` 401/refresh interceptor, `docs/specs/row-level-security.md` and `docs/rls-runbook.md`, `SECURITY.md`.
+- **Reviewed without a finding:** Claim consume (MON-H09), logout (MON-M23), lockout increment (MON-M24), OIDC re-auth (MON-M05), activity attribution (MON-M07), profile allowlist (MON-M03), grant issuance (MON-M26), PAT scopes (MON-L01), TOTP replay, admin last-admin locking (`lockAdminsForUpdate`), push subscription ownership clause, OAuth consent CSRF, frontend credential persistence.
+
+#### S04 RLS tenancy (`04-rls-tenancy.md`)
+- **Runtime executed:** Node 24.22.1; `npm ci` OK; `dockerd` started by hand; PostgreSQL 16 as `monize-pg`. Integration `npm run test:integration -- 'rls-|runtime-role|joint-accounts|cross-owner-transfers|security-cross-user-isolation|schema-entity-parity'`: 9 suites, 180 tests passed. Probe `zz-audit-s04-probe.integration.spec.ts`: 4 cases, 1 passed, 3 failed on baseline as designed; `zz-audit-s04-transfer-probe.integration.spec.ts`: 1 case, failed as designed (A26-S04-01). Probes ran on the unprivileged `monize_app` role with `RLS_MODE=enforce`. Mutations MA to ME: MA 175/175 green and `rls-enforcement` 35/35 green; MB 35 failed; MC 4 failed; MD 175/175 green, unit 2 failed; ME unit 4 failed, `runtime-role` 27/27 green. Scripted allowlist check: 94 files mention a helper, 81 import it, 81 entries, 0 missing, 0 stale.
+- **Read in full:** `scoped-db.ts`, `with-context.ts`, `rls-config.ts`, `rls-exempt-tables.ts`, `runtime-role-check.ts`, `app-role.ts`, `docs/row-level-security-contract.md`, `docs/backend/database-access-and-tenancy.md`. Protocol `.claude/commands/audit.md` read in full (1637 lines).
+- **Sampled / not read:** Sampled: `delegation.service.ts:160-295, 385-460, 940-1010, 1035-1544`; `cross-owner-access.service.ts:66-110`; `transaction-transfer.service.ts:516-1000, 2142-2390` (VOID lines only); `joint-register.service.ts:20-154`; `main.ts:130-300`; `mcp-http.controller.ts:270-460`; `schema.sql:1970-2002, 3555-4200`; `rls-enforcement.integration.spec.ts:36-285`. "Not covered this session (sampled or skipped, never reported clean)": cross-owner transfer update and delete paths beyond VOID and authorization placement; `joint-categories.service.ts` beyond its shape; `account-delegate.guard.ts` body-account checks; `docs/specs/row-level-security.md` and `docs/rls-runbook.md`; the 23 enforced-harness suites were not run. INV-SHARE-001..005 not audited.
+- **Reviewed without a finding:** `withScopedDb` identity join refusal and isolation refusal, GUC emission per mode, fail-closed helpers (`NULLIF(...)::uuid`, `COALESCE`), runtime role check and provisioning (MON-M14), `schema_migrations` write revoke, `WITH_CONTEXT_ALLOWLIST` completeness, the `oauth_payloads` and `PgListener` exceptions, MCP bearer context seeding, MON-M06 flows under enforcement.
+
+#### S05 migrations schema (`05-migrations-schema.md`)
+- **Runtime executed:** Node 24.22.1; backend `npm ci` OK; PostgreSQL 16 in Docker. `scripts/verify-schema.sh`: OK (both passes). `npm run migration:lint:test`: 0 failed. `npm run migration:lint`: OK, 233 files, one registered one-shot (`166_heal_loan_schedule_end_dates.sql`). `node scripts/check-migration-prefixes.mjs` OK (233 migrations, 0 added vs `origin/main`) after `git fetch --unshallow origin`. Three scratch integration specs (three-place catalog diff; two-replica startup race, baseline passed and lock-removed mutation failed as expected; `ON CONFLICT` arbiter probe). Mutations: `src/db-init.spec.ts` + `src/db-migrate.spec.ts` under M1: 6 failed / 39 passed; `src/common/db/app-role.spec.ts` under M2: 4 failed / 15 passed; `runtime-role.integration.spec.ts` under M2: 1 failed / 26 passed; M3, M4, M5 undetected (section 6). Repository integration suites (12 named patterns, one worker): 12 suites passed, 161 tests passed, 0 failed.
+- **Read in full:** The 56 timestamped migrations (`20260906235944` .. `20261018052801`); `backend/src/db-init.ts`; `backend/src/db-migrate.ts`; `backend/src/common/db/advisory-locks.ts`; `backend/src/common/db/required-db-functions.ts`; `backend/docker-entrypoint.sh`; `scripts/verify-schema.sh`; `database/CLAUDE.md`; `schema-entity-parity.integration.spec.ts`; `backend/test/helpers/test-database.ts`.
+- **Sampled / not read:** Sampled with ranges: `app-role.ts:60-268`; `integration-setup.ts:36-75,200-250`; `rls-setup.ts:335-476`; `docs/database-migrations.md:30-110`; `ai-review-requests.service.ts:180-330`; `budget-period.service.ts:225-250`; `mortgage-type.util.ts:160-200`; `plan-loan-settlement.ts:258-264,420-442`; `transaction-rules-applier.service.ts:790-830`; `bank-sync.integration.spec.ts:2265-2310`; `docs/audits/2026-08-upstream/03-database-backup.md:479-635`. Numbered migrations sampled against upstream inventory (7 modified diffed in full, 3 deleted traced). "Not read" items: not stated in section 12.
+- **Reviewed without a finding:** Replay idempotency of all 56 (guards on every statement; executed); RLS enable + policy shipped in the same file for each of the 19 user-owned tables created; RLS-exempt tables (`push_chart_artifacts`, `auth_attempt_counters`, `single_use_tokens`, `oauth_instance_config`, `fetch_sync`, `update_check_state`, `http_throttle_counters`, `auto_backup_policy`, bond reference tables) carry no owner column; no migration names a role; arbiters for every `ON CONFLICT` except `budget_periods` in the harness; `required-db-functions` registration; the startup lock and the ledger revoke (executed).
+
+#### S06 backup restore (`06-backup-restore.md`)
+- **Runtime executed:** Node 24.22.1; `dockerd` by hand; moto 5.2.4 as S3 endpoint (no MinIO image). Unit `TZ=UTC npx jest src/backup src/attachments src/currencies src/common/shard-path`: 90 suites, 1942 passed, 2 skipped, 0 failed. Integration: `backup-restore` 25 passed; `support-backup` 5; `attachment-late-write` 12; `attachment-scan-pair` 8; `backup-offsite-claim` 7; `backup-store-s3` without endpoint 1 passed, 8 skipped; with moto endpoint 7 passed, 2 failed (A26-S06-02). Scratch round trip R1..R6: 6 passed with `S06_PROVIDER=local`, 6 passed with `S06_PROVIDER=s3`. Mutations M1..M4 in scratch worktree; three undetected.
+- **Read in full:** `backup/backup.service.ts`, `backup-id-remap.util.ts`, `backup-restore.service.ts`, `backup-attachment-transfer.service.ts`, `restore-plan.ts`, `backup-file-names.ts`, `atomic-file.ts`; `attachments/storage/` `local-storage.provider.ts`, `s3-storage.provider.ts`, `database-storage.provider.ts`, `storage-key.util.ts`, `attachment-storage.interface.ts`.
+- **Sampled / not read:** Sampled: `auto-backup.service.ts` 880-1145, 1293-1460, 1601-1660, 2083-2332 (of 2452; cron fan-out 1654-1906 and reconcile 1906-2080 not read); `backup-restore-database.service.ts` 39-420; `backup-export.service.ts` 194-300, 400-568; `local-backup-storage.target.ts` 1-560; `s3-backup-storage.target.ts` grep only. "Not read": `backup/offsite/*` beyond the invariant text and the integration suite result; `backup-envelope.ts`, `backup-key-wrap.ts`, `backup-encryption.service.ts`; `restore-upload-admission.ts`, `restore-processing-gate.ts`, `restore-peak-rss.harness.ts`; `frontend/src/lib/backupApi.ts`, `frontend/src/components/settings/`; `docs/specs/backup-off-machine.md`, `backup-storage-targets.md`, `backup-envelope-key-wrapping.md`, `docs/adr/0003-*`.
+- **Reviewed without a finding:** Export snapshot, decompression bound, re-auth ordering, AI key transport, reference resolution and remap, carried-bytes validation and blob rebuild, legacy ownership proof, path containment on both stores and both providers, support-backup currency pseudonymisation, admin gating of the policy and browse routes, attachment cap lock.
+
+#### S07 cash ledger (`07-cash-ledger.md`)
+- **Runtime executed:** Node 24.22.1; PostgreSQL 16 in Docker; `dockerd` by hand. Baseline integration (8 named patterns): 9 suites, 104 tests passed (serial). Three scratch probe specs, 13 cases: 10 reproduce a defect, 3 show a mechanism holding (probe 1 P1-P8: 6 failed by design, 2 passed; probe 2 Q1, Q2 reproduce, Q3 holds; probe 3 R1, R2 reproduce). Four mutations M1-M4: 1 undetected, 2 unit-only, 1 covered.
+- **Read in full:** Ranges: `transaction-transfer.service.ts` `:228-340`, `:645-760`, `:1474-2760`; `transactions.service.ts:2534-3160`, `:3660-3712`; `accounts.service.ts:858-1557`, `:1868-2260`; `common/deletion-balance.util.ts`; `transactions/register-order.ts`; `remove-transaction-leg.ts`; `reconciled-lock.util.ts:1-60, 150-211`; `reconciled-lock.guard.spec.ts:1-140`; `transaction-bulk-update.service.ts:160-499, 1184-1368`.
+- **Sampled / not read:** Sampled: `transaction-split.service.ts:1075-1235`, `:170-210`; `common/db/locks.ts:215-295`; `action-history.service.ts:170-195, 486-546, 1730-1770`; `mcp/tools/transactions.tool.ts` three ranges; `ai-actions.service.ts:570-600`; `transaction-tool-prep.service.ts:505-610`; `reports.service.ts:560-590, 715-735`; `transactions.controller.ts:1520-1595`. "Not read in full despite the size-L instruction": `transactions.service.ts` outside the ranges above, `transaction-split.service.ts` outside the ranges above, `investment-filter.util.ts` (sampled by the guard's existence only), `transaction-search*.ts` (sampled by grep). Recorded as sampled, never as clean.
+- **Reviewed without a finding:** `deletionBalanceEffect` and its single caller pattern (`removeLockedTransactionLeg`); `applyRegisterOrder` total order and the page window; same-owner `updateTransfer` and `removeTransfer`; `update()` and `remove()` lock placement; MCP/AI transfer routing; the `is_closed` predicate; currency derivation on create/update/transfer.
+
+#### S08 scheduler cron (`08-scheduler-cron.md`)
+- **Runtime executed:** Node 24.22.1; PostgreSQL 16 in Docker; `dockerd` by hand. Baseline integration (`scheduled|job-claim|loan-settlement-claim|dated-loan-payment|loan-settlement-debt|backup-offsite-claim`): 8 suites, 45 passed. `scheduled-transactions.service.spec.ts` 320 passed at baseline (319 + 1 failed under each of M1-M3); `job-claim.service.spec.ts` 16 passed at baseline (15 + 1 failed under each of M5-M7). Probes in scratch worktree: `zz-s08-probe` P1-P7 (8 cases, real `ScheduledTransactionsService`), `zz-s08-probe2` R1, R2 (real `BillReminderService` x3, `AiInsightsService` x2). Mutations M1-M3, M5-M7; three undetected at integration level (caught only by SQL-text unit asserts).
+- **Read in full:** `common/jobs/job-claim.service.ts`; `notifications/bill-reminder.service.ts`; `scheduled-transactions/schedule-cursor.ts` (to `PrunedScheduleOverride`); `docs/cron-jobs.md`; `docs/backend/cron-and-background-work.md`. The 49-handler cron matrix was built by a read-only sweep agent and spot-checked.
+- **Sampled / not read:** `scheduled-transactions.service.ts` 486-864, 2640-3900 (of 4305); "`create`/`update` 866-2640 and the override and loan delegations after 4079 not read". Also sampled: controller 329-368; `claim-loan-occurrence.ts` 1-180; `occurrence-slots.ts`; `ai-insights.service.ts` 140-360, 602-650, 741-790; `budget-period-cron.service.ts` 30-260; `auto-backup.service.ts` 1293-1430; `notification-dispatch.service.ts` 175-262; `transactions.service.ts` five ranges; `PostTransactionDialog.tsx` 405-480; `system-invariants.md` 4002-4130, 5745-5770.
+- **Reviewed without a finding:** Cron selection (postponed and override-moved occurrences, `:574-608`); the pre-lock and under-lock checks (`sameScheduleMutationBasis`, override and split bases); loan pricing re-resolution on both posting paths (presence and lock order); the reminder lease and delivery record; the dispatch seam; budget rollover claim and release; the 30-day claim sweep; the S06 manual fan-out.
+
+#### S09 import mny (`09-import-mny.md`)
+- **Runtime executed:** Node 24.22.1; PostgreSQL 16 in Docker; `dockerd` by hand. Baseline integration `npm run test:integration -- "mny\|import"`: 8 suites, 137 tests, all passed. Scratch worktree: post-commit failpoint spec over 3 fixtures (3 fail = defect reproduced) and re-upload variant (1 fail); currency-override probe (1 pass); mapper probe `map-transactions.spec.ts` (1 pass); seven mutations at integration and unit level (unit `src/import` 1848/1848 under M2; three undetected); two-connection SQL race (A26-S09-04). All serial.
+- **Read in full:** `mny-import-job.service.ts`, `mny-import.service.ts`, `mny-staging.service.ts`, `mny-import.controller.ts`, both entities.
+- **Sampled / not read:** Primary path "XL, sampled by the job state machine". Sampled: `map/map-transactions.ts:360-470, 630-725`; `map/map-transfers.ts` (all 84 lines); `map/map-investments.ts:195-320`; `writers/write-reference.ts:159-246`; `writers/write-investments.ts:180-292`; `map/map-reference.ts:150-215`; `currencies.service.ts:176-275`; `mny-parser.service.ts:194-250`; `import-post-processing.service.ts:44-200`; `mny-import.integration.spec.ts:1347-1630`; `mny-import-job.integration.spec.ts:517-765`. "Not read" items: not stated in section 12.
+- **Reviewed without a finding:** One-active-job index and its 409 mapping; claim CAS; token-scoped progress, heartbeat, complete and fail; reaper grouping (`reapStatement` parenthesis); wipe-after-slot ordering; maintenance-lease interlock in `create`; `userId` from the JWT on all routes.
+
+#### S10 rules banksync csv (`10-rules-banksync-csv.md`)
+- **Runtime executed:** Node 24.22.1; PostgreSQL 16 in Docker; `dockerd` by hand. Baseline integration (`transaction-rules|bank-sync|transaction-external-id|payee-lookup|ofx-import-fitid|import-balance-delta`): 17 suites, 244 tests, all passed in 223 s. Slice unit `TZ=UTC npm run test:unit -- src/transaction-rules src/bank-sync src/import-preview "src/import/[^/]*\.spec"`: 102 suites, 3205 tests, all passed. Scratch worktree: planner probe and integration probe for A26-S10-01, integration probe for A26-S10-02 (both fail at baseline as described), four mutations (all four listed as undetected rows). Serial runs.
+- **Read in full:** `bank-sync/bank-sync-writer.service.ts`; `import/import-regular-processor.service.ts` (1-330, 420-798; 330-420 sampled); `transaction-rules/rule-application-sites.guard.spec.ts` (1-217).
+- **Sampled / not read:** Sampled: `bank-transaction-planner.ts:216-556`; `bank-sync.service.ts:440-660`; `bank-sync-preview.service.ts:300-495`; `transaction-rules-applier.service.ts` five ranges; `rule-effects.ts:650-780`; `transaction-rules.service.ts:112-222`; `import.service.ts` three ranges; `docs/specs/bank-sync.md:220-360`; `schema.sql` three ranges. "Not read": the rule validator (`rule-validation.ts`, 810 lines), `rule-tool-prep.service.ts` (1128 lines), `bank-sync-connections.service.ts`, `bank-sync-profiles.ts`, the Enable Banking adapter, `csv-parser.ts` and `qif-parser.ts`, the frontend `components/rules/` and `components/import-preview/`, `import-investment-processor.service.ts`, `import-transfer-dedupe.ts`.
+- **Reviewed without a finding:** INV-BANKSYNC-002, -003, -004; INV-RULE-001 (matched row), -004, -005; INV-PAYEE-001, -002; concurrent sync arbitration; rules inside the inserting transaction on every creation path found.
+
+#### S11 email receipts (`11-email-receipts.md`)
+- **Runtime executed:** Node 24.22.1; PostgreSQL 16 in Docker `monize-pg`. Unit `npm run test:unit -- src/email-receipts src/ai-review`: 102 suites, 2 985 tests passed. Integration (`email-receipt|ai-review-requests|ai-review-mcp|holding-concurrent-trades|rls-context-smoke`): 8 suites, 223 tests passed (`rls-context-smoke` matched nothing). Probes P1 (3 cases, A26-S11-02), P2 (`providerCalls=2 drafts=2`, A26-S11-01), P3 (P3a trade booked, cash 10 000 -> 8 000; P3b control, nothing; A26-S11-04) in scratch worktree. Mutations M1, M3, M4, M6, M7, M8 (all covered, four by unit tests only). CI/hosted status not checked.
+- **Read in full:** `poll/email-receipt-poll.service.ts`, `poll/receipt-rows.ts`, `poll/email-receipt-poll-limits.ts`, `pipeline/email-receipt-pipeline.service.ts`, `pipeline/email-receipt-trade.service.ts`, `pipeline/receipt-requests.util.ts`, `pipeline/auto-apply-gate.ts`, `pipeline/trade-reading.ts`, `ai/email-receipt-ai.service.ts`, `mailbox/email-receipt-mailbox.service.ts`, `oauth/email-receipt-oauth.service.ts`, `oauth/oauth-state.ts`, `import/email-receipt-import.service.ts`, `imap/forwarded-receipt.ts`, `receipts/receipt-disposal.ts`, `EmailHtmlFrame.tsx`, `EmailBodyView.tsx` (and others, some from a stated line).
+- **Sampled / not read:** Sampled: `imap/imap-mailbox-client.ts:140-394`; `receipts/email-receipts.service.ts:580-1000`; `parsing/parse-trade.ts:20-100, 400-594`; `ai-review-requests.service.ts:180-380, 845-975`; `ai-review-work.service.ts:575-825`; `ai-actions.service.ts:1090-1192`; `exchange-rate.service.ts:379-420, 1150-1215`; several files by grep. "Not read": `parsing/receipt-parser.validation.ts` (1 433 lines), `imap/forwarded-message.ts` beyond its contract, `imap/html-lines.util.ts`, `imap/mail-text.util.ts`, `import/msg-message.ts`, `import/mbox.ts`, `parsing/parse-receipt.ts`, `parsing/schema-org-order.ts`, `proposal/build-receipt-proposal.ts` beyond its kinds, `linking/*` beyond the pipeline's calls, `parsers/receipt-dry-run.ts`, `parsers/email-receipt-parser-preview.service.ts`, the frontend wizard and inbox components.
+- **Reviewed without a finding:** INV-RECEIPT-001 read-only IMAP; INV-RECEIPT-002 ingest transaction and cursor; INV-RECEIPT-004 host policy at save and connect; INV-RECEIPT-005 secrets; INV-RECEIPT-007 OAuth state; the email HTML frame; parser patterns without `RegExp`; archive decompression bounds; the AI's answers (validated, owned categories, never confirmed by the AI path); the write-limit exemption; the trade confirm's `beforeWrite` / `afterWrite` under the holdings lock; the mailbox settings round trip; the parser form's refusal to edit what it cannot represent; the document scanner (client-only).
+
+#### S12 securities holdings (`12-securities-holdings.md`)
+- **Runtime executed:** Node 24.22.1; PostgreSQL 16; `dockerd` by hand. Baseline `npm run test:integration -- "holding\|investment\|securit\|price\|trade"`: 13 suites, 176 tests, all passed. Scratch spec `zz-s12-race.integration.spec.ts`: three forced interleavings R1-R3 (R1, R2 defects demonstrated; R3 mechanism holds) and five numeric probes P1-P5 (defects demonstrated); 16 mutation rows (several undetected). Serial runs.
+- **Read in full:** `investment-replay.util.ts`, `investment-amount.util.ts`, `daily-change.util.ts`, `holdings.service.ts`. `investment-transactions.service.ts` read 469-2970, 3818-5095. `security-price.service.ts` read 330-2662.
+- **Sampled / not read:** "the remaining 2970-3817 -- embedded status propagation, register reads, history, capital-gains and LLM shapes -- sampled at 3093-3200 only"; `security-price.service.ts` 1-330 sampled. Other samples: `portfolio-calculation.service.ts`, `portfolio.service.ts` 1290-1489, `yahoo-finance.service.ts` 150-330, `msn-finance.service.ts` 376-412, `exchange-rate.service.ts` 916-1174, `mcp/tools/investments.tool.ts`, `locks.ts`, `action-history.service.ts` 1850-1965. Not reviewed: `portfolio.service.ts` valuation and FX aggregation (S13), `lse-finance.service.ts`, `market-index.service.ts`, `performance-comparison.service.ts`, `sector-weighting.service.ts`, `security-detail.service.ts`, `bond-*` (S14), the intraday series, `provider-health/` beyond its use in Yahoo, the frontend (S19/S20).
+- **Reviewed without a finding:** The SPLIT reducer and its guards; commission in basis on every backend replay; non-positive rate refusal; `updateStatus` (row lock and advisory lock, VOID crossings mirror the cash leg); the provider currency checks on every provider write path read; the MSN negative cache; the Yahoo breaker door; the daily-change resolver and the movers board; manual price route ownership.
+
+#### S13 valuation fx networth (`13-valuation-fx-networth.md`)
+- **Runtime executed:** Node 24.22.1; PostgreSQL 16 in Docker. Baseline integration (`rls-enforcement`, `fx-rate-coverage`, `portfolio-movement-flow`, `portfolio-tag-keys`, `report-investment-cash`, `invested-capital-flow`, `scheduled-investment-split-fx`, `fx-fee-summary`, `bond-holding-value`): 9 suites, 110 tests, all pass. Baseline unit batch (16 patterns, `TZ=UTC npm run test:unit -- <pattern>`): 20 suites, 984 tests, pass. Scratch probes P1-P5 (6 cases): every case reproduces a defect. Ten mutations: nine detected (four only by mock-based unit tests), one undetected. Frontend `npm ci` not run. No `net-worth*`, `currenc*` or `exchange*` integration suite exists.
+- **Read in full:** `fx-rate-resolver.ts`, `fx-aggregate.ts`, `fx-entry.util.ts`, `currency-conversion.util.ts`, `currencies.service.ts`, `currencies.controller.ts` (60-422), `position-price.util.ts`, `useExchangeRates.ts`, `report-currency.service.ts` (1-121). Four read-only sub-agent sweeps, re-checked at cited lines.
+- **Sampled / not read:** Sampled: `exchange-rate.service.ts` 900-1339; `net-worth.service.ts` 780-1080, 2925-2960, 3071-3146; `portfolio.service.ts` 662-692, 1491-1566, 2145-2149; `monte-carlo.service.ts` 290-740, 860-937; `transaction-bulk-update.service.ts` 501-690; `accounts.service.ts` 1575-1825; `users.service.ts` 225-425; `forecast.ts` 215-285, 356-525; `schema.sql` four ranges. "Not reviewed": `exchange-rate-history.service.ts` and `rate-gap-plan.ts`, provider adapters beyond `carries`, `portfolio-period-result.service.ts` and the batch service beyond the util, `invested-capital-flow.util.ts`, the intraday series, `sector-weighting.service.ts` arithmetic, `number-locale.util.ts`, the frontend report components (S20).
+- **Reviewed without a finding:** The resolver's look-ahead, age bound and direction rule; `FxAggregate`; `getRateForDate` / `getLiveRate` / `resolveStoredRate`; the portfolio summary's `convertToDefault` and `primeLiveRates`; the monthly net-worth fold's flags; Monte Carlo refusals; the currency delete gate and its race; `normalizeFxEntry` / `assertTransactionCurrencyMatchesAccount`; the period-result arithmetic; the forecast's unknown occurrence handling; portfolio movement notifications (read `valuationComplete === true`).
+
+#### S14 bonds (`14-bonds.md`)
+- **Runtime executed:** Node 24.22.1; PostgreSQL 16; `dockerd` by hand. `TZ=UTC npm run test:unit -- src/bonds src/securities/portfolio-calculation src/securities/accrued-interest`: 53 suites, 1 401 tests, all pass. `TZ=UTC npm run test:integration -- "bond\|no-automatic-bonds\|redemption\|accrued"`: 12 suites, 174 tests, all pass. Mutations: 12 unit-level in a scratch worktree, all killed; three lock and SQL-text rows re-run at integration level, all killed (15 executed, 15 killed). One redemption example worked by hand against `docs/specs/bond-redemption-interest.md` section 3.1.
+- **Read in full:** `engine/redemption-split.ts`, `engine/redemption.ts`, `engine/accrual.ts`, `engine/bond-engine.ts`, `bond-holdings.service.ts`, `bond-lots.ts`, `bond-valuation.service.ts`, `bond-price.service.ts`, `benchmark-refresh.service.ts`.
+- **Sampled / not read:** Sampled: `bond-series.service.ts` 130-200, 205-364, 425-514, 660-975; `bond-notification.service.ts` 60-270; `bond-notification-events.ts` 330-375; `adapters/pl/pl-nbp-reference.ts` 120-178; `adapters/pl/series/series-source.ts` 50-135; `backfill-codes.ts` (whole); `bond-write-guard.ts` 1-60; `monte-carlo.service.ts` 495-545, 686-735; `net-worth.service.ts` four ranges. "Not read (sampled by invariant only through their suites)": `engine/rate-resolution.ts`, `domain/bond-terms.ts`, `bond-catalog.service.ts`, `bond-offer.service.ts`, `bond-series-resolver.ts`, `bonds.controller.ts`, the rest of `adapters/pl/`, `frontend/src/components/bonds/`.
+- **Reviewed without a finding:** The redemption split identity and its booking; per-bond rounding; window refusals; lots per account and series; the price writer's precedence and deletes; recompute locking; series store idempotency; provider failure in the series fetch; notification dispatch outside transactions and the maturity-coupon exclusion; NBP and GUS coverage.
+
+#### S15 loans strategies (`15-loans-strategies.md`)
+- **Runtime executed:** Node 24.22.1; `npm ci` OK in `backend/` and `frontend/`; PostgreSQL 16. Baseline integration (11 patterns, one invocation): 11 suites, 71 tests, all passed. Unit `TZ=UTC npm run test:unit -- src/strategies`: 14 suites, 375 passed. Frontend `npx vitest run src/lib/loan-history src/lib/loan-schedule src/components/reports/LoanAmortizationReport`: 6 files, 351 passed. Scratch probes: `zz-s15-probe` (R1-R11 through the real `post()`, 6 cases), `zz-s15-undo`, `zz-s15-undo2`, `zz-gem.spec.ts`, cross-currency `zz-s15-fx`; mutations M1-M7 (four undetected rows). Two read-only sweep agents (GEM; frontend loan history), claims re-verified.
+- **Read in full:** `scheduled-transaction-loan.service.ts`, `price-installment.ts`, `reprice-template.ts`, `claim-loan-occurrence.ts`, `occurrence-slots.ts`, `loan-payment-waterfall.util.ts`, `dated-loan-debt.util.ts`; `post()` `scheduled-transactions.service.ts:2862-3768` in full (listed under both read and sampled).
+- **Sampled / not read:** Sampled: `plan-loan-settlement.ts:120-420`; `action-history.service.ts:160-212, 560-610, 1727-1770`; `accounts.service.ts:1020-1050, 1120-1230`; `loan-rate-changes.service.ts:319-370`; `gem-momentum.util.ts:180-240`; `price-boundary.util.ts:30-100`; `gem-signal-change-alert.service.ts:150-220`; `notification.service.ts:320-370`; `loan-history.ts:1240-1316, 1530-1560`; `LoanAmortizationReport.tsx:290-297`; `loan-schedule.ts:405-410`. `loan-rate-changes/` and `loan-scenarios/` sampled. "Not read" list: not stated in section 12.
+- **Reviewed without a finding:** The posting boundary's lock order and re-resolution on both branches; the claim INSERT and its backstop; the rate timeline (dated, 0 % distinct from unknown on the settlement path); the waterfall's clamp order; the minor-unit booking never retiring more than the debt; LOC exemption from deactivation; loan controllers' auth; the settlement amount policy (read against spec section 8).
+
+#### S16 budgets reports (`16-budgets-reports.md`)
+- **Runtime executed:** Node 24.22.1; PostgreSQL 16 in Docker. `npm run test:integration -- "budget\|report\|categor\|payee\|calendar\|tag-usage"`: 10 suites, 112 tests, all passed. Scratch probe `s16-probe.integration.spec.ts` P1-P4 (P2/P3 needed the production `UNIQUE(budget_id, period_start)` added by hand). Seven mutation runs (M1, M3, M5, M7 via `jest spending-reports built-in-reports`, `jest budget`, `budget-split`, `budget-spending`); five undetected rows named. Frontend suites not run.
+- **Read in full:** `budgets/budget-spending.util.ts`, `common/investment-filter.util.ts`.
+- **Sampled / not read:** Sampled: `budget-period.service.ts:90-470`; `budget-period-cron.service.ts:70-230`; `budget-alert.service.ts:137-715`; `budgets.service.ts:400-412, 1031-1168`; `notification.service.ts:100-185`; `reports.service.ts:565-600, 715-740, 840-912`; `spending-reports.service.ts:55-135, 236-255`; `income-reports.service.ts:279-300`; `CashFlowReport.tsx:92-290`; `IncomeVsExpensesReport.tsx:191-290, 473-479`; `SpendingByCategoryReport.tsx:176-262`; `useReportData.ts:115-240`. "Not read in full despite the session brief": `budget-alert.service.ts:716-1262`, `budget-generator.service.ts`, the budget trend/health/activity report services beyond their transfer calls, `cash-flow-sankey*.ts`, `tax-recurring-reports.service.ts`, the backend CSV paths. Categories, payees, tags and calendar "covered only by their integration suites"; INV-PAYEE-001/002 and INV-DAYNOTE-001 mechanisms "not re-read". Three sweep subagents stopped on a usage limit.
+- **Reviewed without a finding:** not stated in section 12 (no such list; section 12 lists undetected mutation rows only: VOID in budget actuals; rollover relation; fingerprint index removal; next-period dates; budget currency conversion).
+
+#### S17 ai mcp notifications (`17-ai-mcp-notifications.md`)
+- **Runtime executed:** Node 24.22.1; PostgreSQL 16 in Docker; `dockerd` by hand. Unit `TZ=UTC npm run test:unit -- src/mcp src/ai src/ai-review src/notifications src/notification-center src/push src/system-alerts src/provider-health`: 157 suites, 4200 tests, all pass. Integration (`ai-action-replay|ai-relay|ai-review|push-|system-alert|provider-health|daily-write-limit|notifications|transactions.integration`, one worker): 14 suites, 145 tests, pass. No `mcp*` integration suite exists. Probes P1 (MCP caller key, forged `Mcp-Session-Id`), P2 (AI confirm after post-commit attachment failure), P3 (LLM analytics over two currencies, real PostgreSQL). Mutations M1-M4; three undetected rows.
+- **Read in full:** `mcp/mcp-http.controller.ts`, `mcp/mcp-context.ts`, `mcp/CLAUDE.md`, `docs/backend/mcp.md`, `notifications/notification-dispatch.service.ts` (`:60-483`), `push/push-chart-artifact.service.ts`, `push/push-chart.controller.ts`, `ai/actions/ai-write-limiter.ts`, `mcp/mcp-write-limiter.ts`.
+- **Sampled / not read:** Sampled: `ai-actions.service.ts:143-392, 467-1260`; `tool-executor.service.ts:240-345, 2858-3066`; `ai-insights.service.ts:40-339`; `ai-relay.service.ts:214-543`; `push-subscription.service.ts:204-503`; `transactions.tool.ts:1020-1180`; `transaction-analytics.service.ts` three ranges; `ai-review-work.service.ts:215-245, 335-362`; `attachments.service.ts:140-330`; `system-alert.service.ts:143-300`; `oauth-provider.service.ts:357-417`; `pat.service.ts:116-165`, and others. "Not read (named so nobody reads this as clean)": `ai/query/tool-executor.service.ts` outside the ranges above (about 2,400 lines, parity grep only), `ai/relay/ai-relay.service.ts:543-1106`, `mcp/mcp-confirm.ts` and `mcp-request-state.ts`, `provider-health/` (code not read), `notification-center/` beyond the two alert services, the frontend `components/notifications/` and `lib/push.ts`, `docs/specs/notification-preferences.md` (1,336 lines).
+- **Reviewed without a finding:** MCP identity per request, credential binding and the 403/401 paths; the relay caller-scoped liveness and card routing; the dispatch seam's lock, dedupe and fan-out order; system-alert insert winner and email claim; push subscribe refusals, endpoint ownership, hold and purge; the chart route's credential (256-bit nonce plus HMAC, one-use `DELETE ... RETURNING`); the AI review claim keys; the MCP bearer verifiers against `JWT_SECRET` tokens.
+
+#### S18 frontend core (`18-frontend-core.md`)
+- **Runtime executed:** Node 24.22.1; `npm ci` in `frontend/` OK. `npx vitest run src/lib src/hooks src/store src/types`: 349 files, 5 825 tests, all passed. `AppHeader.test.tsx`, `IncompleteLogoutNotice.test.tsx`, `MnyImportProgress.test.tsx`: 65/65 passed. `npm run lint`, `npm run type-check`, `npm run i18n:check`: all exit 0. Probes: 9 scratch-worktree vitest cases (P1-P8), all reproduce. Mutations: 3 executed, all killed. No backend suite run.
+- **Read in full:** `lib/apiCache.ts`, `lib/api.ts`, `lib/investments.ts`, `store/authStore.ts:1-200`, `hooks/useExchangeRates.ts`, `lib/logout-state.ts:1-60`, `docs/frontend/api-and-cache.md`. Three read-only subagent sweeps built the contract matrix; rows used in findings re-read at both ends.
+- **Sampled / not read:** Sampled: `lib/transactions.ts:1-240` and method list to `:572`; `lib/forecast.ts` ranges ("not read line by line: `:760-980`"); `lib/format.ts:1-180, 470-491`; `lib/budgets.ts`, `accounts.ts`, `categories.ts`, `payees.ts`, `import-mny.ts:277-338`, `share-inbox.ts:85-300`, `exchange-rates.ts`, `utils.ts:80-105`, `pdf-export.ts:245-262`; several backend files. "Not read (recorded as sampled, never as clean)": `lib/push.ts`, `lib/loan-history.ts`, `lib/receipt-parser-form.ts`, `lib/document-scanner/`, `lib/email-receipts-*`, `lib/rule-*`, `lib/loan-*`, `lib/backupApi.ts` beyond the restore line, `lib/number-parse.ts`, `lib/date-parse.ts`, `hooks/useNumberFormat.ts` beyond its exports, `docs/frontend/financial-figures.md` and `forms-and-formatting.md` beyond grep.
+- **Reviewed without a finding:** Logout and its retry (MON-M36/M42); the `dedupe` generation mechanism; `useExchangeRates` 1:1 half; the share target's ownership and logout sweep (INV-SHARE-001..005); `investmentsApi.refreshSelectedPrices` write-nothing rule; scheduled-post, split, transfer, bulk, import, bank-sync and investment-trade invalidation; `backupApi.restoreBackup` `clearAllCache()`; `forecast.ts` settlement-account remap and unknown-rate withholding.
+
+#### S19 frontend forms (`19-frontend-forms.md`)
+- **Runtime executed:** Node 24.22.1; `npm ci` OK in `frontend/` and `backend/`. Baseline component suites over the slice: 157 files, 4025 tests, all passed (`OverrideEditorDialog.test.tsx` 71 passed; `InvestmentTransactionForm.bondRedemption.test.tsx` 11 passed). Scratch worktree: five component probes P1-P5 plus one `CurrencyInput` four-decimal probe; backend integration probes `a26-s19-incoming-transfer` and `a26-s19-fourdp` (3 cases, PostgreSQL 16, `--runInBand`); 11 mutations (three undetected rows). Playwright not run.
+- **Read in full:** `frontend/src/components/ui/CurrencyInput.tsx` (500 lines); `TransferTransactionFields.tsx:60-307`.
+- **Sampled / not read:** Sampled: `TransactionForm.tsx:90-460, 495-530, 1180-1480, 1510-1580` (of 1873); `SplitEditor.tsx:258-332, 940-1140`; `OverrideEditorDialog.tsx:95-575, 630-710` (of 899); `PostTransactionDialog.tsx:400-520, 596-618, 690-775` (of 1259); `ScheduledTransactionForm.tsx:640-662` plus greps (of 2074); `InvestmentTransactionForm.tsx` seven ranges (of 1867); `AccountForm.tsx`, `AccountFormModal.tsx:60-224`, `DangerZoneSection.tsx:20-194`, and others; backend `transaction-transfer.service.ts:420-494, 1702-1841`. "Not read (size-L deviation)": the rest of `TransactionForm.tsx`, `SplitEditor.tsx`, `ScheduledTransactionForm.tsx`, `PostTransactionDialog.tsx` and `InvestmentTransactionForm.tsx`; `BulkUpdateModal.tsx` (schema only); `MortgageFields.tsx`, `LoanFields.tsx`, `SecurityForm.tsx`, the CSV import mapping steps, `AutoBackupSection.tsx`, `SecuritySection.tsx`, `ApiAccessSection.tsx`, `DelegateAccessModal.tsx`; the rules editor beyond its value controls.
+- **Reviewed without a finding:** The override editor's stored price (MON-H15), the reauthentication artifact on delete-account and delete-data, the restore result counters, the transfer mode lock, the date input, the rules editor value controls, the onboarding serializer (beyond A26-S13-05), the split editor's sign handling.
+
+#### S20 frontend figures (`20-frontend-figures.md`)
+- **Runtime executed:** Node 24.22.1; `npm ci` OK. `npm run i18n:check`: pass. Guard and i18n suites (`src/test/ui-conventions.test.ts`, `src/i18n`, scheduled-effective-amount, chart-reduction, loan-history, balance-cache guards): 16 files, 2049 tests, all pass. Component suites as mutation baselines pass unmutated: `PortfolioValueReport` (83), `accounts/page` (59), `CashFlowSankeyReport` (46), `PortfolioValueWidget` (15), `GeographicAllocationReport` (32), `GroupedHoldingsList` (27), `NetWorthReport` (32). Eight probes P1-P8 in a scratch worktree, all eight fail at baseline as the findings predict. Eight mutations. `npm run build`: pass.
+- **Read in full:** `NetWorthReport.tsx`, `CashFlowSankeyReport.tsx:95-345`, `PortfolioValueWidget.tsx:100-330`, `PortfolioValueReport.tsx:540-800`, `InvestmentPerformanceReport.tsx:160-320`, `widget-shared.ts:1-140`, `invested-value.ts`, `portfolio-chart-utils.tsx:30-160`, `useReportData.ts:100-220`.
+- **Sampled / not read:** Primary path "XL, sampled by figure". Sampled: `GeographicAllocationReport.tsx:255-470, 575-600, 725-812`; `DividendYieldGrowthReport.tsx:240-280, 515-580`; `DebtPayoffTimelineReport.tsx:130-255, 630-665`; `LoanAmortizationReport.tsx:70-160, 425-511`; `BudgetVsActualReport.tsx:185-335`; `SecurityTypeAllocationReport.tsx`; `InvestmentValueChart.tsx:200-330, 500-550, 650-670`; `AssetsVsLiabilities.tsx:40-131`; `accounts/page.tsx:95-150`; `GroupedHoldingsList.tsx`; `loan-past-impact.ts:85-225`; `compareMetricRows.ts:170-180`; `SavingsRateReport.tsx:384-392`; `CurrencyExposureReport.tsx:168-178`. "Not read: the 60 other report components beyond the scripted matrix (12.4), `components/budgets/`, `strategies/` (only `GemPortfolioPanel` `isKnown` reads), `bonds/`, `email-receipts/`, `tours/`, `whats-new/`, `app/` route guards beyond `DelegateSectionGuard` naming."
+- **Reviewed without a finding:** not stated in section 12 (no such list).
+
+#### S21 tests ci release (`21-tests-ci-release.md`)
+- **Runtime executed:** Node 24.22.1; PostgreSQL 16 in Docker (`monize-pg`); Helm v3.16.4. `node scripts/check-env-docs.mjs` OK (81 vars); `node scripts/check-docs-manifests.mjs` OK (119 Helm values, 33 documents); `helm lint` and `helm template` default and `backend.persistence.backups.enabled=true`; `push:client:test` baseline and renamed (10 then 0 tests, both exit 0); `node --test` on a missing file (exit 1) and an empty file (exit 0); two `docker run -u 1001` writability probes (both denied). Backend `TZ=UTC npm run test:unit -- --coverage`: 1048 suites, 27481 tests (27479 passed, 2 skipped), thresholds met. Frontend `npm run test:cov`: 1139 files, 22249 tests passed, thresholds met. Full `npm run test:integration`: 118 suites, 1479 tests: 1468 passed, 8 skipped, 3 failed (all in `bank-sync.integration.spec.ts`, midnight crossing); one deadlock reproduced in the PostgreSQL log without a failing test. Focused mutation runs (section 6.1). Hosted CI read read-only via the GitHub API; not used as a test result.
+- **Read in full:** `.github/workflows/ci.yml`; `docs/release-integrity.md`; `backend/Dockerfile`; `frontend/Dockerfile`; `backend/docker-entrypoint.sh`; `backend/scripts/test-chain.mjs`; `backend/scripts/test-changed.mjs`; `frontend/scripts/test-changed.mjs`; `frontend/vitest.config.ts`; `backend/test/jest-integration.json`; `backend/test/jest-e2e.json`; the `jest` block of `backend/package.json`; `e2e/playwright.config.ts`; `e2e/playwright.push.config.ts`.
+- **Sampled / not read:** Sampled: `fork-images.yml` 1-56, 84-196; `lighthouse.yml` 25-67; `zap.yml` 20-63; `pr-checklist.yml` 1-40; `helm/values.yaml` 215-300; `helm/templates/deployment-backend.yaml` (by grep); `docker-compose.prod.yml` 96-112; `docker-compose.ha.yml` ranges; `README.md` 486-527, 645-680; `docs/verification-contract.md` sections 4-5; `scripts/check-env-docs.mjs` 1-80; `integration-setup.ts` ranges; `report-currency.service.ts` 81-120. "Not reviewed": `restore-peak-rss.yml`, `ghcr-cleanup.yml`, `bearer-exceptions-review.yml` beyond their triggers; `scripts/verify-schema.sh` (S05 ran it twice); the 40 E2E specs beyond their skip sites.
+- **Reviewed without a finding:** not stated in section 12.
+
+#### S22 delta review (`22-delta-review.md`)
+- **Runtime executed:** 8 runs at `MAIN_SHA` in a worktree (Node 24.22.1, `TZ=UTC`; `npm ci` in `backend/` and `frontend/` exit 0), all green. Backend unit HIGH set: 14/14 suites, 1 398/1 398 tests. Backend integration HIGH set (10 patterns): 10/10 suites, 238/238 tests. Backend unit STILL_OPEN set: 9/9 suites; 1 247 passed, 2 skipped (root-only backup permission tests). Backend integration STILL_OPEN set: 4/4 suites, 60/60 tests. Frontend A26-S20-01 set: 11/11 files, 333/333 tests. Frontend A26-S18-01 set: 3/3 files, 64/64 tests. Frontend A26-S19 set: 7/7 files, 426/426 tests. Integration suites ran one at a time (`--runInBand`). Delta `git diff 72c59ec4...origin/main`: 0 bytes, 0 files (`MAIN_SHA` equals `AUDIT_BASELINE_SHA`). No `ci.yml` run exists for `72c59ec4` (`[skip ci]`); hosted CI not converted into a result.
+- **Read in full:** Reports `01` to `18` and `20` read at `f7690b3`: finding headings, severity and Location of every A26 finding in section 4, HIGH findings' fields 3-6, section 5 through the register; `plan.md`, `sessions.md` (S22 block), `ledger.md`, `prior-findings-register.md` in full.
+- **Sampled / not read:** "sections 4 and 5 of the reports were read by heading, severity, location and disposition, not line by line"; `19-frontend-forms.md` and `21-tests-ci-release.md` read by headings and severity (S21 partial). "No source call site was inspected: no source file changed."
+- **Reviewed without a finding:** not stated in section 12 (the delta is empty; every A26 HIGH (18) and every STILL_OPEN prior finding recorded as untouched by the delta).
+
+## 21. Prioritized remediation plan
+
+The task list is [`remediation-tasks.md`](./remediation-tasks.md): 58 tasks, one PR each,
+dependency-ordered, each naming the canonical findings it closes, the invariants, the files, the
+regression tests and the gate. The remediation is a separate program with its own Discussion and
+`approved-to-build` label (`CONTRIBUTING.md`).
+
+| Priority | Workstream | Tasks | Closes |
+| --- | --- | --- | --- |
+| P0 | Security boundaries open now | T01, T02 | A26-H01, A26-M03, A26-H02 |
+| P0 | Writers that create or duplicate money without a race | T03, T04, T05, T06, T07 | A26-H05, A26-H08, A26-H09, A26-H13, A26-M10, A26-H14 |
+| P1 | Test harness at the production boundary (first, blocks the rest of P1) | T08 | A26-M42 (harness half) |
+| P1 | Snapshot and occurrence roots | T09, T10, T11, T12, T13 | A26-H03, A26-M11, A26-H04, A26-H06, A26-H07, A26-M15, A26-M14 |
+| P1 | Currency and completeness roots | T14, T15, T16, T17 | A26-H10, A26-L05, A26-H11, A26-H12, A26-H15 |
+| P2 | Auth and tenancy | T18, T19, T20, T27, T41 | A26-M01, -M02, -L07, -M04, -M05, -M06, -M17, -M25, -M36 |
+| P2 | Ledger, imports and accounts | T21, T23, T24, T25, T26, T28, T29 | A26-M07, -M09, -M12, -M13, -M16, -M24, -M18, -M19 |
+| P2 | Investments, bonds, loans, strategies | T30, T31, T32, T33, T34, T35, T36 | A26-M20, -M21, -M22, -M23, -M26, -M27, -L24, -M29, -M30, -M28, -L25, -L34 |
+| P2 | Budgets, reports, AI | T37, T38, T39, T43, T44 | A26-M31, -M32, -L38, -L39, -M33, -L12, -M34, -M38, -M39 |
+| P2 | Frontend state | T40, T42 | A26-M35, A26-M37 |
+| P2 | Release and CI | T22, T45, T46, T47 | A26-M08, -M40, -M41, A26-M42 (remaining family rows) |
+| P3 | LOW findings and documentation | T48-T58 | the remaining LOW canonicals |
+
+Sequencing rules: the P0 tasks need no new harness (each has a single-connection or failpoint red
+test); T08 lands before any P1 task whose test needs two connections or the real scheduled
+module; T13 follows T12 (both change `post()`); T15 and T16 follow T14 (they use its "unknown,
+not 1" contract); T43 and T44 follow T17. Every task lands with its red test first and with the
+`docs/system-invariants.md` entry it corrects.
+
+## 22. Residual risk after remediation
+
+- **The snapshot shape will recur** until a guard matches per function rather than per file, and
+  until whole-entity saves after an earlier read are banned or audited (D-S03-01). T09 extends
+  `derived-state-writers.guard.spec.ts`; the save audit is not in the task list and needs its own
+  proposal.
+- **Provider and deployment behaviour** stays unobserved: real S3 semantics, real bank
+  `entry_reference` reuse frequency (A26-H09's medium frequency confidence), branch protection.
+- **Areas not audited** (section 20.1) carry their pre-program risk.
+- **No hosted CI evidence for the audited revision** (section 2): until A26-M41 is fixed, every
+  release revision is in the same position.
+- **Severity of the merged groups is the group's.** A remediation that fixes the primary surface
+  and not the merged ones leaves a finding open; each task lists every surface.
+
+## 23. Final conclusion
+
+Monize at `72c59ec4` has closed most of what the upstream audit found, with mechanisms that
+hold under execution and tests that mostly prove them. The program found 96 canonical defects, 15 of
+them HIGH, concentrated in two security checks, in branches that bypass the lock or the
+occurrence identity the main path uses, in writers that duplicate or create money on edges, and in
+currency and completeness rules that have a shared helper the failing surfaces do not call. No
+BLOCKER was found, no upstream fix has regressed, and every HIGH has an executed reproduction and
+a red test to land with its fix.
+
+**Program verdict: REQUEST CHANGES.** The verdict turns to APPROVE for this revision's successor
+when the P0 and P1 tasks have landed with their red tests, A26-M42's harness exists, and a hosted
+CI run of the release revision is on record.
+
+## 24. Text for the ledger (orchestrator merges)
+
+- **Session row:** `| S23 | done | 2026-10-22 | 2026-10-22 | <this commit> | 0/15/42/39 (canonical) | 23-final-report.md, remediation-tasks.md; verdict REQUEST CHANGES; 143 session findings -> 96 canonical; main re-fetched, equal to the baseline |`
+- **Running counts (final, canonical):** BLOCKER 0; HIGH 15 (A26-H01..H15); MEDIUM 42 (A26-M01..M42); LOW 39 (A26-L01..L39). Session-level counts unchanged (18/66/59 = 143); section 17 maps each.
+- **Prior findings (final):** 47 FIXED_VERIFIED (7 with a residual or test gap), 22 STILL_OPEN, 1 REJECTED (MON-M28), 0 SUPERSEDED, 0 NOT_LOCATED.
+- **Open hypotheses:** every "to S23" line is disposed of in sections 6.2, 15 and 17.2; the remaining open items are the not-audited areas of section 20.1.
+- **`main` at closure:** `72c59ec4bc6e9f2cb3a5d25977c94dd2c09e5a86` (2026-10-22), no second delta review.
+- **Deviation:** S23 delegated the extraction of the per-session coverage ledgers (section 20.2) to one read-only subagent and spot-checked S07 and S16 against their reports; the findings, severities and the register were built by S23 directly from section 4 of each report.
+
+## Appendix A. Rejected hypotheses
+
+### A.1 S23's merges and severity changes (Rule 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| Merge A26-H08 (MNY) with A26-M14 (scheduled post, AI action) as one post-commit root | Same class: a post-commit failure reported as no write, inviting a replay | The breadth differs (a whole file versus one row) and the code paths share nothing; Rule 7 asks for one finding per root cause, and the faulty decisions are three different error classifiers | Kept separate; one remediation pattern, tasks T04 and T13 |
+| Merge MON-H11's four surfaces (A26-H13, A26-M10, A26-M16, A26-M18) | Same invariant: each transfer leg in its own account's currency, legs in step | Four different writers (client form, PATCH route, MNY synthesizer, QIF writer) with four faulty decisions | Kept separate; T06 joins the form and the route because they share the transfer edit contract |
+| Merge A26-H01 and A26-M03 | Both in the refresh-token family logic | Opposite failures (false negative and false positive) | Kept separate; one task (T01) because the fix of one changes the other |
+| Merge A26-H03 (cash transfers) and A26-H04 (investment cash leg) | Same snapshot shape | Different invariants (INV-BALANCE-001 versus INV-HOLDING-001) and services | Kept separate |
+| Merge every "check in one transaction, write in another" finding | A26-M01, -M02, -M04, -M05, -M19 share the shape | Different code, different invariants | Kept separate; the shape is a design risk (section 15) |
+| A26-S06-01 as HIGH (other owners' backups deleted) | Loss of recovery points | A one-time population; live data and current backups unaffected | MEDIUM kept (A26-M07) |
+| A26-S04-03 as HIGH (RLS lets a delegate issue itself a delegation) | Cross-tenant escalation at the policy level, executed | Needs a second defect on a current path | MEDIUM kept (A26-M06) |
+| A26-S21-02 / A26-S02-10 as HIGH | A CRITICAL-CVE image could reach `:latest` | Conditional on a CVE at release time; no present failure | MEDIUM kept (A26-M41) |
+| A26-S21-03 as HIGH (backups cannot be written on documented Compose) | Feature unavailable | Visible through `describeStore`, no silent loss | MEDIUM kept (A26-M40) |
+| A26-S07-04 as HIGH (PATCH changes one leg) | 50 % of a transfer created, executed | Not reachable from the transfer form; REST, PAT and joint register only | MEDIUM kept (A26-M10) |
+
+### A.2 Per-session tables (section 8 of each report, verbatim)
+
+#### S01 (`01-baseline.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| A file outside `WITH_CONTEXT_ALLOWLIST` seeds a context today | 81 importers of `with-context` vs 81 allowlist entries, parsed with the TypeScript parser; 214 call sites; no alias, namespace, re-export, `require`, dynamic import; `requestContextStorage.run` only in `with-context.ts` and the allowlisted interceptor | Sets match exactly in both directions; no stale entry | `REJECTED` (the latent bypass is A26-S01-02) |
+| Identity GUCs set outside `scoped-db.ts` | `set_config` sweep: `app-role.ts:218,243,250` (role), `advisory-locks.ts:85` (`lock_timeout`), `backup-export.service.ts:431`, `job-claim.service.ts:245` (`app.job_claim_lease_token`) | None sets `app.current_user_id`, `app.real_user_id`, `app.bypass_rls` or `app.preserve_timestamps` | `REJECTED` |
+| A bare `dataSource.query` on tenant data outside the door | `src/database/fix-linked-transactions.ts`, `add-skip-price-updates-column.ts` (one-off maintenance scripts with their own `DataSource`), `health.controller.ts:146` (`SELECT 1`), `main.ts:198` (`pg_notify`) | None reads or writes tenant rows through the request path; the scripts are operator tools | `REJECTED`; the two maintenance scripts are handed to S04 to confirm they are not reachable from the API |
+| A cron without any cross-replica mechanism | 49 handlers in 46 files; every one names a claim, lease, conditional write, dedupe index or an idempotent predicate `DELETE` (section 12.3) | The 16 handlers without a claim either delete by predicate, recompute absolutely under a row lock, or dedupe their notification; none sends email, push or a provider call without a claim, lease or dedupe key | `REJECTED` at inventory level; per-job proof is S08 |
+| `npm ci` on Node 22 is a repository defect | S00 record; README.md:418,491 says Node 24; every CI job pins `node-version: 24`; Dockerfiles use `node:24-*` | No `engines` field and no `.nvmrc`, but the requirement is documented and enforced where it matters | `REJECTED` (environment fact); the absent `engines`/`.nvmrc` is in section 9 |
+| The 2 skipped backend unit tests hide a defect | `backup/auto-backup.service.spec.ts:935,1346` skip when `process.getuid() === 0` (permission tests); the session container runs as root, CI does not | Environment-dependent by design | `REJECTED` |
+| Guard specs silently skip and pass | 14 guard specs use `REPO_ROOT || process.env.CI ? describe : describe.skip` | In a clone `REPO_ROOT` resolves; in CI `CI` is set; they ran here (no extra skips counted) | `REJECTED` |
+| An AI tool wired into only one adapter | Not searched in this session | Out of slice | handed to S17 |
+
+#### S02 (`02-prior-high-triage.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| MON-H11 tampered `toAmount` (100 USD -> 999.99 CAD accepted) | `transaction-transfer.service.ts:219-220, 289-334` | A deliberate contract (the bank's settlement figure wins), within the owner's own accounts or with the counterpart's create grant; no privilege change | DESIGN_RISK (section 9) |
+| MON-H03 pending row reaped after 5 minutes while the wipe runs | `mny-import-job.service.ts:111-114` | Requires re-authentication plus wipe longer than 5 minutes; the first job's claim then returns null, so only one job imports | DESIGN_RISK, handed to S09 |
+| MON-H02 dangling keys from a successful restore | `backup-restore.service.ts:415-447` | Every callee in the post-commit `.then` swallows its errors today; not reachable now | DESIGN_RISK, handed to S06 |
+| MON-H07 unlocked `applyOpeningBalance` (2 dp rounding) | `import-entity-creator.service.ts:379-398` | Healed by the locked post-processing recompute unless that fails (logged); narrow | open hypothesis, handed to S10 |
+| Transfer-pair link deadlock (row locks before advisory) | `transfer-pair-link.service.ts:108-112, 143` | Availability only (40P01 rollback), not executed | LOW candidate, handed to S12 |
+| `skip()` lost update against `post()` | `scheduled-transactions.service.ts:2662-2700` | Loses a skip, duplicates no money; not executed | LOW candidate, handed to S08 |
+| MON-H12 frontend `getRate(...) ?? 0` on the currencies page | `app/currencies/page.tsx:226-227` | A sort key, not a figure | REJECTED |
+| MON-H13 frontend split replay | searched `frontend/src` for SPLIT quantity arithmetic | None computes split quantity | REJECTED |
+
+#### S03 (`03-security-auth.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| Step-up tokens are replayable within 5 minutes (hint: "single use of step-up") | `step-up.guard.ts` never checks `jti`; `step-up.service.ts:210-214` mints one | No document or invariant claims single use for step-up tokens; they are purpose-, subject- and time-bound, and the two purposes (`personal-access-token`, `emergency-access`) are settings writes the same session could repeat after another step-up. The single-use requirement is stated, and met, for the OIDC artifact (INV-AUTH-003) | `DESIGN_RISK` (D-S03-02) |
+| OAuth consent `POST /oauth/interaction/:uid/confirm` is `@SkipCsrf` and cookie-authenticated, so CSRF can grant a client | `oauth-interaction.controller.ts:23, 131-170`; `auth_token` cookie `sameSite: "lax"`; `uid` is the provider's unguessable interaction id bound to its own interaction cookie | A cross-site POST does not carry `SameSite=Lax` cookies, and the attacker cannot know the victim's `uid` | `REJECTED` |
+| Emergency claim: the pre-check (`findValidContact`) is a read-then-write | `emergency-access-claim.controller.ts:183` | The pre-check only rejects early; the consume is the conditional UPDATE (executed race, section 5) | `REJECTED` |
+| Lockout check reads a snapshot before bcrypt, so parallel attempts on an unlocked account all reach bcrypt | `auth.service.ts:400-409` | All of them are counted atomically and the lock follows; the burst is bounded by the per-address throttle; same class as A26-S03-06 but for passwords the lock is the documented control and it engages | downgraded, folded into A26-S03-06's reasoning |
+| `revokeAllUserRefreshTokens` misses a family opened mid-sweep | `token.service.ts:313-361` | Deliberate (comment cites maintainer review PR #1097 finding 4): a session opened after the operation began is not one the caller asked to end | `REJECTED` (Rule 2: deliberate semantics) |
+| Delegated refresh rotation keeps `actingAsUserId` after the delegation is revoked | `token.service.ts:222-238` | `JwtStrategy.validate` re-runs `validateActingContext` on every request and `AccountDelegateGuard` re-checks capabilities | `REJECTED` |
+| An id route in the slice lacks `ParseUUIDPipe` | `grep @Param(` over the slice's controllers | Only `push-chart.controller.ts` `:token` (an opaque one-use token, not a UUID) | `REJECTED` |
+| A `withSystemContext` / `withUserContext` / `withDelegateContext` call site in the slice is missing from `WITH_CONTEXT_ALLOWLIST` | 20 files in the slice call one; each checked against `backend/eslint.config.mjs` | All 20 are listed | `REJECTED` |
+| A TOTP code can be replayed across login and step-up | `two-factor.service.ts:315-320, 477-512` (`SingleUseTokenService.claim` with one purpose for both) | Replay protection is shared and atomic (`INSERT ... ON CONFLICT DO NOTHING RETURNING`); `single-use-token` integration suite green | `REJECTED` |
+| Frontend persists a credential | `frontend/src/store/authStore.ts:139-143` `partialize` keeps only `isAuthenticated`; no storage of step-up or re-auth tokens found | -- | `REJECTED` |
+
+#### S04 (`04-rls-tenancy.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| A file uses an identity-context helper without being in `WITH_CONTEXT_ALLOWLIST` | 94 files mention a helper name; 81 import `with-context`; the allowlist has 81 entries | Every importer is listed and no entry is stale; the 13 other files mention the names in comments only (or are `scoped-db.ts` / `with-context.ts` themselves) | `REJECTED` |
+| `RLS_MODE` read from two sources could put the owner's credentials behind enforced GUCs | `app.module.ts:100` reads `ConfigService`, `withScopedDb` and `main.ts` read `process.env`; `ConfigModule.forRoot` loads `../.env` into `process.env` before the pool is built | Both resolve to the same value once the config module has loaded, which precedes the first `withScopedDb` and the startup check; a mismatch (owner role with GUCs) would also be the safe direction for tenancy | `REJECTED` |
+| `PgListener` (second direct connection) reaches tables | `docs/row-level-security-contract.md` section 4; `direct-connection.guard.spec.ts` | Runs only `LISTEN` / `pg_notify` on the runtime role; guard-enforced; payload rule stated | `REJECTED` |
+| The `oauth_payloads` exception is wider than documented | contract section 3; `OAUTH_PAYLOAD_ALLOWLIST`; `oauth-payload-access.spec.ts` | Two access paths, both in `oauth/`, both guard-enforced; `revokeAllForUser` keyed on a server-derived id | `REJECTED` |
+| `withUserContext` used where `withDelegateContext` is needed | 4 `withDelegateContext` calls in 3 files (`jwt.strategy`, `account-delegate.guard`, `delegation.service`); MCP seeds `withUserContext(bearer userId)` and does not support acting | MCP and PAT routes cannot act as a delegate (no `@AllowDelegate`), so one id is the correct identity | `REJECTED` |
+| A delegate acting for owner A can read owner B's granted accounts at the database level | The joint read arms match any active delegation whose `delegate_user_id = app_real_user_id()`, whichever owner the session is acting for | App-level filters (`userId = owner`, `delegateReadableAccountScope`) still apply, and the arm widens nothing the delegate cannot read in its own session; no present-day leak | `DESIGN_RISK` (D-S04-01) |
+| `revokeDelegate` races `createDelegate` of another owner and deletes the login the other owner just linked | `delegation.service.ts:1348-1369` counts other delegations then deletes the user, without a lock | Under READ COMMITTED the other owner's insert either commits before the count (no delete) or fails on the FK after the delete (the link errors visibly); the bad interleaving (insert commits between count and delete) cascades the new delegation away, so the other owner sees an error or a missing delegate, not a leak | downgraded, `DESIGN_RISK` (D-S04-03) |
+| Cross-owner VOID / reconcile semantics are wrong under enforcement | `cross-owner-transfers` green on the owner role; locked per-leg VOID decision in `updateCrossOwnerTransfer` | Not executed on `monize_app` (A26-S04-04); depth belongs to S07 | handed to S07 |
+| `push_chart_artifacts` exemption leaks one user's chart to another | exempt table, no owner column, `png BYTEA` of a person's figures, id is a 64-hex token | No application read path other than the token-keyed `DELETE ... RETURNING`; rows are short-lived; any session could `SELECT` them only through a second defect | `DESIGN_RISK` (D-S04-02) |
+
+#### S05 (`05-migrations-schema.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| Rule-less AI review requests escape `uq_ai_review_requests_open` (NULLs distinct) | `ai-review-requests.service.ts:183-330` | Known and handled: the receipt path takes an advisory lock and a `WHERE NOT EXISTS`; the only `enqueue` caller (`transaction-rules-applier.service.ts:812`) always passes a rule id | REJECTED |
+| Mortgages created by a 1.17 pod during the 1.18 rollout keep `mortgage_type NULL` and are priced as annuities | `mortgage-type.util.ts:162-180`, `plan-loan-settlement.ts:260-264` | Every consumer reads through `mortgageTypeOf`, which falls back to the legacy flags; the CHECKs added in `20261002151116`/`20261003000245`/`20261003000246` all admit NULL | REJECTED |
+| Restoring a backup without `calendar_day_notes.end_date` fails the `NOT NULL` | `20260912034642` and `20260912200152` both first shipped in 1.17.0 | No released artifact lacks the column | REJECTED |
+| Seven merged numbered migrations were edited after `d5cea9bf` (037, 111, 112, 113, 114, 117, 123) | `git diff d5cea9bf 72c59ec4 -- database/migrations/` | 111/113/114/117/123: comments only. 037 and 112: replay guards (`to_regclass` skip) added for the `budget_alerts -> notifications` rename in 179, so a replay on `schema.sql` no longer fails; a database that applied the old body is unaffected because the tracker never re-runs it, and the new body does the same thing where the table exists | REJECTED (no behavior change on any deployed database) |
+| Deleted migrations (`174_notification_throttle_minutes`, `20260920110943_currency_provider_history_floor`, `149_emergency_access_generation_compat`) left orphan tracker rows or columns on deployed databases | release trees `c1fdebd87`..`3cac8b895` | None shipped in a release; the `provider_missing_*` columns the second one added are dropped by `20260920163144` for any `main` build that ran it | REJECTED |
+| `currency_code_in_use_globally` loses its `REVOKE ... FROM PUBLIC` when redefined by `CREATE OR REPLACE` in `20260920163144` and `20261010190000` | PostgreSQL keeps a function's ACL on `CREATE OR REPLACE`; `schema.sql:4327` revokes on fresh installs | ACL preserved on both paths | REJECTED (not executed: `verify-schema.sh` dumps `--no-privileges`, so this is not covered by the drift job; recorded in section 10) |
+| `bond_instruments` auto-named unique constraint (64 characters) differs between migration and `schema.sql` | catalog diff: `bond_instruments_issuer_country_code_issuer_code_series_cod_key` on both | Same truncation on both paths; the harness has an equivalent key under a TypeORM name, and no code names the constraint | REJECTED |
+| A required SQL function is called from `src/` but unregistered | every `CREATE FUNCTION` in `schema.sql` vs `backend/src` callers | The six called functions are registered; the eight others are trigger functions | REJECTED |
+| `pg_advisory_lock($1)` with 4150293001 resolves to the two-int overload or overflows | key > 2^31 is a valid `bigint`; one-argument overload is bigint only | Executed: the race run acquired and serialized | REJECTED |
+
+#### S06 (`06-backup-restore.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| A failed post-restore delete of displaced objects orphans the old receipts forever | R6; `schema.sql:549` trigger | Every DELETE of an external row writes a tombstone; the sweeper deletes the key unless a live row names it | REJECTED |
+| A concurrent upload between `collectExternalAttachmentKeys` and Phase 1 orphans its bytes | trigger as above | Phase 1's DELETE tombstones it | REJECTED |
+| A non-UUID or traversal `storage_key` from the file reaches a provider | `backup-attachment-transfer.service.ts:288`, `restore-references.ts:328`, `storage-key.util.ts` | key forced to the id; non-UUID ids refused; key validated per provider | REJECTED |
+| A crafted file reads another tenant's external object (F3RRR-001) | `loadOwnedAttachmentSources` scoped by `user_id`, stored size and hash compared | ownership comes from the database only | REJECTED |
+| Duplicate `attachment_blobs` rows validate one copy and insert another | `:242-251, 427-432` rebuild | collapsed to the validated bytes | REJECTED |
+| Non-admin users choose backup folders (MON-M10) | controller guards | admin only, canonical containment | REJECTED (fixed) |
+| Restore silently removes a joint-account grantee's access | `docs/backup-restore-contract.md` "Delegation is reset" | documented, product decision recorded as undecided | DESIGN_RISK (documented; not a finding) |
+| A cross-owner transfer's counterpart leg keeps a balance effect after the owner restores | `restore-references.ts:217-226` | documented severing; each owner's ledger is self-consistent | REJECTED (documented behaviour; S07 owns the ledger) |
+| Manual backup races a restore (TOCTOU on `isUnderMaintenance`) | `auto-backup.service.ts:1297-1305`; export in one `REPEATABLE READ` snapshot; restore one transaction | the snapshot sees either the before or the after state, never a mixture | REJECTED |
+| Monthly name with a two-digit year mis-sorts | `backup-file-names.ts` parses `20YY-MM` | consistent within the century | REJECTED |
+
+#### S07 (`07-cash-ledger.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| MON-M28 mixed-sign split lines | P6; AGENTS.md netting rule; `financial-semantics.md` section 11 | Documented, supported shape; netting reports it correctly | REJECTED |
+| Concurrent `addSplit` exceeds the parent (MON-M21) | Q3; parent lock at `:1116` | Serialized by the parent lock | REJECTED as a present defect (test gap A26-S07-09) |
+| `updateTransfer` takes `wasVoid` from the from-leg only | `:1914`; same-owner legs share VOID by every writer except A26-S07-03's race | Only wrong after A26-S07-03 has already split the pair | DESIGN_RISK (section 9) |
+| `updateFrozenTransferLeg` moves `ownLeg.accountId` from the snapshot | `:2184-2191`; the frozen path refuses account changes | The leg's account cannot change on this path, and the amount and status come from the lock | REJECTED |
+| `users.service.ts:914-917` absolute reset without a lock | The data wipe deletes the user's transactions in the same transaction | A destructive, confirmed, user-wide wipe; a concurrent posting races the delete itself | REJECTED |
+| `resetBrokerageBalances` absolute 0 without a lock | `accounts.service.ts:1964-1977`; brokerage balances are 0 by design | Writes the value the design holds | REJECTED |
+| Account `delete` races a concurrent create (count in one transaction, `remove` in another; `ON DELETE CASCADE`) | `accounts.service.ts:1868-1945` | Reachable in principle, a transfer leg would be cascaded away; needs a posting into an account with zero rows during its deletion; not executed | LOW candidate, open hypothesis (section 12) |
+| Bulk VOID "today" from server-local date | `transaction-bulk-update.service.ts:1340` (`formatDateYMDLocal(new Date())`) versus `todayYMD()` / `CURRENT_DATE` elsewhere | Near midnight a row dated today is treated differently by two writers; balances are healed by the next recompute; not executed | DESIGN_RISK (section 9), handed to S08 |
+| MCP/AI single edit of a transfer leg reaches `update()` | `previewUpdate` `:954`, `transaction-tool-prep.service.ts:511` | Refused in the preview; only the REST route remains (A26-S07-04) | REJECTED for MCP/AI single edits |
+
+#### S08 (`08-scheduler-cron.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| Budget rollover keyed on the UTC month while the cron fires at server-local midnight (sweep agent) | `budget-period-cron.service.ts:40-42, 75-100, 150-155` | The close decision parses `periodEnd + "T23:59:59"` on the same local clock that fired the cron, so the right period closes; the key is a label. Replicas in different zones fire at different instants and the guarded writes (`closePeriod` row lock, `ON CONFLICT (budget_id, period_start)`) hold | REJECTED |
+| Reminder lease (10 min) vs nodemailer's default 10-minute socket timeout | `email.service.ts:199`; one tick per day per key | A second replica fires at the same instant and has already lost; a later tick of the same key does not exist (date-keyed, daily) | REJECTED |
+| `claimOnce` keys reset by the 30-day sweep | sweep agent; every key is a day, hour or month | No undated permanent key | REJECTED |
+| One email per replica on any cron | the 49-row sweep (section 12) | Every external effect sits behind a claim, a lease or a dedupe insert | REJECTED |
+| `refreshForeignCurrencyEstimates` overwrites a concurrent edit of `originalAmount` (unlocked read then `update`) | `scheduled-transactions.service.ts:769-829` | Writes only the account-currency estimate; posting re-derives from `originalAmount` and the dated rate (`resolveFxForPosting`, `:2721-2795`); INV-OCCURRENCE-003 says no surface substitutes the persisted `amount` (not re-verified per surface here); at worst a stale estimate until the next weekday | DESIGN_RISK (LOW, not a finding) |
+| Two replicas both post a due occurrence | P1, P1b, M2, M3 | Lock + CAS + claim key, each a backstop for the other | REJECTED (holds) |
+| A failure between the claim and the money leaves a claim and no money | P5 | One transaction | REJECTED (holds) |
+| The cron alerts on every replica | `raiseUserAlert` dedupe key `SCHEDULED_POST_FAILED:<id>:<UTC day>` | One row per schedule per day | REJECTED |
+| Manual backup fan-out rewinds the cron's per-user claim (S06) | `auto-backup.service.ts:1293-1373` | Records only the outcome | REJECTED (beyond S06's own effects) |
+
+#### S09 (`09-import-mny.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| A retired (reaped) worker commits its rows | `markDataCommitted` CAS, trigger 145, M3 detected; jobs never return to `pending`, so a reaped row can never be re-claimed | fence holds; the token is redundant with `status` but harmless | REJECTED |
+| A reaper UPDATE racing the checkpoint loses the committed flag | the checkpoint UPDATE row-locks the job; the reaper waits, re-evaluates its WHERE on the new version (EvalPlanQual), and its `CASE WHEN data_committed` sees `true` | committed key and `retryable=false` written | REJECTED |
+| The unawaited job body joins the request's ambient transaction | `start` has returned from `create`'s `withScopedDb` before the `void withUserContext(...)`; the ambient manager lives only inside `withScopedDb` (`scoped-db.ts:131`) | no ambient manager at that point | REJECTED |
+| `start`'s `.catch` fails a live worker's job without a token | it runs only when `runClaimed` itself rejects, i.e. after the body finished or never ran | no live body at that point | REJECTED |
+| `deleteData` (wipe) deletes the pending job or its staged file | `import_jobs`/`import_staged_files` are referenced only by maintenance, backup and the MNY module | not reachable | REJECTED |
+| `exchangeRate: 1` on every MNY row misstates a cross-currency transfer | rows carry their own account's currency and no `originalCurrencyCode`; the rate is relative to the original currency (`financial-semantics.md` section 3) | rate 1 means "same currency" here, consistently | REJECTED |
+| Old-binary worker during a 1.18 -> 1.19 rolling deploy bypasses the fence | both releases carry the token fence; the pre-140 binaries no longer exist on a supported upgrade path | historical only | REJECTED |
+| A pre-140 failed job that had committed (P4-002 era) is offered Retry after the upgrade | migration 140 adds `data_committed DEFAULT false`, so such a row stays `retryable`; its staged bytes expire 24 h after upload and the wizard only polls the job it started | window closed within a day of the upgrade; not reachable from the UI later | REJECTED |
+| `accounts` and `bills` arrays in `MnyImportOptionsDto` lack `@ArrayMaxSize` (`backend/CLAUDE.md` rule) | elements are bounded `@IsInt`/`@IsBoolean`; the JSON body limit bounds the array; the mapper looks entries up by handle | convention deviation, no demonstrated impact | DESIGN_RISK (noted for S21's guard work) |
+| Security currency differs from the account's: trades in account currency at rate 1, prices in the security's currency | writer denominates the row in `transaction.currencyCode` with `exchangeRate: 1` (`write-investments.ts:274-292`); INV-FX-002 reads the rate as amount -> settlement currency, so 1 is right; valuation of such holdings is S12/S13's | not an import defect on the evidence read | handed to S12/S13 |
+| Verification compares against Money's own balances | it compares the database against `computeExpectedBalances`, which sums the mapped rows | mapping defects are invisible to it | DESIGN_RISK (section 9) |
+
+#### S10 (`10-rules-banksync-csv.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| Two concurrent syncs import a row twice | link `FOR UPDATE`, `ON CONFLICT` claim; integration "two syncs at once" (three variants) green | The ledger key arbitrates | REJECTED |
+| A re-link to the same account with the same cut-off during a cron fetch imports an account that "needs preview" | writer re-checks `accountId` and `syncFromDate` only (`bank-sync-writer.service.ts:212-228`) | The rows are the ones the link already covered; a changed cut-off is refused | DESIGN_RISK (narrow), not a finding |
+| The rules applier opens its own transaction somewhere | every read/write on the passed `m`; `resolveCreatedPayee` calls `PayeesService` (`withScopedDb` re-entrant, joins the ambient transaction) | Nested scoped calls join | REJECTED |
+| `createSplits(new Date(row.transactionDate))` shifts a rule split's leg date in a negative time zone | `transaction-split.service.ts:124-132, 395-396, 482-483` use `toISOString()` of a UTC-midnight `Date` | Consistent UTC round trip | REJECTED |
+| `balanceDiff = newAmount - oldAmount` unrounded in `matchPendingTransfer` | `updateAccountBalance` applies `roundMoney` (`import-context.ts:216`) | Rounded at the write | REJECTED |
+| A VOID imported row moves the balance (`updateAccountBalance` at `import-regular-processor.service.ts:138` ignores status) | post-processing recompute uses `LEDGER_MOVEMENT_PREDICATE` under the lock | Transient only, healed after the commit like A26-S10-05; noted in section 9 | DESIGN_RISK |
+| Bank-sync provider failure multiplies provider calls | one fetch per sync under the 30-minute lease; balance failure logged once; failure recorded once per account | No amplification model beyond one call per account per sync (Rule 6) | REJECTED |
+| Private key leaks through `last_sync_error` | `describeSyncFailure` / bounded sanitized message (`bank-sync-errors.ts:150`); grep of `bank-sync/providers` for `privateKey` in a log, error, message or throw: none | Not reachable from the code read (the adapter itself was not read in full) | REJECTED |
+
+#### S11 (`11-email-receipts.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| S05 hand-off: rule deletion pushes a receipt into `review_conflict` | `ai_review_requests.rule_id REFERENCES transaction_rules ON DELETE SET NULL` (`schema.sql:914`); `insertReceiptRequest`'s `NOT EXISTS` counts any open, unexpired request with `rule_id IS NULL` on the transaction, whatever its kind (`ai-review-requests.service.ts:301-308`); the only producer of a rule-less `transaction_review` is that `SET NULL` (the rules applier is the sole `enqueue` caller) | Reachable: a rule's open review on transaction T, the rule deleted, an email then matching T becomes `review_conflict` ("Another request is open"). But the orphaned request is a real open review of T, visible in the inbox, the label is accurate, the person dismisses it and reprocesses, and it expires in 30 days; nothing is written wrongly. Not executed beyond the code and schema read | DESIGN_RISK (DR-S11-1) |
+| Two-pass AI category question doubles the call under the poll's own loop | `pipeline.process` asks between two transactions; the second pass re-locks and re-checks `onlyWhenStatusIn` | Within one lease, one poll asks once per email; doubling only under the lease overrun of A26-S11-01, where it is counted | Folded into A26-S11-01 |
+| Concurrent passes replace an auto-applied proposal | Two passes on a `review` email from the rematch list; the second closes the first's `proposed` request | `markApplied` is bound to `proposed`: whichever commits first wins, the loser's confirm is a 409 that leaves its proposal in the inbox; a second application re-writes the same splits; reachable only under lease overrun | REJECTED (benign) |
+| `ignore` racing an auto-apply leaves an applied email `ignored` | `ignore` reads `receiptApplied` before `closeReceiptRequests` and does not re-read (the trade link does, `email-receipt-trade-link.service.ts:252-273`) | The applied transaction is then no purchase candidate (`receipt-candidates.ts:33-54` excludes it), and a trade email keeps `investment_transaction_id`, so a later reprocess proposes nothing twice; only the label is wrong | REJECTED (cosmetic; noted in section 9 as the asymmetry) |
+| Mailbox security downgrade by a stolen session (port/security change keeps the stored password) | `upsert` needs the password again only when host or user name changes (`mailbox.service.ts:169-173`) | `security` is `tls` or `starttls` only and `doSTARTTLS: true`, `rejectUnauthorized: true`, TLS 1.2 minimum (`imap-mailbox-client.ts:154-169`): there is no cleartext mode; a port change on the same host reaches the same operator | REJECTED |
+| ReDoS through a parser pattern written by a prompt-injected AI draft | Drafts come from email text through the AI | Patterns are globs matched linearly; no `RegExp` is built from a profile (`receipt-glob.ts:20-25`); drafts read nothing until approved | REJECTED |
+| XSS through the email's HTML | `readDetail` returns `body_html` | `EmailHtmlFrame` renders it only in `<iframe sandbox="" srcDoc>` behind a CSP meta; a source test forbids `dangerouslySetInnerHTML` in the tree | REJECTED |
+| OAuth flow tokens accepted by another verifier (A26-S03-03 pattern) | The flow's state and tokens | The state is an AES-GCM `EncryptionService` envelope, not a JWT; the id_token is read only for the login name, from the token endpoint's own TLS response; no token of this flow is signed with `JWT_SECRET` | REJECTED (pattern not present) |
+| Whole-entity save after an SQL write (D-S03-01 pattern) | Every `repo.save` in the slice | `save` is used only for inserts (mailbox create, draft parser create, parser create); every update is a column-scoped `repo.update` or SQL after a row lock | REJECTED (pattern not present) |
+| Refresh-token rotation race loses the rotated token | Two `obtain` calls on one stored token | Both writes are CAS on the ciphertext read; the only loss is when a provider revokes the old token on reuse and the delete wins the race, which disconnects the mailbox (the user reconnects); Google does not rotate, Microsoft keeps the old token valid | DESIGN_RISK (narrow; not separately listed) |
+| Purchase receipts are currency-blind | `ParsedReceipt` has no currency; matching compares numbers | The card is splits checked to the exact transaction amount; no amount, account or date changes, so a cross-currency coincidence can only mislabel categories, and auto-apply also needs an order id, a reference or the payee | REJECTED |
+| Two different messages with one Message-ID collapse on import | `deriveImportedUid` keys on the Message-ID | A Message-ID is the sender's identity of one message; the user's own archive; the second copy is reported in `duplicates` | REJECTED |
+| A vanished UID is passed by the cursor without a row | `fetchSince` skips a UID with no size or no source and reports `highestUid` of the batch | The message is gone from the folder (deleted between SEARCH and FETCH); nothing readable is lost | REJECTED |
+| Daily write-limit exemption claimed by a non-profile writer | `isExemptFromWriteLimit` reads `claimed_by = EMAIL_RECEIPTS_CLAIM_KEY` and the stored switch | Server rows only; whether an MCP agent can ever claim under that literal key is S17's (handed on) | REJECTED here, hand-off |
+
+#### S12 (`12-securities-holdings.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| S01 hand-off: `security-price.service.ts:2364, 2432` write prices outside `refuseForeignCurrency` | `upsertTransactionPriceInner` and `backfillTransactionPrices` average the row's own `price` | For app-created rows the price is in the security's currency by construction (the cash leg converts out of it, `:838-850`), so these writers are not provider answers; for Money-imported cross-currency rows it is not, which is A26-S12-09 | Downgraded: REJECTED for app-created rows, CONFIRMED_WITH_DIFFERENT_ROOT_CAUSE as A26-S12-09; `write-prices.ts`, `bond-price.service.ts`, `demo-seed.service.ts` are S09/S14's |
+| MON-H08 rebuild racing a trade | `rebuildFromTransactions` takes the lock before its ledger read | Executed R3; M1 caught | REJECTED (fixed) |
+| Deutsche Boerse caches a `null` currency after a transport failure (`deutsche-boerse-finance.service.ts:229-266`) | A failed currency lookup is cached as `null`, which makes the quote "provider-silent" (accepted unverified) | TTL is 60 s (`:46`); a mis-recorded currency would also need to coincide with the failure window | DESIGN_RISK (minor) |
+| MSN instrument-id negative cache poisons lookups for 24 h | `msn-finance.service.ts:405-412` | Writes `null` only when `answeredSince` shows MSN answered | REJECTED |
+| `getMonthOverMonthMovers` subtracts two closes outside `resolveDailyPriceChange` (`portfolio.service.ts:1445-1468`) | A period move, not a daily one | Not a daily-change surface; a stale feed shows a 0.00 percent month (section 9) | DESIGN_RISK |
+| Embedded split row edited twice duplicates cash | `updateEmbeddedSplitParent` row-locks the parent and derives the delta from the locked amount (`:3130-3170`) | No separate cash row; last writer wins on the investment fields only | REJECTED |
+| A26-S09-03 shape (sleeve credited minus the bank amount under the sleeve currency) on the app's own funding path | `resolveSettlementCurrencyPair` (`:635-660`) and `createCashTransactionInTransaction` (`:838-850`) convert from the security's currency to the funding account's with the trade's rate | The app's BUY/SELL funding leg is converted, not mirrored; the bank-to-sleeve cash transfer is S07's | REJECTED for `securities/` |
+| A whole-entity save in `securities/` like A26-S07-07 | `update()` `:4731`, `updateLinkedTransfer` `:4004-4005`, `updatePrice` `security-price.service.ts:2585-2610`, `syncAccruedInterestCompanion` `:1060-1070` | Confirmed for `update()` (A26-S12-01) and `updateLinkedTransfer` (A26-S12-07); `updatePrice` saves a price row only a user edits (a lost concurrent manual edit, no money); the companion is saved under the redemption's lock path | `updatePrice`: DESIGN_RISK |
+
+#### S13 (`13-valuation-fx-networth.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| Preferences `defaultCurrency` creates a global active currency (S09 hand-off) | `users.service.ts:373-409`, FK `schema.sql:1561`, P1 | The FK refuses an absent code before the ensure runs | REJECTED (A26-S13-05 is the real defect) |
+| MON-M19 cleanup decided from tenant-filtered evidence | definer function, creator gate, integration race | Fixed by the definer function in the caller's transaction | REJECTED for the current code (FIXED_VERIFIED) |
+| CSV/QIF mapping names another user's custom currency (S10 hand-off) | `import.dto.ts:145-151`, FK, `findAll` | Currencies are shared reference data by design (any user may activate any code); the effect is that the creator can no longer delete it | DESIGN_RISK |
+| `backfillHistoricalRates` reads accounts and securities without `user_id` (agent sweep) | `exchange-rate.service.ts:601-628`, admin-only route | The backfill is deliberately global (the pair set is the deployment's), like the refresh | REJECTED |
+| Monte Carlo current value becomes 0 on failure (MON-M33) | `monte-carlo.service.ts:881-936`, frontend test | `null` and a refusal | REJECTED for the current code (FIXED_VERIFIED) |
+| Historical net-worth snapshot values a position at a years-old close | `position-price.util.ts`, `docs/time-series-contract.md` section 2.1 | Deliberate and documented (issue #1242): a position's worth is its latest accepted close, unbounded; returns and boundaries stay bounded | REJECTED (documented contract) |
+| Period result over a deposit counts the deposit (INV-PORTRESULT-001) | `portfolio-period-result.util.ts:286-330` | `investmentResult = valueChange - netExternalFlows`, percentage only over the result, `zeroStart` refusal | REJECTED |
+| `resolveFxRate` default `today` is UTC while callers pass the request day | `fx-rate-resolver.ts:345`, callers pass `todayYMD()` | Every caller read passes `today` explicitly | REJECTED |
+| Provider call amplification in `getRateForDate` (no negative cache) | `exchange-rate.service.ts:1129-1227` | Report reads pass `fetchMissing: false`; the posting path is one call per write; no N-row read model built (Rule 6) | optimization hypothesis, handed to S10 for the QIF/CSV per-row FX resolution |
+| Portfolio `total*` numeric when incomplete | `portfolio-calculation.service.ts:2184-2185` | Stage 1 of the completeness spec, flags carried; consumers that read them are held | DESIGN_RISK (S02 section 9) |
+
+#### S14 (`14-bonds.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| R1 Rounding residual from `price = principalReturned / q` when the removed portions have different per-bond figures | `InvestmentTransactionForm.tsx:567` rounds to 10 dp; `investment_price NUMERIC(24,10)`; `total_amount NUMERIC(20,4)` | The error is at most 5e-11 x q; it reaches 0.0001 only at q of about 10^6 bonds | REJECTED |
+| R2 `bond-series` lease (90 min) outrun, S08 hand-off | `getFromIssuer` maps a timeout to `SOURCE_UNAVAILABLE` (`series-source.ts:90-102`), which ends the backfill pass (`bond-series.service.ts:807-811`); the cron fires once a day | A hung source stops the pass at the first timeout; no second runner exists the same day; the store is idempotent under the lock | REJECTED |
+| R3 A26-S12-06 (sub-0.0001 snap) in bonds/ | `bondLotsFromTransactions` refuses fractional quantities; `ownLotsGrossValue` tolerance compares whole numbers | No snap reachable; a fractional row refuses the lots and names the row | REJECTED |
+| R4 A26-S12-01 (decision from a snapshot read before the lock) in bonds/ | `recomputeSecurity` locks first (`bond-price.service.ts:195`); `store` locks then re-reads (`:880`); write guard after `lockHoldingScope` (create 1231->1238, transfer 2384->2388, update 4477->4482) | The bond paths decide after the lock; S12-01's cash-leg snapshot is S12's and covers bond rows too | REJECTED for bonds/ |
+| R5 `GREATEST(covered_through)` defeats the NBP "archive behind" safety | `pl-nbp-reference.ts:140-178`; `benchmark-refresh.service.ts:406-412` | Forward-only coverage never extends coverage on an archive-behind fetch; it keeps the older, smaller date | REJECTED |
+| R6 Monte Carlo weighting (`monte-carlo.service.ts:512-539`) wrong for bonds | blend = total gross / total quantity | Summed over accounts, quantity x blend is the security's exact gross; only the per-account path is wrong (A26-S14-02) | DOWNGRADED into A26-S14-02 |
+| R7 Final coupon counted twice (interest notification and redemption split) | `bond-notification-events.ts:342-346` | Item 2 requires `maturityDate > date`; the maturity coupon is only in the redemption split | REJECTED |
+| R8 Maturity payout of the wrong lot (FIFO) | `bond-holdings.service.ts:84-100`; sale window is one month | Lots of one series share the period months, so the rates and figures are equal | REJECTED |
+| R9 Redemption endpoint vs the write's order on the same day | the endpoint appends the REDEEM after every same-day row; an edited row keeps its `created_at` position | A same-day BUY created after an edited REDEEM could be counted by the endpoint and refused by the write; reachable only by editing a redemption on a day with a later same-day purchase that it needs; the write still refuses | DESIGN_RISK, not a finding |
+| R10 NBP coverage `today` at 06:25 claims an unfinished day | decisions take effect the day after their announcement | The value effective today is known at 06:25 | REJECTED |
+| R11 `valueSecurity` totals null for a matured or not-redeemable lot's `earlyRedemptionValue` | `bond-valuation.service.ts:439-441`, `sumKnown` | A total of early-redemption proceeds over lots some of which cannot be redeemed early has no value; null is honest | REJECTED |
+
+#### S15 (`15-loans-strategies.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| MON-M32 still open | upstream P5-008 example | executed through the real `post()`: parent -40.00 = lines (R11) | REJECTED (FIXED_VERIFIED) |
+| S08 hand-off: slot selection should prefer the cursor's unpaid slot | `selectOccurrenceSlot` (`occurrence-slots.ts:256-288`), spec 6.2 step 3 and truth table rows 10-12 | nearest-then-earlier is the spec's deliberate rule (Rule 2); with the default window 3/7 (`rule-action.types.ts:150`) a monthly cursor slot and the next slot are never both candidates; with a wide window (up to 31/31, `transaction-rules.limits.ts:35`) a late payment can be matched to the next slot, which only becomes harmful through A26-S08-03's cursor defect. The fix belongs in `post()` (A26-S08-03's diff), not in the selection | DESIGN_RISK (D2), feeds A26-S08-03 |
+| S09 hand-off: a doubled MNY import re-settles an occurrence through a structural rule (INV-LOAN-008) | planner rows 14-15 (`plan-loan-settlement.ts:280-302`): claims read under the schedule lock, `occurrence_already_posted` | the duplicate row's window (3/7) contains only the slot the original already claimed, so the duplicate is refused `occurrence_already_posted` and stays a plain debit (A26-S09-01's double cash only). Only a window wide enough to reach the next slot (about 28+ days for monthly) settles it as the next installment | REJECTED at the default window; DESIGN_RISK for wide windows (D2) |
+| S10 hand-off: what deleting a duplicate settled row undoes | spec 12.5; `transaction_id ... ON DELETE CASCADE`; `loan-settlement-claim` "delete releasing the claim" | delete releases the claim in the same statement; the cursor is deliberately not rewound; for a rule-driven loan the next real bank row settles the freed history slot (nearest unclaimed in window), so nothing is lost; for a bill-driven loan the advanced cursor skips the freed slot with no signal | PRE_EXISTING (documented decision), D4 |
+| A26-S07-02 for loan accounts mis-prices installments | `datedLoanDebt` reads `ACCOUNT_BALANCE_AS_OF_SQL` (opening balance + ledger), never `current_balance` | a restored stale `current_balance` cannot reach pricing; the loan-specific damage of the same undo function is A26-S15-01 | REJECTED for pricing; superseded by A26-S15-01 for the loan columns |
+| GEM converts prices before computing momentum | `docs/gem-strategy.md:311-312`, `gem-report.types.ts:262-268` | native-currency momentum is the documented design; the hint's "converted prices" is not the contract | DESIGN_RISK (D6) |
+| GEM position valuation uses rate 1 for a missing rate | `gem-position.service.ts:356-385` (sweep, read) | 1 only for the same currency; a missing rate is null; `getLatestRate(..., 14)` is a listed exception in `fx-rate.one-door.spec.ts` (INV-FX-001 partial, S13's) | REJECTED (S13 owns the FX door) |
+| GEM incomplete signal fires an alert | sweep Q3 | RISK_OFF without EM is documented and tested; the real alert defect is the period binding (A26-S15-07) | REJECTED |
+| Rate-change sync applies something other than its preview | `applyScheduledPaymentSync` re-plans in its own transaction (`loan-rate-changes.service.ts:319-330`) | the plan is one function for both; a ledger move between preview and confirm changes the applied figure, and the response returns what was applied; no expectation is passed down | DESIGN_RISK (D7) |
+| Two loans sharing one interest category merge on the SPLIT path | sweep probe F | real, but it is the index's own known gap widened, not a new mechanism | documentation (section 11, D-2) |
+| Lump sum on a non-amortizing loan yields no projection (frontend probe I) | `loan-schedule.ts:451-455` refuses before lump sums apply | the refusal is INV-LOAN-004's "-1 when the installment never amortizes"; a plan that would rescue it is an edge of the projection, not a wrong figure | DESIGN_RISK (D8) |
+| Same-day multiple payments double count interest in history | sweep probe D: each date's interest used once | no double count; attribution depends on API order (same-date rows) | DESIGN_RISK (D9) |
+
+#### S16 (`16-budgets-reports.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| Budgets net across categories | `GROUP BY category_id`, clamp per line | netting is within one category | REJECTED |
+| Budgets need `investmentExclusionSql` | generated cash legs carry no category; embedded investment splits have `category_id NULL` | selection by `category_id` cannot reach them | REJECTED |
+| Period close race between replicas | `pessimistic_write` on the OPEN row, `NoOpenPeriodError` skip, per-owner claim; `budget-period-rollover.integration.spec.ts` passed | holds | REJECTED |
+| Nested `withScopedDb` in `computePeriodActuals` splits the snapshot | nested calls join the ambient transaction (AGENTS) | same transaction | REJECTED |
+| Alert email resent after a crash between send and `markEmailSent` | the row exists, the next run dedups on it | at most one email | REJECTED |
+| `computeActualIncome` `Promise.all` over two `withScopedDb` | each opens its own top-level transaction (no ambient one in a request) | two snapshots, not one connection's queue; a cosmetic snapshot skew only | DESIGN_RISK (section 9) |
+| A26-S07-04 unequal transfer legs mis-state budget transfer lines | builders read the outgoing leg (`amount < 0`) only | the line counts the source leg, which is what left the budgeted account | REJECTED for budgets |
+| Capital-gains report surface of A26-S12-04 | `RealizedGainsReport.tsx`, `DividendIncomeReport.tsx` (capital gains), `InvestmentDetailView.tsx`, AI `tool-executor.service.ts`, MCP `investments.tool.ts` | consumers read the server figure; the defect is S12's root, no separate report-side defect found; both components return early on error, so exports are not reachable on a failed load | handed back (surface list only) |
+
+#### S17 (`17-ai-mcp-notifications.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| An MCP agent or the assistant claims a request under `EMAIL_RECEIPTS_CLAIM_KEY` (S11 hand-off) | P1; `callerKey` (`mcp-context.ts:101-105`); claim SQL `status = 'pending'` (`ai-review-requests.service.ts:690-742`) | no caller key can equal the literal; `email_trade` requests are never pending | REJECTED |
+| MCP/PAT bearer verifiers accept `step_up` / `oidc_reauth` JWTs (A26-S03-03) | `validatePat`, `validateAccessToken`, opaque token format | the MCP verifiers are store lookups, not JWT verifies | REJECTED (the cookie/Authorization path stays A26-S03-03's) |
+| MCP sessions keep creation-time scopes (MON-M04) | section 5 | fixed by mechanism; only the test is missing | FIXED_VERIFIED + A26-S17-05 |
+| A tool wired into one layer only | parity matrix (section 2) | `render_chart` (presentation, no data), `enter_bond_series_manually` (documented admin fallback), relay tools, `list_transaction_rules` folded into `manage_transaction_rules` (documented) | REJECTED |
+| A notify caller runs inside an outer transaction, so the push fans out for a row that can roll back (S08 hand-off) | all 16 `.notify(` callers; `balance-threshold-alert.service.ts:69-96` commits the latch first by design | no caller nests `notify` in a `withScopedDb` | REJECTED |
+| A read-path producer (bill reminders on `GET /notifications`) duplicates rows and pushes under two concurrent reads | `budgets.service.ts:714-826`: dedupe key `BILL_DUE:<bill>:<originalDate>`, `ON CONFLICT DO NOTHING`, `null` fans out nothing | the database arbitrates | REJECTED |
+| An AI/MCP write skips the HTTP refusals (VOID, currency, ownership, reconciled lock) | refusals live in `TransactionsService` and the transfer/investment services; controllers add only joint-register routing | the adapters call the same service methods; the AI executors also re-run class-validator (`toValidatedDto`) | REJECTED (the MCP direct commits skip `toValidatedDto`, but their DTOs are built from server previews, not from model input; noted in section 9) |
+| AI/MCP `get_capital_gains` (S12 hand-off A26-S12-04) | `getLlmCapitalGains` is the shared door; nulls carried | same root cause as A26-S12-04 | consolidated under A26-S12-04 (Rule 7) |
+| AI/MCP edit card shows no rate (S12 hand-off A26-S12-03) | `investments.tool.ts:1245-1287` card lines (no rate line); frontend `TransactionConfirmationCard.tsx` (no `exchangeRate`) | confirmed surface of the same root cause | consolidated under A26-S12-03 (Rule 7) |
+| AI/MCP account summary drops completeness flags (S13 hand-off A26-S13-04) | `tool-executor.service.ts:2433` summary line; `getLlmAccounts` totals | confirmed surface | consolidated under A26-S13-04 (Rule 7) |
+| `updates.service` window equal to its 12-hour period (S08 hand-off) | `updates.service.ts:28, 130, 298-312` | real (a tick can find the window not yet elapsed by milliseconds, so the effective cadence is up to 24 h) but the impact is an update notice up to 12 hours late: fails the Rule 1 materiality gate | REJECTED as a finding; documentation inconsistency in section 11 |
+| A post-commit failure of `ScheduledTransactionsService.post` lets an AI trade card post twice (S08 hand-off on A26-S08-02) | `ai-actions.service.ts:1142-1185`: the signed `scheduledDueDate` is checked inside `post()`; `confirm` runs no outer transaction (`:211-223`) | a replay is refused by the moved due date | REJECTED |
+| The relay routes a direct client's write into an unwatched web chat | `emitRelayCard`, `findSessionTurn` scoped to the caller's own claim, `reportToolActivity` scoped to the caller's session (`ai-relay.service.ts:419-495`) | caller-scoped since the documented fix; `mcp-relay-confirm.spec.ts` green | REJECTED |
+| The MCP daily write cap can be exceeded by concurrent calls | `McpWriteLimiter.reserve` is a read, `record` after the write | real overshoot by the number of concurrent calls; the cap is a soft abuse bound and every write is still human-confirmed | DESIGN_RISK (D2) |
+
+#### S18 (`18-frontend-core.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| A rate is rounded as money somewhere in `lib/` | grep of `roundMoney`/`roundToCents`/`toFixed` beside a rate across `src/` | every hit rounds an amount (`amount * rate`), not the rate; `roundFxRate` uses 10 dp; display uses `FX_RATE_DISPLAY_DECIMALS`; two `toFixed(FX_RATE_DISPLAY_DECIMALS)` displays (`CurrencyList.tsx:160-161`, `CurrencyExposureReport.tsx:175`) are unlocalized, a component issue | REJECTED for lib; locale half handed to S20 |
+| `forecast.ts` selects investment schedules by the brokerage `accountId` (sweep claim) | `forecast.ts:607, 805, 977` normalise every schedule onto its settlement account before `scheduledFlowsForAccount` | the remap precedes selection | REJECTED |
+| `useExchangeRates.convert` returns 1:1 or the input on a missing pair | `useExchangeRates.ts:83-101` returns `null`; `getRate` `null` | holds; `ratesUnavailable` distinguishes loading/failed | REJECTED |
+| A share bundle can be read by another account (INV-SHARE-005) | `share-inbox.ts:85-102, 153-183, 246-283`: claim on list and read, `isVisibleTo` filter, `viewerUserId` required | holds; `discardSharedBundle(id)` takes no owner, so another account holding the random id could delete (not read) a bundle: no realistic path, ids come from the owner's own URL | REJECTED (note only) |
+| Logout retry cannot succeed after the access token expires | `auth.controller.ts:1335-1354` is public, revokes by the refresh cookie | holds | REJECTED |
+| The 401 interceptor loops or double-redirects during a user sign-out | `isSigningOut()` gate (`api.ts:193`), `beginSignOut` before any await (`AppHeader.tsx:255`) | holds | REJECTED |
+| `budgets:dashboard` misses transaction writes (MON-M38 as filed) | prefix in `invalidateBalanceCaches`, mutation M1 killed | fixed | REJECTED for the original paths (residual is A26-S18-01) |
+| Decimal strings typed `number` produce a wrong figure in `lib/` | sampled readers coerce (`investmentFold.ts:27-31`, `security-detail.ts:81-84`, `sumMoney` multiplies) | no concrete failing reader found in `lib/` | DESIGN_RISK (section 9) |
+| `MnyImportJob` failure with `errorKey: null` shows "Nothing was saved" wrongly | backend always sets a key on failure | the `null` branch is unreachable; the reachable case is the generic key after commit (A26-S18-05) | merged into A26-S18-05 |
+| The persisted AI chat (`localStorage`) leaks across accounts | `authStore.logout` removes `monize:ai-chat-messages` on every logout path (user, 401, rehydrate failure, PWA resume) | holds; still readable by XSS while signed in, which the guard records as a reviewed decision | REJECTED |
+
+#### S19 (`19-frontend-forms.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| The Post dialog replaces a schedule's saved price with the latest close | `PostTransactionDialog.tsx:598-618`; `docs/frontend/financial-figures.md:55-57` | Deliberate: only a per-occurrence override's price is protected in the Post dialog; posting at today's market is documented. The general sentence reads wider than the exception (section 11) | REJECTED (documented exception, Rule 2) |
+| `nextOverride?.amount ?? amount` in the Post dialog violates INV-OCCURRENCE-003 | guard allowlist `:54-63`; the foreign and loan branches | Allowed on the write path; the loan consequence is A26-S15-09 | REJECTED (deliberate) |
+| A same-currency investment trade can be sent with a non-1 rate (S12) | `:625-631`, `:1693` | The field is hidden and forced to 1 | REJECTED |
+| The split editor rewrites a valid 4dp split on open (the upstream MON-M37 wording) | `toSplitRows` keeps `Number(split.amount)` (`SplitEditor.tsx:1094`) | The lines are kept exactly; the loss is the parent's load and the blur (A26-S19-03) | REJECTED in that form; root moved |
+| A date field set by `setValue` leaves the visible box stale | 15 `setValue('<x>Date'` sites | All are `DateInput` `onDateChange` handlers | REJECTED |
+| The delete-data reauth artifact is not bound to the chosen options | `DangerZoneSection.tsx:117-141` | The artifact is purpose-bound (`delete-data`); the options reset to the least destructive defaults after the round trip; the server owns the binding (S03) | DESIGN RISK (section 9) |
+| `LoanPaymentSetupDialog.tsx:624` renders a literal 0 | React renders `0 && ...` as `0` | Cosmetic, no value written | REJECTED (cosmetic) |
+| The rules editor serializes an empty range bound as 0 | `RuleValueControl.tsx:210-235` | `undefined` serializes as `null` in a JSON array, not 0 | REJECTED |
+| Duplicating a transaction dates it with the browser's local day rather than the financial today | `TransactionForm.tsx:336` `getLocalDateString()` | Plausible off-by-one for a user whose timezone preference differs from the browser near midnight; not traced to a wrong posting | DESIGN RISK (section 9) |
+
+#### S20 (`20-frontend-figures.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| A26-S17-01 reaches the transactions page summary as a mixed-currency scalar | `TransactionSummary.byCurrency` producer `transaction-analytics.service.ts:437-495`; consumers `PayeeInfoWidget`, `CategoryInfoWidget`, `app/categories/[id]/page.tsx`, `app/payees/[id]/page.tsx` | every HTTP consumer goes through `buildDisplayCurrencyStrategy` / `summarizeInDisplayCurrency` (`components/transactions/widget-shared.ts:36-110`), which converts per bucket and marks a missing rate with `PartialTotal`; no component reads the scalar `totalIncome` of a multi-currency summary | REJECTED for the UI; design note: the client converts at today's rate, not each row's (INV-FX-002), D-S20-01 |
+| Debt Payoff Timeline exports while one of its four requests failed (S16 hand-off) | `DebtPayoffTimelineReport.tsx:137-251, 636-640` | combined `isLoading` / `error` early return; the toolbar is not mounted | REJECTED |
+| Budget reports export on a failed secondary request | `BudgetVsActualReport.tsx:188-225, 320-324` and siblings | combined early return | REJECTED |
+| Cash Flow Sankey PDF has no partial caption (S16 hand-off) | `CashFlowSankeyReport.tsx:216` | partial cards carry a `*`; the PDF has no legend for it, which is A26-S16-04's "`exportToPdf` cannot express a partial figure" | CONFIRMED under A26-S16-04 (not re-counted) |
+| `exportToPdf` partial caption across every `PartialTotal` report (S16 hand-off) | PDF cards of AccountBalances, CreditUtilization, SecurityTypeAllocation (suffix present), DividendYieldGrowth (`:523-525`, no marker), Geographic (A26-S20-05), IncomeVsExpenses and SpendingByCategory (A26-S16-04) | DividendYieldGrowth's three cards are the only new instance and share A26-S16-04's root (no partial field in `pdf-export.ts`) | CONFIRMED under A26-S16-04 (surface added) |
+| A26-S15-08 (Loan Amortization exports on error; Original Amount) | `LoanAmortizationReport.tsx:429-440, 497-511` | unchanged at the baseline; no new surface | CONFIRMED, stays A26-S15-08 |
+| A26-S15-03 / -05 in the report UI | `LoanAmortizationReport` reads `deriveLoanPaymentHistory`, the one derivation | the UI renders the derivation; the defect is in `lib/loan-history.ts` as S15 reported | CONFIRMED, stays S15's |
+| S14: the intraday path values a linked security at the ledger close and drops bond holdings in the no-ledger branch | `portfolio.service.ts:2276-2310, 2420, 2574-2603`: holdings with `fetchIntraday` false are neither `intradayHoldings` nor `closeValued` when `ledger` is null, and a failed holding with no close is skipped (`if (lastClose == null) continue`) | traced to the figures: `InvestmentValueChart` and `PortfolioValueReport` intraday lines and their Highest / Lowest; the intraday response type (`lib/investments.ts:239-266`) carries no completeness flag, so no frontend fix exists without a server flag | DESIGN_RISK on the frontend; the server root stays with A26-S14-01 (consolidate in S23) |
+| Period change shown as a return | `NetWorthReport` "Change %" (net worth over its first month), `PortfolioValueWidget`, `InvestmentValueChart`, `PortfolioValueReport` | the investment surfaces read the server's `investmentPnl` / `investmentReturnPercent`; net worth's "Change %" is captioned as a change, not a return | REJECTED |
+| Cash folded into an invested figure | `PortfolioValueWidget.tsx:117, 149` | the sparkline plots `investedValue`; the header prints `totalPortfolioValue` (holdings plus cash) under the widget's "Portfolio Value" title, a value, not a result | REJECTED (caption issue only; see D-S20-03) |
+| Hand-edited pseudo-locale, catalog parity | `npm run i18n:check` pass; `src/i18n` parity suites pass | no drift | REJECTED |
+| S10: the bank-sync preview UI does not disclose structural rule effects | not read in this session (budget) | handed on | open, to S23 |
+
+#### S21 (`21-tests-ci-release.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| `check-env-docs.mjs` misses env reads | ran it (OK, 81 vars); a wider scan for `getOrThrow`, other receivers, `env.X`, `env["X"]` found only ignored or non-env names (`US_EQUITY` is a GEM asset key) | no undocumented variable found | REJECTED |
+| Integration runner passes on zero suites | Jest exits 1 (S02 executed); guard re-read | holds | REJECTED (MON-M44 fixed) |
+| Vitest passes on zero tests | Vitest 5 default `passWithNoTests: false`; no override in `vitest.config.ts` | holds | REJECTED |
+| Guards in `backend/src` silently skip in CI | 15 specs use `REPO_ROOT \|\| process.env.CI ? describe : describe.skip`; CI sets `CI=true` | they run in CI; they skip only outside a checkout without `CI` | REJECTED |
+| Helm default disables a protection | default render: `readOnlyRootFilesystem`, `runAsNonRoot`, `seccompProfile: RuntimeDefault`, drop ALL, `podSecurityEnforce: restricted`; the chart refuses two replicas at `single`, a selector-less spread, a zero-disruption budget (CI-tested) | no protection disabled by default | REJECTED |
+| `zizmor ... \|\| true` hides workflow findings | SARIF is uploaded to code scanning; not a gate by design | visibility choice, documented in the job | DESIGN_RISK (not listed) |
+| Unconfirmed known-wrong tests 2-4 still present | override price: `PostTransactionDialog.test.tsx:1426`, `OverrideEditorDialog.test.tsx:698` assert the override is kept; logout: `AppHeader.test.tsx:204` "does not claim success when authApi.logout fails", `auth.controller.spec.ts:1099`; backup naming: no filename assertion found, the located backup known-wrong tests are the cross-owner sweep (A26-S06-01) | corrected or replaced | REJECTED (items 2, 3); item 4 superseded by A26-S06-01's tests; item 1 CONFIRMED (section 10) |
+| `net-worth.service.spec.ts:1961` "returns amount unconverted when no rate exists" is known-wrong | the body asserts the gap (comment "NOT applied as 1:1 (audit P5-009)") | the title is stale, the assertion is right | REJECTED (doc nit, section 11) |
+| Entity numeric transformers excluded from coverage hide a defect | 31 entity files define local transformers; mutation `investment-transaction.entity.ts:22-26` `null -> 0` run against 8 investment integration suites | killed: `security-transfer.integration.spec.ts` fails (`Received: 0`), 69 others pass | REJECTED (held at integration) |
+| `frontend/src/proxy.ts` (CSP nonce, auth redirect, API proxy) excluded from coverage hides an untested file | coverage measured with the exclusion removed, its five test files only | 97.05 % statements, 95.16 % branches, 100 % functions | REJECTED (the exclusion is unexplained but hides nothing today) |
+
+#### S22 (`22-delta-review.md` section 8)
+
+| Candidate | Evidence considered | Why rejected or downgraded | Final classification |
+| --- | --- | --- | --- |
+| `main` moved after the program pinned it | `git ls-remote`, `git fetch`, GitHub `list_commits`; tree hash | all equal to the baseline | REJECTED |
+| The audit branch carries a code change beyond `docs/audits/` | pin check from the repository root: empty | a first run from `docs/audits/2026-10/` listed the audit reports only because the exclusion pathspecs resolve against the working directory; re-run from the root is empty | REJECTED (operator error, recorded) |
+| A HIGH could be fixed or worsened by the delta | 0-byte delta | no hunk exists | REJECTED for all 18 HIGH |
+| Integration suites skip silently against the container database | 238 + 60 integration tests reported passed, 0 skipped; the `pretest:integration` hook created `monize_test` | the suites ran against PostgreSQL | REJECTED |
+| The fork's last hosted `ci.yml` run on `main` (run 253 on `0d99f8f`, 2026-10-16, conclusion `failure`) means `main` is red | job list: every test job `success`; only `Build & Push Preview (backend/frontend)` failed; `0d99f8f` is not in the local clone of `main`'s history (ancestry not established) | a preview-image push failure on an older, possibly non-ancestor commit says nothing about `72c59ec4`'s tests | DESIGN_RISK for S21 (hosted CI on this fork does not track `main`); not a delta finding |
+
+## Appendix B. Known-wrong tests and missing tests
+
+### B.1 Known-wrong test register (from `21-tests-ci-release.md` section 10.1)
+
+| Test (path:line) | Asserts | Protects defect | Owner finding | Found by |
+| --- | --- | --- | --- | --- |
+| `backend/src/built-in-reports/report-currency.service.spec.ts:213-218` "returns original amount when no rate is available" (and the inverse-zero case near `:247`) | 1000 JPY with no rate -> `toBe(1000)` in USD | the 1:1 fallback of `convertAmount` (`report-currency.service.ts:113-118`), used by seven built-in report services | A26-S02-02 / A26-S13-01 (MON-H12, MON-M39) | S02, S13; re-located here: **this is `docs/verification-contract.md` section 5's unconfirmed item 1** |
+| `backend/src/backup/auto-backup.service.spec.ts:3870/3871`, `:3907` "counts files left flat in the base folder by an older version" | the cross-owner legacy sweep | A26-S06-01 | A26-S06-01, MON-M43 | S02, S06 |
+| `backend/src/auth/token.service.spec.ts:323` (replay detection), `:387` (user not found), `:408` (user inactive) | that `manager.update` was called, true while the revocation is rolled back | A26-S03-01 | A26-S03-01 | S03 |
+| `backend/src/securities/investment-transactions.service.spec.ts:5120` "converts cash amount using the latest market rate when currencies differ", and five sibling cases S12 M11 names but does not list | stub `getRateForDate` to null and `getLatestRate` to the answer | the `getLatestRate` fallback, `investment-transactions.service.ts:789-792` | A26-S12-02 | S12 |
+| `backend/src/delegation/rls-context-smoke.spec.ts` (S04 D-S04-05) | "authorization under the caller, then bypass" order | A26-S04-01 | A26-S04-01 | S04 |
+| `backend/test/integration/backup-store-s3.integration.spec.ts:160-185` | unpadded day names, its own pruning wrong; never runs in CI | test defect | A26-S06-02 | S06 |
+| `backend/src/users/users.service.spec.ts:148` | mocks `ensureSystemCurrency`, so write-before-ensure passes | A26-S13-05 | A26-S13-05 | S13 |
+| `backend/src/transactions/transaction-bulk-update.service.spec.ts:2592-2643` | only that `updateBalance` was called | A26-S13-03 | A26-S13-03 | S13 |
+| `frontend/src/lib/loan-history.test.ts:2058` | the overpayment-takes-the-interest variant of a same-day pair | order dependence (D9) | -- | S15 |
+| `backend/src/ai/query/tool-executor.service.spec.ts:1345-1351`, `backend/src/mcp/tools/reports.tool.spec.ts:220-246` | `getSpendingAnomalies(userId, months)` | months passed as the z-score threshold | A26-S17-03 | S17 |
+
+The four "reported but not located" items of `docs/verification-contract.md` section 5: item 1 located (row 1); items 2 and 3 corrected (section 8); item 4 superseded by the A26-S06-01 tests.
+
+### B.2 Missing tests per session (section 10 of each report, verbatim)
+
+#### S01 (`01-baseline.md` section 10)
+
+- Missing: a guard that CI lint steps do not auto-fix (A26-S01-01).
+- Missing: a lint-config test that every spelling of a `with-context` import and a direct `requestContextStorage.run` is flagged outside the allowlist (A26-S01-02).
+- Missing: a code-level check that each `@Cron` handler calls the mechanism its doc row names (DR-S01-2, M5).
+- Missing (INV-CRON-001, recorded `partial`): two-instance tests per job; only the MNY job has one.
+- Unstable test (observed): `test/integration/ofx-import-fitid.integration.spec.ts` failed in the full integration run with `deadlock detected` inside `cleanTables` (`test/helpers/integration-setup.ts:272`) and passed 10/10 alone. `cleanTables` already settles pending price writes and pending history writes before its `TRUNCATE ... CASCADE` (`:255-271`), so a third kind of un-awaited post-request write from an earlier suite (candidates: post-commit recompute dispatch, notification or provider-health writes) still runs into the next suite's truncate. Not root-caused here; handed to S21. If the same writer exists in production, it is a write that outlives its request, which `docs/external-side-effects.md` and INV-CACHE-001 govern (S07).
+- Known-wrong: none found in the slice. `docs/verification-contract.md` s5 is S02's.
+
+#### S02 (`02-prior-high-triage.md` section 10)
+
+Known-wrong (assert a defect and pass):
+- `backend/src/built-in-reports/report-currency.service.spec.ts:213` "returns original amount when no rate is available" and the inverse-zero case `:247` (A26-S02-02, MON-M39).
+- `backend/src/backup/auto-backup.service.spec.ts:3871`, `:3907` (cross-owner legacy sweep, A26-S02-06, MON-M43).
+
+Missing:
+- No two-connection test for `transactions.service.update()` / `remove()`, `updateTransfer`, bulk VOID, or the split-leg path (MON-M46 evidence; S07, S21).
+- No integration test calls the real scheduled `post()`; nothing races two cash, transfer or investment posts (S08).
+- No real-filesystem or real-S3 attachment backup round trip (MON-M47, S06).
+- No rebuild-versus-trade, first-buy, buy/sell, split or edit/delete holding race (S12).
+- No test of a second MNY start on a committed job's staged file (A26-S02-05).
+- `transfers.integration.spec.ts:103` proves only a client-supplied 1.35 rate; no server-resolved or tampered case (S07).
+- No portfolio test for a missing spot rate without a time series (A26-S02-11).
+- No reverse-split case in `net-worth.service.spec.ts` (S13).
+
+#### S03 (`03-security-auth.md` section 10)
+
+- INV-AUTH-001's required two-connection rotation test does not exist (`test/integration/` has no refresh-rotation suite; only `logout-revoke-failpoint`). A26-S03-04.
+- INV-CLAIM-001's two-connection test is listed as "still owed" and is still missing; the only protection is a SQL-text unit assertion. A26-S03-04.
+- No test drives `AuthService.login` against a real database; `auth.service.spec.ts` mocks `save`, which is how A26-S03-02 stays green.
+- No test covers the three blanket-revoke paths under a concurrent rotation (A26-S03-07).
+- Known-wrong (asserts current defect as correct): `token.service.spec.ts` "should revoke entire family and throw when token is already revoked (replay detection)" asserts that `manager.update` was called, which is true while the revocation is rolled back (A26-S03-01). Same for the "user is not found" and "user is inactive" cases.
+- INV-AUTH-005's own "still owed" item (a real-database test that a PAT minted before a reset is refused after it) is still missing.
+
+#### S04 (`04-rls-tenancy.md` section 10)
+
+- No service-level test under the unprivileged role for delegation management (create, link, reset, capability and section setters, revoke), joint-account writes, or cross-owner transfers (A26-S04-04). 23 of 101 integration files use `createEnforcedIntegrationModule`; none of these.
+- No concurrency test for revoke versus any in-flight delegation or grantee write (A26-S04-01, -02).
+- No negative test that a delegate session cannot insert into `account_delegates` / `account_delegate_grants` (A26-S04-03); `rls-enforcement` asserts "keeps WITH CHECK owner-only" only for the widened data tables.
+- `rls-context-smoke.spec.ts` asserts the order "authorization under the caller, then bypass" as correct; it is a test of the shape that lets a revoke slip between the two (known-wrong in the sense of `docs/verification-contract.md`: it would fail on the fix for A26-S04-01 unless updated).
+- MON-M06's enforcement behaviour is protected only by `rls-context-smoke.spec.ts` (a unit test recording identities around mocked repositories), not by a real-role run.
+
+#### S05 (`05-migrations-schema.md` section 10)
+
+- No repository test races two real `runMigrations()`/`initDatabase()` processes; MON-L02's fix is held by mock-order unit specs (`db-init.spec.ts`, `db-migrate.spec.ts`) and the lock-primitive test `demo-seed-lock.integration.spec.ts`. The audit's script (`zz-audit-migrate-race`) is the shape such a test would take.
+- No guard for unique-key or CHECK parity between entities and `schema.sql` (A26-S05-01).
+- No integration test of `BudgetPeriodService.createPeriodForBudget` concurrency; impossible today without the key (A26-S05-01).
+- `verify-schema.sh` dumps with `--no-privileges` and `--no-comments`, so function ACLs (`REVOKE EXECUTE ... FROM PUBLIC` on SECURITY DEFINER functions) and comments are outside the drift job; it also runs on an empty database, so no data backfill in the 56 migrations is exercised by it (the per-migration specs `mortgage-type-backfill`, `migration-149-backfill`, `migration-140-preflight` cover three).
+- No lint for contract-without-expand (A26-S05-02; the documentation states this).
+- No known-wrong test found in the slice.
+
+#### S06 (`06-backup-restore.md` section 10)
+
+- Known-wrong: `backend/src/backup/auto-backup.service.spec.ts:3870`, `:3907` (assert the cross-owner legacy sweep; A26-S06-01).
+- Known-wrong and never run: `backend/test/integration/backup-store-s3.integration.spec.ts:160-185` (unpadded day names; A26-S06-02).
+- Missing: local/S3 restore round trip (A26-S06-05, MON-M47).
+- Missing: Phase-3 owner predicate (A26-S06-06, M4).
+- Missing: restore staging crash/discard-failure leaves an enumerable intent (A26-S06-03, R4).
+- Missing: post-commit throw must not discard committed bytes (section 9, M2/R5).
+- Missing: two-connection test of the off-machine lease reclamation (INV-BACKUP-005 owed, unchanged).
+- Missing: two-connection attachment cap race at count 9 (MON-L05, mechanism present).
+
+#### S07 (`07-cash-ledger.md` section 10)
+
+Known-wrong: none found in the slice.
+
+Missing:
+- Two-connection tests for the split-leg and cross-owner transfer edits, bulk VOID expansion, `addSplit`, close versus un-void, `updateTransfer` with different amounts (A26-S07-01, -03, -09).
+- An undo-after-unrecorded-posting test for account edits (A26-S07-02).
+- A refusal test for `PATCH /transactions/:id` on a transfer leg (A26-S07-04).
+- Reconciled-lock cases for the split-leg and cross-owner branches (A26-S07-05).
+- Close with a pending future-dated row (A26-S07-06); linked-half save race (A26-S07-07).
+- `transfers.integration.spec.ts` still proves only a client-supplied rate (S02's item, unchanged).
+
+#### S08 (`08-scheduler-cron.md` section 10)
+
+- No integration test of the real `post()`, the auto-post cron or `skip()` (A26-S08-05).
+- No real-database test of `claimLease` expiry, the delivered-row exclusion, or the stale holder's `markDelivered` (M5-M7).
+- No test of a rule claim ahead of the cursor followed by a post (A26-S08-03).
+- No test asserting the HTTP routes carry an occurrence pin (A26-S08-01).
+- Known-wrong: none found in the slice.
+
+#### S09 (`09-import-mny.md` section 10)
+
+- No test throws from the job body after `markDataCommitted` committed (A26-S09-02; M2 undetected).
+- The reaper's committed branch is held only by SQL-text assertions on a mocked `manager.query` (M1).
+- The sweep's active-job exclusion is held only by a SQL-text unit assertion (M4).
+- No two-connection test of sweep or superseded-drop versus job creation (A26-S09-04).
+- No cross-currency case for the synthesized sleeve counterpart (A26-S09-03).
+- `mny-import.integration.spec.ts` "imports the file's rows once, not twice" runs on `money2008`, which writes 0 rows to `transactions` (3 investment rows): its `transactions` count assertion is `0 === 0` and cannot see a duplicate; the balance loop checks two zero-balance accounts. The race is in fact held by the job-count test beside it; this one is weaker than its name.
+- No test for a category or payee collision on the MNY writers (A26-S09-05).
+- No DTO test refusing a non-ISO `currencyOverride`, and no test that an import leaves other users' currency lists unchanged (A26-S09-06).
+- `e2e/tests/import-mny.spec.ts` covers the happy path, the password prompt and a non-Money file; nothing drives the failed-job screen or its copy.
+
+#### S10 (`10-rules-banksync-csv.md` section 10)
+
+- No test syncs a reference repeated across two fetches (A26-S10-01; M5).
+- No import test covers a cross-currency split transfer (A26-S10-02; M6).
+- No two-connection test for `AccountsService.delete` against a writer (A26-S10-03; M7).
+- No test deletes a rule that has an open review request (A26-S10-04; M8).
+- No test of a 4 dp QIF opening balance or of the opening balance under a concurrent delta (A26-S10-05).
+- No known-wrong test found in the slice.
+
+#### S11 (`11-email-receipts.md` section 10)
+
+- No test enters the lease-overrun path: `email-receipt-poll.service.spec.ts` mocks `JobClaimService`; P2 (section 12) is the missing integration case (A26-S11-01).
+- No price-only trade test with a price above 4 decimals (A26-S11-02); `parse-trade.spec.ts:139-170` covers 3 and 4 decimals and the cross-check only.
+- No integration test for a trade email end to end (INV-RECEIPT-008 says so itself); P3 is the first run of the trade path against PostgreSQL, through the real poll, pipeline, card and confirm.
+- No test of a forwarded header block in an email from an address that is not the mailbox owner's (the forward fixtures all come from the owner, `forwarded-receipt.spec.ts`), which is why A26-S11-04 is undetected.
+- No test that a trade card's preview makes no provider call inside the pipeline's transaction (A26-S11-03).
+- INV-RECEIPT-006 "Present: rls-context-smoke.spec.ts (real lease)": that spec claims and releases; it does not show that a second poll is refused while the first runs, and nothing tests the lease against the work it guards.
+- The mutation rows marked `undetected` in section 6 are test-coverage findings.
+- Known-wrong tests: none found in the slice.
+
+#### S12 (`12-securities-holdings.md` section 10)
+
+Known-wrong (assert a defect and pass): `investment-transactions.service.spec.ts` "converts cash amount using the latest market rate when currencies differ", and with it the five other unit cases M11 names (they stub `getRateForDate` to null and `getLatestRate` to the answer), which hold the A26-S12-02 fallback in place.
+
+Missing:
+- No two-connection test for `update()` or `remove()` of an investment row (A26-S12-01); the lock in `update()` is held only by a mock-order unit case (M10, M10i).
+- No integration test of a transfer's carried basis (M12i), of a back-dated transfer (A26-S12-05) or of a transfer edit that changes date or quantity.
+- No test pins the 0.0001 snap either way (M13; A26-S12-06).
+- No realized-gain test after a cross-currency transfer (A26-S12-04); the lots replay has one.
+- No test that the AI/MCP edit keeps the stored rate (A26-S12-03).
+- No two-currency Money fixture for investment rows (A26-S12-09, shared with S09).
+- No undo test comparing the undo rebuild with `findLedgerDiscrepancies` (A26-S12-10).
+
+#### S13 (`13-valuation-fx-networth.md` section 10)
+
+Known-wrong (assert a defect and pass):
+- `backend/src/built-in-reports/report-currency.service.spec.ts:213` and the inverse-zero case (MON-M39, A26-S13-01).
+- `backend/src/users/users.service.spec.ts:148` mocks `ensureSystemCurrency`, so the write-before-ensure order of A26-S13-05 passes.
+- `backend/src/transactions/transaction-bulk-update.service.spec.ts:2592-2643` (split-transfer bulk delete) asserts only that `updateBalance` was called; it cannot see A26-S13-03.
+
+Missing:
+- No `net-worth*`, `currenc*` or `exchange*` integration suite exists, though the session plan names them; net worth, `CurrenciesService.remove` end to end, the rate table's two orientations and `getLatestRates` are covered only by mocks (M3, M3b, M6 detected by mocks alone).
+- The entity-built integration harness lacks the schema's `ON DELETE` actions on the `transactions` and `transaction_splits` FKs and lacks `user_preferences.default_currency -> currencies(code)`: a bulk-delete case fails in the harness for a reason production does not have, and A26-S13-05 cannot be seen at all (joins A26-S05-01's harness-parity gap; S21).
+- No test of a selected split-transfer leg, a cross-owner leg or a split parent with embedded investment lines in `bulkDelete`.
+- No test of `getLatestRates` / the client `convert` with both orientations present (A26-S13-02); no frontend test of a stale rate.
+- No portfolio test for a currency with neither a time series nor a spot rate (M4, A26-S02-11).
+- No reverse-split case in `net-worth.service.spec.ts` (MON-M41 residual).
+- No completeness assertion on `/accounts/summary`, `getLlmAccounts`, `month_comparison` or `getAccountMarketValues` (A26-S13-04).
+
+#### S14 (`14-bonds.md` section 10)
+
+- No test values a bond-linked security in net worth on a day the engine left without a row (A26-S14-01); `bond-holding-value.integration.spec.ts` covers the routed surfaces only.
+- No test of the per-account value of a linked security on Monte Carlo holding stats, the investment report or net worth by account (A26-S14-02).
+- No test that a benchmark store is followed by a recompute (A26-S14-03).
+- Coverage-forward-only (M6) is held by an SQL-text unit assertion only; no integration test stores an archive-behind NBP fetch after a newer one.
+- No known-wrong test found in the slice.
+
+#### S15 (`15-loans-strategies.md` section 10)
+
+- No integration test runs the real `post()` for any loan matrix row (the harness stubs the scheduled module; `scheduled-loan-pricing-concurrency.integration.spec.ts:36-46` says so); the `zz-s15-probe` construction is the recipe (joins A26-S08-05 / MON-M46).
+- No real-database case of a settlement claim stepping past a consecutive claimed slot (M3 survives every integration suite).
+- No test of an account-edit undo on a loan (A26-S15-01), of the below-interest shortfall (A26-S15-04), of a 0.01 debt (A26-S15-06).
+- GEM: no case with a role's feed gap before the boundary (A26-S15-02); the alert's `run`/`evaluateUser`/`evaluateStrategy` and spec test-matrix items 5-8 are untested (A26-S15-07); `latestPrices` with a stored close of 0 (the sweep: valued at 0 rather than unknown, LOW, not raised as a finding here because every valuer in the app shares it; S12/S13).
+- Frontend loan history: VOID payment and VOID interest, refund rows paired and orphan, future-dated payment against the projection, a shared category across two loans in one parent, an exact split plus a paired standalone expense on one date (the expense is silently dropped, sweep probe E: 200 shown, 215 booked), export while `historyError` is set, Original Amount with an unset opening balance.
+- No test of a loan payment setup with a source account in another currency (A26-S15-10).
+- Known-wrong: `loan-history.test.ts:2058` pins the overpayment-takes-the-interest variant of a same-day pair (D9), which is order-dependent.
+
+#### S16 (`16-budgets-reports.md` section 10)
+
+- No integration test for rollover on a real close; the unit fixtures hydrate `budgetCategory` by hand (`budget-period-lifecycle.spec.ts:405-453`, `budget-period.service.spec.ts:98`): fixture cleaner than production (A26-S16-03).
+- No race test for the alert fingerprint or the period insert; neither key exists in the harness schema (A26-S16-09).
+- No VOID case for category actuals (mutation M5).
+- No multi-currency budget test (A26-S16-01); no wizard exclusion test past the component (A26-S16-02).
+- No component test for Cash Flow with `null` totals; no PDF test asserting a partial caption (A26-S16-04).
+- No custom report test with a refund or two currencies (A26-S16-05, -06).
+
+#### S17 (`17-ai-mcp-notifications.md` section 10)
+
+- Known-wrong: `ai/query/tool-executor.service.spec.ts:1345-1351` and `mcp/tools/reports.tool.spec.ts:220-246` assert `getSpendingAnomalies(userId, months)` (A26-S17-03).
+- Missing: an existing 2025-era session served a narrowed same-credential token's scopes (A26-S17-05, M2).
+- Missing: a post-commit failure in `AiActionsService.confirm` keeps the claim (A26-S17-02, P2).
+- Missing: any multi-currency case for `getSummary`, `getLlmPeriodComparison`, `getLlmInvestmentTransactions` (A26-S17-01, P3).
+- Missing: a relation test between `CHART_TOKEN_TTL_MS` and `PUSH_TTL_SECONDS` (A26-S17-04).
+- Missing: a two-connection test of the dispatch advisory lock (INV-DISPATCH-003 is held only by mock-order unit assertions, M3).
+
+#### S18 (`18-frontend-core.md` section 10)
+
+- No test covers a read in flight across a mutation for any `getCached`/`setCache` site (A26-S18-02).
+- No test for recategorising writes and budget caches (A26-S18-01); no test for price, security-currency or preference writes and the valuation cache (A26-S18-03).
+- `useExchangeRates.test.ts` uses `rateDate: '2025-01-15'` everywhere and never tests age (A26-S18-04).
+- `hooks/useInvestmentDailyValues.ts` has no test file; its `=== false` reads are held by one component case (mutation row 3).
+- `MnyImportProgress.test.tsx:160-167` asserts "Nothing was saved" for `errorKey: null`, an unreachable server state; weak, not wrong (A26-S18-05).
+- No cross-tab refresh test anywhere (A26-S18-06); `e2e/` has no fixture to expire the access cookie.
+- `persisted-storage.guard.test.ts` does not scan `sessionStorage` writers (A26-S18-08).
+- Known-wrong test: none found in the slice (the MON-M42 assertion is corrected).
+
+#### S19 (`19-frontend-forms.md` section 10)
+
+- Missing: a receiving-leg, cross-currency transfer edit and duplicate (A26-S19-01); an existing-row mode switch to Transfer (A26-S19-02); any four-decimal fixture in `CurrencyInput.test.tsx`, `TransactionForm.test.tsx`, the split editor, `AccountForm`, the override editor and the schedule form (A26-S19-03); a back-dated trade's rate (A26-S19-04); a 0 % loan edit (A26-S19-06); a guard for a bare `toFixed` in JSX (A26-S19-07); individual tests for the override editor's `hasStoredPrice` gate (M1a) and the redemption form's price guard and opened-key seed (R1, R2).
+- Known-wrong: `InvestmentTransactionForm.test.tsx:1329-1357` "auto-fills the exchange rate with the latest market rate" asserts the undated latest rate for a trade whose date it never sets, which is the behaviour INV-FX-001 forbids for a back-dated trade.
+- A green suite with the defects present: 157 files and 4025 tests pass at the baseline with A26-S19-01 to -04 present; the suites had no case for them.
+
+#### S20 (`20-frontend-figures.md` section 10)
+
+- No page-level case for an unpriced or FX-incomplete brokerage on the accounts page (M2 undetected).
+- No case for a partial Geographic total card (M6) or for export gating after a failed load on any inside-tree report (M8).
+- No test feeds `fxComplete:false` to any `MonthlyNetWorth` consumer; the type makes such a fixture impossible without a cast.
+- No test feeds `pricesComplete:false` to `InvestmentValueChart` or the widget's series.
+- No backend case asserts the gain with one unpriced holding (`portfolio.service.spec.ts`, `portfolio-calculation.service.spec.ts`).
+- `store/persisted-storage.guard.test.ts` covers localStorage, not sessionStorage.
+- No known-wrong test found in the slice.
+
+#### S21 (`21-tests-ci-release.md` section 10)
+
+##### 10.1 Known-wrong test register (program-wide)
+
+| Test (path:line) | Asserts | Protects defect | Owner finding | Found by |
+| --- | --- | --- | --- | --- |
+| `backend/src/built-in-reports/report-currency.service.spec.ts:213-218` "returns original amount when no rate is available" (and the inverse-zero case near `:247`) | 1000 JPY with no rate -> `toBe(1000)` in USD | the 1:1 fallback of `convertAmount` (`report-currency.service.ts:113-118`), used by seven built-in report services | A26-S02-02 / A26-S13-01 (MON-H12, MON-M39) | S02, S13; re-located here: **this is `docs/verification-contract.md` section 5's unconfirmed item 1** |
+| `backend/src/backup/auto-backup.service.spec.ts:3870/3871`, `:3907` "counts files left flat in the base folder by an older version" | the cross-owner legacy sweep | A26-S06-01 | A26-S06-01, MON-M43 | S02, S06 |
+| `backend/src/auth/token.service.spec.ts:323` (replay detection), `:387` (user not found), `:408` (user inactive) | that `manager.update` was called, true while the revocation is rolled back | A26-S03-01 | A26-S03-01 | S03 |
+| `backend/src/securities/investment-transactions.service.spec.ts:5120` "converts cash amount using the latest market rate when currencies differ", and five sibling cases S12 M11 names but does not list | stub `getRateForDate` to null and `getLatestRate` to the answer | the `getLatestRate` fallback, `investment-transactions.service.ts:789-792` | A26-S12-02 | S12 |
+| `backend/src/delegation/rls-context-smoke.spec.ts` (S04 D-S04-05) | "authorization under the caller, then bypass" order | A26-S04-01 | A26-S04-01 | S04 |
+| `backend/test/integration/backup-store-s3.integration.spec.ts:160-185` | unpadded day names, its own pruning wrong; never runs in CI | test defect | A26-S06-02 | S06 |
+| `backend/src/users/users.service.spec.ts:148` | mocks `ensureSystemCurrency`, so write-before-ensure passes | A26-S13-05 | A26-S13-05 | S13 |
+| `backend/src/transactions/transaction-bulk-update.service.spec.ts:2592-2643` | only that `updateBalance` was called | A26-S13-03 | A26-S13-03 | S13 |
+| `frontend/src/lib/loan-history.test.ts:2058` | the overpayment-takes-the-interest variant of a same-day pair | order dependence (D9) | -- | S15 |
+| `backend/src/ai/query/tool-executor.service.spec.ts:1345-1351`, `backend/src/mcp/tools/reports.tool.spec.ts:220-246` | `getSpendingAnomalies(userId, months)` | months passed as the z-score threshold | A26-S17-03 | S17 |
+
+The four "reported but not located" items of `docs/verification-contract.md` section 5: item 1 located (row 1); items 2 and 3 corrected (section 8); item 4 superseded by the A26-S06-01 tests.
+
+##### 10.2 Missing tests of this slice
+
+- A production-image boot in a gate (A26-S21-01); a release-workflow self-test (INV-RELEASE-001 "Required tests"; A26-S21-02); a bind-mount / named-volume writability check for the production image (A26-S21-03); a suite inventory (REL-002); a `failOnFlakyTests` guard (A26-S21-05); a `node --test` glob guard (A26-S21-06); MinIO and `BACKUP_STORE_S3_TEST_ENDPOINT` in `backend-integration-tests` so `backup-store-s3.integration.spec.ts` runs (A26-S06-02's CI half: today its `describe` is skipped in CI and counts as green); a kind/k3d chart install with persistence (`ci.yml:381-385`); the INV-HA-001 flip (a replica losing its channel goes 503), recorded as owed by the invariant itself; `e2e/` lint and type-check (no `tsconfig.json`, no ESLint config); the backend `test/*.e2e-spec.ts` suites run in no job (`backend/CLAUDE.md`: "three of five suites are broken").
+- **Unstable test observed (midnight crossing):** `backend/test/integration/bank-sync.integration.spec.ts:74` fixes `today` once for the suite (`daysAgo = (days) => addDaysYMD(today, -days)`), while the service computes its own date at call time. The full integration run started at 23:59:24 UTC; the suite (126.5 s) failed at `:2777` with `defaultSyncFromDate` expected `2026-07-24`, received `2026-07-25`, and in further cases of the same describe blocks. Any CI run that crosses UTC midnight fails it; the remedy is an injected clock in the service, or reading `today` per test.
+- **Integration deadlock root-caused (S01 hand-off), executed:** the full `npm run test:integration` (118 suites) reproduced it once. PostgreSQL log, 00:18:02 UTC: `deadlock detected`; process A ran `TRUNCATE action_history, transaction_splits, transactions, monthly_account_balances, accounts, categories, payees, users CASCADE` (the `cleanTables` list of `ofx-import-fitid.integration.spec.ts:101-111`, shared by five other suites); process B ran `SELECT MIN(transaction_date) as earliest FROM transactions WHERE account_id = $1 ...`, which is `NetWorthService.recalculateRegularAccount` (`backend/src/net-worth/net-worth.service.ts:2685-2692`). B is the per-account net-worth recompute that `ImportPostProcessingService` dispatches without awaiting (`backend/src/import/import-post-processing.service.ts:170-177`, `.recalculateAccount(...).catch(warn)`), still running from the previous test when the next `beforeEach` truncates. `cleanTables` (`test/helpers/integration-setup.ts:251-273`) settles only pending price writes and pending history writes. In this run PostgreSQL chose the background query as the victim, so its failure was swallowed by the `.catch` and no test failed; in S01's run it chose the `TRUNCATE`, and `ofx-import-fitid` failed. Remedy (test harness, not production): register the dispatched recompute the way `settlePendingPriceWrites` registers price writes and await it in `cleanTables`, or have `cleanTables` wait until no other backend of the test database is active before truncating. In production the same un-awaited recompute against a concurrent account delete ends in a logged warning, not in a wrong figure.
+- **No integration suite goes through HTTP:** 0 of 118 import `supertest`, so `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`), guards and DTO constraints run only in unit DTO specs and the E2E suite (A26-S21-07 is one consequence).
+
+#### S22 (`22-delta-review.md` section 10)
+
+No new item: the delta adds or removes no test. Confirmed still present at `MAIN_SHA`: the
+known-wrong test of MON-M39 (`backend/src/built-in-reports/report-currency.service.spec.ts:212-217`).
