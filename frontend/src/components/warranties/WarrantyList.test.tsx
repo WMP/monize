@@ -36,6 +36,7 @@ function warranty(overrides: Partial<Warranty> = {}): Warranty {
     daysLeft: 711,
     documentCount: 2,
     openClaimCount: 0,
+    linkedTransactionHidden: false,
     linkedTransaction: null,
     archivedAt: null,
     createdAt: '2026-10-01T00:00:00Z',
@@ -186,6 +187,18 @@ describe('WarrantyList', () => {
     expect(within(sheet).getByRole('button', { name: /Archive/ })).toBeInTheDocument();
     fireEvent.click(within(sheet).getByRole('button', { name: /Delete/ }));
     expect(onDelete).toHaveBeenCalled();
+  });
+
+  it('draws read-only rows with no actions column and no long-press sheet', () => {
+    const { onOpen } = renderList({ readOnly: true });
+    expect(screen.queryByText('Actions')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Delete/ })).not.toBeInTheDocument();
+    const row = screen.getByText('Laptop').closest('tr')!;
+    fireEvent.click(row);
+    expect(onOpen).toHaveBeenCalled();
+    fireEvent.contextMenu(row);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('keeps stale rows on screen but makes nothing on them act', () => {

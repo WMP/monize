@@ -26,6 +26,7 @@ import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
 import { warrantiesApi } from '@/lib/warranties';
+import { useAuthStore } from '@/store/authStore';
 import type { CreateWarrantyData, Warranty } from '@/types/warranty';
 
 const WarrantyForm = dynamic(
@@ -66,6 +67,9 @@ function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
   const t = useTranslations('warranties');
   const tc = useTranslations('common');
   const router = useRouter();
+  // An acting delegate reads the warranty, its documents and its claims; every
+  // write is the owner's (design decision 9).
+  const readOnly = useAuthStore((s) => s.actingAsUserId) !== null;
 
   // The warranty is held with the id it was read for; a reload keeps the one
   // on screen until the new answer lands.
@@ -188,24 +192,26 @@ function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
             </span>
           }
           actions={
-            <>
-              <Button variant="outline" size="sm" disabled={busy} onClick={() => openEdit(warranty)}>
-                {tc('actions.edit')}
-              </Button>
-              <Button variant="outline" size="sm" disabled={busy} onClick={handleToggleArchive}>
-                {archived ? t('list.actions.unarchive') : t('list.actions.archive')}
-              </Button>
-              <Button variant="outline" size="sm" disabled={busy} onClick={() => setConfirmDelete(true)}>
-                {tc('actions.delete')}
-              </Button>
-            </>
+            readOnly ? undefined : (
+              <>
+                <Button variant="outline" size="sm" disabled={busy} onClick={() => openEdit(warranty)}>
+                  {tc('actions.edit')}
+                </Button>
+                <Button variant="outline" size="sm" disabled={busy} onClick={handleToggleArchive}>
+                  {archived ? t('list.actions.unarchive') : t('list.actions.archive')}
+                </Button>
+                <Button variant="outline" size="sm" disabled={busy} onClick={() => setConfirmDelete(true)}>
+                  {tc('actions.delete')}
+                </Button>
+              </>
+            )
           }
         />
 
         <div className="space-y-6">
           <WarrantyDetailCard warranty={warranty} />
-          <WarrantyDocumentsSection warrantyId={warranty.id} />
-          <WarrantyClaimList warrantyId={warranty.id} today={warranty.today} onChanged={reload} />
+          <WarrantyDocumentsSection warrantyId={warranty.id} readOnly={readOnly} />
+          <WarrantyClaimList warrantyId={warranty.id} today={warranty.today} onChanged={reload} readOnly={readOnly} />
         </div>
 
         <Modal

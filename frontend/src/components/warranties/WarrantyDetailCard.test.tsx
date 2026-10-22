@@ -25,6 +25,7 @@ function warranty(overrides: Partial<Warranty> = {}): Warranty {
     daysLeft: 711,
     documentCount: 0,
     openClaimCount: 0,
+    linkedTransactionHidden: false,
     transactionId: 'tx-1',
     linkedTransaction: {
       id: 'tx-1',
@@ -130,9 +131,20 @@ describe('WarrantyDetailCard', () => {
 
   it('tells a delegate the purchase is in an account they cannot read, not that there is none', () => {
     useAuthStore.setState({ actingAsUserId: 'owner-1' });
-    render(<WarrantyDetailCard warranty={warranty({ transactionId: undefined, linkedTransaction: null })} />);
+    render(
+      <WarrantyDetailCard
+        warranty={warranty({ transactionId: undefined, linkedTransaction: null, linkedTransactionHidden: true })}
+      />,
+    );
     expect(screen.getByText('The purchase is in an account you cannot read.')).toBeInTheDocument();
     expect(screen.queryByText('No linked transaction')).not.toBeInTheDocument();
+  });
+
+  it('tells a delegate there is no linked transaction when the server says none is hidden', () => {
+    useAuthStore.setState({ actingAsUserId: 'owner-1' });
+    render(<WarrantyDetailCard warranty={warranty({ transactionId: undefined, linkedTransaction: null })} />);
+    expect(screen.getByText('No linked transaction')).toBeInTheDocument();
+    expect(screen.queryByText(/cannot read/)).not.toBeInTheDocument();
   });
 
   it('shows a delegate the purchase when the server sent it', () => {

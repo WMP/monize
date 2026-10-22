@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor, within } from '@/test/render';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '@/store/authStore';
 import type { Warranty, WarrantyListResult, WarrantySummary } from '@/types/warranty';
 import WarrantiesPage from './page';
 
@@ -97,6 +98,7 @@ function warranty(overrides: Partial<Warranty> = {}): Warranty {
     daysLeft: 20,
     documentCount: 0,
     openClaimCount: 1,
+    linkedTransactionHidden: false,
     linkedTransaction: null,
     archivedAt: null,
     createdAt: '2026-10-01T00:00:00Z',
@@ -133,6 +135,7 @@ describe('WarrantiesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSearch = '';
+    useAuthStore.setState({ actingAsUserId: null });
     mockList.mockResolvedValue(page([warranty()]));
     mockSummary.mockResolvedValue(SUMMARY);
     mockCreate.mockResolvedValue(warranty());
@@ -412,5 +415,45 @@ describe('WarrantiesPage', () => {
     await waitFor(() => expect(screen.getByTestId('warranty-form')).toBeInTheDocument());
     expect(screen.queryByTestId('prefill')).not.toBeInTheDocument();
     expect(toast.error).toHaveBeenCalledWith('That transaction could not be loaded, so the warranty starts blank');
+  });
+
+  describe('for an acting delegate', () => {
+    // Set before each render and reset by the outer beforeEach, never while a
+    // tree is mounted (an update outside act() fails the test).
+    beforeEach(() => {
+      useAuthStore.setState({ actingAsUserId: 'owner-1' });
+    });
+
+    it('lists the warranties with no Add button and no row actions', async () => {
+      await renderPage();
+      expect(screen.getByText('Laptop')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Add warranty' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Archive' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+      expect(screen.queryByText('Actions')).not.toBeInTheDocument();
+    });
+
+    it('still opens the detail page from a row', async () => {
+      await renderPage();
+      await act(async () => {
+        fireEvent.click(screen.getByText('Laptop').closest('tr')!);
+      });
+      expect(router.push).toHaveBeenCalledWith('/warranties/w-1');
+    });
+
+    it('offers no Add on an empty list', async () => {
+      mockList.mockResolvedValue(page([]));
+      await renderPage();
+      expect(screen.getByText('No warranties yet')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Add warranty' })).not.toBeInTheDocument();
+    });
+
+    it('does not open the form from a ?new=1 link', async () => {
+      mockSearch = `new=1&transactionId=${TX_ID}`;
+      await renderPage();
+      expect(mockGetTransaction).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('warranty-form')).not.toBeInTheDocument();
+    });
   });
 });

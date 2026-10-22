@@ -35,7 +35,15 @@ import {
  */
 type AttachmentsSectionProps =
   | { transactionId: string }
-  | { warrantyId: string; documentKind?: DocumentKind }
+  | {
+      warrantyId: string;
+      documentKind?: DocumentKind;
+      /**
+       * List and preview only: no upload, scan, kind picker or delete. An
+       * acting delegate reads a warranty's documents but never changes them.
+       */
+      readOnly?: boolean;
+    }
   | {
       stagedFiles: StagedAttachment[];
       onStagedFilesChange: (files: StagedAttachment[]) => void;
@@ -202,10 +210,12 @@ function SavedAttachments({
   parentKind,
   parentId,
   initialDocumentKind,
+  readOnly = false,
 }: {
   parentKind: SavedParentKind;
   parentId: string;
   initialDocumentKind?: DocumentKind;
+  readOnly?: boolean;
 }) {
   const t = useTranslations('attachments');
   const tw = useTranslations('warranties');
@@ -342,19 +352,23 @@ function SavedAttachments({
       <AttachmentsHeader
         heading={isWarranty ? tw('documents.title') : undefined}
       >
-        <ScanDocumentControl
-          onFileSelected={handleScanSelected}
-          onReady={rememberScanPicker}
-          disabled={uploading || atLimit}
-        />
-        <UploadControl
-          onFileSelected={handleFileSelected}
-          loading={uploading}
-          disabled={uploading || atLimit}
-        />
+        {!readOnly && (
+          <>
+            <ScanDocumentControl
+              onFileSelected={handleScanSelected}
+              onReady={rememberScanPicker}
+              disabled={uploading || atLimit}
+            />
+            <UploadControl
+              onFileSelected={handleFileSelected}
+              loading={uploading}
+              disabled={uploading || atLimit}
+            />
+          </>
+        )}
       </AttachmentsHeader>
 
-      {isWarranty && (
+      {isWarranty && !readOnly && (
         <DocumentKindPicker
           value={documentKind}
           onChange={setDocumentKind}
@@ -428,16 +442,18 @@ function SavedAttachments({
                     {tw(`documents.kinds.${attachment.documentKind}`)}
                   </Badge>
                 )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  aria-label={t('delete')}
-                  className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                  onClick={() => setDeleteTarget(attachment)}
-                >
-                  {t('delete')}
-                </Button>
+                {!readOnly && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t('delete')}
+                    className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                    onClick={() => setDeleteTarget(attachment)}
+                  >
+                    {t('delete')}
+                  </Button>
+                )}
               </li>
             );
           })}
@@ -679,6 +695,7 @@ export function AttachmentsSection(props: AttachmentsSectionProps) {
         parentKind="warranty"
         parentId={props.warrantyId}
         initialDocumentKind={props.documentKind}
+        readOnly={props.readOnly}
       />
     );
   }

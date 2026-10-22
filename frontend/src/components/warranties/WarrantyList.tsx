@@ -98,6 +98,7 @@ interface WarrantyRowProps {
   density: DensityLevel;
   cellPadding: string;
   actions: RowAction[];
+  readOnly: boolean;
   wrapped: boolean;
   getRowHandlers: (warranty: Warranty) => LongPressRowHandlers;
   onOpen: (warranty: Warranty) => void;
@@ -108,6 +109,7 @@ const WarrantyRow = memo(function WarrantyRow({
   density,
   cellPadding,
   actions,
+  readOnly,
   wrapped,
   getRowHandlers,
   onOpen,
@@ -209,9 +211,11 @@ const WarrantyRow = memo(function WarrantyRow({
       <Td align="right" className={cn(cellPadding, 'hidden md:table-cell whitespace-nowrap')}>{price}</Td>
       <Td align="right" className={cn(cellPadding, 'hidden lg:table-cell whitespace-nowrap')}>{documents}</Td>
       <Td align="right" className={cn(cellPadding, 'hidden lg:table-cell whitespace-nowrap')}>{claims}</Td>
-      <Td align="right" className={cn(cellPadding, 'hidden min-[480px]:table-cell whitespace-nowrap font-medium')}>
-        <RowActions actions={actions} density={density} />
-      </Td>
+      {!readOnly && (
+        <Td align="right" className={cn(cellPadding, 'hidden min-[480px]:table-cell whitespace-nowrap font-medium')}>
+          <RowActions actions={actions} density={density} />
+        </Td>
+      )}
     </tr>
   );
 });
@@ -232,6 +236,11 @@ export interface WarrantyListProps extends WarrantyActionHandlers {
   empty: WarrantyListEmpty;
   /** Buttons for the strip above the rows (Add; Export and Import later). */
   toolbarActions?: ReactNode;
+  /**
+   * No Edit, Archive or Delete: no actions column and no long-press sheet. An
+   * acting delegate reads warranties but never changes them.
+   */
+  readOnly?: boolean;
   /**
    * True while the rows on screen answer a request the reader has already
    * moved away from: they stay visible, marked busy, and nothing on them acts.
@@ -256,6 +265,7 @@ export function WarrantyList({
   onSort,
   empty,
   toolbarActions,
+  readOnly = false,
   stale = false,
   onOpen,
   onEdit,
@@ -299,7 +309,9 @@ export function WarrantyList({
   );
 
   const { getRowHandlers } = useLongPress<Warranty>({
-    onLongPress: (warranty) => setSheetId(warranty.id),
+    onLongPress: (warranty) => {
+      if (!readOnly) setSheetId(warranty.id);
+    },
     onClick: open,
   });
 
@@ -409,9 +421,11 @@ export function WarrantyList({
                 <Th align="right" className={cn(headerPadding, 'hidden lg:table-cell')}>
                   {t('list.columns.claims')}
                 </Th>
-                <Th align="right" className={cn(headerPadding, 'hidden min-[480px]:table-cell')}>
-                  {t('list.columns.actions')}
-                </Th>
+                {!readOnly && (
+                  <Th align="right" className={cn(headerPadding, 'hidden min-[480px]:table-cell')}>
+                    {t('list.columns.actions')}
+                  </Th>
+                )}
               </tr>
             )}
           </thead>
@@ -423,6 +437,7 @@ export function WarrantyList({
                 density={density}
                 cellPadding={cellPadding}
                 actions={rowActions[index]}
+                readOnly={readOnly}
                 wrapped={wrapped}
                 getRowHandlers={getRowHandlers}
                 onOpen={open}
@@ -432,7 +447,7 @@ export function WarrantyList({
         </table>
       </div>
       <RowActionSheet
-        isOpen={sheetWarranty !== null}
+        isOpen={!readOnly && sheetWarranty !== null}
         title={sheetWarranty?.name ?? ''}
         actions={sheetWarranty ? buildWarrantyActions(sheetWarranty, labels, handlers, stale) : []}
         onClose={() => setSheetId(null)}

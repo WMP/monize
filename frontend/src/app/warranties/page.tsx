@@ -34,6 +34,7 @@ import { createLogger } from '@/lib/logger';
 import { transactionsApi } from '@/lib/transactions';
 import { isUuid } from '@/lib/uuid';
 import { warrantiesApi } from '@/lib/warranties';
+import { useAuthStore } from '@/store/authStore';
 import type {
   CreateWarrantyData,
   Warranty,
@@ -69,6 +70,8 @@ function WarrantiesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { formatNumber } = useNumberFormat();
+  // An acting delegate reads warranties; every write is the owner's.
+  const readOnly = useAuthStore((s) => s.actingAsUserId) !== null;
 
   const urlTransactionParam = searchParams.get('transactionId');
   const urlTransactionId = isUuid(urlTransactionParam) ? urlTransactionParam : null;
@@ -172,7 +175,7 @@ function WarrantiesContent() {
   // per link, then leave the list filtered to it.
   const handledNewFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!urlNew || urlTransactionId === null || handledNewFor.current === urlTransactionId) return;
+    if (readOnly || !urlNew || urlTransactionId === null || handledNewFor.current === urlTransactionId) return;
     const id = urlTransactionId;
     handledNewFor.current = id;
     transactionsApi
@@ -197,7 +200,7 @@ function WarrantiesContent() {
         openCreate();
       })
       .finally(() => router.replace(`/warranties?transactionId=${id}`));
-  }, [urlNew, urlTransactionId, openCreate, router, t]);
+  }, [readOnly, urlNew, urlTransactionId, openCreate, router, t]);
 
   const handleFormSubmit = async (data: CreateWarrantyData) => {
     try {
@@ -281,9 +284,9 @@ function WarrantiesContent() {
     return {
       title: t('page.empty.title'),
       description: t('page.empty.description'),
-      action: <Button onClick={openNew}>{t('page.newButton')}</Button>,
+      action: readOnly ? undefined : <Button onClick={openNew}>{t('page.newButton')}</Button>,
     };
-  }, [archived, filtered, openNew, t]);
+  }, [archived, filtered, openNew, readOnly, t]);
 
   const isStale = list !== null && list.key !== requestKey;
   const failed = failedKey === requestKey;
@@ -319,11 +322,14 @@ function WarrantiesContent() {
         }}
         empty={empty}
         stale={isStale}
+        readOnly={readOnly}
         toolbarActions={
-          <button type="button" onClick={openNew} className={LIST_TOOLBAR_BUTTON_CLASS}>
-            <PlusIcon className="h-4 w-4 mr-1" aria-hidden="true" />
-            {t('page.newButton')}
-          </button>
+          readOnly ? undefined : (
+            <button type="button" onClick={openNew} className={LIST_TOOLBAR_BUTTON_CLASS}>
+              <PlusIcon className="h-4 w-4 mr-1" aria-hidden="true" />
+              {t('page.newButton')}
+            </button>
+          )
         }
         onOpen={openDetail}
         onEdit={openEdit}

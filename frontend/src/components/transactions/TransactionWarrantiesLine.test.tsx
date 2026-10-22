@@ -38,6 +38,7 @@ function makeWarranty(overrides: Partial<Warranty> = {}): Warranty {
     daysLeft: 446,
     documentCount: 0,
     openClaimCount: 0,
+    linkedTransactionHidden: false,
     transactionId: 'tx-1',
     linkedTransaction: null,
     archivedAt: null,

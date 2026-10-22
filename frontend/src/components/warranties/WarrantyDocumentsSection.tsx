@@ -6,6 +6,8 @@ import { AttachmentsSection } from '@/components/transactions/AttachmentsSection
 
 interface WarrantyDocumentsSectionProps {
   warrantyId: string;
+  /** List and preview only (an acting delegate never uploads, scans or deletes). */
+  readOnly?: boolean;
 }
 
 /**
@@ -14,11 +16,11 @@ interface WarrantyDocumentsSectionProps {
  * parent, never a second uploader, so the limits, scanning and the preview
  * are the transaction's own (docs/frontend/ui-conventions.md).
  */
-export function WarrantyDocumentsSection({ warrantyId }: WarrantyDocumentsSectionProps) {
+export function WarrantyDocumentsSection({ warrantyId, readOnly = false }: WarrantyDocumentsSectionProps) {
   const t = useTranslations('warranties');
   return (
     <Card as="section" padding="md" aria-label={t('documents.title')}>
-      <AttachmentsSection warrantyId={warrantyId} />
+      <AttachmentsSection warrantyId={warrantyId} readOnly={readOnly} />
     </Card>
   );
 }

@@ -59,6 +59,16 @@ describe('WarrantyClaimList', () => {
     mockDeleteClaim.mockResolvedValue(undefined);
   });
 
+  it('lists the claims read-only, with no Add, Edit or Delete', async () => {
+    await act(async () => {
+      render(<WarrantyClaimList warrantyId="w-1" today="2026-10-21" readOnly />);
+    });
+    expect(screen.getByTestId('claim-c-1')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add claim' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+  });
+
   it('lists the claims against the warranty, with the address in a description as a link', async () => {
     await renderList();
     expect(mockListClaims).toHaveBeenCalledWith('w-1');

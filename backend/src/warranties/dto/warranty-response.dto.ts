@@ -45,6 +45,13 @@ export interface WarrantyView {
   /** Present when the warranty links to a purchase the reader may see. */
   transactionId?: string;
   linkedTransaction: LinkedTransaction | null;
+  /**
+   * True only for an acting delegate when the warranty links to a purchase in
+   * an account outside their readable scope (design section 9), so the detail
+   * can say so rather than "no linked transaction". Always false for the
+   * owner. Carries no id: WTY-007 still holds.
+   */
+  linkedTransactionHidden: boolean;
   archivedAt: string | null;
   createdAt: string;
   updatedAt: string;

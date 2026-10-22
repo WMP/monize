@@ -74,6 +74,11 @@ export interface Warranty {
   /** Omitted when the reader may not see the linked purchase. */
   transactionId?: string;
   linkedTransaction: WarrantyLinkedTransaction | null;
+  /**
+   * True only for an acting delegate when the warranty links to a purchase in
+   * an account they cannot read; false for the owner and for no link at all.
+   */
+  linkedTransactionHidden: boolean;
   archivedAt: string | null;
   createdAt: string;
   updatedAt: string;

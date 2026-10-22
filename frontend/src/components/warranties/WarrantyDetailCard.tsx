@@ -11,7 +11,6 @@ import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { toSafeExternalUrl } from '@/lib/external-url';
 import { withCurrencyCode } from '@/lib/format';
-import { useAuthStore } from '@/store/authStore';
 import type { Warranty } from '@/types/warranty';
 
 const LINK_CLASS =
@@ -32,21 +31,19 @@ function Field({ label, children, wide = false }: { label: string; children: Rea
  * Three states, decided from what the response carries: the purchase itself,
  * linked through the register's flash deep link; no link at all; or, for an
  * acting delegate, a purchase in an account their delegation does not let
- * them read -- the server omits it, and saying "no linked transaction" there
- * would be false.
+ * them read -- the server omits it and says so with `linkedTransactionHidden`,
+ * and saying "no linked transaction" there would be false.
  */
 function LinkedPurchase({ warranty }: { warranty: Warranty }) {
   const t = useTranslations('warranties');
   const { formatDate } = useDateFormat();
   const { formatCurrency, defaultCurrency } = useNumberFormat();
-  const isDelegate = useAuthStore((s) => s.actingAsUserId) !== null;
   const linked = warranty.linkedTransaction;
 
   if (linked === null) {
-    const unreadable = isDelegate && warranty.transactionId === undefined;
     return (
       <p className="text-sm text-gray-500 dark:text-gray-400">
-        {unreadable ? t('detail.transaction.unreadable') : t('detail.transaction.none')}
+        {warranty.linkedTransactionHidden ? t('detail.transaction.unreadable') : t('detail.transaction.none')}
       </p>
     );
   }

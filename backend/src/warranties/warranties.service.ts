@@ -19,7 +19,10 @@ import { Payee } from "../payees/entities/payee.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { escapeLikePattern } from "../transactions/transaction-search.util";
 import { CreateWarrantyDto, isBlank } from "./dto/create-warranty.dto";
-import { ListWarrantiesDto } from "./dto/list-warranties.dto";
+import {
+  ListWarrantiesDto,
+  WarrantyStatusFilter,
+} from "./dto/list-warranties.dto";
 import { UpdateWarrantyDto } from "./dto/update-warranty.dto";
 import {
   LinkedTransaction,
@@ -28,7 +31,7 @@ import {
   WarrantyView,
 } from "./dto/warranty-response.dto";
 import { WarrantyClaim } from "./entities/warranty-claim.entity";
-import { Warranty } from "./entities/warranty.entity";
+import { Warranty, WarrantyKind } from "./entities/warranty.entity";
 import { WarrantyTerm, termToExpiresOn } from "./warranty-expiry.util";
 import {
   WARRANTY_EXPIRING_WINDOW_DAYS,
@@ -688,6 +691,10 @@ export class WarrantiesService {
         documentCount: documentCounts.get(row.id) ?? 0,
         openClaimCount: openClaimCounts.get(row.id) ?? 0,
         linkedTransaction,
+        linkedTransactionHidden:
+          accountScope !== undefined &&
+          row.transactionId !== null &&
+          linkedTransaction === null,
         archivedAt: row.archivedAt ? row.archivedAt.toISOString() : null,
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
@@ -763,4 +770,100 @@ export class WarrantiesService {
     }
     return linked;
   }
+
+  /**
+   * The `list_warranties` tool on both AI surfaces (design decision 11): the
+   * MCP tool and the assistant's executor are thin adapters over this one
+   * method, so they answer the same shape. It reads through `findAll`, so the
+   * status filter, the search and every row's `status` and `daysLeft` are the
+   * list route's own (WTY-002), and the linked purchase is narrowed by
+   * `ctx.accountScope` exactly as the route narrows it (WTY-007):
+   * `linkedTransactionId` is null both when there is no link and when the
+   * reader may not see it. Unarchived rows only, soonest expiry first.
+   */
+  async getLlmWarranties(
+    userId: string,
+    query: LlmWarrantyQuery,
+    ctx: WarrantyReadContext = {},
+  ): Promise<LlmWarrantyList> {
+    const today = ctx.today ?? todayYMD();
+    const limit = Math.min(
+      LLM_WARRANTY_MAX_LIMIT,
+      Math.max(1, Math.floor(query.limit ?? LLM_WARRANTY_DEFAULT_LIMIT)),
+    );
+    const { data, pagination } = await this.findAll(
+      userId,
+      {
+        status: query.status ?? "all",
+        q: query.q,
+        archived: false,
+        sort: "expiresOn",
+        page: 1,
+        limit,
+      },
+      { ...ctx, today },
+    );
+    return {
+      today,
+      windowDays: WARRANTY_EXPIRING_WINDOW_DAYS,
+      warranties: data.map((view) => ({
+        id: view.id,
+        name: view.name,
+        vendorName: view.vendorName,
+        warrantyKind: view.warrantyKind,
+        purchaseDate: view.purchaseDate,
+        expiresOn: view.expiresOn,
+        isLifetime: view.isLifetime,
+        status: view.status,
+        daysLeft: view.daysLeft,
+        purchasePrice: view.purchasePrice,
+        currencyCode: view.currencyCode,
+        serialNumbers: view.serialNumbers,
+        linkedTransactionId: view.transactionId ?? null,
+        openClaimCount: view.openClaimCount,
+        documentCount: view.documentCount,
+        archived: false as const,
+      })),
+      total: pagination.total,
+    };
+  }
+}
+
+/** `list_warranties`: at most this many rows per call, 20 when unasked. */
+export const LLM_WARRANTY_MAX_LIMIT = 50;
+export const LLM_WARRANTY_DEFAULT_LIMIT = 20;
+
+/** The `list_warranties` tool's input, after its schema has validated it. */
+export interface LlmWarrantyQuery {
+  status?: WarrantyStatusFilter;
+  q?: string;
+  limit?: number;
+}
+
+/** One warranty as a model reads it: the server's status, never a date sum. */
+export interface LlmWarranty {
+  id: string;
+  name: string;
+  vendorName: string | null;
+  warrantyKind: WarrantyKind;
+  purchaseDate: string;
+  expiresOn: string | null;
+  isLifetime: boolean;
+  status: WarrantyStatus;
+  daysLeft: number | null;
+  purchasePrice: number | null;
+  currencyCode: string | null;
+  serialNumbers: string[];
+  linkedTransactionId: string | null;
+  openClaimCount: number;
+  documentCount: number;
+  archived: false;
+}
+
+/** `total` counts every match; `warranties` is the first `limit` of them. */
+export interface LlmWarrantyList {
+  today: string;
+  windowDays: number;
+  warranties: LlmWarranty[];
+  total: number;
 }

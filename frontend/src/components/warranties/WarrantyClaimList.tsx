@@ -42,6 +42,8 @@ interface WarrantyClaimListProps {
   today: string;
   /** Called after a claim is added, changed or deleted, so the page can refresh its counts. */
   onChanged?: () => void;
+  /** List only: no Add, Edit or Delete (an acting delegate reads claims, never writes them). */
+  readOnly?: boolean;
 }
 
 /**
@@ -50,7 +52,7 @@ interface WarrantyClaimListProps {
  * the warranty's status. A list that failed to load says so and offers a
  * retry; it is never drawn as "no claims".
  */
-export function WarrantyClaimList({ warrantyId, today, onChanged }: WarrantyClaimListProps) {
+export function WarrantyClaimList({ warrantyId, today, onChanged, readOnly = false }: WarrantyClaimListProps) {
   const t = useTranslations('warranties');
   const tc = useTranslations('common');
   const { formatDate } = useDateFormat();
@@ -170,19 +172,21 @@ export function WarrantyClaimList({ warrantyId, today, onChanged }: WarrantyClai
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="sm" onClick={() => openEdit(claim)}>
-                  {tc('actions.edit')}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                  onClick={() => setDeleteTarget(claim)}
-                >
-                  {tc('actions.delete')}
-                </Button>
-              </div>
+              {!readOnly && (
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => openEdit(claim)}>
+                    {tc('actions.edit')}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                    onClick={() => setDeleteTarget(claim)}
+                  >
+                    {tc('actions.delete')}
+                  </Button>
+                </div>
+              )}
             </div>
             {claim.description !== null && (
               <p className="mt-1 text-sm text-gray-900 dark:text-gray-100 whitespace-pre-wrap break-words">
@@ -204,10 +208,12 @@ export function WarrantyClaimList({ warrantyId, today, onChanged }: WarrantyClai
     <Card as="section" padding="md" aria-label={t('claims.title')}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('claims.title')}</h2>
-        <Button variant="outline" size="sm" onClick={openCreate}>
-          <PlusIcon className="h-4 w-4 mr-1" aria-hidden="true" />
-          {t('claims.add')}
-        </Button>
+        {!readOnly && (
+          <Button variant="outline" size="sm" onClick={openCreate}>
+            <PlusIcon className="h-4 w-4 mr-1" aria-hidden="true" />
+            {t('claims.add')}
+          </Button>
+        )}
       </div>
       {body}
 

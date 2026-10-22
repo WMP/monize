@@ -985,7 +985,11 @@
     },
     "sections": {
       "description": "Grant read-only access to whole app sections. Account-scoped data still also needs per-account access.",
-      "aiRequiresFullAccess": "The AI Assistant reads across every account and section, so it only answers for this delegate once they can read all of your accounts and every other section."
+      "aiRequiresFullAccess": "The AI Assistant reads across every account and section, so it only answers for this delegate once they can read all of your accounts and every other section.",
+      "warranties": {
+        "label": "Warranties",
+        "description": "Warranties, their documents and claims. A linked purchase shows only for an account they can read."
+      }
     },
     "accounts": {
       "noAccounts": "No accounts to grant.",

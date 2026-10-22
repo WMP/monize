@@ -60,6 +60,7 @@ function view(id: string, dto: CreateWarrantyDto): WarrantyView {
     documentCount: 0,
     openClaimCount: 0,
     linkedTransaction: null,
+    linkedTransactionHidden: false,
     archivedAt: null,
     createdAt: "2026-10-21T12:00:00.000Z",
     updatedAt: "2026-10-21T12:00:00.000Z",

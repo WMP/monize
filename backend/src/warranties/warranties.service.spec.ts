@@ -206,6 +206,7 @@ describe("WarrantiesService", () => {
           currencyCode: "CAD",
           accountId: ACCOUNT,
         },
+        linkedTransactionHidden: false,
         createdAt: "2026-10-01T12:00:00.000Z",
         archivedAt: null,
       });
@@ -216,6 +217,7 @@ describe("WarrantiesService", () => {
         documentCount: 0,
         openClaimCount: 1,
         linkedTransaction: null,
+        linkedTransactionHidden: false,
       });
       expect(result.data[1]).not.toHaveProperty("transactionId");
       // One transaction for the page and its enrichment.
@@ -267,6 +269,7 @@ describe("WarrantiesService", () => {
         );
         expect(data[0].transactionId).toBe(TX);
         expect(data[0].linkedTransaction?.id).toBe(TX);
+        expect(data[0].linkedTransactionHidden).toBe(false);
       });
 
       it("shows the purchase when its account is in the delegate's scope", async () => {
@@ -286,6 +289,7 @@ describe("WarrantiesService", () => {
         });
         expect(data[0].transactionId).toBe(TX);
         expect(data[0].linkedTransaction?.accountId).toBe(ACCOUNT);
+        expect(data[0].linkedTransactionHidden).toBe(false);
       });
 
       it("answers null and omits the id when the account is outside the scope", async () => {
@@ -307,6 +311,23 @@ describe("WarrantiesService", () => {
         });
         expect(data[0].linkedTransaction).toBeNull();
         expect(data[0]).not.toHaveProperty("transactionId");
+        // Section 9: the detail says the purchase is in an unreadable
+        // account, which the flag (and nothing carrying an id) tells it.
+        expect(data[0].linkedTransactionHidden).toBe(true);
+      });
+
+      it("flags nothing hidden for a delegate when the warranty has no link", async () => {
+        listQb = qbMock({ manyAndCount: [[warranty()], 1] });
+
+        const { data } = await service.findAll(
+          USER,
+          {},
+          { today: TODAY, accountScope: [ACCOUNT] },
+        );
+
+        expect(data[0].linkedTransaction).toBeNull();
+        expect(data[0]).not.toHaveProperty("transactionId");
+        expect(data[0].linkedTransactionHidden).toBe(false);
       });
 
       it("reads no purchase at all for an empty scope", async () => {
@@ -323,6 +344,7 @@ describe("WarrantiesService", () => {
         expect(transactionRepo.createQueryBuilder).not.toHaveBeenCalled();
         expect(data[0].linkedTransaction).toBeNull();
         expect(data[0]).not.toHaveProperty("transactionId");
+        expect(data[0].linkedTransactionHidden).toBe(true);
       });
     });
 
@@ -832,6 +854,127 @@ describe("WarrantiesService", () => {
       await expect(service.archive(USER, W1, { today: TODAY })).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe("getLlmWarranties (decision 11)", () => {
+    it("answers the model's shape from the list's own rows, statuses and counts", async () => {
+      listQb = qbMock({
+        manyAndCount: [
+          [
+            warranty({ transactionId: TX }),
+            warranty({ id: W2, isLifetime: true, expiresOn: null }),
+          ],
+          7,
+        ],
+      });
+      mocks.manager.query.mockResolvedValue([{ warranty_id: W1, count: "2" }]);
+      claimQb = qbMock({ rawMany: [{ warrantyId: W2, count: "1" }] });
+      transactionQb = qbMock({ many: [linkedTransactionRow()] });
+
+      const result = await service.getLlmWarranties(
+        USER,
+        {},
+        { today: "2028-09-02" },
+      );
+
+      expect(result).toEqual({
+        today: "2028-09-02",
+        windowDays: 30,
+        total: 7,
+        warranties: [
+          {
+            id: W1,
+            name: "Laptop",
+            vendorName: "Best Buy",
+            warrantyKind: "manufacturer",
+            purchaseDate: "2026-10-01",
+            expiresOn: "2028-10-01",
+            isLifetime: false,
+            status: "expiring",
+            daysLeft: 29,
+            purchasePrice: 1499.99,
+            currencyCode: "CAD",
+            serialNumbers: ["SN-1"],
+            linkedTransactionId: TX,
+            openClaimCount: 0,
+            documentCount: 2,
+            archived: false,
+          },
+          expect.objectContaining({
+            id: W2,
+            status: "lifetime",
+            daysLeft: null,
+            linkedTransactionId: null,
+            openClaimCount: 1,
+            documentCount: 0,
+          }),
+        ],
+      });
+      // Unarchived only, soonest expiry first, 20 rows when unasked.
+      expect(listQb.andWhere).toHaveBeenCalledWith("w.archived_at IS NULL");
+      expect(listQb.orderBy).toHaveBeenCalledWith(
+        "w.expiresOn",
+        "ASC",
+        "NULLS LAST",
+      );
+      expect(listQb.take).toHaveBeenCalledWith(20);
+    });
+
+    it("forwards the status and the search to the list's filters", async () => {
+      await service.getLlmWarranties(
+        USER,
+        { status: "expiring", q: "laptop" },
+        { today: TODAY },
+      );
+
+      expect(listQb.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining("w.expires_on <= :expiringExpiresTo"),
+        expect.objectContaining({ expiringExpiresTo: "2026-11-20" }),
+      );
+      expect(listQb.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining("w.name ILIKE :q"),
+        { q: "%laptop%" },
+      );
+    });
+
+    it.each([
+      [500, 50],
+      [0, 1],
+      [12, 12],
+    ])("bounds a limit of %p to %p rows", async (limit, take) => {
+      await service.getLlmWarranties(USER, { limit }, { today: TODAY });
+      expect(listQb.take).toHaveBeenCalledWith(take);
+    });
+
+    it("answers a null linkedTransactionId for a purchase outside a delegate's scope (WTY-007)", async () => {
+      listQb = qbMock({
+        manyAndCount: [[warranty({ transactionId: TX })], 1],
+      });
+      transactionQb = qbMock({ many: [] });
+
+      const { warranties } = await service.getLlmWarranties(
+        USER,
+        {},
+        {
+          today: TODAY,
+          accountScope: ["99999999-9999-4999-8999-999999999999"],
+        },
+      );
+
+      expect(warranties[0].linkedTransactionId).toBeNull();
+      expect(JSON.stringify(warranties)).not.toContain(TX);
+    });
+
+    it("reads today in the user's timezone when the caller passes none", async () => {
+      jest.useFakeTimers().setSystemTime(new Date("2026-10-21T03:00:00Z"));
+
+      const result = await requestContextStorage.run(
+        { userId: USER, timezone: "America/Toronto" },
+        () => service.getLlmWarranties(USER, {}),
+      );
+
+      expect(result.today).toBe("2026-10-20");
     });
   });
 });

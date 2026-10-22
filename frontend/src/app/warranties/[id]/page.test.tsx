@@ -109,6 +109,7 @@ function warranty(overrides: Partial<Warranty> = {}): Warranty {
     daysLeft: 20,
     documentCount: 1,
     openClaimCount: 1,
+    linkedTransactionHidden: false,
     transactionId: 'tx-1',
     linkedTransaction: {
       id: 'tx-1',
@@ -255,10 +256,41 @@ describe('WarrantyDetailPage', () => {
 
   it('tells a delegate the purchase is in an account they cannot read', async () => {
     useAuthStore.setState({ actingAsUserId: 'owner-1' });
-    mockGetById.mockResolvedValue(warranty({ transactionId: undefined, linkedTransaction: null }));
+    mockGetById.mockResolvedValue(
+      warranty({ transactionId: undefined, linkedTransaction: null, linkedTransactionHidden: true }),
+    );
     await renderPage();
     expect(screen.getByText('The purchase is in an account you cannot read.')).toBeInTheDocument();
     expect(screen.queryByText('No linked transaction')).not.toBeInTheDocument();
+  });
+
+  it('tells a delegate there is no linked transaction when the warranty has none', async () => {
+    useAuthStore.setState({ actingAsUserId: 'owner-1' });
+    mockGetById.mockResolvedValue(warranty({ transactionId: undefined, linkedTransaction: null }));
+    await renderPage();
+    expect(screen.getByText('No linked transaction')).toBeInTheDocument();
+    expect(screen.queryByText(/cannot read/)).not.toBeInTheDocument();
+  });
+
+  it('shows a delegate the warranty, its documents and claims without any owner control', async () => {
+    useAuthStore.setState({ actingAsUserId: 'owner-1' });
+    await renderPage();
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Laptop' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Archive' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+
+    const documents = screen.getByRole('region', { name: 'Documents' });
+    expect(within(documents).getByRole('button', { name: 'Preview receipt.pdf' })).toBeInTheDocument();
+    expect(within(documents).getByTestId('document-kind-a-1')).toHaveTextContent('Receipt');
+    expect(within(documents).queryByText('Add attachment')).not.toBeInTheDocument();
+    expect(within(documents).queryByText('Scan document')).not.toBeInTheDocument();
+    expect(within(documents).queryByLabelText('Document type')).not.toBeInTheDocument();
+
+    const claims = screen.getByRole('region', { name: 'Claims' });
+    expect(within(claims).getByText('Screen flickers')).toBeInTheDocument();
+    expect(within(claims).queryByRole('button', { name: 'Add claim' })).not.toBeInTheDocument();
   });
 
   it('edits the warranty in a modal', async () => {

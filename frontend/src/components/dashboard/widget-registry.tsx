@@ -346,12 +346,13 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
     defaultEnabled: false,
     render: (ctx) => <CashFlowSankeyWidget accounts={ctx.accounts} isLoading={ctx.isLoading} />,
   },
-  // Opt-in. No `delegateVisible` yet: the delegate section decides it.
+  // Opt-in for the owner; a delegate sees it with the warranties section.
   {
     id: 'warranties-expiring',
     titleSection: 'warrantiesExpiring',
     iconType: 'list',
     defaultEnabled: false,
+    delegateVisible: (sections) => !!sections?.warranties,
     render: (ctx) => <WarrantiesExpiringWidget isLoading={ctx.isLoading} />,
   },
 ];

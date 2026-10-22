@@ -38,6 +38,7 @@ const warranty: Warranty = {
   daysLeft: null,
   documentCount: 0,
   openClaimCount: 0,
+  linkedTransactionHidden: false,
   linkedTransaction: null,
   archivedAt: null,
   createdAt: '2025-05-01T00:00:00Z',
