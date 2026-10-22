@@ -1735,6 +1735,45 @@ describe("TransactionsService", () => {
       splits: [],
     };
 
+    it("refuses an amount change on a transfer leg before writing (A26-M10)", async () => {
+      transactionsRepository.findOne.mockResolvedValue({
+        ...mockTx,
+        amount: 100,
+        isTransfer: true,
+        linkedTransactionId: "tx-2",
+      });
+      lockedRow = { ...mockTx, amount: 100, linkedTransactionId: "tx-2" };
+
+      await expect(
+        service.update("user-1", "tx-1", { amount: 150 } as any),
+      ).rejects.toThrow(/Transfers can't be edited here/);
+
+      expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+    });
+
+    it("accepts a transfer leg edit that re-sends its unchanged amount", async () => {
+      const leg = {
+        ...mockTx,
+        amount: 100,
+        isTransfer: true,
+        linkedTransactionId: "tx-2",
+      };
+      transactionsRepository.findOne.mockResolvedValue(leg);
+      lockedRow = { ...mockTx, amount: 100, linkedTransactionId: "tx-2" };
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce({
+        ...leg,
+        description: "Rent float",
+      });
+
+      await service.update("user-1", "tx-1", {
+        amount: 100,
+        description: "Rent float",
+      } as any);
+
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+    });
+
     it("derives the balance delta from the locked row, not the caller's snapshot", async () => {
       // The regression guard for P4-003. Opening balance 100.00 and one -10.00
       // row: request A changes it to -20.00 and commits (delta -10.00), then

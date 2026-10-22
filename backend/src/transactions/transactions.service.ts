@@ -108,12 +108,17 @@ import {
 import { deletionBalanceEffect } from "../common/deletion-balance.util";
 import { getActiveScopedManager, withScopedDb } from "../common/db/scoped-db";
 import { isExternalIdConflict } from "./transaction-external-id";
-import { lockTransactionRow, lockTransactionRows } from "../common/db/locks";
+import {
+  lockTransactionRow,
+  lockTransactionRows,
+  type LockedTransactionRow,
+} from "../common/db/locks";
 import { assertReconciledRowsMutable } from "./reconciled-lock.util";
 import { roundMoney } from "../common/round.util";
 import {
   assertTransactionCurrencyMatchesAccount,
   normalizeFxEntry,
+  roundFxRate,
   type FxEntry,
   type FxEntryInput,
 } from "../common/fx-entry.util";
@@ -2531,6 +2536,49 @@ export class TransactionsService {
     return transaction;
   }
 
+  /**
+   * A transfer leg's amount, account, date and rate belong to the pair, so the
+   * generic row update refuses a change to any of them on one leg; the
+   * transfer routes write both legs together (A26-M10, MON-H11). Judged on the
+   * row the caller has locked: a row converted to a transfer since the caller
+   * looked carries its link by now (`convertToTransfer` sets it with the
+   * flag), and the stored rate is read under that lock. A change is a value
+   * difference: a form re-sending the figures the row already holds is not one.
+   */
+  private async assertNoStructuralTransferLegEdit(
+    m: EntityManager,
+    userId: string,
+    locked: LockedTransactionRow,
+    snapshotIsTransfer: boolean,
+    updateData: Omit<UpdateTransactionDto, "splits" | "tagIds" | "createdAt">,
+  ): Promise<void> {
+    if (!locked.linkedTransactionId && !snapshotIsTransfer) return;
+    let structural =
+      (updateData.amount !== undefined &&
+        roundMoney(Number(updateData.amount)) !==
+          roundMoney(Number(locked.amount))) ||
+      (updateData.accountId !== undefined &&
+        updateData.accountId !== locked.accountId) ||
+      (updateData.transactionDate !== undefined &&
+        updateData.transactionDate !== locked.transactionDate);
+    if (!structural && updateData.exchangeRate !== undefined) {
+      const row = await m.getRepository(Transaction).findOne({
+        where: { id: locked.id, userId },
+      });
+      structural =
+        roundFxRate(Number(updateData.exchangeRate)) !==
+        roundFxRate(Number(row?.exchangeRate));
+    }
+    if (structural) {
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.cannotEditTransfer",
+          "Transfers can't be edited here. Edit the transfer from the Transactions screen.",
+        ),
+      );
+    }
+  }
+
   async update(
     userId: string,
     id: string,
@@ -2676,6 +2724,13 @@ export class TransactionsService {
       // Strict reconciled lock, against the LOCKED row and before any write:
       // an edit refused here must not already have happened.
       await assertReconciledRowsMutable(m, userId, [locked]);
+      await this.assertNoStructuralTransferLegEdit(
+        m,
+        userId,
+        locked,
+        transaction.isTransfer,
+        updateData,
+      );
       if (options?.beforeWrite) await options.beforeWrite(m);
 
       const oldAmount = locked.amount;
