@@ -86,6 +86,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { createLogger } from '@/lib/logger';
 import { showErrorToast } from '@/lib/errors';
 import { exportToCsv } from '@/lib/csv-export';
+import { afterModalHistoryPop } from '@/lib/after-modal-history-pop';
 import { PAGE_SIZE } from '@/lib/constants';
 import { budgetsApi } from '@/lib/budgets';
 import { CategoryBudgetStatus } from '@/types/budget';
@@ -720,13 +721,13 @@ function TransactionsContent() {
   // Add warranty, or a linked warranty, from inside the edit window leaves the
   // page, so it goes through the window's own close: a dirty form asks first
   // (Save, Discard or keep editing) and the navigation waits on the answer. It
-  // also waits for the closed Modal to pop its history entry, which would
-  // otherwise undo the push (AccountForm's Import QIF waits the same way); a
+  // also waits for the closed Modal's history entry to be popped, which would
+  // otherwise undo the push; a fixed delay lost that race on a slow render. A
   // bare link in the window is undone the same way, which is why the
   // Warranties line hands its links here too.
   const pendingFormNavigation = useRef<string | null>(null);
   const navigateAfterFormCloses = (href: string) => {
-    window.setTimeout(() => router.push(href), 100);
+    afterModalHistoryPop(() => router.push(href));
   };
 
   const navigateFromForm = (href: string) => {
