@@ -2338,16 +2338,19 @@ Enforcement         Built-in reports: NET_SPEND_AMOUNT / isNetSpending
                     net; BOTH: the magnitude of the net), and a group is the sum
                     of its kept cells (audit A26-M33). The metric NONE list keeps
                     its row-level direction filter.
+                    The loan history's Interest Paid
+                    (frontend/src/lib/loan-history.ts) sums each interest row
+                    signed, so a lender's refund nets (A26-S15-05).
 Concurrency scope   --
 Failure response    --
 Required tests      Integration:
                     backend/test/integration/report-custom-net-and-search.integration.spec.ts
                     (Groceries -100 and +30: 70 under EXPENSES_ONLY and BOTH, by
-                    category and by month) and the reports.service.spec.ts cases.
+                    category and by month) and the reports.service.spec.ts cases;
+                    frontend/src/lib/loan-history.test.ts "nets an interest
+                    refund".
 Known gap           No source scan holds the rule: a new aggregator summing
-                    Math.abs per row passes every guard. The loan summary's
-                    "Interest Paid" (frontend/src/lib/loan-history.ts, A26-S15-05)
-                    is fixed with T36 on this branch.
+                    Math.abs per row passes every guard.
 Status              partial
 ```
 
@@ -3381,6 +3384,15 @@ Statement           Interest attributed to a historical loan payment is a
                     A forward PROJECTION may estimate -- that is its job, and
                     its rows are labelled projected. The prohibition is on a
                     historical row.
+                    A historical row is a row the ledger moved by today: a VOID
+                    payment or interest expense moved nothing and a future-dated
+                    one has not happened, so neither is history
+                    (deriveLoanPaymentHistory's required `todayYmd`, audit
+                    A26-M28). Interest is the signed sum of its rows, so a
+                    refund from the lender lowers Interest Paid (INV-REPORT-004,
+                    A26-S15-05). A loan whose repayments recorded no interest at
+                    a non-zero rate has an unknown interest saving, never the
+                    whole of it as saved (loan-past-impact.ts, A26-L34).
 Source of truth     transaction_splits (the payment's recorded interest leg,
                     identified by accounts.interest_category_id) and the
                     interest-category expenses on the loan's configured source
