@@ -53,6 +53,7 @@ const ACTION_LABELS: Record<InvestmentAction, string> = {
   CAPITAL_GAIN_SHORT: 'Short-Term Capital Gain',
   CAPITAL_GAIN_LONG: 'Long-Term Capital Gain',
   REDEEM: 'Redeem CD/Bond',
+  RETURN_OF_CAPITAL: 'Return of Capital',
 };
 
 const ACTIONS_NEEDING_SECURITY: ReadonlySet<InvestmentAction> = new Set([
@@ -61,6 +62,7 @@ const ACTIONS_NEEDING_SECURITY: ReadonlySet<InvestmentAction> = new Set([
   'REINVEST',
   'DIVIDEND',
   'CAPITAL_GAIN',
+  'RETURN_OF_CAPITAL',
 ]);
 
 const ACTIONS_NEEDING_QUANTITY_PRICE: ReadonlySet<InvestmentAction> = new Set([
