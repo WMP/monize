@@ -3457,6 +3457,82 @@ CREATE TABLE calendar_day_notes (
 );
 
 -- ---------------------------------------------------------------------------
+-- Warranties (docs/future-plans/warranty-tracker.md sections 6.1 and 6.2)
+--
+-- One purchased item: its expiry, vendor, serial and model numbers and an
+-- informational purchase price, optionally linked to the transaction that
+-- bought it. A warranty never moves money: nothing sums `purchase_price`, and
+-- the transaction link is ON DELETE SET NULL, so deleting the purchase keeps
+-- the warranty. Status (lifetime, active, expiring, expired) is derived from
+-- `expires_on` and `is_lifetime` by the application and never stored.
+--
+-- `expires_on` is the stored fact; a lifetime warranty may leave it NULL and
+-- every other one must carry it (chk_warranty_expiry). The price carries its
+-- own currency, both set or both NULL (chk_warranty_price_currency).
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE warranties (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(200) NOT NULL,
+    vendor_name VARCHAR(200),
+    payee_id UUID REFERENCES payees(id) ON DELETE SET NULL,
+    transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
+    model_number VARCHAR(100),
+    serial_numbers TEXT[] NOT NULL DEFAULT '{}',
+    warranty_kind VARCHAR(20) NOT NULL DEFAULT 'manufacturer'
+        CHECK (warranty_kind IN ('manufacturer', 'extended', 'store', 'other')),
+    purchase_date DATE NOT NULL,
+    expires_on DATE,
+    is_lifetime BOOLEAN NOT NULL DEFAULT false,
+    purchase_price NUMERIC(20,4) CHECK (purchase_price IS NULL OR purchase_price >= 0),
+    currency_code VARCHAR(3) REFERENCES currencies(code),
+    product_url VARCHAR(500),
+    notes VARCHAR(2000),
+    archived_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_warranty_expiry CHECK (is_lifetime OR expires_on IS NOT NULL),
+    CONSTRAINT chk_warranty_expiry_after_purchase
+        CHECK (expires_on IS NULL OR expires_on >= purchase_date),
+    CONSTRAINT chk_warranty_price_currency
+        CHECK ((purchase_price IS NULL) = (currency_code IS NULL))
+);
+
+-- The list, the widget and the reminder cron all read a user's unarchived rows
+-- by expiry.
+CREATE INDEX idx_warranties_user_status
+    ON warranties(user_id, archived_at, expires_on);
+CREATE INDEX idx_warranties_transaction ON warranties(transaction_id);
+CREATE INDEX idx_warranties_payee ON warranties(payee_id);
+
+CREATE TRIGGER update_warranties_updated_at
+  BEFORE UPDATE ON warranties
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- The claims made against one warranty. A claim never changes the warranty's
+-- status; it is a log the owner keeps.
+CREATE TABLE warranty_claims (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    warranty_id UUID NOT NULL REFERENCES warranties(id) ON DELETE CASCADE,
+    claim_date DATE NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'open'
+        CHECK (status IN ('open', 'approved', 'denied', 'resolved')),
+    description VARCHAR(2000),
+    resolution VARCHAR(2000),
+    resolved_on DATE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_warranty_claims_warranty ON warranty_claims(warranty_id);
+
+CREATE TRIGGER update_warranty_claims_updated_at
+  BEFORE UPDATE ON warranty_claims
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ---------------------------------------------------------------------------
 -- Off-machine backup destinations (docs/specs/backup-off-machine.md section 9).
 --
 -- One row per user: which destinations a completed automatic backup is copied
@@ -3625,7 +3701,9 @@ DECLARE
         'transaction_attachments',
         'transaction_rule_applications',
         'transaction_rules',
-        'user_currency_preferences'
+        'user_currency_preferences',
+        'warranties',
+        'warranty_claims'
     ];
 BEGIN
     FOREACH t IN ARRAY direct_tables LOOP
@@ -4313,6 +4391,7 @@ AS $$
     UNION ALL SELECT 1 FROM scheduled_transactions
       WHERE currency_code = p_code OR original_currency_code = p_code
     UNION ALL SELECT 1 FROM budgets WHERE currency_code = p_code
+    UNION ALL SELECT 1 FROM warranties WHERE currency_code = p_code
     UNION ALL SELECT 1 FROM user_preferences WHERE default_currency = p_code
   )
 $$;
@@ -4395,6 +4474,7 @@ AS $$
     UNION SELECT currency_code FROM scheduled_transactions WHERE user_id = p_user_id
     UNION SELECT original_currency_code FROM scheduled_transactions WHERE user_id = p_user_id
     UNION SELECT currency_code FROM budgets WHERE user_id = p_user_id
+    UNION SELECT currency_code FROM warranties WHERE user_id = p_user_id
   ) referenced
   WHERE code IS NOT NULL
 $$;

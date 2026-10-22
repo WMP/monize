@@ -230,6 +230,15 @@ export class BackupRestoreDatabaseService {
       [userId],
     );
 
+    // Warranties and their claims. The transaction link is ON DELETE SET NULL,
+    // so the transactions delete below would leave them in place; cleared here,
+    // claims first, or the insert's ON CONFLICT DO NOTHING would keep the
+    // destination's rows and silently drop the archive's.
+    await manager.query("DELETE FROM warranty_claims WHERE user_id = $1", [
+      userId,
+    ]);
+    await manager.query("DELETE FROM warranties WHERE user_id = $1", [userId]);
+
     // Transactions
     await manager.query("DELETE FROM transactions WHERE user_id = $1", [
       userId,
