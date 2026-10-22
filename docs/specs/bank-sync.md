@@ -60,10 +60,13 @@ INV-BANKSYNC-003  A synced row is written in the Monize account's currency or no
 Full entries are in `docs/system-invariants.md`. The mechanisms:
 
 - **001**: the unique index `(account_id, external_key)` on
-  `bank_sync_imported_transactions`. The ledger row is inserted with
-  `INSERT ... ON CONFLICT DO NOTHING RETURNING id` **before** the transaction
-  row, in the same `withScopedDb` transaction; a row that returns nothing is a
-  duplicate and nothing else is written for it. Two concurrent syncs of the
+  `bank_sync_imported_transactions`, over a key that is a function of the
+  bank row alone (section 6). Under the link and account row locks the writer
+  skips a row the ledger already holds (`findHeldRows`, which also reads the
+  keys written before A26-H09's fix); every other row's ledger row is inserted
+  with `INSERT ... ON CONFLICT DO NOTHING RETURNING id` **before** the
+  transaction row, in the same `withScopedDb` transaction; a row that returns
+  nothing is a duplicate and nothing else is written for it. Two concurrent syncs of the
   same account therefore converge (the second insert waits on the first one's
   index entry and returns nothing once it commits). The ledger is keyed on the
   **Monize** account, not the connection, so disconnecting and reconnecting a
@@ -251,20 +254,35 @@ For a planned row:
   key is not stored there (csv-source-profiles C2).
 - **Status.** `CLEARED`: the bank has booked it.
 - **External key** (INV-BANKSYNC-001), the first that applies:
-  1. `ref:` + the provider's entry reference. Enable Banking documents
+  1. `ref:<entry reference>|<date>|<signed amount at four decimals>`, then
+     `:` + the occurrence number of that value among the rows of this fetch.
+     Example: `ref:dup-9|2026-10-19|-5.0000:0`. Enable Banking documents
      `entry_reference` as unique and immutable for accounts with the same
      identification hashes, and not globally unique; its FAQ adds that some
-     banks repeat values. When one fetch carries the same reference on rows
-     that differ in content, each of those rows is keyed
-     `ref:<reference>#<SHA-256 hex of its content>`, so none is lost and the
-     key does not depend on the listing order;
+     banks repeat values. The date and the amount make a reference the bank
+     repeated on another transaction a different key, and the key is a
+     function of the row, never of the other rows of the fetch: a row keeps its
+     key when a later fetch holds it beside a second row of its reference, and
+     a reuse after the first row has left the window is a new key (A26-H09);
   2. `hash:` + SHA-256 hex over `date|amount|currency|direction|payee|description`,
      then `:` + the occurrence number of that hash among the rows of this
-     fetch, counted from 0 in the order the provider returned them.
+     fetch.
+  Occurrences are counted from 0 in the order the provider returned the rows.
   A key longer than 255 characters is replaced by its prefix and the SHA-256
-  hex of the whole value. The hash form is stable because every fetch
+  hex of the whole value. The occurrence is stable because every fetch
   requests whole days (section 7), so two identical coffees on one day are
   always `:0` and `:1`.
+
+  **Keys written before A26-H09's fix.** The planner keyed a reference row
+  `ref:<reference>`, or `ref:<reference>#<SHA-256 hex of its content>` when the
+  fetch also held a row of that reference with other content. Ledger rows still
+  carry those keys, so a planned row is already held (`findHeldRows`) when the
+  ledger has its own key, its old discriminated key (the same content), or its
+  old bare key booked on the row's date. The bare key recorded no amount, so
+  every row of that reference and date reads as held by it: a second same-day
+  transaction under a reused reference whose first row was imported before the
+  fix is not imported. The preview shows an exception held by an old key under
+  the key the ledger stores, so it is taken back by that key.
 
   The provider's `transaction_id` is never part of the key: Enable Banking
   documents it as a handle for fetching details that may change when the list
@@ -570,6 +588,7 @@ currency.
 | Adapter: pagination, booked filter, error mapping, PSU headers, breaker calls | unit, `enable-banking.client.spec.ts` with a typed `fetch` double |
 | State: one use, TTL, other user's state refused | unit, service spec; integration for the claim CAS |
 | A second sync of the same rows imports nothing (INV-BANKSYNC-001) | integration, real PostgreSQL |
+| An entry reference repeated on a later day: the earlier row is not re-imported, the new one is imported once, a reuse outside the window is imported, keys written before the fix still hold their rows (INV-BANKSYNC-001, A26-H09) | integration, real PostgreSQL, `bank-sync.integration.spec.ts` |
 | Two concurrent syncs import each row once | integration, two connections |
 | Currency mismatch refused, nothing written (INV-BANKSYNC-003) | unit and integration |
 | Key never in a response (INV-BANKSYNC-002) | unit, response type and serializer spec |

@@ -322,12 +322,20 @@ Statement           For one Monize account, a provider transaction (identified
                     produces at most one transaction row, across every sync,
                     replica, reconnection and re-authorization.
 Source of truth     bank_sync_imported_transactions(account_id, external_key)
-Enforcement         Unique index on (account_id, external_key). The writer
-                    inserts the ledger row with ON CONFLICT DO NOTHING RETURNING
-                    before the transaction row, in the same withScopedDb
-                    transaction; no returned row means nothing else is written
-                    for that provider row. The ledger is keyed on the Monize
-                    account, so a new connection does not re-import.
+Enforcement         Unique index on (account_id, external_key), over a key that
+                    is a function of the bank row alone: the entry reference
+                    with the date and signed amount, or the content hash
+                    (keyFor, bank-transaction-planner.ts), never a function of
+                    the other rows of the fetch. Under the link and account row
+                    locks the writer skips a row the ledger already holds under
+                    its key or a key written before A26-H09's fix
+                    (findHeldRows, bank-sync-plan-fingerprint.ts, which the
+                    preview reads too), then inserts every other row's ledger
+                    row with ON CONFLICT DO NOTHING RETURNING before the
+                    transaction row, in the same withScopedDb transaction; no
+                    returned row means nothing else is written for that
+                    provider row. The ledger is keyed on the Monize account, so
+                    a new connection does not re-import.
 Concurrency scope   Monize account
 Retry semantics     A retry re-fetches and re-plans; every already-imported row
                     hits the index and is skipped. The per-account lease
@@ -337,14 +345,24 @@ Crash semantics     Before commit: nothing written. After commit: the ledger and
 Failure response    skipped (counted in the result), never an error
 Required tests      Integration against real PostgreSQL: a second sync of the
                     same rows imports nothing; two concurrent syncs import each
-                    row once (backend/test/integration/bank-sync.integration.spec.ts).
-Status              partial -- the index holds one row per external key; a
-                    bank transaction keeps one key only while the provider's
-                    entry reference is stable (docs/specs/bank-sync.md
-                    section 6). A bank that sends no entry reference on one
-                    fetch and one on a later fetch changes the key from hash:
-                    to ref: and the row is imported twice. BS10 verifies the
-                    provider's behaviour against a sandbox.
+                    row once; an entry reference the bank repeats on a later
+                    day neither re-imports the earlier row nor drops the new
+                    one, alone or in two concurrent writes, and keys written
+                    before the fix still hold their rows
+                    (backend/test/integration/bank-sync.integration.spec.ts).
+Status              partial -- the index holds one row per external key, and
+                    the key no longer depends on the fetch (A26-H09 closed). A
+                    bank transaction keeps one key only while the bank keeps
+                    its entry reference, date and amount: a bank that sends no
+                    entry reference on one fetch and one on a later fetch
+                    changes the key from hash: to ref:, and a bank that
+                    rewrites a booked row's amount or booking date gives it a
+                    new key; either row is imported twice. A ledger row written
+                    before the fix under a bare ref: key recorded no amount, so
+                    it holds every row of its reference and booking date, and a
+                    second same-day transaction under that reference is not
+                    imported. BS10 verifies the provider's behaviour against a
+                    sandbox.
 ```
 
 A deleted transaction keeps its ledger row with `transaction_id` NULL, so a

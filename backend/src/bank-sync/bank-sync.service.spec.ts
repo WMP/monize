@@ -614,7 +614,7 @@ describe("BankSyncService", () => {
       });
       // Only the booked, in-currency, in-window row is planned.
       expect(written.plan.planned.map((p) => p.externalKey)).toEqual([
-        "ref:ref-1",
+        "ref:ref-1|2026-09-10|-12.3400:0",
       ]);
     });
 
@@ -1058,7 +1058,7 @@ describe("BankSyncService", () => {
         balance: { amount: 1500.5, currencyCode: "PLN" },
       });
       expect(input.explained.plan.planned.map((p) => p.externalKey)).toEqual([
-        "ref:ref-1",
+        "ref:ref-1|2026-09-10|-12.3400:0",
       ]);
       expect(input.explained.entries.map((e) => e.outcome)).toEqual([
         "planned",

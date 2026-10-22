@@ -35,7 +35,7 @@ import {
   type ResolvedPayee,
 } from "./bank-sync-payee-lookup";
 import {
-  findLedgerEntries,
+  findHeldRows,
   newPlannedRows,
   planFingerprint,
 } from "./bank-sync-plan-fingerprint";
@@ -103,7 +103,7 @@ const fromUnits = (units: number): string => (units / 10000).toFixed(4);
  *
  * It is handed the same `ExplainedBankImport` a sync plans from, so the rows,
  * keys and amounts are the planner's own; it asks the ledger which keys exist
- * (`findLedgerKeys`, the question the sync's fingerprint check asks), resolves the
+ * (`findHeldRows`, the question the sync asks), resolves the
  * payee through the lookup the writer uses (`findExistingPayee`) and plans the
  * `import` rules through `TransactionRulesApplierService.previewForRow`, the
  * planning path `applyToNew` shares. Nothing is inserted, updated or locked: a
@@ -167,14 +167,8 @@ export class BankSyncPreviewService {
         );
       }
 
-      const ledger = await findLedgerEntries(
-        m,
-        userId,
-        accountId,
-        plan.planned.map((row) => row.externalKey),
-      );
-      const ledgerKeys = new Set(ledger.keys());
-      const newRows = newPlannedRows(plan.planned, ledgerKeys);
+      const ledger = await findHeldRows(m, userId, accountId, plan.planned);
+      const newRows = newPlannedRows(plan.planned, ledger);
 
       // Rules are read once for the whole preview.
       const labels = emptyImportPreviewLabels();
@@ -211,9 +205,19 @@ export class BankSyncPreviewService {
         const held = ledger.get(entry.externalKey as string);
         if (held === undefined) {
           rows.push(await this.newRow(context, entry));
-        } else if (held.excluded) {
+          continue;
+        }
+        if (held.excluded) {
+          // An exception carries the key the ledger stores it under, so one
+          // written under an earlier planner's key is taken back by that key.
           excluded += 1;
-          rows.push(await this.heldRow(context, entry, "excluded"));
+          rows.push(
+            await this.heldRow(
+              context,
+              { ...entry, externalKey: held.key },
+              "excluded",
+            ),
+          );
         } else {
           rows.push(await this.heldRow(context, entry, "duplicate"));
         }

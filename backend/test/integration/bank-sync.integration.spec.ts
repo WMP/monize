@@ -1,4 +1,4 @@
-import { generateKeyPairSync } from "node:crypto";
+import { createHash, generateKeyPairSync } from "node:crypto";
 import { BadRequestException } from "@nestjs/common";
 import { TestingModule } from "@nestjs/testing";
 import { DataSource, EntityManager } from "typeorm";
@@ -134,6 +134,20 @@ describe("Bank sync (integration)", () => {
     Math.round(
       (-50 + 1200.1234 - 12.3457 - 0.0025) * 10000, // signed, at 4dp
     ) / 10000;
+
+  /** The external key the planner gives a row fetched on its own (or with rows of other references). */
+  const keyOf = (r: BankTransaction): string =>
+    planBankImport([r], {
+      accountCurrencyCode: "PLN",
+      syncFromDate: daysAgo(30),
+      today,
+    }).planned[0].externalKey;
+  const KEY = {
+    r1: keyOf(BANK_ROWS[0]),
+    r2: keyOf(BANK_ROWS[1]),
+    r3: keyOf(BANK_ROWS[2]),
+    r4: keyOf(BANK_ROWS[3]),
+  };
 
   const query = <T = Record<string, unknown>>(
     sql: string,
@@ -343,10 +357,10 @@ describe("Bank sync (integration)", () => {
            FROM bank_sync_imported_transactions ORDER BY external_key`,
       );
       expect(ledger.map((l) => l.external_key)).toEqual([
-        "ref:r1",
-        "ref:r2",
-        "ref:r3",
-        "ref:r4",
+        KEY.r1,
+        KEY.r2,
+        KEY.r3,
+        KEY.r4,
       ]);
       expect(ledger.every((l) => l.transaction_id !== null)).toBe(true);
     });
@@ -505,12 +519,14 @@ describe("Bank sync (integration)", () => {
       const [victim] = await query<{ id: string }>(
         `SELECT t.id FROM transactions t
            JOIN bank_sync_imported_transactions l ON l.transaction_id = t.id
-          WHERE l.external_key = 'ref:r3'`,
+          WHERE l.external_key = $1`,
+        [KEY.r3],
       );
       await db.query(`DELETE FROM transactions WHERE id = $1`, [victim.id]);
       // The ledger row stays, with its transaction gone.
       const [ledger] = await query<{ transaction_id: string | null }>(
-        `SELECT transaction_id FROM bank_sync_imported_transactions WHERE external_key = 'ref:r3'`,
+        `SELECT transaction_id FROM bank_sync_imported_transactions WHERE external_key = $1`,
+        [KEY.r3],
       );
       expect(ledger.transaction_id).toBeNull();
 
@@ -532,6 +548,172 @@ describe("Bank sync (integration)", () => {
 
       expect(again).toMatchObject({ imported: 0, skipped: 4 });
       expect(await count("transactions")).toBe(4);
+    });
+  });
+
+  describe("an entry reference the bank repeats on a later day (INV-BANKSYNC-001, A26-H09)", () => {
+    /** A ledger row as a sync before the fix wrote it: no transaction behind it. */
+    const legacyLedgerRow = (
+      externalKey: string,
+      bookingDate: string,
+      excluded = false,
+    ) =>
+      db.query(
+        `INSERT INTO bank_sync_imported_transactions
+           (user_id, account_id, external_key, booking_date, excluded_at)
+         VALUES ($1, $2, $3, $4, CASE WHEN $5::boolean THEN now() END)`,
+        [aliceId, accountId, externalKey, bookingDate, excluded],
+      );
+    /** The pre-fix discriminator of a contested reference: SHA-256 of the full content. */
+    const legacyContestedKey = (r: BankTransaction) =>
+      `ref:${r.entryReference}#${createHash("sha256")
+        .update(
+          JSON.stringify([
+            r.bookingDate,
+            r.valueDate,
+            r.transactionDate,
+            r.amount,
+            r.currencyCode,
+            r.direction,
+            r.counterpartyName,
+            r.remittance,
+            r.bankReference,
+          ]),
+        )
+        .digest("hex")}`;
+
+    it("does not re-import a row when a later fetch repeats its entry reference", async () => {
+      const a = row({ entryReference: "dup-9", amount: "5.00" });
+      bankReturns([a]);
+      await sync();
+      const later = row({
+        entryReference: "dup-9",
+        amount: "7.00",
+        counterpartyName: "Kiosk",
+        bookingDate: daysAgo(1),
+      });
+      bankReturns([a, later]);
+      expect(await sync()).toMatchObject({ imported: 1, skipped: 1 });
+      expect(await count("transactions")).toBe(2);
+      expect(await storedBalance()).toBe(OPENING - 12);
+
+      // The new transaction under the reused reference is imported once, however
+      // often the overlap window re-reads it.
+      expect(await sync()).toMatchObject({ imported: 0, skipped: 2 });
+      bankReturns([later]);
+      expect(await sync()).toMatchObject({ imported: 0, skipped: 1 });
+      expect(await count("transactions")).toBe(2);
+      expect(await storedBalance()).toBe(OPENING - 12);
+    });
+
+    it("imports a later transaction that reuses a reference no longer in the window", async () => {
+      bankReturns([row({ entryReference: "dup-8", amount: "5.00" })]);
+      await sync();
+      bankReturns([
+        row({
+          entryReference: "dup-8",
+          amount: "7.00",
+          counterpartyName: "Kiosk",
+          bookingDate: daysAgo(1),
+        }),
+      ]);
+      expect(await sync()).toMatchObject({ imported: 1, skipped: 0 });
+      expect(await count("transactions")).toBe(2);
+      expect(await storedBalance()).toBe(OPENING - 12);
+    });
+
+    it("does not re-import one of two rows first fetched together when a later fetch holds it alone", async () => {
+      const a = row({ entryReference: "dup-7", amount: "5.00" });
+      const b = row({
+        entryReference: "dup-7",
+        amount: "7.00",
+        counterpartyName: "Kiosk",
+        bookingDate: daysAgo(2),
+      });
+      bankReturns([a, b]);
+      expect(await sync()).toMatchObject({ imported: 2, skipped: 0 });
+      bankReturns([b]);
+      expect(await sync()).toMatchObject({ imported: 0, skipped: 1 });
+      expect(await count("transactions")).toBe(2);
+      expect(await storedBalance()).toBe(OPENING - 12);
+    });
+
+    it("shows the earlier row as a duplicate and only the new one as new in the preview", async () => {
+      const a = row({ entryReference: "dup-6", amount: "5.00" });
+      bankReturns([a]);
+      await sync();
+      bankReturns([
+        a,
+        row({
+          entryReference: "dup-6",
+          amount: "7.00",
+          counterpartyName: "Kiosk",
+          bookingDate: daysAgo(1),
+        }),
+      ]);
+      const view = await asAlice(() =>
+        bankSync.previewAccount(aliceId, bankAccountId, null),
+      );
+      expect(view.summary).toMatchObject({ new: 1, duplicate: 1 });
+      expect(
+        view.rows.map((r) => [r.outcome, r.amount, r.transactionDate]),
+      ).toEqual([
+        ["duplicate", "-5.0000", daysAgo(3)],
+        ["new", "-7.0000", daysAgo(1)],
+      ]);
+    });
+
+    describe("ledger rows written before the key named the date and amount", () => {
+      it("skips the row a bare reference was imported for and imports the reuse beside it", async () => {
+        await legacyLedgerRow("ref:dup-5", daysAgo(3));
+        bankReturns([
+          row({ entryReference: "dup-5", amount: "5.00" }),
+          row({
+            entryReference: "dup-5",
+            amount: "7.00",
+            counterpartyName: "Kiosk",
+            bookingDate: daysAgo(1),
+          }),
+        ]);
+        expect(await sync()).toMatchObject({ imported: 1, skipped: 1 });
+        const [created] = await query<{ amount: string }>(
+          `SELECT amount FROM transactions WHERE account_id = $1`,
+          [accountId],
+        );
+        expect(Number(created.amount)).toBe(-7);
+      });
+
+      it("skips the row a discriminated reference was imported for when it is fetched alone", async () => {
+        const a = row({ entryReference: "dup-4", amount: "5.00" });
+        await legacyLedgerRow(legacyContestedKey(a), daysAgo(3));
+        bankReturns([a]);
+        expect(await sync()).toMatchObject({ imported: 0, skipped: 1 });
+        expect(await count("transactions")).toBe(0);
+      });
+
+      it("shows a bare-reference exception as an exception and takes it back by the key it shows", async () => {
+        await legacyLedgerRow("ref:dup-3", daysAgo(3), true);
+        bankReturns([row({ entryReference: "dup-3", amount: "5.00" })]);
+        const preview = () =>
+          asAlice(() => bankSync.previewAccount(aliceId, bankAccountId, null));
+        const view = await preview();
+        expect(view.summary).toMatchObject({ new: 0, excluded: 1 });
+        const [held] = view.rows;
+        expect(held).toMatchObject({
+          outcome: "excluded",
+          externalKey: "ref:dup-3",
+        });
+
+        await asAlice(() =>
+          bankSync.removeExceptions(aliceId, bankAccountId, [
+            held.externalKey as string,
+          ]),
+        );
+        expect((await preview()).summary).toMatchObject({
+          new: 1,
+          excluded: 0,
+        });
+      });
     });
   });
 
@@ -566,6 +748,51 @@ describe("Bank sync (integration)", () => {
       expect(await count("bank_sync_imported_transactions")).toBe(4);
       expect(await storedBalance()).toBe(OPENING + BANK_SUM);
       expect(await storedBalance()).toBe(await ledgerBalance());
+    });
+
+    it("through the writer, with a reference the bank repeated on a later day: the new row is created once (A26-H09)", async () => {
+      const a = row({ entryReference: "dup-2", amount: "5.00" });
+      // The earlier row as a sync before the fix recorded it.
+      await db.query(
+        `INSERT INTO bank_sync_imported_transactions
+           (user_id, account_id, external_key, booking_date)
+         VALUES ($1, $2, 'ref:dup-2', $3)`,
+        [aliceId, accountId, a.bookingDate],
+      );
+      const plan = planBankImport(
+        [
+          a,
+          row({
+            entryReference: "dup-2",
+            amount: "7.00",
+            counterpartyName: "Kiosk",
+            bookingDate: daysAgo(1),
+          }),
+        ],
+        { accountCurrencyCode: "PLN", syncFromDate: daysAgo(30), today },
+      );
+      const write = () =>
+        asAlice(() =>
+          writer.write({
+            userId: aliceId,
+            bankAccountId,
+            accountId,
+            plannedSyncFromDate: daysAgo(30),
+            plannedCurrencyCode: "PLN",
+            plan,
+            balance: null,
+            tagOperationType: false,
+            profile: PKO_BP,
+          }),
+        );
+
+      const [first, second] = await Promise.all([write(), write()]);
+
+      expect([first.imported, second.imported].sort()).toEqual([0, 1]);
+      expect(first.skipped + second.skipped).toBe(3);
+      expect(await count("transactions")).toBe(1);
+      expect(await count("bank_sync_imported_transactions")).toBe(2);
+      expect(await storedBalance()).toBe(OPENING - 7);
     });
 
     it("through the service with the lease stubbed away: still once", async () => {
@@ -1882,14 +2109,14 @@ describe("Bank sync (integration)", () => {
     const needsPreview = async () =>
       (await asAlice(() => connections.list(aliceId)))[0].accounts[0]
         .needsPreview;
-    const KEYS = ["ref:r1", "ref:r2", "ref:r3", "ref:r4"];
+    const KEYS = [KEY.r1, KEY.r2, KEY.r3, KEY.r4];
 
     describe("selection and exceptions", () => {
       it("a partial import imports exactly the selected keys, and moves the balance by exactly their sum", async () => {
         const view = await preview();
 
         const result = await syncWith(view.planFingerprint, {
-          importKeys: ["ref:r2", "ref:r4"],
+          importKeys: [KEY.r2, KEY.r4],
           excludeKeys: [],
         });
 
@@ -1899,8 +2126,8 @@ describe("Bank sync (integration)", () => {
         expect(await storedBalance()).toBe(await ledgerBalance());
         // Only the imported rows are in the ledger: the rest stay new.
         expect((await ledgerRows()).map((l) => l.external_key)).toEqual([
-          "ref:r2",
-          "ref:r4",
+          KEY.r2,
+          KEY.r4,
         ]);
         const next = await preview();
         expect(next.rows.map((r) => r.outcome)).toEqual([
@@ -1915,19 +2142,19 @@ describe("Bank sync (integration)", () => {
         const view = await preview();
 
         const result = await syncWith(view.planFingerprint, {
-          importKeys: ["ref:r1"],
-          excludeKeys: ["ref:r2", "ref:r3"],
+          importKeys: [KEY.r1],
+          excludeKeys: [KEY.r2, KEY.r3],
         });
 
         expect(result).toMatchObject({ imported: 1, skipped: 0, excluded: 2 });
         expect(await ledgerRows()).toEqual([
           {
-            external_key: "ref:r1",
+            external_key: KEY.r1,
             transaction_id: expect.any(String),
             excluded: false,
           },
-          { external_key: "ref:r2", transaction_id: null, excluded: true },
-          { external_key: "ref:r3", transaction_id: null, excluded: true },
+          { external_key: KEY.r2, transaction_id: null, excluded: true },
+          { external_key: KEY.r3, transaction_id: null, excluded: true },
         ]);
         expect(await count("transactions")).toBe(1);
         expect(await storedBalance()).toBe(OPENING - 50);
@@ -1936,8 +2163,8 @@ describe("Bank sync (integration)", () => {
       it("exclude, then sync again: the exception is not imported, in a plain sync or a daily one", async () => {
         const view = await preview();
         await syncWith(view.planFingerprint, {
-          importKeys: ["ref:r1", "ref:r2", "ref:r3"],
-          excludeKeys: ["ref:r4"],
+          importKeys: [KEY.r1, KEY.r2, KEY.r3],
+          excludeKeys: [KEY.r4],
         });
         expect(await count("transactions")).toBe(3);
 
@@ -1953,17 +2180,17 @@ describe("Bank sync (integration)", () => {
       it("lists an exception as `excluded`, apart from `duplicate`, and leaves it out of the new rows and the fingerprint", async () => {
         const first = await preview();
         await syncWith(first.planFingerprint, {
-          importKeys: ["ref:r1"],
-          excludeKeys: ["ref:r2"],
+          importKeys: [KEY.r1],
+          excludeKeys: [KEY.r2],
         });
 
         const view = await preview();
 
         expect(view.rows.map((r) => [r.externalKey, r.outcome])).toEqual([
-          ["ref:r1", "duplicate"],
-          ["ref:r2", "excluded"],
-          ["ref:r3", "new"],
-          ["ref:r4", "new"],
+          [KEY.r1, "duplicate"],
+          [KEY.r2, "excluded"],
+          [KEY.r3, "new"],
+          [KEY.r4, "new"],
         ]);
         expect(view.summary).toMatchObject({
           new: 2,
@@ -1979,12 +2206,12 @@ describe("Bank sync (integration)", () => {
         const first = await preview();
         await syncWith(first.planFingerprint, {
           importKeys: [],
-          excludeKeys: ["ref:r1", "ref:r2"],
+          excludeKeys: [KEY.r1, KEY.r2],
         });
         expect(await count("transactions")).toBe(0);
         expect((await ledgerRows()).every((l) => l.excluded)).toBe(true);
 
-        await expect(removeExceptions(["ref:r1"])).resolves.toEqual({
+        await expect(removeExceptions([KEY.r1])).resolves.toEqual({
           removed: 1,
         });
 
@@ -1997,7 +2224,7 @@ describe("Bank sync (integration)", () => {
         ]);
         await expect(
           syncWith(view.planFingerprint, {
-            importKeys: ["ref:r1"],
+            importKeys: [KEY.r1],
             excludeKeys: [],
           }),
         ).resolves.toMatchObject({ imported: 1 });
@@ -2014,7 +2241,7 @@ describe("Bank sync (integration)", () => {
         expect(await count("transactions")).toBe(4);
         // A deleted transaction keeps its ledger row and is still no exception.
         await db.query(`DELETE FROM transactions WHERE amount = -50`);
-        await expect(removeExceptions(["ref:r1"])).resolves.toEqual({
+        await expect(removeExceptions([KEY.r1])).resolves.toEqual({
           removed: 0,
         });
         expect(await count("bank_sync_imported_transactions")).toBe(4);
@@ -2033,7 +2260,7 @@ describe("Bank sync (integration)", () => {
         };
 
         for (const selection of [
-          { importKeys: ["ref:r1", "ref:nope"], excludeKeys: [] },
+          { importKeys: [KEY.r1, "ref:nope"], excludeKeys: [] },
           { importKeys: [], excludeKeys: ["ref:nope"] },
         ]) {
           await expect(
@@ -2058,26 +2285,24 @@ describe("Bank sync (integration)", () => {
 
       it("refuses a key that is already in the ledger, or in both lists", async () => {
         await sync();
-        bankReturns([
-          ...BANK_ROWS,
-          row({
-            entryReference: "r5",
-            amount: "9.99",
-            bookingDate: daysAgo(1),
-          }),
-        ]);
+        const r5 = row({
+          entryReference: "r5",
+          amount: "9.99",
+          bookingDate: daysAgo(1),
+        });
+        bankReturns([...BANK_ROWS, r5]);
         const view = await preview();
 
         await expect(
           syncWith(view.planFingerprint, {
-            importKeys: ["ref:r1"],
+            importKeys: [KEY.r1],
             excludeKeys: [],
           }),
         ).rejects.toMatchObject({ status: 400 });
         await expect(
           syncWith(view.planFingerprint, {
-            importKeys: ["ref:r5"],
-            excludeKeys: ["ref:r5"],
+            importKeys: [keyOf(r5)],
+            excludeKeys: [keyOf(r5)],
           }),
         ).rejects.toMatchObject({ status: 400 });
         expect(await count("transactions")).toBe(4);
@@ -2096,8 +2321,8 @@ describe("Bank sync (integration)", () => {
 
         await expect(
           syncWith(view.planFingerprint, {
-            importKeys: ["ref:r1"],
-            excludeKeys: ["ref:r2"],
+            importKeys: [KEY.r1],
+            excludeKeys: [KEY.r2],
           }),
         ).rejects.toMatchObject({ status: 409 });
 
@@ -2110,7 +2335,7 @@ describe("Bank sync (integration)", () => {
         await sync();
         await expect(
           syncWith(view.planFingerprint, {
-            importKeys: ["ref:r1"],
+            importKeys: [KEY.r1],
             excludeKeys: [],
           }),
         ).rejects.toMatchObject({ status: 409 });
@@ -2140,7 +2365,7 @@ describe("Bank sync (integration)", () => {
         const view = await preview();
 
         await syncWith(view.planFingerprint, {
-          importKeys: ["ref:r1"],
+          importKeys: [KEY.r1],
           excludeKeys: [],
         });
 
@@ -2152,7 +2377,7 @@ describe("Bank sync (integration)", () => {
         // Resolving every row (here: excepting the rest) confirms the account.
         await syncWith(next.planFingerprint, {
           importKeys: [],
-          excludeKeys: ["ref:r2", "ref:r3", "ref:r4"],
+          excludeKeys: [KEY.r2, KEY.r3, KEY.r4],
         });
         expect(await needsPreview()).toBe(false);
       });
@@ -2161,20 +2386,18 @@ describe("Bank sync (integration)", () => {
         const view = await preview();
         await syncWith(view.planFingerprint, {
           importKeys: [],
-          excludeKeys: ["ref:r1"],
+          excludeKeys: [KEY.r1],
         });
 
-        await expect(removeExceptions(["ref:r1"], bobId)).rejects.toMatchObject(
-          {
-            status: 404,
-          },
-        );
+        await expect(removeExceptions([KEY.r1], bobId)).rejects.toMatchObject({
+          status: 404,
+        });
         expect((await ledgerRows())[0].excluded).toBe(true);
 
         await asAlice(() =>
           bankSync.linkAccount(aliceId, bankAccountId, { accountId: null }),
         );
-        await expect(removeExceptions(["ref:r1"])).rejects.toMatchObject({
+        await expect(removeExceptions([KEY.r1])).rejects.toMatchObject({
           status: 409,
         });
         expect((await ledgerRows())[0].excluded).toBe(true);
@@ -2182,7 +2405,7 @@ describe("Bank sync (integration)", () => {
 
       it("two exceptions of the same key written at once converge on one ledger row", async () => {
         const view = await preview();
-        const selection = { importKeys: [], excludeKeys: ["ref:r1"] };
+        const selection = { importKeys: [], excludeKeys: [KEY.r1] };
         const results = await Promise.allSettled([
           syncWith(view.planFingerprint, selection),
           syncWith(view.planFingerprint, selection),
@@ -2191,7 +2414,7 @@ describe("Bank sync (integration)", () => {
         // ledger holds the exception exactly once either way.
         expect(results.some((r) => r.status === "fulfilled")).toBe(true);
         expect(await ledgerRows()).toEqual([
-          { external_key: "ref:r1", transaction_id: null, excluded: true },
+          { external_key: KEY.r1, transaction_id: null, excluded: true },
         ]);
       });
     });
@@ -2597,21 +2820,19 @@ describe("Bank sync (integration)", () => {
             actions: [{ type: "set_payee", payeeId: ruled[0].id }],
           } as CreateTransactionRuleDto),
         );
+        const r9 = row({
+          entryReference: "r9",
+          counterpartyName: "Brand New Shop",
+          amount: "3.00",
+        });
+        const r10 = row({
+          entryReference: "r10",
+          counterpartyName: null,
+          remittance: [],
+          amount: "4.00",
+        });
         bankReturns(
-          [
-            ...BANK_ROWS.slice(0, 3),
-            row({
-              entryReference: "r9",
-              counterpartyName: "Brand New Shop",
-              amount: "3.00",
-            }),
-            row({
-              entryReference: "r10",
-              counterpartyName: null,
-              remittance: [],
-              amount: "4.00",
-            }),
-          ].map((r) =>
+          [...BANK_ROWS.slice(0, 3), r9, r10].map((r) =>
             r.entryReference === "r2"
               ? { ...r, counterpartyName: "EMPLOYER 123" }
               : r,
@@ -2622,35 +2843,35 @@ describe("Bank sync (integration)", () => {
         const payeeOf = (key: string) =>
           view.rows.find((r) => r.externalKey === key)?.payee;
 
-        expect(payeeOf("ref:r1")).toEqual({
+        expect(payeeOf(KEY.r1)).toEqual({
           original: "Biedronka",
           name: "Biedronka",
           via: "name",
           aliasPattern: null,
           payeeId: named.id,
         });
-        expect(payeeOf("ref:r2")).toEqual({
+        expect(payeeOf(KEY.r2)).toEqual({
           original: "EMPLOYER 123",
           name: "Employer Ltd",
           via: "alias",
           aliasPattern: "EMPLOYER*",
           payeeId: aliased.id,
         });
-        expect(payeeOf("ref:r3")).toEqual({
+        expect(payeeOf(KEY.r3)).toEqual({
           original: "Kiosk",
           name: "Kiosk Ruch",
           via: "rule",
           aliasPattern: null,
           payeeId: ruled[0].id,
         });
-        expect(payeeOf("ref:r9")).toEqual({
+        expect(payeeOf(keyOf(r9))).toEqual({
           original: "Brand New Shop",
           name: "Brand New Shop",
           via: "new",
           aliasPattern: null,
           payeeId: null,
         });
-        expect(payeeOf("ref:r10")).toMatchObject({ via: "none", name: null });
+        expect(payeeOf(keyOf(r10))).toMatchObject({ via: "none", name: null });
         expect(await count("payees")).toBe(3);
       });
 
@@ -2688,7 +2909,7 @@ describe("Bank sync (integration)", () => {
 
         const view = await preview();
 
-        const first = view.rows.find((r) => r.externalKey === "ref:r1");
+        const first = view.rows.find((r) => r.externalKey === KEY.r1);
         expect(first?.rules).toHaveLength(1);
         expect(first?.rules[0]).toMatchObject({
           ruleId: created.id,
@@ -2711,9 +2932,9 @@ describe("Bank sync (integration)", () => {
           tagNames: ["Weekly"],
         });
         // A row no rule matched has no trace, and nothing was written.
-        expect(
-          view.rows.find((r) => r.externalKey === "ref:r2")?.rules,
-        ).toEqual([]);
+        expect(view.rows.find((r) => r.externalKey === KEY.r2)?.rules).toEqual(
+          [],
+        );
         expect(await count("transaction_rule_applications")).toBe(0);
         expect(await count("transaction_tags")).toBe(0);
       });

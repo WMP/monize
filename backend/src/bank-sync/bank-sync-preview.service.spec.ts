@@ -47,6 +47,10 @@ const CTX = {
   today: "2026-09-30",
 };
 
+/** The keys of `rows()`' first two rows: reference, date, signed amount, occurrence. */
+const KEY_R1 = "ref:r1|2026-09-10|-50.0000:0";
+const KEY_R2 = "ref:r2|2026-09-10|1200.1234:0";
+
 describe("BankSyncPreviewService", () => {
   const linkRepo = { findOne: jest.fn() };
   const accountRepo = { findOne: jest.fn() };
@@ -229,11 +233,11 @@ describe("BankSyncPreviewService", () => {
     });
 
     it("lists a row the ledger holds as a duplicate, with nothing resolved for the screen", async () => {
-      ledgerHolding(["ref:r1"]);
+      ledgerHolding([KEY_R1]);
       const view = await service.build(input());
       expect(view.rows[0]).toMatchObject({
         outcome: "duplicate",
-        externalKey: "ref:r1",
+        externalKey: KEY_R1,
         payeeText: "Biedronka",
         payeeName: null,
         categoryName: null,
@@ -268,7 +272,7 @@ describe("BankSyncPreviewService", () => {
 
   describe("the summary and the balances", () => {
     it("counts every outcome", async () => {
-      ledgerHolding(["ref:r1"]);
+      ledgerHolding([KEY_R1]);
       const { summary } = await service.build(input());
       expect(summary).toEqual({
         new: 1,
@@ -309,7 +313,7 @@ describe("BankSyncPreviewService", () => {
     });
 
     it("does not count a duplicate, a refused, a pending or a before-cutoff row in the balance after", async () => {
-      ledgerHolding(["ref:r1"]);
+      ledgerHolding([KEY_R1]);
       const view = await service.build(input());
       // 1000 + 1200.1234: r1 is a duplicate, r3 refused, r4 pending, r5 early.
       expect(view.balanceAfter).toBe("2200.1234");
@@ -367,7 +371,7 @@ describe("BankSyncPreviewService", () => {
   describe("the fingerprint", () => {
     it("is the fingerprint of the new rows only, so a duplicate does not move it", async () => {
       const everything = await service.build(input());
-      ledgerHolding(["ref:r1"]);
+      ledgerHolding([KEY_R1]);
       const withoutDuplicate = await service.build(input());
       const planned = input().explained.plan.planned;
       expect(everything.planFingerprint).toBe(planFingerprint(planned));
@@ -382,7 +386,7 @@ describe("BankSyncPreviewService", () => {
 
   describe("it writes nothing", () => {
     it("issues only SELECTs and takes no lock", async () => {
-      ledgerHolding(["ref:r1"]);
+      ledgerHolding([KEY_R1]);
       await service.build(input());
       expect(writes()).toEqual([]);
       for (const call of manager.query.mock.calls) {
@@ -538,7 +542,7 @@ describe("BankSyncPreviewService", () => {
       });
 
       it("does not plan a duplicate, an exception or a refused row", async () => {
-        ledgerHolding(["ref:r1"], ["ref:r2"]);
+        ledgerHolding([KEY_R1], [KEY_R2]);
         await service.build(input());
         expect(rulesApplier.planForRow).not.toHaveBeenCalled();
       });
@@ -1088,7 +1092,7 @@ describe("BankSyncPreviewService", () => {
 
   describe("exceptions and keys (spec section 7b)", () => {
     it("lists a ledger row that is an exception as `excluded`, apart from `duplicate`", async () => {
-      ledgerHolding(["ref:r1"], ["ref:r2"]);
+      ledgerHolding([KEY_R1], [KEY_R2]);
       const view = await service.build(input());
       expect(view.rows.map((r) => r.outcome)).toEqual([
         "duplicate",
@@ -1098,7 +1102,7 @@ describe("BankSyncPreviewService", () => {
         "before_cutoff",
       ]);
       expect(view.rows[1]).toMatchObject({
-        externalKey: "ref:r2",
+        externalKey: KEY_R2,
         payeeText: "Employer",
         payee: null,
         rules: [],
@@ -1107,18 +1111,62 @@ describe("BankSyncPreviewService", () => {
     });
 
     it("does not count an exception in the balance after or in the fingerprint: it is not new", async () => {
-      ledgerHolding([], ["ref:r1"]);
+      ledgerHolding([], [KEY_R1]);
       const view = await service.build(input());
       const planned = input().explained.plan.planned;
       expect(view.balanceAfter).toBe("2200.1234");
       expect(view.planFingerprint).toBe(planFingerprint([planned[1]]));
     });
 
+    it.each([
+      ["a duplicate", false, "duplicate"],
+      ["an exception", true, "excluded"],
+    ])(
+      "shows a row held under a legacy key as %s, with the key the outcome calls for",
+      async (_label, excluded, outcome) => {
+        const [first] = input().explained.plan.planned;
+        const legacyKey = first.legacyKeys?.contested as string;
+        expect(legacyKey).toMatch(/^ref:r1#[0-9a-f]{64}$/);
+        manager.query.mockImplementation(async (sql: string) =>
+          String(sql).includes("SELECT external_key")
+            ? [
+                {
+                  external_key: legacyKey,
+                  booking_date: "2026-01-01",
+                  excluded,
+                },
+              ]
+            : [],
+        );
+        const view = await service.build(input());
+        // An exception is taken back by the key it is stored under; a
+        // duplicate keeps the planned key.
+        expect(view.rows[0]).toMatchObject({
+          outcome,
+          externalKey: excluded ? legacyKey : first.externalKey,
+        });
+        expect(legacyKey).not.toBe(first.externalKey);
+        expect(view.rows[1]).toMatchObject({
+          outcome: "new",
+          externalKey: KEY_R2,
+        });
+        expect(view.summary).toMatchObject({
+          new: 1,
+          duplicate: excluded ? 0 : 1,
+          excluded: excluded ? 1 : 0,
+        });
+        // A held row is not new, whichever key holds it.
+        expect(view.planFingerprint).toBe(
+          planFingerprint([input().explained.plan.planned[1]]),
+        );
+      },
+    );
+
     it("carries the key of every planned row, and none for a row it did not plan", async () => {
       const view = await service.build(input());
       expect(view.rows.map((r) => r.externalKey)).toEqual([
-        "ref:r1",
-        "ref:r2",
+        KEY_R1,
+        KEY_R2,
         null,
         null,
         null,
@@ -1132,11 +1180,25 @@ describe("BankSyncPreviewService", () => {
       );
       expect(ledgerQueries).toHaveLength(1);
       expect(String(ledgerQueries[0][0])).toContain("excluded_at IS NOT NULL");
-      expect(ledgerQueries[0][1]).toEqual([
-        ACCOUNT_ID,
-        USER_ID,
-        ["ref:r1", "ref:r2"],
-      ]);
+      // Each reference row asks for its own key and the two keys an earlier
+      // planner gave it.
+      const [, , candidates] = ledgerQueries[0][1] as [
+        string,
+        string,
+        string[],
+      ];
+      const [first, second] = input().explained.plan.planned;
+      expect(ledgerQueries[0][1].slice(0, 2)).toEqual([ACCOUNT_ID, USER_ID]);
+      expect([...candidates].sort()).toEqual(
+        [
+          KEY_R1,
+          first.legacyKeys?.contested,
+          first.legacyKeys?.bare,
+          KEY_R2,
+          second.legacyKeys?.contested,
+          second.legacyKeys?.bare,
+        ].sort(),
+      );
     });
   });
 
@@ -1289,7 +1351,7 @@ describe("BankSyncPreviewService", () => {
     });
 
     it("is carried by a new, an already imported and an excluded row, and by no other", async () => {
-      ledgerHolding(["ref:r1"], ["ref:r2"]);
+      ledgerHolding([KEY_R1], [KEY_R2]);
       const view = await service.build(input());
       expect(view.rows.map((r) => [r.outcome, r.ruleInput !== null])).toEqual([
         ["duplicate", true],
@@ -1329,7 +1391,7 @@ describe("BankSyncPreviewService", () => {
     });
 
     it("writes nothing to build it", async () => {
-      ledgerHolding(["ref:r1"], ["ref:r2"], { "pl:card payment": "tag-77" });
+      ledgerHolding([KEY_R1], [KEY_R2], { "pl:card payment": "tag-77" });
       await service.build(input());
       for (const call of manager.query.mock.calls) {
         expect(String(call[0])).not.toMatch(/INSERT|UPDATE|DELETE/);

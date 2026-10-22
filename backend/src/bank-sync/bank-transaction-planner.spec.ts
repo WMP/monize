@@ -399,7 +399,9 @@ describe("planBankImport", () => {
         row({ entryReference: "E-1" }),
         row({ entryReference: null, amount: "2" }),
       ]);
-      expect(result.planned[0].externalKey).toBe("ref:E-1");
+      expect(result.planned[0].externalKey).toBe(
+        "ref:E-1|2026-03-10|-10.0000:0",
+      );
       expect(result.planned[1].externalKey).toMatch(/^hash:[0-9a-f]{64}:0$/);
     });
 
@@ -418,8 +420,8 @@ describe("planBankImport", () => {
       const second = plan([
         row({ entryReference: "E-1", transactionId: "T-CHANGED" }),
       ]).planned[0];
-      expect(first.externalKey).toBe("ref:E-1");
-      expect(second.externalKey).toBe("ref:E-1");
+      expect(first.externalKey).toBe("ref:E-1|2026-03-10|-10.0000:0");
+      expect(second.externalKey).toBe("ref:E-1|2026-03-10|-10.0000:0");
     });
 
     it("skips a blank reference and falls through to the hash", () => {
@@ -431,7 +433,9 @@ describe("planBankImport", () => {
 
     it("trims the reference", () => {
       const result = plan([row({ entryReference: "  E-9  " })]);
-      expect(result.planned[0].externalKey).toBe("ref:E-9");
+      expect(result.planned[0].externalKey).toBe(
+        "ref:E-9|2026-03-10|-10.0000:0",
+      );
     });
 
     describe("a row repeated within one fetch", () => {
@@ -442,8 +446,8 @@ describe("planBankImport", () => {
           row({ entryReference: "E-1", amount: "5.00" }),
         ]);
         expect(result.planned.map((p) => p.externalKey)).toEqual([
-          "ref:E-1",
-          "ref:E-2",
+          "ref:E-1|2026-03-10|-5.0000:0",
+          "ref:E-2|2026-03-10|-6.0000:0",
         ]);
         expect(result.planned.map((p) => p.amount)).toEqual([-5, -6]);
       });
@@ -483,19 +487,41 @@ describe("planBankImport", () => {
         expect(result.planned.map((p) => p.amount)).toEqual([-5, -6]);
         const keys = result.planned.map((p) => p.externalKey);
         expect(new Set(keys).size).toBe(2);
-        for (const key of keys) expect(key).toMatch(/^ref:E-1#[0-9a-f]{64}$/);
+        expect(keys).toEqual([
+          "ref:E-1|2026-03-10|-5.0000:0",
+          "ref:E-1|2026-03-10|-6.0000:0",
+        ]);
       });
 
-      it("keys each row of a contested reference by its content, whatever order the bank lists them", () => {
+      it("does not change the key of a row when another row with the same reference joins or leaves the fetch (A26-H09)", () => {
         const a = row({ entryReference: "E-1", amount: "5.00" });
-        const b = row({ entryReference: "E-1", amount: "6.00" });
+        const b = row({
+          entryReference: "E-1",
+          amount: "6.00",
+          bookingDate: "2026-03-12",
+        });
         const keyOf = (rows: BankTransaction[], amount: number) =>
           plan(rows).planned.find((p) => p.amount === amount)?.externalKey;
-        expect(keyOf([a, b], -5)).toBe(keyOf([b, a], -5));
-        expect(keyOf([a, b], -6)).toBe(keyOf([b, a], -6));
+        const alone = keyOf([a], -5);
+        expect(alone).toBe("ref:E-1|2026-03-10|-5.0000:0");
+        expect(keyOf([a, b], -5)).toBe(alone);
+        expect(keyOf([b, a], -5)).toBe(alone);
+        expect(keyOf([b], -6)).toBe(keyOf([a, b], -6));
+        expect(keyOf([b], -6)).toBe("ref:E-1|2026-03-12|-6.0000:0");
       });
 
-      it("drops an exact repeat inside a contested reference and keeps the rest", () => {
+      it("gives two rows of one reference, date and amount that differ in content the occurrences :0 and :1", () => {
+        const result = plan([
+          row({ entryReference: "E-1", counterpartyName: "Shop A" }),
+          row({ entryReference: "E-1", counterpartyName: "Shop B" }),
+        ]);
+        expect(result.planned.map((p) => p.externalKey)).toEqual([
+          "ref:E-1|2026-03-10|-10.0000:0",
+          "ref:E-1|2026-03-10|-10.0000:1",
+        ]);
+      });
+
+      it("drops an exact repeat inside a shared reference and keeps the rest", () => {
         const result = plan([
           row({ entryReference: "E-1", amount: "5.00" }),
           row({ entryReference: "E-1", amount: "6.00" }),
@@ -509,21 +535,23 @@ describe("planBankImport", () => {
           row({ entryReference: "E-1", transactionId: "T-1" }),
           row({ entryReference: "E-1", transactionId: "T-2" }),
         ]);
-        expect(result.planned.map((p) => p.externalKey)).toEqual(["ref:E-1"]);
+        expect(result.planned.map((p) => p.externalKey)).toEqual([
+          "ref:E-1|2026-03-10|-10.0000:0",
+        ]);
       });
 
-      it("keeps an uncontested reference's plain ref: key", () => {
+      it("keeps the plain per-row ref: key of rows with different references", () => {
         const result = plan([
           row({ entryReference: "E-1", amount: "5.00" }),
           row({ entryReference: "E-2", amount: "6.00" }),
         ]);
         expect(result.planned.map((p) => p.externalKey)).toEqual([
-          "ref:E-1",
-          "ref:E-2",
+          "ref:E-1|2026-03-10|-5.0000:0",
+          "ref:E-2|2026-03-10|-6.0000:0",
         ]);
       });
 
-      it("fits a long contested key to the column", () => {
+      it("fits a long key of rows sharing a reference to the column", () => {
         const reference = "R".repeat(250);
         const result = plan([
           row({ entryReference: reference, amount: "5.00" }),
@@ -542,7 +570,9 @@ describe("planBankImport", () => {
           row({ entryReference: "E-1" }),
         ]);
         expect(result.pending).toBe(1);
-        expect(result.planned.map((p) => p.externalKey)).toEqual(["ref:E-1"]);
+        expect(result.planned.map((p) => p.externalKey)).toEqual([
+          "ref:E-1|2026-03-10|-10.0000:0",
+        ]);
       });
     });
 
@@ -635,20 +665,86 @@ describe("planBankImport", () => {
       expect(key("A\\|B", "C")).not.toBe(key("A", "B\\|C"));
     });
 
+    describe("the keys of a sync before A26-H09 (legacyKeys)", () => {
+      it("names the old bare and contested keys of a reference row", () => {
+        const wire = row({
+          entryReference: "E-1",
+          bankReference: "B-1",
+          bookingDate: "2026-03-10",
+          valueDate: "2026-03-11",
+          counterpartyName: "Shop",
+          remittance: ["Line 1", "Line 2"],
+        });
+        const digest = sha256(
+          JSON.stringify([
+            wire.bookingDate,
+            wire.valueDate,
+            wire.transactionDate,
+            wire.amount,
+            wire.currencyCode,
+            wire.direction,
+            wire.counterpartyName,
+            wire.remittance,
+            wire.bankReference,
+          ]),
+        );
+        expect(plan([wire]).planned[0].legacyKeys).toEqual({
+          bare: "ref:E-1",
+          contested: `ref:E-1#${digest}`,
+        });
+      });
+
+      it("is null for a row without an entry reference", () => {
+        expect(plan([row()]).planned[0].legacyKeys).toBeNull();
+        expect(
+          plan([row({ entryReference: "  " })]).planned[0].legacyKeys,
+        ).toBeNull();
+      });
+
+      it("fits the old keys of a long reference to the column too", () => {
+        const [only] = plan([row({ entryReference: "L".repeat(300) })]).planned;
+        expect(only.legacyKeys?.bare).toBe(
+          `ref:${sha256(`ref:${"L".repeat(300)}`)}`,
+        );
+        expect(only.legacyKeys?.contested).toMatch(/^ref:[0-9a-f]{64}$/);
+      });
+    });
+
+    it("gives a row the same key alone or beside a row of its reference with another date and amount", () => {
+      const a = row({ entryReference: "E-1", amount: "5.00" });
+      const b = row({
+        entryReference: "E-1",
+        amount: "7.25",
+        bookingDate: "2026-03-15",
+      });
+      const alone = plan([a]).planned[0].externalKey;
+      expect(plan([a, b]).planned[0].externalKey).toBe(alone);
+      expect(plan([b, a]).planned[1].externalKey).toBe(alone);
+    });
+
+    it("fits a long reference to ref: + 64 hex characters", () => {
+      const key = plan([row({ entryReference: "X".repeat(400) })]).planned[0]
+        .externalKey;
+      expect(key).toMatch(/^ref:[0-9a-f]{64}$/);
+      expect(key.length).toBeLessThanOrEqual(255);
+    });
+
     describe("the 255-character bound", () => {
       it("leaves a key of exactly 255 characters alone", () => {
-        const reference = "R".repeat(251);
+        const reference = "R".repeat(229);
         const key = plan([row({ entryReference: reference })]).planned[0]
           .externalKey;
-        expect(key).toBe(`ref:${reference}`);
+        expect(key).toBe(`ref:${reference}|2026-03-10|-10.0000:0`);
         expect(key).toHaveLength(255);
       });
 
       it("replaces a longer ref: key by its prefix and the SHA-256 of the whole key", () => {
-        const reference = "R".repeat(252);
+        const reference = "R".repeat(230);
         const key = plan([row({ entryReference: reference })]).planned[0]
           .externalKey;
-        expect(key).toBe(`ref:${sha256(`ref:${reference}`)}`);
+        expect(key).toBe(
+          `ref:${sha256(`ref:${reference}|2026-03-10|-10.0000:0`)}`,
+        );
         expect(key.length).toBeLessThanOrEqual(255);
       });
 
@@ -708,7 +804,7 @@ describe("planBankImport", () => {
         `${PINNED_HASH}:1`,
       ]);
       expect(keys([{ ...FIXTURE, entryReference: "E-1" }])).toEqual([
-        "ref:E-1",
+        "ref:E-1|2026-09-10|-12.3400:0",
       ]);
     });
 
@@ -850,7 +946,7 @@ describe("planBankImport", () => {
           [{ ...SHOP, entryReference: "O;0000001" }],
           KEY_CTX,
         ).planned[0];
-        expect(planned.externalKey).toBe("ref:O;0000001");
+        expect(planned.externalKey).toBe("ref:O;0000001|2026-09-10|-25.5000:0");
         expect(planned.description).toBe("SOMECITYSHOP NAME  10PL");
       });
 
@@ -959,7 +1055,7 @@ describe("explainBankImport (the preview's view of the same classification)", ()
     expect(entries[0]).toEqual({
       outcome: "planned",
       reason: null,
-      externalKey: "ref:r1",
+      externalKey: "ref:r1|2026-03-10|-12.5000:0",
       transactionDate: "2026-03-10",
       amount: -12.5,
       currencyCode: "EUR",
