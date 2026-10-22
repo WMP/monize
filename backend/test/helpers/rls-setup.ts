@@ -6,6 +6,8 @@ import { applyAppRoleGrants, provisionAppRole } from "@/common/db/app-role";
 import { compareMigrationFilenames } from "@/common/db/migration-filename";
 import { DEFAULT_APP_USER } from "@/common/db/rls-config";
 
+import { applyProductionConstraints } from "./schema-constraints";
+
 /**
  * RLS task T1: make the integration harness look like a real database.
  *
@@ -320,7 +322,8 @@ function exclusionConstraints(): {
  * Brings a `synchronize`-built test database up to the shape the real one has:
  * the runtime role and its grants, the RLS helper functions and policies, the
  * behavioural triggers that enforce rules the entities cannot express, the
- * constraints they cannot express either, and the `updated_at` triggers.
+ * constraints they cannot express either, the unique keys and CHECKs they
+ * merely omit, and the `updated_at` triggers.
  *
  * Call after the schema exists (i.e. after `DataSource.initialize()` with
  * `synchronize: true`). Idempotent, and re-applied per suite because
@@ -473,4 +476,9 @@ export async function applyRlsPolicies(
       `ALTER TABLE "${table}" ADD CONSTRAINT "${constraint}" ${definition}`,
     );
   }
+
+  // 7. The unique keys and CHECKs schema.sql declares and the entities omit, so
+  //    an `ON CONFLICT` naming a production key has an arbiter here and a write
+  //    production refuses is refused here too (A26-S05-01).
+  await applyProductionConstraints(dataSource);
 }

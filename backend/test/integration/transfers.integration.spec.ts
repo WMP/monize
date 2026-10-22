@@ -215,7 +215,7 @@ describe("TransactionsService transfers (integration)", () => {
         `INSERT INTO transaction_splits
            (id, transaction_id, kind, amount, transfer_account_id,
             linked_transaction_id)
-         VALUES ($1, $2, 'TRANSFER', -100, $3, $4)`,
+         VALUES ($1, $2, 'transfer', -100, $3, $4)`,
         [SPLIT_ID, PARENT_ID, toAccountId, LEG_ID],
       );
     });
@@ -274,7 +274,7 @@ describe("TransactionsService transfers (integration)", () => {
             `INSERT INTO transaction_splits
                (id, transaction_id, kind, amount, transfer_account_id,
                 linked_transaction_id)
-             VALUES ($1, $2, 'TRANSFER', -100, $3, $4)`,
+             VALUES ($1, $2, 'transfer', -100, $3, $4)`,
             [SPLIT_ID, PARENT_ID, toAccountId, LEG_ID],
           );
         }

@@ -257,7 +257,17 @@ describe("Income vs Expenses tag-key breakdown (integration)", () => {
     return { outLeg, inLeg };
   }
 
+  /**
+   * One tag per name, as production keeps it (`idx_tags_user_name` is unique
+   * on the user and the lower-cased name): a second transaction tagged with
+   * the same name shares the first one's tag.
+   */
   async function seedTag(name: string): Promise<string> {
+    const [existing] = await dataSource.query(
+      `SELECT id FROM tags WHERE user_id = $1 AND LOWER(name) = LOWER($2)`,
+      [userId, name],
+    );
+    if (existing) return existing.id;
     const [row] = await dataSource.query(
       `INSERT INTO tags (user_id, name) VALUES ($1, $2) RETURNING id`,
       [userId, name],

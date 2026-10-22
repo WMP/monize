@@ -191,6 +191,34 @@ const FKLESS_PARENT_REFS: Record<string, ForeignKeyInfo> = {
 };
 
 /**
+ * Columns a production CHECK constrains to a vocabulary or a shape the generic
+ * generator cannot guess (it writes `t1`, `t2`, ... into a text column and
+ * leaves a nullable column NULL). The integration schema carries production's
+ * CHECKs (test/helpers/schema-constraints.ts), so a generated row must be one
+ * production could hold. Explicit `overrides` still win.
+ *
+ * `ai_review_requests` is an `email_trade` request because that is the kind
+ * whose row has no transaction (`ck_ai_review_requests_trade_shape`); every
+ * other kind needs one (`ck_ai_review_requests_transaction_required`).
+ */
+const PRODUCTION_SHAPED_VALUES: Record<string, Record<string, unknown>> = {
+  ai_review_requests: { kind: "email_trade" },
+  backup_offsite_uploads: {
+    destination: "s3",
+    tier: "daily",
+    status: "pending",
+  },
+  email_receipt_mailboxes: {
+    auth_method: "password",
+    password_enc: "seeded-ciphertext",
+  },
+  // The generator's integers count up across the whole seed, past the year
+  // bounds these CHECKs hold.
+  monte_carlo_cash_flows: { flow_type: "ONE_TIME", start_year: 1 },
+  monte_carlo_scenarios: { years_to_retirement: 30 },
+};
+
+/**
  * Generates one minimal valid row per (table, owner) and remembers what it
  * inserted, so ownership assertions can compare "what the app role can see"
  * against "what was seeded for that user" exactly, by primary key.
@@ -205,6 +233,16 @@ const FKLESS_PARENT_REFS: Record<string, ForeignKeyInfo> = {
  */
 export class RlsRowSeeder {
   private uniq = 0;
+
+  /**
+   * The delegate of every generically seeded `account_delegates` row. The
+   * production CHECK `account_delegates_no_self` refuses a delegation to
+   * oneself, so the owner cannot also be the delegate; the other isolation
+   * user cannot be either, or the delegation would be visible to two users and
+   * the exact-visibility sweep would mean nothing. A third user nobody queries
+   * as, outside `seededRows`, keeps each row its owner's alone.
+   */
+  private counterpartyUserId: string | null = null;
 
   /** Inserted rows: table -> ownerId -> full row (RETURNING *). */
   readonly seededRows = new Map<string, Map<string, Record<string, unknown>>>();
@@ -265,9 +303,10 @@ export class RlsRowSeeder {
   buildInsert(
     table: string,
     ownerId: string,
-    overrides: Record<string, unknown> = {},
+    explicit: Record<string, unknown> = {},
   ): BuiltInsert {
     const entry = this.entry(table);
+    const overrides = { ...PRODUCTION_SHAPED_VALUES[table], ...explicit };
     const columns: string[] = [];
     const values: unknown[] = [];
 
@@ -275,6 +314,18 @@ export class RlsRowSeeder {
       if (col.name in overrides) {
         columns.push(col.name);
         values.push(overrides[col.name]);
+        continue;
+      }
+
+      if (table === "account_delegates" && col.name === "delegate_user_id") {
+        if (!this.counterpartyUserId) {
+          throw new Error(
+            "Seeding account_delegates needs a delegate other than its owner: " +
+              "call seedAll first, or pass delegate_user_id as an override",
+          );
+        }
+        columns.push(col.name);
+        values.push(this.counterpartyUserId);
         continue;
       }
 
@@ -340,6 +391,12 @@ export class RlsRowSeeder {
 
   /** Seeds one row per (table, owner), parents before children. */
   async seedAll(tables: string[], ownerIds: string[]): Promise<void> {
+    if (!this.counterpartyUserId) {
+      const id = randomUUID();
+      const { sql, values } = this.buildInsert("users", id);
+      await this.dataSource.query(sql, values);
+      this.counterpartyUserId = id;
+    }
     const order = this.topoOrder(tables);
     for (const ownerId of ownerIds) {
       for (const table of order) {
