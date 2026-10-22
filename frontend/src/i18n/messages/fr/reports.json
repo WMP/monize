@@ -821,6 +821,7 @@
     "actionCapitalGainShort": "Plus-value à court terme",
     "actionCapitalGainLong": "Plus-value à long terme",
     "actionRedeem": "Remboursement CD/obligation",
+    "actionReturnOfCapital": "Remboursement de capital",
     "colCommission": "Commission",
     "colPriceCurrency": "Devise du prix",
     "colAmountCurrency": "Devise du montant",

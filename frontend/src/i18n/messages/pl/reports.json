@@ -821,6 +821,7 @@
     "actionCapitalGainShort": "Krótkoterminowy zysk kapitałowy",
     "actionCapitalGainLong": "Długoterminowy zysk kapitałowy",
     "actionRedeem": "Wykup CD/obligacji",
+    "actionReturnOfCapital": "Zwrot kapitału",
     "colCommission": "Prowizja",
     "colPriceCurrency": "Waluta ceny",
     "colAmountCurrency": "Waluta kwoty",

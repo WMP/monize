@@ -821,6 +821,7 @@
     "actionCapitalGainShort": "Plusvalenza a breve termine",
     "actionCapitalGainLong": "Plusvalenza a lungo termine",
     "actionRedeem": "Rimborso CD/obbligazione",
+    "actionReturnOfCapital": "Rimborso di capitale",
     "colCommission": "Commissione",
     "colPriceCurrency": "Valuta del prezzo",
     "colAmountCurrency": "Valuta dell'importo",

@@ -821,6 +821,7 @@
     "actionCapitalGainShort": "단기 자본이득",
     "actionCapitalGainLong": "장기 자본이득",
     "actionRedeem": "CD/채권 상환",
+    "actionReturnOfCapital": "자본 환급",
     "colCommission": "수수료",
     "colPriceCurrency": "가격 통화",
     "colAmountCurrency": "금액 통화",

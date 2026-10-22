@@ -821,6 +821,7 @@
     "actionCapitalGainShort": "Keuntungan Modal Jangka Pendek",
     "actionCapitalGainLong": "Keuntungan Modal Jangka Panjang",
     "actionRedeem": "Pencairan CD/Obligasi",
+    "actionReturnOfCapital": "Pengembalian Modal",
     "colCommission": "Komisi",
     "colPriceCurrency": "Mata Uang Harga",
     "colAmountCurrency": "Mata Uang Jumlah",

@@ -821,6 +821,7 @@
     "actionCapitalGainShort": "Kurzfristiger Kapitalertrag",
     "actionCapitalGainLong": "Langfristiger Kapitalertrag",
     "actionRedeem": "CD/Anleihe einlösen",
+    "actionReturnOfCapital": "Kapitalrückzahlung",
     "colCommission": "Provision",
     "colPriceCurrency": "Kurswährung",
     "colAmountCurrency": "Betragswährung",

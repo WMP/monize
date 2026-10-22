@@ -821,6 +821,7 @@
     "actionCapitalGainShort": "Короткостроковий приріст капіталу",
     "actionCapitalGainLong": "Довгостроковий приріст капіталу",
     "actionRedeem": "Погашення CD/облігації",
+    "actionReturnOfCapital": "Повернення капіталу",
     "colCommission": "Комісія",
     "colPriceCurrency": "Валюта ціни",
     "colAmountCurrency": "Валюта суми",

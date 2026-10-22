@@ -821,6 +821,7 @@
     "actionCapitalGainShort": "短期资本收益",
     "actionCapitalGainLong": "长期资本收益",
     "actionRedeem": "赎回存单/债券",
+    "actionReturnOfCapital": "资本返还",
     "colCommission": "佣金",
     "colPriceCurrency": "价格货币",
     "colAmountCurrency": "金额货币",

@@ -821,6 +821,7 @@
     "actionCapitalGainShort": "Kısa Vadeli Sermaye Kazancı",
     "actionCapitalGainLong": "Uzun Vadeli Sermaye Kazancı",
     "actionRedeem": "CD/Tahvil İtfası",
+    "actionReturnOfCapital": "Sermaye İadesi",
     "colCommission": "Komisyon",
     "colPriceCurrency": "Fiyat Para Birimi",
     "colAmountCurrency": "Tutar Para Birimi",

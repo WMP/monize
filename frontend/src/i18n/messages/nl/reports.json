@@ -821,6 +821,7 @@
     "actionCapitalGainShort": "Kortetermijnkapitaalwinst",
     "actionCapitalGainLong": "Langetermijnkapitaalwinst",
     "actionRedeem": "CD/obligatie aflossen",
+    "actionReturnOfCapital": "Kapitaalterugbetaling",
     "colCommission": "Commissie",
     "colPriceCurrency": "Koersvaluta",
     "colAmountCurrency": "Bedragvaluta",

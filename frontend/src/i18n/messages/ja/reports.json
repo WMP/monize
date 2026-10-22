@@ -821,6 +821,7 @@
     "actionCapitalGainShort": "短期キャピタルゲイン",
     "actionCapitalGainLong": "長期キャピタルゲイン",
     "actionRedeem": "CD・債券の償還",
+    "actionReturnOfCapital": "資本の払い戻し",
     "colCommission": "手数料",
     "colPriceCurrency": "価格通貨",
     "colAmountCurrency": "金額通貨",
