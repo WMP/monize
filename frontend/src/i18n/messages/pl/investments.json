@@ -201,6 +201,7 @@
     "actionCapitalGainShort": "Krótkoterminowy zysk kapitałowy",
     "actionCapitalGainLong": "Długoterminowy zysk kapitałowy",
     "actionRedeem": "Wykup CD/obligacji",
+    "actionReturnOfCapital": "Zwrot kapitału",
     "allActions": "Wszystkie akcje"
   },
   "transactionForm": {
@@ -221,6 +222,7 @@
     "actionCapitalGainShort": "Krótkoterminowy zysk kapitałowy",
     "actionCapitalGainLong": "Długoterminowy zysk kapitałowy",
     "actionRedeem": "Wykup CD/obligacji",
+    "actionReturnOfCapital": "Zwrot kapitału",
     "actionTransfer": "Przelew",
     "brokerageAccount": "Konto maklerskie",
     "fromAccount": "Konto źródłowe",
@@ -265,6 +267,7 @@
     "sharesAt": "udziałów @",
     "avgCostSuffix": "śr. koszt.",
     "transferCostNote": "Koszt za udział (wypełniony z konta źródłowego) jest przenoszony do konta docelowego, aby raporty zysków i zysków pozostały poprawne. Operacja przenosi tylko udziały -- gotówka nie zmienia właściciela.",
+    "returnOfCapitalNote": "Zwrot kapitału nie jest dochodem. Zwraca część tego, ile kosztowały akcje, więc obniża koszt nabycia pozycji o tę kwotę. Nadwyżka ponad pozostały koszt nabycia jest wykazywana jako zrealizowany zysk kapitałowy.",
     "totalAmount": "Suma ({currency})",
     "sharesAtPrice": "{shares} udziałów @ {symbol}{price}",
     "commissionSuffix": "prowizja",

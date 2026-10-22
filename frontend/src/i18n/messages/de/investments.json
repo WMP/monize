@@ -201,6 +201,7 @@
     "actionCapitalGainShort": "Kurzfristiger Kapitalertrag",
     "actionCapitalGainLong": "Langfristiger Kapitalertrag",
     "actionRedeem": "CD/Anleihe einlösen",
+    "actionReturnOfCapital": "Kapitalrückzahlung",
     "allActions": "Alle Aktionen"
   },
   "transactionForm": {
@@ -221,6 +222,7 @@
     "actionCapitalGainShort": "Kurzfristiger Kapitalertrag",
     "actionCapitalGainLong": "Langfristiger Kapitalertrag",
     "actionRedeem": "CD/Anleihe einlösen",
+    "actionReturnOfCapital": "Kapitalrückzahlung",
     "actionTransfer": "Überweisung",
     "brokerageAccount": "Brokeragekonto",
     "fromAccount": "Von Konto",
@@ -265,6 +267,7 @@
     "sharesAt": "Anteile @",
     "avgCostSuffix": "Durchschn. Kosten.",
     "transferCostNote": "Die Kosten pro Anteil (aus dem Quellkonto vorausgefüllt) werden auf das Zielkonto übertragen, damit Ihre Gewinn- und Ertragsberichte korrekt bleiben. Dabei werden nur Anteile verschoben – kein Bargeld wechselt den Besitzer.",
+    "returnOfCapitalNote": "Eine Kapitalrückzahlung ist kein Ertrag. Sie erstattet einen Teil dessen, was die Anteile gekostet haben, und senkt daher die Anschaffungskosten Ihrer Position um diesen Betrag. Was die verbleibenden Anschaffungskosten übersteigt, wird als realisierter Kursgewinn ausgewiesen.",
     "totalAmount": "Gesamtbetrag ({currency})",
     "sharesAtPrice": "{shares} Anteile @ {symbol}{price}",
     "commissionSuffix": "Provision",

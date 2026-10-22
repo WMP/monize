@@ -24,7 +24,11 @@ export type InvestmentAction =
   | 'REINVEST_CAPITAL_GAIN_LONG'
   | 'CAPITAL_GAIN_SHORT'
   | 'CAPITAL_GAIN_LONG'
-  | 'REDEEM';
+  | 'REDEEM'
+  // Return of capital (issue #1800): a base action of its own. Its cash arrives
+  // like a dividend's and no shares move, but it is not income -- it pays back
+  // part of the cost, so the server takes it off the position's cost basis.
+  | 'RETURN_OF_CAPITAL';
 
 export type QuoteProviderName = 'yahoo' | 'msn' | 'lse' | 'deutsche_boerse';
 
@@ -930,6 +934,12 @@ export interface RealizedGainEntry {
   symbol: string | null;
   securityName: string | null;
   securityCurrencyCode: string | null;
+  /**
+   * The row that realized the gain. A RETURN_OF_CAPITAL realizes what it paid
+   * beyond the cost basis with no shares sold, so its `quantity` and `price`
+   * are 0 and mean nothing (issue #1800).
+   */
+  action: InvestmentAction;
   quantity: number;
   price: number;
   commission: number;

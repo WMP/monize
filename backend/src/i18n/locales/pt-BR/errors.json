@@ -44,6 +44,7 @@
     "changeCurrencyWithTransactions": "Não é possível alterar a moeda de uma conta que tem transações.",
     "alreadyClosed": "A conta já está encerrada",
     "closeNonZeroBalance": "Não é possível encerrar a conta com saldo diferente de zero. Saldo atual: {{ currentBalance }}",
+    "closeWithFutureTransactions": "Não é possível fechar uma conta com transações com data futura. Ela tem {{ count }} transação(ões) com data posterior a hoje; exclua-as ou anule-as primeiro.",
     "closeWithHoldings": "Não é possível encerrar uma conta de investimento que ainda tem títulos. Ela tem {{ holdingCount }} posição(ões) com quantidade diferente de zero; venda ou transfira antes.",
     "notClosed": "A conta não está encerrada",
     "modifyBalanceClosed": "Não é possível modificar o saldo de uma conta encerrada",
@@ -85,6 +86,7 @@
     "paymentMatchingFailed": "O empréstimo foi salvo, mas não foi possível criar sua regra de correspondência de pagamentos. Crie-a nos detalhes do empréstimo."
   },
   "actionHistory": {
+    "loanEditNotUndoable": "Esta alteração do empréstimo não pode ser desfeita automaticamente. Edite o empréstimo para revertê-la.",
     "nothingToUndo": "Nada para desfazer",
     "nothingToRedo": "Nada para refazer",
     "undoNotSupportedForEntityType": "Desfazer não suportado para o tipo de entidade: {{ entityType }}",
@@ -550,6 +552,7 @@
     "bondSeriesNotNameable": "Uma operação agendada {{ action }} de um ativo vinculado a um programa de títulos não pode indicar a série de títulos das suas cotas. Registre-a como transação e escolha a série, ou agende uma compra (BUY), que usa a série à venda na sua data.",
     "notFound": "Transação agendada com ID {{ id }} não encontrada",
     "occurrenceAlreadyPosted": "Esta ocorrência já foi lançada.",
+    "noOccurrencesLeft": "Este agendamento não tem mais ocorrências para lançar ou pular.",
     "changedConcurrently": "The scheduled transaction changed during the operation. Reload it and retry.",
     "fxPlainOnly": "Só é possível usar outra moeda em uma transação agendada simples, não em uma divisão, transferência ou investimento",
     "fxRateUnavailable": "Não há uma taxa de câmbio disponível de {{ from }} para {{ to }} em {{ date }}. Insira o valor em {{ to }} para lançá-la.",
@@ -761,6 +764,7 @@
     "investmentCashLegStatusLocked": "Esta transação é o lado em dinheiro de uma transação de investimento. Anule-a ou restaure-a alterando o status da transação de investimento, para que os dois lados mudem juntos.",
     "notFoundById": "Transação com ID {{ id }} não encontrada",
     "bulkUpdateNoFields": "Deve ser fornecido pelo menos um campo de atualização",
+    "bulkUpdateConcurrentChange": "Estas transações foram alteradas durante a atualização. Recarregue e tente novamente.",
     "bulkSplitNoMatchingLinesOne": "1 transação dividida foi ignorada porque nenhuma de suas divisões correspondia à atualização de categoria",
     "bulkSplitNoMatchingLinesMany": "{{ count }} transações divididas foram ignoradas porque nenhuma de suas divisões correspondia à atualização de categoria",
     "bulkSplitTransferLegSkippedOne": "1 transferência dividida foi ignorada (anule-a ou restaure-a a partir da transação dividida à qual pertence, para que os dois lados mudem juntos)",

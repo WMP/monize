@@ -26,6 +26,7 @@ import { LoanRateChangesService } from "../loan-rate-changes/loan-rate-changes.s
 import { LoanPaymentDetectorService } from "./loan-payment-detector.service";
 import { LoanPaymentMatchingService } from "./loan-payment-matching.service";
 import { constantLinearPrincipal } from "./mortgage-installment.util";
+import { ledgerMovementPredicate } from "../common/ledger-balance.sql";
 import { DataSource } from "typeorm";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { ScheduledOccurrenceService } from "../scheduled-transactions/scheduled-occurrence.service";
@@ -1656,7 +1657,7 @@ describe("AccountsService", () => {
       const [sql, params] = mockQueryRunner.manager.query.mock.calls.find(
         ([q]: [string]) => q.includes("count(*)::int AS n"),
       );
-      expect(sql).toContain("status IS DISTINCT FROM 'VOID'");
+      expect(sql).toContain(ledgerMovementPredicate(""));
       expect(sql).toContain("transaction_date > $3");
       expect(params[0]).toEqual(["account-1"]);
       expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();

@@ -201,6 +201,7 @@
     "actionCapitalGainShort": "अल्पकालिक पूंजी लाभ",
     "actionCapitalGainLong": "दीर्घकालिक पूंजी लाभ",
     "actionRedeem": "सीडी/बॉन्ड रिडीम करें",
+    "actionReturnOfCapital": "पूंजी की वापसी",
     "allActions": "सभी क्रियाएं"
   },
   "transactionForm": {
@@ -221,6 +222,7 @@
     "actionCapitalGainShort": "अल्पकालिक पूंजी लाभ",
     "actionCapitalGainLong": "दीर्घकालिक पूंजी लाभ",
     "actionRedeem": "सीडी/बॉन्ड रिडीम करें",
+    "actionReturnOfCapital": "पूंजी की वापसी",
     "actionTransfer": "स्थानांतरण",
     "brokerageAccount": "ब्रोकरेज खाता",
     "fromAccount": "स्रोत खाता",
@@ -265,6 +267,7 @@
     "sharesAt": "शेयर @",
     "avgCostSuffix": "औसत लागत।",
     "transferCostNote": "प्रति शेयर लागत (स्रोत खाते से पूर्व-भरी हुई) गंतव्य तक ले जाई जाती है ताकि आपके लाभ और लाभ रिपोर्ट सही रहें। यह केवल शेयर स्थानांतरित करता है -- कोई नकद परिवर्तन नहीं होता।",
+    "returnOfCapitalNote": "पूंजी की वापसी आय नहीं है। यह शेयरों की लागत का एक हिस्सा लौटाती है, इसलिए यह आपकी होल्डिंग के लागत आधार को इस राशि से कम कर देती है। शेष लागत आधार से अधिक कोई भी राशि प्राप्त पूंजीगत लाभ के रूप में दर्ज की जाती है।",
     "totalAmount": "कुल राशि ({currency})",
     "sharesAtPrice": "{shares} शेयर @ {symbol}{price}",
     "commissionSuffix": "कमीशन",

@@ -436,6 +436,7 @@
       "destinationRequired": "Wybierz konto docelowe",
       "sameAccount": "Konto źródłowe i docelowe muszą być różne",
       "negativeTransfer": "Kwota przelewu nie może być ujemna",
+      "convertToTransferUnsupported": "Istniejącej transakcji nie można tutaj zmienić w przelew. Usuń ją i utwórz przelew.",
       "payeeCreated": "Utworzono odbiorcę \"{name}\"",
       "payeeCreateFailed": "Nie udało się utworzyć odbiorcy",
       "payeeReactivated": "Odbiorca \"{name}\" został przywrócony",

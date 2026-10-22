@@ -201,6 +201,7 @@
     "actionCapitalGainShort": "Kortetermijnkapitaalwinst",
     "actionCapitalGainLong": "Langetermijnkapitaalwinst",
     "actionRedeem": "CD/obligatie aflossen",
+    "actionReturnOfCapital": "Kapitaalterugbetaling",
     "allActions": "Alle acties"
   },
   "transactionForm": {
@@ -221,6 +222,7 @@
     "actionCapitalGainShort": "Kortetermijnkapitaalwinst",
     "actionCapitalGainLong": "Langetermijnkapitaalwinst",
     "actionRedeem": "CD/obligatie aflossen",
+    "actionReturnOfCapital": "Kapitaalterugbetaling",
     "actionTransfer": "Overboeken",
     "brokerageAccount": "Effectenrekening",
     "fromAccount": "Van rekening",
@@ -265,6 +267,7 @@
     "sharesAt": "aandelen @",
     "avgCostSuffix": "gem. kostprijs.",
     "transferCostNote": "De kostprijs per aandeel (vooraf ingevuld vanuit de bronrekening) wordt meegenomen naar de doelrekening zodat jouw winst- en verliesrapportages correct blijven. Dit verplaatst alleen aandelen — er wisselt geen geld van eigenaar.",
+    "returnOfCapitalNote": "Een kapitaalterugbetaling is geen inkomen. Ze betaalt een deel terug van wat de aandelen hebben gekost en verlaagt dus de kostprijs van uw positie met dit bedrag. Wat de resterende kostprijs overschrijdt, wordt gerapporteerd als gerealiseerde koerswinst.",
     "totalAmount": "Totaalbedrag ({currency})",
     "sharesAtPrice": "{shares} aandelen @ {symbol}{price}",
     "commissionSuffix": "commissie",

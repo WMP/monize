@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent, act } from '@/test/render';
+import { render, screen, waitFor, fireEvent, act, within } from '@/test/render';
 import { RealizedGainsReport } from './RealizedGainsReport';
 
 vi.mock('@/hooks/useNumberFormat', async () => {
@@ -199,6 +199,40 @@ describe('RealizedGainsReport', () => {
       expect(screen.getByText(/Sell Transactions/)).toBeInTheDocument();
     });
     expect(screen.getByText('AAPL')).toBeInTheDocument();
+  });
+
+  it('labels a return of capital row and shows no shares or price for it (#1800)', async () => {
+    mockGetRealizedGains.mockResolvedValue([
+      gainEntry({
+        transactionId: 'roc-1',
+        action: 'RETURN_OF_CAPITAL',
+        quantity: 0,
+        price: 0,
+        proceeds: 700,
+        costBasis: 500,
+        realizedGain: 200,
+      }),
+    ]);
+    mockGetInvestmentAccounts.mockResolvedValue([]);
+    render(<RealizedGainsReport />);
+    await waitFor(() => {
+      expect(screen.getByText('Return of capital beyond cost basis')).toBeInTheDocument();
+    });
+    const row = screen.getByText('Return of capital beyond cost basis').closest('tr')!;
+    const cells = within(row).getAllByRole('cell');
+    // Shares and price: nothing was sold, so nothing to show.
+    expect(cells[2]).toHaveTextContent(/^Shares-$/);
+    expect(cells[3]).toHaveTextContent(/^Price-$/);
+  });
+
+  it('does not label an ordinary sale as a return of capital', async () => {
+    mockGetRealizedGains.mockResolvedValue([gainEntry({ action: 'SELL' })]);
+    mockGetInvestmentAccounts.mockResolvedValue([]);
+    render(<RealizedGainsReport />);
+    await waitFor(() => {
+      expect(screen.getByText(/Sell Transactions/)).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Return of capital beyond cost basis')).not.toBeInTheDocument();
   });
 
   it('queries the realized-gains endpoint with the selected date range', async () => {

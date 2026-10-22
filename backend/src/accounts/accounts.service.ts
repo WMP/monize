@@ -63,7 +63,10 @@ import { withSystemContext } from "../common/db/with-context";
 import { withScopedDb } from "../common/db/scoped-db";
 import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { affectedRowCount } from "../common/db/query-result";
-import { LEDGER_MOVEMENT_PREDICATE } from "../common/ledger-balance.sql";
+import {
+  LEDGER_MOVEMENT_PREDICATE,
+  ledgerMovementPredicate,
+} from "../common/ledger-balance.sql";
 import {
   MortgageType,
   PrepaymentMode,
@@ -1402,8 +1405,7 @@ export class AccountsService {
            FROM transactions
           WHERE account_id = ANY($1)
             AND user_id = $2
-            AND status IS DISTINCT FROM 'VOID'
-            AND parent_transaction_id IS NULL
+            AND ${ledgerMovementPredicate("")}
             AND transaction_date > $3`,
         [halves.map((half) => half.id), userId, todayYMD()],
       );

@@ -201,6 +201,7 @@
     "actionCapitalGainShort": "Kısa Vadeli Sermaye Kazancı",
     "actionCapitalGainLong": "Uzun Vadeli Sermaye Kazancı",
     "actionRedeem": "CD/Tahvil İtfası",
+    "actionReturnOfCapital": "Sermaye İadesi",
     "allActions": "Tüm Eylemler"
   },
   "transactionForm": {
@@ -221,6 +222,7 @@
     "actionCapitalGainShort": "Kısa Vadeli Sermaye Kazancı",
     "actionCapitalGainLong": "Uzun Vadeli Sermaye Kazancı",
     "actionRedeem": "CD/Tahvil İtfası",
+    "actionReturnOfCapital": "Sermaye İadesi",
     "actionTransfer": "Transfer",
     "brokerageAccount": "Aracı Kurum Hesabı",
     "fromAccount": "Kaynak Hesap",
@@ -265,6 +267,7 @@
     "sharesAt": "hisse @",
     "avgCostSuffix": "ort. maliyet.",
     "transferCostNote": "Hisse başı maliyet (kaynak hesaptan önceden doldurulmuş) kazanç ve kâr raporlarınızın doğru kalması için hedefe taşınır. Bu yalnızca hisseleri taşır -- nakit el değiştirmez.",
+    "returnOfCapitalNote": "Sermaye iadesi gelir değildir. Hisselerin maliyetinin bir kısmını geri öder, bu nedenle pozisyonunuzun maliyet esasını bu tutar kadar düşürür. Kalan maliyet esasını aşan tutar gerçekleşmiş sermaye kazancı olarak raporlanır.",
     "totalAmount": "Toplam Tutar ({currency})",
     "sharesAtPrice": "{shares} hisse @ {symbol}{price}",
     "commissionSuffix": "komisyon",
