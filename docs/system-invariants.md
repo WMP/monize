@@ -2467,6 +2467,13 @@ Required tests      Present: "final payment and lifetime interest" in
                     line before payment N) and, on the frontend,
                     loan-schedule-methods.test.ts (318 payments ending
                     2050-06-01; the bullet on payment N).
+                    One minor unit is owed, less is a residue (isDebtRetired,
+                    price-installment.ts, shared by the posting, the planner
+                    and the projection; isDebtOutstanding on the frontend): a
+                    debt of exactly 0.01 posts 0.01 and retires the loan
+                    (audit A26-L23; scheduled-loan-one-cent.integration.spec.ts,
+                    price-installment.spec.ts, plan-loan-settlement.spec.ts,
+                    loan-schedule.test.ts 1,000 / 999.99 -> two rows).
 Status              enforced
 ```
 
@@ -2947,8 +2954,9 @@ Enforcement         The core and the advancement (B1, issue #1639):
                     a pure fold over priceInstallment at each listed
                     occurrence's own due date, exposed by
                     GET /scheduled-transactions/:id/loan-occurrences; the
-                    picker and the override editor read it for a loan bill
-                    (F2, issue #1643) instead of repeating
+                    picker, the override editor and the Post dialog read it
+                    for a loan bill (F2, issue #1643; the dialog's preview,
+                    audit A26-L26) instead of repeating
                     scheduledTransaction.amount, and the rate-change dialogs
                     confirm on edit and delete and name the due date the bill
                     changes at (F1, issue #1642).

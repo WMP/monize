@@ -246,6 +246,28 @@ describe('generateLoanSchedule', () => {
     expect(result.rows[1].date).toBe('2026-02-15');
   });
 
+  // A26-S15-06: one whole minor unit is owed; less than one is a residue.
+  it('amortizes the last cent: 1,000 at 0 % with a payment of 999.99 takes two rows', () => {
+    const result = generateLoanSchedule(
+      baseInput({ startingBalance: 1000, annualRate: 0, paymentAmount: 999.99 }),
+    );
+    expect(result.rows).toHaveLength(2);
+    expect(result.rows[0].balance).toBe(0.01);
+    expect(result.rows[1].principal).toBe(0.01);
+    expect(result.rows[1].balance).toBe(0);
+    expect(result.paidOff).toBe(true);
+  });
+
+  it('owes a cent that float subtraction leaves a hair under: 5.10 less 5.09', () => {
+    // 5.1 - 5.09 is 0.009999999999999787 in floating point.
+    const result = generateLoanSchedule(
+      baseInput({ startingBalance: 5.1, annualRate: 0, paymentAmount: 5.09 }),
+    );
+    expect(result.rows).toHaveLength(2);
+    expect(result.rows[1].principal).toBe(0.01);
+    expect(result.paidOff).toBe(true);
+  });
+
   it('handles a 0% rate loan', () => {
     const result = generateLoanSchedule(baseInput({ annualRate: 0 }));
     expect(result.paidOff).toBe(true);

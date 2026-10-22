@@ -243,6 +243,29 @@ describe("projectLoanOccurrences", () => {
     ]);
   });
 
+  describe("the payoff boundary (A26-S15-06): one whole minor unit is owed", () => {
+    it("prices an occurrence on a debt of exactly 0.01 as a payment of 0.01", () => {
+      const result = project({ count: 1, debt: 0.01 });
+      expect(result.status).toBe("priced");
+      expect(result.occurrences[0]).toMatchObject({
+        amount: 0.01,
+        principal: 0.01,
+        debtBefore: 0.01,
+        complete: true,
+      });
+    });
+
+    it("prices a debt of 0.02 as 0.02 and a debt below one unit as a payoff of 0", () => {
+      expect(project({ count: 1, debt: 0.02 }).occurrences[0].amount).toBe(
+        0.02,
+      );
+      expect(project({ count: 1, debt: 0.0049 }).occurrences[0]).toMatchObject({
+        amount: 0,
+        complete: true,
+      });
+    });
+  });
+
   describe("an override", () => {
     it("with an amount and no lines is the bill for that occurrence, divided at its date, and never the template (8.6)", () => {
       const result = project({

@@ -162,7 +162,7 @@ export function allocateLoanPayment(
  * #1581 can owe 833.3449 on its final installment, and rounding would book
  * 833.35 and push the loan into credit; there the principal is cut down to
  * the unit at or below the debt (833.34), leaving a residue of less than one
- * unit that the next occurrence reads as paid off (`debt <= 0.01`). A ledger
+ * unit that the next occurrence reads as paid off (a debt below 0.01). A ledger
  * booked in the unit owes a whole number of units, so its final installment
  * retires it exactly.
  */

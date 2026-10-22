@@ -5,6 +5,7 @@ import {
   DatedAnnuityPayment,
   datedPaymentAmount,
   identifyLoanTemplate,
+  isDebtRetired,
   declineReason,
   InstallmentPurpose,
   paymentNewlyApplies,
@@ -751,6 +752,51 @@ describe("priceInstallment", () => {
         purpose: "settlement",
       });
       expect(result).toEqual({ kind: "paid-off", debt: 0, managed: true });
+    });
+
+    // A26-L23 / A26-S15-06: less than one minor unit is a rounding residue;
+    // one whole unit is owed and the post writes it.
+    describe("the payoff boundary: one whole minor unit is owed", () => {
+      const resolveAt = async (debt: number) => {
+        ledgerDebt = debt;
+        const template = makeTemplate(833.3333, 393.0556, "2027-01-01");
+        return resolveInstallmentCore(m(), {
+          scheduledTransaction: template,
+          splits: template.splits as ScheduledTransactionSplit[],
+          loanAccount: makeMortgage({ interestRate: null }),
+          asOfDate: "2027-01-01",
+          purpose: "posting",
+        });
+      };
+
+      it("prices a debt of exactly 0.01 as one cent of principal at 0 %", async () => {
+        const result = await resolveAt(0.01);
+        if (result.kind !== "ok") throw new Error(`got ${result.kind}`);
+        const booked = bookLoanAllocation(result.allocation, 2, 0.01);
+        expect(booked.total).toBe(0.01);
+        expect(booked.principal).toBe(0.01);
+        expect(booked.interest).toBe(0);
+      });
+
+      it("reads 0.0099 and a 4dp residue of 0.0049 as paid off", async () => {
+        for (const debt of [0.0099, 0.0049]) {
+          const result = await resolveAt(debt);
+          expect(result.kind).toBe("paid-off");
+        }
+      });
+
+      it("prices a debt of 0.02 as 0.02", async () => {
+        const result = await resolveAt(0.02);
+        if (result.kind !== "ok") throw new Error(`got ${result.kind}`);
+        expect(bookLoanAllocation(result.allocation, 2, 0.02).total).toBe(0.02);
+      });
+
+      it("does not read float noise below 0.01 as owed", () => {
+        expect(isDebtRetired(0.01)).toBe(false);
+        expect(isDebtRetired(1.01 - 1)).toBe(false);
+        expect(isDebtRetired(0.0099)).toBe(true);
+        expect(isDebtRetired(0)).toBe(true);
+      });
     });
 
     it("prices the settlement at the timeline's rate once one applies", async () => {

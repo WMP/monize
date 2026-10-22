@@ -785,13 +785,13 @@ so its principal is what the ledger will hold. With no ledger row after
 principal so far.
 
 The advancement before slot k reads the debt first, as `rewriteLoanTemplate`
-does: when `debtAt(originalDate(k)) <= 0.01` the recalculation deactivates
+does: when `debtAt(originalDate(k)) < 0.01` the recalculation deactivates
 the schedule, slot k never posts, and the projection ends before it. A line
 of credit is the exception there too: its schedule stays active and its
 template unchanged, and the projection goes on, so a draw recorded for a
 later date is billed again.
 
-An occurrence whose `debtAt(dueDate) <= 0.01` and which states no override
+An occurrence whose `debtAt(dueDate) < 0.01` and which states no override
 amount is the payoff `post()` writes no money for (section 3): it is listed
 with `amount`, `principal`, `interest` and `extraPrincipal` 0.00. Zero needs
 no rate, but `annualRate` is a figure of the row: with no rate at the date

@@ -27,6 +27,7 @@ import {
   paymentNewlyApplies,
   priceInstallment,
   RateTimelineRow,
+  isDebtRetired,
 } from "./price-installment";
 
 /**
@@ -361,8 +362,8 @@ export function projectLoanOccurrences(
     // slot never posts, or for a line of credit keeps the template as it is.
     if (!isCursor) {
       const debtSlot = debtAt(originalDate);
-      if (debtSlot <= 0.01 && !revolving) break;
-      if (debtSlot > 0.01) {
+      if (isDebtRetired(debtSlot) && !revolving) break;
+      if (!isDebtRetired(debtSlot)) {
         const rateAtSlot = annualRateOn(rateChanges, loanAccount, originalDate);
         if (rateAtSlot === null) {
           firstUnknownSlot = originalDate;
@@ -427,7 +428,7 @@ export function projectLoanOccurrences(
     // only for a bill priced from the template; an override's amount is the
     // user's statement for the occurrence and posts as given. Zero needs no
     // rate, but `annualRate` is a figure of the row like any other.
-    if (debtDue <= 0.01 && statedAmount === null) {
+    if (isDebtRetired(debtDue) && statedAmount === null) {
       rowsBySlot.set(originalDate, {
         originalDate,
         dueDate,
@@ -505,7 +506,7 @@ export function projectLoanOccurrences(
       continue;
     }
 
-    if (debtDue <= 0.01 && override && statedAmount !== null) {
+    if (isDebtRetired(debtDue) && override && statedAmount !== null) {
       firstUnknownSlot = originalDate;
       rowsBySlot.set(
         originalDate,

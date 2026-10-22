@@ -51,6 +51,23 @@ import { precedingSlotDate, SlotCalendarSchedule } from "./occurrence-slots";
  * `loan-core-imports.guard.spec.ts` holds that.
  */
 
+/**
+ * One minor unit. A debt below it is a rounding residue and reads as paid
+ * off; one whole unit is owed and an installment prices it (audit A26-S15-06:
+ * `<= 0.01` retired a loan owing exactly 0.01, left it at -0.01 for ever and
+ * kept its account from closing). The planner and the projection use this
+ * same test.
+ */
+export const LOAN_MINOR_UNIT = 0.01;
+
+/** Float noise allowed at the boundary: 1.01 - 1 is 0.010000000000000009. */
+const DEBT_BOUNDARY_NOISE = 1e-9;
+
+/** True when `debt` is less than one minor unit: nothing left to pay. */
+export function isDebtRetired(debt: number): boolean {
+  return debt < LOAN_MINOR_UNIT - DEBT_BOUNDARY_NOISE;
+}
+
 /** The template's managed lines: a principal transfer, one interest line, and
  *  optionally an extra-principal transfer. */
 export interface LoanTemplateSplits {
@@ -794,7 +811,7 @@ export async function resolveInstallmentCore(
 
   const identified = identifyLoanTemplate(splits, loanAccount);
 
-  if (debt <= 0.01) {
+  if (isDebtRetired(debt)) {
     return { kind: "paid-off", debt, managed: identified.managed };
   }
 
