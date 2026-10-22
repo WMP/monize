@@ -13,6 +13,10 @@ import { accountsApi } from '@/lib/accounts';
 import { investmentsApi } from '@/lib/investments';
 import { institutionsApi } from '@/lib/institutions';
 import { countLogicalAccounts } from '@/lib/account-utils';
+import {
+  holdingsValuationIncomplete,
+  incompleteHoldingAccountIds as incompleteHoldingAccountIdsOf,
+} from '@/lib/logical-accounts';
 import { Account } from '@/types/account';
 import { Institution } from '@/types/institution';
 import { PortfolioSummary } from '@/types/investment';
@@ -121,6 +125,14 @@ function AccountsContent() {
     return map;
   }, [portfolioSummary]);
 
+  // Which accounts' valuation is a subtotal for ANY cause. `unpricedHoldingsCount`
+  // sees a missing price only; `valuationComplete === false` also covers a missing
+  // exchange rate with every price present, so the gate reads both.
+  const incompleteHoldingAccountIds = useMemo(
+    () => incompleteHoldingAccountIdsOf(portfolioSummary?.holdingsByAccount),
+    [portfolioSummary],
+  );
+
   const LIABILITY_TYPES = ['CREDIT_CARD', 'LOAN', 'MORTGAGE', 'LINE_OF_CREDIT'];
 
   /**
@@ -137,7 +149,12 @@ function AccountsContent() {
       // Unknown when the valuation failed, and a subtotal when some holdings
       // could not be priced -- either way not a measured figure, matching the
       // account row, which shows an unknown marker in both cases.
-      if (portfolioFailed || (unpricedHoldingCounts.get(a.id) ?? 0) > 0) return null;
+      if (
+        portfolioFailed ||
+        holdingsValuationIncomplete(a.id, unpricedHoldingCounts, incompleteHoldingAccountIds)
+      ) {
+        return null;
+      }
       return brokerageMarketValues.get(a.id) ?? 0;
     }
     return (Number(a.currentBalance) || 0) + (Number(a.futureTransactionsSum) || 0);
@@ -204,7 +221,7 @@ function AccountsContent() {
       accountCount: countLogicalAccounts(activeAccounts),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accounts, brokerageMarketValues, unpricedHoldingCounts, portfolioFailed, convertToDefault]);
+  }, [accounts, brokerageMarketValues, unpricedHoldingCounts, incompleteHoldingAccountIds, portfolioFailed, convertToDefault]);
 
   return (
     <PageLayout>
@@ -278,7 +295,7 @@ function AccountsContent() {
           {isLoading ? (
             <LoadingSpinner text={t('page.loadingAccounts')} />
           ) : (
-            <AccountList accounts={accounts} institutions={institutions} brokerageMarketValues={brokerageMarketValues} unpricedHoldingCounts={unpricedHoldingCounts} portfolioFailed={portfolioFailed} defaultCurrency={defaultCurrency} convertToDefault={convertToDefault} onEdit={openEdit} onRefresh={loadAccounts} />
+            <AccountList accounts={accounts} institutions={institutions} brokerageMarketValues={brokerageMarketValues} unpricedHoldingCounts={unpricedHoldingCounts} incompleteHoldingAccountIds={incompleteHoldingAccountIds} portfolioFailed={portfolioFailed} defaultCurrency={defaultCurrency} convertToDefault={convertToDefault} onEdit={openEdit} onRefresh={loadAccounts} />
           )}
         </div>
       </main>

@@ -33,6 +33,11 @@ vi.mock("@/hooks/useDateRange", () => ({
   }),
 }));
 
+const mockExportToPdf = vi.fn();
+vi.mock("@/lib/pdf-export", () => ({
+  exportToPdf: (...args: any[]) => mockExportToPdf(...args),
+}));
+
 vi.mock("@/components/ui/DateRangeSelector", () => ({
   DateRangeSelector: () => <div data-testid="date-range-selector" />,
 }));
@@ -349,6 +354,52 @@ describe("IncomeVsExpensesReport", () => {
     });
 
     expect((await screen.findAllByTestId("partial-total")).length).toBeGreaterThan(0);
+  });
+
+  it("carries the partial note onto the PDF cards the screen marks", async () => {
+    // The screen wraps income, expenses and savings in PartialTotal; the PDF
+    // used to print the same subtotals under "Total ..." with nothing beside
+    // them, and a document leaves the application without its caveat.
+    mockExportToPdf.mockResolvedValue(undefined);
+    mockGetIncomeVsExpenses.mockResolvedValue({
+      data: [{ period: "2024-01", periodStart: "2024-01-01", periodEnd: "2024-01-31", income: 5000, expenses: 3000, net: 2000 }],
+      totals: { income: null, expenses: null, net: null, knownIncome: 5000, knownExpenses: 3000, knownNet: 2000 },
+      currency: "CAD",
+      missingCurrencies: ["JPY"],
+      excludedCount: 1,
+    });
+    await act(async () => {
+      render(<IncomeVsExpensesReport />);
+    });
+    await waitFor(() => expect(screen.getByTestId("bar-chart")).toBeInTheDocument());
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("export-pdf"));
+    });
+    const cards = mockExportToPdf.mock.calls[0][0].summaryCards as Array<{ label: string; note?: string }>;
+    for (const label of ["Total Income", "Total Expenses", "Total Savings"]) {
+      const card = cards.find((c) => c.label === label);
+      expect(card?.note, label).toEqual(expect.stringContaining("JPY"));
+    }
+  });
+
+  it("writes no note on the PDF cards of a complete report", async () => {
+    mockExportToPdf.mockResolvedValue(undefined);
+    mockGetIncomeVsExpenses.mockResolvedValue({
+      data: [{ period: "2024-01", periodStart: "2024-01-01", periodEnd: "2024-01-31", income: 5000, expenses: 3000, net: 2000 }],
+      totals: { income: 5000, expenses: 3000, net: 2000, knownIncome: 5000, knownExpenses: 3000, knownNet: 2000 },
+      currency: "CAD",
+      missingCurrencies: [],
+      excludedCount: 0,
+    });
+    await act(async () => {
+      render(<IncomeVsExpensesReport />);
+    });
+    await waitFor(() => expect(screen.getByTestId("bar-chart")).toBeInTheDocument());
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("export-pdf"));
+    });
+    const cards = mockExportToPdf.mock.calls[0][0].summaryCards as Array<{ note?: string }>;
+    expect(cards.every((c) => c.note === undefined)).toBe(true);
   });
 
   it("leaves complete totals unmarked", async () => {

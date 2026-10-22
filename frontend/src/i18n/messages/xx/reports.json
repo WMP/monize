@@ -316,6 +316,7 @@
     "totalInflows": "[XX-Total Inflows-XX]",
     "totalOutflows": "[XX-Total Outflows-XX]",
     "netCashFlow": "[XX-Net Cash Flow-XX]",
+    "notAvailable": "[XX-N/A-XX]",
     "monthlyCashFlow": "[XX-Monthly Cash Flow-XX]",
     "inflowsByCategory": "[XX-Inflows by Category-XX]",
     "outflowsByCategory": "[XX-Outflows by Category-XX]",
@@ -1146,6 +1147,11 @@
     "vsMonth": "[XX-vs {month}-XX]",
     "inMonth": "[XX-{amount} in {month}-XX]",
     "netWorthTotal": "[XX-Total: {amount}-XX]",
+    "netWorthSummaryPartial": "[XX-Your net worth in {currentMonth} was <strong>{netWorth}</strong>. The change compared to {previousMonth} cannot be worked out because no exchange rate is available for {pairs}; add one on the Currencies page.-XX]",
+    "pdfPartialSuffix": "[XX-{amount} (partial)-XX]",
+    "pdfNote": "[XX-Note-XX]",
+    "pdfNotAvailable": "[XX-N/A-XX]",
+    "pdfPartialNote": "[XX-Partial total: no exchange rate for {pairs}.-XX]",
     "netWorthSummary": "[XX-Your net worth in {currentMonth} was <strong>{netWorth}</strong>, which was <delta>{changeAmount}</delta> compared to {previousMonth}.-XX]",
     "pdfTitle": "[XX-Monthly Comparison-XX]",
     "pdfSubtitle": "[XX-{current} vs {previous}-XX]",
@@ -1193,7 +1199,12 @@
     "colNetWorth": "[XX-Net Worth-XX]",
     "barStyle": "[XX-Bar style-XX]",
     "barStyleNetWorth": "[XX-Net worth-XX]",
-    "barStyleAccountType": "[XX-By account type-XX]"
+    "barStyleAccountType": "[XX-By account type-XX]",
+    "notAvailable": "[XX-N/A-XX]",
+    "colNote": "[XX-Note-XX]",
+    "partialMonthNote": "[XX-Partial: no exchange rate for {pairs}-XX]",
+    "pdfPartialNote": "[XX-Partial total: no exchange rate for {pairs}. Add one on the Currencies page.-XX]",
+    "partialMonth": "[XX-Not shown: some amounts in this month could not be converted, so its net worth is unknown.-XX]"
   },
   "portfolioValue": {
     "highestValue": "[XX-Highest Value-XX]",
@@ -1853,7 +1864,10 @@
   },
   "partialData": {
     "notice": "[XX-Some figures are partial: {count, plural, one {# amount could not be converted into {displayCurrency} and is} other {# amounts could not be converted into {displayCurrency} and are}} left out. No rate is available for {currencies}; add one on the Currencies page.-XX]",
-    "noticeExcluded": "[XX-Some figures are partial: {count, plural, one {# amount could not be worked out and is} other {# amounts could not be worked out and are}} left out.-XX]"
+    "noticeExcluded": "[XX-Some figures are partial: {count, plural, one {# amount could not be worked out and is} other {# amounts could not be worked out and are}} left out.-XX]",
+    "pdfNote": "[XX-Partial total: no exchange rate for {currencies}-XX]",
+    "pdfNoteExcluded": "[XX-Partial total: {count, plural, one {# amount} other {# amounts}} left out-XX]",
+    "pdfSuffix": "[XX-(partial)-XX]"
   },
   "sankey": {
     "help": "[XX-Money that came in flows through the middle into what it was spent on, what was saved or invested, and what paid down debt. By default the report covers your open chequing, savings, cash, credit card and line of credit accounts, and a transfer between two of them is not shown. Leave a savings account out of the account filter to see what you moved into it. A credit card payment is never a debt payment: the purchases it settles are already counted as expenses.-XX]",

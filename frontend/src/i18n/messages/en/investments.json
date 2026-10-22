@@ -170,6 +170,7 @@
     "intradayUnavailableDescription": "One or more holdings use a quote provider (MSN Money) that does not expose intraday data. Switch to a longer range to see daily snapshots.",
     "noDataForPeriod": "No investment data for this period.",
     "highestValue": "Highest Value",
+    "incompleteTooltip": "Some points in this window are missing a price or an exchange rate, so the high and the low are not shown.",
     "lowestValue": "Lowest Value",
     "valueChange": "Value Change",
     "valueChangeTooltip": "What the securities are worth at the end of the period, less what they were worth at the start: the last point on the chart less the first. Uninvested cash is left out.",

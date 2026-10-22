@@ -249,6 +249,15 @@ export const investmentsApi = {
       value: number;
       securitiesValue?: number;
       /**
+       * Three completeness bits, as on `DailyInvestmentValue`: `value` and
+       * `securitiesValue` are SUBTOTALS on a bar where one is false. Optional
+       * and read as `=== false`: an older backend sends none, which is no
+       * information.
+       */
+      fxComplete?: boolean;
+      pricesComplete?: boolean;
+      cashComplete?: boolean;
+      /**
        * Set on a session's closing point, the daily series' figure for the
        * day, including the point a 1W / 1M series opens on. Absent on a bar.
        */
@@ -261,6 +270,14 @@ export const investmentsApi = {
     skippedSymbols: string[];
     failedSymbols: string[];
     fallbackToDaily: boolean;
+    /** Completeness over every point; optional, read as `=== false`. */
+    fxComplete?: boolean;
+    pricesComplete?: boolean;
+    valuationComplete?: boolean;
+    /** `"CCY->DISPLAY"` for each pair with no rate at any bar. */
+    missingRatePairs?: string[];
+    /** The securities behind `pricesComplete: false`. */
+    unpricedSecurityIds?: string[];
   }> => {
     const response = await apiClient.get('/portfolio/intraday-value', { params });
     return response.data;

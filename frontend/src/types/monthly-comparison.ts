@@ -54,15 +54,29 @@ export interface TopCategoriesComparison {
 
 export interface NetWorthMonthlyPoint {
   month: string;
+  /** A subtotal of what converted when `fxComplete` is `false`. */
   netWorth: number;
+  /** Read as `=== false`; absent (an older backend) is no information. */
+  fxComplete?: boolean;
+  /** `"ZZZ->USD"` for each pair this month could not convert. */
+  missingRatePairs?: string[];
 }
 
+/**
+ * The net worth block. The four headline figures are `null` when a month
+ * could not be fully converted; `knownCurrentNetWorth` / `knownPreviousNetWorth`
+ * carry the subtotal that did, to be shown marked as partial.
+ */
 export interface MonthlyComparisonNetWorth {
   monthlyHistory: NetWorthMonthlyPoint[];
-  currentNetWorth: number;
-  previousNetWorth: number;
-  netWorthChange: number;
-  netWorthChangePercent: number;
+  currentNetWorth: number | null;
+  previousNetWorth: number | null;
+  netWorthChange: number | null;
+  netWorthChangePercent: number | null;
+  knownCurrentNetWorth?: number;
+  knownPreviousNetWorth?: number;
+  fxComplete?: boolean;
+  missingRatePairs?: string[];
 }
 
 export interface InvestmentAccountPerformance {

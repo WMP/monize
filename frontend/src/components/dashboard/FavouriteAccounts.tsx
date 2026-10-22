@@ -26,11 +26,13 @@ interface FavouriteAccountsProps {
   brokerageMarketValues?: Map<string, number>;
   /** Holdings account id -> how many of its holdings have no price. */
   unpricedHoldingCounts?: Map<string, number>;
+  /** Holdings account ids whose valuation is a subtotal for any cause, a missing rate included. */
+  incompleteHoldingAccountIds?: ReadonlySet<string>;
   isLoading: boolean;
   onAccountsChanged?: () => void;
 }
 
-export function FavouriteAccounts({ accounts, brokerageMarketValues, unpricedHoldingCounts, isLoading, onAccountsChanged: _onAccountsChanged }: FavouriteAccountsProps) {
+export function FavouriteAccounts({ accounts, brokerageMarketValues, unpricedHoldingCounts, incompleteHoldingAccountIds, isLoading, onAccountsChanged: _onAccountsChanged }: FavouriteAccountsProps) {
   const mainAccountName = useMainAccountName();
   const t = useTranslations('dashboard');
   const tAccounts = useTranslations('accounts');
@@ -53,11 +55,12 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, unpricedHol
     for (const logical of buildLogicalAccounts(accounts, mainAccountName, {
       marketValues: brokerageMarketValues ?? new Map(),
       unpricedCounts: unpricedHoldingCounts ?? new Map(),
+      incompleteAccountIds: incompleteHoldingAccountIds,
     })) {
       for (const id of logical.memberIds) map.set(id, logical);
     }
     return map;
-  }, [accounts, mainAccountName, brokerageMarketValues, unpricedHoldingCounts]);
+  }, [accounts, mainAccountName, brokerageMarketValues, unpricedHoldingCounts, incompleteHoldingAccountIds]);
 
   // Favouriting both halves of a pair is favouriting one account, so it gets
   // one card -- the brokerage half stands for the entity.

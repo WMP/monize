@@ -322,7 +322,7 @@ function InvestmentsContent() {
             <GroupedHoldingsList
               holdingsByAccount={data.portfolioSummary?.holdingsByAccount || []}
               isLoading={data.isLoading}
-              totalPortfolioValue={data.portfolioSummary?.totalPortfolioValue || 0}
+              totalPortfolioValue={data.portfolioSummary?.totalPortfolioValue ?? null}
               valuationComplete={data.portfolioSummary?.valuationComplete}
               onSecurityClick={data.handleSecurityClick}
               onCashClick={data.handleCashClick}

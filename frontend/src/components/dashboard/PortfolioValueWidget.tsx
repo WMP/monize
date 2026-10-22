@@ -38,6 +38,8 @@ import { gainLossColor } from '@/lib/format';
 import { ChartTooltipPanel } from '@/components/reports/ChartTooltip';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { UnknownAmount } from '@/components/ui/UnknownAmount';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { portfolioPartialTotal } from '@/lib/net-worth-completeness';
 import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
 import { WidgetCard, WidgetConfigRow, WidgetMessage } from './WidgetCard';
@@ -113,8 +115,19 @@ export function PortfolioValueWidget({ accounts, isLoading }: PortfolioValueWidg
       // The INVESTED part, not the account: cash is not an investment, so
       // a deposit must not draw as a rise in portfolio value
       // (`docs/specs/portfolio-period-result.md` section 10.7).
+      //
+      // A day the server could not price or convert is a subtotal of what it
+      // could, and a subtotal on a value axis reads as a measured dip: it is
+      // `null`, and the area breaks there. `cashComplete` is not read: the
+      // invested value holds no cash.
       .then((rows) =>
-        rows.map((r) => ({ date: r.date, value: investedValue(r) })),
+        rows.map((r) => ({
+          date: r.date,
+          value:
+            r.pricesComplete !== false && r.fxComplete !== false
+              ? investedValue(r)
+              : null,
+        })),
       );
   }, [start, end, accountIdsCsv, defaultCurrency, isDaily]);
 
@@ -147,6 +160,10 @@ export function PortfolioValueWidget({ accounts, isLoading }: PortfolioValueWidg
   }, [config.accountIds, summary, triggerManualRefresh]);
 
   const totalPortfolioValue = summary?.totalPortfolioValue ?? null;
+  // The headline is a subtotal whenever the server says a holding has no price
+  // or a currency no rate (`valuationComplete === false`; absent is no
+  // information). It stays on screen under the marker, which names the missing
+  // currencies and counts the unpriced holdings left out.
 
   // What the portfolio DID over this window, as the server worked it out. A
   // change read off the plotted series counts the reader's own deposits as
@@ -183,7 +200,7 @@ export function PortfolioValueWidget({ accounts, isLoading }: PortfolioValueWidg
               parsed,
               isDaily || boundary ? 'MMM d' : 'MMM yyyy',
             ),
-            value: Math.round(row.value),
+            value: row.value === null ? null : Math.round(row.value),
           };
         }),
         openingSession,
@@ -286,7 +303,12 @@ export function PortfolioValueWidget({ accounts, isLoading }: PortfolioValueWidg
         <div className="flex flex-col items-end gap-0.5">
           {totalPortfolioValue !== null && (
             <span className="whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-gray-100">
-              {formatCurrency(totalPortfolioValue, defaultCurrency)}
+              <PartialTotal
+                total={portfolioPartialTotal(totalPortfolioValue, summary)}
+                displayCurrency={defaultCurrency}
+              >
+                {formatCurrency(totalPortfolioValue, defaultCurrency)}
+              </PartialTotal>
             </span>
           )}
           {/* What the holdings earned over the window, with the reader's own
@@ -364,7 +386,11 @@ export function PortfolioValueWidget({ accounts, isLoading }: PortfolioValueWidg
                     <ChartTooltipPanel>
                       <p className="font-medium text-gray-900 dark:text-gray-100">{d.label}</p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {formatCurrency(d.value, defaultCurrency)}
+                        {d.value === null ? (
+                          t('portfolioValue.notAvailable')
+                        ) : (
+                          formatCurrency(d.value, defaultCurrency)
+                        )}
                       </p>
                     </ChartTooltipPanel>
                   );
@@ -376,6 +402,7 @@ export function PortfolioValueWidget({ accounts, isLoading }: PortfolioValueWidg
                 stroke={chartColors.primary}
                 strokeWidth={2}
                 fill="url(#portfolioValueGradient)"
+                connectNulls={false}
               />
             </AreaChart>
           </ResponsiveContainer>

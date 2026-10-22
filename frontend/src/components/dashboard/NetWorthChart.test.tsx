@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act } from '@testing-library/react';
-import { render, screen, fireEvent } from '@/test/render';
+import { render, screen, fireEvent, within } from '@/test/render';
 import { NetWorthChart } from './NetWorthChart';
 import type { NetWorthConfig } from './widget-config';
 
@@ -19,9 +19,9 @@ vi.mock('@/lib/net-worth', () => ({
 
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: any) => <div data-testid="responsive-container">{children}</div>,
-  BarChart: ({ children }: any) => <div data-testid="bar-chart">{children}</div>,
-  ComposedChart: ({ children, stackOffset }: any) => (
-    <div data-testid="composed-chart" data-stack-offset={stackOffset}>{children}</div>
+  BarChart: ({ children, data }: any) => <div data-testid="bar-chart" data-points={JSON.stringify(data)}>{children}</div>,
+  ComposedChart: ({ children, stackOffset, data }: any) => (
+    <div data-testid="composed-chart" data-stack-offset={stackOffset} data-points={JSON.stringify(data)}>{children}</div>
   ),
   Bar: ({ children, name, dataKey }: any) => (
     <div data-testid="bar" data-name={name} data-key={typeof dataKey === 'string' ? dataKey : 'fn'}>{children}</div>
@@ -71,6 +71,7 @@ vi.mock('@/hooks/useNumberFormat', async () => {
       ...numberFormatMockDefaults(),
       formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
       formatCurrencyLabel: (n: number) => `$${n}`,
+      defaultCurrency: 'USD',
     }),
   };
 });
@@ -292,5 +293,43 @@ describe('NetWorthChart', () => {
     // Single data point: change = 0, percent = 0
     expect(screen.getByText('$10000')).toBeInTheDocument();
     expect(screen.getByTestId('composed-chart')).toBeInTheDocument();
+  });
+
+  describe('a month the server could not fully convert', () => {
+    const partialMonths = [
+      { month: '2024-01-01', assets: 10000, liabilities: 0, netWorth: 10000, fxComplete: true, missingRatePairs: [] },
+      { month: '2024-06-01', assets: 10000, liabilities: 0, netWorth: 10000, fxComplete: false, missingRatePairs: ['ZZZ->USD'] },
+    ];
+
+    it('marks the headline partial and names the currency', async () => {
+      await renderWidget(partialMonths);
+      const marker = screen.getByTestId('partial-total');
+      expect(within(marker).getByText('$10000')).toBeInTheDocument();
+      expect(within(marker).getByRole('button').getAttribute('aria-label')).toContain('ZZZ');
+    });
+
+    it('withholds the change rather than printing a measured one', async () => {
+      await renderWidget(partialMonths);
+      expect(screen.getByTestId('unknown-amount')).toBeInTheDocument();
+      expect(screen.queryByText(/\+\$0/)).not.toBeInTheDocument();
+    });
+
+    it('draws the partial month as null in the bar and the stacked views', async () => {
+      await renderWidget(partialMonths);
+      const bars = JSON.parse(screen.getByTestId('composed-chart').getAttribute('data-points')!);
+      expect(bars.map((p: { netWorth: number | null }) => p.netWorth)).toEqual([10000, null]);
+      expect(bars[1].byAccountType).toBeUndefined();
+
+      fireEvent.click(screen.getByTitle('100% Stacked Bar'));
+      const stacked = JSON.parse(screen.getByTestId('bar-chart').getAttribute('data-points')!);
+      expect(stacked[1].assets).toBeNull();
+      expect(stacked[1].liabilities).toBeNull();
+    });
+
+    it('marks nothing on a complete series', async () => {
+      await renderWidget(twoMonths);
+      expect(screen.queryByTestId('partial-total')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('unknown-amount')).not.toBeInTheDocument();
+    });
   });
 });

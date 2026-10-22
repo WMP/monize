@@ -30,6 +30,7 @@ import { ChartViewToggle } from '@/components/ui/ChartViewToggle';
 import { DonutCenterTotal } from '@/components/ui/DonutCenterTotal';
 import { ChartLegend } from '@/components/ui/ChartLegend';
 import { PartialTotal } from '@/components/ui/PartialTotal';
+import { usePartialTotalNote } from '@/hooks/usePartialTotalNote';
 import type { ConvertedTotal } from '@/lib/currency-total';
 import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions';
 import { SortableHeader } from '@/components/ui/SortableHeader';
@@ -187,6 +188,9 @@ export function SpendingByCategoryReport() {
   );
   const totalExpenses = spendingTotal.value;
   const reportingCurrency = response?.currency ?? defaultCurrency;
+  // The screen wraps the total in `PartialTotal`; the PDF card carries the same
+  // fact as a note, since a document has no hover.
+  const { noteFor } = usePartialTotalNote();
 
   const sortedTableData = useMemo(() => {
     const sorted = [...chartData];
@@ -243,7 +247,7 @@ export function SpendingByCategoryReport() {
     await exportToPdf({
       title: t('spendingByCategory.pdfTitle'),
       summaryCards: [
-        { label: t('spendingByCategory.totalExpenses'), value: formatCurrency(totalExpenses), color: '#dc2626' },
+        { label: t('spendingByCategory.totalExpenses'), value: formatCurrency(totalExpenses), color: '#dc2626', note: noteFor(spendingTotal) },
       ],
       chartContainer: chartRef.current,
       chartLegend: legendItems.length > 0 ? legendItems : undefined,

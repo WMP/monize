@@ -36,7 +36,7 @@ vi.mock('recharts', () => ({
     }
     return null;
   },
-  BarChart: ({ children }: any) => <div data-testid="bar-chart">{children}</div>,
+  BarChart: ({ children, data }: any) => <div data-testid="bar-chart" data-points={JSON.stringify(data)}>{children}</div>,
   Bar: ({ children }: any) => <div>{children}</div>,
   XAxis: ({ tickFormatter }: any) => <div>{tickFormatter ? tickFormatter(50) : ''}</div>,
   YAxis: ({ tickFormatter }: any) => <div>{tickFormatter ? tickFormatter(1000) : ''}</div>,
@@ -609,5 +609,87 @@ describe('MonthlyComparisonReport', () => {
         await act(async () => { fireEvent.click(ths[i]); });
       }
     }
+  });
+
+  describe('a net worth the server could not fully convert', () => {
+    const partialResponse = {
+      ...mockResponse,
+      netWorth: {
+        monthlyHistory: [
+          { month: '2025-12', netWorth: 50000, fxComplete: true, missingRatePairs: [] },
+          { month: '2026-01', netWorth: 50000, fxComplete: false, missingRatePairs: ['ZZZ->CAD'] },
+        ],
+        currentNetWorth: null,
+        previousNetWorth: 50000,
+        netWorthChange: null,
+        netWorthChangePercent: null,
+        knownCurrentNetWorth: 50000,
+        knownPreviousNetWorth: 50000,
+        fxComplete: false,
+        missingRatePairs: ['ZZZ->CAD'],
+      },
+    };
+
+    async function renderPartial() {
+      mockGetMonthlyComparison.mockResolvedValue(partialResponse);
+      await act(async () => {
+        render(<MonthlyComparisonReport />);
+      });
+      await waitFor(() => expect(screen.getByText('Your Net Worth')).toBeInTheDocument());
+    }
+
+    it('shows the known subtotal as partial and does not print a change', async () => {
+      await renderPartial();
+      const section = screen.getByText('Your Net Worth').parentElement as HTMLElement;
+      const marker = within(section).getByTestId('partial-total');
+      expect(marker).toHaveTextContent('$50000.00');
+      expect(within(marker).getByRole('button').getAttribute('aria-label')).toContain('ZZZ');
+      expect(section).not.toHaveTextContent('+$0.00');
+      expect(section).not.toHaveTextContent('NaN');
+      expect(section).not.toHaveTextContent(/\d%/);
+      expect(section).toHaveTextContent('ZZZ');
+    });
+
+    it('draws the partial month as null, never as a measured dip', async () => {
+      await renderPartial();
+      const points = JSON.parse(
+        screen.getAllByTestId('bar-chart')
+          .map((el) => el.getAttribute('data-points')!)
+          .find((p) => p.includes('"netWorth"'))!,
+      );
+      expect(points.map((p: { netWorth: number | null }) => p.netWorth)).toEqual([50000, null]);
+    });
+
+    it('labels the partial figure in the PDF and withholds the change', async () => {
+      const { exportToPdf } = await import('@/lib/pdf-export');
+      await renderPartial();
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /export/i }));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText(/PDF/i));
+      });
+      const options = (exportToPdf as any).mock.calls[0][0];
+      const table = options.additionalTables.find(
+        (tbl: { title: string }) => tbl.title === 'Net Worth',
+      );
+      const flat = JSON.stringify(table.rows);
+      expect(flat).toContain('50000.00');
+      expect(flat).toMatch(/partial/i);
+      expect(flat).toContain('ZZZ');
+      expect(flat).not.toContain('NaN');
+      expect(flat).not.toContain('+$0.00');
+    });
+
+    it('marks nothing and prints the change for a complete net worth', async () => {
+      mockGetMonthlyComparison.mockResolvedValue(mockResponse);
+      await act(async () => {
+        render(<MonthlyComparisonReport />);
+      });
+      await waitFor(() => expect(screen.getByText('Your Net Worth')).toBeInTheDocument());
+      const section = screen.getByText('Your Net Worth').parentElement as HTMLElement;
+      expect(within(section).queryByTestId('partial-total')).not.toBeInTheDocument();
+      expect(section).toHaveTextContent('+$2000.00');
+    });
   });
 });

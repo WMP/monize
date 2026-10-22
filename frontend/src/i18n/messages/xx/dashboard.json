@@ -143,6 +143,7 @@
     "netWorthLabel": "[XX-Net Worth-XX]",
     "assets": "[XX-Assets-XX]",
     "liabilities": "[XX-Liabilities-XX]",
+    "partialName": "[XX-{name} (partial)-XX]",
     "viewCallouts": "[XX-Labels-XX]",
     "viewLegend": "[XX-Legend-XX]"
   },

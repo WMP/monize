@@ -318,12 +318,30 @@ export interface InvestmentAccountPair {
 
 export interface UpdateAccountData extends Partial<CreateAccountData> {}
 
+/**
+ * GET /accounts/summary. `totalAssets`, `totalLiabilities` and `netWorth` are
+ * `null` when a component could not be converted or priced; the `known*`
+ * siblings carry what did. The flags are optional because an older backend
+ * mid-deploy omits them -- read them as `=== false`, absent means no information.
+ */
 export interface AccountSummary {
   totalAccounts: number;
   totalBalance: number;
-  totalAssets: number;
-  totalLiabilities: number;
-  netWorth: number;
+  totalAssets: number | null;
+  totalLiabilities: number | null;
+  netWorth: number | null;
+  /** The part of `totalAssets` that converted and priced. */
+  knownAssetsSubtotal?: number;
+  knownLiabilitiesSubtotal?: number;
+  knownNetWorthSubtotal?: number;
+  fxComplete?: boolean;
+  pricesComplete?: boolean;
+  /** `fxComplete && pricesComplete`: gate the three totals on this. */
+  valuationComplete?: boolean;
+  /** `"ZZZ->USD"` for each pair with no rate. */
+  missingRatePairs?: string[];
+  unpricedSecurityIds?: string[];
+  unpricedSymbols?: string[];
 }
 
 /**

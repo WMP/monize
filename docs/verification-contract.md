@@ -146,6 +146,7 @@ INV-LOAN-002's entry names the missing source scan while its row said `--`.
 | INV-ACTIVITY-001 activity attribution | supporting | -- | **required** | -- | -- | -- | -- | -- |
 | INV-PROFILE-001 allowlist | required | **required** | supporting | -- | -- | -- | -- | -- |
 | INV-DISPLAY-001 reader's number locale | **required** | **required** | -- | -- | -- | -- | -- | optional |
+| INV-DISPLAY-002 partial figure relabelled | **required** | **required** | **required** | -- | -- | -- | -- | optional |
 | INV-MCP-001 request identity | **required** | **required** | required | -- | -- | -- | -- | -- |
 | INV-MCP-002 transport answers MCP | **required** | -- | -- | -- | -- | -- | -- | optional |
 | INV-MCP-003 confirmation binding | **required** | **required** | -- | -- | -- | -- | -- | -- |

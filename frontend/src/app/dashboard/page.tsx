@@ -29,6 +29,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { usePriceRefresh } from '@/hooks/usePriceRefresh';
 import { createLogger } from '@/lib/logger';
+import { incompleteHoldingAccountIds as incompleteHoldingAccountIdsOf } from '@/lib/logical-accounts';
 import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 import { TourBanner } from '@/components/dashboard/TourBanner';
 
@@ -84,6 +85,11 @@ function DashboardContent() {
     }
     return map;
   }, [portfolioSummary]);
+
+  const incompleteHoldingAccountIds = useMemo(
+    () => incompleteHoldingAccountIdsOf(portfolioSummary?.holdingsByAccount),
+    [portfolioSummary],
+  );
 
   const reloadInvestmentWidgets = useCallback(async () => {
     // Favourite securities can exist without investment accounts, so always
@@ -223,6 +229,7 @@ function DashboardContent() {
     netWorthData,
     brokerageMarketValues,
     unpricedHoldingCounts,
+    incompleteHoldingAccountIds,
     isLoading,
     hasInvestments,
     hasSecurities,

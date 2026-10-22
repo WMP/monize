@@ -28,7 +28,8 @@ const FIGURE_CELL =
 interface GroupedHoldingsListProps {
   holdingsByAccount: AccountHoldings[];
   isLoading: boolean;
-  totalPortfolioValue: number;
+  /** The portfolio's value, or `null` while it is not known (no summary yet, or a failed one). */
+  totalPortfolioValue: number | null;
   /**
    * False when `totalPortfolioValue` is a known subtotal rather than the whole
    * portfolio (a missing price or FX rate). A share of a subtotal is not a
@@ -137,7 +138,7 @@ export function GroupedHoldingsList({
   // (review #1133). getRate returns null for an unresolved pair, so the missing
   // conversion surfaces here rather than being silently dropped.
   const getPortfolioPercent = (value: number | null, currencyCode?: string): string => {
-    if (value === null || totalPortfolioValue === 0) return '-';
+    if (value === null || totalPortfolioValue === null || totalPortfolioValue === 0) return '-';
     if (valuationComplete === false) return '-';
     let converted = value;
     if (currencyCode && currencyCode !== defaultCurrency) {

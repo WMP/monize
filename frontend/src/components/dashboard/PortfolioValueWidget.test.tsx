@@ -4,7 +4,16 @@ import { render } from '@/test/render';
 import { Account } from '@/types/account';
 import { PortfolioValueWidget } from './PortfolioValueWidget';
 
-vi.mock('recharts', async () => (await import('@/test/recharts-mock')).rechartsMock());
+// `data-points` carries the rows the chart was handed, so a test can see what is
+// plotted and not only what the header says.
+vi.mock('recharts', async () => ({
+  ...(await import('@/test/recharts-mock')).rechartsMock(),
+  AreaChart: ({ children, data }: { children?: React.ReactNode; data?: unknown[] }) => (
+    <div data-testid="area-chart" data-points={JSON.stringify(data ?? [])}>
+      {children}
+    </div>
+  ),
+}));
 
 const configState = { current: { range: '1y', accountIds: [] as string[] } };
 vi.mock('@/hooks/useWidgetConfig', () => ({
@@ -450,5 +459,86 @@ describe('PortfolioValueWidget', () => {
       fireEvent.click(screen.getByLabelText('Refresh current value'));
     });
     expect(triggerManualRefresh).toHaveBeenCalledWith(['s1', 's2']);
+  });
+
+  describe('an incomplete valuation is not a total', () => {
+    const summaryWith = (overrides: Record<string, unknown>) => ({
+      totalPortfolioValue: 100000,
+      holdings: [],
+      holdingsByAccount: [],
+      pricesComplete: true,
+      fxComplete: true,
+      valuationComplete: true,
+      unpricedSecurityIds: [] as string[],
+      missingRatePairs: [] as string[],
+      ...overrides,
+    });
+    const plotted = () =>
+      JSON.parse(
+        screen.getByTestId('area-chart').getAttribute('data-points') ?? '[]',
+      ) as Array<{ date: string; value: number | null }>;
+
+    it('marks the headline partial when valuationComplete is false, every other field complete', async () => {
+      getInvestmentsDaily.mockResolvedValue([{ date: '2026-06-28', value: 10000 }]);
+      getPortfolioSummary.mockResolvedValue(
+        summaryWith({ valuationComplete: false }),
+      );
+      await renderWidget();
+      const marker = screen.getByTestId('partial-total');
+      expect(marker).toHaveTextContent('$100000');
+      expect(screen.getByTestId('partial-total-marker')).toBeInTheDocument();
+    });
+
+    it('marks the headline partial for an unpriced holding and a missing rate', async () => {
+      getInvestmentsDaily.mockResolvedValue([{ date: '2026-06-28', value: 10000 }]);
+      getPortfolioSummary.mockResolvedValue(
+        summaryWith({
+          valuationComplete: false,
+          pricesComplete: false,
+          fxComplete: false,
+          unpricedSecurityIds: ['sec-1'],
+          missingRatePairs: ['EUR->USD'],
+        }),
+      );
+      await renderWidget();
+      expect(screen.getByTestId('partial-total')).toHaveTextContent('$100000');
+    });
+
+    it('prints a complete valuation bare', async () => {
+      getInvestmentsDaily.mockResolvedValue([{ date: '2026-06-28', value: 10000 }]);
+      getPortfolioSummary.mockResolvedValue(summaryWith({}));
+      await renderWidget();
+      expect(screen.getByText('$100000')).toBeInTheDocument();
+      expect(screen.queryByTestId('partial-total')).not.toBeInTheDocument();
+    });
+
+    it('reads an absent flag as no information, not as incomplete', async () => {
+      getInvestmentsDaily.mockResolvedValue([{ date: '2026-06-28', value: 10000 }]);
+      getPortfolioSummary.mockResolvedValue({
+        totalPortfolioValue: 100000,
+        holdings: [],
+      });
+      await renderWidget();
+      expect(screen.queryByTestId('partial-total')).not.toBeInTheDocument();
+    });
+
+    it('plots a point the server could not price or convert as null', async () => {
+      getInvestmentsDaily.mockResolvedValue([
+        { date: '2026-04-28', value: 9000, securitiesValue: 9000, pricesComplete: true, fxComplete: true },
+        { date: '2026-05-28', value: 100, securitiesValue: 100, pricesComplete: false },
+        { date: '2026-06-28', value: 200, securitiesValue: 200, fxComplete: false },
+        { date: '2026-07-28', value: 10000, securitiesValue: 10000 },
+      ]);
+      await renderWidget();
+      expect(plotted().map((p) => p.value)).toEqual([9000, null, null, 10000]);
+    });
+
+    it('does not read the cash flag: the sparkline plots the invested value', async () => {
+      getInvestmentsDaily.mockResolvedValue([
+        { date: '2026-06-28', value: 500, securitiesValue: 400, cashComplete: false },
+      ]);
+      await renderWidget();
+      expect(plotted().map((p) => p.value)).toEqual([400]);
+    });
   });
 });

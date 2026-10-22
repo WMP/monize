@@ -788,4 +788,47 @@ describe("FavouriteAccounts", () => {
     expect(screen.queryByText("$3500.00")).not.toBeInTheDocument();
     expect(screen.queryByText("$9000.00")).not.toBeInTheDocument();
   });
+
+  it("shows no total for an account whose valuation is incomplete though every holding is priced", () => {
+    const accounts = [
+      {
+        id: "brok-1",
+        name: "TFSA - Brokerage",
+        currentBalance: 0,
+        currencyCode: "CAD",
+        isFavourite: true,
+        favouriteSortOrder: 1,
+        isClosed: false,
+        accountType: "INVESTMENT",
+        accountSubType: "INVESTMENT_BROKERAGE",
+        linkedAccountId: "cash-1",
+      },
+      {
+        id: "cash-1",
+        name: "TFSA - Cash",
+        currentBalance: 3500,
+        currencyCode: "CAD",
+        isFavourite: false,
+        favouriteSortOrder: 1,
+        isClosed: false,
+        accountType: "INVESTMENT",
+        accountSubType: "INVESTMENT_CASH",
+        linkedAccountId: "brok-1",
+      },
+    ] as any[];
+
+    render(
+      <FavouriteAccounts
+        accounts={accounts}
+        brokerageMarketValues={new Map([["brok-1", 9000]])}
+        unpricedHoldingCounts={new Map([["brok-1", 0]])}
+        incompleteHoldingAccountIds={new Set(["brok-1"])}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByText("Total unavailable")).toBeInTheDocument();
+    expect(screen.queryByText("$3500.00")).not.toBeInTheDocument();
+    expect(screen.queryByText("$9000.00")).not.toBeInTheDocument();
+  });
 });

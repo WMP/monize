@@ -595,6 +595,48 @@ describe("SpendingByCategoryReport", () => {
     expect(await screen.findByTestId('partial-total')).toBeInTheDocument();
   });
 
+  it('carries the partial note onto the PDF card the screen marks', async () => {
+    mockExportToPdf.mockResolvedValue(undefined);
+    mockGetSpendingByCategory.mockResolvedValue({
+      data: [{ categoryId: 'c1', categoryName: 'Food', color: null, total: 100 }],
+      totalSpending: null,
+      knownSpending: 100,
+      currency: 'CAD',
+      missingCurrencies: ['JPY'],
+      excludedCount: 1,
+    } satisfies SpendingByCategoryResponse);
+
+    await act(async () => {
+      render(<SpendingByCategoryReport />);
+    });
+    await screen.findByText('Food');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('export-pdf'));
+    });
+
+    const cards = mockExportToPdf.mock.calls[0][0].summaryCards as Array<{ note?: string }>;
+    expect(cards[0].note).toEqual(expect.stringContaining('JPY'));
+  });
+
+  it('writes no note on the PDF card of a complete report', async () => {
+    mockExportToPdf.mockResolvedValue(undefined);
+    mockGetSpendingByCategory.mockResolvedValue(
+      completeReport(
+        [{ categoryId: 'c1', categoryName: 'Food', color: null, total: 100 }],
+        100,
+      ),
+    );
+    await act(async () => {
+      render(<SpendingByCategoryReport />);
+    });
+    await screen.findByText('Food');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('export-pdf'));
+    });
+    const cards = mockExportToPdf.mock.calls[0][0].summaryCards as Array<{ note?: string }>;
+    expect(cards[0].note).toBeUndefined();
+  });
+
   it('leaves a complete total unmarked', async () => {
     mockGetSpendingByCategory.mockResolvedValue(
       completeReport(

@@ -103,8 +103,14 @@ export interface IntradayCachePayload {
     timestamp: string;
     value: number;
     securitiesValue?: number;
+    fxComplete?: boolean;
+    pricesComplete?: boolean;
+    cashComplete?: boolean;
     sessionClose?: true;
   }>;
+  /** Response-level lists, so a hydrated chart can name what is missing. */
+  missingRatePairs?: string[];
+  unpricedSecurityIds?: string[];
   interval: '1m' | '2m' | '5m' | '15m' | '30m' | '60m' | '90m';
   currency: string;
   fallbackToDaily: boolean;
